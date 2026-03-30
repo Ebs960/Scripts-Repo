@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -29,6 +30,7 @@ public class UIManager : MonoBehaviour
     }
 
     public static UIManager Instance { get; private set; }
+    public bool IsBlockingModalVisible => modalVisible;
 
     [Header("UI Panels")]
     public GameObject notificationPanel;
@@ -76,10 +78,13 @@ public class UIManager : MonoBehaviour
     private TurnManager subscribedTurnManager;
     private readonly Queue<ModalRequest> modalQueue = new Queue<ModalRequest>();
     private bool modalVisible;
+    private bool restorePlayerUiAfterModal;
+    private bool restoreUnitInfoPanelAfterModal;
     private bool handlingSelectionReminder;
     private CrisisData pendingSelectionCrisis;
     private MissionNarrativePopupUI narrativePopupInstance;
     private MissionSelectionPopupUI selectionPopupInstance;
+    private Coroutine modalWatchdog;
     private Canvas rootCanvas;
     private GameObject rootObject;
     private GameObject backdropObject;
@@ -100,6 +105,11 @@ public class UIManager : MonoBehaviour
     private CrisisMissionTrackerUI crisisMissionTrackerUI;
     private LegacyTrackerUI legacyTrackerUI;
     private bool startupMissionCrisisViewsHidden;
+
+    private void LogMissionSelectionBlocked(string context, CrisisData crisis, List<MissionData> missions = null)
+    {
+        // Diagnostic logging removed — this fires frequently during normal gameplay.
+    }
 
     void Awake()
     {
@@ -195,8 +205,7 @@ public class UIManager : MonoBehaviour
     {
         if (LoadingPanelController.Instance != null)
         {
-            // Check if the loading panel is active
-            if (LoadingPanelController.Instance.gameObject.activeSelf)
+            if (LoadingPanelController.Instance.IsUiBlocked)
                 return true;
         }
         
@@ -216,6 +225,11 @@ public class UIManager : MonoBehaviour
     {
         // Don't show panels while loading is active
         if (IsLoadingActive()) return;
+        if (modalVisible)
+        {
+            Debug.Log($"[UIManager] Ignoring ShowPanel('{name}') because a mission/crisis modal is open.");
+            return;
+        }
         
         HideAllPanels();
         if (!panelDict.TryGetValue(name, out var panel))
@@ -665,6 +679,11 @@ public class UIManager : MonoBehaviour
     public void ShowUnitInfoPanelForUnit(object unit)
     {
         if (unitInfoPanel == null || unit == null) return;
+        if (modalVisible)
+        {
+            Debug.Log("[UIManager] Ignoring ShowUnitInfoPanelForUnit because a mission/crisis modal is open.");
+            return;
+        }
         // Show the panel container FIRST (which calls HideAllPanels + SetActive),
         // then populate it. This avoids populating into a hidden panel that gets
         // immediately wiped by HideAllPanels, and eliminates a visual flicker.
@@ -676,6 +695,12 @@ public class UIManager : MonoBehaviour
 
     public void ShowHerdPanelForHerd(Herd herd)
     {
+        if (modalVisible)
+        {
+            Debug.Log("[UIManager] Ignoring ShowHerdPanelForHerd because a mission/crisis modal is open.");
+            return;
+        }
+
         if (herd == null)
         {
             Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herd is null");
@@ -858,9 +883,13 @@ public class UIManager : MonoBehaviour
                 var available = GetAvailableCrisisMissions(active);
                 if (available != null && available.Count > 0 && subscribedCrisisManager.GetActiveMission(GetPlayerCivilization()) == null)
                 {
-                    Debug.Log($"[UIManager] Queueing mission selection for crisis={active.crisisName} availableCount={available.Count}");
+                    Debug.Log($"[UIManager] Showing mission selection directly for crisis={active.crisisName} availableCount={available.Count}");
                     pendingSelectionCrisis = active;
-                    QueueSelection(active, available);
+                    ShowMissionSelectionDirectly(active, available);
+                }
+                else
+                {
+                    LogMissionSelectionBlocked("late crisis UI subscription", active, available);
                 }
             }
         }
@@ -901,14 +930,15 @@ public class UIManager : MonoBehaviour
 
     private void HandleCrisisStarted(CrisisData crisis)
     {
-        QueueNarrative(crisis?.crisisName, crisis?.crisisStartText, crisis?.crisisStartSplash);
-
+        // Show the crisis announcement narrative. When it closes, if missions are
+        // available the selection screen will appear automatically (no queue).
         var missions = GetAvailableCrisisMissions(crisis);
         if (missions.Count > 0)
-        {
             pendingSelectionCrisis = crisis;
-            QueueSelection(crisis, missions);
-        }
+        else
+            LogMissionSelectionBlocked("HandleCrisisStarted", crisis, missions);
+
+        QueueNarrative(crisis?.crisisName, crisis?.crisisStartText, crisis?.crisisStartSplash);
     }
 
     private void HandleCrisisPhaseChanged(CrisisData crisis, CrisisData.CrisisPhase phase)
@@ -998,6 +1028,7 @@ public class UIManager : MonoBehaviour
         var available = GetAvailableCrisisMissions(pendingSelectionCrisis);
         if (available.Count == 0)
         {
+            LogMissionSelectionBlocked($"mission selection reminder on round {round}", pendingSelectionCrisis, available);
             pendingSelectionCrisis = null;
             return;
         }
@@ -1005,7 +1036,8 @@ public class UIManager : MonoBehaviour
         handlingSelectionReminder = true;
         try
         {
-            QueueSelection(pendingSelectionCrisis, available);
+            // Show selection directly — don't go through the modal queue.
+            ShowMissionSelectionDirectly(pendingSelectionCrisis, available);
         }
         finally
         {
@@ -1037,7 +1069,21 @@ public class UIManager : MonoBehaviour
 
     private void QueueSelection(CrisisData crisis, List<MissionData> missions)
     {
-        if (crisis == null || missions == null || missions.Count == 0) return;
+        if (crisis == null || missions == null || missions.Count == 0)
+        {
+            LogMissionSelectionBlocked("QueueSelection", crisis, missions);
+            return;
+        }
+
+        // Don't queue a duplicate Selection if one is already pending.
+        foreach (var pending in modalQueue)
+        {
+            if (pending.kind == ModalKind.Selection)
+            {
+                Debug.Log("[UIManager] QueueSelection: skipping duplicate — a Selection modal is already queued.");
+                return;
+            }
+        }
 
         EnqueueModal(new ModalRequest
         {
@@ -1066,7 +1112,9 @@ public class UIManager : MonoBehaviour
         if (TryShowPrefabModal(request))
         {
             modalQueue.Dequeue();
+            SuppressGameplayHudForMissionCrisisModal();
             modalVisible = true;
+            StartModalWatchdog();
             Debug.Log($"[UIManager] Prefab modal shown for kind={request.kind}");
             return;
         }
@@ -1076,14 +1124,16 @@ public class UIManager : MonoBehaviour
         if (rootObject == null || backdropObject == null)
         {
             // Fallback UI could not be created — discard the modal so the queue is not permanently blocked.
-            Debug.LogWarning("[UIManager] Could not create fallback mission/crisis UI; discarding queued modal.");
+            Debug.LogWarning($"[UIManager] Could not create fallback mission/crisis UI; discarding queued modal. kind={request.kind} title={request.title}");
             modalQueue.Dequeue();
             return;
         }
 
         request = modalQueue.Dequeue();
+    SuppressGameplayHudForMissionCrisisModal();
         backdropObject.SetActive(true);
         modalVisible = true;
+        StartModalWatchdog();
 
         if (request.kind == ModalKind.Selection)
             ShowMissionCrisisFallbackSelection(request);
@@ -1093,6 +1143,7 @@ public class UIManager : MonoBehaviour
 
     private void CloseCurrentMissionCrisisModal()
     {
+        StopModalWatchdog();
         narrativeCloseAction = null;
 
         if (narrativePopupInstance != null)
@@ -1100,29 +1151,147 @@ public class UIManager : MonoBehaviour
         if (selectionPopupInstance != null)
             selectionPopupInstance.Hide();
 
-        // Also defensively deactivate GameObjects/roots in case Hide() didn't affect the visible root.
-        try
-        {
-            if (narrativePopupInstance != null && narrativePopupInstance.gameObject.activeSelf)
-                narrativePopupInstance.gameObject.SetActive(false);
-        }
-        catch (Exception) { }
-
-        try
-        {
-            if (selectionPopupInstance != null && selectionPopupInstance.gameObject.activeSelf)
-                selectionPopupInstance.gameObject.SetActive(false);
-        }
-        catch (Exception) { }
-
         if (narrativePanel != null) narrativePanel.SetActive(false);
         if (selectionPanel != null) selectionPanel.SetActive(false);
         if (backdropObject != null) backdropObject.SetActive(false);
         if (rootObject != null) rootObject.SetActive(false);
 
+        RestoreGameplayHudAfterMissionCrisisModal();
+
         modalVisible = false;
         Debug.Log("[UIManager] CloseCurrentMissionCrisisModal: modal closed and UI roots deactivated.");
-        TryShowNextModal();
+
+        // If there are more queued narratives, show them first.
+        if (modalQueue.Count > 0)
+        {
+            TryShowNextModal();
+            return;
+        }
+
+        // Queue is empty. If there's a pending mission selection, show it now.
+        if (pendingSelectionCrisis != null && subscribedCrisisManager != null
+            && subscribedCrisisManager.GetActiveMission(GetPlayerCivilization()) == null)
+        {
+            var available = GetAvailableCrisisMissions(pendingSelectionCrisis);
+            if (available.Count > 0)
+            {
+                ShowMissionSelectionDirectly(pendingSelectionCrisis, available);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Show the mission selection screen immediately, bypassing the modal queue.
+    /// This is the single entry point for showing mission selection — never use QueueSelection.
+    /// </summary>
+    private void ShowMissionSelectionDirectly(CrisisData crisis, List<MissionData> missions)
+    {
+        if (crisis == null || missions == null || missions.Count == 0) return;
+        if (modalVisible)
+        {
+            Debug.Log("[UIManager] ShowMissionSelectionDirectly: a modal is already visible, deferring.");
+            return;
+        }
+
+        EnsureMissionCrisisPrefabViews();
+
+        if (selectionPopupInstance != null)
+        {
+            if (!selectionPopupInstance.gameObject.activeSelf)
+                selectionPopupInstance.gameObject.SetActive(true);
+
+            var request = new ModalRequest
+            {
+                kind = ModalKind.Selection,
+                title = string.IsNullOrWhiteSpace(crisis.crisisName) ? "Choose a Mission" : crisis.crisisName,
+                body = "Choose one mission to pursue during this crisis.",
+                crisis = crisis,
+                missions = missions,
+                allowClose = false,
+            };
+
+            var options = BuildSelectionOptions(request);
+            Debug.Log($"[UIManager] ShowMissionSelectionDirectly: title={request.title} optionCount={options?.Count}");
+            selectionPopupInstance.Show(
+                request.title,
+                request.body,
+                options,
+                index => OnSelectionOptionChosen(request, index));
+
+            SuppressGameplayHudForMissionCrisisModal();
+            modalVisible = true;
+            StartModalWatchdog();
+            return;
+        }
+
+        // Fallback to queue if prefab not available
+        Debug.Log("[UIManager] ShowMissionSelectionDirectly: no prefab instance, falling back to queue.");
+        QueueSelection(crisis, missions);
+    }
+
+    private void PurgeSelectionModalsFromQueue()
+    {
+        if (modalQueue.Count == 0) return;
+        var kept = new Queue<ModalRequest>();
+        while (modalQueue.Count > 0)
+        {
+            var item = modalQueue.Dequeue();
+            if (item.kind != ModalKind.Selection)
+                kept.Enqueue(item);
+        }
+        while (kept.Count > 0)
+            modalQueue.Enqueue(kept.Dequeue());
+        Debug.Log($"[UIManager] PurgeSelectionModalsFromQueue: queue now has {modalQueue.Count} items.");
+    }
+
+    private void StartModalWatchdog()
+    {
+        StopModalWatchdog();
+        modalWatchdog = StartCoroutine(ModalWatchdogCoroutine(30f));
+    }
+
+    private void StopModalWatchdog()
+    {
+        if (modalWatchdog != null)
+        {
+            StopCoroutine(modalWatchdog);
+            modalWatchdog = null;
+        }
+    }
+
+    private IEnumerator ModalWatchdogCoroutine(float timeout)
+    {
+        yield return new WaitForSeconds(timeout);
+        if (modalVisible)
+        {
+            Debug.LogWarning($"[UIManager] Modal watchdog fired after {timeout}s — force-closing stuck modal.");
+            CloseCurrentMissionCrisisModal();
+        }
+        modalWatchdog = null;
+    }
+
+    private void SuppressGameplayHudForMissionCrisisModal()
+    {
+        restorePlayerUiAfterModal = playerUI != null && playerUI.activeSelf;
+        restoreUnitInfoPanelAfterModal = unitInfoPanel != null && unitInfoPanel.activeSelf;
+
+        if (unitInfoPanel != null)
+            unitInfoPanel.SetActive(false);
+        if (playerUI != null)
+            playerUI.SetActive(false);
+    }
+
+    private void RestoreGameplayHudAfterMissionCrisisModal()
+    {
+        if (playerUI != null)
+            playerUI.SetActive(restorePlayerUiAfterModal && !IsLoadingActive());
+
+        if (unitInfoPanel != null)
+            unitInfoPanel.SetActive(restoreUnitInfoPanelAfterModal && !IsLoadingActive());
+
+        restorePlayerUiAfterModal = false;
+        restoreUnitInfoPanelAfterModal = false;
     }
 
     private bool TryShowPrefabModal(ModalRequest request)
@@ -1133,6 +1302,8 @@ public class UIManager : MonoBehaviour
 
         if (request.kind == ModalKind.Narrative && narrativePopupInstance != null)
         {
+            if (!narrativePopupInstance.gameObject.activeSelf)
+                narrativePopupInstance.gameObject.SetActive(true);
             narrativePopupInstance.Show(
                 request.title,
                 request.body,
@@ -1146,7 +1317,13 @@ public class UIManager : MonoBehaviour
 
         if (request.kind == ModalKind.Selection && selectionPopupInstance != null)
         {
+            if (!selectionPopupInstance.gameObject.activeSelf)
+                selectionPopupInstance.gameObject.SetActive(true);
             var options = BuildSelectionOptions(request);
+            if (options == null || options.Count == 0)
+            {
+                LogMissionSelectionBlocked("TryShowPrefabModal selection with no built options", request.crisis, request.missions);
+            }
             Debug.Log($"[UIManager] Showing selection popup: title={request.title} optionCount={options?.Count} popupRoot={selectionPopupInstance.gameObject.name} active={selectionPopupInstance.gameObject.activeSelf}");
             selectionPopupInstance.Show(
                 request.title,
@@ -1502,6 +1679,7 @@ public class UIManager : MonoBehaviour
         if (subscribedCrisisManager.StartMission(civ, mission))
         {
             pendingSelectionCrisis = null;
+            PurgeSelectionModalsFromQueue();
             CloseCurrentMissionCrisisModal();
             return;
         }

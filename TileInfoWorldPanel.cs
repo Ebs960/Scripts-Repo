@@ -97,6 +97,12 @@ public class TileInfoWorldPanel : MonoBehaviour
 
     private void OnTileHovered(int tileIndex, Vector3 worldPos)
     {
+        if (IsBlockedByOverlay())
+        {
+            Hide();
+            return;
+        }
+
         if (tileIndex < 0) return;
 
         int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
@@ -128,6 +134,14 @@ public class TileInfoWorldPanel : MonoBehaviour
         // Re-subscribe if TileSystem was recreated (planet switch)
         if (_subscribedTS == null || _subscribedTS != TileSystem.Instance)
             SubscribeToTileSystem();
+
+        if (IsBlockedByOverlay())
+        {
+            if (lastHoveredTile >= 0)
+                lastHoveredTile = -1;
+            Hide();
+            return;
+        }
 
         // Position tooltip near cursor while hovering (lightweight — no raycast)
         if (followMouse && uiCanvas != null && lastHoveredTile >= 0)
@@ -243,6 +257,12 @@ public class TileInfoWorldPanel : MonoBehaviour
     #region Public API
     public void ShowForTile(int tileIndex)
     {
+        if (IsBlockedByOverlay())
+        {
+            Hide();
+            return;
+        }
+
         int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
@@ -259,6 +279,17 @@ public class TileInfoWorldPanel : MonoBehaviour
     public void Show()
     {
         if (panelRect != null) panelRect.gameObject.SetActive(true);
+    }
+
+    private bool IsBlockedByOverlay()
+    {
+        if (LoadingPanelController.Instance != null && LoadingPanelController.Instance.IsUiBlocked)
+            return true;
+
+        if (UIManager.Instance != null && UIManager.Instance.IsBlockingModalVisible)
+            return true;
+
+        return false;
     }
     #endregion
 }

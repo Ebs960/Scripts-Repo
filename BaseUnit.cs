@@ -50,6 +50,9 @@ public abstract class BaseUnit : MonoBehaviour
     // Track instantiated equipment GameObjects
     protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
 
+    // Multi-soldier group (populated at runtime when soldierCount > 1)
+    protected SoldierGroup soldierGroup;
+
     // Backwards-compatible equipped reference and abilities
     public EquipmentData equipped { get; protected set; }
     public List<Ability> unlockedAbilities { get; protected set; } = new List<Ability>();
@@ -130,8 +133,7 @@ public abstract class BaseUnit : MonoBehaviour
             if (ctx.attacker != null && ctx.attacker.animator != null)
             {
                 var au = (BaseUnit)ctx.attacker;
-                if (HasParameter(au.animator, attackHash))
-                    au.animator.SetTrigger(attackHash);
+                au.SetAnimatorTriggerForFormation(attackHash);
             }
         }
         catch { }
@@ -294,6 +296,64 @@ public abstract class BaseUnit : MonoBehaviour
     protected bool _hasHitParam;
     protected bool _hasDeathParam;
     protected bool _hasFortifyParam;
+
+    #endregion
+
+    #region Soldier Group
+
+    /// <summary>
+    /// Initialize the multi-soldier visual group from data fields.
+    /// Call once after the unit is fully initialized and positioned.
+    /// </summary>
+    protected void InitializeSoldierGroup(int count, SoldierVariant[] variants, FormationType formationType, float formationSpacing)
+    {
+        if (count <= 1) return;
+
+        soldierGroup = gameObject.GetComponent<SoldierGroup>();
+        if (soldierGroup == null)
+            soldierGroup = gameObject.AddComponent<SoldierGroup>();
+
+        soldierGroup.Initialize(count, variants, formationType, formationSpacing, gameObject.GetInstanceID());
+        DistributeEquipmentToSoldiers();
+        if (animator != null)
+            soldierGroup.SyncBoolParametersFrom(animator);
+    }
+
+    protected void SetAnimatorBoolForFormation(int hash, bool value)
+    {
+        if (animator != null && HasParameter(animator, hash))
+            animator.SetBool(hash, value);
+
+        if (soldierGroup != null)
+        {
+            soldierGroup.ForwardBool(hash, value);
+            if (animator != null)
+                soldierGroup.SyncBoolParametersFrom(animator);
+        }
+    }
+
+    protected void SetAnimatorTriggerForFormation(int hash)
+    {
+        if (animator != null && HasParameter(animator, hash))
+            animator.SetTrigger(hash);
+
+        if (soldierGroup != null)
+            soldierGroup.ForwardTrigger(hash);
+    }
+
+    /// <summary>
+    /// Push current equipment state to all soldiers in the group.
+    /// </summary>
+    protected void DistributeEquipmentToSoldiers()
+    {
+        if (soldierGroup == null) return;
+        soldierGroup.DistributeEquipment(
+            _equippedWeapon,
+            _equippedProjectileWeapon,
+            _equippedShield,
+            _equippedArmor,
+            _equippedMiscellaneous);
+    }
 
     #endregion
 
@@ -749,6 +809,9 @@ public abstract class BaseUnit : MonoBehaviour
         ProcessEquipmentSlot(EquipmentType.Shield, _equippedShield, shieldHolder);
         ProcessEquipmentSlot(EquipmentType.Armor, _equippedArmor, armorHolder);
         ProcessEquipmentSlot(EquipmentType.Miscellaneous, _equippedMiscellaneous, miscHolder);
+
+        // Distribute equipment to additional soldiers in the group
+        DistributeEquipmentToSoldiers();
     }
 
     protected virtual void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
@@ -1036,10 +1099,12 @@ public abstract class BaseUnit : MonoBehaviour
         catch { }
 
         if (animator != null && _hasHitParam)
-            animator.SetTrigger(hitHash);
+            SetAnimatorTriggerForFormation(hitHash);
 
         currentHealth -= damageAmount;
         ShowHealthChangePopup(-Mathf.Abs(damageAmount));
+        // Update multi-soldier attrition visuals
+        if (soldierGroup != null) soldierGroup.UpdateAttrition(currentHealth, MaxHealth);
         try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
 
         // Animals remember recent attacks for predator/prey behavior.
@@ -1107,6 +1172,8 @@ public abstract class BaseUnit : MonoBehaviour
         if (actualHealed <= 0) return;
 
         ShowHealthChangePopup(actualHealed);
+        // Revive soldiers when healed
+        if (soldierGroup != null) soldierGroup.UpdateAttrition(currentHealth, MaxHealth);
         try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
         UpdateUnitLabel();
     }
@@ -1140,7 +1207,7 @@ public abstract class BaseUnit : MonoBehaviour
         catch { }
 
         if (animator != null && _hasDeathParam)
-            animator.SetTrigger(deathHash);
+            SetAnimatorTriggerForFormation(deathHash);
 
         // Clear tile occupancy (layer-aware)
         if (currentTileIndex >= 0)
@@ -1391,7 +1458,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (isFortified == fortified) return;
         isFortified = fortified;
         if (animator != null && _hasFortifyParam)
-            animator.SetBool(isFortifiedHash, fortified);
+            SetAnimatorBoolForFormation(isFortifiedHash, fortified);
 
         try { GameEventManager.Instance?.RaiseMovePointsChanged(this, currentMovePoints, currentMovePoints); } catch { }
     }
@@ -1554,7 +1621,9 @@ public abstract class BaseUnit : MonoBehaviour
         }
         bool wasMoving = isMoving;
         if (_hasWalkParam)
-            animator.SetBool(isWalkingHash, walking);
+            SetAnimatorBoolForFormation(isWalkingHash, walking);
+        else if (soldierGroup != null && animator != null)
+            soldierGroup.SyncBoolParametersFrom(animator);
         isMoving = walking;
         _walkingStuckFrames = 0; // reset failsafe counter on any explicit state change
         if (!walking)

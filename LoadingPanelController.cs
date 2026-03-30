@@ -27,11 +27,14 @@ public class LoadingPanelController : MonoBehaviour
     private static LoadingPanelController instance;
     private readonly List<GameObject> hiddenUIElements = new List<GameObject>();
     private readonly Dictionary<GameObject, bool> originalUIStates = new Dictionary<GameObject, bool>();
+    private Coroutine waitForMinimapCoroutine;
+    private bool waitingForMinimapUiRestore;
     
     public static LoadingPanelController Instance => instance;
     public bool IsLoadingVisible => loadingPanel != null && loadingPanel.activeInHierarchy;
     public bool IsSpaceLoadingVisible => spaceLoadingPanel != null && spaceLoadingPanel.spaceLoadingPanel != null && spaceLoadingPanel.spaceLoadingPanel.activeInHierarchy;
     public bool IsAnyLoadingVisible => IsLoadingVisible || IsSpaceLoadingVisible;
+    public bool IsUiBlocked => IsAnyLoadingVisible || waitingForMinimapUiRestore;
 
     void Awake()
     {
@@ -141,11 +144,15 @@ public class LoadingPanelController : MonoBehaviour
             var minimapUI = FindFirstObjectByType<MinimapUI>();
             if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
             {
-StartCoroutine(WaitForMinimapCompletionAndShowUI());
+                waitingForMinimapUiRestore = true;
+                if (waitForMinimapCoroutine != null)
+                    StopCoroutine(waitForMinimapCoroutine);
+                waitForMinimapCoroutine = StartCoroutine(WaitForMinimapCompletionAndShowUI());
             }
             else
             {
-ShowAllGameUI();
+                waitingForMinimapUiRestore = false;
+                TryRestoreGameUI();
             }
         }
     }
@@ -199,9 +206,9 @@ ShowAllGameUI();
             spaceLoadingPanel.HideSpaceLoading();
         }
         
-        // Ensure UI is restored when all loading is hidden
+        // Restore only when no loading UI is visible and minimap generation is complete.
         if (hideAllUIWhileLoading)
-            ShowAllGameUI();
+            TryRestoreGameUI();
     }
     
     /// <summary>
@@ -272,7 +279,6 @@ ShowAllGameUI();
     /// </summary>
     private void HideAllGameUI()
     {
-        float hideStart = Time.realtimeSinceStartup;
         hiddenUIElements.Clear();
         originalUIStates.Clear();
         
@@ -312,7 +318,7 @@ ShowAllGameUI();
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null)
         {
-// Don't call StoreAndHideUIElement(minimapUI.gameObject) - let MinimapUI handle its own hiding
+            minimapUI.HideVisualsForBlockingUI();
         }
         
         // Hide PlayerUI instances
@@ -352,17 +358,13 @@ ShowAllGameUI();
             if (transportUI != null)
                 StoreAndHideUIElement(transportUI.gameObject);
         }
-            float hideElapsed = Time.realtimeSinceStartup - hideStart;
-            int hiddenCount = hiddenUIElements.Count;
-            Debug.Log($"[LoadingPanel] HideAllGameUI completed: hidden={hiddenCount}, took={hideElapsed:F3}s");
-}
+    }
     
     /// <summary>
     /// Show all previously hidden game UI elements
     /// </summary>
     private void ShowAllGameUI()
     {
-        float showStart = Time.realtimeSinceStartup;
         // Double-check that minimap generation is complete before showing UI
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
@@ -377,11 +379,10 @@ ShowAllGameUI();
                 uiElement.SetActive(originalState);
             }
         }
-        int restoredCount = hiddenUIElements.Count;
+        if (minimapUI != null)
+            minimapUI.ShowVisualsAfterBlockingUI();
         hiddenUIElements.Clear();
         originalUIStates.Clear();
-        float showElapsed = Time.realtimeSinceStartup - showStart;
-        Debug.Log($"[LoadingPanel] ShowAllGameUI completed: restored={restoredCount}, took={showElapsed:F3}s");
         
         // Trigger any UI systems that were waiting for loading to complete
         TriggerDeferredUIInitialization();
@@ -429,18 +430,16 @@ MusicManager.Instance.InitializeMusicTracks();
         
         if (minimapUI != null)
         {
-            Debug.Log("[LoadingPanel] Waiting for MinimapUI.MinimapsPreGenerated...");
-            float mmStart = Time.realtimeSinceStartup;
             while (!minimapUI.MinimapsPreGenerated)
             {
                 yield return null;
             }
-            float mmElapsed = Time.realtimeSinceStartup - mmStart;
-            Debug.Log($"[LoadingPanel] Minimap pre-generation finished after {mmElapsed:F3}s");
-}
+        }
+        waitingForMinimapUiRestore = false;
+        waitForMinimapCoroutine = null;
         
         // Now show all the UI
-        ShowAllGameUI();
+        TryRestoreGameUI();
     }
     
     /// <summary>
@@ -451,8 +450,17 @@ MusicManager.Instance.InitializeMusicTracks();
     {
         if (hideAllUIWhileLoading && hiddenUIElements.Count > 0)
         {
-ShowAllGameUI();
+            waitingForMinimapUiRestore = false;
+            TryRestoreGameUI();
         }
+    }
+
+    private void TryRestoreGameUI()
+    {
+        if (IsAnyLoadingVisible || waitingForMinimapUiRestore)
+            return;
+
+        ShowAllGameUI();
     }
     
     /// <summary>

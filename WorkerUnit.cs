@@ -40,6 +40,13 @@ public class WorkerUnit : BaseUnit
     private readonly int foundCityHash = Animator.StringToHash("FoundCity");
     private readonly int forageHash = Animator.StringToHash("Forage");
     private readonly int buildBoolHash = Animator.StringToHash("IsBuilding");
+    private bool hasIdleYoungParam;
+    private bool hasForageParam;
+    private bool hasBuildParam;
+    private bool isAssignedToBuildJob;
+    private bool isPlayingBuildActionAnimation;
+    private Coroutine buildActionAnimationCoroutine;
+    private const float BuildActionAnimationDuration = 0.85f;
     
 
     #region Implement Abstract Members from BaseUnit
@@ -161,6 +168,10 @@ public class WorkerUnit : BaseUnit
             if (equippedMiscellaneous == null && data.defaultMiscellaneous != null) EquipItem(data.defaultMiscellaneous);
             if (equippedProjectileWeapon == null && data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
         }
+
+        hasIdleYoungParam = HasParameter(animator, idleYoungHash);
+        hasForageParam = HasParameter(animator, forageHash);
+        hasBuildParam = HasParameter(animator, buildBoolHash);
     }
 
     private System.Collections.IEnumerator DeferredSubscribeToMovementEvent()
@@ -213,9 +224,18 @@ public class WorkerUnit : BaseUnit
         // Position the unit on the tile
         PositionUnitOnSurface(startTileIndex);
 
-        if (animator != null) animator.SetBool(idleYoungHash, true);
+        if (hasIdleYoungParam)
+            SetAnimatorBoolForFormation(idleYoungHash, true);
 
         InitializeUnitLabel();
+
+        // Initialize multi-soldier group if configured
+        if (data != null)
+        {
+            int visualCount = data.GetSoldierCount(owner);
+            if (visualCount > 1)
+                InitializeSoldierGroup(visualCount, data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
+        }
     }
 
     /// <summary>
@@ -253,6 +273,7 @@ public class WorkerUnit : BaseUnit
     {
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasBuildJobAtTile(currentTileIndex, planetIndex)) return;
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -261,6 +282,7 @@ public class WorkerUnit : BaseUnit
     {
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasUnitJobAtTile(currentTileIndex, planetIndex)) return;
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddUnitWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -269,6 +291,7 @@ public class WorkerUnit : BaseUnit
     {
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasWorkerJobAtTile(currentTileIndex, planetIndex)) return;
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -279,37 +302,49 @@ public class WorkerUnit : BaseUnit
     {
         if (args == null || args.Worker == null) return;
         if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
-            if (animator != null)
-            {
-                animator.SetBool(buildBoolHash, true);
-            }
+        isAssignedToBuildJob = true;
+        RefreshBuildAnimationState();
     }
 
     private void HandleWorkerUnassignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
     {
         if (args == null || args.Worker == null) return;
         if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
-            if (animator != null)
-            {
-                animator.SetBool(buildBoolHash, false);
-            }
+        isAssignedToBuildJob = false;
+        RefreshBuildAnimationState();
     }
 
     public void FoundCity()
     {
         if (!CanFoundCityOnCurrentTile()) return;
-        if (animator != null) animator.SetTrigger(foundCityHash);
+        SetAnimatorTriggerForFormation(foundCityHash);
         owner?.FoundNewCity(currentTileIndex, grid, planet);
+        Die();
+    }
+
+    /// <summary>Found a city on any tile (used by PlacementPreview for adjacent placement).</summary>
+    public void FoundCity(int tileIndex)
+    {
+        if (!CanFoundCityAt(tileIndex)) return;
+        SetAnimatorTriggerForFormation(foundCityHash);
+        owner?.FoundNewCity(tileIndex, grid, planet);
         Die();
     }
 
     public bool CanFoundCityOnCurrentTile()
     {
+        return CanFoundCityAt(currentTileIndex);
+    }
+
+    /// <summary>Check whether this worker can found a city on the given tile (must be adjacent or current).</summary>
+    public bool CanFoundCityAt(int tileIndex)
+    {
         if (data == null || !data.canFoundCity || owner == null) return false;
         if (!owner.CanFoundMoreCities()) return false;
+        if (!IsAdjacentOrSame(tileIndex)) return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
         if (td == null || !td.isLand) return false;
 
         // Distance check: use tile-step distance (hex steps) rather than world-space distance
@@ -322,19 +357,47 @@ public class WorkerUnit : BaseUnit
                 if (city == null) continue;
                 if (ts != null && ts.IsReady())
                 {
-                    int steps = ts.GetWrappedHexDistance(currentTileIndex, city.centerTileIndex);
+                    int steps = ts.GetWrappedHexDistance(tileIndex, city.centerTileIndex);
                     if (steps < minCitySteps) return false;
                 }
                 else
                 {
-                    // Fallback for legacy/runtime edgecases: approximate using flat center distance
-                    Vector3 a = ts != null ? ts.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
+                    Vector3 a = ts != null ? ts.GetTileCenterFlat(tileIndex) : Vector3.zero;
                     Vector3 b = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
                     float d = Vector3.Distance(a, b);
                     if (d < minCitySteps) return false;
                 }
             }
         }
+        return true;
+    }
+
+    #endregion
+
+    #region Adjacency & Placement Helpers
+
+    /// <summary>Returns true if tileIndex is the worker's current tile or an immediate hex neighbor.</summary>
+    public bool IsAdjacentOrSame(int tileIndex)
+    {
+        if (tileIndex < 0) return false;
+        if (tileIndex == currentTileIndex) return true;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
+        var neighbors = ts.GetNeighbors(currentTileIndex);
+        for (int i = 0; i < neighbors.Length; i++)
+        {
+            if (neighbors[i] == tileIndex) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Can this worker start building the given improvement on the specified tile (adjacent or current)?</summary>
+    public bool CanBuildImprovementAt(ImprovementData improvement, int tileIndex)
+    {
+        if (improvement == null) return false;
+        if (currentWorkPoints <= 0) return false;
+        if (!IsAdjacentOrSame(tileIndex)) return false;
+        if (owner != null && !improvement.AreRequirementsMet(owner)) return false;
         return true;
     }
 
@@ -477,6 +540,7 @@ public class WorkerUnit : BaseUnit
     public void Forage(ResourceData resource, int tileIndex)
     {
         if (!CanForage(resource, tileIndex)) return;
+        PlayForageAnimation();
         // Worker-side bookkeeping only; ResourceManager handles the actual resource consumption.
         currentWorkPoints = 0;
     }
@@ -486,7 +550,7 @@ public class WorkerUnit : BaseUnit
         if (unitData == null) return false;
         if (owner == null) return false;
         if (currentWorkPoints <= 0) return false;
-        if (tileIndex != currentTileIndex) return false;
+        if (!IsAdjacentOrSame(tileIndex)) return false;
         if (!unitData.buildableByWorker) return false;
         if (!unitData.AreRequirementsMet(owner)) return false;
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateCombatUnit(owner, unitData)) return false;
@@ -498,7 +562,7 @@ public class WorkerUnit : BaseUnit
         if (workerData == null) return false;
         if (owner == null) return false;
         if (currentWorkPoints <= 0) return false;
-        if (tileIndex != currentTileIndex) return false;
+        if (!IsAdjacentOrSame(tileIndex)) return false;
         if (!workerData.buildableByWorker) return false;
         if (!workerData.AreRequirementsMet(owner)) return false;
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateWorkerUnit(owner, workerData)) return false;
@@ -513,6 +577,7 @@ public class WorkerUnit : BaseUnit
             !ImprovementManager.Instance.CreateUnitJob(unitData, tileIndex, owner, planetIndex))
         { Debug.Log($"[WorkerUnit] StartBuildingUnit failed: CreateUnitJob rejected unit={unitData?.unitName} tile={tileIndex}"); return; }
 
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -525,6 +590,7 @@ public class WorkerUnit : BaseUnit
             !ImprovementManager.Instance.CreateWorkerJob(workerData, tileIndex, owner, planetIndex))
         { Debug.Log($"[WorkerUnit] StartBuildingWorker failed: CreateWorkerJob rejected worker={workerData?.unitName} tile={tileIndex}"); return; }
 
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -533,13 +599,14 @@ public class WorkerUnit : BaseUnit
     {
         if (improvement == null) { Debug.Log("[WorkerUnit] StartBuilding failed: improvement==null"); return; }
         if (currentWorkPoints <= 0) { Debug.Log($"[WorkerUnit] StartBuilding failed: no work points (0) tile={tileIndex}"); return; }
-        if (tileIndex != currentTileIndex) { Debug.Log($"[WorkerUnit] StartBuilding failed: tile mismatch current={currentTileIndex} requested={tileIndex}"); return; }
+        if (!IsAdjacentOrSame(tileIndex)) { Debug.Log($"[WorkerUnit] StartBuilding failed: tile {tileIndex} not adjacent to or same as current={currentTileIndex}"); return; }
         if (ImprovementManager.Instance == null) { Debug.Log("[WorkerUnit] StartBuilding failed: ImprovementManager missing"); return; }
         if (!ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex, improvement) &&
             !ImprovementManager.Instance.CreateBuildJob(improvement, tileIndex, owner, planetIndex))
         { Debug.Log($"[WorkerUnit] StartBuilding failed: CreateBuildJob rejected improvement={improvement?.name} tile={tileIndex}"); return; }
 
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
+        PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
@@ -636,6 +703,47 @@ public class WorkerUnit : BaseUnit
 
     #region Helper Methods
 
+    private void PlayForageAnimation()
+    {
+        if (hasForageParam)
+            SetAnimatorTriggerForFormation(forageHash);
+
+        if (hasIdleYoungParam)
+            SetAnimatorBoolForFormation(idleYoungHash, false);
+    }
+
+    private void PlayBuildActionAnimation()
+    {
+        if (buildActionAnimationCoroutine != null)
+            StopCoroutine(buildActionAnimationCoroutine);
+
+        isPlayingBuildActionAnimation = true;
+        RefreshBuildAnimationState();
+        buildActionAnimationCoroutine = StartCoroutine(ClearBuildActionAnimationAfterDelay());
+    }
+
+    private System.Collections.IEnumerator ClearBuildActionAnimationAfterDelay()
+    {
+        yield return new WaitForSeconds(BuildActionAnimationDuration);
+        isPlayingBuildActionAnimation = false;
+        buildActionAnimationCoroutine = null;
+        RefreshBuildAnimationState();
+    }
+
+    private void RefreshBuildAnimationState()
+    {
+        bool shouldBuild = isAssignedToBuildJob || isPlayingBuildActionAnimation;
+
+        if (hasBuildParam)
+            SetAnimatorBoolForFormation(buildBoolHash, shouldBuild);
+
+        if (animator != null && hasIdleYoungParam)
+        {
+            bool isWalking = HasParameter(animator, isWalkingHash) && animator.GetBool(isWalkingHash);
+            SetAnimatorBoolForFormation(idleYoungHash, !shouldBuild && !isWalking);
+        }
+    }
+
     private void CheckForHazardousBiomeDamage()
     {
         if (currentTileIndex < 0) return;
@@ -658,13 +766,12 @@ public class WorkerUnit : BaseUnit
     {
         base.UpdateWalkingState(walking);
         // IdleYoung is a Bool parameter in the animator — sync it with idle state
-        if (animator != null)
+        if (animator != null && hasIdleYoungParam)
         {
-            animator.SetBool(idleYoungHash, !walking);
+            SetAnimatorBoolForFormation(idleYoungHash, !walking);
             if (!walking)
             {
-                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-                Debug.Log($"[WorkerUnit] {gameObject.name} set IdleYoung=true | animState={stateInfo.shortNameHash} | inTransition={animator.IsInTransition(0)}");
+                // Idle state set.
             }
         }
     }

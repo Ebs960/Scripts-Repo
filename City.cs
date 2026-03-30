@@ -1141,7 +1141,7 @@ if (UIManager.Instance != null)
         var ts = TileSys;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
         
-        var prefab = unitData.GetPrefab();
+        var prefab = unitData.GetPrefab(owner);
         if (prefab == null)
         {
             Debug.LogError($"[City] Cannot spawn unit {unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
@@ -1239,7 +1239,7 @@ if (UIManager.Instance != null)
                 var resolvedUnit = ResolveCombatUnitForProduction(u);
                 if (resolvedUnit == null)
                     break;
-                var unitPrefab = resolvedUnit.GetPrefab();
+                var unitPrefab = resolvedUnit.GetPrefab(owner);
                 if (unitPrefab == null)
                 {
                     Debug.LogError($"[City] Cannot spawn unit {resolvedUnit.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
@@ -1291,7 +1291,13 @@ if (UIManager.Instance != null)
                 break;
 
             case WorkerUnitData w:
-                var wGO = Instantiate(w.prefab, pos, Quaternion.identity);
+                var workerPrefab = w.GetPrefab(owner);
+                if (workerPrefab == null)
+                {
+                    Debug.LogError($"[City] Cannot spawn worker {w.unitName}: prefab not found.");
+                    break;
+                }
+                var wGO = Instantiate(workerPrefab, pos, Quaternion.identity);
                 if (planetGenerator != null) wGO.transform.SetParent(planetGenerator.transform, true);
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);

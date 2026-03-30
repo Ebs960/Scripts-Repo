@@ -1225,7 +1225,7 @@ public class UnitSelectionManager : MonoBehaviour
         // args.Unit is a MonoBehaviour; selectedUnit inherits MonoBehaviour
         if (args.Unit == (MonoBehaviour)selectedUnit)
         {
-            if (previewDebug) Debug.Log($"[USM] OnUnitMovementCompleted for selected unit {selectedUnit.name} - refreshing queued preview/UI");
+            if (previewDebug) { }
             // Rebuild persistent preview from moveOrderPath
             ClearPreviewVisuals();
             ShowQueuedPathPreviewIfAny();

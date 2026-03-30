@@ -87,6 +87,7 @@ public class CrisisManager : MonoBehaviour
     private bool subscribedToGameEvents;
     private bool subscribedToDiplomacy;
     private bool warnedAboutMissingCrises;
+    private int lastNoEligibleCrisisWarningRound = int.MinValue;
 
     [Serializable]
     public class MissionStateSaveData
@@ -541,6 +542,11 @@ public class CrisisManager : MonoBehaviour
             else
             {
                 LogCrisisDebug("TryAutoTriggerCrisis", "No eligible crises found this round.");
+                if (lastNoEligibleCrisisWarningRound != round)
+                {
+                    lastNoEligibleCrisisWarningRound = round;
+                    Debug.LogWarning($"[CrisisManager] No eligible crises found on round {round}. Check crisis turn windows, history, and activation requirements.");
+                }
             }
             return;
         }

@@ -28,6 +28,29 @@ public enum AnimalBehaviorType
     Prey        // Avoids civilization units but fights back when recently attacked
 }
 
+[System.Serializable]
+public struct CombatUnitVisualOverride
+{
+    [Tooltip("Civilization that uses this visual override.")]
+    public CivData civ;
+
+    [Tooltip("Override Addressables key for this civ's unit prefab. Leave empty to use the default unit prefab.")]
+    public string addressableAddress;
+
+    [Tooltip("Legacy toggle. A matching civ override now always uses the soldier display settings below.")]
+    public bool overrideSoldierDisplay;
+
+    [Range(1, 12)]
+    public int soldierCount;
+
+    public FormationType formationType;
+
+    [Range(0.1f, 10f)]
+    public float formationSpacing;
+
+    public SoldierVariant[] soldierVariants;
+}
+
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
 public class CombatUnitData : ScriptableObject
 {
@@ -273,7 +296,26 @@ public class CombatUnitData : ScriptableObject
     [Header("Per-Turn Consumption")]
     [Tooltip("Food this unit consumes each turn (subtracted from civilization stockpile)")]
     public int foodConsumptionPerTurn = 2;
-    
+
+    [Header("Multi-Soldier Display")]
+    [Tooltip("Number of soldier figures displayed for this unit (1 = single model like today).")]
+    [Range(1, 12)]
+    public int soldierCount = 1;
+
+    [Tooltip("Formation arrangement for multiple soldiers.")]
+    public FormationType formationType = FormationType.Square;
+
+    [Tooltip("Visual model variants to randomly pick from for each additional soldier. Each variant prefab should have the same equipment holder transforms (WeaponHolder, ShieldHolder, etc.).")]
+    public SoldierVariant[] soldierVariants;
+
+    [Tooltip("Spacing between soldiers in formation (world units).")]
+    [Range(0.1f, 10f)]
+    public float formationSpacing = 0.5f;
+
+    [Header("Civilization Visual Overrides")]
+    [Tooltip("Optional per-civilization visual overrides. Use these when the gameplay unit stays the same but the art should change by civ.")]
+    public CombatUnitVisualOverride[] civVisualOverrides;
+
     /// <summary>
     /// Checks if all requirements (techs, cultures) are met for this unit
     /// </summary>
@@ -336,6 +378,65 @@ public class CombatUnitData : ScriptableObject
     // Private cached prefabs (loaded on-demand via Addressables)
     private GameObject _cachedPrefab;
     private bool _isLoadingPrefab = false;
+    private readonly System.Collections.Generic.Dictionary<string, GameObject> _cachedPrefabsByKey = new System.Collections.Generic.Dictionary<string, GameObject>();
+
+    private bool TryGetVisualOverride(Civilization civ, out CombatUnitVisualOverride visualOverride)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            for (int i = 0; i < civVisualOverrides.Length; i++)
+            {
+                if (civVisualOverrides[i].civ == civ.civData)
+                {
+                    visualOverride = civVisualOverrides[i];
+                    return true;
+                }
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
+    public string GetAddressableKey(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride) && !string.IsNullOrWhiteSpace(visualOverride.addressableAddress))
+            return visualOverride.addressableAddress;
+
+        return GetAddressableKey();
+    }
+
+    public int GetSoldierCount(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return Mathf.Max(1, visualOverride.soldierCount);
+
+        return soldierCount;
+    }
+
+    public FormationType GetFormationType(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return visualOverride.formationType;
+
+        return formationType;
+    }
+
+    public SoldierVariant[] GetSoldierVariants(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return visualOverride.soldierVariants;
+
+        return soldierVariants;
+    }
+
+    public float GetFormationSpacing(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return Mathf.Max(0.1f, visualOverride.formationSpacing);
+
+        return formationSpacing;
+    }
     
     /// <summary>
     /// Get the prefab, loading it on-demand from Addressables.
@@ -344,28 +445,38 @@ public class CombatUnitData : ScriptableObject
     /// </summary>
     public GameObject GetPrefab()
     {
-        // If prefab is already cached, return it
-        if (_cachedPrefab != null)
-        {
-            return _cachedPrefab;
-        }
-        
+        return GetPrefab(null);
+    }
+
+    public GameObject GetPrefab(Civilization civ)
+    {
         // Validate unitName
         if (string.IsNullOrEmpty(unitName))
         {
             Debug.LogError($"[CombatUnitData] Unit name is null or empty! Cannot load prefab.");
             return null;
         }
-        
-        string addressKey = GetAddressableKey();
+
+        string addressKey = GetAddressableKey(civ);
+        if (string.IsNullOrWhiteSpace(addressKey))
+        {
+            Debug.LogError($"[CombatUnitData] No Addressables key configured for unit '{unitName}'.");
+            return null;
+        }
+
+        if (_cachedPrefabsByKey.TryGetValue(addressKey, out var cachedPrefab) && cachedPrefab != null)
+            return cachedPrefab;
         
         // Load from Addressables
         if (AddressableUnitLoader.Instance != null)
         {
-            _cachedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(addressKey);
-            if (_cachedPrefab != null)
+            GameObject loadedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(addressKey);
+            if (loadedPrefab != null)
             {
-                return _cachedPrefab;
+                _cachedPrefabsByKey[addressKey] = loadedPrefab;
+                if (civ == null)
+                    _cachedPrefab = loadedPrefab;
+                return loadedPrefab;
             }
             else
             {

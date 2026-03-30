@@ -19,9 +19,7 @@ public class CivilizationManager : MonoBehaviour
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
-    [Tooltip("Default prefab with a WorkerUnit component for pioneers (used when CivData has none)")]
-    public GameObject pioneerPrefab;
-    [Tooltip("Default WorkerUnitData asset describing the pioneer unit (used when CivData has none)")]
+    [Tooltip("WorkerUnitData asset describing the global pioneer unit. Civ-specific visuals are resolved through WorkerUnitData prefab overrides first, with Addressables as fallback.")]
     public WorkerUnitData pioneerData;
     [Tooltip("Prefab with a City component for founding new cities")]
     public GameObject cityPrefab;
@@ -1221,13 +1219,12 @@ public class CivilizationManager : MonoBehaviour
             return; // Tribes can't expand beyond 3 cities
         }
         
-        // Resolve pioneer data: prefer per-civ, fall back to manager default
-        WorkerUnitData resolvedPioneerData = (civ.civData != null && civ.civData.pioneerData != null)
-            ? civ.civData.pioneerData : pioneerData;
+        // Pioneer production uses the global data asset; civ-specific visuals come from WorkerUnitData overrides.
+        WorkerUnitData resolvedPioneerData = pioneerData;
         
         if (resolvedPioneerData == null)
         {
-            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: no pioneerData on CivData or CivilizationManager");
+            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: no pioneerData configured on CivilizationManager");
             return;
         }
         
@@ -1958,21 +1955,24 @@ break; // Only propose one alliance per turn
             playerCiv = civ;
         }
 
-        // Resolve pioneer prefab & data: prefer per-civ, fall back to manager defaults
-        GameObject resolvedPioneerPrefab = (data.pioneerPrefab != null) ? data.pioneerPrefab : pioneerPrefab;
-        WorkerUnitData resolvedPioneerData = (data.pioneerData != null) ? data.pioneerData : pioneerData;
+        // Pioneer spawning uses the global data asset; civ-specific visuals come from WorkerUnitData overrides.
+        WorkerUnitData resolvedPioneerData = pioneerData;
 
-        if (resolvedPioneerPrefab == null)
-        {
-            Debug.LogError($"SpawnOneCivilization: No pioneer prefab for {data.civName} (not on CivData or CivilizationManager)!");
-            return;
-        }
-        
         if (resolvedPioneerData == null)
         {
-            Debug.LogError($"SpawnOneCivilization: No pioneer data for {data.civName} (not on CivData or CivilizationManager)!");
+            Debug.LogError($"SpawnOneCivilization: No pioneerData configured on CivilizationManager for {data.civName}!");
             return;
         }
+
+        // Use the normal worker prefab resolver so pioneers can come from direct prefabs
+        // or Addressables, with prefab references preferred when assigned.
+        GameObject resolvedPioneerPrefab = resolvedPioneerData.GetPrefab(civ);
+        if (resolvedPioneerPrefab == null)
+        {
+            Debug.LogError($"SpawnOneCivilization: Failed to resolve pioneer prefab for {data.civName}. Aborting spawn.");
+            return;
+        }
+
         // Instantiate pioneer — parent under the planet so it deactivates on planet switch
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;

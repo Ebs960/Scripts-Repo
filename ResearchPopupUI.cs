@@ -24,27 +24,35 @@ public class ResearchPopupUI : MonoBehaviour
     [SerializeField] private float autoHideSeconds = 5f;
 
     private Coroutine hideRoutine;
+    private bool subscribedTech;
+    private bool subscribedCulture;
 
     void Awake()
     {
         if (popupRoot != null) popupRoot.SetActive(false);
-    }
-
-
-    void OnEnable()
-    {
-        if (TechManager.Instance != null)
-            TechManager.Instance.OnTechResearchCompleted += OnTechCompleted;
-        if (CultureManager.Instance != null)
-            CultureManager.Instance.OnCultureResearchCompleted += OnCultureCompleted;
         if (closeButton != null) closeButton.onClick.AddListener(Hide);
     }
 
-    void OnDisable()
+    void Update()
     {
-        if (TechManager.Instance != null)
+        // Lazy-subscribe: singletons may not exist yet at Awake/OnEnable time.
+        if (!subscribedTech && TechManager.Instance != null)
+        {
+            TechManager.Instance.OnTechResearchCompleted += OnTechCompleted;
+            subscribedTech = true;
+        }
+        if (!subscribedCulture && CultureManager.Instance != null)
+        {
+            CultureManager.Instance.OnCultureResearchCompleted += OnCultureCompleted;
+            subscribedCulture = true;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (subscribedTech && TechManager.Instance != null)
             TechManager.Instance.OnTechResearchCompleted -= OnTechCompleted;
-        if (CultureManager.Instance != null)
+        if (subscribedCulture && CultureManager.Instance != null)
             CultureManager.Instance.OnCultureResearchCompleted -= OnCultureCompleted;
         if (closeButton != null) closeButton.onClick.RemoveListener(Hide);
     }

@@ -24,19 +24,9 @@ public class MissionNarrativePopupUI : MonoBehaviour
 
     private void Awake()
     {
-        Hide();
-    }
-
-    private void OnEnable()
-    {
         if (okButton != null)
             okButton.onClick.AddListener(HandleOkClicked);
-    }
-
-    private void OnDisable()
-    {
-        if (okButton != null)
-            okButton.onClick.RemoveListener(HandleOkClicked);
+        Hide();
     }
 
     public void Show(

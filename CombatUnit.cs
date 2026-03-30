@@ -344,6 +344,14 @@ public class CombatUnit : BaseUnit
         }
         // Subscribe to health change for label update
         OnHealthChanged += UpdateUnitLabelHealth;
+
+        // Initialize multi-soldier group if configured
+        if (data != null)
+        {
+            int visualCount = data.GetSoldierCount(owner);
+            if (visualCount > 1)
+                InitializeSoldierGroup(visualCount, data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
+        }
     }
 
     private System.Collections.IEnumerator DeferredSubscribeToGameEventManager()
@@ -1276,7 +1284,7 @@ public class CombatUnit : BaseUnit
         // Sync IsIdle (opposite of walking)
         if (animator != null && HasParameter(animator, isIdleHash))
         {
-            animator.SetBool(isIdleHash, !walking);
+            SetAnimatorBoolForFormation(isIdleHash, !walking);
         }
     }
 
@@ -1667,6 +1675,9 @@ public class CombatUnit : BaseUnit
         ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
         ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
         ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
+
+        // Distribute equipment to additional soldiers in the group
+        DistributeEquipmentToSoldiers();
     }
 
     protected override void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
@@ -1877,19 +1888,23 @@ return;
             // Use hash if available, otherwise use string (for custom animations)
             if (triggerHash != -1 && HasParameter(animator, triggerHash))
             {
-                animator.SetTrigger(triggerHash);
-}
+                SetAnimatorTriggerForFormation(triggerHash);
+            }
             else if (triggerHash != -1)
             {
                 Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - hash found but parameter doesn't exist in animator");
                 // Fallback to string-based trigger
-            animator.SetTrigger(animationName);
+                animator.SetTrigger(animationName);
+                if (soldierGroup != null)
+                    soldierGroup.ForwardTrigger(Animator.StringToHash(animationName));
             }
             else
             {
                 // Fallback to string-based trigger for custom animations
                 animator.SetTrigger(animationName);
-}
+                if (soldierGroup != null)
+                    soldierGroup.ForwardTrigger(Animator.StringToHash(animationName));
+            }
             
             OnAnimationTrigger?.Invoke(animationName);
         }

@@ -589,6 +589,17 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
     }
 
+    public void HideVisualsForBlockingUI()
+    {
+        HideUIElements();
+    }
+
+    public void ShowVisualsAfterBlockingUI()
+    {
+        if (!IsLoadingActive() && _minimapsPreGenerated)
+            ShowUIElements();
+    }
+
     void Update()
     {
         // Only update position indicator when the camera has actually moved
@@ -970,7 +981,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         if (LoadingPanelController.Instance != null)
         {
-            return LoadingPanelController.Instance.gameObject.activeSelf;
+            return LoadingPanelController.Instance.IsUiBlocked;
         }
         return false;
     }

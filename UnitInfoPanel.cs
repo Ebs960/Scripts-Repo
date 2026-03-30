@@ -482,46 +482,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
     private void LogWorkerBuildDebug(WorkerUnit worker)
     {
-        if (worker == null || worker.owner == null) return;
-
-        string unlockedCombat = worker.owner.unlockedCombatUnits != null && worker.owner.unlockedCombatUnits.Count > 0
-            ? string.Join(", ", worker.owner.unlockedCombatUnits.ConvertAll(u => u != null ? $"{u.unitName}[workerBuild={u.buildableByWorker}]" : "<null>"))
-            : "<none>";
-        string unlockedWorkers = worker.owner.unlockedWorkerUnits != null && worker.owner.unlockedWorkerUnits.Count > 0
-            ? string.Join(", ", worker.owner.unlockedWorkerUnits.ConvertAll(u => u != null ? $"{u.unitName}[workerBuild={u.buildableByWorker}]" : "<null>"))
-            : "<none>";
-
-        Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] worker={worker.UnitName} tile={worker.currentTileIndex} planet={worker.planetIndex} wp={worker.currentWorkPoints} owner={worker.owner.civData?.civName ?? "<null>"} | unlockedCombat={unlockedCombat} | unlockedWorkers={unlockedWorkers}");
-
-        var visibleCombat = GetWorkerBuildableCombatUnits(worker);
-        if (visibleCombat.Count == 0)
-        {
-            Debug.Log("[UnitInfoPanel][WorkerBuildDebug] visibleCombat=<none>");
-        }
-        else
-        {
-            foreach (var unit in visibleCombat)
-            {
-                string reason = GetCombatBuildabilityReason(worker, unit);
-                bool available = reason == "buildable";
-                Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] combatOption unit={unit.unitName} visible=True available={available} reason={reason}");
-            }
-        }
-
-        var visibleWorkers = GetWorkerBuildableWorkerUnits(worker);
-        if (visibleWorkers.Count == 0)
-        {
-            Debug.Log("[UnitInfoPanel][WorkerBuildDebug] visibleWorkers=<none>");
-        }
-        else
-        {
-            foreach (var unit in visibleWorkers)
-            {
-                string reason = GetWorkerBuildabilityReason(worker, unit);
-                bool available = reason == "buildable";
-                Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] workerOption unit={unit.unitName} visible=True available={available} reason={reason}");
-            }
-        }
+        // Diagnostic logging removed.
     }
 
     private void UpdateUnitInfoForCombatUnit()
@@ -607,11 +568,19 @@ PopulateForWorkerUnit(currentWorkerUnit);
     
     private void OnSettleCityClicked()
     {
-        if (currentWorkerUnit != null)
+        if (currentWorkerUnit == null) return;
+        if (PlacementPreview.Instance != null)
         {
+            PlacementPreview.Instance.EnterCityMode(currentWorkerUnit, null,
+                onConfirm: () => HidePanel(),
+                onCancel: null);
+        }
+        else
+        {
+            // Fallback: direct placement on current tile
             currentWorkerUnit.ClearFortify();
             currentWorkerUnit.FoundCity();
-            HidePanel(); // Hide the panel, as the unit is consumed.
+            HidePanel();
         }
     }
 
@@ -806,8 +775,7 @@ UpdateUnitInfoForWorkerUnit();
                 canForageNow = resData != null && workerUnit.CanForage(resData, tile);
                 if (!canForageNow)
                 {
-                    string resStr = resData != null ? resData.resourceName : "N/A";
-                    Debug.Log($"[UnitInfoPanel] Forage disabled -> tile={tile} res={resStr} workerWP={workerUnit.currentWorkPoints} workerCanForage={workerUnit.data?.canForage} resCanBeForaged={(resData!=null?resData.canBeForaged.ToString():"N/A")} tileIsLand={(td!=null?td.isLand.ToString():"N/A")} workerTile={workerUnit.currentTileIndex} GamePlanet={GameManager.Instance?.currentPlanetIndex} resPlanet={workerUnit.planetIndex}");
+                    // Forage not available on this tile.
                 }
             }
             forageButton.interactable = canForageNow;
@@ -1137,22 +1105,46 @@ UpdateUnitInfoForWorkerUnit();
     private void OnStartWorkerBuildWorker(WorkerUnitData workerData)
     {
         if (currentWorkerUnit == null || workerData == null) return;
-        currentWorkerUnit.StartBuildingWorker(workerData, currentWorkerUnit.currentTileIndex);
-        UpdateUnitInfoForWorkerUnit();
+        if (PlacementPreview.Instance != null)
+        {
+            PlacementPreview.Instance.EnterWorkerUnitMode(currentWorkerUnit, workerData,
+                onConfirm: () => UpdateUnitInfoForWorkerUnit());
+        }
+        else
+        {
+            currentWorkerUnit.StartBuildingWorker(workerData, currentWorkerUnit.currentTileIndex);
+            UpdateUnitInfoForWorkerUnit();
+        }
     }
 
     private void OnStartWorkerBuildUnit(CombatUnitData unitData)
     {
         if (currentWorkerUnit == null || unitData == null) return;
-        currentWorkerUnit.StartBuildingUnit(unitData, currentWorkerUnit.currentTileIndex);
-        UpdateUnitInfoForWorkerUnit();
+        if (PlacementPreview.Instance != null)
+        {
+            PlacementPreview.Instance.EnterCombatUnitMode(currentWorkerUnit, unitData,
+                onConfirm: () => UpdateUnitInfoForWorkerUnit());
+        }
+        else
+        {
+            currentWorkerUnit.StartBuildingUnit(unitData, currentWorkerUnit.currentTileIndex);
+            UpdateUnitInfoForWorkerUnit();
+        }
     }
 
     private void OnStartWorkerBuildImprovement(ImprovementData imp)
     {
         if (currentWorkerUnit == null || imp == null) return;
-        currentWorkerUnit.StartBuilding(imp, currentWorkerUnit.currentTileIndex);
-        UpdateUnitInfoForWorkerUnit();
+        if (PlacementPreview.Instance != null)
+        {
+            PlacementPreview.Instance.EnterImprovementMode(currentWorkerUnit, imp,
+                onConfirm: () => UpdateUnitInfoForWorkerUnit());
+        }
+        else
+        {
+            currentWorkerUnit.StartBuilding(imp, currentWorkerUnit.currentTileIndex);
+            UpdateUnitInfoForWorkerUnit();
+        }
     }
 
     // ===== ORBIT CONTROLS =====

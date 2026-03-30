@@ -2,6 +2,32 @@ using UnityEngine;
 
 public enum RouteType { Road, Railroad }
 
+[System.Serializable]
+public struct WorkerUnitVisualOverride
+{
+    [Tooltip("Civilization that uses this visual override.")]
+    public CivData civ;
+
+    [Tooltip("Optional Addressables fallback for this civ's worker prefab. Direct prefab references are used first.")]
+    public string addressableAddress;
+
+    [Tooltip("Override direct prefab reference for this civ. This is used before any Addressables fallback.")]
+    public GameObject prefab;
+
+    [Tooltip("Legacy toggle. A matching civ override now always uses the soldier display settings below.")]
+    public bool overrideSoldierDisplay;
+
+    [Range(1, 12)]
+    public int soldierCount;
+
+    public FormationType formationType;
+
+    public SoldierVariant[] soldierVariants;
+
+    [Range(0.1f, 10f)]
+    public float formationSpacing;
+}
+
  [CreateAssetMenu(fileName = "NewWorkerUnitData", menuName = "Data/Worker Unit Data")]
 public class WorkerUnitData : ScriptableObject
 {
@@ -20,6 +46,8 @@ public class WorkerUnitData : ScriptableObject
     public string unitName;
     public Sprite icon;
     public GameObject prefab;
+    [Tooltip("Optional Addressables fallback for this worker prefab. The direct prefab reference is used first when assigned.")]
+    public string addressableAddress;
 
     [Header("Audio")]
     [Tooltip("Sound played when this worker is selected/clicked on the map. Leave empty for no sound.")]
@@ -93,6 +121,25 @@ public class WorkerUnitData : ScriptableObject
     public int captureHerdCount = 0;
     [Tooltip("If set, explicit species this capture converts to (overrides name-matching).")]
     public Herd.HerdSpecies captureSpecies = Herd.HerdSpecies.Other;
+
+    [Header("Multi-Worker Display")]
+    [Tooltip("Number of worker figures displayed for this unit (1 = single model like today).")]
+    [Range(1, 12)]
+    public int soldierCount = 1;
+
+    [Tooltip("Formation arrangement for multiple workers.")]
+    public FormationType formationType = FormationType.Square;
+
+    [Tooltip("Spacing between workers in formation (world units).")]
+    [Range(0.1f, 10f)]
+    public float formationSpacing = 0.5f;
+
+    [Tooltip("Visual model variants to randomly pick from for each additional worker. Each variant prefab should have the same equipment holder transforms. ")]
+    public SoldierVariant[] soldierVariants;
+
+    [Header("Civilization Visual Overrides")]
+    [Tooltip("Optional per-civilization visual overrides. Use these when the gameplay unit stays the same but the art should change by civ.")]
+    public WorkerUnitVisualOverride[] civVisualOverrides;
 
     [Header("Build Options")]
     public RouteType[] buildableRoutes;
@@ -168,5 +215,84 @@ public class WorkerUnitData : ScriptableObject
         }
         
         return true;
+    }
+
+    private bool TryGetVisualOverride(Civilization civ, out WorkerUnitVisualOverride visualOverride)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            for (int i = 0; i < civVisualOverrides.Length; i++)
+            {
+                if (civVisualOverrides[i].civ == civ.civData)
+                {
+                    visualOverride = civVisualOverrides[i];
+                    return true;
+                }
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
+    public GameObject GetPrefab(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+        {
+            if (visualOverride.prefab != null)
+                return visualOverride.prefab;
+
+            if (!string.IsNullOrWhiteSpace(visualOverride.addressableAddress))
+            {
+                if (AddressableUnitLoader.Instance != null)
+                {
+                    var loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(visualOverride.addressableAddress);
+                    if (loaded != null) return loaded;
+                }
+            }
+        }
+
+        if (prefab != null)
+            return prefab;
+
+        if (!string.IsNullOrWhiteSpace(addressableAddress) && AddressableUnitLoader.Instance != null)
+        {
+            var loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(addressableAddress);
+            if (loaded != null) return loaded;
+        }
+
+        return null;
+    }
+
+    public int GetSoldierCount(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return Mathf.Max(1, visualOverride.soldierCount);
+
+        return soldierCount;
+    }
+
+    public FormationType GetFormationType(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return visualOverride.formationType;
+
+        return formationType;
+    }
+
+    public SoldierVariant[] GetSoldierVariants(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return visualOverride.soldierVariants;
+
+        return soldierVariants;
+    }
+
+    public float GetFormationSpacing(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride))
+            return Mathf.Max(0.1f, visualOverride.formationSpacing);
+
+        return formationSpacing;
     }
 }

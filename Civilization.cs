@@ -2229,7 +2229,7 @@ return false;
         if (grid != null)
         {
             Vector3 pos = tsMS != null ? tsMS.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
-            var missionaryPrefab = missionaryData.GetPrefab();
+            var missionaryPrefab = missionaryData.GetPrefab(this);
             if (missionaryPrefab == null)
             {
                 Debug.LogError($"[Civilization] Cannot spawn missionary {missionaryData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");

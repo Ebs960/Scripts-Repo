@@ -3396,7 +3396,7 @@ public class GameManager : MonoBehaviour
                 }
                 var civ = allCivs[usd.ownerCivIndex];
 
-                var prefab = unitData.GetPrefab();
+                var prefab = unitData.GetPrefab(civ);
                 if (prefab == null)
                 {
                     Debug.LogWarning($"[SaveLoad] Prefab not found for '{usd.unitDataName}', skipping.");
@@ -3449,7 +3449,8 @@ public class GameManager : MonoBehaviour
                 }
                 var civ = allCivs[wsd.ownerCivIndex];
 
-                if (workerData.prefab == null)
+                var workerPrefab = workerData.GetPrefab(civ);
+                if (workerPrefab == null)
                 {
                     Debug.LogWarning($"[SaveLoad] Prefab not found for worker '{wsd.unitDataName}', skipping.");
                     continue;
@@ -3458,7 +3459,7 @@ public class GameManager : MonoBehaviour
                 var ts = TileSystem.GetForPlanet(wsd.planetIndex) ?? TileSystem.Instance;
                 Vector3 spawnPos = ts != null ? ts.GetTileCenterFlat(wsd.currentTileIndex) : new Vector3(wsd.posX, wsd.posY, wsd.posZ);
 
-                var go = Instantiate(workerData.prefab, spawnPos, Quaternion.identity);
+                var go = Instantiate(workerPrefab, spawnPos, Quaternion.identity);
                 var pg = GetPlanetGenerator(wsd.planetIndex) ?? GetCurrentPlanetGenerator();
                 if (pg != null) go.transform.SetParent(pg.transform, true);
 

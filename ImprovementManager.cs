@@ -719,7 +719,7 @@ public class ImprovementManager : MonoBehaviour
         // Resolve unit data for this civilization (apply unique/unit replacements) and spawn
         var resolvedData = job.owner != null ? job.owner.GetUnitData(job.data) : job.data;
         // Spawn the unit and register occupancy
-        var unitPrefab = resolvedData.GetPrefab();
+        var unitPrefab = resolvedData.GetPrefab(job.owner);
         if (unitPrefab == null)
         {
             Debug.LogError($"Unit {job.data?.unitName} has no prefab; cannot spawn.");
@@ -769,7 +769,7 @@ public class ImprovementManager : MonoBehaviour
         var planetGen = job.owner != null ? job.owner.GetPlanetGeneratorForIndex(job.planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null)
                          : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null);
         // Spawn the worker unit and register occupancy
-        var prefab = job.data.prefab;
+        var prefab = job.data.GetPrefab(job.owner);
         if (prefab == null)
         {
             Debug.LogError($"Worker unit {job.data?.unitName} has no prefab; cannot spawn.");
