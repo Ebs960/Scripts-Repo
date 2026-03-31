@@ -39,6 +39,8 @@ public class TileInfoWorldPanel : MonoBehaviour
 
     // State
     private int lastHoveredTile = -1;
+    private GameManager.PlanetLayerType lastHoveredLayer = GameManager.PlanetLayerType.Surface;
+    private LayerManager cachedLayerManager;
 
     private void Awake()
     {
@@ -111,10 +113,12 @@ public class TileInfoWorldPanel : MonoBehaviour
 
         if (tileData != null)
         {
-            if (tileIndex != lastHoveredTile)
+            var layer = GetActiveViewLayer();
+            if (tileIndex != lastHoveredTile || lastHoveredLayer != layer)
             {
                 lastHoveredTile = tileIndex;
-                UpdateContent(tileData);
+                lastHoveredLayer = layer;
+                UpdateContent(tileData, tileIndex, layer);
             }
             Show();
         }
@@ -172,61 +176,136 @@ public class TileInfoWorldPanel : MonoBehaviour
         }
     }
 
-    private void UpdateContent(HexTileData tileData)
+    private void UpdateContent(HexTileData tileData, int tileIndex, GameManager.PlanetLayerType layer)
+    {
+        switch (layer)
+        {
+            case GameManager.PlanetLayerType.Underwater:
+                UpdateContentUnderwater(tileData);
+                break;
+            case GameManager.PlanetLayerType.Orbit:
+                UpdateContentOrbit(tileData, tileIndex);
+                break;
+            default:
+                UpdateContentSurface(tileData);
+                break;
+        }
+    }
+
+    private void UpdateContentSurface(HexTileData tileData)
     {
         if (biomeText != null)
         {
             string biomeName = FormatBiomeName(tileData.biome);
-            // Show underwater floor biome if different from default ocean
-            if (tileData.underwaterBiome != Biome.Ocean && tileData.underwaterBiome != tileData.biome)
-            {
-                biomeName += $" ({FormatBiomeName(tileData.underwaterBiome)} Floor)";
-            }
             biomeText.text = biomeName;
         }
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
 
-        // Resource display
         if (resourceText != null)
         {
             if (tileData.HasResource && tileData.resource != null)
-            {
                 resourceText.text = $"Resource: {tileData.resource.resourceName}";
-            }
             else
-            {
                 resourceText.text = "Resource: None";
-            }
         }
 
         string elevInfo = $"Elev: {tileData.elevation:F2}m\nHill: {(tileData.isHill ? "Yes" : "No")}\nMountain: {(tileData.isMountain ? "Yes" : "No")}";
         if (elevationText != null)
-        {
             elevationText.text = elevInfo;
-        }
         else if (yieldsText != null)
-        {
             yieldsText.text += "\n" + elevInfo;
-        }
 
-        // Moisture and temperature
         if (moistureText != null)
-        {
             moistureText.text = $"Moisture: {tileData.moisture:F2}";
-        }
         else if (yieldsText != null)
-        {
             yieldsText.text += $"\nMoisture: {tileData.moisture:F2}";
-        }
 
         if (temperatureText != null)
-        {
             temperatureText.text = $"Temperature: {tileData.temperature:F1}°C";
-        }
         else if (yieldsText != null)
-        {
             yieldsText.text += $"\nTemperature: {tileData.temperature:F1}°C";
+    }
+
+    private void UpdateContentUnderwater(HexTileData tileData)
+    {
+        if (biomeText != null)
+        {
+            // Show the underwater floor biome as primary
+            Biome displayBiome = tileData.underwaterBiome != Biome.Ocean
+                ? tileData.underwaterBiome
+                : tileData.biome;
+            biomeText.text = $"{FormatBiomeName(displayBiome)} (Seafloor)";
         }
+        if (yieldsText != null) yieldsText.text = FormatYields(tileData);
+
+        if (resourceText != null)
+        {
+            if (tileData.HasResource && tileData.resource != null)
+                resourceText.text = $"Resource: {tileData.resource.resourceName}";
+            else
+                resourceText.text = "Resource: None";
+        }
+
+        // Underwater-specific info: trench depth, underwater improvements
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"Depth: {Mathf.Abs(tileData.elevation):F2}m");
+        if (tileData.trenchDepth > 0f)
+            sb.Append($"\nTrench: {tileData.trenchDepth:F1}m");
+        if (tileData.HasUnderwaterImprovement)
+            sb.Append($"\nImprovement: {tileData.improvement.improvementName}");
+        if (tileData.HasUnderwaterDistrict)
+            sb.Append($"\nDistrict: {tileData.district.districtName}");
+
+        if (elevationText != null)
+            elevationText.text = sb.ToString();
+        else if (yieldsText != null)
+            yieldsText.text += "\n" + sb.ToString();
+
+        if (moistureText != null)
+            moistureText.text = "";
+        if (temperatureText != null)
+            temperatureText.text = $"Temperature: {tileData.temperature:F1}°C";
+    }
+
+    private void UpdateContentOrbit(HexTileData tileData, int tileIndex)
+    {
+        if (biomeText != null)
+            biomeText.text = "Orbit";
+
+        // Orbital yields / info
+        var sb = new System.Text.StringBuilder();
+        if (tileData.HasOrbitalImprovement)
+            sb.Append($"Improvement: {tileData.improvement.improvementName}");
+        else
+            sb.Append("No orbital structures");
+
+        // Check for orbital occupant
+        var occMgr = TileOccupancyManager.Instance;
+        if (occMgr != null)
+        {
+            GameObject occupant = occMgr.GetOccupantObject(tileIndex, TileLayer.Orbit);
+            if (occupant != null)
+            {
+                var unit = occupant.GetComponent<BaseUnit>();
+                string unitName = unit != null ? unit.UnitName : occupant.name;
+                sb.Append($"\nUnit: {unitName}");
+            }
+        }
+
+        if (yieldsText != null) yieldsText.text = sb.ToString();
+        if (resourceText != null) resourceText.text = "";
+        if (elevationText != null) elevationText.text = $"Surface below: {FormatBiomeName(tileData.biome)}";
+        if (moistureText != null) moistureText.text = "";
+        if (temperatureText != null) temperatureText.text = "";
+    }
+
+    private GameManager.PlanetLayerType GetActiveViewLayer()
+    {
+        if (cachedLayerManager == null)
+            cachedLayerManager = FindAnyObjectByType<LayerManager>();
+        if (cachedLayerManager != null)
+            return cachedLayerManager.ActiveViewLayer;
+        return GameManager.PlanetLayerType.Surface;
     }
 
     private string FormatBiomeName(Biome biome)
@@ -267,7 +346,7 @@ public class TileInfoWorldPanel : MonoBehaviour
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return;
-        UpdateContent(tileData);
+        UpdateContent(tileData, tileIndex, GetActiveViewLayer());
         Show();
     }
 

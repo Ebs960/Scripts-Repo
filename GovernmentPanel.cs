@@ -109,11 +109,7 @@ public class GovernmentPanel : MonoBehaviour
                     autoCloseButton = closeButton.gameObject;
                     // Ensure listener is set
                     closeButton.onClick.RemoveAllListeners();
-                    closeButton.onClick.AddListener(() => {
-                        // Prefer UIManager hide so panels restore consistently
-                        if (UIManager.Instance != null) UIManager.Instance.HidePanel("governmentPanel");
-                        else Close();
-                    });
+                    closeButton.onClick.AddListener(Close);
                     // Ensure click sound wiring
                     if (UIManager.Instance != null) UIManager.Instance.WireUIInteractions(closeButton.gameObject);
                 }
@@ -242,15 +238,16 @@ public class GovernmentPanel : MonoBehaviour
 
     public void Hide()
     {
-        // Prefer using UIManager so other panels (e.g. unit info) are restored consistently
+        // Use HideAllPanels so playerUI is restored
+        // (ShowForCivilization explicitly hides playerUI when opening)
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.HidePanel("governmentPanel");
+            UIManager.Instance.HideAllPanels();
+            if (UIManager.Instance.playerUI != null)
+                UIManager.Instance.playerUI.SetActive(true);
         }
         else if (panelRoot != null)
-        {
             panelRoot.SetActive(false);
-        }
     }
 
     public void RefreshAll()
@@ -444,9 +441,19 @@ public class GovernmentPanel : MonoBehaviour
     /// </summary>
     public void Close()
     {
-        if (panelRoot != null) panelRoot.SetActive(false);
         ClearSpawned();
         civ = null;
+
+        // Use UIManager.HideAllPanels so playerUI is restored
+        // (ShowForCivilization explicitly hides playerUI when opening)
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HideAllPanels();
+            if (UIManager.Instance.playerUI != null)
+                UIManager.Instance.playerUI.SetActive(true);
+        }
+        else if (panelRoot != null)
+            panelRoot.SetActive(false);
     }
 
     private void ClearSpawned()

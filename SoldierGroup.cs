@@ -86,11 +86,10 @@ public class SoldierGroup : MonoBehaviour
         formation = formationType;
         variantRng = new System.Random(seed != 0 ? seed : gameObject.GetInstanceID());
 
-        // Measure the lead model's renderer bounds to derive proportional spacing.
+        // Measure the lead model once for downstream layout/visual logic.
         modelRadius = MeasureModelRadius();
-        // formationSpacing acts as a multiplier on model size, with a minimum floor.
-        float effectiveSpacing = Mathf.Max(modelRadius * 2.2f, formationSpacing * modelRadius);
-        spacing = Mathf.Max(0.15f, effectiveSpacing);
+        // formationSpacing is authored in world units on the unit data assets.
+        spacing = Mathf.Max(0.15f, formationSpacing);
 
         // Additional soldiers beyond the lead (the root prefab model is soldier #1)
         int extras = targetSoldierCount - 1;

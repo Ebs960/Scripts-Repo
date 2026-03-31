@@ -32,6 +32,9 @@ public class TileHighlighter : MonoBehaviour
     // State
     private int currentHighlightedTile = -1;
     private Material terrainMaterial;
+    private Material orbitOverlayMaterial;
+    private Material waterSurfaceOverlayMaterial;
+    private LayerManager cachedLayerManager;
 
     private void Awake()
     {
@@ -106,22 +109,58 @@ public class TileHighlighter : MonoBehaviour
             SubscribeToTileSystem();
 
         // Pulse effect — only material color write, no raycast
-        if (enablePulse && currentHighlightedTile >= 0 && terrainMaterial != null)
+        if (enablePulse && currentHighlightedTile >= 0)
         {
             float pulse = Mathf.Lerp(pulseMin, pulseMax, (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f);
             Color pulsedColor = highlightColor;
             pulsedColor.a = pulse;
-            terrainMaterial.SetColor(HighlightColorID, pulsedColor);
+
+            var layer = GetActiveViewLayer();
+            bool isOrbit = layer == GameManager.PlanetLayerType.Orbit;
+
+            // Determine if the current tile is water (for surface view routing)
+            bool isSurfaceWater = false;
+            if (!isOrbit && layer == GameManager.PlanetLayerType.Surface)
+            {
+                var ts = TileSystem.Instance;
+                if (ts != null)
+                {
+                    var td = ts.GetTileData(currentHighlightedTile);
+                    if (td != null && td.waterType != TileWaterType.None)
+                        isSurfaceWater = true;
+                }
+            }
+
+            if (isOrbit && orbitOverlayMaterial != null)
+                orbitOverlayMaterial.SetColor(HighlightColorID, pulsedColor);
+            else if (isSurfaceWater && waterSurfaceOverlayMaterial != null)
+                waterSurfaceOverlayMaterial.SetColor(HighlightColorID, pulsedColor);
+            else if (terrainMaterial != null)
+                terrainMaterial.SetColor(HighlightColorID, pulsedColor);
         }
     }
 
     private void FindTerrainMaterial()
     {
         var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-        if (chunkManager != null && chunkManager.SharedMaterial != null)
+        if (chunkManager != null)
         {
-            terrainMaterial = chunkManager.SharedMaterial;
+            if (chunkManager.SharedMaterial != null)
+                terrainMaterial = chunkManager.SharedMaterial;
+            if (chunkManager.OrbitOverlayMaterial != null)
+                orbitOverlayMaterial = chunkManager.OrbitOverlayMaterial;
+            if (chunkManager.WaterSurfaceOverlayMaterial != null)
+                waterSurfaceOverlayMaterial = chunkManager.WaterSurfaceOverlayMaterial;
         }
+    }
+
+    private GameManager.PlanetLayerType GetActiveViewLayer()
+    {
+        if (cachedLayerManager == null)
+            cachedLayerManager = FindAnyObjectByType<LayerManager>();
+        if (cachedLayerManager != null)
+            return cachedLayerManager.ActiveViewLayer;
+        return GameManager.PlanetLayerType.Surface;
     }
 
     public void SetHighlightedTile(int tileIndex)
@@ -131,15 +170,69 @@ public class TileHighlighter : MonoBehaviour
         if (terrainMaterial == null)
             FindTerrainMaterial();
 
-        if (terrainMaterial != null)
+        var layer = GetActiveViewLayer();
+        bool isOrbit = layer == GameManager.PlanetLayerType.Orbit;
+        bool isSurfaceWater = false;
+
+        // In surface view, check if the hovered tile is water so we highlight on the
+        // water surface overlay instead of the ocean-floor terrain mesh.
+        if (!isOrbit && layer == GameManager.PlanetLayerType.Surface)
         {
-            terrainMaterial.SetFloat(EnableHighlightID, 1f);
-            terrainMaterial.SetInt(HighlightTileIndexID, tileIndex);
-            terrainMaterial.SetColor(HighlightColorID, highlightColor);
-            terrainMaterial.SetFloat(HighlightWidthID, highlightWidth);
+            var ts = TileSystem.Instance;
+            if (ts != null)
+            {
+                var td = ts.GetTileData(tileIndex);
+                if (td != null && td.waterType != TileWaterType.None)
+                    isSurfaceWater = true;
+            }
         }
 
-        // Also set global for any shader that uses it
+        // Terrain material: highlight on land surface or underwater, clear otherwise
+        if (terrainMaterial != null)
+        {
+            if (!isOrbit && !isSurfaceWater)
+            {
+                terrainMaterial.SetFloat(EnableHighlightID, 1f);
+                terrainMaterial.SetInt(HighlightTileIndexID, tileIndex);
+                terrainMaterial.SetColor(HighlightColorID, highlightColor);
+                terrainMaterial.SetFloat(HighlightWidthID, highlightWidth);
+            }
+            else
+            {
+                terrainMaterial.SetFloat(EnableHighlightID, 0f);
+                terrainMaterial.SetInt(HighlightTileIndexID, -1);
+            }
+        }
+
+        // Water surface overlay: highlight when on a water tile in surface view
+        if (waterSurfaceOverlayMaterial != null)
+        {
+            if (isSurfaceWater)
+            {
+                waterSurfaceOverlayMaterial.SetFloat(HighlightTileIndexID, tileIndex);
+                waterSurfaceOverlayMaterial.SetColor(HighlightColorID, highlightColor);
+            }
+            else
+            {
+                waterSurfaceOverlayMaterial.SetFloat(HighlightTileIndexID, -1f);
+            }
+        }
+
+        // Orbit overlay material: highlight when in orbit, clear otherwise
+        if (orbitOverlayMaterial != null)
+        {
+            if (isOrbit)
+            {
+                orbitOverlayMaterial.SetFloat(HighlightTileIndexID, tileIndex);
+                orbitOverlayMaterial.SetColor(HighlightColorID, highlightColor);
+            }
+            else
+            {
+                orbitOverlayMaterial.SetFloat(HighlightTileIndexID, -1f);
+            }
+        }
+
+        // Globals for any shader that uses them
         Shader.SetGlobalInt(HighlightTileIndexID, tileIndex);
         Shader.SetGlobalColor(HighlightColorID, highlightColor);
         Shader.SetGlobalFloat(EnableHighlightID, 1f);
@@ -154,6 +247,12 @@ public class TileHighlighter : MonoBehaviour
             terrainMaterial.SetFloat(EnableHighlightID, 0f);
             terrainMaterial.SetInt(HighlightTileIndexID, -1);
         }
+
+        if (waterSurfaceOverlayMaterial != null)
+            waterSurfaceOverlayMaterial.SetFloat(HighlightTileIndexID, -1f);
+
+        if (orbitOverlayMaterial != null)
+            orbitOverlayMaterial.SetFloat(HighlightTileIndexID, -1f);
 
         Shader.SetGlobalFloat(EnableHighlightID, 0f);
         Shader.SetGlobalInt(HighlightTileIndexID, -1);

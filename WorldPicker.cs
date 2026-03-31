@@ -38,6 +38,8 @@ public class WorldPicker : MonoBehaviour
     private Vector3 lastCameraPosition = new Vector3(float.NaN, float.NaN, float.NaN);
     private Quaternion lastCameraRotation = Quaternion.identity;
     private HexMapChunkManager cachedChunkManager;
+    private LayerManager cachedLayerManager;
+    private GameManager.PlanetLayerType lastActiveLayer = GameManager.PlanetLayerType.Surface;
 
     /// <summary>
     /// Invalidate the screen-pixel cache. Call when switching planets, changing LUT,
@@ -87,6 +89,19 @@ public class WorldPicker : MonoBehaviour
 
         if (cachedChunkManager == null)
             cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
+
+        // Invalidate cache when active view layer changes (different collider = different hits)
+        if (cachedLayerManager == null)
+            cachedLayerManager = FindAnyObjectByType<LayerManager>();
+        if (cachedLayerManager != null)
+        {
+            var currentLayer = cachedLayerManager.ActiveViewLayer;
+            if (currentLayer != lastActiveLayer)
+            {
+                lastActiveLayer = currentLayer;
+                lastScreenPx = -1; // force re-raycast
+            }
+        }
 
         Ray ray = targetCamera.ScreenPointToRay(screenPos);
         if (!TryRaycastTerrain(ray, out RaycastHit hit, out hitWorldPos))
@@ -184,9 +199,49 @@ public class WorldPicker : MonoBehaviour
     private bool TryRaycastSingle(Ray ray, out RaycastHit hit)
     {
         hit = default;
+        if (cachedChunkManager == null)
+            return Physics.Raycast(ray, out hit, maxRaycastDistance, pickingLayerMask);
 
-        if (cachedChunkManager != null && cachedChunkManager.PickingCollider != null)
-            return cachedChunkManager.PickingCollider.Raycast(ray, out hit, maxRaycastDistance);
+        if (cachedLayerManager == null)
+            cachedLayerManager = Object.FindAnyObjectByType<LayerManager>();
+
+        var layer = cachedLayerManager != null
+            ? cachedLayerManager.ActiveViewLayer
+            : GameManager.PlanetLayerType.Surface;
+
+        // Orbit: single collider at orbit height
+        if (layer == GameManager.PlanetLayerType.Orbit)
+        {
+            var oc = cachedChunkManager.OrbitPickingCollider;
+            if (oc != null)
+                return oc.Raycast(ray, out hit, maxRaycastDistance);
+            return cachedChunkManager.PickingCollider != null
+                && cachedChunkManager.PickingCollider.Raycast(ray, out hit, maxRaycastDistance);
+        }
+
+        // Surface / Underwater: try BOTH terrain and water colliders, keep nearest.
+        // Land tiles: terrain collider is above water → closer hit wins.
+        // Water tiles: water collider is above seafloor → closer hit wins.
+        Collider terrainCol = cachedChunkManager.PickingCollider;
+        Collider waterCol = cachedChunkManager.WaterPickingCollider;
+
+        RaycastHit terrainHit = default;
+        RaycastHit waterHit = default;
+
+        bool hitTerrain = terrainCol != null && terrainCol.Raycast(ray, out terrainHit, maxRaycastDistance);
+        bool hitWater = waterCol != null && waterCol.Raycast(ray, out waterHit, maxRaycastDistance);
+
+        if (hitTerrain && hitWater)
+        {
+            // Pick whichever is closer to the camera (smaller distance along ray)
+            if (waterHit.distance < terrainHit.distance)
+                hit = waterHit;
+            else
+                hit = terrainHit;
+            return true;
+        }
+        if (hitTerrain) { hit = terrainHit; return true; }
+        if (hitWater) { hit = waterHit; return true; }
 
         return Physics.Raycast(ray, out hit, maxRaycastDistance, pickingLayerMask);
     }

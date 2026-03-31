@@ -95,6 +95,10 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
     private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
+
+    [Header("Orbit Overlay")]
+    [Tooltip("Shader used for the transparent orbit highlight overlay mesh (auto-found if null).")]
+    [SerializeField] private Shader orbitOverlayShader;
     
     [Header("Texture Settings")]
     [Tooltip("Width of biome texture arrays (used for shader arrays and baking).")]
@@ -435,6 +439,22 @@ public class HexMapChunkManager : MonoBehaviour
     private Collider pickingCollider;
     public Collider PickingCollider => pickingCollider;
     
+    // Per-layer picking colliders (flat meshes at the correct Y for parallax-free picking)
+    private Collider waterPickingCollider;
+    public Collider WaterPickingCollider => waterPickingCollider;
+    private Collider orbitPickingCollider;
+    public Collider OrbitPickingCollider => orbitPickingCollider;
+
+    // Orbit highlight overlay (flat transparent mesh at orbit height)
+    private GameObject orbitOverlayObj;
+    private Material orbitOverlayMaterial;
+    public Material OrbitOverlayMaterial => orbitOverlayMaterial;
+
+    // Water surface highlight overlay (flat transparent mesh at water level)
+    private GameObject waterSurfaceOverlayObj;
+    private Material waterSurfaceOverlayMaterial;
+    public Material WaterSurfaceOverlayMaterial => waterSurfaceOverlayMaterial;
+    
     /// <summary>
     /// API-compatible method matching FlatMapTextureRenderer.Rebuild().
     /// </summary>
@@ -767,8 +787,17 @@ public class HexMapChunkManager : MonoBehaviour
         // Create picking collider for WorldPicker
         CreatePickingCollider();
         
+        // Create per-layer picking colliders for water surface and orbit
+        CreateLayerPickingColliders();
+        
         // Update WorldPicker with our LUT and collider
         UpdateWorldPicker();
+        
+        // Create orbit highlight overlay (flat transparent mesh at orbit height)
+        CreateOrbitOverlayMesh();
+        
+        // Create water surface highlight overlay (flat transparent mesh at water level)
+        CreateWaterSurfaceOverlayMesh();
         
         // Initialize terrain overlays
         InitializeTerrainOverlays();
@@ -2327,6 +2356,69 @@ public class HexMapChunkManager : MonoBehaviour
         
         Debug.Log($"[HexMapChunkManager] Created displaced picking collider: {subX}x{subZ} subdivisions, {vertCount} verts, heightmap={hasHeightmap}, displacement={displacementStrength}");
     }
+
+    /// <summary>
+    /// Create flat picking colliders at the water-surface and orbit heights.
+    /// These use the same dense subdivision + UV mapping as the terrain collider
+    /// so that hit.textureCoord→LUT lookup is accurate, but at the correct Y
+    /// for each layer — eliminating parallax at oblique camera angles.
+    /// </summary>
+    private void CreateLayerPickingColliders()
+    {
+        float halfW = mapWidth * 0.5f;
+        float halfH = mapHeight * 0.5f;
+        int terrainLayer = LayerMask.NameToLayer("Terrain");
+        int unityLayer = terrainLayer >= 0 ? terrainLayer : 0;
+
+        // --- Water surface picking collider ---
+        if (waterPickingCollider != null)
+            DestroyImmediate(waterPickingCollider.gameObject);
+
+        {
+            Mesh mesh = BuildFlatSubdividedMesh("WaterPickingMesh", halfW, halfH);
+            var obj = new GameObject("WaterPickingCollider");
+            obj.transform.SetParent(transform, false);
+            float waterY = GetOceanWaterSurfaceY();
+            obj.transform.localPosition = new Vector3(0f, waterY, 0f);
+            obj.transform.localRotation = Quaternion.identity;
+            obj.layer = unityLayer;
+
+            var mf = obj.AddComponent<MeshFilter>();
+            mf.mesh = mesh;
+            var mr = obj.AddComponent<MeshRenderer>();
+            mr.enabled = false;
+            var mc = obj.AddComponent<MeshCollider>();
+            mc.sharedMesh = mesh;
+            waterPickingCollider = mc;
+        }
+
+        // --- Orbit picking collider ---
+        if (orbitPickingCollider != null)
+            DestroyImmediate(orbitPickingCollider.gameObject);
+
+        if (planetGenerator != null && planetGenerator.orbitRoot != null)
+        {
+            // Orbit overlay mesh uses normalised verts (-0.5..0.5) because orbitRoot
+            // has localScale = (mapWidth, 1, mapHeight).  The picking collider must
+            // match, so we use the same normalised half-extents.
+            Mesh mesh = BuildFlatSubdividedMesh("OrbitPickingMesh", 0.5f, 0.5f);
+            var obj = new GameObject("OrbitPickingCollider");
+            obj.transform.SetParent(planetGenerator.orbitRoot.transform, false);
+            float localY = planetGenerator.orbitHeight + flatY - planetGenerator.orbitYOffset;
+            obj.transform.localPosition = new Vector3(0f, localY, 0f);
+            obj.transform.localRotation = Quaternion.identity;
+            obj.transform.localScale = Vector3.one;
+            obj.layer = unityLayer;
+
+            var mf = obj.AddComponent<MeshFilter>();
+            mf.mesh = mesh;
+            var mr = obj.AddComponent<MeshRenderer>();
+            mr.enabled = false;
+            var mc = obj.AddComponent<MeshCollider>();
+            mc.sharedMesh = mesh;
+            orbitPickingCollider = mc;
+        }
+    }
     
     /// <summary>
     /// Update WorldPicker with our LUT and collider.
@@ -2353,6 +2445,180 @@ public class HexMapChunkManager : MonoBehaviour
         {
             Debug.LogWarning($"[HexMapChunkManager] Could not update WorldPicker: picker={(worldPicker != null ? "found" : "null")}, lut={(bakeResult.lut != null ? "exists" : "null")}");
         }
+    }
+    
+    /// <summary>
+    /// Create a flat transparent mesh at orbit height for tile highlighting in orbit view.
+    /// Parents to PlanetGenerator.orbitRoot so it auto-hides with the orbit layer.
+    /// Uses OrbitHighlightOverlay shader which is fully transparent except for the highlighted tile.
+    /// </summary>
+    private void CreateOrbitOverlayMesh()
+    {
+        if (planetGenerator == null) return;
+        var orbitRoot = planetGenerator.orbitRoot;
+        if (orbitRoot == null) return;
+
+        // Clean up previous overlay
+        if (orbitOverlayObj != null)
+            DestroyImmediate(orbitOverlayObj);
+
+        // Resolve shader
+        if (orbitOverlayShader == null)
+            orbitOverlayShader = Shader.Find("Custom/OrbitHighlightOverlay");
+        if (orbitOverlayShader == null)
+        {
+            Debug.LogWarning("[HexMapChunkManager] OrbitHighlightOverlay shader not found; orbit highlight disabled.");
+            return;
+        }
+
+        // Build a densely subdivided flat mesh with correct per-vertex UVs —
+        // identical grid to the terrain mesh so LUT sampling is pixel-accurate.
+        // Uses normalised coordinates (-0.5 to 0.5) because orbitRoot.localScale
+        // is set to (mapWidth, 1, mapHeight) by LayerManager.
+        Mesh mesh = BuildFlatSubdividedMesh("OrbitHighlightOverlay", 0.5f, 0.5f);
+
+        orbitOverlayObj = new GameObject("OrbitHighlightOverlay");
+        orbitOverlayObj.transform.SetParent(orbitRoot.transform, false);
+        // Position at orbitHeight relative to orbit root (orbit root is at orbitYOffset)
+        float localY = planetGenerator.orbitHeight + flatY - planetGenerator.orbitYOffset;
+        orbitOverlayObj.transform.localPosition = new Vector3(0f, localY, 0f);
+        orbitOverlayObj.transform.localRotation = Quaternion.identity;
+        orbitOverlayObj.transform.localScale = Vector3.one;
+
+        var mf = orbitOverlayObj.AddComponent<MeshFilter>();
+        mf.mesh = mesh;
+
+        orbitOverlayMaterial = new Material(orbitOverlayShader);
+        orbitOverlayMaterial.name = "OrbitHighlightOverlay_Mat";
+        // Assign the same LUT texture used by the terrain shader
+        if (lutTexture != null)
+            orbitOverlayMaterial.SetTexture("_LUT", lutTexture);
+        orbitOverlayMaterial.SetFloat("_HighlightTileIndex", -1f);
+
+        var mr = orbitOverlayObj.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = orbitOverlayMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+    }
+    
+    /// <summary>
+    /// Create a flat transparent mesh at the water surface level for tile highlighting
+    /// when hovering over water tiles in surface view.
+    /// Always active under the HexMapChunkManager transform (visible whenever terrain is).
+    /// The material highlight index defaults to -1 (fully transparent / no highlight).
+    /// </summary>
+    private void CreateWaterSurfaceOverlayMesh()
+    {
+        // Clean up previous overlay
+        if (waterSurfaceOverlayObj != null)
+            DestroyImmediate(waterSurfaceOverlayObj);
+
+        // Reuse the same shader as the orbit overlay
+        var shader = orbitOverlayShader;
+        if (shader == null)
+            shader = Shader.Find("Custom/OrbitHighlightOverlay");
+        if (shader == null)
+        {
+            Debug.LogWarning("[HexMapChunkManager] OrbitHighlightOverlay shader not found; water surface highlight disabled.");
+            return;
+        }
+
+        float halfW = mapWidth * 0.5f;
+        float halfH = mapHeight * 0.5f;
+
+        // Build a densely subdivided flat mesh — same grid as the terrain for
+        // pixel-accurate LUT sampling.  Uses map-space half-extents directly
+        // because this overlay's parent transform has scale = 1.
+        Mesh mesh = BuildFlatSubdividedMesh("WaterSurfaceHighlightOverlay", halfW, halfH);
+
+        waterSurfaceOverlayObj = new GameObject("WaterSurfaceHighlightOverlay");
+        waterSurfaceOverlayObj.transform.SetParent(transform, false);
+        // Position at the ocean water surface Y (slightly above to avoid z-fighting with water plane)
+        float waterY = GetOceanWaterSurfaceY(0.02f);
+        waterSurfaceOverlayObj.transform.localPosition = new Vector3(0f, waterY, 0f);
+        waterSurfaceOverlayObj.transform.localRotation = Quaternion.identity;
+        waterSurfaceOverlayObj.transform.localScale = Vector3.one;
+
+        var mf = waterSurfaceOverlayObj.AddComponent<MeshFilter>();
+        mf.mesh = mesh;
+
+        waterSurfaceOverlayMaterial = new Material(shader);
+        waterSurfaceOverlayMaterial.name = "WaterSurfaceHighlightOverlay_Mat";
+        if (lutTexture != null)
+            waterSurfaceOverlayMaterial.SetTexture("_LUT", lutTexture);
+        waterSurfaceOverlayMaterial.SetFloat("_HighlightTileIndex", -1f);
+
+        var mr = waterSurfaceOverlayObj.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = waterSurfaceOverlayMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+    }
+
+    /// <summary>
+    /// Build a flat, densely subdivided mesh with per-vertex UVs (0..1) matching
+    /// the terrain grid density.  Vertices span (-halfW..halfW, 0, -halfH..halfH).
+    /// This is the same subdivision the terrain/picking mesh uses, so the GPU
+    /// interpolation of UVs within each small triangle is accurate at any camera angle.
+    /// </summary>
+    private Mesh BuildFlatSubdividedMesh(string meshName, float halfW, float halfH)
+    {
+        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
+        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
+        int vX = subX + 1;
+        int vZ = subZ + 1;
+        int vertCount = vX * vZ;
+
+        var vertices = new Vector3[vertCount];
+        var uvs = new Vector2[vertCount];
+
+        for (int z = 0; z < vZ; z++)
+        {
+            for (int x = 0; x < vX; x++)
+            {
+                int idx = z * vX + x;
+                float u = (float)x / subX;
+                float v = (float)z / subZ;
+
+                vertices[idx] = new Vector3(
+                    -halfW + u * (halfW * 2f),
+                    0f,
+                    -halfH + v * (halfH * 2f));
+                uvs[idx] = new Vector2(u, v);
+            }
+        }
+
+        int triCount = subX * subZ * 6;
+        var triangles = new int[triCount];
+        int triIdx = 0;
+        for (int z = 0; z < subZ; z++)
+        {
+            for (int x = 0; x < subX; x++)
+            {
+                int bl = z * vX + x;
+                int br = bl + 1;
+                int tl = bl + vX;
+                int tr = tl + 1;
+
+                triangles[triIdx++] = bl;
+                triangles[triIdx++] = tl;
+                triangles[triIdx++] = tr;
+
+                triangles[triIdx++] = bl;
+                triangles[triIdx++] = tr;
+                triangles[triIdx++] = br;
+            }
+        }
+
+        var mesh = new Mesh();
+        mesh.name = meshName;
+        if (vertCount > 65535)
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mesh.vertices = vertices;
+        mesh.uv = uvs;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
     }
     
     #endregion
@@ -5034,6 +5300,18 @@ public class HexMapChunkManager : MonoBehaviour
             pickingCollider = null;
         }
         
+        if (waterPickingCollider != null)
+        {
+            DestroyImmediate(waterPickingCollider.gameObject);
+            waterPickingCollider = null;
+        }
+        
+        if (orbitPickingCollider != null)
+        {
+            DestroyImmediate(orbitPickingCollider.gameObject);
+            orbitPickingCollider = null;
+        }
+        
         if (sharedMaterial != null)
         {
             DestroyImmediate(sharedMaterial);
@@ -5090,6 +5368,10 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
         if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }
         if (sliceToBiomeMap != null) { UnityEngine.Object.DestroyImmediate(sliceToBiomeMap); sliceToBiomeMap = null; }
+        if (orbitOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayMaterial); orbitOverlayMaterial = null; }
+        if (orbitOverlayObj != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayObj); orbitOverlayObj = null; }
+        if (waterSurfaceOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(waterSurfaceOverlayMaterial); waterSurfaceOverlayMaterial = null; }
+        if (waterSurfaceOverlayObj != null) { UnityEngine.Object.DestroyImmediate(waterSurfaceOverlayObj); waterSurfaceOverlayObj = null; }
 
         // Release RenderTextures from bakeResult (if present)
         try

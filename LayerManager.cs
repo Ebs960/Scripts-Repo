@@ -68,6 +68,20 @@ public class LayerManager : MonoBehaviour
 
     public event Action<PlanetLayerType, bool> OnLayerVisibilityChanged;
 
+    /// <summary>
+    /// Returns the primary view layer the player is currently looking at.
+    /// Priority: Orbit > Underwater > Surface (default).
+    /// </summary>
+    public PlanetLayerType ActiveViewLayer
+    {
+        get
+        {
+            if (IsLayerVisible(PlanetLayerType.Orbit)) return PlanetLayerType.Orbit;
+            if (IsLayerVisible(PlanetLayerType.Underwater)) return PlanetLayerType.Underwater;
+            return PlanetLayerType.Surface;
+        }
+    }
+
     private void Awake()
     {
         ResolveReferencesIfNeeded();
