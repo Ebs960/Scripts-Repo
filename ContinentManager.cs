@@ -287,6 +287,7 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
             {
                 tile.continentId = -1;
                 tile.continentName = null;
+                tile.hasMosquitoes = false;
                 continue;
             }
 
@@ -294,6 +295,7 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
             continent.tileIndices.Add(tileIndex);
             tile.continentId = continentId;
             tile.continentName = continent.name;
+            tile.hasMosquitoes = tile.isLand && planetGenerator.IsTileInSecondaryNewWorld(tileIndex);
         }
 
         foreach (var continent in continents)

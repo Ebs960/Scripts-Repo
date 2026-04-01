@@ -80,6 +80,8 @@ public class UIManager : MonoBehaviour
     private bool modalVisible;
     private bool restorePlayerUiAfterModal;
     private bool restoreUnitInfoPanelAfterModal;
+    private bool restoreMinimapAfterModal;
+    private MinimapUI cachedMinimapUI;
     private bool handlingSelectionReminder;
     private CrisisData pendingSelectionCrisis;
     private MissionNarrativePopupUI narrativePopupInstance;
@@ -1276,10 +1278,16 @@ public class UIManager : MonoBehaviour
         restorePlayerUiAfterModal = playerUI != null && playerUI.activeSelf;
         restoreUnitInfoPanelAfterModal = unitInfoPanel != null && unitInfoPanel.activeSelf;
 
+        if (cachedMinimapUI == null)
+            cachedMinimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
+        restoreMinimapAfterModal = cachedMinimapUI != null && cachedMinimapUI.gameObject.activeSelf;
+
         if (unitInfoPanel != null)
             unitInfoPanel.SetActive(false);
         if (playerUI != null)
             playerUI.SetActive(false);
+        if (cachedMinimapUI != null)
+            cachedMinimapUI.gameObject.SetActive(false);
     }
 
     private void RestoreGameplayHudAfterMissionCrisisModal()
@@ -1290,8 +1298,12 @@ public class UIManager : MonoBehaviour
         if (unitInfoPanel != null)
             unitInfoPanel.SetActive(restoreUnitInfoPanelAfterModal && !IsLoadingActive());
 
+        if (cachedMinimapUI != null)
+            cachedMinimapUI.gameObject.SetActive(restoreMinimapAfterModal && !IsLoadingActive());
+
         restorePlayerUiAfterModal = false;
         restoreUnitInfoPanelAfterModal = false;
+        restoreMinimapAfterModal = false;
     }
 
     private bool TryShowPrefabModal(ModalRequest request)

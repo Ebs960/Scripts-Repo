@@ -142,6 +142,36 @@ public class ImprovementManager : MonoBehaviour
         }
         if (planetGen != null) constructionObject.transform.SetParent(planetGen.transform, true);
 
+        // If improvement data specifies a placement root, snap the prefab so that
+        // the root point ends up exactly at the tile surface position.
+        try
+        {
+            if (!string.IsNullOrEmpty(data.placementRootName))
+            {
+                var root = constructionObject.transform.Find(data.placementRootName);
+                if (root != null)
+                {
+                    Vector3 worldRoot = root.position;
+                    Vector3 shift = pos - worldRoot;
+                    constructionObject.transform.position += shift;
+                }
+                else
+                {
+                    // Fallback to explicit local position
+                    Vector3 worldRoot = constructionObject.transform.TransformPoint(data.placementRootLocalPosition);
+                    Vector3 shift = pos - worldRoot;
+                    constructionObject.transform.position += shift;
+                }
+            }
+            else
+            {
+                Vector3 worldRoot = constructionObject.transform.TransformPoint(data.placementRootLocalPosition);
+                Vector3 shift = pos - worldRoot;
+                constructionObject.transform.position += shift;
+            }
+        }
+        catch { }
+
         // Register construction visual for wrap teleport
         try
         {
@@ -609,6 +639,36 @@ public class ImprovementManager : MonoBehaviour
             completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
             // Keep hierarchy organized: parent improvements under their planet generator.
             if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
+
+            // Snap the completed prefab so its placement root (named child or fallback local pos)
+            // is exactly on the tile surface position.
+            try
+            {
+                var data = job.data;
+                if (!string.IsNullOrEmpty(data.placementRootName))
+                {
+                    var root = completedImprovement.transform.Find(data.placementRootName);
+                    if (root != null)
+                    {
+                        Vector3 worldRoot = root.position;
+                        Vector3 shift = pos - worldRoot;
+                        completedImprovement.transform.position += shift;
+                    }
+                    else
+                    {
+                        Vector3 worldRoot = completedImprovement.transform.TransformPoint(data.placementRootLocalPosition);
+                        Vector3 shift = pos - worldRoot;
+                        completedImprovement.transform.position += shift;
+                    }
+                }
+                else
+                {
+                    Vector3 worldRoot = completedImprovement.transform.TransformPoint(data.placementRootLocalPosition);
+                    Vector3 shift = pos - worldRoot;
+                    completedImprovement.transform.position += shift;
+                }
+            }
+            catch { }
 
             // Register completed improvement for wrap teleport
                         try

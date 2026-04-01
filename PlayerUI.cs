@@ -251,6 +251,8 @@ Civilization civToUse = currentCiv;
             currentCiv.OnCultureStarted += OnTechOrCultureStarted;
             currentCiv.OnTechResearched += OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
+            currentCiv.OnPolicyAdopted += OnPolicyAdopted;
+            currentCiv.OnGovernmentChanged += OnGovernmentChanged;
             
         }
 
@@ -322,6 +324,8 @@ return true;
             currentCiv.OnCultureStarted -= OnTechOrCultureStarted;
             currentCiv.OnTechResearched -= OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted -= OnTechOrCultureStarted;
+            currentCiv.OnPolicyAdopted -= OnPolicyAdopted;
+            currentCiv.OnGovernmentChanged -= OnGovernmentChanged;
             currentCiv.OnFoodChanged -= OnFoodChangedHandler;
             currentCiv.OnGoldChanged -= OnGoldChangedHandler;
             currentCiv.OnFaithChanged -= OnFaithChangedHandler;
@@ -412,6 +416,8 @@ UpdateTurnChangePanel(civ, round);
                 currentCiv.OnCultureStarted -= OnTechOrCultureStarted;
                 currentCiv.OnTechResearched -= OnTechOrCultureStarted;
                 currentCiv.OnCultureCompleted -= OnTechOrCultureStarted;
+                currentCiv.OnPolicyAdopted -= OnPolicyAdopted;
+                currentCiv.OnGovernmentChanged -= OnGovernmentChanged;
                 currentCiv.OnFoodChanged -= OnFoodChangedHandler;
                 currentCiv.OnGoldChanged -= OnGoldChangedHandler;
                 currentCiv.OnFaithChanged -= OnFaithChangedHandler;
@@ -426,6 +432,8 @@ UpdateTurnChangePanel(civ, round);
                 currentCiv.OnCultureStarted += OnTechOrCultureStarted;
                 currentCiv.OnTechResearched += OnTechOrCultureStarted;
                 currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
+                currentCiv.OnPolicyAdopted += OnPolicyAdopted;
+                currentCiv.OnGovernmentChanged += OnGovernmentChanged;
                 currentCiv.OnFoodChanged += OnFoodChangedHandler;
                 currentCiv.OnGoldChanged += OnGoldChangedHandler;
                 currentCiv.OnFaithChanged += OnFaithChangedHandler;
@@ -642,4 +650,6 @@ UpdateTurnChangePanel(civ, round);
 
     private void OnTechOrCultureStarted(TechData tech) { UpdatePlayerPanel(currentCiv, -1); }
     private void OnTechOrCultureStarted(CultureData cult) { UpdatePlayerPanel(currentCiv, -1); }
+    private void OnPolicyAdopted(Civilization civ, PolicyData policy) { if (civ == currentCiv) UpdatePlayerPanel(currentCiv, -1); }
+    private void OnGovernmentChanged(Civilization civ, GovernmentData government) { if (civ == currentCiv) UpdatePlayerPanel(currentCiv, -1); }
 }

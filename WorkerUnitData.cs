@@ -82,6 +82,8 @@ public class WorkerUnitData : ScriptableObject
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
     public bool takesWeatherDamage = true;
+    [Tooltip("If true, this unit ignores mosquito damage even on infected tiles.")]
+    public bool immuneToMosquitoes = false;
 
     [Header("Production & Purchase")] public int productionCost;
     public int goldCost;

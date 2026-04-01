@@ -143,6 +143,10 @@ public class TechData : ScriptableObject
     [Tooltip("If true, this technology enables the Herding game mechanic for the civ that researches it.")]
     public bool enablesHerding = false;
 
+    [Header("Environmental Immunities")]
+    [Tooltip("If true, this technology protects the civilization's eligible units from mosquito damage.")]
+    public bool preventsMosquitoDamage = false;
+
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;

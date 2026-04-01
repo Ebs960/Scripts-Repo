@@ -124,11 +124,33 @@ public class SoldierGroup : MonoBehaviour
             }
         }
 
+        // When the fallback source is the root gameObject itself, clone it once
+        // up-front as a clean template so that subsequent iterations don't pick up
+        // previously spawned extras (which causes cascading duplication).
+        GameObject fallbackTemplate = null;
+        if (!useVariants && fallbackSource == gameObject)
+        {
+            fallbackTemplate = Instantiate(gameObject);
+            fallbackTemplate.SetActive(false);
+            SanitizeFallbackClone(fallbackTemplate);
+        }
+
         for (int i = 0; i < extras; i++)
         {
-            GameObject instance = useVariants
-                ? CreateVariantInstance(PickVariant(variants, totalWeight))
-                : CreateFallbackInstance(fallbackSource);
+            GameObject instance;
+            if (useVariants)
+            {
+                instance = CreateVariantInstance(PickVariant(variants, totalWeight));
+            }
+            else if (fallbackTemplate != null)
+            {
+                instance = Instantiate(fallbackTemplate, transform);
+                instance.SetActive(true);
+            }
+            else
+            {
+                instance = CreateFallbackInstance(fallbackSource);
+            }
             if (instance == null) continue;
 
             instance.name = $"Soldier_{i + 2}";
@@ -150,6 +172,10 @@ public class SoldierGroup : MonoBehaviour
 
             soldiers.Add(si);
         }
+
+        // Clean up the one-time fallback template if we created one
+        if (fallbackTemplate != null)
+            Destroy(fallbackTemplate);
 
         visibleCount = targetSoldierCount;
         ArrangeFormation();

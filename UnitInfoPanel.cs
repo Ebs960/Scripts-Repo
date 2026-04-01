@@ -569,19 +569,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
     private void OnSettleCityClicked()
     {
         if (currentWorkerUnit == null) return;
-        if (PlacementPreview.Instance != null)
-        {
-            PlacementPreview.Instance.EnterCityMode(currentWorkerUnit, null,
-                onConfirm: () => HidePanel(),
-                onCancel: null);
-        }
-        else
-        {
-            // Fallback: direct placement on current tile
-            currentWorkerUnit.ClearFortify();
-            currentWorkerUnit.FoundCity();
-            HidePanel();
-        }
+        var placementPreview = PlacementPreview.EnsureInstance();
+        placementPreview.EnterCityMode(currentWorkerUnit, null,
+            onConfirm: () => HidePanel(),
+            onCancel: null);
     }
 
     private void OnBuildHerdClicked()
@@ -844,10 +835,11 @@ UpdateUnitInfoForWorkerUnit();
         {
             bool hasJob = ImprovementManager.Instance != null &&
                           ImprovementManager.Instance.HasAnyJobAtTile(workerUnit.currentTileIndex, workerUnit.planetIndex);
-            // Prefer showing the single button; set label accordingly
+            // Improvement placement now starts immediately from the dropdown.
+            // Keep this button for contributing work and unit build placement.
             startBuildButton.gameObject.SetActive(true);
             var txt = startBuildButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Build";
+            if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Unit Build";
         }
         RefreshStartBuildButtonState(workerUnit);
         // Legacy contribute button removed; primary start button handles contribute/start behavior
@@ -870,8 +862,6 @@ UpdateUnitInfoForWorkerUnit();
         {
             if (pendingUnitBuildIndex >= 0 && pendingUnitBuildIndex < unitBuildOptions.Count)
                 canStart = unitBuildOptions[pendingUnitBuildIndex].isAvailable;
-            else if (pendingBuildIndex >= 0 && pendingBuildIndex < buildOptions.Count)
-                canStart = buildOptions[pendingBuildIndex].IsAvailable;
         }
 
         startBuildButton.interactable = canStart;
@@ -1030,15 +1020,16 @@ UpdateUnitInfoForWorkerUnit();
         if (suppressBuildOptionCallback || buildOptions == null || currentWorkerUnit == null) return;
         if (idx <= 0 || idx > buildOptions.Count)
         {
-            // clear pending selection
-            pendingBuildIndex = -1;
+            ClearImprovementPlacementSelection();
             RefreshStartBuildButtonState(currentWorkerUnit);
             return;
         }
 
-        // Store pending build selection; do not start immediately. User must press the Start button.
         pendingBuildIndex = idx - 1;
         pendingUnitBuildIndex = -1;
+        var opt = buildOptions[pendingBuildIndex];
+        if (opt.Type == BuildOption.OptionType.Improvement && opt.Improvement != null)
+            BeginImprovementPlacement(opt.Improvement);
         RefreshStartBuildButtonState(currentWorkerUnit);
     }
 
@@ -1069,26 +1060,36 @@ UpdateUnitInfoForWorkerUnit();
             return;
         }
 
-        // Otherwise, check standard build options
-        if (pendingBuildIndex < 0 || buildOptions == null || pendingBuildIndex >= buildOptions.Count) return;
-        var opt = buildOptions[pendingBuildIndex];
-        // Clear pending and disable button
-        pendingBuildIndex = -1;
-        RefreshStartBuildButtonState(currentWorkerUnit);
-        if (!opt.IsAvailable) return;
+    }
 
-        switch (opt.Type)
-        {
-            case BuildOption.OptionType.Improvement:
-                if (opt.Improvement != null) OnStartWorkerBuildImprovement(opt.Improvement);
-                break;
-            case BuildOption.OptionType.CombatUnit:
-                if (opt.CombatUnit != null) OnStartWorkerBuildUnit(opt.CombatUnit);
-                break;
-            case BuildOption.OptionType.WorkerUnit:
-                if (opt.WorkerUnit != null) OnStartWorkerBuildWorker(opt.WorkerUnit);
-                break;
-        }
+    private void ClearImprovementPlacementSelection()
+    {
+        pendingBuildIndex = -1;
+        if (PlacementPreview.Instance != null && PlacementPreview.Instance.IsActive)
+            PlacementPreview.Instance.Cancel();
+    }
+
+    private void BeginImprovementPlacement(ImprovementData improvement)
+    {
+        if (currentWorkerUnit == null || improvement == null) return;
+
+        PlacementPreview.EnsureInstance().EnterImprovementMode(
+            currentWorkerUnit,
+            improvement,
+            onConfirm: () =>
+            {
+                pendingBuildIndex = -1;
+                if (buildOptionsDropdown != null)
+                    buildOptionsDropdown.SetValueWithoutNotify(0);
+                UpdateUnitInfoForWorkerUnit();
+            },
+            onCancel: () =>
+            {
+                pendingBuildIndex = -1;
+                if (buildOptionsDropdown != null)
+                    buildOptionsDropdown.SetValueWithoutNotify(0);
+                RefreshStartBuildButtonState(currentWorkerUnit);
+            });
     }
 
     private void OnContributeWorkClicked()
@@ -1105,46 +1106,22 @@ UpdateUnitInfoForWorkerUnit();
     private void OnStartWorkerBuildWorker(WorkerUnitData workerData)
     {
         if (currentWorkerUnit == null || workerData == null) return;
-        if (PlacementPreview.Instance != null)
-        {
-            PlacementPreview.Instance.EnterWorkerUnitMode(currentWorkerUnit, workerData,
-                onConfirm: () => UpdateUnitInfoForWorkerUnit());
-        }
-        else
-        {
-            currentWorkerUnit.StartBuildingWorker(workerData, currentWorkerUnit.currentTileIndex);
-            UpdateUnitInfoForWorkerUnit();
-        }
+        PlacementPreview.EnsureInstance().EnterWorkerUnitMode(currentWorkerUnit, workerData,
+            onConfirm: () => UpdateUnitInfoForWorkerUnit());
     }
 
     private void OnStartWorkerBuildUnit(CombatUnitData unitData)
     {
         if (currentWorkerUnit == null || unitData == null) return;
-        if (PlacementPreview.Instance != null)
-        {
-            PlacementPreview.Instance.EnterCombatUnitMode(currentWorkerUnit, unitData,
-                onConfirm: () => UpdateUnitInfoForWorkerUnit());
-        }
-        else
-        {
-            currentWorkerUnit.StartBuildingUnit(unitData, currentWorkerUnit.currentTileIndex);
-            UpdateUnitInfoForWorkerUnit();
-        }
+        PlacementPreview.EnsureInstance().EnterCombatUnitMode(currentWorkerUnit, unitData,
+            onConfirm: () => UpdateUnitInfoForWorkerUnit());
     }
 
     private void OnStartWorkerBuildImprovement(ImprovementData imp)
     {
         if (currentWorkerUnit == null || imp == null) return;
-        if (PlacementPreview.Instance != null)
-        {
-            PlacementPreview.Instance.EnterImprovementMode(currentWorkerUnit, imp,
-                onConfirm: () => UpdateUnitInfoForWorkerUnit());
-        }
-        else
-        {
-            currentWorkerUnit.StartBuilding(imp, currentWorkerUnit.currentTileIndex);
-            UpdateUnitInfoForWorkerUnit();
-        }
+        PlacementPreview.EnsureInstance().EnterImprovementMode(currentWorkerUnit, imp,
+            onConfirm: () => UpdateUnitInfoForWorkerUnit());
     }
 
     // ===== ORBIT CONTROLS =====

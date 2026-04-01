@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using System;
 
 /// <summary>
@@ -11,11 +12,23 @@ public class PlacementPreview : MonoBehaviour
 {
     public static PlacementPreview Instance { get; private set; }
 
+    public static PlacementPreview EnsureInstance()
+    {
+        if (Instance != null)
+            return Instance;
+
+        GameObject previewObject = new GameObject("PlacementPreview");
+        DontDestroyOnLoad(previewObject);
+        return previewObject.AddComponent<PlacementPreview>();
+    }
+
     public enum PlacementType { None, Improvement, City, CombatUnit, WorkerUnit }
 
     [Header("Ghost Tinting")]
     [SerializeField] private Color validColor = new Color(0f, 1f, 0f, 0.4f);
     [SerializeField] private Color invalidColor = new Color(1f, 0f, 0f, 0.4f);
+    [Header("Debug")]
+    [SerializeField] private bool enableDebugLogs = true;
 
     // --- State ---
     private PlacementType currentType = PlacementType.None;
@@ -28,7 +41,12 @@ public class PlacementPreview : MonoBehaviour
     private WorkerUnitData pendingWorkerUnit;
 
     private int hoveredTileIndex = -1;
+    private Vector3 hoveredWorldPosition = Vector3.zero;
     private bool isValidPlacement;
+    private bool suppressConfirmUntilMouseReleased;
+    private int lastLoggedTileIndex = int.MinValue;
+    private bool? lastLoggedValidity;
+    private bool lastLoggedOverUi;
 
     private Action onConfirmCallback;
     private Action onCancelCallback;
@@ -61,7 +79,10 @@ public class PlacementPreview : MonoBehaviour
         pendingImprovement = improvement;
         onConfirmCallback = onConfirm;
         onCancelCallback = onCancel;
+        suppressConfirmUntilMouseReleased = true;
+        ResetDebugState();
         SpawnGhost(improvement != null ? (improvement.completePrefab != null ? improvement.completePrefab : improvement.constructionPrefab) : null);
+        DebugLog($"Enter improvement mode | improvement={improvement?.improvementName ?? "null"} workerTile={worker?.currentTileIndex ?? -1} planet={worker?.planetIndex ?? -1}");
     }
 
     public void EnterCityMode(WorkerUnit worker, GameObject ghostPrefab = null, Action onConfirm = null, Action onCancel = null)
@@ -71,7 +92,10 @@ public class PlacementPreview : MonoBehaviour
         workerUnit = worker;
         onConfirmCallback = onConfirm;
         onCancelCallback = onCancel;
+        suppressConfirmUntilMouseReleased = true;
+        ResetDebugState();
         SpawnGhost(ghostPrefab);
+        DebugLog($"Enter city mode | workerTile={worker?.currentTileIndex ?? -1} planet={worker?.planetIndex ?? -1}");
     }
 
     public void EnterCombatUnitMode(WorkerUnit worker, CombatUnitData unitData, Action onConfirm = null, Action onCancel = null)
@@ -82,7 +106,10 @@ public class PlacementPreview : MonoBehaviour
         pendingCombatUnit = unitData;
         onConfirmCallback = onConfirm;
         onCancelCallback = onCancel;
+        suppressConfirmUntilMouseReleased = true;
+        ResetDebugState();
         SpawnGhost(unitData != null ? unitData.GetPrefab(worker != null ? worker.owner : null) : null);
+        DebugLog($"Enter combat unit mode | unit={unitData?.unitName ?? "null"} workerTile={worker?.currentTileIndex ?? -1} planet={worker?.planetIndex ?? -1}");
     }
 
     public void EnterWorkerUnitMode(WorkerUnit worker, WorkerUnitData workerData, Action onConfirm = null, Action onCancel = null)
@@ -93,7 +120,10 @@ public class PlacementPreview : MonoBehaviour
         pendingWorkerUnit = workerData;
         onConfirmCallback = onConfirm;
         onCancelCallback = onCancel;
+        suppressConfirmUntilMouseReleased = true;
+        ResetDebugState();
         SpawnGhost(workerData != null ? workerData.GetPrefab(worker != null ? worker.owner : null) : null);
+        DebugLog($"Enter worker unit mode | unit={workerData?.unitName ?? "null"} workerTile={worker?.currentTileIndex ?? -1} planet={worker?.planetIndex ?? -1}");
     }
 
     #endregion
@@ -112,7 +142,9 @@ public class PlacementPreview : MonoBehaviour
         }
 
         // Cancel input
-        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
+        bool escapePressed = Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame;
+        bool rightMousePressed = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+        if (escapePressed || rightMousePressed)
         {
             Cancel();
             return;
@@ -124,19 +156,18 @@ public class PlacementPreview : MonoBehaviour
         if (!overUI)
             UpdateHoveredTile();
         else
+        {
             hoveredTileIndex = -1;
+            hoveredWorldPosition = Vector3.zero;
+        }
 
         // Position ghost on tile
         if (ghostInstance != null)
         {
             if (hoveredTileIndex >= 0)
             {
-                var ts = GetTileSystem();
-                if (ts != null)
-                {
-                    ghostInstance.transform.position = ts.GetTileCenter(hoveredTileIndex);
-                    ghostInstance.SetActive(true);
-                }
+                ghostInstance.transform.position = GetPreviewWorldPosition(hoveredTileIndex);
+                ghostInstance.SetActive(true);
             }
             else
             {
@@ -147,9 +178,18 @@ public class PlacementPreview : MonoBehaviour
         // Validate and tint
         isValidPlacement = !overUI && ValidatePlacement(hoveredTileIndex);
         SetGhostTint(isValidPlacement);
+        LogHoverState(overUI);
+
+        if (suppressConfirmUntilMouseReleased)
+        {
+            if (Mouse.current == null || !Mouse.current.leftButton.isPressed)
+                suppressConfirmUntilMouseReleased = false;
+            return;
+        }
 
         // Confirm on left-click
-        if (Input.GetMouseButtonDown(0) && !overUI && isValidPlacement && hoveredTileIndex >= 0)
+        bool leftMousePressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+        if (leftMousePressed && !overUI && isValidPlacement && hoveredTileIndex >= 0)
         {
             ConfirmPlacement(hoveredTileIndex);
         }
@@ -169,9 +209,22 @@ public class PlacementPreview : MonoBehaviour
     private void UpdateHoveredTile()
     {
         var ts = GetTileSystem();
-        if (ts == null) { hoveredTileIndex = -1; return; }
-        var (hit, tileIndex, _) = ts.GetMouseHitInfo();
+        if (ts == null) { hoveredTileIndex = -1; hoveredWorldPosition = Vector3.zero; return; }
+        var (hit, tileIndex, worldPosition) = ts.GetMouseHitInfo();
         hoveredTileIndex = hit ? tileIndex : -1;
+        hoveredWorldPosition = hit ? worldPosition : Vector3.zero;
+    }
+
+    private Vector3 GetPreviewWorldPosition(int tileIndex)
+    {
+        if (hoveredWorldPosition != Vector3.zero)
+            return hoveredWorldPosition + Vector3.up * 0.03f;
+
+        var ts = GetTileSystem();
+        if (ts != null)
+            return ts.GetTileSurfacePosition(tileIndex, 0.03f);
+
+        return Vector3.zero;
     }
 
     private bool ValidatePlacement(int tileIndex)
@@ -195,6 +248,8 @@ public class PlacementPreview : MonoBehaviour
     private void ConfirmPlacement(int tileIndex)
     {
         var cb = onConfirmCallback;
+        Vector3 previewPosition = GetPreviewWorldPosition(tileIndex);
+        DebugLog($"Confirm placement | type={currentType} tile={tileIndex} valid={isValidPlacement} hit={FormatVector3(hoveredWorldPosition)} preview={FormatVector3(previewPosition)} height={previewPosition.y:F3} planet={workerUnit?.planetIndex ?? -1}");
 
         switch (currentType)
         {
@@ -229,6 +284,7 @@ public class PlacementPreview : MonoBehaviour
     private void CancelInternal(bool fireCallback)
     {
         var cb = onCancelCallback;
+        DebugLog($"Cancel placement | type={currentType} tile={hoveredTileIndex} valid={isValidPlacement} hit={FormatVector3(hoveredWorldPosition)} planet={workerUnit?.planetIndex ?? -1}");
         currentType = PlacementType.None;
         if (ghostInstance != null) { Destroy(ghostInstance); ghostInstance = null; }
         ghostRenderers = null;
@@ -237,6 +293,9 @@ public class PlacementPreview : MonoBehaviour
         pendingCombatUnit = null;
         pendingWorkerUnit = null;
         hoveredTileIndex = -1;
+        hoveredWorldPosition = Vector3.zero;
+        suppressConfirmUntilMouseReleased = false;
+        ResetDebugState();
         onConfirmCallback = null;
         onCancelCallback = null;
         if (fireCallback) cb?.Invoke();
@@ -248,18 +307,19 @@ public class PlacementPreview : MonoBehaviour
 
     private void SpawnGhost(GameObject prefab)
     {
-        if (prefab == null) return;
-
-        ghostInstance = Instantiate(prefab);
+        ghostInstance = prefab != null ? Instantiate(prefab) : new GameObject("PlacementGhost");
         ghostInstance.name = "PlacementGhost";
 
-        // Disable functional components so the ghost is purely visual
-        foreach (var c in ghostInstance.GetComponentsInChildren<Collider>(true)) c.enabled = false;
-        foreach (var rb in ghostInstance.GetComponentsInChildren<Rigidbody>(true)) rb.isKinematic = true;
-        foreach (var mb in ghostInstance.GetComponentsInChildren<MonoBehaviour>(true)) mb.enabled = false;
-        foreach (var ps in ghostInstance.GetComponentsInChildren<ParticleSystem>(true)) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        foreach (var anim in ghostInstance.GetComponentsInChildren<Animator>(true)) anim.enabled = false;
-        foreach (var src in ghostInstance.GetComponentsInChildren<AudioSource>(true)) src.enabled = false;
+        if (prefab != null)
+        {
+            // Disable functional components so the ghost is purely visual
+            foreach (var c in ghostInstance.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+            foreach (var rb in ghostInstance.GetComponentsInChildren<Rigidbody>(true)) rb.isKinematic = true;
+            foreach (var mb in ghostInstance.GetComponentsInChildren<MonoBehaviour>(true)) mb.enabled = false;
+            foreach (var ps in ghostInstance.GetComponentsInChildren<ParticleSystem>(true)) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            foreach (var anim in ghostInstance.GetComponentsInChildren<Animator>(true)) anim.enabled = false;
+            foreach (var src in ghostInstance.GetComponentsInChildren<AudioSource>(true)) src.enabled = false;
+        }
 
         // Collect renderers and swap to ghost materials
         ghostRenderers = ghostInstance.GetComponentsInChildren<Renderer>(true);
@@ -269,6 +329,8 @@ public class PlacementPreview : MonoBehaviour
             for (int i = 0; i < mats.Length; i++)
                 MakeGhostMaterial(mats[i], validColor);
             r.materials = mats;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
         }
 
         ghostInstance.SetActive(false);
@@ -276,28 +338,9 @@ public class PlacementPreview : MonoBehaviour
 
     private void MakeGhostMaterial(Material mat, Color color)
     {
-        // HDRP
-        if (mat.HasProperty("_SurfaceType"))
-        {
-            mat.SetFloat("_SurfaceType", 1f); // Transparent
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.SetFloat("_AlphaDstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.renderQueue = 3000;
-        }
-        else
-        {
-            // Standard / URP fallback
-            mat.SetFloat("_Mode", 3f);
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetFloat("_ZWrite", 0f);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.renderQueue = 3000;
-        }
-
-        // Set base color
+        // Do NOT change Surface Type to Transparent — HDRP Lit materials break when
+        // forced transparent at runtime. Instead, just tint the existing base color
+        // with a low alpha to get the ghost effect while keeping the material opaque-ish.
         if (mat.HasProperty("_BaseColor"))
             mat.SetColor("_BaseColor", color);
         else if (mat.HasProperty("_Color"))
@@ -321,6 +364,46 @@ public class PlacementPreview : MonoBehaviour
                     mats[i].SetColor("_Color", c);
             }
         }
+    }
+
+    private void LogHoverState(bool overUI)
+    {
+        if (!enableDebugLogs)
+            return;
+
+        bool shouldLog = hoveredTileIndex != lastLoggedTileIndex
+            || lastLoggedValidity != isValidPlacement
+            || lastLoggedOverUi != overUI;
+
+        if (!shouldLog)
+            return;
+
+        Vector3 previewPosition = hoveredTileIndex >= 0 ? GetPreviewWorldPosition(hoveredTileIndex) : Vector3.zero;
+        Debug.Log($"[PlacementPreview] Hover | type={currentType} tile={hoveredTileIndex} valid={isValidPlacement} overUI={overUI} hit={FormatVector3(hoveredWorldPosition)} preview={FormatVector3(previewPosition)} height={(hoveredTileIndex >= 0 ? previewPosition.y.ToString("F3") : "n/a")} workerTile={workerUnit?.currentTileIndex ?? -1} planet={workerUnit?.planetIndex ?? -1}");
+
+        lastLoggedTileIndex = hoveredTileIndex;
+        lastLoggedValidity = isValidPlacement;
+        lastLoggedOverUi = overUI;
+    }
+
+    private void ResetDebugState()
+    {
+        lastLoggedTileIndex = int.MinValue;
+        lastLoggedValidity = null;
+        lastLoggedOverUi = false;
+    }
+
+    private void DebugLog(string message)
+    {
+        if (!enableDebugLogs)
+            return;
+
+        Debug.Log($"[PlacementPreview] {message}");
+    }
+
+    private static string FormatVector3(Vector3 value)
+    {
+        return $"({value.x:F3}, {value.y:F3}, {value.z:F3})";
     }
 
     #endregion

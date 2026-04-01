@@ -544,6 +544,17 @@ public class Civilization : MonoBehaviour
         }
         return false;
     }
+
+    public bool HasMosquitoImmunityTechnology()
+    {
+        if (researchedTechs == null || researchedTechs.Count == 0) return false;
+        foreach (var tech in researchedTechs)
+        {
+            if (tech != null && tech.preventsMosquitoDamage)
+                return true;
+        }
+        return false;
+    }
     
 
     // Increase the number of governors this civ can create
@@ -1019,6 +1030,7 @@ public class Civilization : MonoBehaviour
         int totalFoodThisTurn = 0;
         int totalPolicyThisTurn = 0;
         int totalFaithThisTurn = 0;
+        var globalBonuses = CalculateTotalBonuses(researchedTechs, researchedCultures);
 
         foreach (var city in cities)
         {
@@ -1153,7 +1165,11 @@ public class Civilization : MonoBehaviour
                         if (ae == null) continue;
                         int cnt = Mathf.Max(0, ae.count);
                         totalAnimals += cnt;
-                        totalAnimalConsumption += cnt * Herd.GetFoodConsumptionPerAnimal(ae.species);
+                        // Apply per-100 consumption rules where defined, and fall back to per-animal for remainder
+                        int per100 = Herd.GetFoodConsumptionPer100(ae.species);
+                        int perAnimal = Herd.GetFoodConsumptionPerAnimal(ae.species);
+                        totalAnimalConsumption += (cnt / 100) * per100;
+                        totalAnimalConsumption += (cnt % 100) * perAnimal;
                     }
 
                     // Animal yields (food/gold/production) computed by herd per-100 rules
@@ -1243,6 +1259,30 @@ public class Civilization : MonoBehaviour
                     Debug.LogError($"[Civilization] Error processing herd grazing: {ex.Message}");
                 }
             }
+        }
+
+        if (globalBonuses.flatGoldBonus != 0)
+        {
+            gold += globalBonuses.flatGoldBonus;
+            totalGoldThisTurn += globalBonuses.flatGoldBonus;
+        }
+        if (globalBonuses.flatFoodBonus != 0)
+        {
+            food += globalBonuses.flatFoodBonus;
+            totalFoodThisTurn += globalBonuses.flatFoodBonus;
+        }
+        if (globalBonuses.flatScienceBonus != 0)
+        {
+            totalScienceThisTurn += globalBonuses.flatScienceBonus;
+        }
+        if (globalBonuses.flatCultureBonus != 0)
+        {
+            totalCultureThisTurn += globalBonuses.flatCultureBonus;
+        }
+        if (globalBonuses.flatFaithBonus != 0)
+        {
+            faith += globalBonuses.flatFaithBonus;
+            totalFaithThisTurn += globalBonuses.flatFaithBonus;
         }
 
         // Commit computed per-turn science & culture yields into their fields (do not accumulate across turns)
@@ -1703,6 +1743,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         {
             activePolicies.Add(p);
             ApplyPolicyBonuses(p); // Apply bonuses when adopted
+            RecalculateCachedYieldRates();
             OnPolicyAdopted?.Invoke(this, p);
             // TODO: UI update, notifications
         }
@@ -1779,6 +1820,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
             city.UpdateAvailableBuildings();
         }
 
+        RecalculateCachedYieldRates();
         OnGovernmentChanged?.Invoke(this, g);
         // TODO: UI update, notifications
     }
@@ -2292,6 +2334,148 @@ return true;
         return religion.faithCost;
     }
 
+    public void RecalculateCachedYieldRates()
+    {
+        int totalScienceThisTurn = 0;
+        int totalCultureThisTurn = 0;
+        int totalGoldThisTurn = 0;
+        int totalFoodThisTurn = 0;
+        int totalPolicyThisTurn = 0;
+        int totalFaithThisTurn = 0;
+        var globalBonuses = CalculateTotalBonuses(researchedTechs, researchedCultures);
+
+        if (cities != null)
+        {
+            foreach (var city in cities)
+            {
+                if (city == null) continue;
+                totalGoldThisTurn += Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
+                totalFoodThisTurn += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
+                totalScienceThisTurn += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
+                totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
+                totalPolicyThisTurn += city.GetPolicyPointPerTurn();
+                totalFaithThisTurn += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+            }
+        }
+
+        if (interplanetaryTradeRoutes != null)
+        {
+            foreach (var tradeRoute in interplanetaryTradeRoutes)
+            {
+                if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
+                    totalGoldThisTurn += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+            }
+        }
+
+        if (combatUnits != null)
+        {
+            int addFood = 0, addGold = 0, addSci = 0, addCul = 0, addFai = 0, addPol = 0;
+            foreach (var u in combatUnits)
+            {
+                if (u == null || u.data == null) continue;
+                var yields = ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+                addFood += yields.food;
+                addGold += yields.gold;
+                addSci += yields.science;
+                addCul += yields.culture;
+                addFai += yields.faith;
+                addPol += yields.policy;
+
+                if (u.IsInOrbit)
+                {
+                    var ts = TileSystem.GetForPlanet(u.planetIndex) ?? TileSystem.Instance;
+                    var tileData = ts != null ? ts.GetTileData(u.currentTileIndex) : null;
+                    if (tileData != null)
+                    {
+                        var tileYield = tileData.GetTotalYield();
+                        addFood += tileYield.Food;
+                        addGold += tileYield.Gold;
+                        addSci += tileYield.Science;
+                        addCul += tileYield.Culture;
+                        addFai += tileYield.Faith;
+                        addPol += tileYield.Policy;
+                    }
+                }
+            }
+
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
+            totalPolicyThisTurn += addPol;
+        }
+
+        if (workerUnits != null)
+        {
+            int addFood = 0, addGold = 0, addSci = 0, addCul = 0, addFai = 0, addPol = 0;
+            foreach (var w in workerUnits)
+            {
+                if (w == null || w.data == null) continue;
+                var yields = ComputeWorkerPerTurnYield(w.data);
+                addFood += yields.food;
+                addGold += yields.gold;
+                addSci += yields.science;
+                addCul += yields.culture;
+                addFai += yields.faith;
+                addPol += yields.policy;
+            }
+
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
+            totalPolicyThisTurn += addPol;
+        }
+
+        if (herds != null)
+        {
+            foreach (var h in herds)
+            {
+                if (h == null) continue;
+                var ay = h.GetAnimalYields();
+                totalGoldThisTurn += Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
+                totalFoodThisTurn += Mathf.RoundToInt(ay.Food * (1 + foodModifier));
+                totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
+                totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
+                totalFaithThisTurn += Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
+                totalPolicyThisTurn += ay.Policy;
+            }
+        }
+
+        totalGoldThisTurn += globalBonuses.flatGoldBonus;
+        totalFoodThisTurn += globalBonuses.flatFoodBonus;
+        totalScienceThisTurn += globalBonuses.flatScienceBonus;
+        totalCultureThisTurn += globalBonuses.flatCultureBonus;
+        totalFaithThisTurn += globalBonuses.flatFaithBonus;
+
+        int totalFoodConsumption = 0;
+        if (combatUnits != null)
+        {
+            foreach (var u in combatUnits)
+                totalFoodConsumption += (u != null && u.data != null) ? u.data.foodConsumptionPerTurn : defaultFoodPerCombatUnit;
+        }
+        if (workerUnits != null)
+        {
+            foreach (var w in workerUnits)
+                totalFoodConsumption += (w != null && w.data != null) ? w.data.foodConsumptionPerTurn : defaultFoodPerWorkerUnit;
+        }
+        if (cities != null)
+        {
+            foreach (var city in cities)
+                if (city != null) totalFoodConsumption += city.GetFoodConsumptionPerTurn();
+        }
+
+        cachedGoldPerTurn = totalGoldThisTurn;
+        cachedFoodPerTurn = totalFoodThisTurn;
+        cachedSciencePerTurn = totalScienceThisTurn;
+        cachedCulturePerTurn = totalCultureThisTurn;
+        cachedPolicyPerTurn = totalPolicyThisTurn;
+        cachedFaithPerTurn = totalFaithThisTurn;
+        cachedFoodConsumption = totalFoodConsumption;
+    }
+
     public void HandleTechResearched(TechData tech)  // Renamed from OnTechResearched
     {
         if (tech == null) return;
@@ -2324,9 +2508,6 @@ return true;
         // Invalidate availability cache
         InvalidateAvailabilityCache();
 
-        // Invoke the event
-        OnTechResearched?.Invoke(tech);
-
         // Refresh derived stats and caches across the civ after research completes
         try
         {
@@ -2352,18 +2533,23 @@ return true;
             Debug.LogWarning($"[Civilization] Refresh after tech research threw: {ex}");
         }
 
-    // Ensure flat all-workers work point bonuses are applied to already-spawned workers
-    ApplyAllWorkersWorkPointsToExisting();
+        // Ensure flat all-workers work point bonuses are applied to already-spawned workers
+        ApplyAllWorkersWorkPointsToExisting();
 
-    // Notify listeners that unlock-driven availability may have changed
-    OnUnlocksChanged?.Invoke();
+        RecalculateCachedYieldRates();
 
-    // If this tech enables herding, toggle the civ-level flag and notify player
-    if (tech.enablesHerding)
-    {
-        herdsEnabled = true;
-        UIManager.Instance?.ShowNotification($"{(civData!=null?civData.civName:"A civ")} has unlocked Herding!");
-    }
+        // Invoke the event after caches are refreshed so the HUD shows updated rates immediately.
+        OnTechResearched?.Invoke(tech);
+
+        // Notify listeners that unlock-driven availability may have changed
+        OnUnlocksChanged?.Invoke();
+
+        // If this tech enables herding, toggle the civ-level flag and notify player
+        if (tech.enablesHerding)
+        {
+            herdsEnabled = true;
+            UIManager.Instance?.ShowNotification($"{(civData!=null?civData.civName:"A civ")} has unlocked Herding!");
+        }
         // Add any governments unlocked by this tech to the civ's unlocked governments list
         if (tech.unlockedGovernments != null && tech.unlockedGovernments.Length > 0)
         {
@@ -2462,9 +2648,6 @@ return true;
             }
         }
 
-        // Trigger the event for other systems (like UI) to update
-        OnCultureCompleted?.Invoke(cult); 
-
         // Cities might need to update their buildable units/buildings if culture unlocks them
         if (cities != null)
         {
@@ -2495,11 +2678,16 @@ return true;
             Debug.LogWarning($"[Civilization] Refresh after culture adoption threw: {ex}");
         }
 
-    // Ensure flat all-workers work point bonuses are applied to already-spawned workers
-    ApplyAllWorkersWorkPointsToExisting();
+        // Ensure flat all-workers work point bonuses are applied to already-spawned workers
+        ApplyAllWorkersWorkPointsToExisting();
 
-    // Notify listeners that unlock-driven availability may have changed
-    OnUnlocksChanged?.Invoke();
+        RecalculateCachedYieldRates();
+
+        // Trigger the event for other systems (like UI) after caches are refreshed.
+        OnCultureCompleted?.Invoke(cult); 
+
+        // Notify listeners that unlock-driven availability may have changed
+        OnUnlocksChanged?.Invoke();
 
         // If this culture enables the trade system, enable it for this civ and notify player
         if (cult.enablesTradeSystem)

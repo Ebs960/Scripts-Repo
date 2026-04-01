@@ -78,6 +78,8 @@ public class HexTileData
     public int continentId = -1;
     [Tooltip("Display name of the continent this tile belongs to.")]
     public string continentName;
+    [Tooltip("True when this tile is affected by mosquitoes and can damage non-immune major-civ units.")]
+    public bool hasMosquitoes;
 
     // --- Static Features ---
     [Tooltip("Improvement built here, if any")]

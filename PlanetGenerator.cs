@@ -2479,7 +2479,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 moisture = moisture,
                 movementCost = moveCost,
                 isPassable = true,
-                isMoonTile = false
+                isMoonTile = false,
+                hasMosquitoes = isLand && IsTileInSecondaryNewWorld(i)
             };
             #pragma warning restore 612, 618
             data[i] = td;
@@ -4344,6 +4345,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         var category = continents[continentIndex].category;
         return category == ContinentCategory.NewWorld || category == ContinentCategory.NewWorldSecondary;
+    }
+
+    public bool IsTileInSecondaryNewWorld(int tileIndex)
+    {
+        int continentIndex = GetContinentIndexForTile(tileIndex);
+        if (continentIndex < 0 || continents == null || continentIndex >= continents.Count)
+            return false;
+
+        return continents[continentIndex].category == ContinentCategory.NewWorldSecondary;
     }
 
     // --- Helper methods moved to class scope ---

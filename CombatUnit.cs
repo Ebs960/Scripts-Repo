@@ -1312,6 +1312,7 @@ public class CombatUnit : BaseUnit
 
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
+        ApplyMosquitoDamageIfNeeded(data != null ? data.unitName : UnitName);
     }
 
     /// <summary>

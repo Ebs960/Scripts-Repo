@@ -47,6 +47,8 @@ public class WorkerUnit : BaseUnit
     private bool isPlayingBuildActionAnimation;
     private Coroutine buildActionAnimationCoroutine;
     private const float BuildActionAnimationDuration = 0.85f;
+    private Coroutine forageAnimationCoroutine;
+    private const float ForageAnimationDuration = 0.85f;
     
 
     #region Implement Abstract Members from BaseUnit
@@ -88,6 +90,7 @@ public class WorkerUnit : BaseUnit
         }
 
         CheckForHazardousBiomeDamage();
+        ApplyMosquitoDamageIfNeeded(data != null ? data.unitName : UnitName);
 
         // Auto-contribute to jobs at start of turn
         AutoContributeToJobs();
@@ -705,11 +708,31 @@ public class WorkerUnit : BaseUnit
 
     private void PlayForageAnimation()
     {
+        if (forageAnimationCoroutine != null)
+            StopCoroutine(forageAnimationCoroutine);
+
         if (hasForageParam)
             SetAnimatorTriggerForFormation(forageHash);
 
         if (hasIdleYoungParam)
             SetAnimatorBoolForFormation(idleYoungHash, false);
+
+        forageAnimationCoroutine = StartCoroutine(ClearForageAnimationAfterDelay());
+    }
+
+    private System.Collections.IEnumerator ClearForageAnimationAfterDelay()
+    {
+        yield return new WaitForSeconds(ForageAnimationDuration);
+        forageAnimationCoroutine = null;
+
+        // Restore idle pose if not walking or building
+        if (hasIdleYoungParam)
+        {
+            bool isWalking = animator != null && HasParameter(animator, isWalkingHash) && animator.GetBool(isWalkingHash);
+            bool isBuilding = isAssignedToBuildJob || isPlayingBuildActionAnimation;
+            if (!isWalking && !isBuilding)
+                SetAnimatorBoolForFormation(idleYoungHash, true);
+        }
     }
 
     private void PlayBuildActionAnimation()

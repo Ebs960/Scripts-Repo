@@ -198,6 +198,8 @@ public abstract class BaseUnit : MonoBehaviour
     [Tooltip("If true, this unit takes weather attrition in severe seasons")]
     public bool takesWeatherDamage = true;
 
+    protected const float MosquitoDamagePercent = 0.33f;
+
     [Header("Action Points")]
     [Tooltip("How many attacks/actions this unit can perform per turn.")]
     [SerializeField]
@@ -1959,6 +1961,51 @@ public abstract class BaseUnit : MonoBehaviour
         int old = currentMovePoints;
         currentMovePoints = move;
         try { GameEventManager.Instance?.RaiseMovePointsChanged(this, old, currentMovePoints); } catch { }
+    }
+
+    protected bool IsImmuneToMosquitoes()
+    {
+        if (this is CombatUnit combatUnit)
+        {
+            if (combatUnit.data != null && combatUnit.data.unitType == CombatCategory.Animal)
+                return true;
+
+            return combatUnit.data != null && combatUnit.data.immuneToMosquitoes;
+        }
+
+        if (this is WorkerUnit workerUnit)
+            return workerUnit.data != null && workerUnit.data.immuneToMosquitoes;
+
+        return true;
+    }
+
+    protected void ApplyMosquitoDamageIfNeeded(string unitDisplayName)
+    {
+        if (owner == null || owner.civData == null)
+            return;
+
+        if (owner.civData.isTribe || owner.civData.isCityState)
+            return;
+
+        if (currentTileIndex < 0 || currentLayer != TileLayer.Surface)
+            return;
+
+        if (IsImmuneToMosquitoes() || owner.HasMosquitoImmunityTechnology())
+            return;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
+        if (tileData == null || !tileData.hasMosquitoes)
+            return;
+
+        int damageAmount = Mathf.Max(1, Mathf.CeilToInt(MaxHealth * MosquitoDamagePercent));
+        ApplyDamage(damageAmount);
+
+        if (owner.isPlayerControlled)
+        {
+            string tileLabel = !string.IsNullOrWhiteSpace(tileData.continentName) ? tileData.continentName : "mosquito-infested territory";
+            UIManager.Instance?.ShowNotification($"{unitDisplayName} took {damageAmount} mosquito damage in {tileLabel}!");
+        }
     }
 
     #endregion

@@ -24,6 +24,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI elevationText;
     [SerializeField] private TextMeshProUGUI moistureText;
     [SerializeField] private TextMeshProUGUI temperatureText;
+    [SerializeField] private TextMeshProUGUI mosquitoText;
     [SerializeField] private TextMeshProUGUI resourceText;
 
     [Header("Styling")]
@@ -224,6 +225,11 @@ public class TileInfoWorldPanel : MonoBehaviour
             temperatureText.text = $"Temperature: {tileData.temperature:F1}°C";
         else if (yieldsText != null)
             yieldsText.text += $"\nTemperature: {tileData.temperature:F1}°C";
+
+        if (mosquitoText != null)
+            mosquitoText.text = FormatMosquitoStatus(tileData);
+        else if (yieldsText != null)
+            yieldsText.text += $"\n{FormatMosquitoStatus(tileData)}";
     }
 
     private void UpdateContentUnderwater(HexTileData tileData)
@@ -265,6 +271,8 @@ public class TileInfoWorldPanel : MonoBehaviour
             moistureText.text = "";
         if (temperatureText != null)
             temperatureText.text = $"Temperature: {tileData.temperature:F1}°C";
+        if (mosquitoText != null)
+            mosquitoText.text = FormatMosquitoStatus(tileData);
     }
 
     private void UpdateContentOrbit(HexTileData tileData, int tileIndex)
@@ -297,6 +305,7 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (elevationText != null) elevationText.text = $"Surface below: {FormatBiomeName(tileData.biome)}";
         if (moistureText != null) moistureText.text = "";
         if (temperatureText != null) temperatureText.text = "";
+        if (mosquitoText != null) mosquitoText.text = FormatMosquitoStatus(tileData);
     }
 
     private GameManager.PlanetLayerType GetActiveViewLayer()
@@ -331,6 +340,11 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (tileData.faithYield > 0) yields.Add($"*{tileData.faithYield}");
         if (yields.Count == 0) return "No yields";
         return string.Join("  ", yields);
+    }
+
+    private string FormatMosquitoStatus(HexTileData tileData)
+    {
+        return $"Mosquitoes: {(tileData != null && tileData.hasMosquitoes ? "Yes" : "No")}";
     }
 
     #region Public API

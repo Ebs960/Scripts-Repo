@@ -13,7 +13,7 @@ public class Herd : MonoBehaviour
     [Tooltip("Optional human-readable name for this herd (displayed in UI). If empty, GameObject name is used.")]
     public string herdName;
 
-    public enum HerdSpecies { Chicken, Cow, Pig, Sheep, Other }
+    public enum HerdSpecies { Chicken, Cow, Pig, Sheep, Elephant, Camel, Other }
 
     [System.Serializable]
     public class HerdEntry { public HerdSpecies species; public int count = 0; }
@@ -65,7 +65,27 @@ public class Herd : MonoBehaviour
             case HerdSpecies.Cow: return 2;
             case HerdSpecies.Pig: return 1;
             case HerdSpecies.Sheep: return 1;
+            // Camels use a per-100 consumption rule (handled by Civilization),
+            // so return 0 here to avoid double-counting.
+            case HerdSpecies.Elephant: return 0;
+            case HerdSpecies.Camel: return 0;
             default: return 1;
+        }
+    }
+
+    // Returns food consumption for the species per 100 animals.
+    // Use this when applying per-100 consumption rules (e.g., camels consume very little per-animal).
+    public static int GetFoodConsumptionPer100(HerdSpecies s)
+    {
+        switch (s)
+        {
+            case HerdSpecies.Chicken: return 100; // 1 per animal
+            case HerdSpecies.Cow: return 200;     // 2 per animal
+            case HerdSpecies.Pig: return 100;     // 1 per animal
+            case HerdSpecies.Sheep: return 100;   // 1 per animal
+            case HerdSpecies.Elephant: return 3;  // special: 3 per 100 (slightly more food)
+            case HerdSpecies.Camel: return 2;     // special: 2 per 100
+            default: return 100;
         }
     }
 
@@ -181,15 +201,7 @@ public class Herd : MonoBehaviour
         // Prefer explicit species set on unit data
         HerdSpecies s = HerdSpecies.Other;
         try { s = type.captureSpecies; } catch { s = HerdSpecies.Other; }
-        if (s == HerdSpecies.Other)
-        {
-            var name = (type.unitName ?? "").ToLowerInvariant();
-            if (name.Contains("chicken")) s = HerdSpecies.Chicken;
-            else if (name.Contains("cow")) s = HerdSpecies.Cow;
-            else if (name.Contains("pig")) s = HerdSpecies.Pig;
-            else if (name.Contains("sheep") || name.Contains("ewe") || name.Contains("ram")) s = HerdSpecies.Sheep;
-        }
-
+        // Do NOT infer species from unit name; use the explicit `captureSpecies` assignment only.
         AddAnimals(s, count);
     }
 
@@ -552,7 +564,7 @@ public class Herd : MonoBehaviour
         }
 
         // Animal contributions (per-100 rules); prefer explicit mapping from per-herd instance fields
-        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0;
+        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, elephantCount = 0;
         foreach (var e in animals)
         {
             if (e == null) continue;
@@ -562,6 +574,7 @@ public class Herd : MonoBehaviour
                 case HerdSpecies.Cow: cowCount += e.count; break;
                 case HerdSpecies.Pig: pigCount += e.count; break;
                 case HerdSpecies.Sheep: sheepCount += e.count; break;
+                case HerdSpecies.Elephant: elephantCount += e.count; break;
                 default: break;
             }
         }
@@ -569,6 +582,8 @@ public class Herd : MonoBehaviour
         // Per-design contributions per 100 animals
         // Cows: +2 production per 100
         total += (cowCount / 100) * 2;
+        // Elephants: +4 production per 100
+        total += (elephantCount / 100) * 4;
 
         // Governor production bonus (flat added production per-turn)
         try
@@ -593,10 +608,12 @@ public class Herd : MonoBehaviour
     /// Cows:     every 100 -> +2 Production, +1 Gold
     /// Pigs:     every 100 -> +3 Food
     /// Sheep:    every 100 -> +1 Food, +2 Gold
+    /// Elephants: every 100 -> +4 Production (higher food cost)
+    /// Camels:   every 100 -> +2 Gold, +1 Production
     /// </summary>
     public AnimalYields GetAnimalYields()
     {
-        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0;
+        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, elephantCount = 0, camelCount = 0;
         foreach (var e in animals)
         {
             if (e == null) continue;
@@ -606,14 +623,16 @@ public class Herd : MonoBehaviour
                 case HerdSpecies.Cow: cowCount += e.count; break;
                 case HerdSpecies.Pig: pigCount += e.count; break;
                 case HerdSpecies.Sheep: sheepCount += e.count; break;
+                case HerdSpecies.Elephant: elephantCount += e.count; break;
+                case HerdSpecies.Camel: camelCount += e.count; break;
                 default: break;
             }
         }
     
         AnimalYields y = new AnimalYields();
         y.Food = (chickenCount / 100) * 2 + (pigCount / 100) * 3 + (sheepCount / 100) * 1;
-        y.Gold = (chickenCount / 100) * 1 + (cowCount / 100) * 1 + (sheepCount / 100) * 2;
-        y.Production = (cowCount / 100) * 2;
+        y.Gold = (chickenCount / 100) * 1 + (cowCount / 100) * 1 + (sheepCount / 100) * 2 + (camelCount / 100) * 2;
+        y.Production = (cowCount / 100) * 2 + (camelCount / 100) * 1 + (elephantCount / 100) * 4;
         y.Science = 0;
         y.Culture = 0;
         y.Faith = 0;
