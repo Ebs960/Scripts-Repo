@@ -42,8 +42,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // This field was removed to avoid multiple "color mode" knobs fighting each other.
     [SerializeField] private float maxZoom = 4f;
     [SerializeField] private float minZoom = 0.5f;
+    [SerializeField] private float defaultZoom = 1.5f;
     [SerializeField] private float zoomSpeed = 1f;
     [SerializeField] private float buttonZoomStep = 0.5f;
+    [SerializeField] private int baseTileOutlineWidthPixels = 4;
 
     // Pre-generation is always on.
     [Header("Atlas Settings")]
@@ -326,6 +328,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     baseColor = GetDefaultBiomeColour(tileData.underwaterBiome);
                 else
                     baseColor = GetDefaultBiomeColour(tileData.biome);
+
+                baseColor = GetReadableMinimapColor(tileData, layer, baseColor);
             }
 
             // If there is an occupant on this layer, tint/highlight the tile so the minimap shows units/resources/improvements
@@ -336,14 +340,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (occupant != null)
             {
                 // Choose overlay color by type
-                Color overlay = Color.yellow;
-                if (occupant.GetComponent<BaseUnit>() != null) overlay = Color.red;
-                else if (occupant.GetComponent<ResourceInstance>() != null) overlay = Color.yellow;
-                else if (occupant.GetComponent<ImprovementInstance>() != null) overlay = Color.cyan;
+                Color overlay = new Color(0.98f, 0.86f, 0.20f);
+                if (occupant.GetComponent<BaseUnit>() != null) overlay = new Color(0.90f, 0.28f, 0.20f);
+                else if (occupant.GetComponent<ResourceInstance>() != null) overlay = new Color(0.98f, 0.86f, 0.20f);
+                else if (occupant.GetComponent<ImprovementInstance>() != null) overlay = new Color(0.24f, 0.86f, 0.94f);
                 else overlay = Color.white;
 
                 // Blend overlay over base so biome still reads through
-                final = Color.Lerp(baseColor, overlay, 0.72f);
+                final = Color.Lerp(baseColor, overlay, 0.58f);
             }
 
             atlas[i] = (Color32)final;
@@ -380,7 +384,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
         {
             wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear // Use bilinear filtering for smoother appearance
+            filterMode = FilterMode.Point
         };
     // Safe upload: 1-row atlas; SetPixels32 cost negligible vs. crash risk.
     // (Previous BlockCopy on Color32[] triggered ArgumentException on some runtimes.)
@@ -431,7 +435,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
             {
                 enableRandomWrite = true,
-                filterMode = FilterMode.Bilinear // Use bilinear filtering for smoother appearance
+                filterMode = FilterMode.Point
             };
             rt.Create();
             _gpuResultCache[key] = rt;
@@ -447,9 +451,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         // Gridlines (tile borders) overlay.
         minimapComputeShader.SetInt("_DrawGridLines", 1);
-        minimapComputeShader.SetInt("_GridLineWidthPixels", 1);
-        // Dark line with moderate alpha so biome colors remain readable.
-        minimapComputeShader.SetVector("_GridLineColor", new Vector4(0f, 0f, 0f, 0.60f));
+        minimapComputeShader.SetInt("_GridLineWidthPixels", Mathf.Clamp(baseTileOutlineWidthPixels, 1, 4));
+        // Slightly cool border tint with restrained alpha so borders stay crisp without muddying fills.
+        minimapComputeShader.SetVector("_GridLineColor", new Vector4(0.06f, 0.10f, 0.15f, 0.28f));
 
         int tx = Mathf.CeilToInt(width / 8f);
         int ty = Mathf.CeilToInt(height / 8f);
@@ -486,7 +490,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         
         // Hide individual UI elements during loading, but keep GameObject active for coroutines
         // Hide UI while we generate minimaps (always pre-generation now)
-        if (IsLoadingActive() || !_minimapsPreGenerated) HideUIElements();
+        RefreshUIVisibility();
 
     }
 
@@ -589,6 +593,19 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
     }
 
+    private bool CanDisplayUIElements()
+    {
+        return _minimapsPreGenerated && !IsLoadingActive();
+    }
+
+    private void RefreshUIVisibility()
+    {
+        if (CanDisplayUIElements())
+            ShowUIElements();
+        else
+            HideUIElements();
+    }
+
     public void HideVisualsForBlockingUI()
     {
         HideUIElements();
@@ -596,8 +613,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     public void ShowVisualsAfterBlockingUI()
     {
-        if (!IsLoadingActive() && _minimapsPreGenerated)
-            ShowUIElements();
+        RefreshUIVisibility();
     }
 
     void Update()
@@ -672,9 +688,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // If minimaps were already generated, just show UI and display current planet
         if (_minimapsPreGenerated)
         {
-            ShowUIElements();
             // Planet dropdown removed — minimap always tracks current planet
             ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
+            RefreshUIVisibility();
             return;
         }
 
@@ -715,6 +731,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         if (_minimapsPreGenerated) yield break; // guard if called twice
         _minimapsPreGenerated = false;
+        RefreshUIVisibility();
 
         // Clear existing textures
         ClearMinimapCache();
@@ -767,9 +784,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         
         _minimapsPreGenerated = true;
 
-        // Show the UI elements now that generation is complete
-    ShowUIElements();
-
         // Signal LoadingPanelController that minimap generation is complete
         if (LoadingPanelController.Instance != null)
         {
@@ -779,6 +793,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         BuildLayerDropdown();
         // Show the current planet's minimap
         ShowMinimapForPlanet(currentIdx);
+        RefreshUIVisibility();
     }
 
     private string GetPlanetName(int planetIndex)
@@ -991,15 +1006,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     public void TriggerDeferredInitialization()
     {
-        // Only proceed if loading is not active AND minimap generation is complete
-        if (!IsLoadingActive() && _minimapsPreGenerated)
+        RefreshUIVisibility();
+
+        if (CanDisplayUIElements())
         {
-            // Show the UI elements if they were hidden during loading
-            ShowUIElements();
-            HandleGameStarted();
-        }
-        else
-        {
+            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
         }
     }
 
@@ -1087,13 +1098,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                         else
                             minimapImage.texture = tex;
                     }
-                    SetZoom(1f);
+                    SetZoom(defaultZoom);
                 }
                 else
                 {
                     var generated = GenerateBodyMinimapImmediate(planetIndex, false);
                     if (generated != null && minimapImage != null) minimapImage.texture = generated;
-                    SetZoom(1f);
+                    SetZoom(defaultZoom);
             }
         }
         else
@@ -1102,7 +1113,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
                     tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
                 if (minimapImage != null && tex != null) minimapImage.texture = tex;
-                SetZoom(1f);
+                SetZoom(defaultZoom);
         }
     }
 
@@ -1110,6 +1121,49 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private Color GetDefaultBiomeColour(Biome biome)
     {
         return BiomeColorHelper.GetMinimapColor(biome);
+    }
+
+    private Color GetReadableMinimapColor(HexTileData tileData, TileLayer layer, Color baseColor)
+    {
+        if (tileData == null)
+            return baseColor;
+
+        Biome displayBiome = layer == TileLayer.Underwater && tileData.IsUnderwaterTile
+            ? tileData.underwaterBiome
+            : tileData.biome;
+
+        bool isWaterLike = layer == TileLayer.Underwater || !tileData.isLand || IsFluidBiome(displayBiome);
+
+        Color.RGBToHSV(baseColor, out float hue, out float saturation, out float value);
+
+        if (isWaterLike)
+        {
+            saturation = Mathf.Clamp01(Mathf.Lerp(saturation, 0.82f, 0.20f));
+            value = Mathf.Clamp01(Mathf.Lerp(value, 0.72f, 0.18f));
+        }
+        else
+        {
+            saturation = Mathf.Clamp01(Mathf.Lerp(saturation, 0.78f, 0.14f));
+            value = Mathf.Clamp01(Mathf.Lerp(value, 0.84f, 0.20f));
+        }
+
+        return Color.HSVToRGB(hue, saturation, value);
+    }
+
+    private bool IsFluidBiome(Biome biome)
+    {
+        switch (biome)
+        {
+            case Biome.Ocean:
+            case Biome.Seas:
+            case Biome.River:
+            case Biome.Lake:
+            case Biome.Lava:
+            case Biome.TitanLakes:
+                return true;
+            default:
+                return false;
+        }
     }
     
     // Legacy method kept for backward compatibility (now delegates to BiomeColorHelper)
@@ -1315,12 +1369,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
     
     /// <summary>
-    /// Reset zoom to show entire minimap (can be called from a button)
+    /// Reset zoom to the default minimap framing.
     /// </summary>
     public void ResetZoom()
     {
         _panOffset = new Vector2(0.5f, 0.5f); // Center the view
-        SetZoom(1f);
+        SetZoom(defaultZoom);
     }
     
     /// <summary>

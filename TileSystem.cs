@@ -276,7 +276,7 @@ public class TileSystem : MonoBehaviour
                 var biome = planetGen.GetBaseBiome(i);
                 bool isHill = planetGen.IsTileHill(i);
                 float elev = planetGen.GetTileElevation(i);
-                bool isLand = biome != Biome.Ocean && biome != Biome.Seas && biome != Biome.Coast && biome != Biome.River && biome != Biome.Glacier;
+                bool isLand = biome != Biome.Ocean && biome != Biome.Seas && biome != Biome.Coast && biome != Biome.River && biome != Biome.Lava && biome != Biome.Glacier;
                 #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
                 tiles[i] = new HexTileData
                 {

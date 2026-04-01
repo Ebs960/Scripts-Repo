@@ -274,8 +274,8 @@ public class DemonManager : MonoBehaviour
         if (tileData == null) return false;
         if (!tileData.isPassable) return false;
 
-        // Must be land or hellscape
-        if (!tileData.isLand && tileData.biome != Biome.Hellscape)
+        // Demons can cross lava freely, but not arbitrary water.
+        if (!tileData.isLand && tileData.biome != Biome.Hellscape && tileData.biome != Biome.Lava)
             return false;
 
         // Civ5-style: one unit per tile — check occupancy

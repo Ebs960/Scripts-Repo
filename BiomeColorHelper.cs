@@ -22,6 +22,7 @@ public static class BiomeColorHelper
         { Biome.Seas, new Color(0.01f, 0.24f, 0.50f) },
         { Biome.River, new Color(0.12f, 0.54f, 0.90f) },
         { Biome.Lake, new Color(0.08f, 0.48f, 0.86f) },
+        { Biome.Lava, new Color(0.88f, 0.18f, 0.04f) },
         { Biome.Coast, new Color(0.87f, 0.76f, 0.55f) },
         { Biome.Desert, new Color(0.93f, 0.79f, 0.55f) },
         { Biome.Savannah, new Color(0.93f, 0.86f, 0.40f) },
@@ -77,6 +78,13 @@ public static class BiomeColorHelper
     public static Color GetMinimapColor(Biome biome)
     {
         EnsureInitialized();
+
+        if (GameSetupData.isDemonicWorld)
+        {
+            if (biome == Biome.Ocean) return new Color(0.28f, 0.34f, 0.39f);
+            if (biome == Biome.Seas) return new Color(0.24f, 0.30f, 0.35f);
+        }
+
         if (_colorMap != null && _colorMap.TryGetValue(biome, out var c))
             return c;
 

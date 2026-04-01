@@ -44,6 +44,7 @@ public enum Biome {
     Swamp, Seas,
     River,
     Lake,       // Inland freshwater body
+    Lava,       // Inland lava basin used by demonic worlds
     MoonDunes,
     Volcanic,   // Volcanic terrain
     Steamlands, // Steam vents terrain
@@ -380,6 +381,7 @@ public static class BiomeHelper {
         Biome.Swamp => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
         Biome.River => new YieldValues { food = 1, prod = 0, gold = 1, sci = 1, cult = 1 },
         Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },
+        Biome.Lava => new YieldValues { food = 0, prod = 5, gold = 0, sci = 2, cult = 0 },
         Biome.MoonDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 },
         Biome.Volcanic => new YieldValues { food = 0, prod = 3, gold = 2, sci = 0, cult = 0 },
         Biome.Steamlands => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 },
@@ -457,6 +459,7 @@ public static class BiomeHelper {
         Biome.VenusLava => 0,
         Biome.VenusianPlains => 0,
 
+        Biome.Lava => 0,
         Biome.MercuryPlains => 2,
         Biome.MercurianIce => 1,
 
@@ -499,6 +502,7 @@ public static class BiomeHelper {
         Biome.Ocean => 1,
         Biome.Seas => 1,
         Biome.Lake => 2,
+        Biome.Lava => 2,
         Biome.River => 3,
 
         Biome.Volcanic => 3,
@@ -540,6 +544,33 @@ public static class BiomeHelper {
 
         _ => 1
     };
+
+    public static bool IsLavaBiome(Biome biome) => biome == Biome.Lava;
+
+    public static bool CanUnitTraverseLava(UnityEngine.MonoBehaviour unit)
+    {
+        if (unit is CombatUnit combatUnit)
+        {
+            if (combatUnit.data == null)
+                return false;
+
+            if (combatUnit.data.immuneToLava)
+                return true;
+
+            if (combatUnit.data.unitType == CombatCategory.LavaSwimmer)
+                return true;
+
+            if (combatUnit.data is DemonUnitData demonData)
+                return demonData.canCrossLava;
+
+            return false;
+        }
+
+        if (unit is WorkerUnit workerUnit)
+            return workerUnit.data != null && workerUnit.data.immuneToLava;
+
+        return false;
+    }
     
     
     /// <summary>
@@ -551,32 +582,36 @@ public static class BiomeHelper {
     {
         if (tile == null) return 99;
         int baseCost = GetMovementCost(tile.biome);
+        bool canTraverseLava = unit != null && tile.biome == Biome.Lava && CanUnitTraverseLava(unit);
 
         if (unit != null)
         {
             if (unit is WorkerUnit)
             {
-                if (!tile.isLand) return 99;
+                if (!tile.isLand && !canTraverseLava) return 99;
             }
             else if (unit is CombatUnit combatUnit)
             {
                 if (combatUnit.currentLayer != TileLayer.Orbit && !tile.isLand)
                 {
-                    switch (combatUnit.data != null ? combatUnit.data.unitType : CombatCategory.Spearman)
+                    if (!canTraverseLava)
                     {
-                        case CombatCategory.Ship:
-                        case CombatCategory.Boat:
-                        case CombatCategory.Submarine:
-                        case CombatCategory.SeaCrawler:
-                            break;
-                        default:
-                            return 99;
+                        switch (combatUnit.data != null ? combatUnit.data.unitType : CombatCategory.Spearman)
+                        {
+                            case CombatCategory.Ship:
+                            case CombatCategory.Boat:
+                            case CombatCategory.Submarine:
+                            case CombatCategory.SeaCrawler:
+                                break;
+                            default:
+                                return 99;
+                        }
                     }
                 }
             }
             else if (unit is BaseUnit baseUnit)
             {
-                if (baseUnit.currentLayer != TileLayer.Orbit && !tile.isLand)
+                if (baseUnit.currentLayer != TileLayer.Orbit && !tile.isLand && !canTraverseLava)
                     return 99;
             }
         }
@@ -601,6 +636,7 @@ public static class BiomeHelper {
     public static bool IsDamagingBiome(Biome biome)
     {
         return biome switch {
+            Biome.Lava => true,
             Biome.Volcanic => true,
             Biome.Steamlands => true,
             Biome.Ashlands => true,
@@ -631,6 +667,7 @@ public static class BiomeHelper {
     public static float GetBiomeDamage(Biome biome)
     {
         return biome switch {
+            Biome.Lava => 0.50f,
             Biome.Volcanic => 0.15f,
             Biome.Steamlands => 0.10f,
             Biome.Ashlands => 0.05f,

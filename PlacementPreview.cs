@@ -166,7 +166,7 @@ public class PlacementPreview : MonoBehaviour
         {
             if (hoveredTileIndex >= 0)
             {
-                ghostInstance.transform.position = GetPreviewWorldPosition(hoveredTileIndex);
+                PositionGhost(hoveredTileIndex);
                 ghostInstance.SetActive(true);
             }
             else
@@ -225,6 +225,22 @@ public class PlacementPreview : MonoBehaviour
             return ts.GetTileSurfacePosition(tileIndex, 0.03f);
 
         return Vector3.zero;
+    }
+
+    private void PositionGhost(int tileIndex)
+    {
+        if (ghostInstance == null)
+            return;
+
+        Vector3 targetPosition = GetPreviewWorldPosition(tileIndex);
+        ghostInstance.transform.position = targetPosition;
+
+        var improvementInstance = ghostInstance.GetComponent<ImprovementInstance>();
+        if (improvementInstance == null)
+            return;
+
+        Vector3 placementRootPosition = improvementInstance.GetPlacementRootWorldPosition();
+        ghostInstance.transform.position += targetPosition - placementRootPosition;
     }
 
     private bool ValidatePlacement(int tileIndex)

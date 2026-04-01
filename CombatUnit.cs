@@ -1330,10 +1330,8 @@ public class CombatUnit : BaseUnit
         var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (tileData == null) return;
         
-        // Check if the biome can cause damage
-        if (BiomeHelper.IsDamagingBiome(tileData.biome))
+        if (TryGetEnvironmentalDamagePercent(tileData, out float damagePercent))
         {
-            float damagePercent = BiomeHelper.GetBiomeDamage(tileData.biome);
             int damageAmount = Mathf.CeilToInt(MaxHealth * damagePercent);
             
             // Apply damage

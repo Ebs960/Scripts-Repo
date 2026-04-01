@@ -45,6 +45,8 @@ public static class AIScorer
     public static float W_EXPLORE_UNEXPLORED = 2f;
     public static float W_EXPLORE_DISTANCE   = -0.5f;
 
+    private const float MosquitoTilePenalty = 18f;
+
     // ──────────────────────── Procedural Persona System ────────────────────────
     // Modulates weights per-civ based on leader personality.
     // Applied at the start of a civ's turn and restored at the end.
@@ -130,6 +132,59 @@ public static class AIScorer
     {
         RestoreFromSnapshot(_savedWeights);
         _savedWeights = null;
+    }
+
+    private static bool CivilizationShouldAvoidMosquitoes(Civilization civ)
+    {
+        if (civ == null || civ.civData == null)
+            return false;
+
+        if (civ.civData.isTribe || civ.civData.isCityState)
+            return false;
+
+        return !civ.HasMosquitoImmunityTechnology();
+    }
+
+    private static float GetMosquitoPenalty(BaseUnit unit, HexTileData tileData)
+    {
+        if (unit == null || tileData == null || !tileData.hasMosquitoes)
+            return 0f;
+
+        if (!CivilizationShouldAvoidMosquitoes(unit.owner))
+            return 0f;
+
+        if (unit is CombatUnit combatUnit)
+        {
+            if (combatUnit.data == null)
+                return 0f;
+
+            switch (combatUnit.data.unitType)
+            {
+                case CombatCategory.Animal:
+                case CombatCategory.Aircraft:
+                case CombatCategory.Ship:
+                case CombatCategory.Boat:
+                case CombatCategory.SeaCrawler:
+                case CombatCategory.Submarine:
+                    return 0f;
+            }
+
+            if (combatUnit.data.immuneToMosquitoes)
+                return 0f;
+        }
+
+        if (unit is WorkerUnit workerUnit && workerUnit.data != null && workerUnit.data.immuneToMosquitoes)
+            return 0f;
+
+        return -MosquitoTilePenalty;
+    }
+
+    private static float GetMosquitoPenalty(Civilization civ, HexTileData tileData, float weight = 1f)
+    {
+        if (tileData == null || !tileData.hasMosquitoes || !CivilizationShouldAvoidMosquitoes(civ))
+            return 0f;
+
+        return -MosquitoTilePenalty * weight;
     }
 
     // ──────────────────────── Attack scoring ────────────────────────
@@ -227,6 +282,7 @@ public static class AIScorer
         {
             score += (td.improvementDefenseAdd + td.improvementDefensePct * 10f) * W_TERRAIN_DEFENSE;
             if (td.isHill) score += W_HILL_BONUS;
+            score += GetMosquitoPenalty(unit, td);
         }
 
         return score;
@@ -300,6 +356,7 @@ public static class AIScorer
             if (ntd == null) continue;
 
             float ringWeight = ring == 0 ? 1f : (ring == 1 ? 0.6f : 0.3f);
+            score += GetMosquitoPenalty(worker.owner, ntd, ringWeight);
             if (ntd.isLand)
             {
                 var ny = ntd.GetTotalYield();
@@ -742,6 +799,7 @@ public static class AIScorer
         {
             int dist = ts.GetTileDistance(unit.currentTileIndex, tileIndex);
             score += dist * W_EXPLORE_DISTANCE;
+            score += GetMosquitoPenalty(unit, ts.GetTileData(tileIndex));
         }
 
         return score;

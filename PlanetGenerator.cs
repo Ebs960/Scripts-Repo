@@ -784,7 +784,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             tile.season = newSeason;
             tile.seasonalYieldModifier = response.yieldMultiplier;
             tile.hasSnow = response.snow > 0f && tile.isLand;
-            tile.isFrozen = tile.hasSnow && (tile.isLake || tile.isRiver);
+            tile.isFrozen = tile.hasSnow && (tile.isLake || tile.isRiver) && tile.biome != Biome.Lava;
         }
     }
     
@@ -1359,6 +1359,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             int lakeMinRadius = Mathf.Max(1, lakeMinRadiusTiles);
             int lakeMaxRadius = Mathf.Max(lakeMinRadius, lakeMaxRadiusTiles);
+            if (mapType == MapType.Demonic)
+            {
+                lakeMinRadius = 1;
+                lakeMaxRadius = Mathf.Min(lakeMaxRadius, 2);
+            }
             int lakeMinDistance = Mathf.Max(0, lakeMinDistanceFromCoast);
 
             List<int> lakeCoastTiles = new List<int>();
@@ -1447,7 +1452,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0 && enableLakes && lakeCenters.Count == 0)
+        if (mapType != MapType.Demonic && enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0 && enableLakes && lakeCenters.Count == 0)
         {
             int fallbackRadius = Mathf.Max(1, lakeMinRadiusTiles);
             for (int i = 0; i < tileCount; i++)
@@ -2395,7 +2400,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             if (isLake)
             {
-                biome = Biome.Lake;
+                biome = mapType == MapType.Demonic ? Biome.Lava : Biome.Lake;
             }
             else if (isLand)
             {
@@ -3035,7 +3040,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
-        if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
+        if (mapType != MapType.Demonic && enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
 
         ApplyFloodplainBehavior();
@@ -3933,10 +3938,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         var y = BiomeHelper.Yields(newBiome);
         td.food = y.food; td.production = y.prod; td.gold = y.gold; td.science = y.sci; td.culture = y.cult;
         // Update land status based on biome (rivers are treated as land, lakes as water)
-        td.isLake = newBiome == Biome.Lake;
+        td.isLake = newBiome == Biome.Lake || newBiome == Biome.Lava;
         td.isRiver = newBiome == Biome.River;
         // Restore original rule: Coast is treated as water (not land) for gameplay layer logic.
-        td.isLand = (newBiome != Biome.Ocean && newBiome != Biome.Seas && newBiome != Biome.Coast && newBiome != Biome.Lake && newBiome != Biome.Glacier);
+        td.isLand = (newBiome != Biome.Ocean && newBiome != Biome.Seas && newBiome != Biome.Coast && newBiome != Biome.Lake && newBiome != Biome.Lava && newBiome != Biome.Glacier);
         if (td.isRiver) td.isLand = true;
         td.isHill = false; // Setting biome usually overrides hill status unless specifically handled
 
@@ -3956,7 +3961,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             td.waterElevation = td.elevation; // will be refined by ComputeWaterMetadata during generation
             // riverFlowDirXZ will be computed during generation; default to zero here
         }
-        else if (newBiome == Biome.Lake)
+        else if (newBiome == Biome.Lake || newBiome == Biome.Lava)
         {
             td.waterType = TileWaterType.Lake;
             td.lakeId = -1;
@@ -3978,7 +3983,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (terrainRenderer != null)
         {
             // For safety, always rebuild when switching to/from a water surface biome.
-            bool isWaterBiome = (newBiome == Biome.Ocean || newBiome == Biome.Seas || newBiome == Biome.Coast || newBiome == Biome.Lake || newBiome == Biome.River);
+            bool isWaterBiome = (newBiome == Biome.Ocean || newBiome == Biome.Seas || newBiome == Biome.Coast || newBiome == Biome.Lake || newBiome == Biome.Lava || newBiome == Biome.River);
             if (isWaterBiome || td.waterType == TileWaterType.None)
             {
                 terrainRenderer.RebuildWaterForTile(tileIndex);

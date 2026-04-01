@@ -208,6 +208,8 @@ public class CombatUnitData : ScriptableObject
     public bool takesWeatherDamage = true;
     [Tooltip("If true, this unit ignores mosquito damage even on infected tiles.")]
     public bool immuneToMosquitoes = false;
+    [Tooltip("If true, this unit can safely enter lava tiles and ignores lava damage.")]
+    public bool immuneToLava = false;
 
     [Header("Action Points")]
     [Tooltip("How many attacks/actions this unit can perform per turn.")]

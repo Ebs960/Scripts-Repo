@@ -1565,7 +1565,8 @@ public abstract class BaseUnit : MonoBehaviour
         }
 
         // Land / water rules
-        if (!td.isLand)
+        bool canTraverseLava = td.biome == Biome.Lava && BiomeHelper.CanUnitTraverseLava(this);
+        if (!td.isLand && !canTraverseLava)
         {
             // Only specific naval CombatUnit types may enter water
             bool isNaval = cu != null && cu.data != null &&
@@ -1967,6 +1968,20 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (this is CombatUnit combatUnit)
         {
+            if (combatUnit.data != null)
+            {
+                switch (combatUnit.data.unitType)
+                {
+                    case CombatCategory.Animal:
+                    case CombatCategory.Aircraft:
+                    case CombatCategory.Ship:
+                    case CombatCategory.Boat:
+                    case CombatCategory.SeaCrawler:
+                    case CombatCategory.Submarine:
+                        return true;
+                }
+            }
+
             if (combatUnit.data != null && combatUnit.data.unitType == CombatCategory.Animal)
                 return true;
 
@@ -1979,12 +1994,64 @@ public abstract class BaseUnit : MonoBehaviour
         return true;
     }
 
+    protected bool IsImmuneToLava()
+    {
+        if (this is CombatUnit combatUnit)
+        {
+            if (combatUnit.data == null)
+                return false;
+
+            if (combatUnit.data.immuneToLava || combatUnit.data.unitType == CombatCategory.LavaSwimmer)
+                return true;
+
+            if (combatUnit.data is DemonUnitData demonData)
+                return demonData.canCrossLava;
+
+            return false;
+        }
+
+        if (this is WorkerUnit workerUnit)
+            return workerUnit.data != null && workerUnit.data.immuneToLava;
+
+        return false;
+    }
+
+    protected bool TryGetEnvironmentalDamagePercent(HexTileData tileData, out float damagePercent)
+    {
+        damagePercent = 0f;
+
+        if (tileData == null || currentLayer != TileLayer.Surface)
+            return false;
+
+        if (isStored || storedInImprovement != null || storedInHerd != null)
+            return false;
+
+        if (this is CombatUnit combatUnit && combatUnit.IsTransported)
+            return false;
+
+        if (!BiomeHelper.IsDamagingBiome(tileData.biome))
+            return false;
+
+        if (tileData.biome == Biome.Lava && IsImmuneToLava())
+            return false;
+
+        damagePercent = BiomeHelper.GetBiomeDamage(tileData.biome);
+        return damagePercent > 0f;
+    }
+
     protected void ApplyMosquitoDamageIfNeeded(string unitDisplayName)
     {
         if (owner == null || owner.civData == null)
             return;
 
         if (owner.civData.isTribe || owner.civData.isCityState)
+            return;
+
+        // Stored/sheltered units, transported units, and any non-surface unit are immune.
+        if (isStored || storedInImprovement != null || storedInHerd != null)
+            return;
+
+        if (this is CombatUnit combatUnit && combatUnit.IsTransported)
             return;
 
         if (currentTileIndex < 0 || currentLayer != TileLayer.Surface)

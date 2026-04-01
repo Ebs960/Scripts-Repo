@@ -774,9 +774,8 @@ public class WorkerUnit : BaseUnit
         var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (td == null) return;
 
-        if (BiomeHelper.IsDamagingBiome(td.biome))
+        if (TryGetEnvironmentalDamagePercent(td, out float dmgPct))
         {
-            float dmgPct = BiomeHelper.GetBiomeDamage(td.biome);
             int dmg = Mathf.CeilToInt(BaseHealth * dmgPct);
             ApplyDamage(dmg);
             

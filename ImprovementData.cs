@@ -135,10 +135,6 @@ public class ImprovementData : ScriptableObject
     public GameObject constructionPrefab;
     [Tooltip("Prefab to spawn when complete")]
     public GameObject completePrefab;
-    [Tooltip("Optional child name inside the prefab used as the placement root. The world position of this child will be snapped to the tile surface when instantiated.")]
-    public string placementRootName = "";
-    [Tooltip("Fallback local position (in prefab local space) used as the placement root when no named child is available.")]
-    public Vector3 placementRootLocalPosition = Vector3.zero;
     [Tooltip("Prefab to spawn if destroyed")]
     public GameObject destroyedPrefab;
 

@@ -10,6 +10,11 @@ public class ImprovementInstance : MonoBehaviour
 {
     public int tileIndex = -1;
     public ImprovementData data;
+    [Header("Placement")]
+    [Tooltip("Optional child transform used as the placement root. Its world position will be snapped onto the tile surface.")]
+    [SerializeField] private Transform placementRoot;
+    [Tooltip("Fallback local-space placement point used when no placement root transform is assigned.")]
+    [SerializeField] private Vector3 placementRootLocalPosition = Vector3.zero;
     // Civilization that built/owns this improvement instance (runtime only)
     public Civilization owner;
     // Track applied upgrades by id/name
@@ -74,6 +79,14 @@ public class ImprovementInstance : MonoBehaviour
             }
         }
         catch { }
+    }
+
+    public Vector3 GetPlacementRootWorldPosition()
+    {
+        if (placementRoot != null)
+            return placementRoot.position;
+
+        return transform.TransformPoint(placementRootLocalPosition);
     }
 
     /// <summary>

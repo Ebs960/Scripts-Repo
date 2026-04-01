@@ -2844,12 +2844,32 @@ public class HexMapChunkManager : MonoBehaviour
             );
 
             // Encode flow into vertex color
-            Color flowColor = new Color(
-                td.riverFlowDirXZ.x * 0.5f + 0.5f,
-                td.riverFlowDirXZ.y * 0.5f + 0.5f,
-                0f,
-                (float)td.waterType / 3f // None=0, Ocean=0.33, Lake=0.67, River=1.0
-            );
+            // Encode flow into vertex color. Still water uses a tint hint so lava lakes
+            // and demonic oceans can render differently without a separate water system.
+            Color flowColor;
+            if (td.waterType == TileWaterType.River)
+            {
+                flowColor = new Color(
+                    td.riverFlowDirXZ.x * 0.5f + 0.5f,
+                    td.riverFlowDirXZ.y * 0.5f + 0.5f,
+                    0f,
+                    1f
+                );
+            }
+            else if (td.biome == Biome.Lava)
+            {
+                flowColor = new Color(0.92f, 0.24f, 0.04f, 2f / 3f);
+            }
+            else if (td.waterType == TileWaterType.Ocean && planetGenerator != null && planetGenerator.mapType == MapType.Demonic)
+            {
+                flowColor = new Color(0.38f, 0.43f, 0.47f, 1f / 3f);
+            }
+            else
+            {
+                flowColor = td.waterType == TileWaterType.Ocean
+                    ? new Color(0.10f, 0.40f, 0.72f, 1f / 3f)
+                    : new Color(0.20f, 0.56f, 0.86f, 2f / 3f);
+            }
 
             int baseVert = vertices.Count;
             baseVertByTile[tileIdx] = baseVert;
@@ -3425,18 +3445,30 @@ public class HexMapChunkManager : MonoBehaviour
         {
             int wType = ClassifyWaterAt(u, v);
 
-            if (wType == 1) // lake
-                return new Color(0.5f, 0.5f, 0f, 2f / 3f);
-
-            if (wType == 2) // ocean — encode as ocean alpha (1/3)
-                return new Color(0.5f, 0.5f, 0f, 1f / 3f);
-
-            // River: pick flow direction from nearest propagated river seed tile.
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
             int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
             int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
             int idx = iy * wPts + ix;
+
+            if (wType == 1) // lake
+            {
+                int lakeTileIndex = ownerLake != null ? ownerLake[idx] : -1;
+                if (lakeTileIndex >= 0 && planetGenerator.data.TryGetValue(lakeTileIndex, out var lakeTile) && lakeTile.biome == Biome.Lava)
+                    return new Color(0.92f, 0.24f, 0.04f, 2f / 3f);
+
+                return new Color(0.20f, 0.56f, 0.86f, 2f / 3f);
+            }
+
+            if (wType == 2) // ocean — encode as ocean alpha (1/3)
+            {
+                if (planetGenerator != null && planetGenerator.mapType == MapType.Demonic)
+                    return new Color(0.38f, 0.43f, 0.47f, 1f / 3f);
+
+                return new Color(0.10f, 0.40f, 0.72f, 1f / 3f);
+            }
+
+            // River: pick flow direction from nearest propagated river seed tile.
             int tIndex = (ownerRiver != null) ? ownerRiver[idx] : -1;
             if (tIndex >= 0 && planetGenerator.data.TryGetValue(tIndex, out var td) && td.waterType == TileWaterType.River)
                 return new Color(td.riverFlowDirXZ.x * 0.5f + 0.5f, td.riverFlowDirXZ.y * 0.5f + 0.5f, 0f, 1f);
@@ -4020,7 +4052,9 @@ public class HexMapChunkManager : MonoBehaviour
             new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f)
         });
         // Encode as Ocean in vertexColor.a (1/3)
-        Color cOcean = new Color(0.5f, 0.5f, 0f, 1f / 3f);
+        Color cOcean = planetGenerator != null && planetGenerator.mapType == MapType.Demonic
+            ? new Color(0.38f, 0.43f, 0.47f, 1f / 3f)
+            : new Color(0.10f, 0.40f, 0.72f, 1f / 3f);
         _oceanPlaneMesh.SetColors(new System.Collections.Generic.List<Color> { cOcean, cOcean, cOcean, cOcean });
         _oceanPlaneMesh.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
         _oceanPlaneMesh.RecalculateNormals();

@@ -353,6 +353,8 @@ public class AIContext
             var y0 = td0.GetTotalYield();
             food += y0.Food; prod += y0.Production;
             if (td0.waterType == TileWaterType.River) river = true;
+            if (td0.hasMosquitoes && civ != null && civ.civData != null && !civ.civData.isTribe && !civ.civData.isCityState && !civ.HasMosquitoImmunityTechnology())
+                score -= 18f;
         }
         foreach (int n in neighbors)
         {
@@ -367,6 +369,8 @@ public class AIContext
                 if (ntd.isHill) hills++;
             }
             if (ntd.waterType == TileWaterType.River) river = true;
+            if (ntd.hasMosquitoes && civ != null && civ.civData != null && !civ.civData.isTribe && !civ.civData.isCityState && !civ.HasMosquitoImmunityTechnology())
+                score -= 10f;
         }
 
         score += food * 2f + prod * 1.5f;

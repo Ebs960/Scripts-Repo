@@ -91,7 +91,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         if (isEdge)
         {
             float a = saturate(_GridLineColor.a);
-            color.rgb = lerp(color.rgb, _GridLineColor.rgb, a);
+            float3 adaptiveEdgeColor = lerp(_GridLineColor.rgb, color.rgb * 0.48f, 0.65f);
+            color.rgb = lerp(color.rgb, adaptiveEdgeColor, a);
             color.a = max(color.a, a);
         }
     }

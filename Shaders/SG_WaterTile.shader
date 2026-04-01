@@ -103,12 +103,16 @@ Shader "Custom/SG_WaterTile"
                 Varyings output;
 
                 float3 posOS = input.positionOS;
+                float3 tint = saturate(input.color.rgb);
+                float waterType = round(saturate(input.color.a) * 3.0);
+                bool isRiver = waterType >= 2.5;
+                bool isLava = !isRiver && tint.r > 0.75 && tint.g < 0.4 && tint.b < 0.2;
 
                 // Small sine bob based on world-space XZ
                 float3 posWS = TransformObjectToWorld(posOS);
                 float wave = sin(posWS.x * _WaveFrequency + _Time.y * 2.0)
                            * cos(posWS.z * _WaveFrequency * 0.7 + _Time.y * 1.5);
-                posOS.y += wave * _WaveAmplitude;
+                posOS.y += wave * (isLava ? 0.0 : _WaveAmplitude);
 
                 output.positionWS = TransformObjectToWorld(posOS);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
@@ -122,11 +126,14 @@ Shader "Custom/SG_WaterTile"
 
             float4 frag(Varyings input) : SV_Target
             {
-                // Decode flow direction from vertex color (rg: 0..1 -> -1..1)
-                float2 flowDir = input.vertexColor.rg * 2.0 - 1.0;
+                // Vertex alpha encodes water type: 1/3 ocean, 2/3 lake, 1 river.
+                float waterType = round(saturate(input.vertexColor.a) * 3.0);
+                bool isRiver = waterType >= 2.5;
+                float3 stillTint = saturate(input.vertexColor.rgb);
+                bool isLava = !isRiver && stillTint.r > 0.75 && stillTint.g < 0.4 && stillTint.b < 0.2;
 
-                // Root fix: DO NOT use vertexColor.a (water type alpha) for anything.
-                // All water types share the same transparency; remove type-based branching.
+                // Rivers use RG as flow direction. Still water uses RGB as a tint hint.
+                float2 flowDir = isRiver ? input.vertexColor.rg * 2.0 - 1.0 : float2(0.0, 0.0);
                 float dirLen2 = dot(flowDir, flowDir);
                 float2 dirN = (dirLen2 > 1e-4) ? normalize(flowDir) : float2(0.0, 0.0);
                 float flowFactor = (dirLen2 > 1e-4) ? 1.0 : 0.0; // zero dir => still water
@@ -134,8 +141,10 @@ Shader "Custom/SG_WaterTile"
 
                 // Scroll UVs for two normal maps
                 float2 worldUV = input.positionWS.xz * 0.1; // world-space tiling
-                float2 uvA = worldUV + _ScrollSpeedA.xy * _Time.y + flowOffset;
-                float2 uvB = worldUV + _ScrollSpeedB.xy * _Time.y + flowOffset * 0.5;
+                float2 stillScrollA = isLava ? float2(0.0, 0.0) : _ScrollSpeedA.xy * _Time.y;
+                float2 stillScrollB = isLava ? float2(0.0, 0.0) : _ScrollSpeedB.xy * _Time.y;
+                float2 uvA = worldUV + stillScrollA + flowOffset;
+                float2 uvB = worldUV + stillScrollB + flowOffset * 0.5;
 
                 // Sample and blend normals
                 float3 normalA = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMapA, sampler_NormalMapA, uvA));
@@ -150,8 +159,17 @@ Shader "Custom/SG_WaterTile"
                 float3 worldNormal = normalize(input.normalWS + float3(blendedNormal.x, 0, blendedNormal.y));
                 float fresnel = pow(1.0 - saturate(dot(viewDir, worldNormal)), _FresnelPower);
 
+                float3 shallowColor = _ShallowColor.rgb;
+                float3 deepColor = _DeepColor.rgb;
+
+                if (!isRiver)
+                {
+                    shallowColor = lerp(_ShallowColor.rgb, stillTint, 0.88);
+                    deepColor = lerp(_DeepColor.rgb, stillTint * 0.42, 0.92);
+                }
+
                 // Color blend: shallow near edges, deep at center/steep angles
-                float4 color = lerp(_ShallowColor, _DeepColor, fresnel);
+                float4 color = float4(lerp(shallowColor, deepColor, fresnel), 1.0);
 
                 // --- Caustics ---
                 // Two layers scrolling at different speeds/angles for a shimmering effect.
@@ -160,9 +178,9 @@ Shader "Custom/SG_WaterTile"
                 float t = _Time.y * _CausticsSpeed;
 
                 // Layer A: scroll diagonally
-                float2 causticsUV_A = causticsUV_base + float2(t * 0.7, t * 0.5);
+                float2 causticsUV_A = causticsUV_base + (isLava ? float2(0.0, 0.0) : float2(t * 0.7, t * 0.5));
                 // Layer B: scroll in a different direction, slightly rotated
-                float2 causticsUV_B = causticsUV_base * 1.15 + float2(-t * 0.5, t * 0.8);
+                float2 causticsUV_B = causticsUV_base * 1.15 + (isLava ? float2(0.0, 0.0) : float2(-t * 0.5, t * 0.8));
 
                 float causticsA = SAMPLE_TEXTURE2D(_CausticsTex, sampler_CausticsTex, causticsUV_A).r;
                 float causticsB = SAMPLE_TEXTURE2D(_CausticsTex, sampler_CausticsTex, causticsUV_B).r;
@@ -174,11 +192,10 @@ Shader "Custom/SG_WaterTile"
                 // Attenuate caustics by the inverse of fresnel — stronger at shallow/top-down view,
                 // fading at glancing angles where you'd see more reflection than refraction.
                 float causticsAtten = (1.0 - fresnel * 0.7);
-                color.rgb += caustics * _CausticsIntensity * causticsAtten * _ShallowColor.rgb;
+                color.rgb += caustics * _CausticsIntensity * causticsAtten * shallowColor;
 
-                // Uniform alpha for all water types (material-driven).
-                // NOTE: We intentionally do NOT use vertexColor.a (water type) here.
-                color.a = saturate(_AlphaBase);
+                // Lava should render fully opaque while normal water keeps the material-driven alpha.
+                color.a = isLava ? 1.0 : saturate(_AlphaBase);
 
                 return color;
             }
