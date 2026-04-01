@@ -4275,13 +4275,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     public readonly struct ContinentSeedInfo
     {
-        public ContinentSeedInfo(int id, string name, Vector2Int center, int widthTiles, int heightTiles)
+        public ContinentSeedInfo(int id, string name, Vector2Int center, int widthTiles, int heightTiles, bool isNewWorld, bool isSecondaryNewWorld)
         {
             Id = id;
             Name = name;
             Center = center;
             WidthTiles = widthTiles;
             HeightTiles = heightTiles;
+            IsNewWorld = isNewWorld;
+            IsSecondaryNewWorld = isSecondaryNewWorld;
         }
 
         public int Id { get; }
@@ -4289,6 +4291,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         public Vector2Int Center { get; }
         public int WidthTiles { get; }
         public int HeightTiles { get; }
+        public bool IsNewWorld { get; }
+        public bool IsSecondaryNewWorld { get; }
     }
 
     public List<ContinentSeedInfo> GetGeneratedContinents()
@@ -4299,7 +4303,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         for (int i = 0; i < continents.Count; i++)
         {
             var continent = continents[i];
-            result.Add(new ContinentSeedInfo(i, continent.name, continent.center, continent.widthTiles, continent.heightTiles));
+            bool isNewWorld = continent.category == ContinentCategory.NewWorld || continent.category == ContinentCategory.NewWorldSecondary;
+            bool isSecondaryNewWorld = continent.category == ContinentCategory.NewWorldSecondary;
+            result.Add(new ContinentSeedInfo(i, continent.name, continent.center, continent.widthTiles, continent.heightTiles, isNewWorld, isSecondaryNewWorld));
         }
 
         return result;

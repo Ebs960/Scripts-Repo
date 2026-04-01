@@ -136,6 +136,13 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Movement points per turn for animals on campaign map (1-3 typical)")]
     [Range(1, 5)]
     public int animalMovePoints = 1;
+    [Header("Animal Spawn Regions")]
+    [Tooltip("If true, this animal can spawn in the Old World.")]
+    public bool canSpawnInOldWorld = true;
+    [Tooltip("If true, this animal can spawn in the primary New World.")]
+    public bool canSpawnInNewWorld = true;
+    [Tooltip("If true, this animal can spawn in New World II / the secondary New World.")]
+    public bool canSpawnInNewWorldSecondary = true;
     [Header("Space Travel Capability (Stub Gates)")]
     [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;

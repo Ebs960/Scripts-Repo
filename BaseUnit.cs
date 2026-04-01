@@ -1887,6 +1887,27 @@ public abstract class BaseUnit : MonoBehaviour
         return count;
     }
 
+    protected int ApplySharedMeleeCombatModifiers(int baseDamage, BaseUnit target)
+    {
+        if (target == null)
+            return Mathf.Max(0, baseDamage);
+
+        int modifiedDamage = Mathf.Max(0, baseDamage);
+
+        int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
+        if (flankCount > 0)
+            modifiedDamage = Mathf.RoundToInt(modifiedDamage * (1f + 0.1f * flankCount));
+
+        if (!IsInOrbit && !target.IsInOrbit)
+        {
+            float elevationDiff = transform.position.y - target.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            modifiedDamage = Mathf.Max(0, Mathf.RoundToInt(modifiedDamage * elevationMultiplier));
+        }
+
+        return modifiedDamage;
+    }
+
     #endregion
 
     #region Abstract Methods (must be implemented by subclasses)

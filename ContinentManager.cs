@@ -8,6 +8,13 @@ using UnityEngine;
 [RequireComponent(typeof(PlanetGenerator))]
 public class ContinentManager : MonoBehaviour, ISaveGameParticipant
 {
+    public enum ContinentRegionCategory
+    {
+        OldWorld = 0,
+        NewWorld = 1,
+        NewWorldSecondary = 2
+    }
+
     [Serializable]
     public class ContinentResourceRule
     {
@@ -63,6 +70,7 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         public int continentId;
         public int planetIndex;
         public string name;
+        public ContinentRegionCategory regionCategory;
         public int centerTileIndex = -1;
         public Vector2Int seedCenter;
         public int widthTiles;
@@ -70,7 +78,6 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         public int tileCount;
         public string dominantBiomeName;
         public List<int> tileIndices = new List<int>();
-        public List<string> allowedAnimalUnitNames = new List<string>();
         public List<ContinentResourceRule> resourceRules = new List<ContinentResourceRule>();
         public List<ContinentCrisisWeight> crisisWeights = new List<ContinentCrisisWeight>();
         public List<ContinentDiscoveryBonus> discoveryBonuses = new List<ContinentDiscoveryBonus>();
@@ -91,7 +98,6 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
     {
         public int continentId;
         public string name;
-        public List<string> allowedAnimalUnitNames = new List<string>();
         public List<ContinentResourceRule> resourceRules = new List<ContinentResourceRule>();
         public List<ContinentCrisisWeight> crisisWeights = new List<ContinentCrisisWeight>();
         public List<ContinentDiscoveryBonus> discoveryBonuses = new List<ContinentDiscoveryBonus>();
@@ -142,14 +148,24 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         if (unitData == null || tileIndex < 0 || tileToContinent == null || tileIndex >= tileToContinent.Length)
             return true;
 
-        int continentId = tileToContinent[tileIndex];
-        if (continentId < 0 || !continentById.TryGetValue(continentId, out var continent))
+        if (unitData.unitType != CombatCategory.Animal)
             return true;
 
-        if (continent.allowedAnimalUnitNames == null || continent.allowedAnimalUnitNames.Count == 0)
-            return true;
+        var region = ResolveRegionCategoryForTile(tileIndex);
+        switch (region)
+        {
+            case ContinentRegionCategory.NewWorldSecondary:
+                return unitData.canSpawnInNewWorldSecondary;
+            case ContinentRegionCategory.NewWorld:
+                return unitData.canSpawnInNewWorld;
+            default:
+                return unitData.canSpawnInOldWorld;
+        }
+    }
 
-        return continent.allowedAnimalUnitNames.Contains(unitData.unitName, StringComparer.OrdinalIgnoreCase);
+    public ContinentRegionCategory GetRegionCategoryForTile(int tileIndex)
+    {
+        return ResolveRegionCategoryForTile(tileIndex);
     }
 
     public bool CanResourceSpawnOnTile(ResourceData resourceData, int tileIndex)
@@ -265,6 +281,9 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
                 continentId = generated.Id,
                 planetIndex = planetGenerator.planetIndex,
                 name = generated.Name,
+                regionCategory = generated.IsSecondaryNewWorld
+                    ? ContinentRegionCategory.NewWorldSecondary
+                    : (generated.IsNewWorld ? ContinentRegionCategory.NewWorld : ContinentRegionCategory.OldWorld),
                 seedCenter = generated.Center,
                 widthTiles = generated.WidthTiles,
                 heightTiles = generated.HeightTiles,
@@ -325,9 +344,6 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
             {
                 continentId = continent.continentId,
                 name = continent.name,
-                allowedAnimalUnitNames = continent.allowedAnimalUnitNames != null
-                    ? new List<string>(continent.allowedAnimalUnitNames)
-                    : new List<string>(),
                 resourceRules = continent.resourceRules != null
                     ? CloneResourceRules(continent.resourceRules)
                     : new List<ContinentResourceRule>(),
@@ -389,9 +405,6 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
             if (!string.IsNullOrWhiteSpace(saveData.name))
                 continent.name = saveData.name;
 
-            continent.allowedAnimalUnitNames = saveData.allowedAnimalUnitNames != null
-                ? new List<string>(saveData.allowedAnimalUnitNames)
-                : new List<string>();
             continent.resourceRules = saveData.resourceRules != null
                 ? CloneResourceRules(saveData.resourceRules)
                 : new List<ContinentResourceRule>();
@@ -495,6 +508,27 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         int x = Mathf.Clamp(coord.x, 0, planetGenerator.Grid.Width - 1);
         int y = Mathf.Clamp(coord.y, 0, planetGenerator.Grid.Height - 1);
         return y * planetGenerator.Grid.Width + x;
+    }
+
+    private ContinentRegionCategory ResolveRegionCategoryForTile(int tileIndex)
+    {
+        if (tileIndex < 0)
+            return ContinentRegionCategory.OldWorld;
+
+        int continentId = tileToContinent != null && tileIndex < tileToContinent.Length ? tileToContinent[tileIndex] : -1;
+        if (continentId >= 0 && continentById.TryGetValue(continentId, out var continent))
+            return continent.regionCategory;
+
+        if (planetGenerator != null)
+        {
+            if (planetGenerator.IsTileInSecondaryNewWorld(tileIndex))
+                return ContinentRegionCategory.NewWorldSecondary;
+
+            if (planetGenerator.IsTileInNewWorld(tileIndex))
+                return ContinentRegionCategory.NewWorld;
+        }
+
+        return ContinentRegionCategory.OldWorld;
     }
 
     private int ResolveCenterTile(ContinentEntity continent)

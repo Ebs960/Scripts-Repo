@@ -770,19 +770,7 @@ public class CombatUnit : BaseUnit
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
         int damage = Mathf.RoundToInt(rawF * dmgMul);
 
-        // Flanking: adjacent allied units give +10% per extra unit
-        int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
-        if (flankCount > 0)
-            damage = Mathf.RoundToInt(damage * (1 + 0.1f * flankCount));
-
-        // Elevation advantage: higher attacker gains up to +10%, lower attacker up to -10%
-        // Skip for orbit units — orbit height is artificial, not terrain elevation
-        if (!IsInOrbit && !target.IsInOrbit)
-        {
-            float elevationDiff = transform.position.y - target.transform.position.y;
-            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
-            damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
-        }
+        damage = ApplySharedMeleeCombatModifiers(damage, target);
 
     // If the active weapon defines projectile data, either queue or spawn the projectile depending on settings
     if (activeWeapon != null && activeWeapon.projectileData != null)
@@ -857,19 +845,7 @@ public class CombatUnit : BaseUnit
         float rawDamage = Mathf.Max(0f, attackerValue - defenderValue);
         int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier());
 
-        // Flanking bonus
-        int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
-        if (flankCount > 0)
-            finalDamage = Mathf.RoundToInt(finalDamage * (1 + 0.1f * flankCount));
-
-        // Elevation advantage
-        // Skip for orbit units — orbit height is artificial, not terrain elevation
-        if (!IsInOrbit && !target.IsInOrbit)
-        {
-            float elevationDiff = transform.position.y - target.transform.position.y;
-            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
-            finalDamage = Mathf.Max(0, Mathf.RoundToInt(finalDamage * elevationMultiplier));
-        }
+        finalDamage = ApplySharedMeleeCombatModifiers(finalDamage, target);
 
         // Handle ranged vs melee
         if (isRangedAttack)
@@ -1009,19 +985,7 @@ public class CombatUnit : BaseUnit
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
         int damage = Mathf.RoundToInt(rawF * dmgMul);
 
-        // Flanking for counter-attacks too
-        int flankCount = CountAdjacentAllies(attacker.currentTileIndex) - 1;
-        if (flankCount > 0)
-            damage = Mathf.RoundToInt(damage * (1 + 0.1f * flankCount));
-
-        // Elevation advantage (defender counter-attacking): compare defender (this) vs attacker
-        // Skip for orbit units — orbit height is artificial, not terrain elevation
-        if (!IsInOrbit && !attacker.IsInOrbit)
-        {
-            float elevationDiff = transform.position.y - attacker.transform.position.y;
-            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
-            damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
-        }
+        damage = ApplySharedMeleeCombatModifiers(damage, attacker);
 
     var ctxCounter = new BaseUnit.AttackContext { attacker = this, defender = attacker, weapon = null, damage = damage, isMelee = true, isRanged = false };
     bool counterDidKill = PerformAttack(ctxCounter);

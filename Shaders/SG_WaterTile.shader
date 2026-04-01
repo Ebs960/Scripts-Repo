@@ -28,7 +28,7 @@ Shader "Custom/SG_WaterTile"
         _CausticsIntensity ("Caustics Intensity", Range(0, 2)) = 0.6
 
         [Header(Transparency)]
-        _AlphaBase ("Base Alpha", Range(0, 1)) = 0.45
+        _AlphaBase ("Base Alpha", Range(0, 1)) = 0.70
     }
 
     SubShader
@@ -194,8 +194,8 @@ Shader "Custom/SG_WaterTile"
                 float causticsAtten = (1.0 - fresnel * 0.7);
                 color.rgb += caustics * _CausticsIntensity * causticsAtten * shallowColor;
 
-                // Lava should render fully opaque while normal water keeps the material-driven alpha.
-                color.a = isLava ? 1.0 : saturate(_AlphaBase);
+                // Lava should render fully opaque while normal water stays noticeably less transparent.
+                color.a = isLava ? 1.0 : saturate(max(_AlphaBase, 0.70));
 
                 return color;
             }

@@ -512,7 +512,7 @@ public class WorkerUnit : BaseUnit
 
         // Attack visuals are handled centrally by BaseUnit.PerformAttack (no local trigger)
 
-        int damage = Mathf.Max(1, CurrentAttack);
+        int damage = ApplySharedMeleeCombatModifiers(Mathf.Max(1, CurrentAttack), target);
         var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = null, damage = damage, isMelee = true, isRanged = false };
         bool died = PerformAttack(ctx);
 
