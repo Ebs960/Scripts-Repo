@@ -9,7 +9,7 @@ using GameCombat;
 /// 
 /// Architecture:
 /// - BaseUnit handles common systems (equipment, movement, damage, animations)
-/// - CombatUnit adds: morale, fatigue, ammunition, formations, battle system
+/// - CombatUnit adds: morale, fatigue, formations, battle system
 /// - WorkerUnit adds: work points, building, foraging, city founding
 /// </summary>
 [RequireComponent(typeof(Animator))]
@@ -533,7 +533,7 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Tick all status effects. Called at start of turn. Returns net HP change (negative = damage).
+    /// Tick all status effects. Called at start of turn. Returns net HP change (positive = damage, negative = healing).
     /// </summary>
     public int TickStatusEffects()
     {
@@ -661,15 +661,17 @@ public abstract class BaseUnit : MonoBehaviour
         RecoverMoraleForNewTurn();
 
         // Tick status effects (DoT, HoT, expiry)
+        // Tick() contract: positive = damage (Poison/Burn), negative = healing (Regeneration)
         int hpChange = TickStatusEffects();
-        if (hpChange < 0)
+        if (hpChange > 0)
         {
             // Status effect damage (poison, burn)
-            ApplyDamage(Mathf.Abs(hpChange), null, false);
+            ApplyDamage(hpChange, null, false);
         }
-        else if (hpChange > 0)
+        else if (hpChange < 0)
         {
-            Heal(Mathf.Abs(hpChange));
+            // Status effect healing (regeneration)
+            Heal(-hpChange);
         }
     }
 

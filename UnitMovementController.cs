@@ -540,6 +540,10 @@ public class UnitMovementController : MonoBehaviour
             else
                 movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
 
+            // Apply Zone-of-Control penalty so execution matches pathfinder predictions
+            if (unit.currentLayer != TileLayer.Orbit)
+                movementCost += CombatHelpers.GetZoneOfControlCost(targetTile, unit, pIndex);
+
             if (movementCost >= 99)
             {
                 orderCancelled = true;

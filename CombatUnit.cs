@@ -78,10 +78,6 @@ public class CombatUnit : BaseUnit
     // CombatUnit-specific runtime stats
     public int experience { get; private set; }
     public int level { get; private set; }
-    // Ammunition system (for ranged units)
-    public int currentAmmo { get; private set; }
-    public bool isOutOfAmmo => data != null && data.isRangedUnit && currentAmmo <= 0;
-    
     // takesWeatherDamage, hasWinterPenalty are inherited from BaseUnit
 
     // Transport system
@@ -263,10 +259,7 @@ public class CombatUnit : BaseUnit
         if (data != null)
         {
             currentHealth = MaxHealth;
-            
-            // Initialize ammunition (full ammo for ranged units)
-            currentAmmo = data.isRangedUnit ? data.maxAmmo : 0;
-            
+
             // Only recalculate stats if data is valid (properties access data)
             RecalculateStats();
             // Configure attack points from data asset
@@ -276,7 +269,6 @@ public class CombatUnit : BaseUnit
         {
             // Fallback if data is null (shouldn't happen but defensive programming)
             currentHealth = 10; // Default health
-            currentAmmo = 0; // No ammo
             // Don't call RecalculateStats() if data is null - properties will throw NullReferenceException
         }
 
@@ -473,12 +465,6 @@ public class CombatUnit : BaseUnit
             {
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.attackAdd) * (1f + e.attackPct);
-            }
-            
-            // Apply out-of-ammo penalty for ranged units in melee
-            if (data != null && data.isRangedUnit && isOutOfAmmo && data.canSwitchToMelee)
-            {
-                valF *= data.outOfAmmoMeleePenalty;
             }
 
             // Morale and fatigue scaling
@@ -760,32 +746,6 @@ public class CombatUnit : BaseUnit
     else
         activeWeapon = equippedWeapon; // legacy fallback
     
-    // For ranged attacks, still use the trigger (one-shot projectile launch animation)
-    bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
-    
-    // Check ammunition for ranged attacks
-    if (isRangedAttack)
-    {
-        if (data != null && data.isRangedUnit && !ConsumeAmmo())
-        {
-            // Out of ammo! Can't fire ranged attack
-            Debug.Log($"[CombatUnit] {name} Out of ammo attempting ranged attack on {target.name}");
-            if (!data.canSwitchToMelee)
-            {
-                // Can't attack at all without ammo
-                Debug.Log($"[CombatUnit] {name} cannot switch to melee; aborting attack.");
-                return;
-            }
-            // Otherwise, fall through to melee attack (with penalty applied in CurrentAttack)
-            isRangedAttack = false;
-        }
-        else if (isRangedAttack)
-        {
-            // Ranged attack visual handled centrally by BaseUnit.PerformAttack (no custom trigger here)
-        }
-    }
-    // Melee attacks use trigger
-
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;
         var tsTarget = TileSystem.GetForPlanet(target.planetIndex) ?? TileSystem.Instance;
@@ -1196,14 +1156,13 @@ public class CombatUnit : BaseUnit
 
     /// <summary>
     /// Restore saved runtime state after Initialize has been called.
-    /// Used by the save/load system to re-apply experience, health, ammo, etc.
+    /// Used by the save/load system to re-apply experience, health, level, etc.
     /// </summary>
-    public void RestoreState(int savedHealth, int savedExperience, int savedLevel, int savedAmmo, bool savedHasActed, TileLayer savedLayer)
+    public void RestoreState(int savedHealth, int savedExperience, int savedLevel, bool savedHasActed, TileLayer savedLayer)
     {
         currentHealth = Mathf.Clamp(savedHealth, 0, MaxHealth);
         experience = savedExperience;
         level = Mathf.Max(1, savedLevel);
-        currentAmmo = savedAmmo;
         hasActedThisTurn = savedHasActed;
         currentLayer = savedLayer;
 
@@ -1761,29 +1720,6 @@ public class CombatUnit : BaseUnit
         }
         return false;
     }
-
-    /// <summary>
-    /// Consume ammunition for ranged attack
-    /// </summary>
-    public bool ConsumeAmmo()
-    {
-        if (data == null || !data.isRangedUnit) return true; // Non-ranged units always have "ammo"
-        
-        if (currentAmmo <= 0) return false; // Out of ammo
-        
-        currentAmmo--;
-        return true;
-    }
-    
-    /// <summary>
-    /// Reload/resupply ammunition (for future resupply mechanics)
-    /// </summary>
-    public void ResupplyAmmo()
-    {
-        if (data == null) return;
-        currentAmmo = data.maxAmmo;
-    }
-
 
     // Equip UX helpers
     [ContextMenu("Equip Melee Weapon (Editor)")]

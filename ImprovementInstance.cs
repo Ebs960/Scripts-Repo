@@ -26,6 +26,42 @@ public class ImprovementInstance : MonoBehaviour
     public List<BaseUnit> storedUnits = new List<BaseUnit>();
 
     /// <summary>
+    /// Returns true if this improvement (or any applied upgrade) grants Zone of Control on adjacent tiles.
+    /// </summary>
+    public bool GrantsZoneOfControl()
+    {
+        if (data != null && data.grantsZoneOfControl) return true;
+        if (appliedUpgrades != null && data?.availableUpgrades != null)
+        {
+            foreach (var up in data.availableUpgrades)
+            {
+                if (up == null) continue;
+                string key = !string.IsNullOrEmpty(up.upgradeId) ? up.upgradeId : up.upgradeName;
+                if (appliedUpgrades.Contains(key) && up.grantsZoneOfControl) return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true if this improvement (or any applied upgrade) blocks enemy Zone of Control on this tile.
+    /// </summary>
+    public bool BlocksZoneOfControl()
+    {
+        if (data != null && data.blocksZoneOfControl) return true;
+        if (appliedUpgrades != null && data?.availableUpgrades != null)
+        {
+            foreach (var up in data.availableUpgrades)
+            {
+                if (up == null) continue;
+                string key = !string.IsNullOrEmpty(up.upgradeId) ? up.upgradeId : up.upgradeName;
+                if (appliedUpgrades.Contains(key) && up.blocksZoneOfControl) return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Compute current shelter capacity: base data.shelterCapacity plus any applied upgrade bonuses.
     /// </summary>
     public int GetShelterCapacity()

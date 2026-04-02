@@ -129,6 +129,18 @@ public static class CombatHelpers
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) return 0;
 
+        // If a friendly improvement on the destination explicitly blocks ZoC, skip the check entirely
+        var destTileData = ts.GetTileData(tileIndex);
+        if (destTileData?.improvement != null && destTileData.improvement.blocksZoneOfControl)
+            return 0;
+        // Also check via the runtime ImprovementInstance (upgrade-granted block)
+        if (destTileData?.improvementInstanceObject != null)
+        {
+            var destInst = destTileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+            if (destInst != null && destInst.BlocksZoneOfControl())
+                return 0;
+        }
+
         int[] neighbors = ts.GetNeighbors(tileIndex);
         if (neighbors == null) return 0;
 
@@ -137,17 +149,40 @@ public static class CombatHelpers
         foreach (int n in neighbors)
         {
             if (n < 0) continue;
-            var obj = occ.GetOccupantObjectWithFallback(n, TileLayer.Surface);
-            if (obj == null) continue;
 
-            var unit = obj.GetComponent<CombatUnit>();
-            if (unit == null) continue;
-            if (unit.owner == movingUnit.owner) continue;
-            if (unit.currentHealth <= 0) continue;
+            // Check for an enemy combat unit on the neighbor tile
+            var unitObj = occ.GetOccupantObjectWithFallback(n, TileLayer.Surface);
+            if (unitObj != null)
+            {
+                var unit = unitObj.GetComponent<CombatUnit>();
+                if (unit != null && unit.owner != movingUnit.owner && unit.currentHealth > 0)
+                {
+                    hasAdjacentEnemy = true;
+                    break;
+                }
+            }
 
-            // Enemy combat unit adjacent — ZoC applies
-            hasAdjacentEnemy = true;
-            break;
+            // Check for a hostile improvement on the neighbor tile that grants ZoC
+            var neighborTileData = ts.GetTileData(n);
+            if (neighborTileData?.improvement != null && neighborTileData.improvement.grantsZoneOfControl)
+            {
+                // Only applies if the improvement belongs to an enemy civ
+                if (neighborTileData.improvementOwner != null && neighborTileData.improvementOwner != movingUnit.owner)
+                {
+                    hasAdjacentEnemy = true;
+                    break;
+                }
+                // Also check via runtime instance for upgrade-granted ZoC
+                if (neighborTileData.improvementInstanceObject != null)
+                {
+                    var nInst = neighborTileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+                    if (nInst != null && nInst.owner != movingUnit.owner && nInst.GrantsZoneOfControl())
+                    {
+                        hasAdjacentEnemy = true;
+                        break;
+                    }
+                }
+            }
         }
 
         return hasAdjacentEnemy ? 1 : 0; // +1 MP penalty for entering ZoC

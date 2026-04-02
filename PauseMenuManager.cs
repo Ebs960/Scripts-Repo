@@ -189,7 +189,6 @@ public class PauseMenuManager : MonoBehaviour
         public int currentHealth;
         public int experience;
         public int level;
-        public int currentAmmo;
         public bool hasActedThisTurn;
         public float posX, posY, posZ;
     }

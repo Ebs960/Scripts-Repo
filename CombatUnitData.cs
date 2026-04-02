@@ -143,6 +143,15 @@ public class CombatUnitData : ScriptableObject
     public bool canSpawnInNewWorld = true;
     [Tooltip("If true, this animal can spawn in New World II / the secondary New World.")]
     public bool canSpawnInNewWorldSecondary = true;
+    [Header("Animal Map-Type Restrictions")]
+    [Tooltip("If false, this animal will NOT spawn on Standard (normal) maps.")]
+    public bool canSpawnOnStandardMaps = true;
+    [Tooltip("If false, this animal will NOT spawn on IceWorld (frozen/arctic/glacial) maps.")]
+    public bool canSpawnOnFrozenMaps = true;
+    [Tooltip("If false, this animal will NOT spawn on Demonic (hellish terrain) maps.")]
+    public bool canSpawnOnDemonicMaps = true;
+    [Tooltip("If false, this animal will NOT spawn on Infernal (volcanic/fire-themed) maps.")]
+    public bool canSpawnOnInfernalMaps = true;
     [Header("Space Travel Capability (Stub Gates)")]
     [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;
@@ -198,18 +207,6 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Whether this unit can perform a counter-attack when attacked")]
     public bool canCounterAttack = false;
     
-    [Header("Ammunition System (Ranged Units)")]
-    [Tooltip("Is this a ranged unit that uses ammunition?")]
-    public bool isRangedUnit = false;
-    [Tooltip("Maximum ammunition this unit carries (0 = infinite)")]
-    [Range(0, 100)]
-    public int maxAmmo = 30; // Default: 30 arrows/bolts
-    [Tooltip("Can this unit switch to melee when out of ammo?")]
-    public bool canSwitchToMelee = true;
-    [Tooltip("Melee attack penalty when out of ammo (0.5 = 50% attack damage in melee)")]
-    [Range(0f, 1f)]
-    public float outOfAmmoMeleePenalty = 0.5f;
-
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
     public bool takesWeatherDamage = true;

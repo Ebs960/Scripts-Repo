@@ -142,6 +142,8 @@ public static class BiomeHelper {
         float northSouth = 0f, float eastWest = 0f)
     {
         if (!isLand) {
+            // On IceWorld maps, glaciers extend much further from the poles (higher temp threshold)
+            if (mapType == MapType.IceWorld && temperature <= 0.35f) return Biome.Glacier;
             if (temperature <= 0.035f) return Biome.Glacier;
             return Biome.Ocean;
         }
@@ -287,13 +289,13 @@ public static class BiomeHelper {
 
         // === EARTH-ONLY SPECIAL MAP TYPES ===
         
-        // ICE WORLD: Exclusive biomes
+        // ICE WORLD: Exclusive biomes — thresholds pushed far toward the equator
         if (mapType == MapType.IceWorld)
         {
-            if (temperature < 0.25f) 
-                return Biome.IcicleField; // Wettest, coldest mapped to IcicleField
-            if (temperature < 0.4f && moisture > 0.15f)
-                return Biome.Arctic; // Drier, cold = Arctic
+            if (temperature < 0.45f)
+                return Biome.IcicleField; // was 0.25f — covers most of the map
+            if (temperature < 0.62f && moisture > 0.15f)
+                return Biome.Arctic; // was 0.40f — mid-latitudes
             // fallback to normal cold/frozen logic below
         }
 

@@ -49,6 +49,10 @@ public class ImprovementUpgradeData
     public int defenseAdd = 0;
     [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to any unit on this tile")]
     public float defensePct = 0f;
+    [Tooltip("If true, this upgrade causes the tile to exert Zone of Control on adjacent tiles (like a watchtower or fortified position)")]
+    public bool grantsZoneOfControl = false;
+    [Tooltip("If true, enemy Zone of Control does not apply to this tile (acts as a safe corridor or fortified road)")]
+    public bool blocksZoneOfControl = false;
 
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;
@@ -230,6 +234,12 @@ public class ImprovementData : ScriptableObject
 
     [Tooltip("If true, units from the builder's civ do not trigger this trap.")]
     public bool trapFriendlySafe = true;
+
+    [Header("Zone of Control")]
+    [Tooltip("If true, this improvement causes the tile to exert Zone of Control on all adjacent tiles (e.g., a fort or watchtower).")]
+    public bool grantsZoneOfControl = false;
+    [Tooltip("If true, enemy Zone of Control does not apply to this tile even if an enemy unit is adjacent (e.g., a fortified road or military road).")]
+    public bool blocksZoneOfControl = false;
 
     [Header("Upgrades")]
     [Tooltip("If set, this improvement replaces the listed older improvements once unlocked; those become obsolete in build menus.")]

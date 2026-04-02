@@ -151,6 +151,18 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         if (unitData.unitType != CombatCategory.Animal)
             return true;
 
+        // Map-type gate (checked once per call — same result for the whole planet)
+        if (planetGenerator != null)
+        {
+            switch (planetGenerator.mapType)
+            {
+                case MapType.Standard when !unitData.canSpawnOnStandardMaps: return false;
+                case MapType.IceWorld when !unitData.canSpawnOnFrozenMaps:   return false;
+                case MapType.Demonic  when !unitData.canSpawnOnDemonicMaps:  return false;
+                case MapType.Infernal when !unitData.canSpawnOnInfernalMaps: return false;
+            }
+        }
+
         var region = ResolveRegionCategoryForTile(tileIndex);
         switch (region)
         {

@@ -2691,7 +2691,6 @@ public class GameManager : MonoBehaviour
                             currentHealth = unit.currentHealth,
                             experience = unit.experience,
                             level = unit.level,
-                            currentAmmo = unit.currentAmmo,
                             hasActedThisTurn = unit.hasActedThisTurn,
                             posX = unit.transform.position.x,
                             posY = unit.transform.position.y,
@@ -3421,7 +3420,7 @@ public class GameManager : MonoBehaviour
                 unit.Initialize(unitData, civ);
                 unit.planetIndex = usd.planetIndex;
                 unit.currentTileIndex = usd.currentTileIndex;
-                unit.RestoreState(usd.currentHealth, usd.experience, usd.level, usd.currentAmmo,
+                unit.RestoreState(usd.currentHealth, usd.experience, usd.level,
                                   usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
 
                 if (!civ.combatUnits.Contains(unit))

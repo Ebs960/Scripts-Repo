@@ -73,7 +73,8 @@ public class ArmyGroup
 
     private static bool IsRangedUnit(CombatUnit unit)
     {
-        return unit != null && unit.data != null && unit.data.isRangedUnit;
+        // A unit is "ranged" if it has a default projectile weapon defined in its data
+        return unit != null && unit.data != null && unit.data.defaultProjectileWeapon != null;
     }
 
     private static bool IsMeleeUnit(CombatUnit unit)
