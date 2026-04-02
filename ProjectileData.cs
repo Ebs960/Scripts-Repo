@@ -2,8 +2,6 @@ using UnityEngine;
 
 namespace GameCombat
 {
-    public enum ProjectileArcType { Straight, Parabolic, Homing }
-    
     public enum ProjectileCategory
     {
         Arrow,      // Used by bows
@@ -39,24 +37,8 @@ namespace GameCombat
     [Tooltip("Cultures required to unlock this projectile")]
     public CultureData[] requiredCultures;
     
-    [Header("Visuals")]
-    public GameObject projectilePrefab;
-    public float scale = 1f;
-    public TrailRenderer trailEffect;
-    public ParticleSystem impactEffect;
-
-    [Header("Trajectory")]
-    public ProjectileArcType arcType = ProjectileArcType.Parabolic;
-    public float speed = 10f;
-    public float gravity = 9.81f; // Used for parabolic
-    public bool useGravity = true;
-    public float homingStrength = 0f; // Used for homing
-
     [Header("Damage & Effects")]
     public float damage = 10f;
-    public float areaOfEffectRadius = 0f; // 0 = single target
-    public bool explodeOnImpact = false;
-    public float explosionForce = 0f;
 
     [Tooltip("Status effect applied on hit (replaces legacy string-based statusEffectName)")]
     public StatusEffectData statusEffect;

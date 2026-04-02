@@ -944,38 +944,17 @@ public class CombatUnit : BaseUnit
     }
     
     /// <summary>
-    /// Helper to spawn projectile towards a worker target position
+    /// Helper to play projectile sounds towards a worker target position
     /// </summary>
     private void SpawnProjectileTowardsWorker(EquipmentData equipment, Vector3 targetPosition, int damage)
     {
-        if (equipment == null || equipment.projectileData == null || equipment.projectileData.projectilePrefab == null)
-            return;
+        if (equipment == null || equipment.projectileData == null) return;
 
-        Transform spawn = GetProjectileSpawnTransform(equipment);
-        Vector3 startPos = spawn != null ? spawn.position : transform.position;
-
-        GameObject projGO = null;
-        if (SimpleObjectPool.Instance != null)
-        {
-            projGO = SimpleObjectPool.Instance.Get(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-        }
-        else
-        {
-            projGO = Instantiate(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-            var marker = projGO.GetComponent<PooledPrefabMarker>();
-            if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>();
-            marker.originalPrefab = equipment.projectileData.projectilePrefab;
-        }
-
-        if (projGO == null) return;
-
-        Projectile proj = projGO.GetComponent<Projectile>();
-        if (proj == null)
-            proj = projGO.AddComponent<Projectile>();
-
-        // Initialize with null for both gameObject source and transform target
-        // The projectile will just fly to the position and deal area damage
-        proj.Initialize(equipment.projectileData, startPos, targetPosition, this.gameObject, null, damage);
+        ProjectileData pd = equipment.projectileData;
+        if (pd.launchSound != null)
+            AudioSource.PlayClipAtPoint(pd.launchSound, transform.position);
+        if (pd.impactSound != null)
+            AudioSource.PlayClipAtPoint(pd.impactSound, targetPosition);
     }
 
     /// <summary>
@@ -1837,23 +1816,6 @@ public class CombatUnit : BaseUnit
         UpdateEquipmentVisuals();
         RecalculateStats();
         RaiseEquipmentChanged();
-    }
-
-    [ContextMenu("Validate Equipped Projectile Spawn")]
-    public void ValidateEquippedProjectileSpawn()
-    {
-        if (equippedProjectileWeapon == null)
-        {
-return;
-        }
-        if (!equippedProjectileWeapon.useEquipmentProjectileSpawn)
-        {
-            Debug.LogWarning($"{equippedProjectileWeapon.equipmentName} does not use equipment spawn transform flag.");
-            return;
-        }
-        var spawn = GetProjectileSpawnTransform(equippedProjectileWeapon);
-        if (spawn == null)
-            Debug.LogWarning($"Projectile spawn transform '{equippedProjectileWeapon.projectileSpawnName}' not found on equipped projectile weapon.");
     }
 
     // SpawnProjectileFromEquipment, QueueProjectileForAnimation, FireQueuedProjectile, CancelQueuedProjectile

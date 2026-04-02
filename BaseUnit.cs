@@ -1346,76 +1346,35 @@ public abstract class BaseUnit : MonoBehaviour
     #region Projectile System
 
     /// <summary>
-    /// Find the transform to spawn projectiles from
+    /// Resolve which ProjectileData to fire (unit's active projectile if it matches,
+    /// otherwise the equipment's default), then play launch and impact sounds immediately.
+    /// No prefab or 3-D object is spawned.
     /// </summary>
-    public Transform GetProjectileSpawnTransform(EquipmentData equipment)
-    {
-        if (equipment != null && equipment.useEquipmentProjectileSpawn && 
-            !string.IsNullOrEmpty(equipment.projectileSpawnName))
-        {
-            foreach (var kv in equippedItemObjects)
-            {
-                var go = kv.Value;
-                if (go == null) continue;
-                if (equipment.equipmentPrefab != null && 
-                    go.name.Contains(equipment.equipmentPrefab.name))
-                {
-                    var found = FindChildRecursive(go.transform, equipment.projectileSpawnName);
-                    if (found != null) return found;
-                }
-            }
-        }
-
-        if (projectileWeaponHolder != null) return projectileWeaponHolder;
-        if (weaponHolder != null) return weaponHolder;
-        return transform;
-    }
-
-    /// <summary>
-    /// Spawn a projectile from equipment towards a target
-    /// </summary>
-    public virtual void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, 
+    public virtual void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition,
         CombatUnit targetUnit = null, int overrideDamage = -1)
     {
-        // Priority 1: Use unit's active projectile if it matches weapon's category
+        // Priority 1: active projectile if category matches
         ProjectileData projectileToUse = null;
-
         if (_activeProjectile != null && equipment != null && equipment.usesProjectiles &&
             _activeProjectile.category == equipment.projectileCategory)
         {
             projectileToUse = _activeProjectile;
         }
-        // Priority 2: Fall back to equipment's default projectile
+        // Priority 2: equipment's default projectile
         else if (equipment != null && equipment.projectileData != null)
         {
             projectileToUse = equipment.projectileData;
         }
 
-        if (projectileToUse == null || projectileToUse.projectilePrefab == null) return;
+        if (projectileToUse == null) return;
 
-        Transform spawn = GetProjectileSpawnTransform(equipment);
-        Vector3 startPos = spawn != null ? spawn.position : transform.position;
+        Vector3 startPos = transform.position;
 
-        GameObject projGO = null;
-        if (SimpleObjectPool.Instance != null)
-        {
-            projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-        }
-        else
-        {
-            projGO = Instantiate(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-            var marker = projGO.GetComponent<PooledPrefabMarker>();
-            if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>();
-            marker.originalPrefab = projectileToUse.projectilePrefab;
-        }
+        if (projectileToUse.launchSound != null)
+            AudioSource.PlayClipAtPoint(projectileToUse.launchSound, startPos);
 
-        if (projGO == null) return;
-
-        Projectile proj = projGO.GetComponent<Projectile>();
-        if (proj == null) proj = projGO.AddComponent<Projectile>();
-
-        proj.Initialize(projectileToUse, startPos, targetPosition, gameObject, 
-            targetUnit != null ? targetUnit.transform : null, overrideDamage);
+        if (projectileToUse.impactSound != null)
+            AudioSource.PlayClipAtPoint(projectileToUse.impactSound, targetPosition);
     }
 
     /// <summary>
