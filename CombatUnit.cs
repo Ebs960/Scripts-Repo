@@ -480,6 +480,10 @@ public class CombatUnit : BaseUnit
             {
                 valF *= data.outOfAmmoMeleePenalty;
             }
+
+            // Morale and fatigue scaling
+            valF *= FatigueMultiplier;
+            valF *= MoraleDamageMultiplier;
             
             // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
             return Mathf.RoundToInt(valF);
@@ -556,9 +560,6 @@ public class CombatUnit : BaseUnit
     
     public bool CanAttack(CombatUnit target)
     {
-        // Routed units cannot attack
-        if (IsRouted) return false;
-
         // Target category checks
     bool targetIsAir = target.data.unitType == CombatCategory.Aircraft;
     bool targetIsSpace = target.data.unitType == CombatCategory.Spaceship;
@@ -632,9 +633,6 @@ public class CombatUnit : BaseUnit
     public bool CanAttack(WorkerUnit target)
     {
         if (target == null) return false;
-
-        // Routed units cannot attack
-        if (IsRouted) return false;
         
         // Orbit-to-surface: must have canBombardSurface to attack ground targets
         if (currentLayer == TileLayer.Orbit && target.currentLayer != TileLayer.Orbit)
@@ -727,6 +725,26 @@ public class CombatUnit : BaseUnit
         }
 
         Debug.Log($"[CombatUnit] {name} Attack requested on {target.name} (selTile={currentTileIndex} tgtTile={target.currentTileIndex} range={CurrentRange})");
+
+        // Front-row damage routing: melee attacks automatically target the front unit of a stack
+        try
+        {
+            var tsRoute = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (tsRoute != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int dist = tsRoute.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (dist <= 1) // melee range — redirect to front unit
+                {
+                    var front = target.GetFrontUnit() as CombatUnit;
+                    if (front != null && front != target)
+                    {
+                        Debug.Log($"[CombatUnit] Melee damage routed from {target.name} (slot {target.stackSlot}) to front unit {front.name} (slot {front.stackSlot})");
+                        target = front;
+                    }
+                }
+            }
+        }
+        catch { }
 
         try
         {

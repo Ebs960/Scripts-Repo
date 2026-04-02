@@ -161,4 +161,11 @@ public class TechData : ScriptableObject
     public int cityCapIncrease = 0;
     [Tooltip("How much this technology increases the maximum number of pantheons a civilization may found.")]
     public int pantheonCapIncrease = 0;
+
+    [Header("Unit Stacking")]
+    [Tooltip("If true, this technology allows the civ to stack multiple units on one tile.")]
+    public bool unlocksUnitStacking = false;
+    [Tooltip("Max units per tile this tech grants (2 or 3). Only used if unlocksUnitStacking is true. Highest value among all researched techs wins.")]
+    [Range(2, 3)]
+    public int unitStackSizeGranted = 2;
 }

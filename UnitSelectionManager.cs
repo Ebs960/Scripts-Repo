@@ -222,10 +222,17 @@ public class UnitSelectionManager : MonoBehaviour
         {
             // If this click selects a different unit (or selects when nothing was selected),
             // consume the click so improvements don't open. If the same unit is already selected,
-            // do NOT consume so a second click can be used to open the improvement UI.
+            // cycle through stacked units if any; otherwise allow other handlers.
             if (selectedUnit == null || selectedUnit != clickedUnit)
             {
                 SelectUnit(clickedUnit);
+                return true; // consumed
+            }
+            // Same unit already selected — cycle stack if more than one unit here
+            var companions = selectedUnit.GetStackedUnits();
+            if (companions.Count > 0)
+            {
+                CycleStackedUnit();
                 return true; // consumed
             }
             return false; // allow other subscribers to handle (e.g., improvement)
@@ -266,20 +273,39 @@ public class UnitSelectionManager : MonoBehaviour
 
     /// <summary>
     /// Get a unit occupying the given tile index.
-    /// Returns BaseUnit since both CombatUnit and WorkerUnit inherit from it.
+    /// Stack-aware: returns the front unit (slot 0) of a stack, or the currently
+    /// selected unit if it is already on this tile. Use CycleStackedUnit to switch.
     /// </summary>
     private BaseUnit GetUnitOnTile(int tileIndex)
     {
         int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-        // Prefer occupancy manager for planet + layer-aware lookup
         try
         {
             var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
-            var obj = occ != null ? occ.TryGetAnyOccupantObject(tileIndex) : null;
-            if (obj != null)
+            if (occ == null) return null;
+
+            // If current selection is already on this tile, return it (preserves cycling state)
+            if (selectedUnit != null && selectedUnit.currentTileIndex == tileIndex)
+                return selectedUnit;
+
+            // Return front unit (slot 0) as default selection target
+            int frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Surface, 0);
+            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Orbit, 0);
+            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Underwater, 0);
+            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Atmosphere, 0);
+            if (frontId == 0)
             {
-                var bu = obj.GetComponent<BaseUnit>();
-                if (previewDebug) Debug.Log($"[USM] GetUnitOnTile({tileIndex}) found object={obj.name} baseUnit={(bu!=null)}");
+                // Fallback to legacy single-occupant lookup
+                var obj = occ.TryGetAnyOccupantObject(tileIndex);
+                if (obj != null) return obj.GetComponent<BaseUnit>();
+                return null;
+            }
+
+            var frontObj = UnitRegistry.GetObject(frontId);
+            if (frontObj != null)
+            {
+                var bu = frontObj.GetComponent<BaseUnit>();
+                if (previewDebug) Debug.Log($"[USM] GetUnitOnTile({tileIndex}) found front unit={frontObj.name} slot=0");
                 return bu;
             }
         }
@@ -348,6 +374,12 @@ public class UnitSelectionManager : MonoBehaviour
             {
                 DeselectUnit();
             }
+        }
+
+        // Tab key: Cycle through stacked units on the same tile
+        if (Keyboard.current != null && Keyboard.current[Key.Tab].wasPressedThisFrame && selectedUnit != null)
+        {
+            CycleStackedUnit();
         }
 
         // R key: Show space travel UI for selected unit (changed from Space to avoid conflicts)
@@ -1266,7 +1298,6 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (selectedUnit == null)
             return;
-        if (previewDebug) Debug.Log($"[USM] DeselectUnit -> {selectedUnit.name}");
         selectedUnit = null;
 
         // Remove visual indicator
@@ -1559,7 +1590,32 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Show embark UI
         SpaceEmbarkUI.ShowEmbarkUIForUnit(selectedUnit.gameObject, currentPlanetIndex);
-}
+    }
+
+    /// <summary>
+    /// Cycle through stacked units on the same tile as the currently selected unit.
+    /// Pressing Tab selects the next unit in the stack; wraps around to the first.
+    /// </summary>
+    private void CycleStackedUnit()
+    {
+        if (selectedUnit == null) return;
+
+        var companions = selectedUnit.GetStackedUnits();
+        if (companions.Count == 0) return; // no other units in this stack
+
+        // Build ordered list: all units on this tile including self
+        var allStacked = new System.Collections.Generic.List<BaseUnit> { selectedUnit };
+        allStacked.AddRange(companions);
+        // Sort by stackSlot so cycling is consistent
+        allStacked.Sort((a, b) => a.stackSlot.CompareTo(b.stackSlot));
+
+        int currentIdx = allStacked.IndexOf(selectedUnit);
+        int nextIdx = (currentIdx + 1) % allStacked.Count;
+        var nextUnit = allStacked[nextIdx];
+
+        SelectUnit(nextUnit);
+        Debug.Log($"[USM] CycleStackedUnit: switched from {selectedUnit?.name} to {nextUnit.name} (slot {nextUnit.stackSlot})");
+    }
 
     /// <summary>
     /// Handle M key press to show space map

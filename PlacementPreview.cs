@@ -394,9 +394,6 @@ public class PlacementPreview : MonoBehaviour
         if (!shouldLog)
             return;
 
-        Vector3 previewPosition = hoveredTileIndex >= 0 ? GetPreviewWorldPosition(hoveredTileIndex) : Vector3.zero;
-        Debug.Log($"[PlacementPreview] Hover | type={currentType} tile={hoveredTileIndex} valid={isValidPlacement} overUI={overUI} hit={FormatVector3(hoveredWorldPosition)} preview={FormatVector3(previewPosition)} height={(hoveredTileIndex >= 0 ? previewPosition.y.ToString("F3") : "n/a")} workerTile={workerUnit?.currentTileIndex ?? -1} planet={workerUnit?.planetIndex ?? -1}");
-
         lastLoggedTileIndex = hoveredTileIndex;
         lastLoggedValidity = isValidPlacement;
         lastLoggedOverUi = overUI;
@@ -409,13 +406,7 @@ public class PlacementPreview : MonoBehaviour
         lastLoggedOverUi = false;
     }
 
-    private void DebugLog(string message)
-    {
-        if (!enableDebugLogs)
-            return;
-
-        Debug.Log($"[PlacementPreview] {message}");
-    }
+    private void DebugLog(string message) { }
 
     private static string FormatVector3(Vector3 value)
     {

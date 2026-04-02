@@ -42,6 +42,11 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Unit Build UI")]
     [SerializeField] private TMP_Dropdown unitBuildDropdown; // separate dropdown specifically for unit builds
     
+    [Header("Stack Controls")]
+    [SerializeField] private Button unstackButton; // Unstack this unit from its group (costs full turn)
+    [SerializeField] private TextMeshProUGUI stackInfoText; // Shows "Stack: 1/3 [Tab to cycle]"
+    [SerializeField] private TextMeshProUGUI moraleText; // Shows current morale %
+    [SerializeField] private StackOrderPanel stackOrderPanel; // Icon list for reordering the stack
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
@@ -116,6 +121,15 @@ public class UnitInfoPanel : MonoBehaviour
             AddTooltipToButton(startBuildButton, "Work / Build", "Start or contribute to building improvements or training units on this tile.");
         }
         // Legacy unit-build button removed; unit builds go through startBuildButton
+
+        // Unstack button
+        if (unstackButton != null)
+        {
+            unstackButton.onClick.RemoveAllListeners();
+            unstackButton.onClick.AddListener(OnUnstackClicked);
+            unstackButton.gameObject.SetActive(false);
+            AddTooltipToButton(unstackButton, "Unstack", "Separate this unit from the stack to an adjacent tile. Costs the full turn.");
+        }
 
         // Validate serialized fields at startup so missing inspector wiring is obvious in Console
         ValidateSerializedFields();
@@ -346,6 +360,12 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
         if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
 
+        // Hide stack controls
+        if (unstackButton != null) unstackButton.gameObject.SetActive(false);
+        if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
+        if (moraleText != null) moraleText.gameObject.SetActive(false);
+        stackOrderPanel?.Refresh(null);
+
         // Clear unit references
         currentCombatUnit = null;
         currentWorkerUnit = null;
@@ -521,6 +541,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Orbit status & controls
         UpdateOrbitControls(currentCombatUnit);
         UpdateFortifyActionState(currentCombatUnit);
+        UpdateStackInfo(currentCombatUnit);
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -564,6 +585,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         PopulateUnitBuildDropdown(currentWorkerUnit);
         UpdateWorkerActionStates(currentWorkerUnit);
         UpdateFortifyActionState(currentWorkerUnit);
+        UpdateStackInfo(currentWorkerUnit);
     }
     
     private void OnSettleCityClicked()
@@ -595,6 +617,76 @@ PopulateForWorkerUnit(currentWorkerUnit);
         else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
     }
 
+    private void OnUnstackClicked()
+    {
+        BaseUnit unit = currentCombatUnit != null ? (BaseUnit)currentCombatUnit : currentWorkerUnit;
+        if (unit == null) return;
+
+        if (unit.Unstack())
+        {
+            // Refresh panel after unstack
+            if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
+            else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
+            UpdateStackInfo(unit);
+            // Re-select the unit at its new location
+            if (UnitSelectionManager.Instance != null)
+                UnitSelectionManager.Instance.SelectUnit(unit);
+        }
+        else
+        {
+            if (UIManager.Instance != null)
+                UIManager.Instance.ShowNotification("Cannot unstack: no adjacent empty tile.");
+        }
+    }
+
+    /// <summary>
+    /// Update the stack position indicator and unstack button visibility.
+    /// </summary>
+    private void UpdateStackInfo(BaseUnit unit)
+    {
+        if (unit == null)
+        {
+            if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
+            if (unstackButton != null) unstackButton.gameObject.SetActive(false);
+            if (moraleText != null) moraleText.gameObject.SetActive(false);
+            return;
+        }
+
+        // Morale display
+        if (moraleText != null)
+        {
+            moraleText.gameObject.SetActive(true);
+            int moralePct = Mathf.RoundToInt(unit.currentMorale);
+            moraleText.text = $"Morale: {moralePct}%";
+        }
+
+        // Stack info
+        var companions = unit.GetStackedUnits();
+        int totalInStack = companions.Count + 1;
+
+        if (totalInStack <= 1)
+        {
+            if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
+            if (unstackButton != null) unstackButton.gameObject.SetActive(false);
+            return;
+        }
+
+        if (stackInfoText != null)
+        {
+            stackInfoText.gameObject.SetActive(true);
+            stackInfoText.text = $"Stack: {unit.stackSlot + 1}/{totalInStack}  [Tab to cycle]";
+        }
+
+        if (unstackButton != null)
+        {
+            unstackButton.gameObject.SetActive(true);
+            // Can only unstack if not in front slot AND has move/action points
+            unstackButton.interactable = unit.stackSlot > 0 && unit.currentMovePoints > 0;
+        }
+
+        stackOrderPanel?.Refresh(unit);
+    }
+
     private void OnDestroy()
     {
         if (settleCityButton != null)
@@ -607,6 +699,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
             enterOrbitButton.onClick.RemoveListener(OnEnterOrbitClicked);
         if (exitOrbitButton != null)
             exitOrbitButton.onClick.RemoveListener(OnExitOrbitClicked);
+        if (unstackButton != null)
+            unstackButton.onClick.RemoveListener(OnUnstackClicked);
         if (unitBuildDropdown != null)
             unitBuildDropdown.onValueChanged.RemoveAllListeners();
 

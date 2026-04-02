@@ -5,12 +5,14 @@ using UnityEngine;
 /// <summary>
 /// Manages per-tile multi-layer occupancy. This is the SINGLE SOURCE OF TRUTH for all occupancy.
 /// Supports 4 layers: Surface, Underwater, Atmosphere, Orbit.
+/// Supports up to MAX_STACK_SLOTS units per tile per layer (unit stacking, tech-gated).
 /// 
 /// HexTileData.occupantId is DEPRECATED - do not use it. All occupancy queries should go through
 /// this manager via GetOccupantId/GetOccupantObject/SetOccupant/ClearOccupant.
 /// </summary>
 public class TileOccupancyManager : MonoBehaviour
 {
+    public const int MAX_STACK_SLOTS = 3;
     // Per-planet occupancy (required for true multi-planet gameplay).
     private static readonly Dictionary<int, TileOccupancyManager> _byPlanetIndex = new();
 
@@ -31,8 +33,9 @@ public class TileOccupancyManager : MonoBehaviour
     public bool verboseLogging = false;
 
     private int tileCount;
-    // occupants[tile][layer] => instance id (0 = none)
-    private int[,] occupants;
+    // occupants[tile, layer, slot] => instance id (0 = none)
+    // Slot 0 = front, Slot 1 = middle, Slot 2 = rear
+    private int[,,] occupants;
     // One-time warning flags to avoid log spam
     private bool warnedNotInitialized = false;
 
@@ -85,7 +88,7 @@ public class TileOccupancyManager : MonoBehaviour
             _byPlanetIndex[planetIndex] = this;
         }
         this.tileCount = tileCount;
-        occupants = new int[tileCount, 4];
+        occupants = new int[tileCount, 4, MAX_STACK_SLOTS];
     }
 
     /// <summary>
@@ -104,7 +107,7 @@ public class TileOccupancyManager : MonoBehaviour
             #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId
             if (tiles[i] != null && tiles[i].occupantId != 0)
             {
-                occupants[i, (int)TileLayer.Surface] = tiles[i].occupantId;
+                occupants[i, (int)TileLayer.Surface, 0] = tiles[i].occupantId;
                 migrated++;
             }
             #pragma warning restore 612, 618
@@ -118,7 +121,184 @@ public class TileOccupancyManager : MonoBehaviour
     public int GetOccupantId(int tile, TileLayer layer)
     {
         if (!ValidIndex(tile)) return 0;
-        return occupants[tile, (int)layer];
+        int layerIdx = (int)layer;
+        // Return first non-zero slot (backward compatible: returns the primary/front occupant)
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            int id = occupants[tile, layerIdx, s];
+            if (id != 0) return id;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Get the occupant instance ID at a specific stack slot.
+    /// </summary>
+    public int GetOccupantIdAtSlot(int tile, TileLayer layer, int slot)
+    {
+        if (!ValidIndex(tile) || slot < 0 || slot >= MAX_STACK_SLOTS) return 0;
+        return occupants[tile, (int)layer, slot];
+    }
+
+    /// <summary>
+    /// Get all non-zero occupant IDs on a tile/layer.
+    /// </summary>
+    public List<int> GetAllOccupantIds(int tile, TileLayer layer)
+    {
+        var result = new List<int>(MAX_STACK_SLOTS);
+        if (!ValidIndex(tile)) return result;
+        int layerIdx = (int)layer;
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            int id = occupants[tile, layerIdx, s];
+            if (id != 0) result.Add(id);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Get all occupant GameObjects on a tile/layer (ordered by slot: front first).
+    /// </summary>
+    public List<GameObject> GetAllOccupantObjects(int tile, TileLayer layer)
+    {
+        var ids = GetAllOccupantIds(tile, layer);
+        var result = new List<GameObject>(ids.Count);
+        foreach (int id in ids)
+        {
+            var obj = UnitRegistry.GetObject(id);
+            if (obj != null) result.Add(obj);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// How many units are on this tile/layer.
+    /// </summary>
+    public int GetOccupantCount(int tile, TileLayer layer)
+    {
+        if (!ValidIndex(tile)) return 0;
+        int layerIdx = (int)layer;
+        int count = 0;
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            if (occupants[tile, layerIdx, s] != 0) count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Find which slot a specific occupant is in. Returns -1 if not found.
+    /// </summary>
+    public int GetSlotForOccupant(int tile, TileLayer layer, int instanceId)
+    {
+        if (!ValidIndex(tile) || instanceId == 0) return -1;
+        int layerIdx = (int)layer;
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            if (occupants[tile, layerIdx, s] == instanceId) return s;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// Check whether a unit can join the stack on this tile (has an available slot
+    /// and the stack hasn't reached the civ's tech-gated max).
+    /// </summary>
+    public bool CanJoinStack(int tile, TileLayer layer, int maxSlots)
+    {
+        if (!ValidIndex(tile)) return false;
+        int layerIdx = (int)layer;
+        int filled = 0;
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            if (occupants[tile, layerIdx, s] != 0) filled++;
+        }
+        return filled < Mathf.Min(maxSlots, MAX_STACK_SLOTS);
+    }
+
+    /// <summary>
+    /// Try to add a unit to the stack on this tile. Finds the first empty slot.
+    /// Returns the assigned slot index, or -1 if full.
+    /// </summary>
+    public int TryAddToStack(int tile, TileLayer layer, GameObject occupant, int maxSlots)
+    {
+        if (!ValidIndex(tile) || occupant == null) return -1;
+        int layerIdx = (int)layer;
+        int id = occupant.GetInstanceID();
+        int limit = Mathf.Min(maxSlots, MAX_STACK_SLOTS);
+
+        // Check if already present
+        for (int s = 0; s < limit; s++)
+        {
+            if (occupants[tile, layerIdx, s] == id) return s;
+        }
+
+        // Find first empty slot
+        for (int s = 0; s < limit; s++)
+        {
+            if (occupants[tile, layerIdx, s] == 0)
+            {
+                occupants[tile, layerIdx, s] = id;
+                if (verboseLogging)
+                    Debug.Log($"[TileOccupancyManager] TryAddToStack tile={tile} layer={layer} slot={s} occupant={occupant.name} id={id}");
+                return s;
+            }
+        }
+
+        if (verboseLogging)
+            Debug.LogWarning($"[TileOccupancyManager] TryAddToStack FULL tile={tile} layer={layer} maxSlots={maxSlots} occupant={occupant.name}");
+        return -1;
+    }
+
+    /// <summary>
+    /// Remove a specific occupant from a tile by instance ID. Compacts remaining slots forward.
+    /// </summary>
+    public void ClearOccupantById(int tile, TileLayer layer, int instanceId)
+    {
+        if (!ValidIndex(tile) || instanceId == 0) return;
+        int layerIdx = (int)layer;
+
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+        {
+            if (occupants[tile, layerIdx, s] == instanceId)
+            {
+                occupants[tile, layerIdx, s] = 0;
+                // Compact: shift later slots forward to fill the gap
+                for (int j = s; j < MAX_STACK_SLOTS - 1; j++)
+                {
+                    occupants[tile, layerIdx, j] = occupants[tile, layerIdx, j + 1];
+                }
+                occupants[tile, layerIdx, MAX_STACK_SLOTS - 1] = 0;
+
+                if (verboseLogging)
+                    Debug.Log($"[TileOccupancyManager] ClearOccupantById tile={tile} layer={layer} id={instanceId} slot={s}");
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Swap two stack slots on a tile. Returns true if both slots were non-empty and the swap succeeded.
+    /// Call BaseUnit.SnapToSlotPosition() on both units after this to update their world positions.
+    /// </summary>
+    public bool SwapStackSlots(int tile, TileLayer layer, int slotA, int slotB)
+    {
+        if (!ValidIndex(tile)) return false;
+        if (slotA < 0 || slotA >= MAX_STACK_SLOTS) return false;
+        if (slotB < 0 || slotB >= MAX_STACK_SLOTS) return false;
+        if (slotA == slotB) return true;
+
+        int layerIdx = (int)layer;
+        int idA = occupants[tile, layerIdx, slotA];
+        int idB = occupants[tile, layerIdx, slotB];
+
+        occupants[tile, layerIdx, slotA] = idB;
+        occupants[tile, layerIdx, slotB] = idA;
+
+        if (verboseLogging)
+            Debug.Log($"[TileOccupancyManager] SwapStackSlots tile={tile} layer={layer} slotA={slotA}(id={idA}) slotB={slotB}(id={idB})");
+
+        return true;
     }
 
     public GameObject GetOccupantObject(int tile, TileLayer layer)
@@ -184,14 +364,15 @@ public class TileOccupancyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Strict occupancy setter. Returns false instead of silently overwriting a different occupant.
+    /// Strict occupancy setter (backward compatible: uses slot 0).
+    /// For stack-aware placement, use TryAddToStack instead.
     /// </summary>
     public bool TrySetOccupant(int tile, GameObject occupant, TileLayer layer, bool allowOverwrite = false, string reason = null)
     {
         if (!ValidIndex(tile)) return false;
 
         int layerIdx = (int)layer;
-        int existingId = occupants[tile, layerIdx];
+        int existingId = occupants[tile, layerIdx, 0];
         int id = occupant != null ? occupant.GetInstanceID() : 0;
 
         if (occupant != null && existingId != 0 && existingId != id)
@@ -209,12 +390,12 @@ public class TileOccupancyManager : MonoBehaviour
             Debug.LogWarning($"[TileOccupancyManager] TrySetOccupant forced overwrite tile={tile} layer={layer}: replacing '{existingName}' with '{occupant.name}'. reason={overwriteReason}");
         }
 
-        occupants[tile, layerIdx] = id;
+        occupants[tile, layerIdx, 0] = id;
 
         if (verboseLogging)
         {
             string name = occupant != null ? occupant.name : "null";
-            Debug.Log($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer} occupant={name} id={id}");
+            Debug.Log($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer} slot=0 occupant={name} id={id}");
         }
 
         return true;
@@ -230,9 +411,25 @@ public class TileOccupancyManager : MonoBehaviour
         TrySetOccupant(tile, occupant, layer);
     }
 
+    /// <summary>
+    /// Clear slot 0 on a tile/layer (backward compatible).
+    /// For stack-aware clearing, use ClearOccupantById instead.
+    /// </summary>
     public void ClearOccupant(int tile, TileLayer layer)
     {
-        SetOccupant(tile, null, layer);
+        if (!ValidIndex(tile)) return;
+        occupants[tile, (int)layer, 0] = 0;
+    }
+
+    /// <summary>
+    /// Clear ALL occupants from a tile/layer (all slots).
+    /// </summary>
+    public void ClearAllOccupants(int tile, TileLayer layer)
+    {
+        if (!ValidIndex(tile)) return;
+        int layerIdx = (int)layer;
+        for (int s = 0; s < MAX_STACK_SLOTS; s++)
+            occupants[tile, layerIdx, s] = 0;
     }
 
     private bool ValidIndex(int tile)

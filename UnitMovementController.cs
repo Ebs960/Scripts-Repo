@@ -470,11 +470,21 @@ public class UnitMovementController : MonoBehaviour
         unit.moveOrderPath = new List<int>(fullPath);
         unit.moveOrderNextStep = 0;
 
+        // Locked stack movement: share the same path with all stacked companions
+        var stackCompanions = unit.GetStackedUnits();
+        foreach (var comp in stackCompanions)
+        {
+            StopMoveForUnit(comp);
+            comp.UpdateWalkingState(false);
+            comp.moveOrderPath = new List<int>(fullPath);
+            comp.moveOrderNextStep = 0;
+        }
+
         if (Application.isEditor || Debug.isDebugBuild)
         {
             var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
             if (unit.owner == playerCiv)
-                Debug.Log($"[UnitMoveCtrl] IssueMove {unit.name} pathLen={fullPath.Count} target={targetTileIndex}");
+                Debug.Log($"[UnitMoveCtrl] IssueMove {unit.name} pathLen={fullPath.Count} target={targetTileIndex} stackSize={stackCompanions.Count + 1}");
         }
 
         ExecuteMovement(unit);
@@ -503,6 +513,11 @@ public class UnitMovementController : MonoBehaviour
         CombatUnit combatUnit = unit as CombatUnit;
         WorkerUnit workerUnit = unit as WorkerUnit;
 
+        // Gather stacked companions for locked movement
+        var stackCompanions = unit.GetStackedUnits();
+        foreach (var comp in stackCompanions)
+            StopMoveForUnit(comp);
+
         var path = unit.moveOrderPath;
         int stepIndex = unit.moveOrderNextStep;
         int previousTile = unit.currentTileIndex;
@@ -510,7 +525,6 @@ public class UnitMovementController : MonoBehaviour
         var committedTiles = new List<int>();
         int startingTile = unit.currentTileIndex;
         int mpBefore = unit.currentMovePoints;
-        int mpSpent = 0;
         bool orderCancelled = false;
         string breakReason = null;
 
@@ -533,18 +547,37 @@ public class UnitMovementController : MonoBehaviour
                 break;
             }
 
-            if (unit.currentMovePoints < movementCost)
+            // Locked stack movement: use the minimum MP across the stack
+            int effectiveMP = unit.currentMovePoints;
+            foreach (var comp in stackCompanions)
+                effectiveMP = Mathf.Min(effectiveMP, comp.currentMovePoints);
+
+            if (effectiveMP < movementCost)
             {
-                breakReason = $"insufficient MP ({unit.currentMovePoints} < {movementCost}) at step {stepIndex} tile={targetTile}";
+                breakReason = $"insufficient MP ({effectiveMP} < {movementCost}) at step {stepIndex} tile={targetTile}";
                 break;
             }
 
+            // Stack-aware occupancy check
             if (occ != null)
             {
-                var existing = occ.GetOccupantObject(targetTile, unit.currentLayer);
-                if (existing != null && existing.GetInstanceID() != unit.gameObject.GetInstanceID())
+                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
+                var allIds = occ.GetAllOccupantIds(targetTile, unit.currentLayer);
+                int selfId = unit.gameObject.GetInstanceID();
+                bool blocked = false;
+                int othersCount = 0;
+                foreach (int occId in allIds)
                 {
-                    breakReason = $"tile {targetTile} occupied by {existing.name} (id={existing.GetInstanceID()}) at step {stepIndex}";
+                    if (occId == selfId) continue;
+                    othersCount++;
+                    var obj = UnitRegistry.GetObject(occId);
+                    if (obj == null) continue;
+                    var other = obj.GetComponent<BaseUnit>();
+                    if (other == null || other.owner != unit.owner) { blocked = true; break; }
+                }
+                if (blocked || othersCount >= maxStack)
+                {
+                    breakReason = $"tile {targetTile} stack full or enemy present at step {stepIndex}";
                     break;
                 }
             }
@@ -573,21 +606,54 @@ public class UnitMovementController : MonoBehaviour
                 }
             }
 
-            bool claimed = occ == null || occ.TrySetOccupant(targetTile, unit.gameObject, unit.currentLayer);
+            // Stack-aware occupancy claim for lead unit
+            int claimedSlot = -1;
+            if (occ != null)
+            {
+                int stackTotal = 1 + stackCompanions.Count;
+                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
+                maxStack = Mathf.Max(maxStack, stackTotal); // must accommodate the full stack
+                claimedSlot = occ.TryAddToStack(targetTile, unit.currentLayer, unit.gameObject, maxStack);
+            }
+            bool claimed = occ == null || claimedSlot >= 0;
+            if (claimed && claimedSlot >= 0) unit.stackSlot = claimedSlot;
+
+            // Claim slots for companions
+            if (claimed && occ != null)
+            {
+                int stackTotal = 1 + stackCompanions.Count;
+                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
+                maxStack = Mathf.Max(maxStack, stackTotal);
+                foreach (var comp in stackCompanions)
+                {
+                    int compSlot = occ.TryAddToStack(targetTile, comp.currentLayer, comp.gameObject, maxStack);
+                    if (compSlot >= 0) comp.stackSlot = compSlot;
+                }
+            }
             if (!claimed)
             {
                 breakReason = $"TrySetOccupant failed at step {stepIndex} tile={targetTile}";
                 break;
             }
 
+            // Clear old occupancy for lead unit and companions
             if (previousTile >= 0 && previousTile != targetTile)
             {
-                try { occ?.ClearOccupant(previousTile, unit.currentLayer); } catch { }
+                try { occ?.ClearOccupantById(previousTile, unit.currentLayer, unit.gameObject.GetInstanceID()); } catch { }
+                foreach (var comp in stackCompanions)
+                {
+                    try { occ?.ClearOccupantById(previousTile, comp.currentLayer, comp.gameObject.GetInstanceID()); } catch { }
+                }
             }
 
             unit.DeductMovePoints(movementCost);
-            mpSpent += movementCost;
             unit.currentTileIndex = targetTile;
+            // Deduct MP and update position for all companions
+            foreach (var comp in stackCompanions)
+            {
+                comp.DeductMovePoints(movementCost);
+                comp.currentTileIndex = targetTile;
+            }
             previousTile = targetTile;
             stepIndex++;
             committedTiles.Add(targetTile);
@@ -613,17 +679,30 @@ public class UnitMovementController : MonoBehaviour
 
         unit.moveOrderNextStep = stepIndex;
 
+        // Sync companion move order state
+        foreach (var comp in stackCompanions)
+        {
+            comp.moveOrderNextStep = stepIndex;
+        }
+
         if (orderCancelled || stepIndex >= path.Count)
         {
             unit.moveOrderPath = null;
             unit.moveOrderNextStep = 0;
+            foreach (var comp in stackCompanions)
+            {
+                comp.moveOrderPath = null;
+                comp.moveOrderNextStep = 0;
+            }
         }
 
-        Debug.Log($"[UnitMoveCtrl] ExecuteMovement {unit.name} committed={committedTiles.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={unit.currentMovePoints} step={stepIndex}/{path.Count} orderDone={unit.moveOrderPath == null} cancelled={orderCancelled} breakReason=\"{breakReason}\" isMoving={unit.isMoving}");
+        Debug.Log($"[UnitMoveCtrl] ExecuteMovement {unit.name} committed={committedTiles.Count} mpBefore={mpBefore} mpRemaining={unit.currentMovePoints} step={stepIndex}/{path.Count} orderDone={unit.moveOrderPath == null} cancelled={orderCancelled} breakReason=\"{breakReason}\" isMoving={unit.isMoving} stackSize={stackCompanions.Count + 1}");
 
         if (committedTiles.Count == 0) return;
 
         SyncUnitWrapRegistration(unit, committedTiles[committedTiles.Count - 1]);
+        foreach (var comp in stackCompanions)
+            SyncUnitWrapRegistration(comp, committedTiles[committedTiles.Count - 1]);
 
         // Raise per-step UnitMoved events
         for (int i = 0; i < committedTiles.Count; i++)
@@ -636,6 +715,14 @@ public class UnitMovementController : MonoBehaviour
         unit.UpdateWalkingState(true);
         var c = StartCoroutine(AnimateAlongPath(unit, committedTiles));
         try { _activeMoveCoroutines[unit.GetInstanceID()] = c; } catch { }
+
+        // Animate stacked companions alongside lead unit
+        foreach (var comp in stackCompanions)
+        {
+            comp.UpdateWalkingState(true);
+            var cc = StartCoroutine(AnimateAlongPath(comp, committedTiles));
+            try { _activeMoveCoroutines[comp.GetInstanceID()] = cc; } catch { }
+        }
     }
 
     /// <summary>
@@ -772,6 +859,9 @@ public class UnitMovementController : MonoBehaviour
                 unitTransform.position = GetClosestWrappedWorldPosition(unit, ts, unitTransform.position, finalTile);
             else
                 PositionUnitOnSurface(unitTransform, finalTile, unit);
+
+            // Apply stack offset so stacked units appear in separate rows
+            unit.ApplyStackOffset();
         }
         finally
         {

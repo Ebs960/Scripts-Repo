@@ -260,6 +260,173 @@ public abstract class BaseUnit : MonoBehaviour
     public TileLayer currentLayer = TileLayer.Surface;
     [Tooltip("Which planet this unit belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
+
+    /// <summary>
+    /// Which slot this unit occupies when stacked on a tile (0=front, 1=middle, 2=rear).
+    /// -1 means not assigned to a stack slot (legacy single-unit behavior).
+    /// </summary>
+    [System.NonSerialized] public int stackSlot = -1;
+
+    /// <summary>
+    /// World-space offset distance per stack slot (units behind the front get offset backward).
+    /// </summary>
+    private const float STACK_OFFSET_DISTANCE = 1.2f;
+
+    /// <summary>
+    /// Apply a positional offset based on this unit's stack slot so stacked units
+    /// appear in distinct rows. Slot 0 = tile center, slot 1 = offset back, slot 2 = further back.
+    /// The "back" direction is away from the unit's forward facing (or a default direction if none).
+    /// </summary>
+    public void ApplyStackOffset()
+    {
+        if (stackSlot <= 0) return; // slot 0 or unassigned = no offset needed
+
+        // Offset along the unit's local backward direction (so rear ranks are behind front)
+        Vector3 backDir = -transform.forward;
+        // Fallback if forward is zero
+        if (backDir.sqrMagnitude < 0.01f) backDir = Vector3.back;
+
+        transform.position += backDir * (stackSlot * STACK_OFFSET_DISTANCE);
+    }
+
+    /// <summary>
+    /// Snap this unit's world position to its tile center, then re-apply the current stack slot
+    /// offset. Call this after stackSlot is changed externally (e.g., stack reorder via UI).
+    /// </summary>
+    public void SnapToSlotPosition()
+    {
+        if (currentTileIndex < 0) return;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+        transform.position = ts.GetTileSurfacePosition(currentTileIndex);
+        ApplyStackOffset();
+    }
+
+    /// <summary>
+    /// Register this unit on a tile with stack-aware occupancy.
+    /// Finds an available slot, assigns stackSlot, and applies visual offset.
+    /// Returns true if successful.
+    /// </summary>
+    public bool RegisterOnTileStack(int tileIndex, TileLayer layer)
+    {
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null) return false;
+
+        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+        int slot = occ.TryAddToStack(tileIndex, layer, gameObject, maxStack);
+        if (slot < 0) return false;
+
+        stackSlot = slot;
+        return true;
+    }
+
+    /// <summary>
+    /// Unregister this unit from its current tile stack.
+    /// </summary>
+    public void UnregisterFromTileStack()
+    {
+        if (currentTileIndex < 0) return;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
+            occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
+        stackSlot = -1;
+    }
+
+    /// <summary>
+    /// Get all other units stacked on the same tile as this unit.
+    /// </summary>
+    public List<BaseUnit> GetStackedUnits()
+    {
+        var result = new List<BaseUnit>();
+        if (currentTileIndex < 0) return result;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null) return result;
+
+        var objects = occ.GetAllOccupantObjects(currentTileIndex, currentLayer);
+        int selfId = gameObject.GetInstanceID();
+        foreach (var obj in objects)
+        {
+            if (obj.GetInstanceID() == selfId) continue;
+            var unit = obj.GetComponent<BaseUnit>();
+            if (unit != null) result.Add(unit);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the front-most (slot 0) unit on this tile, or this unit if alone/front.
+    /// Used for damage routing: melee damage hits the front unit first.
+    /// </summary>
+    public BaseUnit GetFrontUnit()
+    {
+        if (currentTileIndex < 0) return this;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null) return this;
+
+        int frontId = occ.GetOccupantIdAtSlot(currentTileIndex, currentLayer, 0);
+        if (frontId == 0 || frontId == gameObject.GetInstanceID()) return this;
+
+        var frontObj = UnitRegistry.GetObject(frontId);
+        if (frontObj == null) return this;
+        var frontUnit = frontObj.GetComponent<BaseUnit>();
+        return frontUnit != null ? frontUnit : this;
+    }
+
+    /// <summary>
+    /// Unstack this unit from the current tile, placing it on an adjacent empty tile.
+    /// Costs the unit's full turn (all move points and attack points consumed).
+    /// Returns true if the unstack succeeded.
+    /// </summary>
+    public bool Unstack()
+    {
+        if (stackSlot <= 0) return false; // Already front or not in a stack
+        if (currentTileIndex < 0) return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
+
+        // Find an adjacent empty tile to move to
+        int destTile = -1;
+        foreach (int neighbor in ts.GetNeighbors(currentTileIndex))
+        {
+            if (CanMoveTo(neighbor))
+            {
+                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                if (occ != null && occ.GetOccupantCount(neighbor, currentLayer) == 0)
+                {
+                    destTile = neighbor;
+                    break;
+                }
+            }
+        }
+
+        if (destTile < 0)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot unstack: no adjacent empty tile.");
+            return false;
+        }
+
+        // Unregister from current stack
+        UnregisterFromTileStack();
+
+        // Register on the new tile
+        var occNew = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occNew != null)
+        {
+            int slot = occNew.TryAddToStack(destTile, currentLayer, gameObject, 1);
+            stackSlot = slot >= 0 ? slot : 0;
+        }
+
+        currentTileIndex = destTile;
+        PositionUnitOnSurface(destTile);
+
+        // Consume full turn
+        currentMovePoints = 0;
+        currentAttackPoints = 0;
+
+        Debug.Log($"[BaseUnit] {name} unstacked to tile {destTile}");
+        return true;
+    }
     public float moveSpeed = 2f;
     public bool isMoving { get; set; }
     public bool IsFortified => isFortified;
@@ -300,15 +467,10 @@ public abstract class BaseUnit : MonoBehaviour
     [System.NonSerialized]
     public float currentMorale = 100f;
     public const float MaxMorale = 100f;
-    public const float RoutThreshold = 15f;
-
     /// <summary>Current fatigue (0–100). Rises from actions, reduces attack and defense.</summary>
     [System.NonSerialized]
     public float currentFatigue = 0f;
     public const float MaxFatigue = 100f;
-
-    /// <summary>True when morale is below RoutThreshold — unit cannot attack and gets movement penalty.</summary>
-    public bool IsRouted => currentMorale <= RoutThreshold;
 
     public IReadOnlyList<StatusEffect> ActiveStatusEffects => activeStatusEffects;
 
@@ -438,7 +600,7 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Morale multiplier for damage dealt. 1.0 at full morale, drops to 0.5 when routed.
+    /// Morale multiplier for combat stats. 1.1 at full morale, drops to 0.5 at zero morale.
     /// </summary>
     public float MoraleDamageMultiplier => Mathf.Lerp(0.5f, 1.1f, currentMorale / MaxMorale);
 
@@ -799,6 +961,7 @@ public abstract class BaseUnit : MonoBehaviour
             float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
             valF += GetStatusEffectAttackModifier();
             valF *= FatigueMultiplier;
+            valF *= MoraleDamageMultiplier;
             return Mathf.Max(0, Mathf.RoundToInt(valF));
         }
     }
@@ -816,6 +979,7 @@ public abstract class BaseUnit : MonoBehaviour
         float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
         valF += GetStatusEffectDefenseModifier();
         valF *= FatigueMultiplier;
+        valF *= MoraleDamageMultiplier;
         valF = ApplyOwnerDefenseBonuses(valF);
         valF = ApplyTileDefenseBonuses(valF);
         valF = ApplyFortifyDefenseBonus(valF);
@@ -1457,7 +1621,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (animator != null && _hasDeathParam)
             SetAnimatorTriggerForFormation(deathHash);
 
-        // Clear tile occupancy (layer-aware)
+        // Clear tile occupancy (layer-aware, stack-aware)
         if (currentTileIndex >= 0)
         {
             try
@@ -1465,7 +1629,7 @@ public abstract class BaseUnit : MonoBehaviour
                 var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
                 if (occ != null)
                 {
-                    occ.ClearOccupant(currentTileIndex, currentLayer);
+                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
                 }
                 else
                 {
@@ -1577,13 +1741,14 @@ public abstract class BaseUnit : MonoBehaviour
         {
             if (currentTileIndex >= 0)
             {
-                occ.ClearOccupant(currentTileIndex, currentLayer);
+                occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
             }
         }
         catch { }
 
         currentTileIndex = tileIndex;
         currentLayer = TileLayer.Orbit;
+        stackSlot = 0; // Orbit entries are single-unit, always slot 0
 
         // Position above the tile surface at the configured orbit height.
         Vector3 surface = ts.GetTileSurfacePosition(tileIndex);
@@ -1657,12 +1822,13 @@ public abstract class BaseUnit : MonoBehaviour
         // Claim the surface first so landing cannot clear orbit occupancy and then fail the destination write.
         try
         {
-            occ.ClearOccupant(currentTileIndex, TileLayer.Orbit);
+            occ.ClearOccupantById(currentTileIndex, TileLayer.Orbit, gameObject.GetInstanceID());
         }
         catch { }
 
         currentTileIndex = landingTileIndex;
         currentLayer = TileLayer.Surface;
+        stackSlot = 0; // Landing units take slot 0
 
         // Position back on terrain surface
         PositionUnitOnSurface(landingTileIndex);
@@ -1837,22 +2003,58 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
-        // Layer-aware occupancy check
+        // Layer-aware occupancy check (supports unit stacking)
         try
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
+            if (occ != null)
             {
-                if (occObj.GetComponent<BaseUnit>() != null)
+                var allIds = occ.GetAllOccupantIds(tileIndex, currentLayer);
+                if (allIds.Count > 0)
                 {
-                    if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile occupied by unit={occObj.name} unit={name} tile={tileIndex}");
-                    return false;
-                }
-                if (occObj.GetComponent<City>() != null)
-                {
-                    if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile occupied by city={occObj.name} unit={name} tile={tileIndex}");
-                    return false;
+                    int selfId = gameObject.GetInstanceID();
+                    bool selfPresent = false;
+                    bool hasCity = false;
+                    bool hasEnemyOrNonUnit = false;
+                    Civilization myOwner = this.owner;
+                    int maxStack = myOwner != null ? myOwner.GetMaxStackSize() : 1;
+
+                    foreach (int id in allIds)
+                    {
+                        if (id == selfId) { selfPresent = true; continue; }
+                        var obj = UnitRegistry.GetObject(id);
+                        if (obj == null) continue;
+                        if (obj.GetComponent<City>() != null) { hasCity = true; break; }
+                        var otherUnit = obj.GetComponent<BaseUnit>();
+                        if (otherUnit != null)
+                        {
+                            // Stacking only allowed with own units
+                            if (otherUnit.owner != myOwner) { hasEnemyOrNonUnit = true; break; }
+                        }
+                        else
+                        {
+                            hasEnemyOrNonUnit = true; break;
+                        }
+                    }
+
+                    if (hasCity)
+                    {
+                        if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile occupied by city unit={name} tile={tileIndex}");
+                        return false;
+                    }
+                    if (hasEnemyOrNonUnit)
+                    {
+                        if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile has enemy/non-stackable occupant unit={name} tile={tileIndex}");
+                        return false;
+                    }
+
+                    // Check stack capacity (exclude self if already present)
+                    int othersCount = selfPresent ? allIds.Count - 1 : allIds.Count;
+                    if (othersCount >= maxStack)
+                    {
+                        if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: stack full ({othersCount}/{maxStack}) unit={name} tile={tileIndex}");
+                        return false;
+                    }
                 }
             }
         }
@@ -1955,11 +2157,21 @@ public abstract class BaseUnit : MonoBehaviour
                 // Clear old tile occupancy if moving to a different tile
                 if (currentTileIndex >= 0 && currentTileIndex != tileIndex)
                 {
-                    occ.ClearOccupant(currentTileIndex, currentLayer);
+                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
                 }
-                if (!occ.TrySetOccupant(tileIndex, gameObject, currentLayer))
+                int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+                int slot = occ.TryAddToStack(tileIndex, currentLayer, gameObject, maxStack);
+                if (slot < 0)
                 {
-                    Debug.LogWarning($"[BaseUnit] RegisterOccupancy could not claim tile {tileIndex} for {name} on layer {currentLayer}.");
+                    // Fallback to slot 0 for backward compat (non-stacking units)
+                    if (!occ.TrySetOccupant(tileIndex, gameObject, currentLayer))
+                        Debug.LogWarning($"[BaseUnit] RegisterOccupancy could not claim tile {tileIndex} for {name} on layer {currentLayer}.");
+                    else
+                        stackSlot = 0;
+                }
+                else
+                {
+                    stackSlot = slot;
                 }
             }
         }
@@ -2231,10 +2443,6 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Status effect movement modifiers
         move += GetStatusEffectMovementModifier();
-
-        // Routed units lose half movement
-        if (IsRouted)
-            move = Mathf.Max(1, move / 2);
 
         if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
         {

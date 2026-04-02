@@ -555,6 +555,22 @@ public class Civilization : MonoBehaviour
         }
         return false;
     }
+
+    /// <summary>
+    /// Returns the maximum number of units that can share a single tile for this civ.
+    /// Default is 1 (no stacking). Techs with unlocksUnitStacking raise this to 2 or 3.
+    /// </summary>
+    public int GetMaxStackSize()
+    {
+        if (researchedTechs == null || researchedTechs.Count == 0) return 1;
+        int max = 1;
+        foreach (var tech in researchedTechs)
+        {
+            if (tech != null && tech.unlocksUnitStacking)
+                max = Mathf.Max(max, tech.unitStackSizeGranted);
+        }
+        return max;
+    }
     
 
     // Increase the number of governors this civ can create

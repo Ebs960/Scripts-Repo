@@ -139,6 +139,129 @@ public class ArmyGroup
     }
 
     /// <summary>
+    /// Build a ranged-unit target list that includes enemies already attackable, enemies that can
+    /// threaten the ranged unit on their next turn, and enemies that are only worth pressuring when
+    /// the melee screen is actually in position to cover the ranged line.
+    /// </summary>
+    private List<BaseUnit> CollectRangedPriorityEnemies(Civilization civ, CombatUnit rangedUnit, List<CombatUnit> meleeScreen, TileSystem ts)
+    {
+        var enemies = new List<BaseUnit>();
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null || rangedUnit == null) return enemies;
+
+        int directRange = Mathf.FloorToInt(rangedUnit.CurrentRange);
+        int maneuverReach = directRange + Mathf.Max(1, rangedUnit.GetStartingMovePoints());
+
+        foreach (var other in allCivs)
+        {
+            if (other == civ) continue;
+
+            if (other.combatUnits != null)
+            {
+                foreach (var enemy in other.combatUnits)
+                {
+                    if (ShouldConsiderRangedEnemy(rangedUnit, enemy, meleeScreen, ts, directRange, maneuverReach))
+                        enemies.Add(enemy);
+                }
+            }
+
+            if (other.workerUnits != null)
+            {
+                foreach (var enemy in other.workerUnits)
+                {
+                    if (ShouldConsiderRangedEnemy(rangedUnit, enemy, meleeScreen, ts, directRange, maneuverReach))
+                        enemies.Add(enemy);
+                }
+            }
+        }
+
+        enemies.Sort((a, b) => ScoreRangedEnemyCandidate(rangedUnit, b, meleeScreen, ts)
+            .CompareTo(ScoreRangedEnemyCandidate(rangedUnit, a, meleeScreen, ts)));
+
+        return enemies;
+    }
+
+    private bool ShouldConsiderRangedEnemy(CombatUnit rangedUnit, BaseUnit enemy, List<CombatUnit> meleeScreen, TileSystem ts, int directRange, int maneuverReach)
+    {
+        if (enemy == null || enemy.currentHealth <= 0 || enemy.planetIndex != PlanetIndex)
+            return false;
+
+        int distToUnit = ts.GetTileDistance(rangedUnit.currentTileIndex, enemy.currentTileIndex);
+        bool canAttackNow = distToUnit <= directRange && CanAttackTarget(rangedUnit, enemy);
+        bool threatensNextTurn = CanEnemyThreatenNextTurn(enemy, rangedUnit, ts);
+        bool screenedAdvance = HasStableMeleeScreen(meleeScreen, rangedUnit, enemy, ts);
+        bool nearObjective = TargetTile >= 0 && ts.GetTileDistance(enemy.currentTileIndex, TargetTile) <= maneuverReach;
+
+        if (canAttackNow) return true;
+        if (threatensNextTurn) return true;
+        if (screenedAdvance && nearObjective && distToUnit <= maneuverReach) return true;
+
+        return false;
+    }
+
+    private static bool CanEnemyThreatenNextTurn(BaseUnit enemy, CombatUnit rangedUnit, TileSystem ts)
+    {
+        if (enemy == null || rangedUnit == null) return false;
+
+        int dist = ts.GetTileDistance(enemy.currentTileIndex, rangedUnit.currentTileIndex);
+        int threatReach = Mathf.FloorToInt(enemy.CurrentRange) + Mathf.Max(1, enemy.GetStartingMovePoints());
+        return dist <= threatReach;
+    }
+
+    private static bool HasStableMeleeScreen(List<CombatUnit> meleeScreen, CombatUnit rangedUnit, BaseUnit enemy, TileSystem ts)
+    {
+        if (meleeScreen == null || meleeScreen.Count == 0 || rangedUnit == null || enemy == null)
+            return false;
+
+        int rangedDist = ts.GetTileDistance(rangedUnit.currentTileIndex, enemy.currentTileIndex);
+        int screeners = 0;
+        float screenStrength = 0f;
+
+        foreach (var melee in meleeScreen)
+        {
+            if (melee == null || melee.currentHealth <= 0) continue;
+
+            int meleeDist = ts.GetTileDistance(melee.currentTileIndex, enemy.currentTileIndex);
+            int supportDist = ts.GetTileDistance(melee.currentTileIndex, rangedUnit.currentTileIndex);
+
+            if (meleeDist >= rangedDist) continue;
+            if (supportDist > 2) continue;
+
+            screeners++;
+            screenStrength += melee.currentHealth + melee.CurrentDefense + melee.CurrentAttack * 0.5f;
+            if (meleeDist <= 1) screenStrength += 6f;
+        }
+
+        if (screeners == 0) return false;
+
+        float threatStrength = enemy.currentHealth + enemy.CurrentDefense * 0.5f + enemy.CurrentAttack * 1.25f;
+        return screeners >= 2 || screenStrength >= threatStrength;
+    }
+
+    private float ScoreRangedEnemyCandidate(CombatUnit rangedUnit, BaseUnit enemy, List<CombatUnit> meleeScreen, TileSystem ts)
+    {
+        if (enemy == null) return float.MinValue;
+
+        int distToUnit = ts.GetTileDistance(rangedUnit.currentTileIndex, enemy.currentTileIndex);
+        int directRange = Mathf.FloorToInt(rangedUnit.CurrentRange);
+        bool canAttackNow = CanAttackTarget(rangedUnit, enemy);
+        bool threatensNextTurn = CanEnemyThreatenNextTurn(enemy, rangedUnit, ts);
+        bool screenedAdvance = HasStableMeleeScreen(meleeScreen, rangedUnit, enemy, ts);
+
+        float score = FocusFireScore(enemy);
+        if (canAttackNow) score += 12f;
+        if (threatensNextTurn) score += 10f;
+        if (screenedAdvance) score += 4f;
+        else if (!canAttackNow) score -= 8f;
+
+        score -= Mathf.Max(0, distToUnit - directRange) * 1.5f;
+        if (TargetTile >= 0)
+            score -= ts.GetTileDistance(enemy.currentTileIndex, TargetTile) * 0.35f;
+
+        return score;
+    }
+
+    /// <summary>
     /// Score a focus-fire target. Incentivizes finishing off wounded high-value targets.
     /// </summary>
     private static float FocusFireScore(BaseUnit enemy)
@@ -290,7 +413,7 @@ public class ArmyGroup
         foreach (var unit in ranged)
         {
             // Try to attack enemies in range first
-            var enemies = CollectAndPrioritizeEnemies(civ, ts, unit.CurrentRange + 1);
+            var enemies = CollectRangedPriorityEnemies(civ, unit, melee, ts);
             AICommand bestCmd = null;
             float bestScore = float.MinValue;
             foreach (var enemy in enemies)
@@ -307,13 +430,17 @@ public class ArmyGroup
             }
 
             // No target in range: move toward a tile behind the melee center
-            int screenTile = FindScreenPosition(unit, meleeCenter, TargetTile, ts, dangerMap);
+            var priorityEnemy = enemies.Count > 0 ? enemies[0] : null;
+            bool urgentThreat = priorityEnemy != null && CanEnemyThreatenNextTurn(priorityEnemy, unit, ts);
+            bool stableScreen = priorityEnemy != null && HasStableMeleeScreen(melee, unit, priorityEnemy, ts);
+            int screenAnchor = priorityEnemy != null ? priorityEnemy.currentTileIndex : TargetTile;
+            int screenTile = FindScreenPosition(unit, meleeCenter, screenAnchor, ts, dangerMap, urgentThreat && !stableScreen);
             if (screenTile >= 0)
             {
                 commands.Add(new AIMoveCommand
                 {
                     unit = unit, targetTileIndex = screenTile, planetIndex = PlanetIndex,
-                    score = AIScorer.ScoreTileForMovement(unit, screenTile, TargetTile, dangerMap) + 8f
+                    score = AIScorer.ScoreTileForMovement(unit, screenTile, screenAnchor, dangerMap) + (urgentThreat && !stableScreen ? 10f : 8f)
                 });
             }
             else
@@ -490,7 +617,7 @@ public class ArmyGroup
         int meleeCenter = GetCentroid(mainMelee, ts);
         foreach (var unit in ranged)
         {
-            var enemies = CollectAndPrioritizeEnemies(civ, ts, unit.CurrentRange + 1);
+            var enemies = CollectRangedPriorityEnemies(civ, unit, mainMelee, ts);
             AICommand bestCmd = null;
             float bestScore = float.MinValue;
             foreach (var enemy in enemies)
@@ -506,13 +633,17 @@ public class ArmyGroup
             }
             else
             {
-                int screenTile = FindScreenPosition(unit, meleeCenter, TargetTile, ts, dangerMap);
+                var priorityEnemy = enemies.Count > 0 ? enemies[0] : null;
+                bool urgentThreat = priorityEnemy != null && CanEnemyThreatenNextTurn(priorityEnemy, unit, ts);
+                bool stableScreen = priorityEnemy != null && HasStableMeleeScreen(mainMelee, unit, priorityEnemy, ts);
+                int screenAnchor = priorityEnemy != null ? priorityEnemy.currentTileIndex : TargetTile;
+                int screenTile = FindScreenPosition(unit, meleeCenter, screenAnchor, ts, dangerMap, urgentThreat && !stableScreen);
                 int moveTo = screenTile >= 0 ? screenTile : FindBestStepToward(unit, TargetTile, ts, dangerMap);
                 if (moveTo >= 0)
                     commands.Add(new AIMoveCommand
                     {
                         unit = unit, targetTileIndex = moveTo, planetIndex = PlanetIndex,
-                        score = AIScorer.ScoreTileForMovement(unit, moveTo, TargetTile, dangerMap) + 7f
+                        score = AIScorer.ScoreTileForMovement(unit, moveTo, screenAnchor, dangerMap) + (urgentThreat && !stableScreen ? 9f : 7f)
                     });
             }
         }
@@ -616,7 +747,7 @@ public class ArmyGroup
     /// Find a tile for a ranged unit that is behind the melee center relative to the target.
     /// Prefers tiles with elevation and low danger.
     /// </summary>
-    private static int FindScreenPosition(CombatUnit rangedUnit, int meleeCenter, int targetTile, TileSystem ts, DangerMap dangerMap)
+    private static int FindScreenPosition(CombatUnit rangedUnit, int meleeCenter, int targetTile, TileSystem ts, DangerMap dangerMap, bool preferDeepScreen = false)
     {
         if (meleeCenter < 0) return -1;
         int[] neighbors = ts.GetNeighbors(rangedUnit.currentTileIndex);
@@ -630,14 +761,18 @@ public class ArmyGroup
         {
             if (n < 0 || !rangedUnit.CanMoveTo(n)) continue;
             int distToTarget = ts.GetTileDistance(n, targetTile);
+            int distToMelee = ts.GetTileDistance(n, meleeCenter);
 
             float s = 0f;
             if (distToTarget > meleeDist)
-                s += 4f; // behind melee line
+                s += preferDeepScreen ? 6f : 4f; // behind melee line
             else if (distToTarget == meleeDist)
-                s += 1f;
+                s += preferDeepScreen ? -1f : 1f;
             else
-                s -= 3f; // in front of melee = bad for ranged
+                s -= preferDeepScreen ? 6f : 3f; // in front of melee = bad for ranged
+
+            if (preferDeepScreen)
+                s -= Mathf.Max(0, distToMelee - 2) * 2f;
 
             s -= dangerMap.GetDanger(n) * 1.5f;
 
