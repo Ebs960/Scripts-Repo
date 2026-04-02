@@ -2,19 +2,15 @@ using UnityEngine;
 
 namespace GameCombat
 {
-    // Forwards collision/trigger events from a child physics object to the parent Projectile instance.
+    /// <summary>
+    /// DEPRECATED: Projectiles no longer use physics collision.
+    /// Kept as a stub to avoid missing-component errors on existing prefabs.
+    /// Safe to remove once all projectile prefabs have been re-saved without this component.
+    /// </summary>
+    [System.Obsolete("Projectile collision system removed. Projectiles are now pure visual.")]
     public class ProjectileCollisionProxy : MonoBehaviour
     {
+        [System.Obsolete("No longer used")]
         public Projectile owner;
-
-        void OnCollisionEnter(Collision collision)
-        {
-            if (owner != null) owner.OnProxyCollisionEnter(collision);
-        }
-
-        void OnTriggerEnter(Collider other)
-        {
-            if (owner != null) owner.OnProxyTriggerEnter(other);
-        }
     }
 }

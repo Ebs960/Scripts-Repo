@@ -57,7 +57,15 @@ namespace GameCombat
     public float areaOfEffectRadius = 0f; // 0 = single target
     public bool explodeOnImpact = false;
     public float explosionForce = 0f;
+
+    [Tooltip("Status effect applied on hit (replaces legacy string-based statusEffectName)")]
+    public StatusEffectData statusEffect;
+
+    [System.Obsolete("Use statusEffect (StatusEffectData) instead")]
+    [HideInInspector]
     public float statusEffectDuration = 0f;
+    [System.Obsolete("Use statusEffect (StatusEffectData) instead")]
+    [HideInInspector]
     public string statusEffectName;
 
     [Header("Audio")]

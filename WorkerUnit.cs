@@ -78,6 +78,9 @@ public class WorkerUnit : BaseUnit
         RestoreMovePointsForNewTurn();
         ResetAttackPointsForNewTurn();
 
+        // Warfare depth systems (morale recovery, fatigue recovery, status effect ticks)
+        ProcessWarfareSystems();
+
         // Worker-specific resets
         var wb = AggregateWorkerBonusesLocal(owner, data);
         currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));

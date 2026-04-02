@@ -13,7 +13,8 @@ public enum GroupAction
     Rally,    // group not ready — all members move toward rally tile
     Advance,  // group ready — all members advance toward target
     Attack,   // group at target — all members engage nearby enemies
-    Hold      // group defending a position — fortify or attack nearby threats
+    Hold,     // group defending a position — fortify or attack nearby threats
+    Flank     // group attempting to approach from an off-axis angle
 }
 
 /// <summary>
@@ -21,7 +22,13 @@ public enum GroupAction
 /// before advancing, preventing suicidal trickle attacks.
 ///
 /// Group-level decisions reduce micromanagement: one decision per group instead of per-unit.
-/// The group chooses Rally/Advance/Attack/Hold, then emits per-unit AICommands accordingly.
+/// The group chooses Rally/Advance/Attack/Hold/Flank, then emits per-unit AICommands accordingly.
+///
+/// Formation frontage: melee units advance toward the enemy, ranged units stay 1-2 tiles behind.
+/// Focus-fire: the group picks one priority target (lowest HP ratio * highest threat) and
+/// all units that can attack it do so before moving on to secondary targets.
+/// Screen doctrine: melee units interpose between ranged allies and the nearest enemy.
+/// Flank doctrine: when the group has 4+ units it may split into a main body + flank element.
 /// </summary>
 public class ArmyGroup
 {
@@ -61,6 +68,87 @@ public class ArmyGroup
     }
 
     // ════════════════════════════════════════════════════════
+    //  Classification helpers
+    // ════════════════════════════════════════════════════════
+
+    private static bool IsRangedUnit(CombatUnit unit)
+    {
+        return unit != null && unit.data != null && unit.data.isRangedUnit;
+    }
+
+    private static bool IsMeleeUnit(CombatUnit unit)
+    {
+        return unit != null && !IsRangedUnit(unit);
+    }
+
+    /// <summary>
+    /// Split members into melee-front and ranged-rear lists.
+    /// </summary>
+    private void ClassifyMembers(out List<CombatUnit> melee, out List<CombatUnit> ranged)
+    {
+        melee = new List<CombatUnit>();
+        ranged = new List<CombatUnit>();
+        foreach (var u in members)
+        {
+            if (u == null || u.hasActedThisTurn || u.isStored) continue;
+            if (IsRangedUnit(u)) ranged.Add(u);
+            else melee.Add(u);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  Focus-fire target selection
+    // ════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Collect nearby enemies and sort by priority: lowest HP ratio first, then highest
+    /// threat value. This ensures the group focuses fire to secure kills.
+    /// </summary>
+    private List<BaseUnit> CollectAndPrioritizeEnemies(Civilization civ, TileSystem ts, int searchRadius = 4)
+    {
+        var enemies = new List<BaseUnit>();
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null) return enemies;
+
+        foreach (var other in allCivs)
+        {
+            if (other == civ) continue;
+            if (other.combatUnits != null)
+                foreach (var e in other.combatUnits)
+                    if (e != null && e.planetIndex == PlanetIndex &&
+                        ts.GetTileDistance(e.currentTileIndex, TargetTile) <= searchRadius)
+                        enemies.Add(e);
+            if (other.workerUnits != null)
+                foreach (var w in other.workerUnits)
+                    if (w != null && w.planetIndex == PlanetIndex &&
+                        ts.GetTileDistance(w.currentTileIndex, TargetTile) <= searchRadius)
+                        enemies.Add(w);
+        }
+
+        // Priority: lowest HP ratio first, then highest attack (threat)
+        enemies.Sort((a, b) =>
+        {
+            float hpA = (float)a.currentHealth / Mathf.Max(1, a.MaxHealth);
+            float hpB = (float)b.currentHealth / Mathf.Max(1, b.MaxHealth);
+            int hpCmp = hpA.CompareTo(hpB);
+            if (hpCmp != 0) return hpCmp;
+            return b.CurrentAttack.CompareTo(a.CurrentAttack);
+        });
+
+        return enemies;
+    }
+
+    /// <summary>
+    /// Score a focus-fire target. Incentivizes finishing off wounded high-value targets.
+    /// </summary>
+    private static float FocusFireScore(BaseUnit enemy)
+    {
+        if (enemy == null) return float.MinValue;
+        float hpRatio = (float)enemy.currentHealth / Mathf.Max(1, enemy.MaxHealth);
+        return (1f - hpRatio) * 15f + enemy.BaseAttack * 1.5f;
+    }
+
+    // ════════════════════════════════════════════════════════
     //  Group-level decision + command expansion
     // ════════════════════════════════════════════════════════
 
@@ -87,8 +175,13 @@ public class ArmyGroup
         // At target: Attack
         if (avgDistToTarget <= 2f) return GroupAction.Attack;
 
-        // Ready and can advance: Advance
-        if (IsReady) return GroupAction.Advance;
+        // Ready and can advance: consider flanking if group is large enough
+        if (IsReady)
+        {
+            if (count >= 3 && avgDistToTarget >= 3f && avgDistToTarget <= 6f)
+                return GroupAction.Flank;
+            return GroupAction.Advance;
+        }
 
         // Not ready: Rally (gather at rally point)
         return GroupAction.Rally;
@@ -110,13 +203,16 @@ public class ArmyGroup
                 ExpandRally(commands, ts, dangerMap);
                 break;
             case GroupAction.Advance:
-                ExpandAdvance(commands, ts, dangerMap);
+                ExpandAdvance(commands, civ, ts, dangerMap);
                 break;
             case GroupAction.Attack:
                 ExpandAttack(commands, civ, ts, dangerMap);
                 break;
             case GroupAction.Hold:
                 ExpandHold(commands, ts, dangerMap);
+                break;
+            case GroupAction.Flank:
+                ExpandFlank(commands, civ, ts, dangerMap);
                 break;
         }
         return commands;
@@ -154,13 +250,18 @@ public class ArmyGroup
         }
     }
 
-    private void ExpandAdvance(List<AICommand> commands, TileSystem ts, DangerMap dangerMap)
+    /// <summary>
+    /// Advance with formation frontage: melee units move toward the target first,
+    /// ranged units stay behind the melee line and engage opportunistically.
+    /// Melee units that are adjacent to enemies screen ranged allies by attacking.
+    /// </summary>
+    private void ExpandAdvance(List<AICommand> commands, Civilization civ, TileSystem ts, DangerMap dangerMap)
     {
-        foreach (var unit in members)
-        {
-            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
+        ClassifyMembers(out var melee, out var ranged);
 
-            // Can we attack something adjacent? Opportunistic attacks while advancing.
+        // ── Melee vanguard: advance toward target, attack if adjacent ──
+        foreach (var unit in melee)
+        {
             var adjacent = FindAdjacentEnemy(unit, ts);
             if (adjacent != null && CanAttackTarget(unit, adjacent))
             {
@@ -172,7 +273,6 @@ public class ArmyGroup
                 continue;
             }
 
-            // Otherwise move toward target
             int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
             if (bestTile >= 0)
             {
@@ -183,65 +283,129 @@ public class ArmyGroup
                 });
             }
         }
-    }
 
-    private void ExpandAttack(List<AICommand> commands, Civilization civ, TileSystem ts, DangerMap dangerMap)
-    {
-        // Collect all attackable enemies near the target
-        var enemies = new List<BaseUnit>();
-        var allCivs = CivilizationManager.Instance?.GetAllCivs();
-        if (allCivs != null)
+        // ── Ranged rearguard: stay behind melee, fire if in range ──
+        int meleeCenter = GetCentroid(melee, ts);
+
+        foreach (var unit in ranged)
         {
-            foreach (var other in allCivs)
-            {
-                if (other == civ) continue;
-                if (other.combatUnits != null)
-                    foreach (var e in other.combatUnits)
-                        if (e != null && e.planetIndex == PlanetIndex &&
-                            ts.GetTileDistance(e.currentTileIndex, TargetTile) <= 3)
-                            enemies.Add(e);
-                if (other.workerUnits != null)
-                    foreach (var w in other.workerUnits)
-                        if (w != null && w.planetIndex == PlanetIndex &&
-                            ts.GetTileDistance(w.currentTileIndex, TargetTile) <= 3)
-                            enemies.Add(w);
-            }
-        }
-
-        // Sort enemies by threat (highest attack first) — focus fire
-        enemies.Sort((a, b) => b.CurrentAttack.CompareTo(a.CurrentAttack));
-
-        foreach (var unit in members)
-        {
-            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
-
-            // Find best target this unit can attack
+            // Try to attack enemies in range first
+            var enemies = CollectAndPrioritizeEnemies(civ, ts, unit.CurrentRange + 1);
             AICommand bestCmd = null;
             float bestScore = float.MinValue;
-
             foreach (var enemy in enemies)
             {
                 if (enemy == null || !CanAttackTarget(unit, enemy)) continue;
-                float s = AIScorer.ScoreAttack(unit, enemy, dangerMap) + 5f;
-                // Focus fire bonus: higher score if other group members can also hit this target
-                s += 3f;
+                float s = AIScorer.ScoreAttack(unit, enemy, dangerMap) + FocusFireScore(enemy);
                 if (s > bestScore) { bestScore = s; bestCmd = new AIAttackCommand { unit = unit, target = enemy, planetIndex = PlanetIndex, score = s }; }
             }
 
             if (bestCmd != null)
             {
                 commands.Add(bestCmd);
+                continue;
+            }
+
+            // No target in range: move toward a tile behind the melee center
+            int screenTile = FindScreenPosition(unit, meleeCenter, TargetTile, ts, dangerMap);
+            if (screenTile >= 0)
+            {
+                commands.Add(new AIMoveCommand
+                {
+                    unit = unit, targetTileIndex = screenTile, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreTileForMovement(unit, screenTile, TargetTile, dangerMap) + 8f
+                });
             }
             else
             {
-                // No one in range — move closer
                 int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
                 if (bestTile >= 0)
                     commands.Add(new AIMoveCommand
                     {
                         unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
-                        score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 6f
+                        score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 7f
                     });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Attack with coordinated focus fire. The group picks the highest-priority target
+    /// (lowest HP ratio * highest threat) and all units that can attack it do so.
+    /// Tracks allocated damage to avoid overkilling one target while ignoring others.
+    /// </summary>
+    private void ExpandAttack(List<AICommand> commands, Civilization civ, TileSystem ts, DangerMap dangerMap)
+    {
+        var enemies = CollectAndPrioritizeEnemies(civ, ts, 4);
+        ClassifyMembers(out var melee, out var ranged);
+
+        // Track damage allocated per enemy to avoid overkill
+        var damageAllocated = new Dictionary<BaseUnit, int>();
+
+        // Process all active units: melee first (they need adjacency), then ranged
+        var allActive = new List<CombatUnit>(melee);
+        allActive.AddRange(ranged);
+
+        foreach (var unit in allActive)
+        {
+            AICommand bestCmd = null;
+            float bestScore = float.MinValue;
+
+            foreach (var enemy in enemies)
+            {
+                if (enemy == null || enemy.currentHealth <= 0 || !CanAttackTarget(unit, enemy)) continue;
+
+                float s = AIScorer.ScoreAttack(unit, enemy, dangerMap);
+
+                // Focus-fire coordination: check remaining HP after allocated damage
+                int alreadyAllocated = 0;
+                damageAllocated.TryGetValue(enemy, out alreadyAllocated);
+                int remainingHP = enemy.currentHealth - alreadyAllocated;
+
+                if (remainingHP <= 0) continue; // already overkilling this target
+
+                // Big bonus for finishing off a target
+                if (unit.CurrentAttack >= remainingHP)
+                    s += 12f;
+                else
+                    s += 5f;
+
+                s += FocusFireScore(enemy) * 0.5f;
+
+                if (s > bestScore) { bestScore = s; bestCmd = new AIAttackCommand { unit = unit, target = enemy, planetIndex = PlanetIndex, score = s }; }
+            }
+
+            if (bestCmd != null)
+            {
+                commands.Add(bestCmd);
+                var target = ((AIAttackCommand)bestCmd).target;
+                if (!damageAllocated.ContainsKey(target)) damageAllocated[target] = 0;
+                damageAllocated[target] += unit.CurrentAttack;
+            }
+            else
+            {
+                // No one in range — melee advance, ranged reposition
+                if (IsMeleeUnit(unit))
+                {
+                    int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
+                    if (bestTile >= 0)
+                        commands.Add(new AIMoveCommand
+                        {
+                            unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                            score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 6f
+                        });
+                }
+                else
+                {
+                    int meleeCenter = GetCentroid(melee, ts);
+                    int screenTile = FindScreenPosition(unit, meleeCenter, TargetTile, ts, dangerMap);
+                    if (screenTile >= 0)
+                        commands.Add(new AIMoveCommand
+                        {
+                            unit = unit, targetTileIndex = screenTile, planetIndex = PlanetIndex,
+                            score = AIScorer.ScoreTileForMovement(unit, screenTile, TargetTile, dangerMap) + 4f
+                        });
+                }
             }
         }
     }
@@ -274,6 +438,108 @@ public class ArmyGroup
     }
 
     // ──── Helpers ────
+
+    /// <summary>
+    /// Flank doctrine: split the group into a main body and a flank element.
+    /// The main body advances directly toward the target (pinning force),
+    /// while the flank element approaches from an off-axis angle.
+    /// Ranged units always stay in the main body; excess melee units form the flank.
+    /// </summary>
+    private void ExpandFlank(List<AICommand> commands, Civilization civ, TileSystem ts, DangerMap dangerMap)
+    {
+        ClassifyMembers(out var melee, out var ranged);
+
+        // Need at least 2 melee to form a flank element
+        if (melee.Count < 2)
+        {
+            ExpandAdvance(commands, civ, ts, dangerMap);
+            return;
+        }
+
+        // Split melee: 2/3 main body, 1/3 flank
+        int flankCount = Mathf.Max(1, melee.Count / 3);
+        var flankUnits = melee.GetRange(melee.Count - flankCount, flankCount);
+        var mainMelee = melee.GetRange(0, melee.Count - flankCount);
+
+        int flankTarget = FindFlankTile(ts, TargetTile, dangerMap);
+
+        // ── Main body: advance directly ──
+        foreach (var unit in mainMelee)
+        {
+            var adjacent = FindAdjacentEnemy(unit, ts);
+            if (adjacent != null && CanAttackTarget(unit, adjacent))
+            {
+                commands.Add(new AIAttackCommand
+                {
+                    unit = unit, target = adjacent, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreAttack(unit, adjacent, dangerMap) + 5f
+                });
+                continue;
+            }
+
+            int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
+            if (bestTile >= 0)
+                commands.Add(new AIMoveCommand
+                {
+                    unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 10f
+                });
+        }
+
+        // Ranged units fire or stay screened
+        int meleeCenter = GetCentroid(mainMelee, ts);
+        foreach (var unit in ranged)
+        {
+            var enemies = CollectAndPrioritizeEnemies(civ, ts, unit.CurrentRange + 1);
+            AICommand bestCmd = null;
+            float bestScore = float.MinValue;
+            foreach (var enemy in enemies)
+            {
+                if (enemy == null || !CanAttackTarget(unit, enemy)) continue;
+                float s = AIScorer.ScoreAttack(unit, enemy, dangerMap) + FocusFireScore(enemy);
+                if (s > bestScore) { bestScore = s; bestCmd = new AIAttackCommand { unit = unit, target = enemy, planetIndex = PlanetIndex, score = s }; }
+            }
+
+            if (bestCmd != null)
+            {
+                commands.Add(bestCmd);
+            }
+            else
+            {
+                int screenTile = FindScreenPosition(unit, meleeCenter, TargetTile, ts, dangerMap);
+                int moveTo = screenTile >= 0 ? screenTile : FindBestStepToward(unit, TargetTile, ts, dangerMap);
+                if (moveTo >= 0)
+                    commands.Add(new AIMoveCommand
+                    {
+                        unit = unit, targetTileIndex = moveTo, planetIndex = PlanetIndex,
+                        score = AIScorer.ScoreTileForMovement(unit, moveTo, TargetTile, dangerMap) + 7f
+                    });
+            }
+        }
+
+        // ── Flank element: approach from the side ──
+        foreach (var unit in flankUnits)
+        {
+            var adjacent = FindAdjacentEnemy(unit, ts);
+            if (adjacent != null && CanAttackTarget(unit, adjacent))
+            {
+                commands.Add(new AIAttackCommand
+                {
+                    unit = unit, target = adjacent, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreAttack(unit, adjacent, dangerMap) + 9f // flank bonus
+                });
+                continue;
+            }
+
+            int bestTile = FindBestStepToward(unit, flankTarget, ts, dangerMap);
+            if (bestTile >= 0)
+                commands.Add(new AIMoveCommand
+                {
+                    unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreTileForMovement(unit, bestTile, flankTarget, dangerMap) + 10f
+                });
+        }
+    }
 
     private static bool CanAttackTarget(CombatUnit attacker, BaseUnit target)
     {
@@ -320,6 +586,107 @@ public class ArmyGroup
                         return w;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Get the centroid tile index of a set of units (tile that minimizes total distance to all).
+    /// </summary>
+    private static int GetCentroid(List<CombatUnit> units, TileSystem ts)
+    {
+        if (units == null || units.Count == 0) return -1;
+        if (units.Count == 1) return units[0]?.currentTileIndex ?? -1;
+
+        int bestTile = -1;
+        int bestTotal = int.MaxValue;
+        foreach (var u in units)
+        {
+            if (u == null) continue;
+            int total = 0;
+            foreach (var v in units)
+            {
+                if (v == null || v == u) continue;
+                total += ts.GetTileDistance(u.currentTileIndex, v.currentTileIndex);
+            }
+            if (total < bestTotal) { bestTotal = total; bestTile = u.currentTileIndex; }
+        }
+        return bestTile;
+    }
+
+    /// <summary>
+    /// Find a tile for a ranged unit that is behind the melee center relative to the target.
+    /// Prefers tiles with elevation and low danger.
+    /// </summary>
+    private static int FindScreenPosition(CombatUnit rangedUnit, int meleeCenter, int targetTile, TileSystem ts, DangerMap dangerMap)
+    {
+        if (meleeCenter < 0) return -1;
+        int[] neighbors = ts.GetNeighbors(rangedUnit.currentTileIndex);
+        if (neighbors == null) return -1;
+
+        int meleeDist = ts.GetTileDistance(meleeCenter, targetTile);
+        int best = -1;
+        float bestScore = float.MinValue;
+
+        foreach (int n in neighbors)
+        {
+            if (n < 0 || !rangedUnit.CanMoveTo(n)) continue;
+            int distToTarget = ts.GetTileDistance(n, targetTile);
+
+            float s = 0f;
+            if (distToTarget > meleeDist)
+                s += 4f; // behind melee line
+            else if (distToTarget == meleeDist)
+                s += 1f;
+            else
+                s -= 3f; // in front of melee = bad for ranged
+
+            s -= dangerMap.GetDanger(n) * 1.5f;
+
+            var td = ts.GetTileData(n);
+            if (td != null && td.isHill) s += 3f; // elevation advantage for ranged
+
+            if (s > bestScore) { bestScore = s; best = n; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Find a flank approach tile: 2-3 steps from target, off-axis from the group centroid.
+    /// </summary>
+    private int FindFlankTile(TileSystem ts, int targetTile, DangerMap dangerMap)
+    {
+        int groupCenter = GetCentroid(members.Cast<CombatUnit>().ToList(), ts);
+        if (groupCenter < 0) return targetTile;
+
+        var visited = new HashSet<int>();
+        var queue = new Queue<(int tile, int dist)>();
+        queue.Enqueue((targetTile, 0));
+        visited.Add(targetTile);
+
+        int directDist = ts.GetTileDistance(groupCenter, targetTile);
+        int best = -1;
+        float bestScore = float.MinValue;
+
+        while (queue.Count > 0)
+        {
+            var (tile, dist) = queue.Dequeue();
+            if (dist >= 2 && dist <= 3)
+            {
+                int distToCenter = ts.GetTileDistance(tile, groupCenter);
+                float angleDiff = Mathf.Abs(distToCenter - directDist);
+                float s = angleDiff * 3f;
+                s -= dangerMap.GetDanger(tile) * 1.0f;
+                var td = ts.GetTileData(tile);
+                if (td != null && td.isLand) s += 1f;
+                else s -= 100f;
+                if (s > bestScore) { bestScore = s; best = tile; }
+            }
+            if (dist >= 3) continue;
+            foreach (int n in ts.GetNeighbors(tile))
+            {
+                if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
+            }
+        }
+        return best >= 0 ? best : targetTile;
     }
 }
 

@@ -141,6 +141,14 @@ public abstract class BaseUnit : MonoBehaviour
         // Apply damage with attacker context (this will centralize death/reward raising in ApplyDamage)
         bool died = ctx.defender.ApplyDamage(ctx.damage, ctx.attacker, ctx.isMelee);
 
+        // Fatigue from attacking
+        if (ctx.attacker != null)
+            ctx.attacker.AddFatigue(8f);
+
+        // Morale boost for attacker on kill
+        if (died && ctx.attacker != null)
+            ctx.attacker.OnEnemyKilled();
+
         // Centralized XP awarding: attackers that are CombatUnit gain XP for hits and additional XP on kills
         try
         {
@@ -281,6 +289,236 @@ public abstract class BaseUnit : MonoBehaviour
     public ImprovementInstance storedInImprovement = null;
     [System.NonSerialized]
     public Herd storedInHerd = null;
+    #endregion
+
+    #region Status Effects, Morale & Fatigue
+
+    [System.NonSerialized]
+    protected List<StatusEffect> activeStatusEffects = new List<StatusEffect>();
+
+    /// <summary>Current morale (0–100). Affects damage dealt. At 0, the unit routs.</summary>
+    [System.NonSerialized]
+    public float currentMorale = 100f;
+    public const float MaxMorale = 100f;
+    public const float RoutThreshold = 15f;
+
+    /// <summary>Current fatigue (0–100). Rises from actions, reduces attack and defense.</summary>
+    [System.NonSerialized]
+    public float currentFatigue = 0f;
+    public const float MaxFatigue = 100f;
+
+    /// <summary>True when morale is below RoutThreshold — unit cannot attack and gets movement penalty.</summary>
+    public bool IsRouted => currentMorale <= RoutThreshold;
+
+    public IReadOnlyList<StatusEffect> ActiveStatusEffects => activeStatusEffects;
+
+    // ── Status Effect API ──
+
+    public void ApplyStatusEffect(StatusEffectData data, BaseUnit source = null)
+    {
+        if (data == null) return;
+
+        var existing = activeStatusEffects.Find(e => e.data == data);
+        if (existing != null)
+        {
+            switch (data.stacking)
+            {
+                case StatusEffectStacking.Replace:
+                    existing.Cleanup();
+                    activeStatusEffects.Remove(existing);
+                    break;
+                case StatusEffectStacking.Refresh:
+                    existing.remainingTurns = data.baseDuration;
+                    return;
+                case StatusEffectStacking.Stack:
+                    existing.magnitude += data.magnitude;
+                    existing.remainingTurns = Mathf.Max(existing.remainingTurns, data.baseDuration);
+                    return;
+                case StatusEffectStacking.Ignore:
+                    return;
+            }
+        }
+
+        var effect = new StatusEffect(data, source);
+        activeStatusEffects.Add(effect);
+
+        // Spawn VFX
+        if (data.applyVFX != null)
+            Instantiate(data.applyVFX, transform.position, Quaternion.identity);
+        if (data.persistentVFX != null)
+            effect.persistentVFXInstance = Instantiate(data.persistentVFX, transform);
+        if (data.applySound != null)
+            AudioSource.PlayClipAtPoint(data.applySound, transform.position);
+    }
+
+    public void RemoveStatusEffect(StatusEffectData data)
+    {
+        for (int i = activeStatusEffects.Count - 1; i >= 0; i--)
+        {
+            if (activeStatusEffects[i].data == data)
+            {
+                activeStatusEffects[i].Cleanup();
+                activeStatusEffects.RemoveAt(i);
+            }
+        }
+    }
+
+    public bool HasStatusEffect(StatusEffectType type)
+    {
+        foreach (var e in activeStatusEffects)
+            if (e.data.effectType == type) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Tick all status effects. Called at start of turn. Returns net HP change (negative = damage).
+    /// </summary>
+    public int TickStatusEffects()
+    {
+        int netHpChange = 0;
+        for (int i = activeStatusEffects.Count - 1; i >= 0; i--)
+        {
+            int tick = activeStatusEffects[i].Tick();
+            netHpChange += tick;
+
+            if (activeStatusEffects[i].IsExpired)
+            {
+                activeStatusEffects[i].Cleanup();
+                activeStatusEffects.RemoveAt(i);
+            }
+        }
+        return netHpChange;
+    }
+
+    /// <summary>Sum of all status effect attack modifiers.</summary>
+    public float GetStatusEffectAttackModifier()
+    {
+        float total = 0f;
+        foreach (var e in activeStatusEffects)
+            total += e.GetAttackModifier();
+        return total;
+    }
+
+    /// <summary>Sum of all status effect defense modifiers.</summary>
+    public float GetStatusEffectDefenseModifier()
+    {
+        float total = 0f;
+        foreach (var e in activeStatusEffects)
+            total += e.GetDefenseModifier();
+        return total;
+    }
+
+    /// <summary>Sum of all status effect range modifiers.</summary>
+    public float GetStatusEffectRangeModifier()
+    {
+        float total = 0f;
+        foreach (var e in activeStatusEffects)
+            total += e.GetRangeModifier();
+        return total;
+    }
+
+    /// <summary>Sum of all status effect movement modifiers.</summary>
+    public int GetStatusEffectMovementModifier()
+    {
+        int total = 0;
+        foreach (var e in activeStatusEffects)
+            total += e.GetMovementModifier();
+        return total;
+    }
+
+    // ── Morale API ──
+
+    /// <summary>Modify morale by delta (positive = inspire, negative = shock). Clamped to 0–100.</summary>
+    public void ModifyMorale(float delta)
+    {
+        float sumEffects = 0f;
+        foreach (var e in activeStatusEffects)
+            sumEffects += e.GetMoraleModifier();
+        currentMorale = Mathf.Clamp(currentMorale + delta + sumEffects, 0f, MaxMorale);
+    }
+
+    /// <summary>
+    /// Morale multiplier for damage dealt. 1.0 at full morale, drops to 0.5 when routed.
+    /// </summary>
+    public float MoraleDamageMultiplier => Mathf.Lerp(0.5f, 1.1f, currentMorale / MaxMorale);
+
+    /// <summary>
+    /// Fatigue multiplier for combat stats. 1.0 at 0 fatigue, drops to 0.7 at max fatigue.
+    /// </summary>
+    public float FatigueMultiplier => Mathf.Lerp(1f, 0.7f, currentFatigue / MaxFatigue);
+
+    /// <summary>Add fatigue from an action (attack, long move, etc.).</summary>
+    public void AddFatigue(float amount)
+    {
+        currentFatigue = Mathf.Clamp(currentFatigue + amount, 0f, MaxFatigue);
+    }
+
+    /// <summary>Recover fatigue at start of turn. Fortified units recover faster.</summary>
+    public void RecoverFatigueForNewTurn()
+    {
+        float recovery = IsFortified ? 20f : 10f;
+        currentFatigue = Mathf.Max(0f, currentFatigue - recovery);
+    }
+
+    /// <summary>Recover morale at start of turn. Nearby allies help.</summary>
+    public void RecoverMoraleForNewTurn()
+    {
+        float baseRecovery = 5f;
+        if (IsFortified) baseRecovery += 5f;
+        int nearbyAllies = CombatHelpers.CountNearbyAllies(this, 2);
+        baseRecovery += nearbyAllies * 2f;
+        currentMorale = Mathf.Min(MaxMorale, currentMorale + baseRecovery);
+    }
+
+    /// <summary>Called when this unit takes damage — reduces morale based on severity.</summary>
+    public void OnDamageMoraleShock(int damageAmount)
+    {
+        float shock = (float)damageAmount / Mathf.Max(1, MaxHealth) * 30f;
+        ModifyMorale(-shock);
+    }
+
+    /// <summary>Called when an ally dies nearby — morale penalty.</summary>
+    public void OnAllyKilledNearby()
+    {
+        ModifyMorale(-8f);
+    }
+
+    /// <summary>Called when this unit kills an enemy — morale boost.</summary>
+    public void OnEnemyKilled()
+    {
+        ModifyMorale(10f);
+    }
+
+    /// <summary>
+    /// Process morale/fatigue/status effects at start of turn.
+    /// Call from subclass ResetForNewTurn after base resets.
+    /// </summary>
+    public void ProcessWarfareSystems()
+    {
+        RecoverFatigueForNewTurn();
+        RecoverMoraleForNewTurn();
+
+        // Tick status effects (DoT, HoT, expiry)
+        int hpChange = TickStatusEffects();
+        if (hpChange < 0)
+        {
+            // Status effect damage (poison, burn)
+            ApplyDamage(Mathf.Abs(hpChange), null, false);
+        }
+        else if (hpChange > 0)
+        {
+            Heal(Mathf.Abs(hpChange));
+        }
+    }
+
+    /// <summary>Clean up all status effects (called on death).</summary>
+    protected void CleanupAllStatusEffects()
+    {
+        foreach (var e in activeStatusEffects)
+            e.Cleanup();
+        activeStatusEffects.Clear();
+    }
+
     #endregion
 
     #region Animation Hashes
@@ -559,7 +797,9 @@ public abstract class BaseUnit : MonoBehaviour
         get
         {
             float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
-            return Mathf.RoundToInt(valF);
+            valF += GetStatusEffectAttackModifier();
+            valF *= FatigueMultiplier;
+            return Mathf.Max(0, Mathf.RoundToInt(valF));
         }
     }
 
@@ -574,6 +814,8 @@ public abstract class BaseUnit : MonoBehaviour
     protected virtual float GetCurrentDefenseValueFloat()
     {
         float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+        valF += GetStatusEffectDefenseModifier();
+        valF *= FatigueMultiplier;
         valF = ApplyOwnerDefenseBonuses(valF);
         valF = ApplyTileDefenseBonuses(valF);
         valF = ApplyFortifyDefenseBonus(valF);
@@ -603,7 +845,8 @@ public abstract class BaseUnit : MonoBehaviour
         get
         {
             float valF = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
-            return valF;
+            valF += GetStatusEffectRangeModifier();
+            return Mathf.Max(1f, valF);
         }
     }
 
@@ -1126,6 +1369,9 @@ public abstract class BaseUnit : MonoBehaviour
         // Update label
         UpdateUnitLabel();
 
+        // Morale shock from taking damage
+        OnDamageMoraleShock(damageAmount);
+
         // Raise damage event with attacker context
         try { GameEventManager.Instance?.RaiseDamageAppliedEvent(attacker, this, damageAmount); } catch { }
 
@@ -1235,6 +1481,9 @@ public abstract class BaseUnit : MonoBehaviour
         {
             Destroy(unitLabelInstance.gameObject);
         }
+
+        // Clean up status effects
+        CleanupAllStatusEffects();
 
         // Destroy with delay for death animation
         Destroy(gameObject, 2.5f);
@@ -1894,6 +2143,9 @@ public abstract class BaseUnit : MonoBehaviour
 
         int modifiedDamage = Mathf.Max(0, baseDamage);
 
+        // Morale multiplier
+        modifiedDamage = Mathf.RoundToInt(modifiedDamage * MoraleDamageMultiplier);
+
         int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
         if (flankCount > 0)
             modifiedDamage = Mathf.RoundToInt(modifiedDamage * (1f + 0.1f * flankCount));
@@ -1976,10 +2228,19 @@ public abstract class BaseUnit : MonoBehaviour
         }
 
         int move = start;
+
+        // Status effect movement modifiers
+        move += GetStatusEffectMovementModifier();
+
+        // Routed units lose half movement
+        if (IsRouted)
+            move = Mathf.Max(1, move / 2);
+
         if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
         {
             move = Mathf.Max(1, move - 1);
         }
+        move = Mathf.Max(0, move);
         int old = currentMovePoints;
         currentMovePoints = move;
         try { GameEventManager.Instance?.RaiseMovePointsChanged(this, old, currentMovePoints); } catch { }

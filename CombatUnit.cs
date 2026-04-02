@@ -556,6 +556,9 @@ public class CombatUnit : BaseUnit
     
     public bool CanAttack(CombatUnit target)
     {
+        // Routed units cannot attack
+        if (IsRouted) return false;
+
         // Target category checks
     bool targetIsAir = target.data.unitType == CombatCategory.Aircraft;
     bool targetIsSpace = target.data.unitType == CombatCategory.Spaceship;
@@ -594,7 +597,13 @@ public class CombatUnit : BaseUnit
                 if (tileSteps >= 0)
                 {
                     int maxSteps = Mathf.FloorToInt(CurrentRange);
-                    return tileSteps <= maxSteps;
+                    if (tileSteps > maxSteps) return false;
+
+                    // LOS check for ranged attacks (distance > 1)
+                    if (tileSteps > 1 && !CombatHelpers.HasLineOfSight(currentTileIndex, target.currentTileIndex, planetIndex))
+                        return false;
+
+                    return true;
                 }
             }
         }
@@ -623,6 +632,9 @@ public class CombatUnit : BaseUnit
     public bool CanAttack(WorkerUnit target)
     {
         if (target == null) return false;
+
+        // Routed units cannot attack
+        if (IsRouted) return false;
         
         // Orbit-to-surface: must have canBombardSurface to attack ground targets
         if (currentLayer == TileLayer.Orbit && target.currentLayer != TileLayer.Orbit)
@@ -640,7 +652,13 @@ public class CombatUnit : BaseUnit
                 if (tileSteps >= 0)
                 {
                     int maxSteps = Mathf.FloorToInt(CurrentRange);
-                    return tileSteps <= maxSteps;
+                    if (tileSteps > maxSteps) return false;
+
+                    // LOS check for ranged attacks (distance > 1)
+                    if (tileSteps > 1 && !CombatHelpers.HasLineOfSight(currentTileIndex, target.currentTileIndex, planetIndex))
+                        return false;
+
+                    return true;
                 }
             }
         }
@@ -775,15 +793,17 @@ public class CombatUnit : BaseUnit
     // If the active weapon defines projectile data, either queue or spawn the projectile depending on settings
     if (activeWeapon != null && activeWeapon.projectileData != null)
         {
+            // Apply status effect from projectile on hit
+            if (activeWeapon.projectileData.statusEffect != null && target != null)
+                target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
+
             if (useAnimationEventForProjectiles)
             {
         QueueProjectileForAnimation(activeWeapon, target.transform.position, target, damage);
-                // Projectile will be fired by animation event (FireQueuedProjectile)
                 return;
             }
             else
             {
-                // Spawn immediately (legacy behaviour)
         SpawnProjectileFromEquipment(activeWeapon, target.transform.position, target, damage);
                 return;
             }
@@ -792,6 +812,10 @@ public class CombatUnit : BaseUnit
     // Melee / instant-hit path: apply damage immediately and provide attacker context so the melee weapon behavior can trigger
     var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = damage, isMelee = true, isRanged = false };
     bool targetDies = PerformAttack(ctx);
+
+        // Apply weapon status effect on hit (if any)
+        if (activeWeapon?.projectileData?.statusEffect != null && target != null && target.currentHealth > 0)
+            target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
 
         if (targetDies)
         {
@@ -850,23 +874,20 @@ public class CombatUnit : BaseUnit
         // Handle ranged vs melee
         if (isRangedAttack)
         {
-            if (useAnimationEventForProjectiles)
-            {
-                // Queue projectile (but target is WorkerUnit, not CombatUnit)
-                // We'll fire immediately since projectile system expects CombatUnit
-                SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                return;
-            }
-            else
-            {
-                SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                return;
-            }
+            if (activeWeapon?.projectileData?.statusEffect != null && target != null)
+                target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
+
+            SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
+            return;
         }
 
         // Melee attack — use unified orchestrator so kill rewards/events are centralized
         var ctxWorker = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = finalDamage, isMelee = true, isRanged = false };
         bool targetDied = PerformAttack(ctxWorker);
+
+        // Apply weapon status effect on melee hit
+        if (activeWeapon?.projectileData?.statusEffect != null && target != null && target.currentHealth > 0)
+            target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
 
         if (targetDied)
         {
@@ -1267,6 +1288,9 @@ public class CombatUnit : BaseUnit
         // Base resets (move points, AP, winter penalties)
         RestoreMovePointsForNewTurn();
         ResetAttackPointsForNewTurn();
+
+        // Warfare depth systems (morale recovery, fatigue recovery, status effect ticks)
+        ProcessWarfareSystems();
 
         // If trapped, decrement duration (trappedTurnsRemaining is in BaseUnit)
         if (IsTrapped)

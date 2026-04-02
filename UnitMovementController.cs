@@ -310,6 +310,9 @@ public class UnitMovementController : MonoBehaviour
                 {
                     moveCost = BiomeHelper.GetMovementCost(neighborTile, unit);
                     if (moveCost >= 99) continue;
+
+                    // Zone of Control: entering tiles adjacent to enemy units costs extra MP
+                    moveCost += CombatHelpers.GetZoneOfControlCost(neighbor, unit, pIndex);
                 }
 
                 float tentativeG = currentG + moveCost;
@@ -334,6 +337,100 @@ public class UnitMovementController : MonoBehaviour
     {
         if (pathCache.Count >= PATH_CACHE_MAX) pathCache.Clear();
         pathCache[key] = (path, turn);
+    }
+
+    /// <summary>
+    /// Danger-aware pathfinding for AI units. Adds DangerMap values as weighted cost
+    /// to the movement cost, causing the path to route around high-threat tiles when
+    /// a slightly longer but safer route exists.
+    /// </summary>
+    /// <param name="dangerWeight">How much danger cost matters vs movement cost. 0 = ignore danger, 1.0 = full danger penalty.</param>
+    public List<int> FindPathDangerAware(int startIndex, int endIndex, BaseUnit unit, DangerMap dangerMap, float dangerWeight = 0.5f)
+    {
+        if (dangerMap == null || dangerWeight <= 0f)
+            return FindPath(startIndex, endIndex, unit);
+
+        int pIndex = unit != null ? unit.planetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return null;
+
+        if (startIndex == endIndex) return new List<int>();
+
+        bool isOrbit = unit != null && unit.currentLayer == TileLayer.Orbit;
+        int orbitCost = BiomeHelper.DefaultOrbitMovementCost;
+        if (isOrbit)
+        {
+            var cu = unit as CombatUnit;
+            if (cu != null && cu.data != null) orbitCost = cu.data.orbitMovementCost;
+        }
+
+        bool useHeuristic = useAStarHeuristic && !isOrbit;
+        openSet.Clear();
+        bestCost.Clear();
+        cameFrom.Clear();
+
+        bestCost[startIndex] = 0f;
+        float h0 = useHeuristic ? ts.GetWrappedHexDistance(startIndex, endIndex) * MIN_MOVE_COST : 0f;
+        openSet.Enqueue(startIndex, h0);
+
+        int expanded = 0;
+
+        while (openSet.Count > 0)
+        {
+            int current = openSet.Dequeue();
+            float currentG = bestCost.TryGetValue(current, out float cg) ? cg : float.MaxValue;
+
+            if (bestCost.TryGetValue(current, out float best) && currentG > best) continue;
+
+            if (current == endIndex)
+            {
+                var path = new List<int>();
+                int trace = endIndex;
+                while (trace != startIndex)
+                {
+                    path.Add(trace);
+                    if (!cameFrom.TryGetValue(trace, out int prev)) return null;
+                    trace = prev;
+                }
+                path.Reverse();
+                return path;
+            }
+
+            expanded++;
+            if (expanded > MaxPathSearchNodes) return null;
+
+            foreach (int neighbor in ts.GetNeighbors(current))
+            {
+                var neighborTile = ts.GetTileData(neighbor);
+                if (neighborTile == null) continue;
+
+                float moveCost;
+                if (isOrbit)
+                {
+                    moveCost = orbitCost;
+                }
+                else
+                {
+                    int baseCost = BiomeHelper.GetMovementCost(neighborTile, unit);
+                    if (baseCost >= 99) continue;
+
+                    baseCost += CombatHelpers.GetZoneOfControlCost(neighbor, unit, pIndex);
+
+                    // Add danger cost (weighted)
+                    float danger = dangerMap.GetDanger(neighbor);
+                    moveCost = baseCost + danger * dangerWeight;
+                }
+
+                float tentativeG = currentG + moveCost;
+                if (bestCost.TryGetValue(neighbor, out float existingG) && tentativeG >= existingG) continue;
+
+                bestCost[neighbor] = tentativeG;
+                cameFrom[neighbor] = current;
+                float h = useHeuristic ? ts.GetWrappedHexDistance(neighbor, endIndex) * MIN_MOVE_COST : 0f;
+                openSet.Enqueue(neighbor, tentativeG + h);
+            }
+        }
+        return null;
     }
 
     /// <summary>

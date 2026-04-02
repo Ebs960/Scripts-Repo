@@ -3,22 +3,28 @@ using System.Collections;
 
 namespace GameCombat
 {
+    /// <summary>
+    /// Pure visual projectile — flies from spawn point to target using coroutine interpolation.
+    /// No Rigidbody, no Collider, no physics. Damage is handled by the combat system
+    /// (PerformAttack / ApplyDamage) before or after spawning the projectile visual.
+    /// </summary>
     public class Projectile : MonoBehaviour
     {
     public ProjectileData data;
     public Transform target;
     public Vector3 targetPoint;
     public GameObject owner;
-    private Rigidbody rb;
     private bool initialized = false;
-    private Vector3 startVelocity;
-    private ProjectileCollisionProxy collisionProxy;
-    
+
     // Object pooling support
     private float lifetime = 0f;
-    private const float maxLifetime = 10f; // Auto-return to pool after 10 seconds
+    private const float maxLifetime = 10f;
 
-    // overrideDamage: if >=0, this damage value will be applied on hit instead of ProjectileData.damage
+    /// <summary>
+    /// Initialize the projectile visual. Starts the flight coroutine immediately.
+    /// overrideDamage is kept for API compatibility but is not used — damage is
+    /// applied through the combat system, not by projectile collision.
+    /// </summary>
     public void Initialize(ProjectileData projectileData, Vector3 start, Vector3 end, GameObject ownerObj, Transform targetTransform = null, int overrideDamage = -1)
     {
         data = projectileData;
@@ -26,78 +32,90 @@ namespace GameCombat
         target = targetTransform;
         targetPoint = end;
         transform.position = start;
-        // Try to find an existing Rigidbody on this object or its children; many weapon prefabs keep the physical collider on a child.
-        rb = GetComponentInChildren<Rigidbody>();
-        if (rb == null)
-        {
-            // Add a Rigidbody to the root if none exists
-            rb = gameObject.AddComponent<Rigidbody>();
-        }
-        // If the Rigidbody is on a child, add a collision proxy component on that child so collision callbacks forward here
-        if (rb.gameObject != this.gameObject)
-        {
-            collisionProxy = rb.gameObject.GetComponent<ProjectileCollisionProxy>();
-            if (collisionProxy == null) collisionProxy = rb.gameObject.AddComponent<ProjectileCollisionProxy>();
-            collisionProxy.owner = this;
-        }
-        else
-        {
-            // Ensure this root object has a proxy so OnCollisionEnter still runs here
-            collisionProxy = GetComponent<ProjectileCollisionProxy>();
-            if (collisionProxy == null) collisionProxy = gameObject.AddComponent<ProjectileCollisionProxy>();
-            collisionProxy.owner = this;
-        }
-        rb.useGravity = data.useGravity && data.arcType == ProjectileArcType.Parabolic;
-        rb.isKinematic = false;
         initialized = true;
-        this.overrideDamage = overrideDamage;
-        if (data.arcType == ProjectileArcType.Parabolic)
-        {
-            startVelocity = CalculateParabolicVelocity(start, end, data.speed);
-            rb.linearVelocity = startVelocity;
-        }
-        else if (data.arcType == ProjectileArcType.Straight)
-        {
-            rb.linearVelocity = (end - start).normalized * data.speed;
-        }
-        else if (data.arcType == ProjectileArcType.Homing && target != null)
-        {
-            rb.linearVelocity = (target.position - start).normalized * data.speed;
-        }
+        lifetime = 0f;
+
         if (data.trailEffect != null)
         {
-            var trail = Instantiate(data.trailEffect, transform);
+            Instantiate(data.trailEffect, transform);
         }
         if (data.launchSound != null)
         {
             AudioSource.PlayClipAtPoint(data.launchSound, start);
         }
+
+        // Start flight coroutine based on arc type
+        StartCoroutine(FlyToTarget(start, end));
     }
 
-    // Called by ProjectileCollisionProxy when a child collides
-    public void OnProxyCollisionEnter(Collision collision)
+    /// <summary>
+    /// Coroutine-driven flight from start to end. Supports Straight, Parabolic, and Homing arcs.
+    /// On arrival, plays impact effects and returns to pool.
+    /// </summary>
+    private IEnumerator FlyToTarget(Vector3 start, Vector3 end)
     {
-        HandleImpact(collision.collider);
-    }
+        float speed = data != null ? data.speed : 10f;
+        if (speed <= 0f) speed = 10f;
 
-    // Called by proxy for trigger-based collisions
-    public void OnProxyTriggerEnter(Collider other)
-    {
-        HandleImpact(other);
-    }
+        float distance = Vector3.Distance(start, end);
+        float duration = distance / speed;
+        if (duration <= 0f) duration = 0.1f;
 
-    // Centralized impact handling (works for both collision and trigger events)
-    private void HandleImpact(Collider collider)
-    {
-        if (!initialized) return;
-        if (data.explodeOnImpact && data.areaOfEffectRadius > 0f)
+        float elapsed = 0f;
+        Vector3 lastPos = start;
+
+        while (elapsed < duration)
         {
-            Explode();
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            // If homing and target is still alive, update end position
+            Vector3 currentEnd = end;
+            if (data != null && data.arcType == ProjectileArcType.Homing && target != null)
+                currentEnd = target.position;
+
+            Vector3 pos;
+            if (data != null && data.arcType == ProjectileArcType.Parabolic)
+            {
+                // Parabolic arc: linear XZ + parabolic Y
+                pos = Vector3.Lerp(start, currentEnd, t);
+                float arcHeight = distance * 0.25f; // arc peaks at 25% of distance
+                pos.y += arcHeight * 4f * t * (1f - t); // parabola centered at t=0.5
+            }
+            else
+            {
+                // Straight or Homing: linear interpolation
+                pos = Vector3.Lerp(start, currentEnd, t);
+            }
+
+            // Face movement direction
+            Vector3 dir = pos - lastPos;
+            if (dir.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+
+            transform.position = pos;
+            lastPos = pos;
+
+            yield return null;
         }
-        else
-        {
-            ApplyDamage(collider);
-        }
+
+        // Snap to final position
+        transform.position = (target != null) ? target.position : end;
+
+        // Impact effects
+        HandleImpactEffects();
+
+        // Return to pool
+        ReturnToPool();
+    }
+
+    /// <summary>
+    /// Play impact VFX and SFX at the current position.
+    /// </summary>
+    private void HandleImpactEffects()
+    {
+        if (data == null) return;
+
         if (data.impactEffect != null)
         {
             Instantiate(data.impactEffect, transform.position, Quaternion.identity);
@@ -106,79 +124,6 @@ namespace GameCombat
         {
             AudioSource.PlayClipAtPoint(data.impactSound, transform.position);
         }
-
-        // Return to pool if available, otherwise destroy
-        if (SimpleObjectPool.Instance != null)
-            SimpleObjectPool.Instance.Return(this.gameObject);
-        else
-            Destroy(gameObject);
-    }
-
-    void FixedUpdate()
-    {
-        if (!initialized) return;
-        if (data.arcType == ProjectileArcType.Homing && target != null)
-        {
-            Vector3 direction = (target.position - transform.position).normalized;
-            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, direction * data.speed, data.homingStrength * Time.fixedDeltaTime);
-        }
-    }
-
-    // OnCollisionEnter is handled via proxy on the physics child; keeping empty handler to avoid Unity warnings if proxy not used
-    void OnCollisionEnter(Collision collision) { }
-
-    void Explode()
-    {
-        Collider[] hits = Physics.OverlapSphere(transform.position, data.areaOfEffectRadius);
-        foreach (var hit in hits)
-        {
-            ApplyDamage(hit);
-            if (data.explosionForce > 0f && hit.attachedRigidbody != null)
-            {
-                hit.attachedRigidbody.AddExplosionForce(data.explosionForce, transform.position, data.areaOfEffectRadius);
-            }
-        }
-    }
-
-    void ApplyDamage(Collider collider)
-    {
-        // Prefer CombatUnit when present
-        var unit = collider.GetComponent<CombatUnit>();
-        int dmg = (overrideDamage >= 0) ? overrideDamage : Mathf.RoundToInt(data.damage);
-        var attackerUnit = owner != null ? owner.GetComponent<CombatUnit>() : null;
-            if (unit != null)
-            {
-                if (attackerUnit != null)
-                {
-                    var ctx = new BaseUnit.AttackContext { attacker = attackerUnit, defender = unit, weapon = null, damage = dmg, isMelee = false, isRanged = true };
-                    try
-                    {
-                        bool died = attackerUnit.PerformAttack(ctx);
-                        // XP and kill rewards handled centrally in PerformAttack/ApplyDamage
-                    }
-                    catch { }
-                }
-                else
-                {
-                    unit.ApplyDamage(dmg, null, false);
-                }
-                return;
-            }
-    }
-
-    private int overrideDamage = -1;
-
-    Vector3 CalculateParabolicVelocity(Vector3 start, Vector3 end, float speed)
-    {
-        Vector3 toTarget = end - start;
-        float y = toTarget.y;
-        toTarget.y = 0;
-        float xz = toTarget.magnitude;
-        float t = xz / speed;
-        float vy = (y / t) + 0.5f * Physics.gravity.y * t;
-        Vector3 result = toTarget.normalized * speed;
-        result.y = vy;
-        return result;
     }
 
     void Update()
@@ -186,8 +131,8 @@ namespace GameCombat
         if (!initialized) return;
 
         lifetime += Time.deltaTime;
-        
-        // Auto-return to pool if lifetime exceeded
+
+        // Safety: auto-return to pool if flight coroutine somehow stalls
         if (lifetime >= maxLifetime)
         {
             ReturnToPool();
@@ -195,10 +140,13 @@ namespace GameCombat
     }
 
     /// <summary>
-    /// Return this projectile to the object pool
+    /// Return this projectile to the object pool.
     /// </summary>
     public void ReturnToPool()
     {
+        initialized = false;
+        StopAllCoroutines();
+
         if (SimpleObjectPool.Instance != null)
         {
             SimpleObjectPool.Instance.Return(gameObject);
@@ -210,7 +158,7 @@ namespace GameCombat
     }
 
     /// <summary>
-    /// Reset the projectile for reuse
+    /// Reset the projectile for reuse from pool.
     /// </summary>
     public void Reset()
     {
@@ -220,13 +168,9 @@ namespace GameCombat
         target = null;
         targetPoint = Vector3.zero;
         owner = null;
-        overrideDamage = -1;
-        
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
+        StopAllCoroutines();
     }
+    }
+}
     }
 }
