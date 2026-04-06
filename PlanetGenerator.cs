@@ -784,7 +784,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             tile.season = newSeason;
             tile.seasonalYieldModifier = response.yieldMultiplier;
             tile.hasSnow = response.snow > 0f && tile.isLand;
-            tile.isFrozen = tile.hasSnow && (tile.isLake || tile.isRiver) && tile.biome != Biome.Lava;
+            // tile.isFrozen is now a read-only property derived from tile.freezeAmount.
+            // ClimateManager drives freeze state via freezeAmount / freezeTarget.
         }
     }
     

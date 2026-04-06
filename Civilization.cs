@@ -1381,39 +1381,13 @@ public class Civilization : MonoBehaviour
         warWeariness = Mathf.Clamp01(warWeariness);
 
         // Check famine: true if food stockpile <= 0 (AFTER consumption)
+        // Famine applies loyalty penalties (via City.UpdateLoyalty) but does NOT cause unit attrition.
         famineActive = (food <= 0);
         if (famineActive)
         {
-            // Each turn of famine, all units lose 5% max health
-            int unitsAffected = 0;
-            // Use snapshots to avoid collection-modified-during-enumeration if units die
-            if (combatUnits != null)
+            if (isPlayerControlled && UIManager.Instance != null)
             {
-                foreach (var u in combatUnits.ToArray())
-                {
-                    if (u != null)
-                    {
-                        u.ApplyDamage(Mathf.CeilToInt(u.MaxHealth * 0.05f));
-                        unitsAffected++;
-                    }
-                }
-            }
-            if (workerUnits != null)
-            {
-                foreach (var w in workerUnits.ToArray())
-                {
-                    if (w != null && w.data != null)
-                    {
-                        w.ApplyDamage(Mathf.CeilToInt(w.data.baseHealth * 0.05f));
-                        unitsAffected++;
-                    }
-                }
-            }
-            
-            // Notify player if this is their civilization
-            if (isPlayerControlled && UIManager.Instance != null && unitsAffected > 0)
-            {
-                UIManager.Instance.ShowNotification($"FAMINE! {civData.civName} has no food. {unitsAffected} units are starving!");
+                UIManager.Instance.ShowNotification($"FAMINE! {civData.civName} has no food. Cities are losing loyalty!");
             }
         }
         else if (food < totalFoodConsumption * 2 && isPlayerControlled && UIManager.Instance != null)

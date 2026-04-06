@@ -671,6 +671,20 @@ public class UnitMovementController : MonoBehaviour
             }
             catch { }
 
+            // Check whether the unit has stepped into a ruin discovery radius.
+            try
+            {
+                if (AncientRuinsManager.Instance != null && unit.owner != null)
+                {
+                    var ts2 = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+                    Vector3 tileWorldPos = (ts2 != null && ts2.IsReady())
+                        ? ts2.GetTileSurfacePosition(targetTile)
+                        : unit.transform.position;
+                    AncientRuinsManager.Instance.CheckForRuinDiscovery(pIndex, tileWorldPos, unit.owner);
+                }
+            }
+            catch { }
+
             if (unit.isStored || unit.currentHealth <= 0 || unit.IsTrapped)
             {
                 breakReason = $"unit state changed: stored={unit.isStored} hp={unit.currentHealth} trapped={unit.IsTrapped}";

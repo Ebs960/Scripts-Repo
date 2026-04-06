@@ -100,6 +100,15 @@ public class EquipmentData : ScriptableObject
     public int faithPerTurn;
     public int policyPointsPerTurn;
 
+    [Header("Weather Resistance")]
+    [Tooltip("If true, this equipment reduces the amount of weather damage (e.g. winter attrition) taken by the unit wearing it.")]
+    public bool reducesWeatherDamage = false;
+    [Tooltip("Fraction of weather damage to reduce, from 0 to 1. "
+           + "0.5 means this piece of equipment blocks 50% of incoming weather damage. "
+           + "Reductions from all equipped items are added together, then capped at 1 (100%).")]
+    [Range(0f, 1f)]
+    public float weatherDamageReduction = 0f;
+
     public bool IsValidForUnit(CombatUnit unit, Civilization civ = null)
     {
         if (unit == null) return false;

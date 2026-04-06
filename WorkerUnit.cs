@@ -121,26 +121,72 @@ public class WorkerUnit : BaseUnit
     }
 
     /// <summary>
-    /// Auto-contribute to jobs if assigned (called separately from ResetForNewTurn for flexibility)
+    /// Auto-contribute to jobs if assigned (called separately from ResetForNewTurn for flexibility).
+    /// Checks both the current tile and all adjacent tiles for assigned jobs.
     /// </summary>
     private void AutoContributeToJobs()
     {
-        // Auto-contribute to jobs
-        if (currentWorkPoints > 0 && ImprovementManager.Instance != null)
+        if (currentWorkPoints <= 0 || ImprovementManager.Instance == null) return;
+
+        // Try current tile first
+        if (TryAutoContributeAtTile(currentTileIndex))
+            return;
+
+        // Then check all adjacent tiles for assigned jobs
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+        var neighbors = ts.GetNeighbors(currentTileIndex);
+        if (neighbors == null) return;
+        for (int i = 0; i < neighbors.Length; i++)
         {
-            if (ImprovementManager.Instance.JobAssignedToWorker(currentTileIndex, this, planetIndex))
+            if (currentWorkPoints <= 0) break;
+            if (neighbors[i] >= 0 && TryAutoContributeAtTile(neighbors[i]))
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to auto-contribute work to any assigned job at the given tile.
+    /// Returns true if work was contributed (and work points consumed).
+    /// </summary>
+    private bool TryAutoContributeAtTile(int tileIndex)
+    {
+        if (currentWorkPoints <= 0) return false;
+        if (!ImprovementManager.Instance.JobAssignedToWorker(tileIndex, this, planetIndex))
+            return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (tileData != null && tileData.improvement != null)
+        {
+            // Improvement build job
+            if (ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex))
             {
-                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-                var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
-                if (tileData != null && tileData.improvement != null)
-                    ContributeWork();
-                else
-                {
-                    ContributeWorkToUnit();
-                    ContributeWorkToWorker();
-                }
+                PlayBuildActionAnimation();
+                ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+                currentWorkPoints = 0;
+                return true;
             }
         }
+        else
+        {
+            // Unit or worker build job
+            if (ImprovementManager.Instance.HasUnitJobAtTile(tileIndex, planetIndex))
+            {
+                PlayBuildActionAnimation();
+                ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+                currentWorkPoints = 0;
+                return true;
+            }
+            if (ImprovementManager.Instance.HasWorkerJobAtTile(tileIndex, planetIndex))
+            {
+                PlayBuildActionAnimation();
+                ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+                currentWorkPoints = 0;
+                return true;
+            }
+        }
+        return false;
     }
 
     #endregion

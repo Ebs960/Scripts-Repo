@@ -236,10 +236,16 @@ Shader "Custom/MenuPlanetPreview"
                 float3 borealC = lerp(borealBase, borealLight, moist);
                 float3 tundraC = lerp(tundraBase, tundraGray, moist);
 
+                // --- Moisture-driven band expansion: low moisture expands arid zones ---
+                // dryExpand: 0 at full moisture, 1 at zero moisture
+                float dryExpand = saturate(1.0 - moist);
+                // Push equatorial/subtropical edges poleward (up to +0.15 lat) when dry
+                float bandPush = dryExpand * 0.15;
+
                 // Band edge thresholds
-                float e0 = 0.15;
-                float e1 = 0.30;
-                float e2 = 0.50;
+                float e0 = 0.15 + bandPush;
+                float e1 = 0.30 + bandPush * 0.7;
+                float e2 = 0.50 + bandPush * 0.3;
                 float e3 = 0.65;
                 float e4 = 0.80;
                 float b = max(0.001, _BiomeBlend); // blend half-width

@@ -24,6 +24,12 @@ public class HexMapChunk : MonoBehaviour
     private MaterialPropertyBlock propertyBlock;
     private int seasonMaskWidth;
     private int seasonMaskHeight;
+
+    // Per-chunk freeze target mask — baked once per season (not animated).
+    // Stores tile.freezeTarget in the R channel; the shader multiplies by _FreezeProgress.
+    private Texture2D freezeTargetMaskTexture;
+    private int freezeMaskWidth;
+    private int freezeMaskHeight;
     
     // Reference to manager
     private HexMapChunkManager manager;
@@ -221,9 +227,111 @@ public class HexMapChunk : MonoBehaviour
         meshRenderer.SetPropertyBlock(propertyBlock);
     }
 
-    
     /// <summary>
-    /// Assign which tile indices belong to this chunk (for dirty tracking).
+    /// Bake the per-chunk freeze target mask texture.
+    /// Must be called once after <see cref="ClimateManager"/> fires
+    /// <c>OnPlanetFreezeTargetsReady</c> (i.e. after <c>tile.freezeTarget</c> values have
+    /// been written for the season).
+    /// <para>
+    /// The texture stores <c>tile.freezeTarget</c> in the <b>R channel</b>, a lake flag in
+    /// <b>G</b>, and a river flag in <b>B</b> for every LUT pixel. Non-water tiles write 0.
+    /// The shader computes actual freeze as <c>R * _FreezeProgress</c> and uses G/B to pick
+    /// the correct ice texture arrays without needing a second lookup texture.
+    /// </para>
+    /// </summary>
+    public void UpdateFreezeTargetMask(
+        int lutWidth,
+        int lutHeight,
+        int chunkPixelWidth,
+        int chunkPixelHeight,
+        int[] lut,
+        PlanetGenerator planetGenerator)
+    {
+        if (meshRenderer == null || lut == null || planetGenerator == null)
+            return;
+
+        if (chunkPixelWidth <= 0 || chunkPixelHeight <= 0 || lutWidth <= 0 || lutHeight <= 0)
+            return;
+
+        // Create or recreate the texture if dimensions changed
+        if (freezeTargetMaskTexture == null
+            || freezeMaskWidth  != chunkPixelWidth
+            || freezeMaskHeight != chunkPixelHeight)
+        {
+            freezeTargetMaskTexture = new Texture2D(chunkPixelWidth, chunkPixelHeight, TextureFormat.RGBA32, false);
+            freezeTargetMaskTexture.filterMode = FilterMode.Point;
+            freezeTargetMaskTexture.wrapMode   = TextureWrapMode.Clamp;
+            freezeTargetMaskTexture.name       = $"FreezeMask_{chunkX}_{chunkZ}";
+            freezeMaskWidth  = chunkPixelWidth;
+            freezeMaskHeight = chunkPixelHeight;
+        }
+
+        int pixelCount = chunkPixelWidth * chunkPixelHeight;
+        var pixels = ArrayPoolUtils.Rent<Color>(pixelCount, true);
+
+        int chunkOffsetX = chunkX * chunkPixelWidth;
+        int chunkOffsetY = chunkZ * chunkPixelHeight;
+        int freezePixelCount = 0;
+
+        for (int y = 0; y < chunkPixelHeight; y++)
+        {
+            int globalY = chunkOffsetY + y;
+            if (globalY < 0 || globalY >= lutHeight) continue;
+
+            int rowBase    = y * chunkPixelWidth;
+            int lutRowBase = globalY * lutWidth;
+
+            for (int x = 0; x < chunkPixelWidth; x++)
+            {
+                int globalX = chunkOffsetX + x;
+                if (globalX < 0 || globalX >= lutWidth) continue;
+
+                int lutIndex = lutRowBase + globalX;
+                if (lutIndex < 0 || lutIndex >= lut.Length) continue;
+
+                int tileIndex = lut[lutIndex];
+                if (tileIndex < 0) continue;
+
+                float freezeTarget = 0f;
+                float isLake = 0f;
+                float isRiver = 0f;
+                if (planetGenerator.data.TryGetValue(tileIndex, out var tile)
+                    && tile.waterType != TileWaterType.None)
+                {
+                    freezeTarget = tile.freezeTarget;
+                    isLake = tile.waterType == TileWaterType.Lake ? 1f : 0f;
+                    isRiver = tile.waterType == TileWaterType.River ? 1f : 0f;
+                    if (freezeTarget > 0f) freezePixelCount++;
+                }
+
+                pixels[rowBase + x] = new Color(freezeTarget, isLake, isRiver, 0f);
+            }
+        }
+
+        if (freezePixelCount > 0)
+            Debug.Log($"[HexMapChunk] Chunk({chunkX},{chunkZ}) freeze mask: {freezePixelCount} pixels with non-zero freezeTarget out of {pixelCount} total");
+
+        freezeTargetMaskTexture.SetPixels(pixels);
+        freezeTargetMaskTexture.Apply();
+        ArrayPoolUtils.Return<Color>(pixels);
+
+        if (propertyBlock == null)
+            propertyBlock = new MaterialPropertyBlock();
+
+        // Re-read the existing property block so we don't overwrite season mask values
+        meshRenderer.GetPropertyBlock(propertyBlock);
+
+        Vector2 uvScale  = new Vector2(
+            1f / Mathf.Max(uvMax.x - uvMin.x, 0.0001f),
+            1f / Mathf.Max(uvMax.y - uvMin.y, 0.0001f));
+        Vector2 uvOffset = new Vector2(-uvMin.x * uvScale.x, -uvMin.y * uvScale.y);
+
+        propertyBlock.SetTexture("_FreezeMaskTex", freezeTargetMaskTexture);
+        propertyBlock.SetVector("_FreezeMask_ST", new Vector4(uvScale.x, uvScale.y, uvOffset.x, uvOffset.y));
+        meshRenderer.SetPropertyBlock(propertyBlock);
+    }
+
+
     /// </summary>
     public void SetTileIndices(List<int> indices)
     {

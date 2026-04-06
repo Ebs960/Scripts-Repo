@@ -29,6 +29,10 @@ Shader "Custom/SG_WaterTile"
 
         [Header(Transparency)]
         _AlphaBase ("Base Alpha", Range(0, 1)) = 0.70
+
+        [Header(River Color)]
+        _RiverShallowColor ("River Shallow Color", Color) = (0.20, 0.56, 0.86, 1)
+        _RiverDeepColor ("River Deep Color", Color) = (0.08, 0.24, 0.36, 1)
     }
 
     SubShader
@@ -97,6 +101,8 @@ Shader "Custom/SG_WaterTile"
             float _CausticsSpeed;
             float _CausticsIntensity;
             float _AlphaBase;
+            float4 _RiverShallowColor;
+            float4 _RiverDeepColor;
 
             Varyings vert(Attributes input)
             {
@@ -162,7 +168,13 @@ Shader "Custom/SG_WaterTile"
                 float3 shallowColor = _ShallowColor.rgb;
                 float3 deepColor = _DeepColor.rgb;
 
-                if (!isRiver)
+                if (isRiver)
+                {
+                    // Rivers use dedicated shallow/deep colors to match lake appearance
+                    shallowColor = _RiverShallowColor.rgb;
+                    deepColor = _RiverDeepColor.rgb;
+                }
+                else if (!isLava)
                 {
                     shallowColor = lerp(_ShallowColor.rgb, stillTint, 0.88);
                     deepColor = lerp(_DeepColor.rgb, stillTint * 0.42, 0.92);

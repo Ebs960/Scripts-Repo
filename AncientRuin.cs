@@ -1,45 +1,21 @@
 using UnityEngine;
 
+/// <summary>
+/// Component placed on a ruin prefab. Carries the RuinData asset so the ruin is
+/// self-describing in the scene hierarchy, and destroys itself when explored.
+/// AncientRuinsManager sets ruinData at spawn time via AddComponent or GetComponent.
+/// </summary>
 public class AncientRuin : MonoBehaviour
 {
-    public bool isExplored = false;
+    [Tooltip("The ScriptableObject describing this ruin's type and rewards. Set automatically by AncientRuinsManager at spawn time.")]
+    public RuinData ruinData;
 
-    public void Explore(Civilization explorer)
+    /// <summary>
+    /// Called by AncientRuinsManager.DiscoverRuin when a civilization explores this ruin.
+    /// Destroys the GameObject so the ruin disappears from the map.
+    /// </summary>
+    public void OnExplored()
     {
-        if (isExplored) return;
-
-        isExplored = true;
-        
-        // Give a random reward
-        int rewardType = Random.Range(0, 3);
-        switch (rewardType)
-        {
-            case 0:
-                // Grant technology
-                // TechData randomTech = GetRandomUnresearchedTech(explorer);
-                // if (randomTech != null)
-                // {
-                //     explorer.UnlockTech(randomTech);
-                //     Debug.Log($"{explorer.civName} discovered the secrets of {randomTech.techName}!");
-                // }
-                break;
-            case 1:
-                // Grant resources
-                int goldAmount = Random.Range(50, 201);
-                explorer.gold += goldAmount;
-break;
-            case 2:
-                // Grant a free unit
-                // UnitData randomUnit = GetRandomUnit(explorer);
-                // if (randomUnit != null)
-                // {
-                //     // Spawn unit near the ruin
-                //     Debug.Log($"{explorer.civName} found a friendly {randomUnit.unitName} in the ruins!");
-                // }
-                break;
-        }
-
-        // Optionally, destroy the ruin after exploration
         Destroy(gameObject);
     }
 }

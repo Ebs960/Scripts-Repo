@@ -124,8 +124,37 @@ public class HexTileData
     public float seasonalYieldModifier;
     [Tooltip("True if seasonal snow should appear on this tile")]
     public bool hasSnow;
-    [Tooltip("True if this tile's water surface is frozen by seasonal effects")]
-    public bool isFrozen;
+
+    // --- Ice / Freeze State ---
+    /// <summary>
+    /// How much this water tile's surface is currently frozen (0 = open water, 1 = fully frozen).
+    /// Animated by <see cref="ClimateManager"/> over <c>freezeTransitionDuration</c> seconds when
+    /// winter begins or ends. Saved/loaded to preserve mid-winter state.
+    ///
+    /// Lake tiles adjacent to land target 1.0; interior lake tiles are capped at
+    /// <c>ClimateManager.interiorLakeFreezeMax</c>. Rivers always target 1.0 unless the tile
+    /// temperature exceeds <c>ClimateManager.iceTemperatureThreshold</c>. Ocean tiles do not freeze.
+    /// Tiles above the temperature threshold always have a target of 0 regardless of water type.
+    /// </summary>
+    public float freezeAmount = 0f;
+
+    /// <summary>
+    /// Target freeze amount (0..1) for the current season, precomputed by
+    /// <see cref="ClimateManager.ComputeTileFreezeTargets"/>. Not persisted — recomputed
+    /// each season so old saves rehydrate gracefully.
+    /// </summary>
+    [System.NonSerialized]
+    public float freezeTarget = 0f;
+
+    /// <summary>
+    /// True when <see cref="freezeAmount"/> has reached the solid-ice threshold.
+    /// Replaces the old <c>isFrozen</c> bool field. Callers that used to read
+    /// <c>tile.isFrozen</c> can continue doing so via this property.
+    /// </summary>
+    public bool isFrozen => freezeAmount >= FreezeSolidThreshold;
+
+    /// <summary>Normalised threshold at which frozen water acts as solid ice (movement / pathfinding).</summary>
+    public const float FreezeSolidThreshold = 0.9f;
 
     // --- Special Space Flags ---
     [Header("Space Tile Flags")]

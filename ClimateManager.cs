@@ -32,6 +32,21 @@ public class ClimateManager : MonoBehaviour
     [Header("Biome Visual Database")]
     public BiomeVisualDatabase biomeVisualDatabase;
     public static ClimateManager Instance { get; private set; }
+
+    /// <summary>
+    /// Fired once per season start after freeze targets have been written to each tile's
+    /// <c>freezeTarget</c> field.  Subscribers (e.g. HexMapChunkManager) should bake the
+    /// per-chunk _FreezeMaskTex at this point.
+    /// </summary>
+    public static event Action<int> OnPlanetFreezeTargetsReady;
+
+    /// <summary>
+    /// Fired every frame while a freeze or thaw animation is running.
+    /// Parameters: (planetIndex, progress 0..1, isFreeze).
+    /// Progress 0 = fully thawed; 1 = fully frozen.
+    /// </summary>
+    public static event Action<int, float, bool> OnPlanetFreezeProgressChanged;
+
     public static event Action<int, Season> OnPlanetSeasonChanged;
 
     [Header("Season Configuration")]
@@ -85,6 +100,39 @@ public class ClimateManager : MonoBehaviour
     // Per-planet drought state
     private Dictionary<int, bool> planetDroughtActive = new Dictionary<int, bool>();
     private Dictionary<int, float> planetDroughtSeverity = new Dictionary<int, float>();
+
+    // ─────────────────────────────────────────────────────────────
+    // Water Freeze Settings
+    // ─────────────────────────────────────────────────────────────
+    [Header("Water Freeze Settings")]
+    [Tooltip("ScriptableObject containing ice albedo, normal, and mask maps for lakes and rivers. " +
+             "Assign an IceSurfaceDatabase asset in the Inspector.")]
+    public IceSurfaceDatabase iceSurfaceDatabase;
+
+    [Tooltip("Tiles whose temperature field exceeds this threshold will NOT freeze, even during Winter. " +
+             "Matches the normalised range used by tile.temperature (0 = arctic, 1 = equatorial/volcanic).")]
+    [Range(0f, 1f)]
+    public float iceTemperatureThreshold = 0.3f;
+
+    [Tooltip("Maximum freeze amount (0..1) for interior lake tiles (those NOT adjacent to land). " +
+             "Land-adjacent lake tiles and all rivers always reach 1.0 when below the temperature threshold.")]
+    [Range(0f, 1f)]
+    public float interiorLakeFreezeMax = 0.45f;
+
+    [Tooltip("Duration in real seconds for the freeze-in or thaw-out animation.")]
+    [Min(0.1f)]
+    public float freezeTransitionDuration = 3f;
+
+    // Per-planet freeze animation state (runtime only, not serialised)
+    // progress 0..1: 0 = fully thawed, 1 = fully frozen.
+    private readonly Dictionary<int, float> _freezeProgress  = new Dictionary<int, float>();
+    private readonly Dictionary<int, bool>  _freezeAnimActive  = new Dictionary<int, bool>();
+    private readonly Dictionary<int, bool>  _freezeAnimForward = new Dictionary<int, bool>(); // true=freeze, false=thaw
+
+    // Per-planet precomputed freeze targets: tileIndex -> target freeze amount (0..1).
+    // Only tiles that CAN freeze (water, below temp threshold) are stored here.
+    private readonly Dictionary<int, Dictionary<int, float>> _tileFreezeTargets =
+        new Dictionary<int, Dictionary<int, float>>();
 
     // Mission-driven season duration override (-1 = no override)
     private int winterDurationOverride = -1;
@@ -228,6 +276,48 @@ public class ClimateManager : MonoBehaviour
             OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Freeze animation — runs every frame while active
+    // ─────────────────────────────────────────────────────────────
+    private void Update()
+    {
+        if (_freezeAnimActive.Count == 0) return;
+
+        // Gather keys first to avoid modifying the dict while iterating
+        var keys = new List<int>(_freezeAnimActive.Keys);
+        foreach (int pi in keys)
+        {
+            if (!_freezeAnimActive.TryGetValue(pi, out bool active) || !active) continue;
+
+            bool forward = _freezeAnimForward.TryGetValue(pi, out bool fwd) && fwd;
+            float current = _freezeProgress.TryGetValue(pi, out float cur) ? cur : 0f;
+            float target  = forward ? 1f : 0f;
+            float step    = Time.deltaTime / Mathf.Max(0.01f, freezeTransitionDuration);
+            float next    = Mathf.MoveTowards(current, target, step);
+
+            _freezeProgress[pi] = next;
+
+            // Write to tiles every frame so gameplay reads an accurate freezeAmount
+            WriteFreezeAmountsToPlanet(pi, next);
+
+            // Notify rendering systems (HexMapChunkManager will update _FreezeProgress mat prop)
+            OnPlanetFreezeProgressChanged?.Invoke(pi, next, forward);
+
+            if (Mathf.Approximately(next, target))
+            {
+                _freezeAnimActive[pi] = false;
+
+                // On full thaw completion: zero out all freeze amounts for cleanliness
+                if (!forward)
+                    ClearFreezeAmountsForPlanet(pi);
+            }
+        }
+    }
+
+    /// <summary>Returns the current 0..1 freeze progress for a planet (0 = thawed, 1 = frozen).</summary>
+    public float GetFreezeProgressForPlanet(int pi) =>
+        _freezeProgress.TryGetValue(pi, out float p) ? p : 0f;
 
     private void HandleRoundStarted(int turnNumber)
     {
@@ -450,11 +540,18 @@ public class ClimateManager : MonoBehaviour
             if (verboseLogs) Debug.Log("[ClimateManager] Applying winter-specific snow effects.");
             ApplyWinterMovementPenalty(planetIndex);
             // Winter attrition is now applied every turn via ApplyPerTurnWinterAttrition()
+
+            // Begin gradual water-tile freeze animation
+            var gen = GetGeneratorForPlanet(planetIndex);
+            if (gen != null) BeginFreezeTransition(planetIndex, gen);
         }
         else
         {
             if (verboseLogs) Debug.Log($"[ClimateManager] Applying wetness/dryness handling for {season}.");
             RemoveWinterMovementPenalty(planetIndex);
+
+            // Begin gradual thaw animation (harmless if nothing was frozen)
+            BeginThawTransition(planetIndex);
         }
 
         // Drought handling: if Summer begins on this planet, maybe trigger a drought.
@@ -526,7 +623,13 @@ public class ClimateManager : MonoBehaviour
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
                 if (!sheltered)
                 {
-                    unit.ApplyDamage(winterAttritionDamage);
+                    // Sum weather damage reduction from all equipped items (capped at 100%).
+                    float reduction = 0f;
+                    foreach (var eq in new[] { unit.equippedWeapon, unit.equippedShield, unit.equippedArmor, unit.equippedMiscellaneous })
+                        if (eq != null && eq.reducesWeatherDamage) reduction += eq.weatherDamageReduction;
+                    reduction = Mathf.Clamp01(reduction);
+                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - reduction));
+                    if (damage > 0) unit.ApplyDamage(damage);
                 }
             }
             catch (System.Exception ex)
@@ -556,8 +659,13 @@ public class ClimateManager : MonoBehaviour
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
                 if (!sheltered)
                 {
-                    // Apply attrition damage to workers
-                    worker.ApplyDamage(winterAttritionDamage);
+                    // Sum weather damage reduction from all equipped items (capped at 100%).
+                    float reduction = 0f;
+                    foreach (var eq in new[] { worker.equippedWeapon, worker.equippedShield, worker.equippedArmor, worker.equippedMiscellaneous })
+                        if (eq != null && eq.reducesWeatherDamage) reduction += eq.weatherDamageReduction;
+                    reduction = Mathf.Clamp01(reduction);
+                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - reduction));
+                    if (damage > 0) worker.ApplyDamage(damage);
                 }
             }
             catch (System.Exception ex)
@@ -815,6 +923,193 @@ public class ClimateManager : MonoBehaviour
         {
             Debug.LogWarning("[ClimateManager] Could not find PlanetGenerator (current). Some planet-specific ops may be deferred.");
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Freeze / Thaw — private helpers
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Returns the PlanetGenerator for planet <paramref name="pi"/> via GameManager.
+    /// Falls back to the locally cached <c>planet</c> field if indices match.
+    /// </summary>
+    private PlanetGenerator GetGeneratorForPlanet(int pi)
+    {
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            var gen = gm.GetPlanetGenerator(pi);
+            if (gen != null) return gen;
+        }
+        return (planet != null && planet.planetIndex == pi) ? planet : null;
+    }
+
+    /// <summary>
+    /// Walk all water tiles on <paramref name="gen"/> and compute each tile's
+    /// <c>freezeTarget</c> value (0..1):
+    /// <list type="bullet">
+    ///   <item>Ocean / Lava-biome tiles → 0 (never freeze).</item>
+    ///   <item>Tiles whose <c>temperature</c> ≥ <see cref="iceTemperatureThreshold"/> → 0.</item>
+    ///   <item>River tiles → 1.0 (full freeze).</item>
+    ///   <item>Lake tiles adjacent to a land tile → 1.0 (shore ice).</item>
+    ///   <item>Interior lake tiles → <see cref="interiorLakeFreezeMax"/> (partial slush).</item>
+    /// </list>
+    /// Results are stored in <c>_tileFreezeTargets[pi]</c> AND written to
+    /// <c>tile.freezeTarget</c> so HexMapChunk can bake the per-chunk mask texture.
+    /// </summary>
+    private void ComputeTileFreezeTargets(int pi, PlanetGenerator gen)
+    {
+        if (!_tileFreezeTargets.ContainsKey(pi))
+            _tileFreezeTargets[pi] = new Dictionary<int, float>();
+        else
+            _tileFreezeTargets[pi].Clear();
+
+        var targets = _tileFreezeTargets[pi];
+        var grid    = gen.Grid;
+        var data    = gen.data;
+
+        foreach (var kvp in data)
+        {
+            int idx      = kvp.Key;
+            var tile     = kvp.Value;
+
+            // Reset every tile's runtime target to 0 first
+            tile.freezeTarget = 0f;
+
+            // Only water tiles can freeze
+            if (tile.waterType == TileWaterType.None) continue;
+            if (tile.waterType == TileWaterType.Ocean) continue;
+            if (tile.biome == Biome.Lava) continue;
+
+            // Temperature threshold — warm tiles stay liquid
+            if (tile.temperature >= iceTemperatureThreshold) continue;
+
+            float tgt;
+            if (tile.waterType == TileWaterType.River)
+            {
+                tgt = 1f; // Rivers freeze solid
+            }
+            else // Lake
+            {
+                // Check whether ANY neighbour is a land tile
+                bool adjacentToLand = false;
+                if (grid.neighbors != null && idx >= 0 && idx < grid.neighbors.Length)
+                {
+                    var neighbours = grid.neighbors[idx];
+                    if (neighbours != null)
+                    {
+                        foreach (int nIdx in neighbours)
+                        {
+                            if (data.TryGetValue(nIdx, out var neighbour) &&
+                                neighbour.waterType == TileWaterType.None)
+                            {
+                                adjacentToLand = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                tgt = adjacentToLand ? 1f : interiorLakeFreezeMax;
+            }
+
+            tile.freezeTarget = tgt;
+            targets[idx]      = tgt;
+        }
+
+        // Debug summary
+        int waterCount = 0, frozenCount = 0, tooWarmCount = 0;
+        foreach (var kvp in data)
+        {
+            if (kvp.Value.waterType != TileWaterType.None && kvp.Value.waterType != TileWaterType.Ocean)
+            {
+                waterCount++;
+                if (kvp.Value.freezeTarget > 0f) frozenCount++;
+                else if (kvp.Value.temperature >= iceTemperatureThreshold) tooWarmCount++;
+            }
+        }
+        Debug.Log($"[ClimateManager] ComputeTileFreezeTargets planet={pi}: {waterCount} inland water tiles, {frozenCount} will freeze, {tooWarmCount} too warm (threshold={iceTemperatureThreshold:F2})");
+    }
+
+    /// <summary>
+    /// Kick off a freeze animation for planet <paramref name="pi"/>.
+    /// Computes per-tile targets, fires <see cref="OnPlanetFreezeTargetsReady"/> so
+    /// HexMapChunkManager can bake the _FreezeMaskTex, then starts animating 0→1.
+    /// </summary>
+    private void BeginFreezeTransition(int pi, PlanetGenerator gen)
+    {
+        ComputeTileFreezeTargets(pi, gen);
+
+        int targetCount = _tileFreezeTargets.ContainsKey(pi) ? _tileFreezeTargets[pi].Count : 0;
+        Debug.Log($"[ClimateManager] BeginFreezeTransition planet={pi}: {targetCount} tiles have freeze targets. OnPlanetFreezeTargetsReady subscribers={OnPlanetFreezeTargetsReady?.GetInvocationList()?.Length ?? 0}");
+
+        // Notify rendering layer to bake the per-chunk freeze target mask textures ONCE
+        OnPlanetFreezeTargetsReady?.Invoke(pi);
+
+        // Start animating progress from wherever it currently is (handles mid-thaw reversal)
+        if (!_freezeProgress.ContainsKey(pi)) _freezeProgress[pi] = 0f;
+        _freezeAnimForward[pi] = true;
+        _freezeAnimActive[pi]  = true;
+
+        Debug.Log($"[ClimateManager] Freeze animation started for planet {pi}. Initial progress={_freezeProgress[pi]:F2}");
+    }
+
+    /// <summary>
+    /// Kick off a thaw animation for planet <paramref name="pi"/>.
+    /// Animates the existing freeze progress back to 0.
+    /// </summary>
+    private void BeginThawTransition(int pi)
+    {
+        // Nothing to do if the planet was never frozen
+        if (!_freezeProgress.ContainsKey(pi) || _freezeProgress[pi] <= 0f)
+        {
+            // Still zero out targets for any stale state
+            ClearFreezeAmountsForPlanet(pi);
+            return;
+        }
+
+        _freezeAnimForward[pi] = false;
+        _freezeAnimActive[pi]  = true;
+    }
+
+    /// <summary>
+    /// Writes <c>tile.freezeAmount = target * progress</c> for every tile that has a
+    /// non-zero freeze target.  Called every frame during animation.
+    /// </summary>
+    private void WriteFreezeAmountsToPlanet(int pi, float progress)
+    {
+        if (!_tileFreezeTargets.TryGetValue(pi, out var targets)) return;
+
+        var gen = GetGeneratorForPlanet(pi);
+        if (gen == null) return;
+        var data = gen.data;
+
+        foreach (var kvp in targets)
+        {
+            if (data.TryGetValue(kvp.Key, out var tile))
+                tile.freezeAmount = kvp.Value * progress;
+        }
+    }
+
+    /// <summary>
+    /// Zeroes <c>tile.freezeAmount</c> for ALL water tiles on planet <paramref name="pi"/>.
+    /// Called when a thaw animation fully completes.
+    /// </summary>
+    private void ClearFreezeAmountsForPlanet(int pi)
+    {
+        var gen = GetGeneratorForPlanet(pi);
+        if (gen == null) return;
+        var data = gen.data;
+
+        foreach (var tile in data.Values)
+        {
+            if (tile.waterType != TileWaterType.None)
+                tile.freezeAmount = 0f;
+        }
+
+        // Reset tracking state
+        if (_tileFreezeTargets.ContainsKey(pi)) _tileFreezeTargets[pi].Clear();
+        _freezeProgress[pi]    = 0f;
+        _freezeAnimActive[pi]  = false;
     }
 
     private void HandlePlanetFullyGenerated(PlanetGenerator generator)

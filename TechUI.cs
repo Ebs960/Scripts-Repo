@@ -29,6 +29,8 @@ public class TechUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedTechBuildingsText;
     [SerializeField] private TextMeshProUGUI selectedTechImprovementsText;
     [SerializeField] private UnityEngine.UI.Image selectedTechIconImage;
+    [Tooltip("Icon displayed when no technology is currently being researched. Assign a question mark or hourglass sprite.")]
+    [SerializeField] private Sprite noResearchIcon;
     [SerializeField] private Button closeButton;
 
     private Civilization playerCiv;
@@ -657,14 +659,26 @@ playerCiv.StartResearch(tech);
     
     void ClearInfoPanel()
     {
-        selectedTechNameText.text = "Select a Technology";
-        selectedTechDescriptionText.text = "";
+        selectedTechNameText.text = "No Research";
+        selectedTechDescriptionText.text = "You are not researching any technology. Select one from the tech tree to begin earning progress toward it.";
         selectedTechCostText.text = "";
         if (selectedTechTurnsRemainingText != null) selectedTechTurnsRemainingText.text = "";
         selectedTechPrerequisitesText.text = "";
         selectedTechUnlocksText.text = "";
         if (selectedTechBuildingsText != null) selectedTechBuildingsText.text = "";
         if (selectedTechImprovementsText != null) selectedTechImprovementsText.text = "";
+        if (selectedTechIconImage != null)
+        {
+            if (noResearchIcon != null)
+            {
+                selectedTechIconImage.gameObject.SetActive(true);
+                selectedTechIconImage.sprite = noResearchIcon;
+            }
+            else
+            {
+                selectedTechIconImage.gameObject.SetActive(false);
+            }
+        }
     }
 
     private static void AddUniqueUnlock(List<string> list, string value)

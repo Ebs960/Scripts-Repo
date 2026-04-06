@@ -95,6 +95,10 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
     private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
+    [SerializeField]
+    [Tooltip("Ice surface texture database (albedos, normals, tints, tiling) for lake and river freeze visuals. " +
+             "Must match the IceSurfaceDatabase assigned to ClimateManager.")]
+    private IceSurfaceDatabase iceSurfaceDatabase;
 
     [Header("Orbit Overlay")]
     [Tooltip("Shader used for the transparent orbit highlight overlay mesh (auto-found if null).")]
@@ -472,7 +476,9 @@ public class HexMapChunkManager : MonoBehaviour
             _subscribedToPlanetReady = true;
         }
         
-        ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
+        ClimateManager.OnPlanetSeasonChanged         += HandlePlanetSeasonChanged;
+        ClimateManager.OnPlanetFreezeTargetsReady     += HandleFreezeTargetsReady;
+        ClimateManager.OnPlanetFreezeProgressChanged  += HandleFreezeProgressChanged;
     }
     
     private void OnDisable()
@@ -487,7 +493,9 @@ public class HexMapChunkManager : MonoBehaviour
             _surfaceEventSource = null;
         }
         
-        ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
+        ClimateManager.OnPlanetSeasonChanged         -= HandlePlanetSeasonChanged;
+        ClimateManager.OnPlanetFreezeTargetsReady     -= HandleFreezeTargetsReady;
+        ClimateManager.OnPlanetFreezeProgressChanged  -= HandleFreezeProgressChanged;
     }
     
     private void Start()
@@ -1835,6 +1843,40 @@ public class HexMapChunkManager : MonoBehaviour
             }
             catch (System.Exception ex) { Debug.LogWarning($"[HexMapChunkManager] debugBiomeDetails error: {ex.Message}"); }
         }
+
+        // ── Ice / Freeze visuals ─────────────────────────────────────────────
+        // Bind ice textures and settings from IceSurfaceDatabase so the shader
+        // can blend from open water to ice when _FreezeProgress > 0.
+        if (iceSurfaceDatabase != null)
+        {
+            Debug.Log($"[HexMapChunkManager] Binding ice textures. Lake albedo={iceSurfaceDatabase.lakeIceAlbedoArray != null}, River albedo={iceSurfaceDatabase.riverIceAlbedoArray != null}");
+            if (iceSurfaceDatabase.lakeIceAlbedoArray != null)  sharedMaterial.SetTexture("_LakeIceAlbedoArray",  iceSurfaceDatabase.lakeIceAlbedoArray);
+            if (iceSurfaceDatabase.lakeIceNormalArray != null)  sharedMaterial.SetTexture("_LakeIceNormalArray",  iceSurfaceDatabase.lakeIceNormalArray);
+            if (iceSurfaceDatabase.lakeIceMaskArray != null)    sharedMaterial.SetTexture("_LakeIceMaskArray",    iceSurfaceDatabase.lakeIceMaskArray);
+            if (iceSurfaceDatabase.lakeIceHeightArray != null)  sharedMaterial.SetTexture("_LakeIceHeightArray",  iceSurfaceDatabase.lakeIceHeightArray);
+            if (iceSurfaceDatabase.riverIceAlbedoArray != null) sharedMaterial.SetTexture("_RiverIceAlbedoArray", iceSurfaceDatabase.riverIceAlbedoArray);
+            if (iceSurfaceDatabase.riverIceNormalArray != null) sharedMaterial.SetTexture("_RiverIceNormalArray", iceSurfaceDatabase.riverIceNormalArray);
+            if (iceSurfaceDatabase.riverIceMaskArray != null)   sharedMaterial.SetTexture("_RiverIceMaskArray",   iceSurfaceDatabase.riverIceMaskArray);
+            if (iceSurfaceDatabase.riverIceHeightArray != null) sharedMaterial.SetTexture("_RiverIceHeightArray", iceSurfaceDatabase.riverIceHeightArray);
+            sharedMaterial.SetFloat("_LakeIceSliceCount",  iceSurfaceDatabase.lakeIceAlbedoArray != null ? iceSurfaceDatabase.lakeIceAlbedoArray.depth : 0f);
+            sharedMaterial.SetFloat("_RiverIceSliceCount", iceSurfaceDatabase.riverIceAlbedoArray != null ? iceSurfaceDatabase.riverIceAlbedoArray.depth : 0f);
+            sharedMaterial.SetColor("_LakeIceTint",    iceSurfaceDatabase.lakeIceTint);
+            sharedMaterial.SetFloat("_LakeIceTiling",  iceSurfaceDatabase.lakeIceTiling);
+            sharedMaterial.SetColor("_RiverIceTint",   iceSurfaceDatabase.riverIceTint);
+            sharedMaterial.SetFloat("_RiverIceTiling", iceSurfaceDatabase.riverIceTiling);
+            sharedMaterial.SetFloat("_IceNormalStrength", iceSurfaceDatabase.iceNormalStrength);
+            sharedMaterial.SetFloat("_IceSmoothness",     iceSurfaceDatabase.iceSmoothness);
+            sharedMaterial.SetFloat("_IceMetallic",       iceSurfaceDatabase.iceMetallic);
+            sharedMaterial.SetFloat("_FreezeOpaqueThreshold", iceSurfaceDatabase.freezeOpaqueThreshold);
+        }
+        else
+        {
+            Debug.LogWarning("[HexMapChunkManager] iceSurfaceDatabase is NULL — no ice textures bound! Assign it in the Inspector.");
+            sharedMaterial.SetFloat("_LakeIceSliceCount", 0f);
+            sharedMaterial.SetFloat("_RiverIceSliceCount", 0f);
+        }
+        // Initialise freeze progress to 0 so the shader starts in a fully-thawed state.
+        sharedMaterial.SetFloat("_FreezeProgress", 0f);
     }
     
     /// <summary>
@@ -5009,6 +5051,106 @@ public class HexMapChunkManager : MonoBehaviour
         }
         UpdateSeasonMasksBatched(season, chunksPerBatch);
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Freeze mask event handlers
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called once per freeze season start after ClimateManager has written
+    /// <c>tile.freezeTarget</c>.  Triggers a batched bake of the per-chunk
+    /// _FreezeMaskTex.  Only acts on the planet this manager is tracking.
+    /// </summary>
+    private void HandleFreezeTargetsReady(int planetIndex)
+    {
+        if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
+        Debug.Log($"[HexMapChunkManager] HandleFreezeTargetsReady received for planet {planetIndex}. Chunks exist={chunks != null}. SharedMaterial={sharedMaterial != null}");
+        UpdateFreezeTargetMasksBatched();
+    }
+
+    /// <summary>
+    /// Called every frame during a freeze or thaw animation.
+    /// Updates the _FreezeProgress property on the shared material so the shader
+    /// blends between water and ice in real time — no per-chunk texture updates needed.
+    /// </summary>
+    private void HandleFreezeProgressChanged(int planetIndex, float progress, bool isFreeze)
+    {
+        if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
+        if (sharedMaterial == null)
+        {
+            Debug.LogWarning($"[HexMapChunkManager] HandleFreezeProgressChanged: sharedMaterial is NULL! progress={progress:F3}");
+            return;
+        }
+        sharedMaterial.SetFloat("_FreezeProgress", progress);
+        // Log periodically (every ~0.25 progress increment) to avoid spam
+        if (Mathf.Abs(progress % 0.25f) < Time.deltaTime / Mathf.Max(0.01f, 1f))
+            Debug.Log($"[HexMapChunkManager] _FreezeProgress set to {progress:F3} (isFreeze={isFreeze})");
+    }
+
+    // Coroutine handle so we can cancel a mid-flight bake if a new season starts
+    private Coroutine _freezeMaskCoroutine = null;
+
+    /// <summary>
+    /// Kick off a batched coroutine to bake the per-chunk freeze target mask textures.
+    /// Safe to call from event handlers.
+    /// </summary>
+    private void UpdateFreezeTargetMasksBatched()
+    {
+        if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
+
+        if (_freezeMaskCoroutine != null)
+        {
+            StopCoroutine(_freezeMaskCoroutine);
+            _freezeMaskCoroutine = null;
+        }
+        _freezeMaskCoroutine = StartCoroutine(UpdateFreezeTargetMasksCoroutine());
+    }
+
+    private System.Collections.IEnumerator UpdateFreezeTargetMasksCoroutine()
+    {
+        if (chunks == null) yield break;
+
+        int lutWidth  = bakeResult.width  > 0 ? bakeResult.width  : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
+        Debug.Log($"[HexMapChunkManager] UpdateFreezeTargetMasksCoroutine started. LUT={lutWidth}x{lutHeight}, chunks={chunksX}x{chunksZ}, seasonMask={seasonMaskWidth}x{seasonMaskHeight}");
+
+        int processed = 0;
+        int chunksUpdated = 0;
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                var chunk = chunks[x, z];
+                if (chunk == null) continue;
+
+                chunk.UpdateFreezeTargetMask(
+                    lutWidth,
+                    lutHeight,
+                    seasonMaskWidth,
+                    seasonMaskHeight,
+                    bakeResult.lut,
+                    planetGenerator);
+
+                chunksUpdated++;
+                processed++;
+                if (processed >= chunksPerBatch)
+                {
+                    processed = 0;
+                    yield return null;
+                }
+            }
+        }
+
+        Debug.Log($"[HexMapChunkManager] UpdateFreezeTargetMasksCoroutine finished. {chunksUpdated} chunks updated.");
+
+        // Ghost column property blocks inherit the freeze mask automatically because
+        // UpdateFreezeTargetMask writes to the same MaterialPropertyBlock that
+        // CopySeasonMaskToGhostColumn (called from UpdateGhostSeasonMasks) copies.
+        UpdateGhostSeasonMasks();
+        _freezeMaskCoroutine = null;
+    }
+
 
     private void UpdateSnow()
     {

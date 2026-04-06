@@ -47,3 +47,5 @@ MonoBehaviour:
   generatedRuins: []
   ruinPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
   numberOfRuinsToSpawn: 10
+  ruinDataPool:
+  - {fileID: 11400000, guid: f78e831a119f1514588e652fcc42a872, type: 2}

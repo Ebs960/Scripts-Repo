@@ -30,6 +30,8 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedCultureBuildingsText;
     [SerializeField] private TextMeshProUGUI selectedCultureImprovementsText;
     [SerializeField] private UnityEngine.UI.Image selectedCultureIconImage;
+    [Tooltip("Icon displayed when no culture is currently being adopted. Assign a question mark or hourglass sprite.")]
+    [SerializeField] private Sprite noResearchIcon;
     [SerializeField] private Button closeButton;
 
     private Civilization playerCiv;
@@ -611,14 +613,26 @@ public class CultureUI : MonoBehaviour
 
     void ClearInfoPanel()
     {
-        selectedCultureNameText.text = "Select a Culture";
-        selectedCultureDescriptionText.text = "";
+        selectedCultureNameText.text = "No Culture";
+        selectedCultureDescriptionText.text = "You are not adopting any culture. Select one from the culture tree to begin earning progress toward it.";
         selectedCultureCostText.text = "";
         if (selectedCultureTurnsRemainingText != null) selectedCultureTurnsRemainingText.text = "";
         selectedCulturePrerequisitesText.text = "";
         selectedCultureUnlocksText.text = "";
         if (selectedCultureBuildingsText != null) selectedCultureBuildingsText.text = "";
         if (selectedCultureImprovementsText != null) selectedCultureImprovementsText.text = "";
+        if (selectedCultureIconImage != null)
+        {
+            if (noResearchIcon != null)
+            {
+                selectedCultureIconImage.gameObject.SetActive(true);
+                selectedCultureIconImage.sprite = noResearchIcon;
+            }
+            else
+            {
+                selectedCultureIconImage.gameObject.SetActive(false);
+            }
+        }
     }
 
     private static void AddUniqueUnlock(List<string> list, string value)

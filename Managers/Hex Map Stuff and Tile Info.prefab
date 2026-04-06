@@ -48,6 +48,8 @@ MonoBehaviour:
   textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
   terrainShader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
+  iceSurfaceDatabase: {fileID: 11400000, guid: a179395d8e066d7408edab9fd9f0e3de, type: 2}
+  orbitOverlayShader: {fileID: 0}
   textureWidth: 2048
   textureHeight: 2048
   heightmapAnisoLevel: 16
@@ -88,6 +90,7 @@ MonoBehaviour:
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
+  shorelineWaterOffset: 0.15
   manualOceanWaterY: 6
   useManualOceanWaterY: 0
   enableOceanPlane: 0
