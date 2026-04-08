@@ -87,6 +87,12 @@ public class AncientRuinsManager : MonoBehaviour
         }
 
         var ts = TileSystem.GetForPlanet(pIdx) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady())
+        {
+            Debug.LogWarning($"[AncientRuinsManager] TileSystem not ready for planet {pIdx}; cannot spawn ruins.");
+            return;
+        }
+
         var chunkMgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None)
                            .FirstOrDefault(m => m.PlanetGenerator == generator);
 
@@ -94,38 +100,41 @@ public class AncientRuinsManager : MonoBehaviour
         int visualSpawned = 0; // number of visual GameObjects instantiated
         PlanetType pType = generator.planetType;
 
+        var eligibleRuins = GetEligibleRuinDataForPlanet(pType);
+        if (eligibleRuins.Count == 0)
+        {
+            Debug.LogWarning($"[AncientRuinsManager] No eligible RuinData assets for planet {pIdx} ({pType}).");
+            return;
+        }
+
         for (int i = 0; i < numberOfRuinsToSpawn; i++)
         {
-            // Pick ruin data first so we know if water spawning is allowed
-            RuinData data = GetWeightedRandomRuinData(pType);
+            // Pick a ruin definition first, then build a full candidate list exactly like AnimalManager.
+            RuinData data = GetWeightedRandomRuinData(eligibleRuins);
             if (data == null) continue;
 
-            // Find a valid tile (up to 20 attempts).
-            int tileIndex = -1;
-            for (int attempt = 0; attempt < 20; attempt++)
+            var candidates = BuildCandidateTileList(ts, generator, pIdx, data);
+            if (candidates.Count == 0)
             {
-                int candidate = Random.Range(0, generator.Grid.TileCount);
-                HexTileData td = generator.GetHexTileData(candidate);
-                // Always skip deep ocean / seas biomes
-                if (td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
-                // Skip water tiles (rivers/lakes) unless this ruin explicitly allows it
-                if (td.waterType != TileWaterType.None && !data.canSpawnInWater) continue;
-                tileIndex = candidate;
-                break;
+                continue;
             }
-            if (tileIndex < 0) continue;
-            if (data == null) continue;
 
-            // Use the TileSystem's surface position which accounts for terrain displacement.
-            // Add a small vertical offset to avoid Z-fighting with the terrain shader displacement.
-            Vector3 position = Vector3.zero;
-            if (ts != null && ts.IsReady())
+            int chosenIndex = Random.Range(0, candidates.Count);
+            int tileIndex = candidates[chosenIndex];
+            HexTileData chosenTile = ts.GetTileData(tileIndex);
+            if (chosenTile == null) continue;
+
+            // Match AnimalManager: use TileSystem surface-aware position and parent by land/water state.
+            Vector3 position = ts.GetTileSurfacePosition(tileIndex, data.canSpawnInWater ? 0f : 0.03f);
+
+            Transform ruinParent = transform;
+            if (chosenTile.isLand && generator.surfaceRoot != null)
             {
-                position = ts.GetTileSurfacePosition(tileIndex, 0.03f);
+                ruinParent = generator.surfaceRoot.transform;
             }
-            else
+            else if (!chosenTile.isLand && generator.underwaterRoot != null)
             {
-                position = generator.transform.position;
+                ruinParent = generator.underwaterRoot.transform;
             }
 
             // Register the RuinSite data record (used by discovery & reward logic).
@@ -148,7 +157,7 @@ public class AncientRuinsManager : MonoBehaviour
             }
             else
             {
-                GameObject ruinGO = Instantiate(data.ruinPrefab, position, Quaternion.identity, transform);
+                GameObject ruinGO = Instantiate(data.ruinPrefab, position, Quaternion.identity, ruinParent);
                 site.visualObject = ruinGO;
                 visualSpawned++;
 
@@ -187,39 +196,105 @@ public class AncientRuinsManager : MonoBehaviour
         Debug.Log($"[AncientRuinsManager] Spawned {spawnedCount} ruins on planet {pIdx} (visuals: {visualSpawned}).");
     }
 
-    /// <summary>
-    /// Picks a RuinData from ruinDataPool using weighted random selection,
-    /// filtered by the given planet type.
-    /// </summary>
-    private RuinData GetWeightedRandomRuinData(PlanetType planetType)
+    private List<RuinData> GetEligibleRuinDataForPlanet(PlanetType planetType)
     {
-        if (ruinDataPool == null || ruinDataPool.Length == 0) return null;
+        var eligible = new List<RuinData>();
+        if (ruinDataPool == null) return eligible;
+
+        foreach (var data in ruinDataPool)
+        {
+            if (data == null) continue;
+            if (data.allowedPlanetTypes != null && data.allowedPlanetTypes.Length > 0 &&
+                !System.Array.Exists(data.allowedPlanetTypes, pt => pt == planetType))
+            {
+                continue;
+            }
+
+            eligible.Add(data);
+        }
+
+        return eligible;
+    }
+
+    private List<int> BuildCandidateTileList(TileSystem ts, PlanetGenerator generator, int planetIndex, RuinData data)
+    {
+        var candidates = new List<int>();
+        if (ts == null || generator == null || generator.Grid == null || data == null) return candidates;
+
+        int tileCount = generator.Grid.TileCount;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        TileLayer targetLayer = data.canSpawnInWater ? TileLayer.Underwater : TileLayer.Surface;
+
+        for (int i = 0; i < tileCount; i++)
+        {
+            var tile = ts.GetTileData(i);
+            if (tile == null) continue;
+
+            bool isWaterTile = !tile.isLand;
+            if (isWaterTile)
+            {
+                if (!data.canSpawnInWater) continue;
+            }
+            else
+            {
+                if (data.canSpawnInWater) continue;
+            }
+
+            if (occ != null && occ.GetOccupantObject(i, targetLayer) != null) continue;
+            if (HasGeneratedRuinAtTile(ts, planetIndex, i, targetLayer)) continue;
+
+            candidates.Add(i);
+        }
+
+        return candidates;
+    }
+
+    private bool HasGeneratedRuinAtTile(TileSystem ts, int planetIndex, int tileIndex, TileLayer layer)
+    {
+        if (ts == null || planetGenerator == null || planetGenerator.Grid == null) return false;
+
+        for (int i = 0; i < generatedRuins.Count; i++)
+        {
+            var ruin = generatedRuins[i];
+            if (ruin == null || ruin.planetIndex != planetIndex) continue;
+
+            int ruinTileIndex = planetGenerator.Grid.GetTileAtPosition(ruin.position);
+            if (ruinTileIndex == tileIndex)
+            {
+                bool ruinIsWater = ruin.ruinData != null && ruin.ruinData.canSpawnInWater;
+                if ((ruinIsWater && layer == TileLayer.Underwater) || (!ruinIsWater && layer == TileLayer.Surface))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Picks a RuinData from an already-filtered eligible list using weighted random selection.
+    /// </summary>
+    private RuinData GetWeightedRandomRuinData(List<RuinData> eligibleRuins)
+    {
+        if (eligibleRuins == null || eligibleRuins.Count == 0) return null;
 
         float totalWeight = 0f;
-        foreach (var d in ruinDataPool)
+        foreach (var d in eligibleRuins)
         {
             if (d == null) continue;
-            // Skip ruin types not allowed on this planet
-            if (d.allowedPlanetTypes != null && d.allowedPlanetTypes.Length > 0
-                && !System.Array.Exists(d.allowedPlanetTypes, pt => pt == planetType))
-                continue;
             totalWeight += d.spawnWeight;
         }
 
-        if (totalWeight <= 0f) return ruinDataPool.FirstOrDefault(d => d != null);
+        if (totalWeight <= 0f) return null;
 
         float roll = Random.Range(0f, totalWeight);
         float cumulative = 0f;
-        foreach (var d in ruinDataPool)
+        foreach (var d in eligibleRuins)
         {
             if (d == null) continue;
-            if (d.allowedPlanetTypes != null && d.allowedPlanetTypes.Length > 0
-                && !System.Array.Exists(d.allowedPlanetTypes, pt => pt == planetType))
-                continue;
             cumulative += d.spawnWeight;
             if (roll <= cumulative) return d;
         }
-        return ruinDataPool.LastOrDefault(d => d != null);
+        return eligibleRuins.LastOrDefault(d => d != null);
     }
 
     /// <summary>

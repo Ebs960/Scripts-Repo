@@ -287,13 +287,35 @@ public class ImprovementManager : MonoBehaviour
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
-    // Allow job even if a worker is occupying the tile; we'll spawn the unit on a free neighbor if needed
-    if (!tileData.isLand) return false; // basic restriction for now
+
+        // Allow job even if a worker is occupying the tile; we'll spawn the unit on a free neighbor if needed
+        // Historically we rejected non-land tiles here. To support worker-built naval units, accept the job
+        // when the unit is a naval-type and the tile has a water surface.
+        if (!tileData.isLand)
+        {
+            if (!IsNavalUnit(unit)) return false;
+            if (tileData.waterType == TileWaterType.None) return false;
+        }
 
         // Optional: validate adjacent friendly city or territory rules if desired later
 
         unitJobs.Add(new UnitJob(tileIndex, planetIndex, owner, unit));
         return true;
+    }
+
+    private bool IsNavalUnit(CombatUnitData unit)
+    {
+        if (unit == null) return false;
+        switch (unit.unitType)
+        {
+            case CombatCategory.Boat:
+            case CombatCategory.Ship:
+            case CombatCategory.Submarine:
+            case CombatCategory.SeaCrawler:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /// <summary>
@@ -326,11 +348,29 @@ public class ImprovementManager : MonoBehaviour
     {
     if (worker == null) return false;
     planetIndex = ResolvePlanetIndex(planetIndex);
-    var job = FindBuildJob(tileIndex, planetIndex);
-    if (job == null) return false;
     string pid = worker.PersistentId;
-    if (job.assignedWorkerPersistentIds == null) job.assignedWorkerPersistentIds = new List<string>();
-    if (!job.assignedWorkerPersistentIds.Contains(pid)) job.assignedWorkerPersistentIds.Add(pid);
+    var buildJob = FindBuildJob(tileIndex, planetIndex);
+    if (buildJob != null)
+    {
+        if (buildJob.assignedWorkerPersistentIds == null) buildJob.assignedWorkerPersistentIds = new List<string>();
+        if (!buildJob.assignedWorkerPersistentIds.Contains(pid)) buildJob.assignedWorkerPersistentIds.Add(pid);
+    }
+    else
+    {
+        var unitJob = FindUnitJob(tileIndex, planetIndex);
+        if (unitJob != null)
+        {
+            if (unitJob.assignedWorkerPersistentIds == null) unitJob.assignedWorkerPersistentIds = new List<string>();
+            if (!unitJob.assignedWorkerPersistentIds.Contains(pid)) unitJob.assignedWorkerPersistentIds.Add(pid);
+        }
+        else
+        {
+            var workerJob = FindWorkerJob(tileIndex, planetIndex);
+            if (workerJob == null) return false;
+            if (workerJob.assignedWorkerPersistentIds == null) workerJob.assignedWorkerPersistentIds = new List<string>();
+            if (!workerJob.assignedWorkerPersistentIds.Contains(pid)) workerJob.assignedWorkerPersistentIds.Add(pid);
+        }
+    }
     // Notify listeners that a worker was assigned
     if (GameEventManager.Instance != null)
         GameEventManager.Instance.RaiseWorkerAssignedToJob(worker, tileIndex, planetIndex);
@@ -344,10 +384,24 @@ public class ImprovementManager : MonoBehaviour
     {
     if (worker == null) return;
     planetIndex = ResolvePlanetIndex(planetIndex);
-    var job = FindBuildJob(tileIndex, planetIndex);
-    if (job == null) return;
     string pid = worker.PersistentId;
-    job.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    var buildJob = FindBuildJob(tileIndex, planetIndex);
+    if (buildJob != null)
+    {
+        buildJob.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    }
+
+    var unitJob = FindUnitJob(tileIndex, planetIndex);
+    if (unitJob != null)
+    {
+        unitJob.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    }
+
+    var workerJob = FindWorkerJob(tileIndex, planetIndex);
+    if (workerJob != null)
+    {
+        workerJob.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    }
     // Notify listeners that a worker was unassigned
     if (GameEventManager.Instance != null)
         GameEventManager.Instance.RaiseWorkerUnassignedFromJob(worker, tileIndex, planetIndex);
@@ -365,6 +419,16 @@ public class ImprovementManager : MonoBehaviour
             if (j.assignedWorkerPersistentIds != null && j.assignedWorkerPersistentIds.Contains(pid))
                 j.assignedWorkerPersistentIds.RemoveAll(x => x == pid);
         }
+        foreach (var j in unitJobs)
+        {
+            if (j.assignedWorkerPersistentIds != null && j.assignedWorkerPersistentIds.Contains(pid))
+                j.assignedWorkerPersistentIds.RemoveAll(x => x == pid);
+        }
+        foreach (var j in workerJobs)
+        {
+            if (j.assignedWorkerPersistentIds != null && j.assignedWorkerPersistentIds.Contains(pid))
+                j.assignedWorkerPersistentIds.RemoveAll(x => x == pid);
+        }
     }
 
     /// <summary>
@@ -374,10 +438,17 @@ public class ImprovementManager : MonoBehaviour
     {
         if (worker == null) return false;
         planetIndex = ResolvePlanetIndex(planetIndex);
-        var job = FindBuildJob(tileIndex, planetIndex);
-        if (job == null) return false;
         string pid = worker.PersistentId;
-        return job.assignedWorkerPersistentIds != null && job.assignedWorkerPersistentIds.Contains(pid);
+        var buildJob = FindBuildJob(tileIndex, planetIndex);
+        if (buildJob != null && buildJob.assignedWorkerPersistentIds != null && buildJob.assignedWorkerPersistentIds.Contains(pid))
+            return true;
+
+        var unitJob = FindUnitJob(tileIndex, planetIndex);
+        if (unitJob != null && unitJob.assignedWorkerPersistentIds != null && unitJob.assignedWorkerPersistentIds.Contains(pid))
+            return true;
+
+        var workerJob = FindWorkerJob(tileIndex, planetIndex);
+        return workerJob != null && workerJob.assignedWorkerPersistentIds != null && workerJob.assignedWorkerPersistentIds.Contains(pid);
     }
 
     public bool HasBuildJobAtTile(int tileIndex, int planetIndex = -1, ImprovementData data = null)
@@ -898,6 +969,7 @@ public class ImprovementManager : MonoBehaviour
         public Civilization owner;
         public CombatUnitData data;
         public int remainingWork;
+        public List<string> assignedWorkerPersistentIds = new List<string>();
 
         public UnitJob(int tileIndex, int planetIndex, Civilization owner, CombatUnitData data)
         {
@@ -924,6 +996,7 @@ public class ImprovementManager : MonoBehaviour
         public Civilization owner;
         public WorkerUnitData data;
         public int remainingWork;
+        public List<string> assignedWorkerPersistentIds = new List<string>();
 
         public WorkerJob(int tileIndex, int planetIndex, Civilization owner, WorkerUnitData data)
         {

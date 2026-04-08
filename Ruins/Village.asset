@@ -17,6 +17,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 9b8be1c9a56d1714b9aa7d4ee6fff6cd, type: 3}
   ruinPrefab: {fileID: 4190042404842890405, guid: 7ef6b759c76d27247970f4e1207b01b6, type: 3}
   ruinType: 1
+  allowedPlanetTypes: 00000000
+  canSpawnInWater: 0
   spawnWeight: 1
   grantsGold: 1
   goldMin: 50

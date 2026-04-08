@@ -236,18 +236,16 @@ Shader "Custom/MenuPlanetPreview"
                 float3 borealC = lerp(borealBase, borealLight, moist);
                 float3 tundraC = lerp(tundraBase, tundraGray, moist);
 
-                // --- Moisture-driven band expansion: low moisture expands arid zones ---
-                // dryExpand: 0 at full moisture, 1 at zero moisture
-                float dryExpand = saturate(1.0 - moist);
-                // Push equatorial/subtropical edges poleward (up to +0.15 lat) when dry
-                float bandPush = dryExpand * 0.15;
+                // --- Moisture-driven band expansion: global dryness should dominate the whole planet ---
+                float globalDry = pow(saturate(1.0 - _Moisture), 0.65);
+                float bandPush = globalDry * 0.42;
 
-                // Band edge thresholds
-                float e0 = 0.15 + bandPush;
-                float e1 = 0.30 + bandPush * 0.7;
-                float e2 = 0.50 + bandPush * 0.3;
-                float e3 = 0.65;
-                float e4 = 0.80;
+                // On very dry worlds, push arid/subtropical bands far toward the poles.
+                float e0 = 0.12 + bandPush;
+                float e1 = 0.24 + bandPush * 0.78;
+                float e2 = 0.42 + bandPush * 0.55;
+                float e3 = 0.60 + bandPush * 0.28;
+                float e4 = 0.80 + bandPush * 0.10;
                 float b = max(0.001, _BiomeBlend); // blend half-width
 
                 // Blend between adjacent bands using configurable transition width
@@ -422,10 +420,12 @@ Shader "Custom/MenuPlanetPreview"
                 // _Moisture controls within-band color (especially equator: desert vs jungle).
                 // Temperature shift: 0.5 = neutral, <0.5 = colder, >0.5 = hotter
                 float tempShift = _Temperature - 0.5; // range -0.5 to +0.5
-                // Moisture: add some latitude variation (equator/60° wetter, 30° drier)
-                float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.2;
-                float moistNoise = (noise3D(objNorm * 5.0 + float3(77.7, 33.3, 11.1) + seedOff) - 0.5) * 0.12;
-                float localMoist = saturate(_Moisture + moistLatitude + moistNoise);
+                // Global moisture should have a dramatic visual effect. Latitude/noise only add variation,
+                // they should not overpower the slider.
+                float moistureBase = lerp(-0.45, 1.10, saturate(_Moisture));
+                float moistLatitude = cos(latitude * 3.14159 * 2.0) * lerp(0.03, 0.16, saturate(_Moisture));
+                float moistNoise = (noise3D(objNorm * 5.0 + float3(77.7, 33.3, 11.1) + seedOff) - 0.5) * lerp(0.02, 0.08, saturate(_Moisture));
+                float localMoist = saturate(moistureBase + moistLatitude + moistNoise);
 
                 // ==============================================================
                 //  Rivers (shared noise — used by normal, infernal, and demonic)

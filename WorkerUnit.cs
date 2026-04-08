@@ -155,36 +155,31 @@ public class WorkerUnit : BaseUnit
         if (!ImprovementManager.Instance.JobAssignedToWorker(tileIndex, this, planetIndex))
             return false;
 
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (tileData != null && tileData.improvement != null)
+        if (ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex))
         {
-            // Improvement build job
-            if (ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex))
-            {
-                PlayBuildActionAnimation();
-                ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
-                currentWorkPoints = 0;
-                return true;
-            }
+            FaceTowardBuildTile(tileIndex);
+            PlayBuildActionAnimation();
+            ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+            currentWorkPoints = 0;
+            return true;
         }
-        else
+
+        if (ImprovementManager.Instance.HasUnitJobAtTile(tileIndex, planetIndex))
         {
-            // Unit or worker build job
-            if (ImprovementManager.Instance.HasUnitJobAtTile(tileIndex, planetIndex))
-            {
-                PlayBuildActionAnimation();
-                ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
-                currentWorkPoints = 0;
-                return true;
-            }
-            if (ImprovementManager.Instance.HasWorkerJobAtTile(tileIndex, planetIndex))
-            {
-                PlayBuildActionAnimation();
-                ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
-                currentWorkPoints = 0;
-                return true;
-            }
+            FaceTowardBuildTile(tileIndex);
+            PlayBuildActionAnimation();
+            ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+            currentWorkPoints = 0;
+            return true;
+        }
+
+        if (ImprovementManager.Instance.HasWorkerJobAtTile(tileIndex, planetIndex))
+        {
+            FaceTowardBuildTile(tileIndex);
+            PlayBuildActionAnimation();
+            ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+            currentWorkPoints = 0;
+            return true;
         }
         return false;
     }
@@ -629,6 +624,8 @@ public class WorkerUnit : BaseUnit
             !ImprovementManager.Instance.CreateUnitJob(unitData, tileIndex, owner, planetIndex))
         { Debug.Log($"[WorkerUnit] StartBuildingUnit failed: CreateUnitJob rejected unit={unitData?.unitName} tile={tileIndex}"); return; }
 
+        ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
+        FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
         ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
@@ -642,6 +639,8 @@ public class WorkerUnit : BaseUnit
             !ImprovementManager.Instance.CreateWorkerJob(workerData, tileIndex, owner, planetIndex))
         { Debug.Log($"[WorkerUnit] StartBuildingWorker failed: CreateWorkerJob rejected worker={workerData?.unitName} tile={tileIndex}"); return; }
 
+        ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
+        FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
@@ -658,6 +657,7 @@ public class WorkerUnit : BaseUnit
         { Debug.Log($"[WorkerUnit] StartBuilding failed: CreateBuildJob rejected improvement={improvement?.name} tile={tileIndex}"); return; }
 
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
+        FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
         ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
@@ -754,6 +754,21 @@ public class WorkerUnit : BaseUnit
     #endregion
 
     #region Helper Methods
+
+    private void FaceTowardBuildTile(int tileIndex)
+    {
+        if (tileIndex < 0 || tileIndex == currentTileIndex) return;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        Vector3 targetPos = ts.GetTileSurfacePosition(tileIndex);
+        Vector3 direction = targetPos - transform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.001f) return;
+
+        transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+    }
 
     private void PlayForageAnimation()
     {

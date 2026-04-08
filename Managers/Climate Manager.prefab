@@ -80,3 +80,9 @@ MonoBehaviour:
   planetIndex: 0
   winterAttritionDamage: 1
   enableWinterAttrition: 1
+  summerDroughtChance: 0.25
+  summerDroughtSeverity: 0.35
+  iceSurfaceDatabase: {fileID: 11400000, guid: a179395d8e066d7408edab9fd9f0e3de, type: 2}
+  iceTemperatureThreshold: 0.6
+  interiorLakeFreezeMax: 0.45
+  freezeTransitionDuration: 10

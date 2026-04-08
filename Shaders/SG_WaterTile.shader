@@ -33,6 +33,21 @@ Shader "Custom/SG_WaterTile"
         [Header(River Color)]
         _RiverShallowColor ("River Shallow Color", Color) = (0.20, 0.56, 0.86, 1)
         _RiverDeepColor ("River Deep Color", Color) = (0.08, 0.24, 0.36, 1)
+
+        [Header(Freeze)]
+        _FreezeProgress ("Freeze Progress", Range(0, 1)) = 0
+        _FreezeOpaqueThreshold ("Freeze Opaque Threshold", Range(0.5, 1)) = 0.9
+        _LakeIceAlbedoArray ("Lake Ice Albedo Array", 2DArray) = "" {}
+        _LakeIceNormalArray ("Lake Ice Normal Array", 2DArray) = "" {}
+        _RiverIceAlbedoArray ("River Ice Albedo Array", 2DArray) = "" {}
+        _RiverIceNormalArray ("River Ice Normal Array", 2DArray) = "" {}
+        _LakeIceSliceCount ("Lake Ice Slice Count", Float) = 0
+        _RiverIceSliceCount ("River Ice Slice Count", Float) = 0
+        _LakeIceTint ("Lake Ice Tint", Color) = (1, 1, 1, 1)
+        _RiverIceTint ("River Ice Tint", Color) = (1, 1, 1, 1)
+        _LakeIceTiling ("Lake Ice Tiling", Float) = 8
+        _RiverIceTiling ("River Ice Tiling", Float) = 12
+        _IceNormalStrength ("Ice Normal Strength", Range(0, 3)) = 1
     }
 
     SubShader
@@ -67,6 +82,7 @@ Shader "Custom/SG_WaterTile"
             {
                 float3 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 freezeData : TEXCOORD1;
                 float4 color : COLOR;
                 float3 normalOS : NORMAL;
             };
@@ -79,6 +95,7 @@ Shader "Custom/SG_WaterTile"
                 float3 normalWS : TEXCOORD2;
                 float3 viewDirWS : TEXCOORD3;
                 float4 vertexColor : TEXCOORD4;
+                float4 freezeData : TEXCOORD5;
             };
 
             TEXTURE2D(_NormalMapA);
@@ -87,6 +104,14 @@ Shader "Custom/SG_WaterTile"
             SAMPLER(sampler_NormalMapB);
             TEXTURE2D(_CausticsTex);
             SAMPLER(sampler_CausticsTex);
+            TEXTURE2D_ARRAY(_LakeIceAlbedoArray);
+            SAMPLER(sampler_LakeIceAlbedoArray);
+            TEXTURE2D_ARRAY(_LakeIceNormalArray);
+            SAMPLER(sampler_LakeIceNormalArray);
+            TEXTURE2D_ARRAY(_RiverIceAlbedoArray);
+            SAMPLER(sampler_RiverIceAlbedoArray);
+            TEXTURE2D_ARRAY(_RiverIceNormalArray);
+            SAMPLER(sampler_RiverIceNormalArray);
 
             float4 _ShallowColor;
             float4 _DeepColor;
@@ -103,6 +128,28 @@ Shader "Custom/SG_WaterTile"
             float _AlphaBase;
             float4 _RiverShallowColor;
             float4 _RiverDeepColor;
+            float _FreezeProgress;
+            float _FreezeOpaqueThreshold;
+            float _LakeIceSliceCount;
+            float _RiverIceSliceCount;
+            float4 _LakeIceTint;
+            float4 _RiverIceTint;
+            float _LakeIceTiling;
+            float _RiverIceTiling;
+            float _IceNormalStrength;
+
+            float Hash11(float value)
+            {
+                return frac(sin(value * 12.9898 + 78.233) * 43758.5453);
+            }
+
+            float3 SampleIceNormal(TEXTURE2D_ARRAY_PARAM(tex, samp), float2 uv, float slice)
+            {
+                float3 sampled = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv, slice));
+                sampled.xy *= _IceNormalStrength;
+                sampled.z = sqrt(saturate(1.0 - dot(sampled.xy, sampled.xy)));
+                return sampled;
+            }
 
             Varyings vert(Attributes input)
             {
@@ -113,12 +160,13 @@ Shader "Custom/SG_WaterTile"
                 float waterType = round(saturate(input.color.a) * 3.0);
                 bool isRiver = waterType >= 2.5;
                 bool isLava = !isRiver && tint.r > 0.75 && tint.g < 0.4 && tint.b < 0.2;
+                float freezeAmount = saturate(max(input.freezeData.x * _FreezeProgress, input.freezeData.y));
 
                 // Small sine bob based on world-space XZ
                 float3 posWS = TransformObjectToWorld(posOS);
                 float wave = sin(posWS.x * _WaveFrequency + _Time.y * 2.0)
                            * cos(posWS.z * _WaveFrequency * 0.7 + _Time.y * 1.5);
-                posOS.y += wave * (isLava ? 0.0 : _WaveAmplitude);
+                posOS.y += wave * (isLava ? 0.0 : _WaveAmplitude * (1.0 - freezeAmount));
 
                 output.positionWS = TransformObjectToWorld(posOS);
                 output.positionCS = TransformWorldToHClip(output.positionWS);
@@ -126,6 +174,7 @@ Shader "Custom/SG_WaterTile"
                 output.viewDirWS = GetWorldSpaceNormalizeViewDir(output.positionWS);
                 output.uv = input.uv;
                 output.vertexColor = input.color;
+                output.freezeData = input.freezeData;
 
                 return output;
             }
@@ -135,8 +184,14 @@ Shader "Custom/SG_WaterTile"
                 // Vertex alpha encodes water type: 1/3 ocean, 2/3 lake, 1 river.
                 float waterType = round(saturate(input.vertexColor.a) * 3.0);
                 bool isRiver = waterType >= 2.5;
+                bool isLake = !isRiver && waterType >= 1.5;
                 float3 stillTint = saturate(input.vertexColor.rgb);
                 bool isLava = !isRiver && stillTint.r > 0.75 && stillTint.g < 0.4 && stillTint.b < 0.2;
+                float freezeTarget = saturate(input.freezeData.x);
+                float persistedFreeze = saturate(input.freezeData.y);
+                float freezeVariant = frac(input.freezeData.z + Hash11(input.positionWS.x + input.positionWS.z));
+                float freezeAmount = saturate(max(freezeTarget * _FreezeProgress, persistedFreeze));
+                float solidIceBlend = saturate((freezeAmount - _FreezeOpaqueThreshold) / max(1.0 - _FreezeOpaqueThreshold, 0.001));
 
                 // Rivers use RG as flow direction. Still water uses RGB as a tint hint.
                 float2 flowDir = isRiver ? input.vertexColor.rg * 2.0 - 1.0 : float2(0.0, 0.0);
@@ -147,10 +202,10 @@ Shader "Custom/SG_WaterTile"
 
                 // Scroll UVs for two normal maps
                 float2 worldUV = input.positionWS.xz * 0.1; // world-space tiling
-                float2 stillScrollA = isLava ? float2(0.0, 0.0) : _ScrollSpeedA.xy * _Time.y;
-                float2 stillScrollB = isLava ? float2(0.0, 0.0) : _ScrollSpeedB.xy * _Time.y;
-                float2 uvA = worldUV + stillScrollA + flowOffset;
-                float2 uvB = worldUV + stillScrollB + flowOffset * 0.5;
+                float2 stillScrollA = float2(0.0, 0.0);
+                float2 stillScrollB = float2(0.0, 0.0);
+                float2 uvA = worldUV + stillScrollA + (isRiver ? flowOffset : float2(0.0, 0.0));
+                float2 uvB = worldUV + stillScrollB + (isRiver ? flowOffset * 0.5 : float2(0.0, 0.0));
 
                 // Sample and blend normals
                 float3 normalA = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMapA, sampler_NormalMapA, uvA));
@@ -159,11 +214,6 @@ Shader "Custom/SG_WaterTile"
                     (normalA.xy + normalB.xy) * _NormalStrength,
                     1.0
                 ));
-
-                // Fresnel
-                float3 viewDir = normalize(input.viewDirWS);
-                float3 worldNormal = normalize(input.normalWS + float3(blendedNormal.x, 0, blendedNormal.y));
-                float fresnel = pow(1.0 - saturate(dot(viewDir, worldNormal)), _FresnelPower);
 
                 float3 shallowColor = _ShallowColor.rgb;
                 float3 deepColor = _DeepColor.rgb;
@@ -180,8 +230,40 @@ Shader "Custom/SG_WaterTile"
                     deepColor = lerp(_DeepColor.rgb, stillTint * 0.42, 0.92);
                 }
 
-                // Color blend: shallow near edges, deep at center/steep angles
-                float4 color = float4(lerp(shallowColor, deepColor, fresnel), 1.0);
+                // All non-lava water should render as exactly one color.
+                float4 color = isLava
+                    ? float4(shallowColor, 1.0)
+                    : float4(_ShallowColor.rgb, 1.0);
+
+                float3 viewDir = normalize(input.viewDirWS);
+                float3 worldNormal = normalize(input.normalWS + float3(blendedNormal.x, 0, blendedNormal.y));
+
+                if (!isLava && (isRiver || isLake) && freezeAmount > 0.001
+                    && ((isRiver && _RiverIceSliceCount > 0.5) || (isLake && _LakeIceSliceCount > 0.5)))
+                {
+                    bool useRiverIce = isRiver;
+                    float sliceCount = useRiverIce ? _RiverIceSliceCount : _LakeIceSliceCount;
+                    float slice = max(0.0, floor(freezeVariant * max(sliceCount, 1.0)));
+                    slice = min(slice, max(sliceCount - 1.0, 0.0));
+                    float tiling = max(useRiverIce ? _RiverIceTiling : _LakeIceTiling, 0.01);
+                    float2 iceUV = input.positionWS.xz * tiling;
+
+                    float3 iceAlbedo = useRiverIce
+                        ? SAMPLE_TEXTURE2D_ARRAY(_RiverIceAlbedoArray, sampler_RiverIceAlbedoArray, iceUV, slice).rgb * _RiverIceTint.rgb
+                        : SAMPLE_TEXTURE2D_ARRAY(_LakeIceAlbedoArray, sampler_LakeIceAlbedoArray, iceUV, slice).rgb * _LakeIceTint.rgb;
+                    float3 iceNormalTS = useRiverIce
+                        ? SampleIceNormal(TEXTURE2D_ARRAY_ARGS(_RiverIceNormalArray, sampler_RiverIceNormalArray), iceUV, slice)
+                        : SampleIceNormal(TEXTURE2D_ARRAY_ARGS(_LakeIceNormalArray, sampler_LakeIceNormalArray), iceUV, slice);
+                    float3 iceWorldNormal = normalize(input.normalWS + float3(iceNormalTS.x, 0, iceNormalTS.y));
+
+                    float finalFreezeBlend = saturate(max(freezeAmount, solidIceBlend));
+                    color.rgb = lerp(color.rgb, iceAlbedo, finalFreezeBlend);
+                    worldNormal = normalize(lerp(worldNormal, iceWorldNormal, finalFreezeBlend));
+                }
+
+                float fresnel = pow(1.0 - saturate(dot(viewDir, worldNormal)), _FresnelPower);
+                if (isLava)
+                    color.rgb = lerp(shallowColor, deepColor, fresnel);
 
                 // --- Caustics ---
                 // Two layers scrolling at different speeds/angles for a shimmering effect.
@@ -204,10 +286,11 @@ Shader "Custom/SG_WaterTile"
                 // Attenuate caustics by the inverse of fresnel — stronger at shallow/top-down view,
                 // fading at glancing angles where you'd see more reflection than refraction.
                 float causticsAtten = (1.0 - fresnel * 0.7);
-                color.rgb += caustics * _CausticsIntensity * causticsAtten * shallowColor;
+                if (isLava)
+                    color.rgb += caustics * _CausticsIntensity * causticsAtten * shallowColor;
 
-                // Lava should render fully opaque while normal water stays noticeably less transparent.
-                color.a = isLava ? 1.0 : saturate(max(_AlphaBase, 0.70));
+                // Lava should render fully opaque while frozen water becomes opaque as it solidifies.
+                color.a = isLava ? 1.0 : lerp(saturate(max(_AlphaBase, 0.70)), 1.0, solidIceBlend);
 
                 return color;
             }

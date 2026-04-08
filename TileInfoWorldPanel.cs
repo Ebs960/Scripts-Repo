@@ -25,6 +25,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI moistureText;
     [SerializeField] private TextMeshProUGUI temperatureText;
     [SerializeField] private TextMeshProUGUI mosquitoText;
+    [SerializeField] private TextMeshProUGUI landText;
     [SerializeField] private TextMeshProUGUI resourceText;
 
     [Header("Styling")]
@@ -216,6 +217,12 @@ public class TileInfoWorldPanel : MonoBehaviour
         else if (yieldsText != null)
             yieldsText.text += "\n" + elevInfo;
 
+        // Land display: use dedicated field if present, otherwise append to elevation text for compatibility
+        if (landText != null)
+            landText.text = tileData.isLand ? "Land: Yes" : "Land: No";
+        else if (elevationText != null)
+            elevationText.text = elevInfo + $"\nLand: {(tileData.isLand ? "Yes" : "No")}";
+
         if (moistureText != null)
             moistureText.text = $"Moisture: {tileData.moisture:F2}";
         else if (yieldsText != null)
@@ -262,10 +269,19 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (tileData.HasUnderwaterDistrict)
             sb.Append($"\nDistrict: {tileData.district.districtName}");
 
+        // Always show whether the underlying tile is considered land (useful for debugging frozen/coastal cases)
+        sb.Append($"\nLand: {(tileData.isLand ? "Yes" : "No")}");
+
         if (elevationText != null)
             elevationText.text = sb.ToString();
         else if (yieldsText != null)
             yieldsText.text += "\n" + sb.ToString();
+
+        // Land display for underwater view
+        if (landText != null)
+            landText.text = tileData.isLand ? "Land: Yes" : "Land: No";
+        else if (elevationText != null)
+            elevationText.text = sb.ToString() + $"\nLand: {(tileData.isLand ? "Yes" : "No")}";
 
         if (moistureText != null)
             moistureText.text = "";
@@ -303,6 +319,11 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (yieldsText != null) yieldsText.text = sb.ToString();
         if (resourceText != null) resourceText.text = "";
         if (elevationText != null) elevationText.text = $"Surface below: {FormatBiomeName(tileData.biome)}";
+        // Show land state in dedicated field or append to elevation
+        if (landText != null)
+            landText.text = tileData.isLand ? "Land: Yes" : "Land: No";
+        else if (elevationText != null)
+            elevationText.text = elevationText.text + $"\nLand: {(tileData.isLand ? "Yes" : "No")}";
         if (moistureText != null) moistureText.text = "";
         if (temperatureText != null) temperatureText.text = "";
         if (mosquitoText != null) mosquitoText.text = FormatMosquitoStatus(tileData);

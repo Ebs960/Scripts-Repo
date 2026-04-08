@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8540917934770016297}
   - component: {fileID: 4050885774052144637}
   - component: {fileID: 6515396151515733605}
+  - component: {fileID: 3507245953948361800}
   m_Layer: 0
   m_Name: Hex Map Stuff and Tile Info
   m_TagString: Untagged
@@ -55,7 +56,7 @@ MonoBehaviour:
   heightmapAnisoLevel: 16
   chunksX: 14
   chunksZ: 9
-  meshSubdivisionsPerChunk: 72
+  meshSubdivisionsPerChunk: 16
   displacementStrength: 1
   flatY: 0
   preserveLandElevationNearFreshwater: 0
@@ -144,3 +145,18 @@ MonoBehaviour:
   maxHexesToRender: 100000
   renderDistance: 500
   updateInterval: 0.1
+--- !u!114 &3507245953948361800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058985958848534842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d66eddd58c6487a4bbf53f8d7e162afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LightingController
+  sunDirection: {x: 0.30304578, y: -0.80812204, z: 0.5050762}
+  sunColor: {r: 1, g: 0.95, b: 0.85, a: 1}
+  sunIntensity: 1.5

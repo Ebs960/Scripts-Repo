@@ -174,13 +174,13 @@ public class MainMenuManager : MonoBehaviour
 
     // Moisture preset values
     private readonly (float frequency, float bias)[] moisturePresets = new[] {
-        (2.0f, -0.25f),  // Desert: Very dry, minimal moisture
-        (2.5f, -0.15f),  // Arid: Lower frequency and drier bias
-        (4.0f, 0.0f),    // Standard: Balanced moisture (default)
-        (5.0f, 0.1f),    // Moist: Higher frequency and wetter bias
-        (6.0f, 0.2f),    // Wet: High moisture for many forests/jungles
-        (7.0f, 0.3f)     // Oceanic: Extremely wet world with minimal deserts
-    };
+    (2.0f, -0.25f),  // Desert: Very dry, minimal moisture
+    (2.5f, -0.15f),  // Arid: Lower frequency and drier bias
+    (4.0f, 0.05f),   // Standard: Slightly wetter to reduce overwhelming deserts
+    (5.0f, 0.1f),    // Moist: Higher frequency and wetter bias
+    (6.0f, 0.2f),    // Wet: High moisture for many forests/jungles
+    (7.0f, 0.3f)     // Oceanic: Extremely wet world with minimal deserts
+};
     
     // Terrain roughness presets (combines hills and mountains)
     private readonly (float hills, float mountains)[] terrainPresets = new[] {

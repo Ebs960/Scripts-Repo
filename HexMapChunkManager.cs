@@ -288,6 +288,7 @@ public class HexMapChunkManager : MonoBehaviour
     // Continuous river mesh instance (lives under this manager)
     private GameObject _riverSurfaceObj;
     private Mesh _riverSurfaceMesh;
+    private readonly HashSet<int> _solidFrozenWaterTiles = new HashSet<int>();
 
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
@@ -1193,6 +1194,111 @@ public class HexMapChunkManager : MonoBehaviour
         return sliceIndex;
     }
 
+    private float GetSolidIceThreshold()
+    {
+        return iceSurfaceDatabase != null
+            ? Mathf.Clamp01(iceSurfaceDatabase.freezeOpaqueThreshold)
+            : HexTileData.FreezeSolidThreshold;
+    }
+
+    private bool IsFreezableWater(HexTileData tile)
+    {
+        return tile != null
+               && tile.waterType != TileWaterType.None
+               && tile.waterType != TileWaterType.Ocean
+               && tile.biome != Biome.Lava;
+    }
+
+    private bool IsSolidFrozenWater(HexTileData tile)
+    {
+        return IsFreezableWater(tile) && tile.freezeAmount >= GetSolidIceThreshold();
+    }
+
+    private bool HasWaterFreezeVisuals(HexTileData tile)
+    {
+        if (!IsFreezableWater(tile) || iceSurfaceDatabase == null)
+            return false;
+
+        return tile.waterType == TileWaterType.River
+            ? iceSurfaceDatabase.riverIceAlbedoArray != null
+            : iceSurfaceDatabase.lakeIceAlbedoArray != null;
+    }
+
+    private static float HashToUnitFloat(int value)
+    {
+        unchecked
+        {
+            uint hash = (uint)value;
+            hash ^= hash >> 16;
+            hash *= 0x7feb352dU;
+            hash ^= hash >> 15;
+            hash *= 0x846ca68bU;
+            hash ^= hash >> 16;
+            return (hash & 0x00FFFFFFu) / 16777215f;
+        }
+    }
+
+    private Vector4 GetWaterFreezeVertexData(HexTileData tile, int tileIndex)
+    {
+        if (!IsFreezableWater(tile))
+            return Vector4.zero;
+
+        float freezeTarget = Mathf.Clamp01(Mathf.Max(tile.freezeTarget, tile.freezeAmount));
+        float freezeAmount = Mathf.Clamp01(tile.freezeAmount);
+        float variantSeed = HashToUnitFloat(tileIndex + 1);
+        return new Vector4(freezeTarget, freezeAmount, variantSeed, 0f);
+    }
+
+    private Biome ResolveFrozenWaterSurfaceBiome()
+    {
+        if (planetGenerator == null)
+            return Biome.Glacier;
+
+        Biome preferred = planetGenerator.planetType switch
+        {
+            PlanetType.Mars => Biome.MartianPolarIce,
+            PlanetType.Mercury => Biome.MercurianIce,
+            PlanetType.Titan => Biome.TitanIce,
+            PlanetType.Europa => Biome.EuropaIce,
+            PlanetType.Pluto => Biome.PlutoCryo,
+            _ => planetGenerator.mapType == MapType.IceWorld ? Biome.IcicleField : Biome.Glacier,
+        };
+
+        return biomeVisualDatabase != null && biomeVisualDatabase.Get(preferred) != null
+            ? preferred
+            : Biome.Glacier;
+    }
+
+    private BiomeVisualData ResolveRenderedVisual(HexTileData tile)
+    {
+        if (tile == null || biomeVisualDatabase == null)
+            return null;
+
+        if (IsSolidFrozenWater(tile))
+        {
+            var frozenVisual = biomeVisualDatabase.Get(ResolveFrozenWaterSurfaceBiome());
+            if (frozenVisual != null && frozenVisual.surfaceFamily != null)
+                return frozenVisual;
+        }
+
+        var visual = biomeVisualDatabase.Get(tile.biome);
+
+        if (tile.underwaterBiome != Biome.Ocean && tile.underwaterBiome != tile.biome)
+        {
+            var underwaterVisual = biomeVisualDatabase.Get(tile.underwaterBiome);
+            if (underwaterVisual != null && underwaterVisual.surfaceFamily != null)
+                visual = underwaterVisual;
+        }
+
+        return visual;
+    }
+
+    private int ResolveRenderedBiomeIndex(HexTileData tile)
+    {
+        var visual = ResolveRenderedVisual(tile);
+        return visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+    }
+
     private void BuildBiomeIndexMap(int width, int height)
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
@@ -1237,8 +1343,7 @@ public class HexMapChunkManager : MonoBehaviour
                     continue;
                 }
 
-                var visual = biomeVisualDatabase.Get(tile.biome);
-                int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+                int biomeIndex = ResolveRenderedBiomeIndex(tile);
                 int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
 
                 if (sliceIndex < minVal) minVal = sliceIndex;
@@ -1305,8 +1410,7 @@ public class HexMapChunkManager : MonoBehaviour
                     continue;
                 }
 
-                var visual = biomeVisualDatabase.Get(tile.biome);
-                int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+                int biomeIndex = ResolveRenderedBiomeIndex(tile);
                 int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
 
                 if (sliceIndex < minVal) minVal = sliceIndex;
@@ -1491,22 +1595,97 @@ public class HexMapChunkManager : MonoBehaviour
                 continue;
             }
 
-            var visual = biomeVisualDatabase.Get(tile.biome);
-
-            // Underwater biome texture swap: if this tile has a non-default underwater biome
-            // (AbyssalPlains, Trench, etc.), render that biome's texture on the ocean floor instead
-            // of the surface biome (Ocean) texture. The surface biome stays Ocean for gameplay.
-            if (tile.underwaterBiome != Biome.Ocean && tile.underwaterBiome != tile.biome)
-            {
-                var underwaterVisual = biomeVisualDatabase.Get(tile.underwaterBiome);
-                if (underwaterVisual != null && underwaterVisual.surfaceFamily != null)
-                    visual = underwaterVisual;
-            }
-
-            int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+            int biomeIndex = ResolveRenderedBiomeIndex(tile);
             biomeIndices[ti] = biomeIndex;
             sliceIndices[ti] = ResolveSurfaceSliceIndex(tile, ti, biomeIndex);
         }
+    }
+
+    /// <summary>
+    /// Rebuild only the baked terrain pixels touched by the specified tiles.
+    /// Updates the runtime BiomeIndexMap and Heightmap in place instead of rebaking
+    /// the whole planet texture.
+    /// </summary>
+    public void RebakeBakedTerrainForTiles(IEnumerable<int> tileIndices)
+    {
+        if (planetGenerator == null || grid == null || bakeResult.lut == null || bakeResult.lut.Length == 0)
+            return;
+        if (biomeIndexMap == null || heightmapTexture == null)
+            return;
+
+        var biomeTiles = new HashSet<int>();
+        var heightTiles = new HashSet<int>();
+
+        foreach (int tileIndex in tileIndices)
+        {
+            if (tileIndex < 0 || tileIndex >= grid.TileCount)
+                continue;
+
+            biomeTiles.Add(tileIndex);
+            heightTiles.Add(tileIndex);
+
+            var neighbors = grid.neighbors != null && tileIndex < grid.neighbors.Length
+                ? grid.neighbors[tileIndex]
+                : null;
+            if (neighbors == null)
+                continue;
+
+            foreach (int neighbor in neighbors)
+            {
+                if (neighbor >= 0 && neighbor < grid.TileCount)
+                    heightTiles.Add(neighbor);
+            }
+        }
+
+        if (biomeTiles.Count == 0 && heightTiles.Count == 0)
+            return;
+
+        int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        bool biomeUpdated = false;
+        bool heightUpdated = false;
+
+        for (int pixelIndex = 0; pixelIndex < bakeResult.lut.Length; pixelIndex++)
+        {
+            int tileIndex = bakeResult.lut[pixelIndex];
+            if (tileIndex < 0)
+                continue;
+
+            bool updateBiome = biomeTiles.Contains(tileIndex);
+            bool updateHeight = heightTiles.Contains(tileIndex);
+            if (!updateBiome && !updateHeight)
+                continue;
+
+            if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                continue;
+
+            int x = pixelIndex % width;
+            int y = pixelIndex / width;
+
+            if (updateBiome)
+            {
+                int biomeIndex = ResolveRenderedBiomeIndex(tile);
+                int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
+                biomeIndexMap.SetPixel(x, y, new Color(sliceIndex, biomeIndex, 0f, 1f));
+                biomeUpdated = true;
+            }
+
+            if (updateHeight)
+            {
+                float elevation = GetRenderedElevation(tileIndex);
+                heightmapTexture.SetPixel(x, y, new Color(elevation, 0f, 0f, 1f));
+                heightUpdated = true;
+            }
+        }
+
+        if (biomeUpdated)
+            biomeIndexMap.Apply(false, false);
+        if (heightUpdated)
+            heightmapTexture.Apply(true, false);
+    }
+
+    public void RebakeBakedTerrainForTile(int tileIndex)
+    {
+        RebakeBakedTerrainForTiles(new[] { tileIndex });
     }
 
     /// <summary>
@@ -1844,39 +2023,74 @@ public class HexMapChunkManager : MonoBehaviour
             catch (System.Exception ex) { Debug.LogWarning($"[HexMapChunkManager] debugBiomeDetails error: {ex.Message}"); }
         }
 
-        // ── Ice / Freeze visuals ─────────────────────────────────────────────
-        // Bind ice textures and settings from IceSurfaceDatabase so the shader
-        // can blend from open water to ice when _FreezeProgress > 0.
+        // Bind sun/light uniforms from optional LightingController so artists can tweak
+        // sun direction/color/intensity per-scene without editing the shader asset.
+        var lc = LightingController.Instance;
+        if (lc != null)
+        {
+            Vector4 sunDir = new Vector4(lc.sunDirection.x, lc.sunDirection.y, lc.sunDirection.z, 0f);
+            if (sharedMaterial != null)
+            {
+                if (sharedMaterial.HasProperty("_SunDir")) sharedMaterial.SetVector("_SunDir", sunDir);
+                if (sharedMaterial.HasProperty("_SunColor")) sharedMaterial.SetColor("_SunColor", lc.sunColor);
+                if (sharedMaterial.HasProperty("_SunIntensity")) sharedMaterial.SetFloat("_SunIntensity", lc.sunIntensity);
+            }
+            if (waterMaterial != null)
+            {
+                if (waterMaterial.HasProperty("_SunDir")) waterMaterial.SetVector("_SunDir", sunDir);
+                if (waterMaterial.HasProperty("_SunColor")) waterMaterial.SetColor("_SunColor", lc.sunColor);
+                if (waterMaterial.HasProperty("_SunIntensity")) waterMaterial.SetFloat("_SunIntensity", lc.sunIntensity);
+            }
+        }
+
+        ApplyIceSurfaceSettingsToMaterial(sharedMaterial);
+        ApplyIceSurfaceSettingsToMaterial(waterMaterial);
+    }
+
+    private void ApplyIceSurfaceSettingsToMaterial(Material material)
+    {
+        if (material == null)
+            return;
+
         if (iceSurfaceDatabase != null)
         {
-            Debug.Log($"[HexMapChunkManager] Binding ice textures. Lake albedo={iceSurfaceDatabase.lakeIceAlbedoArray != null}, River albedo={iceSurfaceDatabase.riverIceAlbedoArray != null}");
-            if (iceSurfaceDatabase.lakeIceAlbedoArray != null)  sharedMaterial.SetTexture("_LakeIceAlbedoArray",  iceSurfaceDatabase.lakeIceAlbedoArray);
-            if (iceSurfaceDatabase.lakeIceNormalArray != null)  sharedMaterial.SetTexture("_LakeIceNormalArray",  iceSurfaceDatabase.lakeIceNormalArray);
-            if (iceSurfaceDatabase.lakeIceMaskArray != null)    sharedMaterial.SetTexture("_LakeIceMaskArray",    iceSurfaceDatabase.lakeIceMaskArray);
-            if (iceSurfaceDatabase.lakeIceHeightArray != null)  sharedMaterial.SetTexture("_LakeIceHeightArray",  iceSurfaceDatabase.lakeIceHeightArray);
-            if (iceSurfaceDatabase.riverIceAlbedoArray != null) sharedMaterial.SetTexture("_RiverIceAlbedoArray", iceSurfaceDatabase.riverIceAlbedoArray);
-            if (iceSurfaceDatabase.riverIceNormalArray != null) sharedMaterial.SetTexture("_RiverIceNormalArray", iceSurfaceDatabase.riverIceNormalArray);
-            if (iceSurfaceDatabase.riverIceMaskArray != null)   sharedMaterial.SetTexture("_RiverIceMaskArray",   iceSurfaceDatabase.riverIceMaskArray);
-            if (iceSurfaceDatabase.riverIceHeightArray != null) sharedMaterial.SetTexture("_RiverIceHeightArray", iceSurfaceDatabase.riverIceHeightArray);
-            sharedMaterial.SetFloat("_LakeIceSliceCount",  iceSurfaceDatabase.lakeIceAlbedoArray != null ? iceSurfaceDatabase.lakeIceAlbedoArray.depth : 0f);
-            sharedMaterial.SetFloat("_RiverIceSliceCount", iceSurfaceDatabase.riverIceAlbedoArray != null ? iceSurfaceDatabase.riverIceAlbedoArray.depth : 0f);
-            sharedMaterial.SetColor("_LakeIceTint",    iceSurfaceDatabase.lakeIceTint);
-            sharedMaterial.SetFloat("_LakeIceTiling",  iceSurfaceDatabase.lakeIceTiling);
-            sharedMaterial.SetColor("_RiverIceTint",   iceSurfaceDatabase.riverIceTint);
-            sharedMaterial.SetFloat("_RiverIceTiling", iceSurfaceDatabase.riverIceTiling);
-            sharedMaterial.SetFloat("_IceNormalStrength", iceSurfaceDatabase.iceNormalStrength);
-            sharedMaterial.SetFloat("_IceSmoothness",     iceSurfaceDatabase.iceSmoothness);
-            sharedMaterial.SetFloat("_IceMetallic",       iceSurfaceDatabase.iceMetallic);
-            sharedMaterial.SetFloat("_FreezeOpaqueThreshold", iceSurfaceDatabase.freezeOpaqueThreshold);
+            if (material == sharedMaterial)
+            {
+                Debug.Log($"[HexMapChunkManager] Binding ice textures. Lake albedo={iceSurfaceDatabase.lakeIceAlbedoArray != null}, River albedo={iceSurfaceDatabase.riverIceAlbedoArray != null}");
+            }
+
+            if (iceSurfaceDatabase.lakeIceAlbedoArray != null)  material.SetTexture("_LakeIceAlbedoArray",  iceSurfaceDatabase.lakeIceAlbedoArray);
+            if (iceSurfaceDatabase.lakeIceNormalArray != null)  material.SetTexture("_LakeIceNormalArray",  iceSurfaceDatabase.lakeIceNormalArray);
+            if (iceSurfaceDatabase.lakeIceMaskArray != null)    material.SetTexture("_LakeIceMaskArray",    iceSurfaceDatabase.lakeIceMaskArray);
+            if (iceSurfaceDatabase.lakeIceHeightArray != null)  material.SetTexture("_LakeIceHeightArray",  iceSurfaceDatabase.lakeIceHeightArray);
+            if (iceSurfaceDatabase.riverIceAlbedoArray != null) material.SetTexture("_RiverIceAlbedoArray", iceSurfaceDatabase.riverIceAlbedoArray);
+            if (iceSurfaceDatabase.riverIceNormalArray != null) material.SetTexture("_RiverIceNormalArray", iceSurfaceDatabase.riverIceNormalArray);
+            if (iceSurfaceDatabase.riverIceMaskArray != null)   material.SetTexture("_RiverIceMaskArray",   iceSurfaceDatabase.riverIceMaskArray);
+            if (iceSurfaceDatabase.riverIceHeightArray != null) material.SetTexture("_RiverIceHeightArray", iceSurfaceDatabase.riverIceHeightArray);
+            material.SetFloat("_LakeIceSliceCount",  iceSurfaceDatabase.lakeIceAlbedoArray != null ? iceSurfaceDatabase.lakeIceAlbedoArray.depth : 0f);
+            material.SetFloat("_RiverIceSliceCount", iceSurfaceDatabase.riverIceAlbedoArray != null ? iceSurfaceDatabase.riverIceAlbedoArray.depth : 0f);
+            material.SetColor("_LakeIceTint",    iceSurfaceDatabase.lakeIceTint);
+            material.SetFloat("_LakeIceTiling",  iceSurfaceDatabase.lakeIceTiling);
+            material.SetColor("_RiverIceTint",   iceSurfaceDatabase.riverIceTint);
+            material.SetFloat("_RiverIceTiling", iceSurfaceDatabase.riverIceTiling);
+            material.SetFloat("_IceNormalStrength", iceSurfaceDatabase.iceNormalStrength);
+            material.SetFloat("_IceSmoothness",     iceSurfaceDatabase.iceSmoothness);
+            material.SetFloat("_IceMetallic",       iceSurfaceDatabase.iceMetallic);
+            material.SetFloat("_FreezeOpaqueThreshold", iceSurfaceDatabase.freezeOpaqueThreshold);
         }
         else
         {
-            Debug.LogWarning("[HexMapChunkManager] iceSurfaceDatabase is NULL — no ice textures bound! Assign it in the Inspector.");
-            sharedMaterial.SetFloat("_LakeIceSliceCount", 0f);
-            sharedMaterial.SetFloat("_RiverIceSliceCount", 0f);
+            if (material == sharedMaterial)
+                Debug.LogWarning("[HexMapChunkManager] iceSurfaceDatabase is NULL — no ice textures bound! Assign it in the Inspector.");
+
+            material.SetFloat("_LakeIceSliceCount", 0f);
+            material.SetFloat("_RiverIceSliceCount", 0f);
         }
-        // Initialise freeze progress to 0 so the shader starts in a fully-thawed state.
-        sharedMaterial.SetFloat("_FreezeProgress", 0f);
+
+        float freezeProgress = 0f;
+        if (planetGenerator != null && ClimateManager.Instance != null)
+            freezeProgress = ClimateManager.Instance.GetFreezeProgressForPlanet(planetGenerator.planetIndex);
+        material.SetFloat("_FreezeProgress", freezeProgress);
     }
     
     /// <summary>
@@ -2821,6 +3035,7 @@ public class HexMapChunkManager : MonoBehaviour
         {
             if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
             if (td.waterType == TileWaterType.None) continue;
+            if (ShouldHideLiquidWater(td)) continue;
             // When the unified SDF water mesh handles a water type, skip it here to avoid double-rendering.
             if (enableContinuousRiverSurface && td.waterType == TileWaterType.River) continue;
             if (enableContinuousRiverSurface && continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake) continue;
@@ -2844,6 +3059,7 @@ public class HexMapChunkManager : MonoBehaviour
         var vertices = new List<Vector3>(waterTiles.Count * 12);
         var uvs = new List<Vector2>(waterTiles.Count * 12);
         var colors = new List<Color>(waterTiles.Count * 12);
+        var freezeData = new List<Vector4>(waterTiles.Count * 12);
         var normals = new List<Vector3>(waterTiles.Count * 12);
         var triangles = new List<int>(waterTiles.Count * 24);
 
@@ -2854,12 +3070,13 @@ public class HexMapChunkManager : MonoBehaviour
         var baseVertByTile = new Dictionary<int, int>(waterTiles.Count);
         var waterYByTile = new Dictionary<int, float>(waterTiles.Count);
 
-        int AddVert(Vector3 v, Vector2 uv, Color c)
+        int AddVert(Vector3 v, Vector2 uv, Color c, Vector4 freeze)
         {
             int idx = vertices.Count;
             vertices.Add(v);
             uvs.Add(uv);
             colors.Add(c);
+            freezeData.Add(freeze);
             normals.Add(Vector3.up); // will be recalculated; placeholder keeps array lengths consistent
             return idx;
         }
@@ -2916,9 +3133,10 @@ public class HexMapChunkManager : MonoBehaviour
             int baseVert = vertices.Count;
             baseVertByTile[tileIdx] = baseVert;
             waterYByTile[tileIdx] = waterWorldY;
+            Vector4 tileFreezeData = GetWaterFreezeVertexData(td, tileIdx);
 
             // Center vertex
-            AddVert(localCenter, new Vector2(0.5f, 0.5f), flowColor);
+            AddVert(localCenter, new Vector2(0.5f, 0.5f), flowColor, tileFreezeData);
 
             // 6 corner vertices
             for (int k = 0; k < 6; k++)
@@ -2926,7 +3144,8 @@ public class HexMapChunkManager : MonoBehaviour
                 AddVert(
                     localCenter + new Vector3(s * HexCornerCos[k], 0f, s * HexCornerSin[k]),
                     new Vector2(HexCornerCos[k] * 0.5f + 0.5f, HexCornerSin[k] * 0.5f + 0.5f),
-                    flowColor
+                    flowColor,
+                    tileFreezeData
                 );
             }
 
@@ -2988,8 +3207,9 @@ public class HexMapChunkManager : MonoBehaviour
                     Vector3 vBotB = new Vector3(vTopB.x, bottomWorldY - chunkWorldPos.y, vTopB.z);
 
                     Color c = colors[topA];
-                    int botA = AddVert(vBotA, new Vector2(0f, 0f), c);
-                    int botB = AddVert(vBotB, new Vector2(1f, 0f), c);
+                    Vector4 freeze = freezeData[topA];
+                    int botA = AddVert(vBotA, new Vector2(0f, 0f), c, freeze);
+                    int botB = AddVert(vBotB, new Vector2(1f, 0f), c, freeze);
 
                     // Two triangles for the quad. Winding isn't critical with Cull Off, but keep consistent.
                     AddTri(topA, topB, botB);
@@ -3003,6 +3223,7 @@ public class HexMapChunkManager : MonoBehaviour
         waterMesh.name = $"Water_{chunk.ChunkX}_{chunk.ChunkZ}";
         waterMesh.SetVertices(vertices);
         waterMesh.SetUVs(0, uvs);
+        waterMesh.SetUVs(1, freezeData);
         waterMesh.SetColors(colors);
         // We'll recalc normals after triangles to ensure correctness even under mirrored parents
         // (and because volume walls need proper normals).
@@ -3221,6 +3442,11 @@ public class HexMapChunkManager : MonoBehaviour
             Vector3 c = grid.tileCenters[ti];
             float u0 = (c.x - minX) / worldW;
             float v0 = (c.z - minZ) / worldH;
+
+            if (ShouldHideLiquidWater(td))
+            {
+                continue;
+            }
 
             if (td.waterType == TileWaterType.River)
             {
@@ -3459,6 +3685,7 @@ public class HexMapChunkManager : MonoBehaviour
         // --- Marching squares filled mesh for inside region (dist <= iso) ---
         var verts = new System.Collections.Generic.List<Vector3>(65536);
         var cols = new System.Collections.Generic.List<Color>(65536);
+        var freezeVerts = new System.Collections.Generic.List<Vector4>(65536);
         var norms = new System.Collections.Generic.List<Vector3>(65536);
         var tris = new System.Collections.Generic.List<int>(131072);
 
@@ -3516,6 +3743,27 @@ public class HexMapChunkManager : MonoBehaviour
                 return new Color(td.riverFlowDirXZ.x * 0.5f + 0.5f, td.riverFlowDirXZ.y * 0.5f + 0.5f, 0f, 1f);
 
             return new Color(0.5f, 0.5f, 0f, 1f);
+        }
+
+        Vector4 SampleWaterFreezeData(float u, float v)
+        {
+            int wType = ClassifyWaterAt(u, v);
+            if (wType == 2)
+                return Vector4.zero;
+
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            int idx = iy * wPts + ix;
+
+            int tileIndex = wType == 1 && ownerLake != null
+                ? ownerLake[idx]
+                : ownerRiver != null ? ownerRiver[idx] : -1;
+
+            return tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile)
+                ? GetWaterFreezeVertexData(tile, tileIndex)
+                : Vector4.zero;
         }
 
         // Helper: compute water Y for a specific SDF grid point from its owner tile's waterElevation.
@@ -3582,6 +3830,7 @@ public class HexMapChunkManager : MonoBehaviour
             vi = verts.Count;
             verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
             cols.Add(SampleWaterColor(u, v));
+            freezeVerts.Add(SampleWaterFreezeData(u, v));
             norms.Add(Vector3.up);
             cornerVert[idx] = vi;
             return vi;
@@ -3606,6 +3855,7 @@ public class HexMapChunkManager : MonoBehaviour
             vi = verts.Count;
             verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
             cols.Add(SampleWaterColor(u, v));
+            freezeVerts.Add(SampleWaterFreezeData(u, v));
             norms.Add(Vector3.up);
             horizEdge[ei] = vi;
             return vi;
@@ -3630,6 +3880,7 @@ public class HexMapChunkManager : MonoBehaviour
             vi = verts.Count;
             verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
             cols.Add(SampleWaterColor(u, v));
+            freezeVerts.Add(SampleWaterFreezeData(u, v));
             norms.Add(Vector3.up);
             vertEdge[ei] = vi;
             return vi;
@@ -3663,6 +3914,7 @@ public class HexMapChunkManager : MonoBehaviour
             int vi = verts.Count;
             verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
             cols.Add(SampleWaterColor(u, v));
+            freezeVerts.Add(SampleWaterFreezeData(u, v));
             norms.Add(Vector3.up);
             return vi;
         }
@@ -3802,16 +4054,19 @@ public class HexMapChunkManager : MonoBehaviour
             int nTop = verts.Count;
             var v2 = new System.Collections.Generic.List<Vector3>(nTop * 2);
             var c2 = new System.Collections.Generic.List<Color>(nTop * 2);
+            var f2 = new System.Collections.Generic.List<Vector4>(nTop * 2);
             var t2 = new System.Collections.Generic.List<int>(tris.Count * 2 + 65536);
 
             v2.AddRange(verts);
             c2.AddRange(cols);
+            f2.AddRange(freezeVerts);
 
             for (int i = 0; i < nTop; i++)
             {
                 Vector3 p = verts[i];
                 v2.Add(new Vector3(p.x, p.y - depth, p.z));
                 c2.Add(cols[i]);
+                f2.Add(freezeVerts[i]);
             }
 
             // Top faces
@@ -3878,6 +4133,7 @@ public class HexMapChunkManager : MonoBehaviour
 
             verts = v2;
             cols = c2;
+            freezeVerts = f2;
             tris = t2;
             norms = null; // we'll recalc for volume
         }
@@ -3889,6 +4145,7 @@ public class HexMapChunkManager : MonoBehaviour
         _riverSurfaceMesh.name = extrudeInlandWaterToVolume ? "UnifiedWaterVolume" : "UnifiedWaterSurface";
         _riverSurfaceMesh.SetVertices(verts);
         _riverSurfaceMesh.SetColors(cols);
+        _riverSurfaceMesh.SetUVs(1, freezeVerts);
         _riverSurfaceMesh.SetTriangles(tris, 0);
         if (norms != null && norms.Count == verts.Count) _riverSurfaceMesh.SetNormals(norms);
         else _riverSurfaceMesh.RecalculateNormals();
@@ -5050,6 +5307,11 @@ public class HexMapChunkManager : MonoBehaviour
             enableSeasonMasks = true;
         }
         UpdateSeasonMasksBatched(season, chunksPerBatch);
+
+        SyncFrozenWaterTerrainOverrides();
+
+        if (season != Season.Winter)
+            RebuildSeasonalWaterVisuals();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -5066,6 +5328,8 @@ public class HexMapChunkManager : MonoBehaviour
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
         Debug.Log($"[HexMapChunkManager] HandleFreezeTargetsReady received for planet {planetIndex}. Chunks exist={chunks != null}. SharedMaterial={sharedMaterial != null}");
         UpdateFreezeTargetMasksBatched();
+        SyncFrozenWaterTerrainOverrides();
+        RebuildSeasonalWaterVisuals();
     }
 
     /// <summary>
@@ -5082,6 +5346,9 @@ public class HexMapChunkManager : MonoBehaviour
             return;
         }
         sharedMaterial.SetFloat("_FreezeProgress", progress);
+        if (waterMaterial != null)
+            waterMaterial.SetFloat("_FreezeProgress", progress);
+        SyncFrozenWaterTerrainOverrides();
         // Log periodically (every ~0.25 progress increment) to avoid spam
         if (Mathf.Abs(progress % 0.25f) < Time.deltaTime / Mathf.Max(0.01f, 1f))
             Debug.Log($"[HexMapChunkManager] _FreezeProgress set to {progress:F3} (isFreeze={isFreeze})");
@@ -5104,6 +5371,57 @@ public class HexMapChunkManager : MonoBehaviour
             _freezeMaskCoroutine = null;
         }
         _freezeMaskCoroutine = StartCoroutine(UpdateFreezeTargetMasksCoroutine());
+    }
+
+    private bool ShouldHideLiquidWater(HexTileData tile)
+    {
+        if (tile == null || tile.waterType == TileWaterType.None) return false;
+        if (!IsFreezableWater(tile)) return false;
+        if ((tile.freezeTarget <= 0.001f && tile.freezeAmount <= 0.001f) || HasWaterFreezeVisuals(tile)) return false;
+        if (ClimateManager.Instance == null || planetGenerator == null) return false;
+        if (ClimateManager.Instance.GetSeasonForPlanet(planetGenerator.planetIndex) != Season.Winter) return false;
+        return true;
+    }
+
+    private void SyncFrozenWaterTerrainOverrides()
+    {
+        if (planetGenerator == null || planetGenerator.data == null)
+            return;
+
+        var solidNow = new HashSet<int>();
+        var changedTiles = new List<int>();
+
+        foreach (var kvp in planetGenerator.data)
+        {
+            if (!IsSolidFrozenWater(kvp.Value))
+                continue;
+
+            solidNow.Add(kvp.Key);
+            if (!_solidFrozenWaterTiles.Contains(kvp.Key))
+                changedTiles.Add(kvp.Key);
+        }
+
+        foreach (int tileIndex in _solidFrozenWaterTiles)
+        {
+            if (!solidNow.Contains(tileIndex))
+                changedTiles.Add(tileIndex);
+        }
+
+        if (changedTiles.Count > 0)
+            RebakeBakedTerrainForTiles(changedTiles);
+
+        _solidFrozenWaterTiles.Clear();
+        foreach (int tileIndex in solidNow)
+            _solidFrozenWaterTiles.Add(tileIndex);
+    }
+
+    private void RebuildSeasonalWaterVisuals()
+    {
+        if (chunks != null)
+            StartCoroutine(BuildAllWaterMeshesCoroutine());
+
+        if (enableContinuousRiverSurface)
+            StartCoroutine(BuildContinuousRiverSurfaceMeshCoroutine());
     }
 
     private System.Collections.IEnumerator UpdateFreezeTargetMasksCoroutine()
@@ -5305,6 +5623,8 @@ public class HexMapChunkManager : MonoBehaviour
     /// </summary>
     public void MarkTileDirty(int tileIndex)
     {
+        RebakeBakedTerrainForTile(tileIndex);
+
         if (tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk))
         {
             chunk.MarkTileDirty(tileIndex);
@@ -5367,9 +5687,12 @@ public class HexMapChunkManager : MonoBehaviour
     /// </summary>
     public void MarkTilesDirty(IEnumerable<int> tileIndices)
     {
+        var tileList = tileIndices as IList<int> ?? tileIndices.ToList();
+        RebakeBakedTerrainForTiles(tileList);
+
         HashSet<HexMapChunk> affectedChunks = new HashSet<HexMapChunk>();
         
-        foreach (int idx in tileIndices)
+        foreach (int idx in tileList)
         {
             if (tileToChunk.TryGetValue(idx, out HexMapChunk chunk))
             {

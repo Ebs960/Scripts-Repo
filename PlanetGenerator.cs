@@ -1109,8 +1109,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // ---------- 2.5. Generate Islands (Stamping) ---------
         int islandsStamped = 0;
+        // Snapshot land mask so we can report exactly which tiles islands flip.
+        bool[] landSnapshotBeforeIslands = null;
         if (allowIslands && generateIslands && numberOfIslands > 0)
         {
+            landSnapshotBeforeIslands = new bool[tileCount];
+            for (int si = 0; si < tileCount; si++) landSnapshotBeforeIslands[si] = isLandTile[si];
             int islandMinRadius = Mathf.Max(1, GameSetupData.islandMinRadiusTiles);
             int islandMaxRadius = Mathf.Max(islandMinRadius, GameSetupData.islandMaxRadiusTiles);
             int islandMinDistance = Mathf.Max(0, GameSetupData.islandMinDistanceFromContinents);
@@ -1228,9 +1232,51 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         if (ShouldLogDiagnostics())
         {
-            int landBeforeIslands = 0;
-            for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landBeforeIslands++;
-            Debug.Log($"[PlanetGenerator] Land count before island stamping: {landBeforeIslands}");
+            int landAfterIslands = 0;
+            for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landAfterIslands++;
+
+            if (landSnapshotBeforeIslands != null)
+            {
+                var added = new System.Collections.Generic.List<int>();
+                var removed = new System.Collections.Generic.List<int>();
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!landSnapshotBeforeIslands[i] && isLandTile[i]) added.Add(i);
+                    if (landSnapshotBeforeIslands[i] && !isLandTile[i]) removed.Add(i);
+                }
+
+                int addedCount = added.Count;
+                int removedCount = removed.Count;
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"[PlanetGenerator] Island stamping results: landAfter={landAfterIslands} (added={addedCount}, removed={removedCount})");
+                if (addedCount > 0)
+                {
+                    sb.Append("  Added samples: ");
+                    for (int i = 0; i < Mathf.Min(10, addedCount); i++)
+                    {
+                        int idx = added[i];
+                        var c = tileCoords[idx];
+                        sb.AppendFormat("{0}({1},{2}) ", idx, c.x, c.y);
+                    }
+                    sb.AppendLine();
+                }
+                if (removedCount > 0)
+                {
+                    sb.Append("  Removed samples: ");
+                    for (int i = 0; i < Mathf.Min(10, removedCount); i++)
+                    {
+                        int idx = removed[i];
+                        var c = tileCoords[idx];
+                        sb.AppendFormat("{0}({1},{2}) ", idx, c.x, c.y);
+                    }
+                    sb.AppendLine();
+                }
+                Debug.Log(sb.ToString());
+            }
+            else
+            {
+                Debug.Log($"[PlanetGenerator] Land count after island stamping: {landAfterIslands}");
+            }
         }
 
         BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
@@ -3943,7 +3989,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         td.isRiver = newBiome == Biome.River;
         // Restore original rule: Coast is treated as water (not land) for gameplay layer logic.
         td.isLand = (newBiome != Biome.Ocean && newBiome != Biome.Seas && newBiome != Biome.Coast && newBiome != Biome.Lake && newBiome != Biome.Lava && newBiome != Biome.Glacier);
-        if (td.isRiver) td.isLand = true;
         td.isHill = false; // Setting biome usually overrides hill status unless specifically handled
 
         // Keep water metadata coherent for the chunk-based water mesh system.
@@ -3983,6 +4028,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // This fixes the case where tiles become Coast/Seas/Ocean after the initial water mesh build.
         if (terrainRenderer != null)
         {
+            terrainRenderer.RebakeBakedTerrainForTile(tileIndex);
+
             // For safety, always rebuild when switching to/from a water surface biome.
             bool isWaterBiome = (newBiome == Biome.Ocean || newBiome == Biome.Seas || newBiome == Biome.Coast || newBiome == Biome.Lake || newBiome == Biome.Lava || newBiome == Biome.River);
             if (isWaterBiome || td.waterType == TileWaterType.None)

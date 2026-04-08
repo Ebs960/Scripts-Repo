@@ -74,6 +74,14 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _LakeIceAlbedoArray:
+        m_Texture: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _LakeIceNormalArray:
+        m_Texture: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 2800000, guid: 078a542e75eef954c89e22dda37ace2f, type: 3}
         m_Scale: {x: 1, y: 1}
@@ -96,6 +104,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _NormalMapOS:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RiverIceAlbedoArray:
+        m_Texture: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RiverIceNormalArray:
+        m_Texture: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecularColorMap:
@@ -187,6 +203,8 @@ Material:
     - _EnableGeometricSpecularAA: 0
     - _EnergyConservingSpecularColor: 1
     - _FlowSpeed: 0.28
+    - _FreezeOpaqueThreshold: 0.9
+    - _FreezeProgress: 1
     - _FresnelPower: 2.84
     - _HeightAmplitude: 0.02
     - _HeightCenter: 0.5
@@ -197,10 +215,13 @@ Material:
     - _HeightPoMAmplitude: 2
     - _HeightTessAmplitude: 2
     - _HeightTessCenter: 0.5
+    - _IceNormalStrength: 1
     - _InvTilingScale: 1
     - _Ior: 1.5
     - _IridescenceMask: 1
     - _IridescenceThickness: 1
+    - _LakeIceSliceCount: 1
+    - _LakeIceTiling: 8
     - _LinkDetailsWithBase: 1
     - _MaterialID: 1
     - _Metallic: 0
@@ -222,6 +243,8 @@ Material:
     - _ReceivesSSR: 1
     - _ReceivesSSRTransparent: 0
     - _RefractionModel: 0
+    - _RiverIceSliceCount: 1
+    - _RiverIceTiling: 12
     - _Smoothness: 0.5
     - _SmoothnessRemapMax: 1
     - _SmoothnessRemapMin: 0
@@ -274,6 +297,10 @@ Material:
     - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
+    - _LakeIceTint: {r: 1, g: 1, b: 1, a: 1}
+    - _RiverDeepColor: {r: 0.079999976, g: 0.23999995, b: 0.35999998, a: 1}
+    - _RiverIceTint: {r: 1, g: 1, b: 1, a: 1}
+    - _RiverShallowColor: {r: 0.19999996, g: 0.56, b: 0.86, a: 1}
     - _ScrollSpeedA: {r: 0.4, g: 0.1, b: 0, a: 0}
     - _ScrollSpeedB: {r: -0.02, g: 0.1, b: 0, a: 0}
     - _ShallowColor: {r: 0, g: 0.5176471, b: 1, a: 1}
