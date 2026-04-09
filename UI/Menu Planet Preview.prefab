@@ -406,7 +406,7 @@ MonoBehaviour:
   cloudSpeed: 0.08
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
-  atmosphereIntensity: 0.005
+  atmosphereIntensity: 0.56
   enableBloom: 1
   bloomThreshold: 0.5
   bloomIntensity: 0.373
@@ -427,7 +427,7 @@ MonoBehaviour:
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 0.70980394}
   iceCapSize: 0.5
-  biomeBlend: 0.1
+  biomeBlend: 0.21
   biomeNoiseScale: 4
   biomeNoiseStrength: 0.2
   colorVibrancy: 1.5
@@ -435,7 +435,7 @@ MonoBehaviour:
   metallic: 0
   ambientOcclusion: 1
   ambientStrength: 0.269
-  brightness: 1.98
+  brightness: 1.92
   seed: 0
   randomizeSeed: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}

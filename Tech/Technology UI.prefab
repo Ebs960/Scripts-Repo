@@ -133,6 +133,7 @@ MonoBehaviour:
   selectedTechBuildingsText: {fileID: 6089334073002805149}
   selectedTechImprovementsText: {fileID: 4567312833089858432}
   selectedTechIconImage: {fileID: 8482591956515694514}
+  noResearchIcon: {fileID: 21300000, guid: 9b2512ff1f9663b4eabd69c2e2443a64, type: 3}
   closeButton: {fileID: 7858832533849869468}
 --- !u!1 &1223724742144984229
 GameObject:
@@ -502,7 +503,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 8314918587078827695}
   m_HandleRect: {fileID: 4039101895771039323}
   m_Direction: 2
-  m_Value: 1
+  m_Value: 0
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -1115,7 +1116,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.00000500679, y: -0.0007195989}
+  m_AnchoredPosition: {x: -0.000012214793, y: -0.00000014029727}
   m_SizeDelta: {x: -833, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &4820713974326941784

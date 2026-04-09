@@ -85,6 +85,12 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Optional MenuPlanetPreview sphere in the setup UI. Automatically updated when climate/moisture/land settings change.")]
     public MenuPlanetPreview planetPreview;
 
+    [Header("Placeholder Icons")]
+    [Tooltip("Placeholder icon used when a civilization has no icon assigned.")]
+    public Sprite placeholderCivIcon;
+    [Tooltip("Placeholder icon used when a leader has no portrait assigned.")]
+    public Sprite placeholderLeaderIcon;
+
     [Header("Navigation Buttons")]
     public Button backToMenuButton;           // Back button on setup
     public Button startGameButton;            // Final start game button on setup
