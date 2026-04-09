@@ -366,6 +366,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f,1f)]
     [SerializeField] public float climateSmoothingStrength = 0.45f;
 
+    [Header("Ice World Thermals")]
+    [Tooltip("When enabled, IceWorld maps get a few localized warm pockets that thaw into plains or temperate land.")]
+    [SerializeField] private bool enableIceWorldThermals = true;
+    [Tooltip("How many warm thermal pockets to stamp on IceWorld maps.")]
+    [Range(0, 8)]
+    [SerializeField] private int iceWorldThermalCount = 4;
+
     [Header("Coastal Moisture")]
     [Tooltip("Maximum moisture boost applied to tiles near the coast. Falls off linearly with distance from ocean.")]
     [Range(0f, 0.4f)]
@@ -1915,6 +1922,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float[] sampledTemp = ArrayPoolUtils.RentFloat(tileCount);
         float[] sampledMoist = ArrayPoolUtils.RentFloat(tileCount);
         float[] sampledElev = ArrayPoolUtils.RentFloat(tileCount);
+        int[] thermalBiomeOverride = new int[tileCount];
+        Array.Fill(thermalBiomeOverride, -1);
 
         // Ensure rented arrays are returned when generation finishes / coroutine disposed
         try
@@ -2430,6 +2439,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         ApplyAdvancedGeologyClimateAdjustments(sampledTemp, sampledMoist, sampledElev, isLandTile, isLakeTile, tileCount);
+        ApplyIceWorldThermals(tileCoords, isLandTile, isLakeTile, sampledTemp, sampledMoist, thermalBiomeOverride);
 
         // Second pass: assign biomes and build HexTileData using smoothed climate
         for (int i = 0; i < tileCount; i++)
@@ -2451,7 +2461,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
             else if (isLand)
             {
-                biome = GetBiomeForTile(i, true, temperature, moisture);
+                biome = thermalBiomeOverride[i] >= 0
+                    ? (Biome)thermalBiomeOverride[i]
+                    : GetBiomeForTile(i, true, temperature, moisture);
 
                 float hillSignal = hillSignalPerTile[i];
                 float mountainSignal = mountainSignalPerTile[i];
@@ -4110,8 +4122,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 flatElevationMin = 32.0f;
                 flatElevationMax = 34.0f;
                 hillElevationMin = 33.5f;
-                hillElevationMax = 36.0f;
-                mountainElevationMin = 35.5f;
+                hillElevationMax = 35.0f;
+                mountainElevationMin = 38.5f;
                 mountainElevationMax = 41.0f;
                 ridgeStrength = 0.07f;
                 terrainWarpStrength = 0.06f;
@@ -5638,6 +5650,104 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             sampledElev[i] = Mathf.Clamp(sampledElev[i], flatElevationMin - 0.25f, mountainElevationMax);
         }
+    }
+
+    private void ApplyIceWorldThermals(Vector2Int[] tileCoords, bool[] isLandTile, bool[] isLakeTile, float[] sampledTemp, float[] sampledMoist, int[] thermalBiomeOverride)
+    {
+        if (!enableIceWorldThermals || mapType != MapType.IceWorld)
+            return;
+        if (grid == null || tileCoords == null || isLandTile == null || isLakeTile == null || sampledTemp == null || sampledMoist == null || thermalBiomeOverride == null)
+            return;
+
+        int tileCount = grid.TileCount;
+        if (tileCount <= 0 || iceWorldThermalCount <= 0)
+            return;
+
+        var candidateCenters = new List<int>();
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (isLandTile[i] && !isLakeTile[i])
+                candidateCenters.Add(i);
+        }
+
+        if (candidateCenters.Count == 0)
+            return;
+
+        var rand = new System.Random(unchecked(seed ^ 0x49B31D7));
+        var chosenCenters = new List<int>();
+        int targetCount = Mathf.Min(iceWorldThermalCount, candidateCenters.Count);
+        int maxAttempts = Mathf.Max(targetCount * 20, 32);
+        int attempts = 0;
+        int placed = 0;
+        int wrappedWidth = Mathf.Max(1, grid.Width);
+
+        while (placed < targetCount && attempts++ < maxAttempts && candidateCenters.Count > 0)
+        {
+            int pick = rand.Next(candidateCenters.Count);
+            int centerIndex = candidateCenters[pick];
+            candidateCenters.RemoveAt(pick);
+
+            bool tooClose = false;
+            for (int i = 0; i < chosenCenters.Count; i++)
+            {
+                if (HexDistanceWrapped(tileCoords[centerIndex], tileCoords[chosenCenters[i]], wrappedWidth) < 7)
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose)
+                continue;
+
+            int radius = rand.Next(2, 4);
+            bool makeTemperate = rand.NextDouble() < 0.55;
+            float centerTemp = makeTemperate
+                ? Mathf.Lerp(0.69f, 0.78f, (float)rand.NextDouble())
+                : Mathf.Lerp(0.64f, 0.72f, (float)rand.NextDouble());
+            int affectedLandTiles = 0;
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] || isLakeTile[i])
+                    continue;
+
+                if (HexDistanceWrapped(tileCoords[centerIndex], tileCoords[i], wrappedWidth) <= radius)
+                    affectedLandTiles++;
+            }
+
+            if (affectedLandTiles < (radius == 2 ? 7 : 12))
+                continue;
+
+            chosenCenters.Add(centerIndex);
+            placed++;
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] || isLakeTile[i])
+                    continue;
+
+                int distance = HexDistanceWrapped(tileCoords[centerIndex], tileCoords[i], wrappedWidth);
+                if (distance > radius)
+                    continue;
+
+                float influence = Mathf.Clamp01(1f - (distance / (radius + 0.5f)));
+                sampledTemp[i] = Mathf.Max(sampledTemp[i], Mathf.Lerp(0.64f, centerTemp, influence));
+
+                if (makeTemperate)
+                {
+                    sampledMoist[i] = Mathf.Max(sampledMoist[i], Mathf.Lerp(0.28f, 0.46f, influence));
+                    thermalBiomeOverride[i] = (int)Biome.Temperate;
+                }
+                else
+                {
+                    sampledMoist[i] = Mathf.Min(sampledMoist[i], Mathf.Lerp(0.12f, 0.2f, influence));
+                    thermalBiomeOverride[i] = (int)Biome.Plains;
+                }
+            }
+        }
+
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] IceWorld thermals placed: {placed}/{targetCount}");
     }
     
     // =====================================================================================

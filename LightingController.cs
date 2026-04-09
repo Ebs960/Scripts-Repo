@@ -55,7 +55,7 @@ public class LightingController : MonoBehaviour
         if (sceneSun == null || !sceneSun.isActiveAndEnabled)
         {
             // Find first active directional light in scene
-            var lights = FindObjectsOfType<Light>();
+            var lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
             foreach (var l in lights)
             {
                 if (l == null) continue;
