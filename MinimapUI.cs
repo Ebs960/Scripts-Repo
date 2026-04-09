@@ -1098,13 +1098,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                         else
                             minimapImage.texture = tex;
                     }
-                    SetZoom(defaultZoom);
+                    ResetZoom();
                 }
                 else
                 {
                     var generated = GenerateBodyMinimapImmediate(planetIndex, false);
                     if (generated != null && minimapImage != null) minimapImage.texture = generated;
-                    SetZoom(defaultZoom);
+                    ResetZoom();
             }
         }
         else
@@ -1113,7 +1113,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
                     tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
                 if (minimapImage != null && tex != null) minimapImage.texture = tex;
-                SetZoom(defaultZoom);
+                ResetZoom();
         }
     }
 
@@ -1400,7 +1400,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
 
     /// <summary>
-    /// Update the position indicator to show where the camera is positioned on the planet
+    /// Update the position indicator to show where the camera is positioned on the planet,
+    /// and auto-scroll the minimap viewport to keep the camera centred.
     /// </summary>
     private void UpdatePositionIndicator()
     {
@@ -1410,38 +1411,41 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (camera == null) return;
 
         // Moons are separate planets now; indicator always tracks the current planet.
-            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-            if (currentPlanetGen == null) return;
+        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+        if (currentPlanetGen == null) return;
         Vector3 bodyPosition = currentPlanetGen.transform.position;
         var grid = currentPlanetGen.Grid;
         if (grid == null) return;
-        
-        // Calculate camera position relative to planet center on the flat map
+
+        // Camera UV position in 0-1 minimap space
         Vector3 relativePos = camera.transform.position - bodyPosition;
-        
-        // Convert to UV coordinates (0-1)
-        float u = (relativePos.x / grid.MapWidth) + 0.5f;
-        float v = (relativePos.z / grid.MapHeight) + 0.5f;
-        
-        // Clamp to valid range
-        u = Mathf.Repeat(u, 1f);
-        v = Mathf.Clamp01(v);
-        
-        // Always show the position indicator, even if outside current view
-    // Convert to local position on minimap (0-1 range)
+        float u = Mathf.Repeat((relativePos.x / grid.MapWidth) + 0.5f, 1f);
+        float v = Mathf.Clamp01((relativePos.z / grid.MapHeight) + 0.5f);
+
+        // Auto-scroll the viewport so the camera stays centred (skip when the player is manually dragging)
+        if (!_isDragging)
+        {
+            _panOffset = new Vector2(u, v);
+            float uvSize = 1f / _currentZoom;
+            float uvX = Mathf.Clamp(_panOffset.x - uvSize * 0.5f, 0f, 1f - uvSize);
+            float uvY = Mathf.Clamp(_panOffset.y - uvSize * 0.5f, 0f, 1f - uvSize);
+            minimapImage.uvRect = new Rect(uvX, uvY, uvSize, uvSize);
+        }
+
+        // Place the dot relative to the currently visible UV window (respects zoom & pan)
+        var uvRect = minimapImage.uvRect;
+        float localU = (u - uvRect.x) / Mathf.Max(uvRect.width,  0.001f);
+        float localV = (v - uvRect.y) / Mathf.Max(uvRect.height, 0.001f);
+
         var rect = minimapImage.rectTransform.rect;
         Vector2 localPos = new Vector2(
-            (u - 0.5f) * rect.width,
-            (v - 0.5f) * rect.height
+            (localU - 0.5f) * rect.width,
+            (localV - 0.5f) * rect.height
         );
-        
-        // Clamp to minimap bounds
-        localPos.x = Mathf.Clamp(localPos.x, -rect.width * 0.5f, rect.width * 0.5f);
+        localPos.x = Mathf.Clamp(localPos.x, -rect.width  * 0.5f, rect.width  * 0.5f);
         localPos.y = Mathf.Clamp(localPos.y, -rect.height * 0.5f, rect.height * 0.5f);
-        
+
         positionIndicator.anchoredPosition = localPos;
         positionIndicator.gameObject.SetActive(true);
-        
-    // Debug logging for position indicator removed
     }
 }
