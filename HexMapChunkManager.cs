@@ -165,9 +165,12 @@ public class HexMapChunkManager : MonoBehaviour
     private bool useTriplanar = true;
     
     [Header("Normals & Biome Blending")]
-    [Tooltip("Strength multiplier for sampled normals from biome normal array")]
+    [Tooltip("Strength multiplier for heightmap-derived displaced normals")]
     [Range(0.01f, 5f)]
     [SerializeField] private float normalStrength = 1.0f;
+    [Tooltip("Strength multiplier for biome normal maps (surface bump detail). Higher = more visible texture bumps.")]
+    [Range(0f, 5f)]
+    [SerializeField] private float biomeNormalStrength = 1.0f;
     [Tooltip("Radius (in texels) used when sampling normals/heightmap for normal computation")]
     [Range(1f, 12f)]
     [SerializeField] private float normalSampleRadius = 4f;
@@ -1925,6 +1928,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Normal sampling and biome blending parameters
         sharedMaterial.SetFloat("_NormalStrength", normalStrength);
+        sharedMaterial.SetFloat("_BiomeNormalStrength", biomeNormalStrength);
         sharedMaterial.SetFloat("_NormalSampleRadius", normalSampleRadius);
         sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
         sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);

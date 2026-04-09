@@ -48,6 +48,7 @@ Shader "Custom/BiomeTerrainHDRP"
         _ElevationScale ("Elevation Scale", Range(0.1, 20)) = 1.0
         _NormalStrength ("Normal Strength", Range(0.01, 20)) = 1.0
         _NormalSampleRadius ("Normal Sample Radius (texels)", Range(1, 50)) = 4
+        _BiomeNormalStrength ("Biome Normal Strength", Range(0, 5)) = 1.0
 
         [Header(Triplanar)]
         _TriTiling ("Triplanar Tiling", Range(0.01, 5)) = 1.15
@@ -196,6 +197,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _ElevationScale;
     float _NormalStrength;
     float _NormalSampleRadius;
+    float _BiomeNormalStrength;
     float4 _Heightmap_TexelSize;
     float4 _BiomeIndexMap_TexelSize;
     float _TriTiling;
@@ -361,7 +363,11 @@ Shader "Custom/BiomeTerrainHDRP"
         float3 n2 = UnpackNormal(tex.SampleGrad(samp, float3(uv2, sliceIndex), ddx2, ddy2));
         float3 n3 = UnpackNormal(tex.SampleGrad(samp, float3(uv3, sliceIndex), ddx3, ddy3));
 
-        return normalize((n1 * w1 + n2 * w2 + n3 * w3) / wSum);
+        float3 blended = (n1 * w1 + n2 * w2 + n3 * w3) / wSum;
+        // Scale tangent-space XY by _BiomeNormalStrength before normalization.
+        // >1 amplifies surface bumps, <1 flattens them, 0 = flat normal.
+        blended.xy *= _BiomeNormalStrength;
+        return normalize(blended);
     }
 
     // ===================== Triplanar Helpers =====================
@@ -410,6 +416,11 @@ Shader "Custom/BiomeTerrainHDRP"
         float3 tnX = UnpackNormal(tex.SampleGrad(samp, float3(ux, sliceIndex), ddxUx, ddyUx));
         float3 tnY = UnpackNormal(tex.SampleGrad(samp, float3(uy, sliceIndex), ddxUy, ddyUy));
         float3 tnZ = UnpackNormal(tex.SampleGrad(samp, float3(uz, sliceIndex), ddxUz, ddyUz));
+
+        // Scale tangent-space XY by biome normal strength before whiteout reorientation
+        tnX.xy *= _BiomeNormalStrength;
+        tnY.xy *= _BiomeNormalStrength;
+        tnZ.xy *= _BiomeNormalStrength;
 
         // Reorient sampled tangent-space normals into projection-space using worldNormal as bias
         float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
@@ -473,6 +484,7 @@ Shader "Custom/BiomeTerrainHDRP"
         if (_UseTriplanar < 0.5)
         {
             float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
+            tnY.xy *= _BiomeNormalStrength;
             float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
             return normalize(nY.xzy);
         }
@@ -481,6 +493,7 @@ Shader "Custom/BiomeTerrainHDRP"
         if (lodBlend >= 0.999)
         {
             float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
+            tnY.xy *= _BiomeNormalStrength;
             float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
             return normalize(nY.xzy);
         }
@@ -502,6 +515,7 @@ Shader "Custom/BiomeTerrainHDRP"
         if (lodBlend > 0.001)
         {
             float3 tnYFar = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
+            tnYFar.xy *= _BiomeNormalStrength;
             float3 nYFar = float3(tnYFar.xy + worldNormal.xz, abs(worldNormal.y));
             float3 yResult = normalize(nYFar.xzy);
             return normalize(lerp(fullResult, yResult, lodBlend));
@@ -1516,6 +1530,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
             };
 
             #ifdef _TESSELLATION_ON
@@ -1577,8 +1592,10 @@ Shader "Custom/BiomeTerrainHDRP"
                 posOS.y += elevation * _ElevationScale;
 
                 Varyings o;
-                o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
+                float3 worldPos = TransformObjectToWorld(posOS);
+                o.positionCS = TransformWorldToHClip(worldPos);
                 o.normalWS = TransformObjectToWorldNormal(normalOS);
+                o.positionWS = worldPos;
                 o.uv = uv;
                 return o;
             }
@@ -1591,25 +1608,59 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
                 posOS.y += elevation * _ElevationScale;
-                o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
+                float3 worldPos = TransformObjectToWorld(posOS);
+                o.positionCS = TransformWorldToHClip(worldPos);
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                o.positionWS = worldPos;
                 o.uv = input.uv;
                 return o;
             }
 
             #endif
 
-            // Write displaced normal to HDRP normal buffer for screen-space effects
+            // Write combined displaced + biome normal to HDRP normal buffer for screen-space effects
             float4 frag(Varyings input) : SV_Target0
             {
-                float3 displacedNormal = ComputeDisplacedNormal(input.uv);
+                float2 uv = input.uv;
+                float3 worldPos = GetAbsolutePositionWS(input.positionWS);
+                float camDist = distance(_WorldSpaceCameraPos, worldPos);
+
+                // Heightmap-derived displaced normal (macro terrain shape)
+                float3 displacedNormal = ComputeDisplacedNormal(uv);
+                float3 triWeights = TriplanarWeights(displacedNormal);
+
+                // Look up biome slice and index from the biome index map
+                float4 centerSample = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0);
+                float centerSlice = round(centerSample.r);
+                int centerBiome = (int)(centerSample.g + 0.5);
+                centerBiome = clamp(centerBiome, 0, 63);
+
+                // Per-biome tiling
+                float4 biomeParams = _BiomeParams[centerBiome];
+                float biomeTiling = max(biomeParams.x, 0.01);
+                float effectiveTiling = _TriTiling * biomeTiling;
+
+                // Sample biome normal (same path as ForwardOnly)
+                float3 biomeNormal = SampleBiomeNormal(
+                    TEXTURE2D_ARRAY_ARGS(_BiomeNormalArray, sampler_BiomeAlbedoArray),
+                    worldPos, displacedNormal, triWeights, centerSlice, effectiveTiling, camDist, uv);
+
+                // Blend displaced (macro) normal with biome (micro) normal.
+                // Use biome normal as primary, falling back to displaced normal where
+                // biome normal strength is zero.
+                float3 finalNormal = normalize(biomeNormal);
+
+                // Unpack smoothness from mask for perceptual roughness
+                float4 maskSample = SampleBiomeTexture(
+                    TEXTURE2D_ARRAY_ARGS(_BiomeMaskArray, sampler_BiomeAlbedoArray),
+                    worldPos, triWeights, centerSlice, effectiveTiling, camDist, uv);
+                float smoothness = saturate(maskSample.a * _SmoothnessMultiplier);
+                float perceptualRoughness = 1.0 - smoothness;
 
                 // Encode as octahedron for HDRP normal buffer
-                // PackNormalOctQuadEncode is from Core RP Packing.hlsl (via Common.hlsl)
-                float2 encodedNormal = PackNormalOctQuadEncode(displacedNormal);
+                float2 encodedNormal = PackNormalOctQuadEncode(finalNormal);
 
                 // HDRP normal buffer: xy = encoded normal, z = perceptual roughness, w = flags
-                float perceptualRoughness = 0.5;
                 return float4(encodedNormal, perceptualRoughness, 0.0);
             }
             ENDHLSL

@@ -118,7 +118,8 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         {
             EditorGUI.indentLevel++;
             materialEditor.ShaderProperty(Find(properties, "_ElevationScale"), "Elevation Scale");
-            materialEditor.ShaderProperty(Find(properties, "_NormalStrength"), "Normal Strength");
+            materialEditor.ShaderProperty(Find(properties, "_NormalStrength"), "Heightmap Normal Strength");
+            materialEditor.ShaderProperty(Find(properties, "_BiomeNormalStrength"), "Biome Normal Strength");
             materialEditor.ShaderProperty(Find(properties, "_NormalSampleRadius"), "Normal Sample Radius (texels)");
             EditorGUI.indentLevel--;
         }
