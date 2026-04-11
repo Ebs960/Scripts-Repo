@@ -2485,7 +2485,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
                 else if (finalElevation >= hillElevationMin || separateHillSignal)
                 {
-                    bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.River);
+                    bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.Lava || biome == Biome.River);
                     if (!biomeIsWater)
                     {
                         isHill = true;
@@ -2510,6 +2510,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
                 if (!landTileIndices.Contains(i)) landTileIndices.Add(i);
+            }
+
+            if (biome == Biome.Lava)
+            {
+                isLand = false;
+                isLake = true;
+                isHill = false;
+                isMountain = false;
             }
 
             // Track climate min/max for diagnostics
@@ -5721,6 +5729,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             chosenCenters.Add(centerIndex);
             placed++;
 
+            // Stamp a single lava tile at the exact thermal center.
+            thermalBiomeOverride[centerIndex] = (int)Biome.Lava;
+
             for (int i = 0; i < tileCount; i++)
             {
                 if (!isLandTile[i] || isLakeTile[i])
@@ -5728,6 +5739,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
                 int distance = HexDistanceWrapped(tileCoords[centerIndex], tileCoords[i], wrappedWidth);
                 if (distance > radius)
+                    continue;
+
+                if (i == centerIndex)
                     continue;
 
                 float influence = Mathf.Clamp01(1f - (distance / (radius + 0.5f)));

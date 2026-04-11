@@ -1218,6 +1218,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (!IsPointerOnMinimapImage(eventData)) return;
         if (minimapImage == null || minimapImage.texture == null) return;
 
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -1238,6 +1239,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (!IsPointerOnMinimapImage(eventData))
+        {
+            _isDragging = false;
+            return;
+        }
+
         if (_isDragging)
         {
             _isDragging = false;
@@ -1257,6 +1264,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (!IsPointerOnMinimapImage(eventData)) return;
         if (!_isDragging || minimapImage == null || _currentZoom <= 1.1f) return;
 
         // Calculate drag delta in screen space
@@ -1326,9 +1334,25 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     public void OnScroll(PointerEventData eventData)
     {
+        if (!IsPointerOnMinimapImage(eventData)) return;
         float delta = eventData.scrollDelta.y;
         if (Mathf.Approximately(delta, 0f)) return;
         SetZoom(Mathf.Clamp(_currentZoom + delta * zoomSpeed, minZoom, maxZoom));
+    }
+
+    private bool IsPointerOnMinimapImage(PointerEventData eventData)
+    {
+        if (minimapImage == null) return false;
+
+        GameObject currentTarget = eventData.pointerCurrentRaycast.gameObject;
+        if (currentTarget != null && currentTarget.transform.IsChildOf(minimapImage.transform))
+            return true;
+
+        GameObject pressTarget = eventData.pointerPressRaycast.gameObject;
+        if (pressTarget != null && pressTarget.transform.IsChildOf(minimapImage.transform))
+            return true;
+
+        return currentTarget == minimapImage.gameObject || pressTarget == minimapImage.gameObject;
     }
 
     private void SetZoom(float zoom)

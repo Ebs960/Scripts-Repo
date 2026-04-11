@@ -18,6 +18,10 @@ public class LightingController : MonoBehaviour
     [Tooltip("When true, automatically copy Directional Light (or RenderSettings.sun) into this controller.")]
     public bool autoSyncToSceneSun = true;
 
+    [Header("Advanced")]
+    [Tooltip("When true, normalize the sun direction vector automatically in the editor (OnValidate/OnEnable). Disable to keep exact inspector values.)")]
+    public bool normalizeDirectionOnValidate = true;
+
     [Tooltip("How often (seconds) to poll the scene light for changes when auto-sync is enabled.")]
     public float syncInterval = 0.25f;
 
@@ -30,7 +34,7 @@ public class LightingController : MonoBehaviour
     private void OnEnable()
     {
         Instance = this;
-        NormalizeDirection();
+        if (normalizeDirectionOnValidate) NormalizeDirection();
     }
 
     private void OnDisable()
@@ -40,7 +44,7 @@ public class LightingController : MonoBehaviour
 
     private void OnValidate()
     {
-        NormalizeDirection();
+        if (normalizeDirectionOnValidate) NormalizeDirection();
     }
 
     private void Update()

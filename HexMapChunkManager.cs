@@ -137,8 +137,6 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float globalSnowAmount = 0f;
     [Min(0.01f)]
     [SerializeField] private float globalSnowTransitionDuration = 3f;
-    [Range(0f, 1f)]
-    [SerializeField] private float globalWetness = 0f;
     [Header("Material Channel Multipliers")]
     [Range(0f, 2f)]
     [SerializeField]
@@ -372,6 +370,7 @@ public class HexMapChunkManager : MonoBehaviour
     private Texture2D biomeEmissiveMapTexture;
     private Vector4[] biomeTintArray;
     private Vector4[] biomeParamsArray;
+    private Vector4[] biomeRoughnessOffsetsArray;
     private Dictionary<Biome, int> biomeIndexLookup;
     
     // Map dimensions
@@ -1068,13 +1067,26 @@ public class HexMapChunkManager : MonoBehaviour
                         // per-biome shader parameter. This makes the seasonal response the
                         // authoritative source for biome snow intensity.
                         float retentionFromSeason = entry.winterResponse.snow;
-                        biomeParamsArray[i] = new Vector4(tiling, retentionFromSeason, entry.winterResponse.wet, entry.isWaterBiome ? 1f : 0f);
+                        biomeParamsArray[i] = new Vector4(tiling, retentionFromSeason, entry.inherentWetness, entry.isWaterBiome ? 1f : 0f);
                     }
                 else
                 {
                     biomeTintArray[i] = Color.white;
                     biomeParamsArray[i] = new Vector4(1f, 0f, 0f, 0f);
                 }
+            }
+
+            // Build per-biome roughness offset array (packed: 4 biomes per Vector4, 16 Vector4s = 64 biomes max)
+            biomeRoughnessOffsetsArray = new Vector4[16];
+            for (int i = 0; i < count; i++)
+            {
+                var entry = visuals[i];
+                float ro = (entry != null && entry.surfaceFamily != null) ? entry.surfaceFamily.roughnessOffset : 0f;
+                int vecIdx = i / 4;
+                int comp = i % 4;
+                var v = biomeRoughnessOffsetsArray[vecIdx];
+                v[comp] = ro;
+                biomeRoughnessOffsetsArray[vecIdx] = v;
             }
 
             biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
@@ -1883,6 +1895,11 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
 
+        if (biomeRoughnessOffsetsArray != null)
+        {
+            sharedMaterial.SetVectorArray("_BiomeRoughnessOffsets", biomeRoughnessOffsetsArray);
+        }
+
         if (biomeSurfaceMapArray != null)
         {
             sharedMaterial.SetVectorArray("_BiomeSurfaceMap", biomeSurfaceMapArray);
@@ -1909,7 +1926,6 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
-        sharedMaterial.SetFloat("_GlobalWetness", globalWetness);
         sharedMaterial.SetFloat("_MetallicMultiplier", metallicMultiplier);
         sharedMaterial.SetFloat("_AOIntensity", aoIntensity);
         sharedMaterial.SetFloat("_SmoothnessMultiplier", smoothnessMultiplier);

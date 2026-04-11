@@ -363,8 +363,9 @@ public class PlanetaryCameraManager : MonoBehaviour
             }
         }
 
+        bool pointerOverUi = InputManager.Instance != null && InputManager.Instance.IsPointerOverUI();
         float scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y / 120f : 0f;
-        if (Mathf.Abs(scroll) > 0.001f)
+        if (!pointerOverUi && Mathf.Abs(scroll) > 0.001f)
             _cameraHeight = Mathf.Clamp(_cameraHeight - scroll * zoomSpeed, minHeight, maxHeight);
     }
 

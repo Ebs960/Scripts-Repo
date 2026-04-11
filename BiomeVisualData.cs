@@ -4,7 +4,6 @@ using UnityEngine;
 public struct BiomeSeasonVisualResponse
 {
     [Range(0f, 1f)] public float snow;
-    [Range(0f, 1f)] public float wet;
     [Range(0f, 1f)] public float dry;
     public Color tint;
 }
@@ -51,7 +50,9 @@ public class BiomeVisualData : ScriptableObject
     public float emissiveIntensity = 0f;
 
     [Header("Climate Response")]
-    // Removed legacy wetnessResponse. Use per-season responses in BiomeSeasonVisualResponse (spring/summer/autumn/winter).
+    [Tooltip("Inherent wetness of this biome (0 = dry, 1 = fully wet). Swamps/marshes should be high. Drives per-biome glossiness and albedo darkening.")]
+    [Range(0f, 1f)]
+    public float inherentWetness = 0f;
 
     [Header("Flags")]
     public bool isWaterBiome;

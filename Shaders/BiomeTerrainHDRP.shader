@@ -63,7 +63,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Global Modifiers)]
         _GlobalSnowAmount ("Global Snow Amount", Range(0, 1)) = 0
-        _GlobalWetness ("Global Wetness", Range(0, 1)) = 0
+        _GlobalWetness ("Global Wetness (legacy, unused)", Range(0, 1)) = 0
         _MetallicMultiplier ("Global Metallic Multiplier", Range(0, 2)) = 1.0
         _AOIntensity ("Global AO Intensity", Range(0, 2)) = 1.0
         _SmoothnessMultiplier ("Global Smoothness Multiplier", Range(0, 2)) = 1.0
@@ -278,6 +278,7 @@ Shader "Custom/BiomeTerrainHDRP"
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeTints[64];
     float4 _BiomeParams[64];
+    float4 _BiomeRoughnessOffsets[16]; // packed: each float4 holds 4 biome offsets (max 64 biomes)
     // per-slice height will be read from _BiomeHeightArray if present
 
     // ===================== Hash Functions for Hex Tiling (#4) =====================
@@ -741,7 +742,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 normalWS;
                 float4 mask; // R=metallic, G=AO, B=height, A=smoothness
                 float3 emission;
-                float4 biomeParams; // x=tiling, y=winterSnow, z=biomeWinterWet (0-1), w=isWaterBiome
+                float4 biomeParams; // x=tiling, y=winterSnow, z=inherentWetness (0-1), w=isWaterBiome
                 float height;
             };
 
@@ -997,7 +998,12 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Unpack mask: R=Metallic, G=AO, B=Height (used above), A=Smoothness
                 float metallic = saturate(mask.r * _MetallicMultiplier);
                 float ao = saturate(mask.g * _AOIntensity);
-                float smoothness = saturate(mask.a * _SmoothnessMultiplier);
+                // Apply per-biome roughness offset from SurfaceFamilyData
+                // (packed 4 per float4; blend between primary/secondary at boundaries)
+                int roIdxP = centerBiome / 4;
+                int roCompP = centerBiome % 4;
+                float roughnessOffset = _BiomeRoughnessOffsets[roIdxP][roCompP];
+                float smoothness = saturate(mask.a * _SmoothnessMultiplier - roughnessOffset);
 
                 // ==========================================================
                 // MICRO-DETAIL LAYER (#5)
@@ -1030,7 +1036,6 @@ Shader "Custom/BiomeTerrainHDRP"
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
                 // ==========================================================
                 float biomeWinterSnow = biomeParams.y;
-                float biomeWetnessResponse = biomeParams.z;
                 float isWaterBiome = biomeParams.w;
 
                 float2 freezeUV = uv * _FreezeMask_ST.xy + _FreezeMask_ST.zw;
@@ -1080,32 +1085,32 @@ Shader "Custom/BiomeTerrainHDRP"
                 }
 
                 // ==========================================================
-                // WETNESS (enhanced: adds normal perturb + stronger smoothness)
+                // PER-BIOME INHERENT WETNESS
+                // Driven by biomeParams.z (inherentWetness from BiomeVisualData).
+                // Wet biomes (swamps, marshes) get darkened albedo + boosted smoothness.
+                // No seasonal gating — this is the texture's natural look.
                 // ==========================================================
-                float wetFactor = _GlobalWetness * lerp(0.0, 1.0, biomeWetnessResponse);
-                // Modulate wet factor by per-tile mask (green channel)
-                float seasonWet = seasonMaskSample.g;
-                wetFactor *= seasonWet;
-                if (wetFactor > 0.01)
+                float inherentWet = biomeParams.z; // 0 = dry biome, 1 = fully wet
+                if (inherentWet > 0.01)
                 {
-                    // Darken albedo based on configured darken amount
-                    albedo *= lerp(1.0, 1.0 - _WetAlbedoDarken, wetFactor);
+                    // Darken albedo (wet surfaces absorb more light)
+                    albedo *= lerp(1.0, 1.0 - _WetAlbedoDarken, inherentWet);
 
-                    // Boost smoothness (wet surfaces become glossier)
-                    smoothness = lerp(smoothness, min(smoothness + _WetSmoothnessBoost, 0.99), wetFactor);
+                    // Boost smoothness (wet surfaces are glossier)
+                    smoothness = lerp(smoothness, min(smoothness + _WetSmoothnessBoost, 0.99), inherentWet);
 
-                    // Mild normal perturbation to simulate surface wetness (soft ripples/puddles)
+                    // Subtle normal perturbation for puddles/wetness feel
                     float2 wetUV = worldPos.xz * _WetNormalTiling;
                     float wetNx = sin(wetUV.x * 6.2831 + wetUV.y * 3.14) * 0.25
                                 + sin(wetUV.x * 12.566 - wetUV.y * 7.85) * 0.125;
                     float wetNy = cos(wetUV.y * 6.2831 - wetUV.x * 2.71) * 0.25
                                 + cos(wetUV.y * 15.707 + wetUV.x * 4.33) * 0.125;
                     float3 wetPerturb = normalize(float3(
-                        wetNx * _WetNormalStrength * wetFactor,
+                        wetNx * _WetNormalStrength * inherentWet,
                         1.0,
-                        wetNy * _WetNormalStrength * wetFactor));
+                        wetNy * _WetNormalStrength * inherentWet));
 
-                    normalWS = normalize(lerp(normalWS, wetPerturb, wetFactor * 0.5));
+                    normalWS = normalize(lerp(normalWS, wetPerturb, inherentWet * 0.5));
                 }
 
                 // ==========================================================
@@ -1232,10 +1237,26 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 float3 specular = D * G * F / max(4.0 * NdotV * NdotL, 0.001) * lightColor * NdotL;
 
-                // Ambient (hemisphere approximation using material properties)
+                // Ambient (hemisphere with indirect specular / environment reflection)
                 float hemiFactor = N.y * 0.5 + 0.5;
                 float3 ambientColor = lerp(_AmbientGroundColor.rgb, _AmbientSkyColor.rgb, hemiFactor);
-                float3 ambient = ambientColor * _AmbientIntensity * albedo * (1.0 - metallic);
+
+                // Diffuse ambient (Lambert): attenuated by metallic (metals have no diffuse)
+                float3 ambientDiffuse = ambientColor * _AmbientIntensity * albedo * (1.0 - metallic);
+
+                // Indirect specular (environment reflection approximation)
+                // Without a cubemap/probe, approximate by reflecting the hemisphere color
+                // along the dominant reflection direction. Smooth surfaces pick up more
+                // of the sky, making wet/glossy biomes visually distinct from rough ones.
+                float3 reflDir = reflect(-V, N);
+                float reflHemi = reflDir.y * 0.5 + 0.5;
+                float3 reflColor = lerp(_AmbientGroundColor.rgb, _AmbientSkyColor.rgb, reflHemi);
+                // Fresnel at grazing angles (Schlick)
+                float3 F_ambient = F0 + (max(float3(smoothness, smoothness, smoothness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+                // Scale by smoothness squared so rough surfaces get minimal reflection
+                float3 ambientSpecular = reflColor * _AmbientIntensity * F_ambient * (smoothness * smoothness);
+
+                float3 ambient = ambientDiffuse + ambientSpecular;
 
                 // Combine with AO
                 float3 finalColor = (diffuse + specular + ambient) * ao + emission;

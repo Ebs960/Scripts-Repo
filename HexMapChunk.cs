@@ -202,7 +202,7 @@ public class HexMapChunk : MonoBehaviour
                 }
 
                 var response = climateManager.GetSeasonResponse(tile.biome, season);
-                pixels[rowBase + x] = new Color(response.snow, response.wet, response.dry, 0f);
+                pixels[rowBase + x] = new Color(response.snow, 0f, response.dry, 0f);
             }
         }
 

@@ -22,7 +22,6 @@ public class BiomeSeasonResponse
 
     // Visual mask values (0–1)
     public float snow;
-    public float wet;
     public float dry;
     public Color tint = Color.white;
 }
@@ -204,25 +203,21 @@ public class ClimateManager : MonoBehaviour
                 {
                     case Season.Spring:
                         resp.snow = biomeData.springResponse.snow;
-                        resp.wet = biomeData.springResponse.wet;
                         resp.dry = biomeData.springResponse.dry;
                         resp.tint = biomeData.springResponse.tint;
                         break;
                     case Season.Summer:
                         resp.snow = biomeData.summerResponse.snow;
-                        resp.wet = biomeData.summerResponse.wet;
                         resp.dry = biomeData.summerResponse.dry;
                         resp.tint = biomeData.summerResponse.tint;
                         break;
                     case Season.Autumn:
                         resp.snow = biomeData.autumnResponse.snow;
-                        resp.wet = biomeData.autumnResponse.wet;
                         resp.dry = biomeData.autumnResponse.dry;
                         resp.tint = biomeData.autumnResponse.tint;
                         break;
                     case Season.Winter:
                         resp.snow = biomeData.winterResponse.snow;
-                        resp.wet = biomeData.winterResponse.wet;
                         resp.dry = biomeData.winterResponse.dry;
                         resp.tint = biomeData.winterResponse.tint;
                         break;
@@ -525,7 +520,7 @@ public class ClimateManager : MonoBehaviour
         {
             if (resp.season == season)
             {
-                if (verboseLogs) Debug.Log($"[ClimateManager] Biome {resp.biome} - Snow: {resp.snow}, Wet: {resp.wet}, Dry: {resp.dry}, Tint: {resp.tint}");
+                if (verboseLogs) Debug.Log($"[ClimateManager] Biome {resp.biome} - Snow: {resp.snow}, Dry: {resp.dry}, Tint: {resp.tint}");
             }
         }
 
@@ -768,7 +763,6 @@ public class ClimateManager : MonoBehaviour
                         clone.season = resp.season;
                         clone.yieldMultiplier = resp.yieldMultiplier;
                         clone.snow = resp.snow;
-                        clone.wet = resp.wet;
                         clone.dry = resp.dry;
                         clone.tint = resp.tint;
                         arr[(int)s] = clone;
