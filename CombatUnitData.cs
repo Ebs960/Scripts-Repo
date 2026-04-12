@@ -254,6 +254,8 @@ public class CombatUnitData : ScriptableObject
     public TechData[] requiredTechs;
     [Tooltip("All these cultures must be adopted to unlock this unit")]
     public CultureData[] requiredCultures;
+    [Tooltip("All these pantheons must be founded to unlock this unit")]
+    public PantheonData[] requiredPantheons;
     [Tooltip("At least one of these governments must be active to allow this unit (optional)")]
     public GovernmentData[] requiredGovernments;
     [Tooltip("All of these policies must be active to allow this unit (optional)")]
@@ -356,6 +358,19 @@ public class CombatUnitData : ScriptableObject
                     return false;
             }
         }
+
+        // Pantheon requirements
+        if (requiredPantheons != null && requiredPantheons.Length > 0)
+        {
+            foreach (var pantheon in requiredPantheons)
+            {
+                if (pantheon == null) continue;
+
+                if (civ.foundedPantheons == null || !civ.foundedPantheons.Contains(pantheon))
+                    return false;
+            }
+        }
+
         // Government requirement (any-of)
         if (requiredGovernments != null && requiredGovernments.Length > 0)
         {

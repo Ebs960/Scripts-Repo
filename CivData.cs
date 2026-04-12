@@ -12,6 +12,9 @@ public enum CultureGroup
     SouthEastAsian,
     Latino,
     Indigenous,
+    Mesoamerican,
+    NorthAmerican,
+    CentralAsian,
     Nomadic,
     // add others as needed
 }

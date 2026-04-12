@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 199804263b451134da5eb67890814d23, type: 3}
+  m_Name: Forest Spirit
+  m_EditorClassIdentifier: Assembly-CSharp::PantheonData
+  pantheonName: Forest Spirit
+  description: Tell us your secrets oh spirit of the woods.
+  icon: {fileID: 0}
+  faithCost: 20
+  possibleFounderBeliefs: []
+  tier: 0
+  legacyIsSpirit: 1
+  tierInitialized: 1
+  canUpgradeToGod: 1
+  upgradedPantheon: {fileID: 11400000, guid: cf0a4698ad9f8dc41af1c599ddc629e6, type: 2}
+  bonuses:
+    unlockedCombatUnits: []
+    unlockedWorkerUnits: []
+    unlockedBuildings: []
+    attackBonus: 0
+    defenseBonus: 1
+    movementBonus: 0
+    foodModifier: 0
+    productionModifier: 0
+    goldModifier: 0
+    scienceModifier: 0.05
+    cultureModifier: 0
+    faithModifier: 0
