@@ -1391,9 +1391,10 @@ Destroy(oldTuple.instance);
         
         // Instantiate the new building
         GameObject buildingInstance = null;
-        if (b.buildingPrefab != null) 
+        var buildingPrefab = b.GetBuildingPrefab(owner);
+        if (buildingPrefab != null) 
         {
-            buildingInstance = Instantiate(b.buildingPrefab, transform.position, Quaternion.identity);
+            buildingInstance = Instantiate(buildingPrefab, transform.position, Quaternion.identity);
             buildingInstance.transform.SetParent(transform); // Parent to city for organization
         }
         else

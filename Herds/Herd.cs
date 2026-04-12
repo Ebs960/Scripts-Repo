@@ -819,9 +819,10 @@ public class Herd : MonoBehaviour
             if (entry.data is BuildingData bd)
             {
                 // Instantiate prefab as child of herd for organization
-                if (bd.buildingPrefab != null)
+                var buildingPrefab = bd.GetBuildingPrefab(owner);
+                if (buildingPrefab != null)
                 {
-                    var inst = Instantiate(bd.buildingPrefab, transform.position, Quaternion.identity);
+                    var inst = Instantiate(buildingPrefab, transform.position, Quaternion.identity);
                     inst.transform.SetParent(transform, true);
                 }
                 BuildStructure(bd);

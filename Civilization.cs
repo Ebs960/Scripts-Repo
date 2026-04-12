@@ -503,6 +503,9 @@ public class Civilization : MonoBehaviour
         cultureUnlockedPantheons = restoredPantheons ?? new List<PantheonData>();
         cultureUnlockedBeliefs = restoredBeliefs ?? new List<BeliefData>();
 
+        RecalculateCivilizationModifiers();
+        RefreshUnlockedContentLists();
+
         InvalidateAvailabilityCache();
         UpdateCityModelsForNewAge();
 
@@ -840,11 +843,7 @@ public class Civilization : MonoBehaviour
             }
         }
         
-        // Apply leader bonuses
-        if (leader != null)
-        {
-            ApplyLeaderBonuses();
-        }
+        RecalculateCivilizationModifiers();
 
         // Register with the turn order (only if CivilizationManager exists)
         if (CivilizationManager.Instance != null)
@@ -906,6 +905,9 @@ public class Civilization : MonoBehaviour
         var prefabCombatEntries = unlockedCombatUnits != null ? new List<CombatUnitData>(unlockedCombatUnits) : new List<CombatUnitData>();
         var prefabWorkerEntries = unlockedWorkerUnits != null ? new List<WorkerUnitData>(unlockedWorkerUnits) : new List<WorkerUnitData>();
         var prefabBuildingEntries = unlockedBuildings != null ? new List<BuildingData>(unlockedBuildings) : new List<BuildingData>();
+        var pantheonCombatEntries = GetPantheonGrantedCombatUnits();
+        var pantheonWorkerEntries = GetPantheonGrantedWorkerUnits();
+        var pantheonBuildingEntries = GetPantheonGrantedBuildings();
 
         unlockedCombatUnits.Clear();
         unlockedWorkerUnits.Clear();
@@ -933,6 +935,13 @@ public class Civilization : MonoBehaviour
             }
         }
 
+        foreach (var bonusUnit in pantheonCombatEntries)
+        {
+            if (bonusUnit == null || seenCombat.Contains(bonusUnit)) continue;
+            seenCombat.Add(bonusUnit);
+            unlockedCombatUnits.Add(bonusUnit);
+        }
+
         var seenWorkers = new HashSet<WorkerUnitData>();
         foreach (var workerUnit in ResourceCache.GetAllWorkerUnits())
         {
@@ -951,6 +960,13 @@ public class Civilization : MonoBehaviour
                 seenWorkers.Add(pref);
                 unlockedWorkerUnits.Add(pref);
             }
+        }
+
+        foreach (var bonusWorker in pantheonWorkerEntries)
+        {
+            if (bonusWorker == null || seenWorkers.Contains(bonusWorker)) continue;
+            seenWorkers.Add(bonusWorker);
+            unlockedWorkerUnits.Add(bonusWorker);
         }
 
         var seenBuildings = new HashSet<BuildingData>();
@@ -972,6 +988,13 @@ public class Civilization : MonoBehaviour
                 unlockedBuildings.Add(pref);
             }
         }
+
+        foreach (var bonusBuilding in pantheonBuildingEntries)
+        {
+            if (bonusBuilding == null || seenBuildings.Contains(bonusBuilding)) continue;
+            seenBuildings.Add(bonusBuilding);
+            unlockedBuildings.Add(bonusBuilding);
+        }
     }
     
     /// <summary>
@@ -989,6 +1012,138 @@ public class Civilization : MonoBehaviour
         foodModifier += leader.foodModifier;
         cultureModifier += leader.cultureModifier;
         faithModifier += leader.faithModifier;
+    }
+
+    private IEnumerable<PantheonBonuses> EnumeratePantheonBonuses()
+    {
+        if (foundedPantheons == null)
+            yield break;
+
+        foreach (var pantheon in foundedPantheons)
+        {
+            if (pantheon?.bonuses == null)
+                continue;
+
+            yield return pantheon.bonuses;
+        }
+    }
+
+    private List<CombatUnitData> GetPantheonGrantedCombatUnits()
+    {
+        var result = new List<CombatUnitData>();
+
+        foreach (var bonuses in EnumeratePantheonBonuses())
+        {
+            if (bonuses.unlockedCombatUnits == null)
+                continue;
+
+            foreach (var unit in bonuses.unlockedCombatUnits)
+            {
+                if (unit != null)
+                    result.Add(unit);
+            }
+        }
+
+        return result;
+    }
+
+    private List<WorkerUnitData> GetPantheonGrantedWorkerUnits()
+    {
+        var result = new List<WorkerUnitData>();
+
+        foreach (var bonuses in EnumeratePantheonBonuses())
+        {
+            if (bonuses.unlockedWorkerUnits == null)
+                continue;
+
+            foreach (var unit in bonuses.unlockedWorkerUnits)
+            {
+                if (unit != null)
+                    result.Add(unit);
+            }
+        }
+
+        return result;
+    }
+
+    private List<BuildingData> GetPantheonGrantedBuildings()
+    {
+        var result = new List<BuildingData>();
+
+        foreach (var bonuses in EnumeratePantheonBonuses())
+        {
+            if (bonuses.unlockedBuildings == null)
+                continue;
+
+            foreach (var building in bonuses.unlockedBuildings)
+            {
+                if (building != null)
+                    result.Add(building);
+            }
+        }
+
+        return result;
+    }
+
+    private void RecalculateCivilizationModifiers()
+    {
+        attackBonus = civData != null ? civData.attackBonus : 0f;
+        defenseBonus = civData != null ? civData.defenseBonus : 0f;
+        movementBonus = civData != null ? civData.movementBonus : 0f;
+        foodModifier = civData != null ? civData.foodModifier : 0f;
+        productionModifier = civData != null ? civData.productionModifier : 0f;
+        goldModifier = civData != null ? civData.goldModifier : 0f;
+        scienceModifier = civData != null ? civData.scienceModifier : 0f;
+        cultureModifier = civData != null ? civData.cultureModifier : 0f;
+        faithModifier = civData != null ? civData.faithModifier : 0f;
+
+        ApplyLeaderBonuses();
+        ApplyPantheonBonuses();
+        ApplyBeliefBonuses();
+    }
+
+    private void ApplyPantheonBonuses()
+    {
+        foreach (var bonuses in EnumeratePantheonBonuses())
+        {
+            attackBonus += bonuses.attackBonus;
+            defenseBonus += bonuses.defenseBonus;
+            movementBonus += bonuses.movementBonus;
+            foodModifier += bonuses.foodModifier;
+            productionModifier += bonuses.productionModifier;
+            goldModifier += bonuses.goldModifier;
+            scienceModifier += bonuses.scienceModifier;
+            cultureModifier += bonuses.cultureModifier;
+            faithModifier += bonuses.faithModifier;
+        }
+    }
+
+    private void ApplyBeliefBonuses()
+    {
+        if (foundedPantheons != null && foundedPantheons.Count > 0 && chosenFounderBeliefs != null)
+        {
+            foreach (var p in foundedPantheons)
+            {
+                if (p == null) continue;
+                if (!chosenFounderBeliefs.TryGetValue(p, out BeliefData b) || b == null) continue;
+                foodModifier += b.foodModifier;
+                productionModifier += b.productionModifier;
+                goldModifier += b.goldModifier;
+                scienceModifier += b.scienceModifier;
+                cultureModifier += b.cultureModifier;
+                faithModifier += b.faithModifier;
+            }
+        }
+
+        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null)
+        {
+            foodModifier += foundedReligion.founderBelief.foodModifier;
+            productionModifier += foundedReligion.founderBelief.productionModifier;
+            goldModifier += foundedReligion.founderBelief.goldModifier;
+            scienceModifier += foundedReligion.founderBelief.scienceModifier;
+            cultureModifier += foundedReligion.founderBelief.cultureModifier;
+            faithModifier += foundedReligion.founderBelief.faithModifier;
+        }
     }
 
     /// <summary>
@@ -2145,7 +2300,7 @@ return true;
     {
         if (spiritPantheon == null) return false;
         if (foundedPantheons == null || !foundedPantheons.Contains(spiritPantheon)) return false;
-        if (!spiritPantheon.isSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null) return false;
+        if (!spiritPantheon.IsSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null) return false;
 
         var god = spiritPantheon.upgradedPantheon;
 
@@ -2175,51 +2330,9 @@ return true;
     /// </summary>
     private void UpdateFaithYieldModifier() // Renaming and repurposing for Beliefs
     {
-        // This method will now specifically handle percentage yield modifiers from active Beliefs.
-        // Flat bonuses from beliefs (like extraFaithInHolySite) are often handled directly where they apply (e.g., in City or TileData calculations).
-
-        // Reset belief-based modifiers before recalculating, or ensure they are only applied once.
-        // For simplicity, let's assume this is called when beliefs change or at turn start *after* other modifiers are set.
-        // To avoid double-counting if called multiple times, we might need to store belief-specific modifiers separately
-        // or subtract old belief modifiers before adding new ones if beliefs can change.
-
-        // For now, this just adds belief modifiers. Ensure it's called appropriately.
-
-        // Apply modifiers from all founded pantheons' chosen founder beliefs
-        if (foundedPantheons != null && foundedPantheons.Count > 0 && chosenFounderBeliefs != null)
-        {
-            foreach (var p in foundedPantheons)
-            {
-                if (p == null) continue;
-                if (!chosenFounderBeliefs.TryGetValue(p, out BeliefData b) || b == null) continue;
-                foodModifier += b.foodModifier;
-                productionModifier += b.productionModifier;
-                goldModifier += b.goldModifier;
-                scienceModifier += b.scienceModifier;
-                cultureModifier += b.cultureModifier;
-                faithModifier += b.faithModifier;
-            }
-        }
-        
-        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null) // The religion's own founder belief
-        {
-             foodModifier += foundedReligion.founderBelief.foodModifier;
-             productionModifier += foundedReligion.founderBelief.productionModifier;
-             goldModifier += foundedReligion.founderBelief.goldModifier;
-             scienceModifier += foundedReligion.founderBelief.scienceModifier;
-             cultureModifier += foundedReligion.founderBelief.cultureModifier;
-             faithModifier += foundedReligion.founderBelief.faithModifier;
-        }
-        
-        // TODO: Consider Enhancer Beliefs if they also provide civ-wide percentage yield bonuses.
-        // if (hasFoundedReligion && foundedReligion != null && foundedReligion.enhancerBeliefs != null) {
-        //     foreach (var enhancerBelief in foundedReligion.enhancerBeliefs) {
-        //         if (enhancerBelief != null && IsEnhancerBeliefActive(enhancerBelief)) { // Need logic for IsEnhancerBeliefActive
-        //             foodModifier += enhancerBelief.foodModifier;
-        //             // ... and so on for other modifiers
-        //         }
-        //     }
-        // }
+        RecalculateCivilizationModifiers();
+        RefreshUnlockedContentLists();
+        InvalidateAvailabilityCache();
     }
     
     /// <summary>

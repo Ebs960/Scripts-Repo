@@ -1,6 +1,16 @@
 // Assets/Scripts/Data/BuildingData.cs
 using UnityEngine;
 
+[System.Serializable]
+public struct BuildingVisualOverride
+{
+    [Tooltip("Civilization that uses this building visual override.")]
+    public CivData civ;
+
+    [Tooltip("Override prefab for this civilization. Leave empty to use the default building prefab.")]
+    public GameObject buildingPrefab;
+}
+
 [CreateAssetMenu(menuName="Data/Building Data")]
 public class BuildingData : ScriptableObject
 {
@@ -11,6 +21,8 @@ public class BuildingData : ScriptableObject
 
     [Header("Prefab")]
     public GameObject buildingPrefab;
+    [Tooltip("Optional per-civilization prefab overrides for this building.")]
+    public BuildingVisualOverride[] civVisualOverrides;
 
     [Header("Replacement (Upgrade)")]
     [Tooltip("If non-null, this building will replace the specified older building when completed")]
@@ -95,6 +107,20 @@ public class BuildingData : ScriptableObject
     public bool buildableByHerd = false;
     [Tooltip("If >0, increases herd food storage capacity when this building is present for a herd")]
     public int herdStorageBonus = 0;
+
+    public GameObject GetBuildingPrefab(Civilization civ)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            for (int i = 0; i < civVisualOverrides.Length; i++)
+            {
+                if (civVisualOverrides[i].civ == civ.civData && civVisualOverrides[i].buildingPrefab != null)
+                    return civVisualOverrides[i].buildingPrefab;
+            }
+        }
+
+        return buildingPrefab;
+    }
 }
 
 [System.Serializable]

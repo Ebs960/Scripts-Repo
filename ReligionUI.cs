@@ -357,7 +357,7 @@ public class ReligionUI : MonoBehaviour
                     foreach (var p in playerCiv.foundedPantheons)
                     {
                         if (p == null) continue;
-                        if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                        if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
                             upgradable.Add(p);
                     }
                 }
@@ -396,7 +396,7 @@ public class ReligionUI : MonoBehaviour
             foreach (var p in playerCiv.foundedPantheons)
             {
                 if (p == null) continue;
-                if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
                     upgradable.Add(p);
             }
         }
@@ -424,7 +424,7 @@ public class ReligionUI : MonoBehaviour
             foreach (var p in playerCiv.foundedPantheons)
             {
                 if (p == null) continue;
-                if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
                     upgradable.Add(p);
             }
         }
