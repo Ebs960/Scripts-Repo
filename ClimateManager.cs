@@ -887,9 +887,158 @@ public class ClimateManager : MonoBehaviour
         return GameManager.Instance.currentPlanetIndex == planetIndex;
     }
 
-    public void SimulateClimateChange(float temperatureChange, float timescale)
+    public enum ClimateChangeType { TemperatureOnly, MoistureOnly, Warm, Cold, Dry, Wet, Mixed }
+
+    // Track active coroutines per-planet so we can cancel overlapping simulations
+    private readonly Dictionary<int, Coroutine> _activeClimateCoroutines = new Dictionary<int, Coroutine>();
+
+    public void SimulateClimateChange(float amount, float moistureAmount, float timescale, ClimateChangeType type = ClimateChangeType.Mixed, int planetIndex = 0)
     {
-// Placeholder for future systems
+        var gen = GetGeneratorForPlanet(planetIndex);
+        if (gen == null)
+        {
+            Debug.LogWarning($"[ClimateManager] SimulateClimateChange: no generator for planet {planetIndex}");
+            return;
+        }
+
+        // Cancel any existing simulation on this planet
+        if (_activeClimateCoroutines.TryGetValue(planetIndex, out var existing) && existing != null)
+        {
+            try { StopCoroutine(existing); } catch { }
+            _activeClimateCoroutines.Remove(planetIndex);
+        }
+
+        Coroutine c = StartCoroutine(SimulateClimateChangeCoroutine(amount, moistureAmount, timescale, type, planetIndex));
+        _activeClimateCoroutines[planetIndex] = c;
+    }
+
+    private System.Collections.IEnumerator SimulateClimateChangeCoroutine(float amount, float moistureAmount, float timescale, ClimateChangeType type, int planetIndex)
+    {
+        var gen = GetGeneratorForPlanet(planetIndex);
+        if (gen == null) yield break;
+
+        // Determine per-tile targets based on requested type
+        float tempDelta = 0f;
+        float moistDelta = 0f;
+        switch (type)
+        {
+            case ClimateChangeType.TemperatureOnly:
+                tempDelta = amount;
+                break;
+            case ClimateChangeType.MoistureOnly:
+                moistDelta = moistureAmount;
+                break;
+            case ClimateChangeType.Warm:
+                tempDelta = Mathf.Abs(amount);
+                break;
+            case ClimateChangeType.Cold:
+                tempDelta = -Mathf.Abs(amount);
+                break;
+            case ClimateChangeType.Dry:
+                moistDelta = -Mathf.Abs(amount);
+                break;
+            case ClimateChangeType.Wet:
+                moistDelta = Mathf.Abs(amount);
+                break;
+            case ClimateChangeType.Mixed:
+            default:
+                tempDelta = amount;
+                moistDelta = moistureAmount;
+                break;
+        }
+
+        // Clamp timescale
+        timescale = Mathf.Max(0.01f, timescale);
+
+        // Compute speeds (per-second change)
+        float tempSpeed = Mathf.Abs(tempDelta) / timescale;
+        float moistSpeed = Mathf.Abs(moistDelta) / timescale;
+
+        // Cache initial and target values per tile
+        var data = gen.data;
+        var targets = new Dictionary<int, (float tempTgt, float moistTgt)>();
+        foreach (var kv in data)
+        {
+            int idx = kv.Key;
+            var tile = kv.Value;
+            float tgtTemp = Mathf.Clamp01(tile.temperature + tempDelta);
+            float tgtMoist = Mathf.Clamp01(tile.moisture + moistDelta);
+            targets[idx] = (tgtTemp, tgtMoist);
+        }
+
+        float elapsed = 0f;
+        float tickAccum = 0f;
+        // Periodically update cached season responses and notify renderers to avoid per-frame heavy work
+        const float notifyInterval = 0.5f;
+
+        while (elapsed < timescale)
+        {
+            float dt = Time.deltaTime;
+            elapsed += dt;
+            tickAccum += dt;
+
+            foreach (var kv in targets)
+            {
+                int idx = kv.Key;
+                if (!data.TryGetValue(idx, out var tile)) continue;
+                var tgt = kv.Value;
+                if (!Mathf.Approximately(tile.temperature, tgt.tempTgt))
+                {
+                    tile.temperature = Mathf.MoveTowards(tile.temperature, tgt.tempTgt, tempSpeed * dt);
+                }
+                if (!Mathf.Approximately(tile.moisture, tgt.moistTgt))
+                {
+                    tile.moisture = Mathf.MoveTowards(tile.moisture, tgt.moistTgt, moistSpeed * dt);
+                }
+            }
+
+            if (tickAccum >= notifyInterval)
+            {
+                tickAccum = 0f;
+                try
+                {
+                    PrecomputeTileSeasonCacheForPlanet(gen);
+                }
+                catch { }
+
+                // Notify renderers that season masks may need rebaking. Use current season so handlers re-batch.
+                OnPlanetSeasonChanged?.Invoke(planetIndex, GetSeasonForPlanet(planetIndex));
+
+                // Recompute freeze targets and notify freeze-ready so freeze masks can be rebuilt
+                try { ComputeTileFreezeTargets(planetIndex, gen); } catch { }
+                OnPlanetFreezeTargetsReady?.Invoke(planetIndex);
+
+                // If it's winter, begin freeze animation to reflect changes in freeze targets
+                if (GetSeasonForPlanet(planetIndex) == Season.Winter)
+                    BeginFreezeTransition(planetIndex, gen);
+                else
+                    BeginThawTransition(planetIndex);
+            }
+
+            yield return null;
+        }
+
+        // Final snap to targets
+        foreach (var kv in targets)
+        {
+            int idx = kv.Key;
+            if (!data.TryGetValue(idx, out var tile)) continue;
+            tile.temperature = kv.Value.tempTgt;
+            tile.moisture = kv.Value.moistTgt;
+        }
+
+        // Finalize caches and notify
+        try { PrecomputeTileSeasonCacheForPlanet(gen); } catch { }
+        OnPlanetSeasonChanged?.Invoke(planetIndex, GetSeasonForPlanet(planetIndex));
+        try { ComputeTileFreezeTargets(planetIndex, gen); } catch { }
+        OnPlanetFreezeTargetsReady?.Invoke(planetIndex);
+        if (GetSeasonForPlanet(planetIndex) == Season.Winter)
+            BeginFreezeTransition(planetIndex, gen);
+        else
+            BeginThawTransition(planetIndex);
+
+        // Remove tracking
+        if (_activeClimateCoroutines.ContainsKey(planetIndex)) _activeClimateCoroutines.Remove(planetIndex);
     }
 
     private void BuildSeasonalTextureLookup()
