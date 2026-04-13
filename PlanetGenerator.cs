@@ -181,7 +181,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Header("Map Settings")] 
     public bool randomSeed = true;
     public int seed = 12345;
-    // Spherical radius removed in flat-only refactor
 
     // Public property to access the seed
     public int Seed => seed;
@@ -420,7 +419,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
     public float coastElevation = 0.3f;
     
-    // --- River Generation (Placeholder) ---
     [Header("River Generation")]
     public bool enableRivers = true;
     [Range(0, 20)]
@@ -624,7 +622,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     private float[] geologyDrainageMap;
     private float[] geologySedimentMap;
     private Vector3 noiseOffset;
-    // tileElevation dictionary removed — use data[i].elevation directly (world-space)
     public int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     /// <summary>
     /// Public list containing the final HexTileData for every tile on the planet.
@@ -643,8 +640,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public event System.Action OnSurfaceGenerated;
     private LoadingPanelController loadingPanelController;
 
-    // OBSOLETE: Prefab loading removed - new system uses texture-based rendering
-
 
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
@@ -658,7 +653,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
         
 
-        // OBSOLETE: Prefab loading code removed - new system uses texture-based rendering
         // Initialize the grid for this planet (will be configured by GameManager)
         grid = new HexGrid();
         
@@ -673,8 +667,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float oy = (float)(rand.NextDouble() * 2000.0 - 1000.0);
         float oz = (float)(rand.NextDouble() * 2000.0 - 1000.0);
         noiseOffset = new Vector3(ox, oy, oz);
-
-        // OBSOLETE: Biome prefab lookup removed - new system uses texture-based rendering
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -1235,8 +1227,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        // (Stamping debug logs removed)
-
         if (ShouldLogDiagnostics())
         {
             int landAfterIslands = 0;
@@ -1522,7 +1512,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 break;
             }
         }
-        // (Stamping debug logs removed)
 
         BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
 
@@ -1871,14 +1860,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (neighborElevation < minNeighborElevation) minNeighborElevation = neighborElevation;
             }
 
-            // (Stamping debug logs removed)
         }
 
         landTilesGenerated = 0;
         for (int i = 0; i < tileCount; i++) {
             if (isLandTile[i]) landTilesGenerated++;
         }
-        // (Stamping debug logs removed)
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceansThisRun)
@@ -2577,8 +2564,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             Debug.Log($"[PlanetGenerator][Diag] temperature y=0: {northLabel} y=max: {southLabel} y=mid: {equatorLabel}");
         }
 
-        // (Stamping debug asserts removed)
-
         // Log climate variability after biome assignment loop
 // Log top biome counts as a quick distribution check
         var biomeCounts = new Dictionary<Biome, int>();
@@ -2956,9 +2941,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        // (6.2 Forced coastal flattening removed — continental distance bias and
-        //  elevation smoothing now create natural coastal-to-inland gradients.)
-
         // Snapshot the finalized land elevation BEFORE freshwater metadata/river surfaces are built.
         // Heightmap rendering uses this on land adjacent to rivers/lakes so banks stay aligned with
         // the intended pre-freshwater terrain instead of defaulting to an uninitialized value.
@@ -3275,7 +3257,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             int attempts = 0;
 
             // Determine target river count strictly from lakes (one river per lake maximum)
-            // (Stamping debug logs removed)
 
             // Group lake-edge sources by lake id to enforce one river per lake
             Dictionary<int, List<int>> lakeSourcesDict = new Dictionary<int, List<int>>();
@@ -3342,7 +3323,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             // Determine target river count: one river per lake-group when lakes exist, otherwise fall back to preset
             targetRiverCount = (lakeSourcesDict.Count > 0) ? lakeSourcesDict.Count : Mathf.Clamp(GameSetupData.riverCount, 0, 200);
-            // (Stamping debug logs removed)
 
             // Helper: quick reachability check. If `reachesCoast` is precomputed, use it; otherwise fallback to BFS.
 
@@ -3676,8 +3656,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     continue;
                 }
 
-                // (Stamping per-river debug logs removed)
-
                 // Apply river tiles (do NOT include termination tiles)
                 riversGenerated++;
                 var stampedPath = new List<int>(); // ordered list of tiles actually stamped as river
@@ -3922,13 +3900,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
                 yield return null;
             }
-
-            // (Stamping debug logs removed)
         }
-
-        // Old greedy river walk removed — A* pathfinder is now authoritative. Do not use BuildRiverWalk.
-
-        // PickWeightedNeighbor removed — A* is now the only river routing method.
 
         // --------------------------- Helper Functions ----------------------------
 
@@ -4631,8 +4603,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 center = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(yMin, yMax + 1));
             }
 
-            // (Stamping debug asserts removed)
-
             continents.Add(new ContinentData {
                 name = GenerateContinentName(rand, continentIndex - 1, false),
                 center = center,
@@ -4643,7 +4613,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             continentIndex++;
         }
 
-        // (Stamping debug logs removed)
         return continents;
     }
 
@@ -5344,8 +5313,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
             return current;
         }
-
-        // Embayment carving removed — only peninsulas will be generated in this pass.
 
         bool TryGrowPeninsula(int rootIdx)
         {

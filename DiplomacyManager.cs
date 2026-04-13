@@ -283,25 +283,35 @@ public class DiplomacyManager : MonoBehaviour
                 case DealType.Peace:
                     // Less aggressive leaders more likely to accept peace
                     personalityFactor = 1.0f - (leader.aggressiveness / 10.0f) + (leader.diplomacy / 20.0f);
+                    // Diplomatic secondary agenda nudges toward peace
+                    if (leader.secondaryAgenda == LeaderAgenda.Diplomatic) personalityFactor += 0.15f;
                     break;
                 case DealType.War:
                     // More aggressive leaders more likely to accept war
                     personalityFactor = leader.aggressiveness / 10.0f;
+                    // Militaristic secondary agenda makes war more palatable
+                    if (leader.secondaryAgenda == LeaderAgenda.Militaristic) personalityFactor += 0.1f;
                     break;
                 case DealType.Alliance:
                     // Alliance-preferring leaders more likely to accept
                     personalityFactor = leader.diplomacy / 10.0f;
                     personalityFactor *= leader.prefersAlliance ? 1.5f : 1.0f;
                     personalityFactor *= leader.isIsolationist ? 0.5f : 1.0f;
+                    // Diplomatic secondary agenda boosts alliance acceptance
+                    if (leader.secondaryAgenda == LeaderAgenda.Diplomatic) personalityFactor *= 1.25f;
                     break;
                 case DealType.Trade:
                     // Trade-preferring leaders more likely to accept
                     personalityFactor = leader.diplomacy / 10.0f;
                     personalityFactor *= leader.prefersTrade ? 1.5f : 1.0f;
+                    // Economic secondary agenda boosts trade acceptance
+                    if (leader.secondaryAgenda == LeaderAgenda.Economic) personalityFactor *= 1.25f;
                     break;
                 case DealType.Vassal:
                     // Isolationist leaders less likely to become vassals
                     personalityFactor = 1.0f - (leader.isIsolationist ? 0.3f : 0.0f);
+                    // Isolationist secondary agenda also resists vassalage
+                    if (leader.secondaryAgenda == LeaderAgenda.Isolationist) personalityFactor -= 0.15f;
                     break;
             }
         }

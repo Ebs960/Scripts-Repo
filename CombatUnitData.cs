@@ -14,11 +14,11 @@ public enum CombatCategory
 
 public enum TravelCapability
 {
-    OrbitOnly,          // Can only enter orbit around current planet (stub)
-    PlanetAndMoon,      // Can travel between planet and its moon (stub)
-    Interplanetary,     // Can travel to other planets within the same solar system (implemented)
-    Interstellar,       // Can travel to other stars (stub)
-    Intergalactic       // Can travel to other galaxies (stub)
+    OrbitOnly,          // Can only enter orbit around current planet
+    PlanetAndMoon,      // Can travel between planet and its moon
+    Interplanetary,     // Can travel to other planets within the same solar system
+    Interstellar,       // Can travel to other stars
+    Intergalactic       // Can travel to other galaxies
 }
 
 public enum AnimalBehaviorType
@@ -37,7 +37,7 @@ public struct CombatUnitVisualOverride
     [Tooltip("Override Addressables key for this civ's unit prefab. Leave empty to use the default unit prefab.")]
     public string addressableAddress;
 
-    [Tooltip("Legacy toggle. A matching civ override now always uses the soldier display settings below.")]
+    [Tooltip("A matching civ override always uses the soldier display settings below.")]
     public bool overrideSoldierDisplay;
 
     [Range(1, 12)]
@@ -152,8 +152,8 @@ public class CombatUnitData : ScriptableObject
     public bool canSpawnOnDemonicMaps = true;
     [Tooltip("If false, this animal will NOT spawn on Infernal (volcanic/fire-themed) maps.")]
     public bool canSpawnOnInfernalMaps = true;
-    [Header("Space Travel Capability (Stub Gates)")]
-    [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
+    [Header("Space Travel Capability")]
+    [Tooltip("Defines how far this ship can travel.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;
 
     [Header("Space Travel Stats")]
@@ -166,7 +166,7 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Movement points consumed when entering orbit from surface.")]
     [Range(1, 10)]
     public int orbitEntryCost = 2;
-    [Tooltip("Explicitly allow this unit to enter orbit. If false, legacy Spaceship category still allows orbit.")]
+    [Tooltip("Explicitly allow this unit to enter orbit.")]
     public bool canEnterOrbit = false;
     [Tooltip("Movement points consumed when landing from orbit to surface.")]
     [Range(1, 10)]
@@ -278,10 +278,8 @@ public class CombatUnitData : ScriptableObject
     public EquipmentData defaultMiscellaneous;
 
     [Header("Weapon Slots")]
-    // defaultWeapon is the authoritative melee weapon. Legacy 'defaultMeleeWeapon' removed.
     [Tooltip("Default projectile/ranged weapon equipped by this unit (used when firing) ")]
     public EquipmentData defaultProjectileWeapon;
-    // meleeEngageDuration removed (deprecated)
 
     [Header("Yield")]
     public int foodOnKill;
@@ -396,8 +394,6 @@ public class CombatUnitData : ScriptableObject
         return true;
     }
 
-    // No editor-time migration: legacy defaultMeleeWeapon removed.
-    
     // Private cached prefabs (loaded on-demand via Addressables)
     private GameObject _cachedPrefab;
     private bool _isLoadingPrefab = false;

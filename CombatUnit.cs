@@ -33,7 +33,6 @@ public class CombatUnit : BaseUnit
     public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);
     
     protected override EquipmentTarget AcceptedEquipmentTarget => EquipmentTarget.CombatUnit;
-    // MeleeEngageDuration removed — engagement duration deprecated.
     /// <summary>
     /// Editor button to equip all default equipment from the assigned data asset.
     /// </summary>
@@ -291,7 +290,6 @@ public class CombatUnit : BaseUnit
             _hasHitParam = HasParameter(animator, hitHash);
             _hasDeathParam = HasParameter(animator, deathHash);
             _hasFortifyParam = HasParameter(animator, isFortifiedHash);
-            // Animator controller check removed (no longer needed for debugging)
 
             // Initialize as not moving (idle state)
             UpdateWalkingState(false);
@@ -744,7 +742,7 @@ public class CombatUnit : BaseUnit
     else if (equippedWeapon != null)
         activeWeapon = equippedWeapon;
     else
-        activeWeapon = equippedWeapon; // legacy fallback
+        activeWeapon = equippedWeapon;
     
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;

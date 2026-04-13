@@ -39,7 +39,6 @@ public static class AIScorer
 
     public static float W_MORALE_TARGET_BONUS = 3f;   // bonus for attacking low-morale enemies
     public static float W_FATIGUE_TARGET_BONUS = 2f;   // bonus for attacking fatigued enemies
-    // W_ROUTED_TARGET_BONUS removed — rout mechanic replaced by morale stat scaling
 
     public static float W_RESOURCE_YIELD     = 2f;
     public static float W_RESOURCE_STRATEGIC = 5f;
@@ -675,9 +674,13 @@ public static class AIScorer
         {
             if (attacker.leader.isWarmonger) desire += 10f;
             if (attacker.leader.primaryAgenda == LeaderAgenda.Militaristic) desire += 6f;
+            else if (attacker.leader.secondaryAgenda == LeaderAgenda.Militaristic) desire += 3f;
             if (attacker.leader.primaryAgenda == LeaderAgenda.Diplomatic) desire -= 15f;
+            else if (attacker.leader.secondaryAgenda == LeaderAgenda.Diplomatic) desire -= 7f;
             if (attacker.leader.primaryAgenda == LeaderAgenda.Scientific) desire -= 5f;
+            else if (attacker.leader.secondaryAgenda == LeaderAgenda.Scientific) desire -= 2.5f;
             if (attacker.leader.primaryAgenda == LeaderAgenda.Religious) desire -= 3f;
+            else if (attacker.leader.secondaryAgenda == LeaderAgenda.Religious) desire -= 1.5f;
         }
 
         // ── Diplomatic fallout: will allies turn on us? ──

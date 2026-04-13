@@ -113,7 +113,7 @@ public class BiomeVisualDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Build a flattened surface library from referenced SurfaceFamilyData and legacy per-biome textures.
+    /// Build a flattened surface library from referenced SurfaceFamilyData.
     /// Returns null on failure.
     /// </summary>
     /// <param name="overrideWidth">If &gt; 0, force texture array width (e.g. 2048). Otherwise inferred from first source.</param>
@@ -122,17 +122,12 @@ public class BiomeVisualDatabase : ScriptableObject
     {
         if (biomes == null) return null;
 
-        // STRICT MODE (memory-first):
-        // - We DO NOT support legacy per-biome Texture2D fields here.
-        // - We DO NOT rescale or format-convert at runtime.
-        // - We build flattened arrays ONLY via Graphics.CopyTexture from SurfaceFamilyData Texture2DArrays.
-        // This preserves compression (e.g., BC7) and prevents accidental RGBA32 blowups.
+        // Build flattened arrays via Graphics.CopyTexture from SurfaceFamilyData Texture2DArrays.\n        // This preserves compression (e.g., BC7) and prevents accidental RGBA32 blowups.
 
         // Discover families in encounter order (SurfaceFamilyData only)
         var families = new List<SurfaceFamilyData>();
         var biomeToSurface = new int[biomes.Count];
         var biomeForced = new int[biomes.Count];
-        var legacyBiomes = new List<string>();
 
         for (int i = 0; i < biomes.Count; i++)
         {
@@ -147,9 +142,6 @@ public class BiomeVisualDatabase : ScriptableObject
 
             if (b.surfaceFamily == null)
             {
-                // Any legacy texture usage is forbidden in strict mode.
-                if (b.albedo != null || b.normal != null || b.maskMap != null)
-                    legacyBiomes.Add($"{b.name}({b.biome})");
                 biomeToSurface[i] = -1;
                 continue;
             }
@@ -161,13 +153,6 @@ public class BiomeVisualDatabase : ScriptableObject
                 families.Add(b.surfaceFamily);
             }
             biomeToSurface[i] = idx;
-        }
-
-        if (legacyBiomes.Count > 0)
-        {
-            Debug.LogError($"[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): {legacyBiomes.Count} biomes use legacy per-biome Texture2D fields instead of surfaceFamily. " +
-                           $"Assign a SurfaceFamilyData with matching Texture2DArrays. First few: {string.Join(", ", legacyBiomes.GetRange(0, Mathf.Min(8, legacyBiomes.Count)))}");
-            return null;
         }
 
         if (families.Count == 0)

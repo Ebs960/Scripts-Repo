@@ -31,14 +31,6 @@ public class BiomeVisualData : ScriptableObject
     [Tooltip("Optional: force a specific variant index for this biome (0-based). -1 = automatic selection")]
     public int forcedVariant = -1;
 
-    [Header("Legacy Textures (deprecated)")]
-    [HideInInspector]
-    public Texture2D albedo;
-    [HideInInspector]
-    public Texture2D normal;
-    [HideInInspector]
-    public Texture2D maskMap;
-
     [Header("Visual Tuning")]
     public float tiling = 1f;
     public Color tint = Color.white;

@@ -14,7 +14,7 @@ public struct WorkerUnitVisualOverride
     [Tooltip("Override direct prefab reference for this civ. This is used before any Addressables fallback.")]
     public GameObject prefab;
 
-    [Tooltip("Legacy toggle. A matching civ override now always uses the soldier display settings below.")]
+    [Tooltip("A matching civ override always uses the soldier display settings below.")]
     public bool overrideSoldierDisplay;
 
     [Range(1, 12)]
@@ -36,7 +36,6 @@ public class WorkerUnitData : ScriptableObject
     public EquipmentData defaultWeapon;
     [Tooltip("Default projectile/ranged weapon equipped by this worker (used when firing)")]
     public EquipmentData defaultProjectileWeapon;
-    // meleeEngageDuration removed (deprecated)
     [Tooltip("Default shield equipped by this worker (optional)")]
     public EquipmentData defaultShield;
     [Tooltip("Default armor equipped by this worker (optional)")]

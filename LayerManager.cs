@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
-using UnityEngine.Serialization;
 using static GameManager;
 
 /// <summary>
@@ -23,11 +22,9 @@ public class LayerManager : MonoBehaviour
     [SerializeField] private PlanetGenerator planetGenerator;
 
     [Tooltip("If not assigned, will use PlanetGenerator.surfaceRoot.")]
-    [FormerlySerializedAs("surfaceRoot")]
     [SerializeField] private GameObject surfaceRootOverride;
 
     [Tooltip("If not assigned, will use PlanetGenerator.underwaterRoot.")]
-    [FormerlySerializedAs("underwaterRoot")]
     [SerializeField] private GameObject underwaterRootOverride;
 
     [Header("Post-Processing Volumes")]
@@ -37,7 +34,6 @@ public class LayerManager : MonoBehaviour
     [SerializeField] private Volume underwaterVolumeOverride;
 
     [Tooltip("If not assigned, will use PlanetGenerator.atmosphereRoot.")]
-    [FormerlySerializedAs("atmosphereRoot")]
     [SerializeField] private GameObject atmosphereRootOverride;
 
     [Tooltip("If not assigned, will use PlanetGenerator.orbitRoot.")]

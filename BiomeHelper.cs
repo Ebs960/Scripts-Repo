@@ -93,7 +93,6 @@ public static class BiomeHelper {
 
     /// <summary>
     /// Determine whether a tile elevation qualifies as a mountain.
-    /// This replaces the old `Biome.Mountain` enum member which has been removed.
     /// </summary>
     public static bool IsMountain(float elevation, float mountainThreshold)
     {
@@ -280,8 +279,6 @@ public static class BiomeHelper {
             return Biome.EuropaRidges; // Default Europa
         }
         
-        // IO removed: no Io-specific biomes
-        
         // LUNA - Just Moon Dunes for now
         if (planetType == PlanetType.Luna) {
             return Biome.MoonDunes; // Default moon
@@ -302,7 +299,6 @@ public static class BiomeHelper {
         // DEMONIC WORLD: Coherent, characteristic-based logic
         if (mapType == MapType.Demonic && temperature > 0.7f) {
             if (temperature > 0.85f) {
-                // Brimstone removed: fallback to Hellscape for extremely hot regions
                 return Biome.Hellscape; // Extremely hot region
             }
             if (temperature > 0.7f) {

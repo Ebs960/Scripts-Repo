@@ -65,10 +65,16 @@ public class RuinData : ScriptableObject
     [Header("Map Reveal")]
     [Tooltip("If true, exploring this ruin reveals fog of war around the tile.")]
     public bool revealsMap = false;
+    [Tooltip("Radius (in hex tiles) around the ruin to reveal when explored.")]
+    [Range(1, 15)]
+    public int revealRadius = 5;
 
     [Header("Population Reward")]
     [Tooltip("If true, exploring this ruin increases population in the civilization's nearest city.")]
     public bool grantsPopulation = false;
+    [Tooltip("Number of population levels granted to the nearest city.")]
+    [Range(1, 5)]
+    public int populationBonus = 1;
 
     [Header("Technology Reward")]
     [Tooltip("Technologies immediately granted to the exploring civilization when this ruin is explored. "

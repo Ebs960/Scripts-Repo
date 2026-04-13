@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public enum PantheonTier
 {
@@ -49,9 +48,6 @@ public class PantheonData : ScriptableObject
     [Header("Type & Upgrades")]
     [Tooltip("Explicit pantheon tier. Spirits are early pantheons, while Gods are their stronger form.")]
     public PantheonTier tier = PantheonTier.Spirit;
-    [FormerlySerializedAs("isSpirit")]
-    [SerializeField, HideInInspector] private bool legacyIsSpirit = true;
-    [SerializeField, HideInInspector] private bool tierInitialized;
     [Tooltip("Whether this pantheon (if a spirit) can be upgraded into a God-level pantheon")]
     public bool canUpgradeToGod = false;
     [Tooltip("Optional reference to the upgraded pantheon (God) this spirit becomes when upgraded")]
@@ -63,31 +59,12 @@ public class PantheonData : ScriptableObject
 
     public bool IsSpirit => tier == PantheonTier.Spirit;
     public bool IsGod => tier == PantheonTier.God;
-
-    private void OnEnable()
-    {
-        SyncTierFromLegacyData();
-    }
-
     private void OnValidate()
     {
-        SyncTierFromLegacyData();
-
         if (!IsSpirit)
         {
             canUpgradeToGod = false;
             upgradedPantheon = null;
         }
-    }
-
-    private void SyncTierFromLegacyData()
-    {
-        if (!tierInitialized)
-        {
-            tier = legacyIsSpirit ? PantheonTier.Spirit : PantheonTier.God;
-            tierInitialized = true;
-        }
-
-        legacyIsSpirit = IsSpirit;
     }
 } 

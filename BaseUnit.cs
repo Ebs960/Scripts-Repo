@@ -784,9 +784,6 @@ public abstract class BaseUnit : MonoBehaviour
     /// <summary>Returns the target equipment type this unit accepts</summary>
     protected abstract EquipmentTarget AcceptedEquipmentTarget { get; }
 
-    /// <summary>Duration unit stays in melee after being hit</summary>
-    // Melee engagement duration deprecated — engagement state is managed by range checks / attack logic now.
-
     #endregion
 
     #region Equipment Properties
@@ -1439,8 +1436,6 @@ public abstract class BaseUnit : MonoBehaviour
         int previousHealth = currentHealth;
         if (attackerIsMelee)
         {
-            // Mark engaged in melee — duration handling deprecated; engagement state should be managed
-            // by range/attack logic or explicit code paths.
             engagedInMelee = true;
         }
 
@@ -1550,8 +1545,6 @@ public abstract class BaseUnit : MonoBehaviour
         try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
         UpdateUnitLabel();
     }
-
-    // Melee engagement timeout coroutine removed (deprecated).
 
     /// <summary>
     /// Handle unit death. Override in subclasses for additional cleanup.

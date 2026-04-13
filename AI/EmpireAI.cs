@@ -20,7 +20,8 @@ public enum EconomyFocus
     Production,
     Gold,
     Science,
-    Culture
+    Culture,
+    Faith
 }
 
 public enum DefensePosture
@@ -331,6 +332,7 @@ public class EmpireAI
         if (civ.leader != null)
         {
             if (civ.leader.primaryAgenda == LeaderAgenda.Expansionist) s += 8f;
+            else if (civ.leader.secondaryAgenda == LeaderAgenda.Expansionist) s += 4f;
             if (civ.leader.expansion >= 7) s += 4f;
         }
         return s;
@@ -345,8 +347,11 @@ public class EmpireAI
         if (civ.leader != null)
         {
             if (civ.leader.primaryAgenda == LeaderAgenda.Scientific) s += 6f;
+            else if (civ.leader.secondaryAgenda == LeaderAgenda.Scientific) s += 3f;
             if (civ.leader.primaryAgenda == LeaderAgenda.Cultural) s += 4f;
+            else if (civ.leader.secondaryAgenda == LeaderAgenda.Cultural) s += 2f;
             if (civ.leader.primaryAgenda == LeaderAgenda.Economic) s += 5f;
+            else if (civ.leader.secondaryAgenda == LeaderAgenda.Economic) s += 2.5f;
         }
         return s;
     }
@@ -380,6 +385,7 @@ public class EmpireAI
         {
             if (civ.leader.isWarmonger) s += 8f;
             if (civ.leader.primaryAgenda == LeaderAgenda.Militaristic) s += 5f;
+            else if (civ.leader.secondaryAgenda == LeaderAgenda.Militaristic) s += 2.5f;
             if (civ.leader.aggressiveness >= 8) s += 4f;
         }
         return s;
@@ -723,6 +729,15 @@ public class EmpireAI
                 case LeaderAgenda.Scientific: return EconomyFocus.Science;
                 case LeaderAgenda.Cultural:   return EconomyFocus.Culture;
                 case LeaderAgenda.Economic:   return EconomyFocus.Gold;
+                case LeaderAgenda.Religious:  return EconomyFocus.Faith;
+            }
+            // Fallback to secondary agenda preference
+            switch (civ.leader.secondaryAgenda)
+            {
+                case LeaderAgenda.Scientific: return EconomyFocus.Science;
+                case LeaderAgenda.Cultural:   return EconomyFocus.Culture;
+                case LeaderAgenda.Economic:   return EconomyFocus.Gold;
+                case LeaderAgenda.Religious:  return EconomyFocus.Faith;
             }
         }
 
@@ -846,6 +861,9 @@ public class EmpireAI
                 break;
             case VictoryType.Religious:
                 if (civ.leader != null) s += civ.leader.religiousFocus * 5f;
+                // Bonus for having already founded a religion
+                if (civ.hasFoundedReligion) s += 8f;
+                if (civ.foundedPantheons != null) s += civ.foundedPantheons.Count * 3f;
                 break;
             case VictoryType.Economic:
                 s += civ.gold * 0.1f;
@@ -860,6 +878,22 @@ public class EmpireAI
                 if (civ.leader != null && civ.leader.prefersAlliance) s += 8f;
                 break;
         }
+
+        // Secondary agenda alignment bonus (half weight)
+        if (civ.leader != null && civ.leader.secondaryAgenda != LeaderAgenda.None)
+        {
+            var sa = civ.leader.secondaryAgenda;
+            if ((vt == VictoryType.Domination && sa == LeaderAgenda.Militaristic) ||
+                (vt == VictoryType.Science && sa == LeaderAgenda.Scientific) ||
+                (vt == VictoryType.Culture && sa == LeaderAgenda.Cultural) ||
+                (vt == VictoryType.Religious && sa == LeaderAgenda.Religious) ||
+                (vt == VictoryType.Economic && sa == LeaderAgenda.Economic) ||
+                (vt == VictoryType.Diplomatic && sa == LeaderAgenda.Diplomatic))
+            {
+                s += 5f;
+            }
+        }
+
         return s;
     }
 

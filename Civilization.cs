@@ -45,7 +45,6 @@ public class Civilization : MonoBehaviour
     // NOTE: Multi-planet gameplay requires planet-scoped ownership because tile indices repeat per planet.
     // Key = planetIndex, Value = owned tile indices on that planet.
     public Dictionary<int, HashSet<int>> ownedTilesByPlanet = new Dictionary<int, HashSet<int>>();
-    // Legacy (single-planet) list kept for compatibility; do not use for multi-planet logic.
     public List<int> ownedTileIndices       = new List<int>();
     public List<City> cities                = new List<City>();
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
@@ -821,7 +820,7 @@ public class Civilization : MonoBehaviour
         if (civData.startingTechs != null)
             researchedTechs.AddRange(civData.startingTechs);
 
-        // Seed starting cultures. Fallback to legacy cultureBonuses data so older civ assets still work.
+        // Seed starting cultures.
         if (civData.startingCultures != null)
             researchedCultures.AddRange(civData.startingCultures);
         else if (civData.cultureBonuses != null)
@@ -1700,9 +1699,6 @@ public class Civilization : MonoBehaviour
         faithModifier += tech.faithModifier;
 
         // Unlock items from tech
-        // REMOVED: TechData no longer directly unlocks units/buildings
-        // Availability is now controlled solely by requiredTechs in the respective data classes
-        // Note: TechData doesn't currently have unlockedAbilities. If added, handle here.
 
         // Apply governor-related bonuses
         if (tech.additionalGovernorSlots > 0)
@@ -1782,11 +1778,6 @@ public class Civilization : MonoBehaviour
         faithModifier += cult.faithModifier;
 
         // Unlock items from culture
-        // REMOVED: CultureData no longer directly unlocks units/buildings/abilities
-        // REMOVED: CultureData no longer directly unlocks policies
-        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
-        // cult.unlockedReligions are typically made available for founding, not directly "unlocked" into a list.
-        // ReligionManager would handle their availability based on various factors including cultural unlocks if designed so.
 
         // Apply governor-related bonuses
         if (cult.additionalGovernorSlots > 0)
@@ -1956,9 +1947,6 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         currentGovernment = g;
         ApplyGovernmentBonuses(g); // Apply bonuses from new government
 
-        // REMOVED: GovernmentData no longer directly unlocks units/buildings
-        // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
-
         // Notify cities to update their available buildings
         foreach (var city in cities)
         {
@@ -1983,9 +1971,6 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         scienceModifier += gov.scienceModifier;
         cultureModifier += gov.cultureModifier;
         faithModifier += gov.faithModifier;
-
-        // REMOVED: GovernmentData no longer directly unlocks policies
-        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     }
 
     // New method to remove bonuses from a government
@@ -2280,9 +2265,6 @@ return false;
         
         // Apply any additional faith yield modifiers
         UpdateFaithYieldModifier();
-
-        // REMOVED: ReligionData no longer directly unlocks units/buildings
-        // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
 
         // Notify cities to update their available buildings
         foreach (var city in cities)
@@ -2600,10 +2582,6 @@ return true;
         {
             pantheonCapFromBonuses = Mathf.Max(0, pantheonCapFromBonuses + tech.pantheonCapIncrease);
         }
-
-        // REMOVED: AddUnlockedEquipment(tech) - Equipment no longer auto-added to inventory
-        // Equipment availability is now controlled solely by EquipmentData.requiredTechs
-        // Players must produce equipment they want (via cities or other means)
 
         // Update city models if this tech changes the age
         UpdateCityModelsForNewAge();
@@ -3127,11 +3105,6 @@ return true;
             unit.UnequipItem(equipmentType);
 }
     }
-    
-    // REMOVED: AddUnlockedEquipment() method
-    // Equipment is no longer automatically added to inventory when researching techs.
-    // Instead, civilizations must produce equipment through cities or other game mechanics.
-    // Equipment availability is gated solely by EquipmentData.requiredTechs field.
 
     /// <summary>
     /// Creates a new city for this civilization at the specified tile.
@@ -3201,9 +3174,8 @@ return true;
             Vector3 planetCenter = planetToUse.transform.position;
             Vector3 surfaceNormal = (tileCenter - planetCenter).normalized;
             float planetRadius = planetToUse.transform.localScale.x * 0.5f;
-            
-            // Extrusion logic removed: surface position now uses only radius and baseOffset
-            float baseOffset = 0.1f; // Slightly above surface
+            // Slightly above surface
+            float baseOffset = 0.1f;
             Vector3 surfacePosition = planetCenter + surfaceNormal * (planetRadius + baseOffset);
             cityGO.transform.position = surfacePosition;
 
@@ -4064,7 +4036,6 @@ return true;
 
     /// <summary>
     /// Simple yield collection used by bonus calculations and application helpers.
-    /// This replaces the type that used to live in BonusCalculator.cs which was removed.
     /// </summary>
     [System.Serializable]
     public struct YieldCollection

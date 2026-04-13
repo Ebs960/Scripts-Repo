@@ -230,47 +230,54 @@ public class CivilizationManager : MonoBehaviour
         // Evaluate current situation
         var situation = EvaluateCivilizationSituation(civ);
         
-        // Make decisions based on agenda and situation
+        // Make decisions based on primary agenda and situation
+        ExecuteAgendaStrategy(civ, agenda, situation, false);
+
+        // Secondary agenda adds supplementary strategic behavior at reduced intensity
+        if (leader.secondaryAgenda != LeaderAgenda.None && leader.secondaryAgenda != leader.primaryAgenda)
+        {
+            ExecuteAgendaStrategy(civ, leader.secondaryAgenda, situation, true);
+        }
+    }
+
+    /// <summary>
+    /// Execute strategic behavior for a given agenda.
+    /// When isSecondary is true, actions are taken at reduced priority / with lower thresholds.
+    /// </summary>
+    private void ExecuteAgendaStrategy(Civilization civ, LeaderAgenda agenda, CivilizationSituation situation, bool isSecondary)
+    {
+        // Secondary agenda has a chance to be skipped each turn (acts less consistently)
+        if (isSecondary && UnityEngine.Random.value > 0.6f) return;
+
         switch (agenda)
         {
             case LeaderAgenda.Militaristic:
-                if (situation.militaryStrength < situation.averageMilitaryStrength * 1.2f)
-                {
-                    // Focus on military production
+                float milThreshold = isSecondary ? 1.5f : 1.2f;
+                if (situation.militaryStrength < situation.averageMilitaryStrength * milThreshold)
                     PrioritizeMilitaryProduction(civ);
-                }
-                else
-                {
-                    // Look for weak targets
+                else if (!isSecondary)
                     ConsiderWarDeclarations(civ);
-                }
                 break;
                 
             case LeaderAgenda.Expansionist:
-                if (civ.cities.Count < situation.averageCityCount * 1.5f)
-                {
-                    // Focus on settling new cities
+                float expandThreshold = isSecondary ? 1.2f : 1.5f;
+                if (civ.cities.Count < situation.averageCityCount * expandThreshold)
                     PrioritizeExpansion(civ);
-                }
                 break;
                 
             case LeaderAgenda.Scientific:
-                // Always prioritize science and research
                 PrioritizeScientificAdvancement(civ);
                 break;
                 
             case LeaderAgenda.Diplomatic:
-                // Seek alliances and avoid conflicts
                 PrioritizeDiplomaticSolutions(civ);
                 break;
                 
             case LeaderAgenda.Economic:
-                // Focus on trade and gold generation
                 PrioritizeEconomicGrowth(civ);
                 break;
                 
             case LeaderAgenda.Religious:
-                // Focus on faith and religious victory
                 PrioritizeReligiousSpread(civ);
                 break;
         }
@@ -343,15 +350,23 @@ public class CivilizationManager : MonoBehaviour
             float traitModifier = EvaluateCivilizationTraits(civ, otherCiv);
             
             // Consider diplomatic actions based on agenda
-            if (leader.primaryAgenda == LeaderAgenda.Diplomatic && currentRelation == DiplomaticState.Peace)
+            bool isDiplomaticLeader = leader.primaryAgenda == LeaderAgenda.Diplomatic 
+                                     || leader.secondaryAgenda == LeaderAgenda.Diplomatic;
+            bool isMilitaristicLeader = leader.primaryAgenda == LeaderAgenda.Militaristic 
+                                       || leader.secondaryAgenda == LeaderAgenda.Militaristic;
+
+            if (isDiplomaticLeader && currentRelation == DiplomaticState.Peace)
             {
-                if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < 0.3f)
+                // Lower threshold for secondary-only diplomatic leaders
+                float repThreshold = leader.primaryAgenda == LeaderAgenda.Diplomatic ? 20f : 30f;
+                float allianceChance = leader.primaryAgenda == LeaderAgenda.Diplomatic ? 0.3f : 0.15f;
+                if (reputation > repThreshold && trustLevel >= 6 && UnityEngine.Random.value < allianceChance)
                 {
                     // Propose alliance
                     DiplomacyManager.Instance.ProposeDeal(civ, otherCiv, DealType.Alliance);
                 }
             }
-            else if (leader.primaryAgenda == LeaderAgenda.Militaristic && currentRelation == DiplomaticState.Peace)
+            else if (isMilitaristicLeader && currentRelation == DiplomaticState.Peace)
             {
                 if (reputation < -30f && ComputeMilitaryStrength(civ) > ComputeMilitaryStrength(otherCiv) * 1.3f)
                 {
@@ -525,6 +540,23 @@ public class CivilizationManager : MonoBehaviour
         }
         if (bestApproachTile >= 0 && unit.CanMoveTo(bestApproachTile))
             unit.MoveTo(bestApproachTile);
+    }
+
+    /// <summary>
+    /// Move a combat unit one step toward a specific tile index using pathfinding.
+    /// </summary>
+    private void TryMoveCombatUnitTowardTile(CombatUnit unit, int targetTileIndex, TileSystem ts)
+    {
+        if (unit == null || unit.hasActedThisTurn || targetTileIndex < 0) return;
+        if (UnitMovementController.Instance == null) return;
+
+        var path = UnitMovementController.Instance.FindPath(unit.currentTileIndex, targetTileIndex, unit);
+        if (path == null || path.Count == 0) return;
+
+        // Move to the first step on the path
+        int nextTile = path[0];
+        if (unit.CanMoveTo(nextTile))
+            unit.MoveTo(nextTile);
     }
 
     /// <summary>
@@ -963,8 +995,6 @@ public class CivilizationManager : MonoBehaviour
         score += 10f;
         
         // Bonus for leader focus areas
-        // REMOVED: TechData no longer directly unlocks units
-        // Military focus bonus now based on military-related modifiers instead
             
         if (tech.goldModifier > 0 || tech.productionModifier > 0)
             score += leader.GetFocusPriority(FocusArea.Economic) * 5f;
@@ -978,12 +1008,10 @@ public class CivilizationManager : MonoBehaviour
         if (tech.faithModifier > 0 || tech.unlocksReligion)
             score += leader.GetFocusPriority(FocusArea.Religious) * 5f;
         
-        // Agenda-specific bonuses
+        // Agenda-specific bonuses (primary)
         switch (leader.primaryAgenda)
         {
             case LeaderAgenda.Militaristic:
-                // REMOVED: TechData no longer directly unlocks units
-                // Military agenda bonus now based on military-related modifiers instead
                 if (tech.attackBonus > 0 || tech.defenseBonus > 0)
                     score *= 1.5f;
                 break;
@@ -995,6 +1023,30 @@ public class CivilizationManager : MonoBehaviour
                 if (tech.unlocksReligion || tech.faithModifier > 0)
                     score *= 1.5f;
                 break;
+        }
+
+        // Secondary agenda adds a smaller bonus (×1.2 instead of ×1.5)
+        if (leader.secondaryAgenda != LeaderAgenda.None && leader.secondaryAgenda != leader.primaryAgenda)
+        {
+            switch (leader.secondaryAgenda)
+            {
+                case LeaderAgenda.Militaristic:
+                    if (tech.attackBonus > 0 || tech.defenseBonus > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Scientific:
+                    if (tech.scienceModifier > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Religious:
+                    if (tech.unlocksReligion || tech.faithModifier > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Economic:
+                    if (tech.goldModifier > 0 || tech.productionModifier > 0)
+                        score *= 1.2f;
+                    break;
+            }
         }
         
         return score;
@@ -1056,18 +1108,336 @@ public class CivilizationManager : MonoBehaviour
                 break;
         }
 
+        // Secondary agenda adds a smaller bonus (×1.2)
+        if (leader.secondaryAgenda != LeaderAgenda.None && leader.secondaryAgenda != leader.primaryAgenda)
+        {
+            switch (leader.secondaryAgenda)
+            {
+                case LeaderAgenda.Militaristic:
+                    if (culture.attackBonus > 0 || culture.defenseBonus > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Scientific:
+                    if (culture.scienceModifier > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Religious:
+                    if (culture.unlocksReligion || culture.faithModifier > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Cultural:
+                    if (culture.cultureModifier > 0)
+                        score *= 1.2f;
+                    break;
+                case LeaderAgenda.Economic:
+                    if (culture.goldModifier > 0 || culture.productionModifier > 0)
+                        score *= 1.2f;
+                    break;
+            }
+        }
+
         return score;
     }
     
     /// <summary>
-    /// Make religious decisions
+    /// Make religious decisions: pantheon founding, belief selection, religion founding,
+    /// pantheon upgrading, missionary purchasing, and missionary movement.
     /// </summary>
     private void PerformReligiousDecisions(Civilization civ)
     {
-        // Placeholder for religious AI decisions
-        // - Pantheon founding
-        // - Religion founding
-        // - Missionary production and movement
+        if (civ == null) return;
+
+        var leader = civ.leader;
+        float religionWeight = leader != null ? leader.religiousFocus : 1f;
+
+        // ── 1. Found a Pantheon if we have none (or can found more) ──
+        if (civ.CanFoundMorePantheons() && ReligionManager.Instance != null)
+        {
+            var availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
+            if (availablePantheons != null && availablePantheons.Count > 0)
+            {
+                PantheonData bestPantheon = null;
+                BeliefData bestBelief = null;
+                float bestScore = float.MinValue;
+
+                foreach (var pantheon in availablePantheons)
+                {
+                    if (pantheon == null || civ.faith < pantheon.faithCost) continue;
+                    if (pantheon.possibleFounderBeliefs == null || pantheon.possibleFounderBeliefs.Length == 0) continue;
+
+                    foreach (var belief in pantheon.possibleFounderBeliefs)
+                    {
+                        if (belief == null) continue;
+                        float score = ScorePantheonAndBelief(civ, pantheon, belief);
+                        if (score > bestScore) { bestScore = score; bestPantheon = pantheon; bestBelief = belief; }
+                    }
+                }
+
+                if (bestPantheon != null && bestBelief != null)
+                {
+                    civ.FoundPantheon(bestPantheon, bestBelief);
+                }
+            }
+        }
+
+        // ── 2. Upgrade Spirits to Gods when possible ──
+        if (civ.foundedPantheons != null)
+        {
+            // Iterate a copy because UpgradePantheon mutates the list
+            foreach (var pantheon in civ.foundedPantheons.ToArray())
+            {
+                if (pantheon == null) continue;
+                if (pantheon.IsSpirit && pantheon.canUpgradeToGod && pantheon.upgradedPantheon != null)
+                {
+                    civ.UpgradePantheon(pantheon);
+                }
+            }
+        }
+
+        // ── 3. Found a Religion if we have a pantheon but no religion ──
+        if (civ.foundedPantheons != null && civ.foundedPantheons.Count > 0 && !civ.hasFoundedReligion)
+        {
+            if (ReligionManager.Instance != null)
+            {
+                var availableReligions = ReligionManager.Instance.GetAvailableReligions();
+                if (availableReligions != null && availableReligions.Count > 0)
+                {
+                    // Find best city with a Holy Site
+                    City bestHolySiteCity = null;
+                    foreach (var city in civ.cities)
+                    {
+                        if (city == null || !city.HasHolySite()) continue;
+                        bestHolySiteCity = city;
+                        break;
+                    }
+
+                    if (bestHolySiteCity != null)
+                    {
+                        // Pick religion whose required pantheon we have
+                        foreach (var religion in availableReligions)
+                        {
+                            if (religion == null) continue;
+                            if (civ.faith < religion.faithCost) continue;
+                            if (religion.requiredPantheon != null && !civ.foundedPantheons.Contains(religion.requiredPantheon)) continue;
+                            civ.FoundReligion(religion, bestHolySiteCity);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 4. Purchase Missionaries / Apostles when faith is high enough ──
+        if (civ.hasFoundedReligion && civ.foundedReligion != null)
+        {
+            // Find available religious unit data from the combat unit pool
+            var allCombatUnits = ResourceCache.GetAllCombatUnits();
+            ReligionUnitData bestMissionaryData = null;
+            float bestMissionaryScore = float.MinValue;
+
+            if (allCombatUnits != null)
+            {
+                foreach (var unitData in allCombatUnits)
+                {
+                    if (unitData == null) continue;
+                    var relData = unitData as ReligionUnitData;
+                    if (relData == null) continue;
+                    if (civ.faith < relData.faithCost) continue;
+                    if (!relData.AreRequirementsMet(civ)) continue;
+
+                    // Prefer apostles over missionaries (more powerful)
+                    float score = relData.spreadPressureAmount + relData.spreadCharges * 10f;
+                    if (relData.isApostle) score += 50f;
+                    if (score > bestMissionaryScore) { bestMissionaryScore = score; bestMissionaryData = relData; }
+                }
+            }
+
+            if (bestMissionaryData != null)
+            {
+                // Count how many missionaries we already have
+                int existingMissionaries = 0;
+                if (civ.combatUnits != null)
+                {
+                    foreach (var u in civ.combatUnits)
+                    {
+                        if (u != null && u.data is ReligionUnitData) existingMissionaries++;
+                    }
+                }
+
+                // Cap missionaries based on religion focus: low-focus leaders buy fewer
+                int maxMissionaries = Mathf.Max(1, Mathf.RoundToInt(religionWeight * 2f));
+                if (existingMissionaries < maxMissionaries)
+                {
+                    // Find a city with a Holy Site to purchase from
+                    foreach (var city in civ.cities)
+                    {
+                        if (city == null || !city.HasHolySite()) continue;
+                        if (civ.PurchaseMissionary(bestMissionaryData, city))
+                            break; // One purchase per turn
+                    }
+                }
+            }
+        }
+
+        // ── 5. Direct Missionaries toward unconverted cities ──
+        if (civ.combatUnits != null && civ.hasFoundedReligion && civ.foundedReligion != null)
+        {
+            foreach (var unit in civ.combatUnits)
+            {
+                if (unit == null || unit.hasActedThisTurn) continue;
+                var relData = unit.data as ReligionUnitData;
+                if (relData == null) continue;
+
+                // Find nearest city (ours or foreign) where our religion is NOT the majority
+                City targetCity = FindBestMissionaryTarget(civ, unit);
+                if (targetCity == null) continue;
+
+                var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+                if (ts == null) continue;
+
+                int dist = ts.GetTileDistance(unit.currentTileIndex, targetCity.centerTileIndex);
+                if (dist <= relData.spreadRange)
+                {
+                    // Close enough: spread religion (add pressure to target city tiles)
+                    if (ReligionManager.Instance != null)
+                    {
+                        ts.AddReligionPressure(targetCity.centerTileIndex, civ.foundedReligion, relData.spreadPressureAmount);
+                    }
+                    unit.ConsumeAction();
+                }
+                else
+                {
+                    // Move toward the target city
+                    TryMoveCombatUnitTowardTile(unit, targetCity.centerTileIndex, ts);
+                }
+            }
+        }
+
+        // ── 6. Queue religious buildings (secondary priority for non-Religious leaders) ──
+        if (civ.cities != null && civ.cities.Count > 0)
+        {
+            var allBuildings = ResourceCache.GetAllBuildings();
+            if (allBuildings != null && allBuildings.Length > 0)
+            {
+                var religiousBuildings = new List<BuildingData>();
+                foreach (var b in allBuildings)
+                {
+                    if (b != null && b.AreRequirementsMet(civ) && b.faithPerTurn > 0)
+                        religiousBuildings.Add(b);
+                }
+
+                if (religiousBuildings.Count > 0)
+                {
+                    religiousBuildings.Sort((a, b) => b.faithPerTurn.CompareTo(a.faithPerTurn));
+
+                    // Religious-focused leaders queue faith buildings in more cities
+                    int maxCities = religionWeight >= 1.5f ? 3 : (religionWeight >= 1f ? 2 : 1);
+                    int queued = 0;
+
+                    foreach (var city in civ.cities)
+                    {
+                        if (queued >= maxCities) break;
+                        if (city == null || city.GetProductionPerTurn() <= 0) continue;
+                        if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+                        if (HasBuildingType(city, religiousBuildings)) continue;
+
+                        var bestBuilding = religiousBuildings[0];
+                        if (city.QueueProduction(bestBuilding)) queued++;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Score a pantheon + belief combination for AI selection.
+    /// Weighs stat bonuses by leader focus priorities.
+    /// </summary>
+    private float ScorePantheonAndBelief(Civilization civ, PantheonData pantheon, BeliefData belief)
+    {
+        float score = 1f;
+        var leader = civ.leader;
+        if (leader == null) return score;
+
+        // Score from belief modifiers aligned with leader priorities
+        score += belief.foodModifier * leader.GetFocusPriority(FocusArea.Economic) * 5f;
+        score += belief.productionModifier * leader.GetFocusPriority(FocusArea.Economic) * 5f;
+        score += belief.goldPerCity * leader.GetFocusPriority(FocusArea.Economic) * 3f;
+        score += belief.scienceModifier * leader.GetFocusPriority(FocusArea.Scientific) * 5f;
+        score += belief.culturePerCity * leader.GetFocusPriority(FocusArea.Cultural) * 3f;
+        score += belief.cultureModifier * leader.GetFocusPriority(FocusArea.Cultural) * 5f;
+        score += belief.faithModifier * leader.GetFocusPriority(FocusArea.Religious) * 5f;
+        score += belief.extraFaithInHolySite * leader.GetFocusPriority(FocusArea.Religious) * 4f;
+
+        // Score from pantheon bonuses (units, buildings, stat modifiers)
+        if (pantheon.bonuses != null)
+        {
+            var b = pantheon.bonuses;
+            score += b.attackBonus * leader.GetFocusPriority(FocusArea.Military) * 4f;
+            score += b.defenseBonus * leader.GetFocusPriority(FocusArea.Military) * 4f;
+            score += b.foodModifier * leader.GetFocusPriority(FocusArea.Economic) * 4f;
+            score += b.productionModifier * leader.GetFocusPriority(FocusArea.Economic) * 4f;
+            score += b.goldModifier * leader.GetFocusPriority(FocusArea.Economic) * 4f;
+            score += b.scienceModifier * leader.GetFocusPriority(FocusArea.Scientific) * 4f;
+            score += b.cultureModifier * leader.GetFocusPriority(FocusArea.Cultural) * 4f;
+            score += b.faithModifier * leader.GetFocusPriority(FocusArea.Religious) * 4f;
+
+            // Bonus for unlocked content
+            if (b.unlockedCombatUnits != null) score += b.unlockedCombatUnits.Length * leader.GetFocusPriority(FocusArea.Military) * 3f;
+            if (b.unlockedWorkerUnits != null) score += b.unlockedWorkerUnits.Length * leader.GetFocusPriority(FocusArea.Economic) * 2f;
+            if (b.unlockedBuildings != null) score += b.unlockedBuildings.Length * 2f;
+        }
+
+        // Gods are generally more valuable than Spirits
+        if (pantheon.IsGod) score *= 1.3f;
+
+        // Religious leaders value all pantheons more
+        if (leader.primaryAgenda == LeaderAgenda.Religious || leader.secondaryAgenda == LeaderAgenda.Religious)
+            score *= 1.4f;
+
+        return score;
+    }
+
+    /// <summary>
+    /// Find the best city for a missionary to target — prefers foreign cities, then own cities
+    /// without our religion as majority.
+    /// </summary>
+    private City FindBestMissionaryTarget(Civilization civ, CombatUnit missionary)
+    {
+        if (ReligionManager.Instance == null) return null;
+
+        City bestTarget = null;
+        float bestScore = float.MinValue;
+
+        var ts = TileSystem.GetForPlanet(missionary.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        // Check all civilizations' cities
+        var allCivs = GetAllCivs();
+        foreach (var otherCiv in allCivs)
+        {
+            if (otherCiv == null || otherCiv.cities == null) continue;
+
+            bool isForeign = otherCiv != civ;
+
+            foreach (var city in otherCiv.cities)
+            {
+                if (city == null) continue;
+                if (city.planetIndex != missionary.planetIndex) continue;
+
+                var majorityReligion = ReligionManager.Instance.GetCityMajorityReligion(city);
+                if (majorityReligion == civ.foundedReligion) continue; // Already converted
+
+                int dist = ts.GetTileDistance(missionary.currentTileIndex, city.centerTileIndex);
+                float score = 100f - dist * 2f; // Prefer closer cities
+                if (isForeign) score += 20f;     // Prefer spreading to foreign cities
+                if (majorityReligion == null) score += 10f; // Prefer unconverted over those with rival religions
+
+                if (score > bestScore) { bestScore = score; bestTarget = city; }
+            }
+        }
+
+        return bestTarget;
     }
     
     // Helper methods for strategic decisions
@@ -1307,8 +1677,13 @@ break; // Only queue one pioneer per turn
         
         if (potentialAllies == null || potentialAllies.Count == 0) return;
         
-        // Only diplomatic leaders actively seek alliances
-        if (leader.primaryAgenda != LeaderAgenda.Diplomatic) return;
+        // Diplomatic leaders (primary or secondary) actively seek alliances
+        bool isDiplomaticLeader = leader.primaryAgenda == LeaderAgenda.Diplomatic
+                                 || leader.secondaryAgenda == LeaderAgenda.Diplomatic;
+        if (!isDiplomaticLeader) return;
+        
+        // Secondary diplomatic leaders are less aggressive about alliances
+        float allianceChance = leader.primaryAgenda == LeaderAgenda.Diplomatic ? 0.3f : 0.15f;
         
         // Consider each potential ally
         foreach (var target in potentialAllies)
@@ -1325,7 +1700,7 @@ break; // Only queue one pioneer per turn
             var trustLevel = memory.GetTrustLevel(target);
             
             // Propose alliance if conditions are good
-            if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < 0.3f)
+            if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < allianceChance)
             {
                 DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.Alliance);
 break; // Only propose one alliance per turn

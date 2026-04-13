@@ -452,16 +452,34 @@ public class AncientRuinsManager : MonoBehaviour
                 rewards.Add($"Gained {faith} faith from sacred relics!");
             }
 
-            // Map reveal (stub — hook into fog-of-war reveal when available)
+            // Map reveal
             if (data.revealsMap)
             {
-                rewards.Add("Revealed part of the map!");
+                int civIdx = UnitVisionManager.GetCivIndex(civ);
+                if (civIdx >= 0 && UnitVisionManager.Instance != null)
+                {
+                    UnitVisionManager.Instance.RevealTilesAroundPosition(civIdx, ruin.position, data.revealRadius);
+                }
+                rewards.Add($"Revealed the surrounding area ({data.revealRadius} tiles)!");
             }
 
-            // Population (stub)
+            // Population
             if (data.grantsPopulation)
             {
-                rewards.Add("Population increased in your nearest city!");
+                City nearest = FindNearestCity(civ, ruin.position);
+                if (nearest != null)
+                {
+                    nearest.level += data.populationBonus;
+                    nearest.foodGrowthRequirement = nearest.level * 10;
+                    rewards.Add($"Population increased by {data.populationBonus} in {nearest.cityName}!");
+                }
+                else
+                {
+                    // No city — grant gold as fallback
+                    int fallbackGold = data.populationBonus * 25;
+                    civ.gold += fallbackGold;
+                    rewards.Add($"No nearby city found. Gained {fallbackGold} gold instead!");
+                }
             }
 
             // Guaranteed technologies
@@ -498,7 +516,13 @@ public class AncientRuinsManager : MonoBehaviour
                     rewards.Add("A friendly unit joins your cause!");
                     break;
                 case RuinType.Map:
-                    rewards.Add("Revealed part of the map!");
+                    int fallbackRevealRadius = 5;
+                    int fallbackCivIdx = UnitVisionManager.GetCivIndex(civ);
+                    if (fallbackCivIdx >= 0 && UnitVisionManager.Instance != null)
+                    {
+                        UnitVisionManager.Instance.RevealTilesAroundPosition(fallbackCivIdx, ruin.position, fallbackRevealRadius);
+                    }
+                    rewards.Add($"Revealed the surrounding area ({fallbackRevealRadius} tiles)!");
                     break;
                 case RuinType.Culture:
                     int culture = UnityEngine.Random.Range(20, 100);
@@ -519,7 +543,18 @@ public class AncientRuinsManager : MonoBehaviour
                     rewards.Add($"Gained {faith} faith from sacred relics!");
                     break;
                 case RuinType.Population:
-                    rewards.Add("Population increased in your nearest city!");
+                    City nearestCity = FindNearestCity(civ, ruin.position);
+                    if (nearestCity != null)
+                    {
+                        nearestCity.level += 1;
+                        nearestCity.foodGrowthRequirement = nearestCity.level * 10;
+                        rewards.Add($"Population increased by 1 in {nearestCity.cityName}!");
+                    }
+                    else
+                    {
+                        civ.gold += 25;
+                        rewards.Add("No nearby city found. Gained 25 gold instead!");
+                    }
                     break;
                 case RuinType.Upgrade:
                     rewards.Add("A unit has been upgraded!");
@@ -528,6 +563,25 @@ public class AncientRuinsManager : MonoBehaviour
         }
 
         OnRuinExplorationCompleted?.Invoke(ruin, civ, rewards);
+    }
+
+    private City FindNearestCity(Civilization civ, Vector3 position)
+    {
+        if (civ.cities == null || civ.cities.Count == 0) return null;
+        City nearest = null;
+        float bestDist = float.MaxValue;
+        for (int i = 0; i < civ.cities.Count; i++)
+        {
+            var city = civ.cities[i];
+            if (city == null) continue;
+            float dist = (city.transform.position - position).sqrMagnitude;
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                nearest = city;
+            }
+        }
+        return nearest;
     }
 
     public bool StartRuinExploration(RuinSite ruin, Civilization civilization)
