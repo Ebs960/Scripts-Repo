@@ -41,6 +41,15 @@ public class BeliefData : ScriptableObject
     [Tooltip("Category of this belief. Civilization may only hold one belief per category at a time.")]
     public BeliefCategory category = BeliefCategory.Survival;
 
+    [Header("Pantheon Availability")]
+    [Tooltip("Optional pantheon restriction. Leave empty to make this belief available to all civilizations and all pantheons by default.")]
+    public PantheonData[] exclusiveToPantheons;
+
+    [Header("Season Availability")]
+    [Tooltip("Optional global season restriction for this belief. Leave disabled to make it active in all seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
     [Header("Targeted Yield Bonuses")]
     [Tooltip("Per-turn yield modifiers for specific combat units owned by the civilization.")]
     public UnitYieldBonus[] unitYieldBonuses;
@@ -56,6 +65,9 @@ public class BeliefData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this belief.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
 } 

@@ -176,30 +176,13 @@ public class ReligionUI : MonoBehaviour
             Destroy(c.gameObject);
         }
 
-        // Gather all beliefs available from ReligionManager and loaded assets
-        var rm = _cachedReligionManager ?? FindAnyObjectByType<ReligionManager>();
+        // Gather all beliefs available from loaded assets.
         var allBeliefs = new System.Collections.Generic.List<BeliefData>();
         var resourceBeliefs = Resources.LoadAll<BeliefData>("");
         if (resourceBeliefs != null)
         {
             foreach (var belief in resourceBeliefs)
                 if (belief != null && !allBeliefs.Contains(belief)) allBeliefs.Add(belief);
-        }
-
-        // For now, use culture-unlocked beliefs (if playerCiv present) and any beliefs referenced in PantheonData assets
-        if (playerCiv != null && playerCiv.cultureUnlockedBeliefs != null)
-            allBeliefs.AddRange(playerCiv.cultureUnlockedBeliefs);
-
-        // Add beliefs from available pantheons
-        var pantheons = rm != null ? rm.availablePantheons : null;
-        if (pantheons != null)
-        {
-            foreach (var p in pantheons)
-            {
-                if (p == null || p.possibleFounderBeliefs == null) continue;
-                foreach (var b in p.possibleFounderBeliefs)
-                    if (b != null && !allBeliefs.Contains(b)) allBeliefs.Add(b);
-            }
         }
 
         // Group by category and create header + buttons
@@ -216,6 +199,7 @@ public class ReligionUI : MonoBehaviour
             {
                 if (b == null) continue;
                 if (b.category != cat) continue;
+                if (playerCiv != null && !playerCiv.CanUseBelief(b)) continue;
                 if (playerCiv != null && playerCiv.HasActiveBeliefInCategory(b.category) && playerCiv.GetCustomBeliefInCategory(b.category) != b)
                     continue;
                 var btnGO = Instantiate(beliefButtonPrefab, beliefListContainer);
@@ -234,6 +218,10 @@ public class ReligionUI : MonoBehaviour
         if (belief == null)
         {
             _assignedBeliefs.Remove(category);
+        }
+        else if (playerCiv != null && !playerCiv.CanUseBelief(belief))
+        {
+            return;
         }
         else
         {
@@ -325,6 +313,41 @@ public class ReligionUI : MonoBehaviour
         RefreshBeliefSlots();
     }
 
+    private void RefreshFounderBeliefOptions(PantheonData selectedPantheon)
+    {
+        availableFounderBeliefs.Clear();
+
+        if (selectedPantheon != null)
+        {
+            var allBeliefs = Resources.LoadAll<BeliefData>("");
+            if (allBeliefs != null)
+            {
+                foreach (var belief in allBeliefs)
+                {
+                    if (belief == null) continue;
+                    if (playerCiv != null && playerCiv.HasActiveBeliefInCategory(belief.category) && playerCiv.GetCustomBeliefInCategory(belief.category) != belief)
+                        continue;
+                    if (playerCiv != null && !playerCiv.CanUseBeliefForPantheon(selectedPantheon, belief))
+                        continue;
+                    availableFounderBeliefs.Add(belief);
+                }
+            }
+        }
+
+        founderBeliefDropdown.ClearOptions();
+        if (availableFounderBeliefs.Count > 0)
+        {
+            List<string> beliefNames = new List<string>();
+            foreach (BeliefData belief in availableFounderBeliefs)
+                beliefNames.Add(belief.beliefName);
+            founderBeliefDropdown.AddOptions(beliefNames);
+        }
+        else
+        {
+            founderBeliefDropdown.AddOptions(new List<string> { "No Available Beliefs" });
+        }
+    }
+
     private void SyncAssignedBeliefsFromCiv()
     {
         _assignedBeliefs.Clear();
@@ -386,24 +409,7 @@ public class ReligionUI : MonoBehaviour
             if (availablePantheons.Count > 0 && pantheonDropdown.value >= 0)
             {
                 PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-                // Combine pantheon-specified founder beliefs with any culture-unlocked beliefs
-                var combinedBeliefs = new List<BeliefData>();
-                if (selectedPantheon.possibleFounderBeliefs != null) combinedBeliefs.AddRange(selectedPantheon.possibleFounderBeliefs);
-                if (playerCiv.cultureUnlockedBeliefs != null)
-                {
-                    foreach (var b in playerCiv.cultureUnlockedBeliefs)
-                        if (b != null && !combinedBeliefs.Contains(b)) combinedBeliefs.Add(b);
-                }
-                combinedBeliefs.RemoveAll(b => b == null || (playerCiv.HasActiveBeliefInCategory(b.category) && playerCiv.GetCustomBeliefInCategory(b.category) != b));
-                availableFounderBeliefs = combinedBeliefs;
-                
-                founderBeliefDropdown.ClearOptions();
-                List<string> beliefNames = new List<string>();
-                foreach (BeliefData belief in availableFounderBeliefs)
-                {
-                    beliefNames.Add(belief.beliefName);
-                }
-                founderBeliefDropdown.AddOptions(beliefNames);
+                RefreshFounderBeliefOptions(selectedPantheon);
             }
             
             // Update cost and button state
@@ -678,39 +684,14 @@ public class ReligionUI : MonoBehaviour
             return;
             
         PantheonData selectedPantheon = availablePantheons[index];
-        
-        // Update founder belief options
-        availableFounderBeliefs.Clear();
-        
-        if (selectedPantheon.possibleFounderBeliefs != null)
-        {
-            availableFounderBeliefs.AddRange(selectedPantheon.possibleFounderBeliefs);
-        }
-        
-        // Update founder belief dropdown
-        founderBeliefDropdown.ClearOptions();
-        
-        if (availableFounderBeliefs.Count > 0)
-        {
-            List<string> beliefNames = new List<string>();
-            foreach (BeliefData belief in availableFounderBeliefs)
-            {
-                beliefNames.Add(belief.beliefName);
-            }
-            
-            founderBeliefDropdown.AddOptions(beliefNames);
-            
-            // Update cost text
-            pantheonCostText.text = $"Cost: {selectedPantheon.faithCost} Faith";
-            
-            // Enable found button if player has enough faith
-            foundPantheonButton.interactable = playerCiv.faith >= selectedPantheon.faithCost;
-        }
-        else
-        {
-            founderBeliefDropdown.AddOptions(new List<string> { "No Available Beliefs" });
-            foundPantheonButton.interactable = false;
-        }
+
+        RefreshFounderBeliefOptions(selectedPantheon);
+
+        // Update cost text
+        pantheonCostText.text = $"Cost: {selectedPantheon.faithCost} Faith";
+
+        // Enable found button if player has enough faith and at least one founder belief is valid
+        foundPantheonButton.interactable = playerCiv.faith >= selectedPantheon.faithCost && availableFounderBeliefs.Count > 0;
     }
     
     /// <summary>

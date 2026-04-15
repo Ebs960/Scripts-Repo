@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
-  m_Name: Balance with Nature
+  m_Name: Cleansing Waters
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: Balance with Nature
-  description: Provides +1 Food to tiles with a Forest
-  icon: {fileID: 21300000, guid: 20be8c8281000d04ea125cb558e72233, type: 3}
+  beliefName: Cleansing Waters
+  description: -10% chance of disease and +1 food from river and lake tiles.
+  icon: {fileID: 21300000, guid: c9fb26ac38e21984d81fdeca486024d1, type: 3}
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -31,18 +31,45 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   category: 0
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: c47520c491e6c5f48ba7de64cb0e62e8, type: 2}
+  - {fileID: 11400000, guid: 359fd58779996bb4c846c385d15ca9ec, type: 2}
+  useSeasonFilter: 0
+  seasons: 
   unitYieldBonuses: []
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses:
-  - useBiomeFilter: 0
-    biome: 0
+  - useBiomeFilter: 1
+    biome: 11
     hillRequirement: 0
     mountainRequirement: 0
     useSeasonFilter: 0
     seasons: 
-    useResourceFilter: 1
-    resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  - useBiomeFilter: 1
+    biome: 12
+    hillRequirement: 0
+    mountainRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    useResourceFilter: 0
+    resource: {fileID: 0}
     foodAdd: 1
     productionAdd: 0
     goldAdd: 0
@@ -59,7 +86,21 @@ MonoBehaviour:
     policyPointsPct: 0
   unitBonuses: []
   workerBonuses: []
-  diseaseBonuses: []
+  diseaseBonuses:
+  - disease: {fileID: 0}
+    affectsAllDiseases: 1
+    useSeasonFilter: 0
+    seasons: 
+    grantsImmunity: 0
+    infectionChancePct: -0.1
+    spreadChancePct: 0
+    durationPct: 0
+    cityPopulationLossPct: 0
+    cityYieldPenaltyPct: 0
+    cityMoralePenaltyPct: 0
+    cityLoyaltyPenaltyPct: 0
+    herdMortalityPct: 0
+    herdForagePenaltyPct: 0
   attritionBonuses: []
   herdStarvationPercentReduction: 0
   cityYieldBonuses: []

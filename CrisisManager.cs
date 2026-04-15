@@ -18,9 +18,10 @@ using UnityEngine;
 ///   1. Restores original climate
 ///   2. Clears the active crisis so its mission list is no longer available
 /// </summary>
-public class CrisisManager : MonoBehaviour
+public class CrisisManager : MonoBehaviour, ISaveGameParticipant
 {
     public static CrisisManager Instance { get; private set; }
+    public string SaveKey => "crisis-manager";
 
     [Header("All Crises")]
     [Tooltip("Every crisis available in the game.")]
@@ -128,6 +129,7 @@ public class CrisisManager : MonoBehaviour
 
     void Start()
     {
+        SaveGameRegistry.Register(this);
         TrySubscribeToTurnManager();
         TrySubscribeToGameEvents();
         TrySubscribeToImprovementManager();
@@ -146,6 +148,7 @@ public class CrisisManager : MonoBehaviour
 
     void OnDestroy()
     {
+        SaveGameRegistry.Unregister(this);
         if (subscribedToTurnManager && TurnManager.Instance != null)
             TurnManager.Instance.OnRoundStarted -= HandleRoundStarted;
         if (subscribedToGameEvents && GameEventManager.Instance != null)
@@ -1144,6 +1147,36 @@ public class CrisisManager : MonoBehaviour
         }
 
         Debug.Log($"[CrisisManager] Restored crisis '{crisis.crisisName}' in phase {currentPhase}");
+    }
+
+    [Serializable]
+    private class CrisisParticipantSaveData
+    {
+        public List<MissionStateSaveData> missionStates = new List<MissionStateSaveData>();
+        public CrisisSaveData crisisState;
+    }
+
+    public string CaptureStateJson()
+    {
+        var data = new CrisisParticipantSaveData
+        {
+            missionStates = ExportMissionStates(),
+            crisisState = ExportCrisisState()
+        };
+        return JsonUtility.ToJson(data);
+    }
+
+    public void RestoreStateJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        var data = JsonUtility.FromJson<CrisisParticipantSaveData>(json);
+        if (data == null)
+            return;
+
+        ImportMissionStates(data.missionStates);
+        ImportCrisisState(data.crisisState);
     }
 
     private void CancelActiveMissionsForCrisis(CrisisData crisis)

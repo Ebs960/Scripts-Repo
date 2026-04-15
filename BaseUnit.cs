@@ -904,12 +904,124 @@ public abstract class BaseUnit : MonoBehaviour
 
     #region Ability Modifiers
 
+    protected struct TargetedCombatAgg
+    {
+        public float attackAdd;
+        public float defenseAdd;
+        public float attackPct;
+        public float defensePct;
+    }
+
+    protected IEnumerable<EquipmentData> EnumerateEquippedItems()
+    {
+        if (_equippedWeapon != null)
+            yield return _equippedWeapon;
+        if (_equippedProjectileWeapon != null)
+            yield return _equippedProjectileWeapon;
+        if (_equippedShield != null)
+            yield return _equippedShield;
+        if (_equippedArmor != null)
+            yield return _equippedArmor;
+        if (_equippedMiscellaneous != null)
+            yield return _equippedMiscellaneous;
+    }
+
+    protected static bool AbilityHasCombatTargetFilter(Ability ability)
+    {
+        return ability != null
+            && Civilization.HasCombatBonusOpponentFilter(ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter);
+    }
+
+    protected TargetedCombatAgg AggregateEquippedItemTargetedModifiers(BaseUnit opponent)
+    {
+        TargetedCombatAgg total = new TargetedCombatAgg();
+        if (opponent == null)
+            return total;
+
+        foreach (var item in EnumerateEquippedItems())
+        {
+            if (item == null)
+                continue;
+
+            if (opponent is CombatUnit combatOpponent && combatOpponent.data != null)
+            {
+                if (item.attackBonusAgainst != null)
+                {
+                    foreach (var entry in item.attackBonusAgainst)
+                    {
+                        if (entry.unitType == combatOpponent.data.unitType)
+                            total.attackAdd += entry.value;
+                    }
+                }
+
+                if (item.defenseBonusAgainst != null)
+                {
+                    foreach (var entry in item.defenseBonusAgainst)
+                    {
+                        if (entry.unitType == combatOpponent.data.unitType)
+                            total.defenseAdd += entry.value;
+                    }
+                }
+            }
+
+            if (item.combatModifiersAgainst == null)
+                continue;
+
+            foreach (var modifier in item.combatModifiersAgainst)
+            {
+                if (!Civilization.MatchesCombatBonusOpponent(opponent, modifier.targetUnit, modifier.targetWorker, modifier.useTargetUnitCategoryFilter, modifier.targetUnitCategory))
+                    continue;
+
+                total.attackAdd += modifier.attackAdd;
+                total.defenseAdd += modifier.defenseAdd;
+                total.attackPct += modifier.attackPct;
+                total.defensePct += modifier.defensePct;
+            }
+        }
+
+        return total;
+    }
+
+    protected int GetTargetedAbilityAttackModifierAgainst(BaseUnit target)
+    {
+        int total = 0;
+        if (unlockedAbilities == null || target == null) return total;
+        foreach (var ability in unlockedAbilities)
+        {
+            if (!AbilityHasCombatTargetFilter(ability))
+                continue;
+            if (!Civilization.MatchesCombatBonusOpponent(target, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
+                continue;
+            total += ability.attackModifier;
+        }
+        return total;
+    }
+
+    protected int GetTargetedAbilityDefenseModifierAgainst(BaseUnit attacker)
+    {
+        int total = 0;
+        if (unlockedAbilities == null || attacker == null) return total;
+        foreach (var ability in unlockedAbilities)
+        {
+            if (!AbilityHasCombatTargetFilter(ability))
+                continue;
+            if (!Civilization.MatchesCombatBonusOpponent(attacker, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
+                continue;
+            total += ability.defenseModifier;
+        }
+        return total;
+    }
+
     public int GetAbilityAttackModifier()
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
+        {
+            if (AbilityHasCombatTargetFilter(ability))
+                continue;
             total += ability.attackModifier;
+        }
         return total;
     }
 
@@ -918,7 +1030,11 @@ public abstract class BaseUnit : MonoBehaviour
         int total = 0;
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
+        {
+            if (AbilityHasCombatTargetFilter(ability))
+                continue;
             total += ability.defenseModifier;
+        }
         return total;
     }
 
@@ -945,7 +1061,26 @@ public abstract class BaseUnit : MonoBehaviour
         float total = 1f;
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
-            total *= ability.damageMultiplier;
+        {
+            if (AbilityHasCombatTargetFilter(ability))
+                continue;
+            total *= ability.damageMultiplier <= 0f ? 1f : ability.damageMultiplier;
+        }
+        return total;
+    }
+
+    protected float GetTargetedAbilityDamageMultiplierAgainst(BaseUnit target)
+    {
+        float total = 1f;
+        if (unlockedAbilities == null || target == null) return total;
+        foreach (var ability in unlockedAbilities)
+        {
+            if (!AbilityHasCombatTargetFilter(ability))
+                continue;
+            if (!Civilization.MatchesCombatBonusOpponent(target, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
+                continue;
+            total *= ability.damageMultiplier <= 0f ? 1f : ability.damageMultiplier;
+        }
         return total;
     }
 
@@ -2325,6 +2460,11 @@ public abstract class BaseUnit : MonoBehaviour
 
         return modifiedDamage;
     }
+
+    public virtual int GetSituationalAttackAddAgainst(BaseUnit target) => 0;
+    public virtual float GetSituationalAttackPctAgainst(BaseUnit target) => 0f;
+    public virtual int GetSituationalDefenseAddAgainst(BaseUnit attacker) => 0;
+    public virtual float GetSituationalDefensePctAgainst(BaseUnit attacker) => 0f;
 
     #endregion
 

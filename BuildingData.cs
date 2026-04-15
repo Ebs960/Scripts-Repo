@@ -108,6 +108,9 @@ public class BuildingData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this building when present.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+    [Tooltip("Reduces the percent of herd animals lost to starvation when this building/structure is present (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
     [Header("Herd / Nomad Options")]
     [Tooltip("If true, this building may be constructed by/for herds (mobile structures)")]
     public bool buildableByHerd = false;

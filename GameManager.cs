@@ -2480,6 +2480,16 @@ public class GameManager : MonoBehaviour
             participantStates = new List<PauseMenuManager.SaveParticipantStateData>()
         };
 
+        var worldSnapshot = CaptureWorldSnapshot();
+        saveData.worldSnapshot = worldSnapshot;
+        saveData.jobAssignments = worldSnapshot.jobAssignments;
+        saveData.combatUnits = worldSnapshot.combatUnits;
+        saveData.workerUnits = worldSnapshot.workerUnits;
+        saveData.civilizationProgress = worldSnapshot.civilizationProgress;
+        saveData.cities = worldSnapshot.cities;
+        saveData.missionStates = worldSnapshot.missionStates;
+        saveData.crisisState = worldSnapshot.crisisState;
+
         if (civilizationManager != null && civilizationManager.playerCiv != null)
         {
             saveData.playerCivName = civilizationManager.playerCiv.civData.civName;
@@ -2492,10 +2502,16 @@ public class GameManager : MonoBehaviour
             saveData.cameraRotation = Camera.main.transform.eulerAngles;
         }
 
+        saveData.participantStates = SaveGameRegistry.CaptureAll();
+        return saveData;
+    }
+
+    private PauseMenuManager.WorldSnapshotData CaptureWorldSnapshot()
+    {
+        var snapshot = new PauseMenuManager.WorldSnapshotData();
+
         if (ImprovementManager.Instance != null)
-        {
-            saveData.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
-        }
+            snapshot.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
 
         if (civilizationManager != null)
         {
@@ -2559,12 +2575,14 @@ public class GameManager : MonoBehaviour
                     {
                         var gov = civ.governors[g];
                         if (gov == null) continue;
-                        var gsd = new PauseMenuManager.GovernorSaveData();
-                        gsd.id = gov.Id;
-                        gsd.name = gov.Name;
-                        gsd.specialization = gov.specialization;
-                        gsd.level = gov.Level;
-                        gsd.experience = gov.Experience;
+                        var gsd = new PauseMenuManager.GovernorSaveData
+                        {
+                            id = gov.Id,
+                            name = gov.Name,
+                            specialization = gov.specialization,
+                            level = gov.Level,
+                            experience = gov.Experience
+                        };
                         if (gov.Cities != null && civ.cities != null)
                         {
                             foreach (var city in gov.Cities)
@@ -2579,10 +2597,7 @@ public class GameManager : MonoBehaviour
                             foreach (var herd in gov.Herds)
                             {
                                 if (herd == null) continue;
-                                var hr = new PauseMenuManager.HerdRef();
-                                hr.planetIndex = herd.planetIndex;
-                                hr.tileIndex = herd.currentTileIndex;
-                                gsd.assignedHerdRefs.Add(hr);
+                                gsd.assignedHerdRefs.Add(new PauseMenuManager.HerdRef { planetIndex = herd.planetIndex, tileIndex = herd.currentTileIndex });
                             }
                         }
                         if (gov.Traits != null)
@@ -2603,19 +2618,22 @@ public class GameManager : MonoBehaviour
                         foreach (var h in civ.herds)
                         {
                             if (h == null) continue;
-                            var hq = new PauseMenuManager.HerdQueueSaveData();
-                            hq.planetIndex = h.planetIndex;
-                            hq.tileIndex = h.currentTileIndex;
+                            var hq = new PauseMenuManager.HerdQueueSaveData
+                            {
+                                planetIndex = h.planetIndex,
+                                tileIndex = h.currentTileIndex
+                            };
                             if (h.productionQueue != null && h.productionQueue.Count > 0)
                             {
                                 foreach (var e in h.productionQueue)
                                 {
                                     if (e == null || e.data == null) continue;
-                                    var pe = new PauseMenuManager.HerdProdEntrySaveData();
-                                    pe.dataName = e.data.name;
-                                    pe.remainingPts = e.remainingPts;
-                                    pe.goldCost = e.goldCost;
-                                    hq.queue.Add(pe);
+                                    hq.queue.Add(new PauseMenuManager.HerdProdEntrySaveData
+                                    {
+                                        dataName = e.data.name,
+                                        remainingPts = e.remainingPts,
+                                        goldCost = e.goldCost
+                                    });
                                 }
                             }
                             civProgress.herdQueues.Add(hq);
@@ -2624,7 +2642,7 @@ public class GameManager : MonoBehaviour
                 }
                 catch { }
 
-                saveData.civilizationProgress.Add(civProgress);
+                snapshot.civilizationProgress.Add(civProgress);
 
                 if (civ.cities != null)
                 {
@@ -2676,7 +2694,7 @@ public class GameManager : MonoBehaviour
                             }
                         }
 
-                        saveData.cities.Add(citySave);
+                        snapshot.cities.Add(citySave);
                     }
                 }
 
@@ -2685,7 +2703,7 @@ public class GameManager : MonoBehaviour
                     foreach (var unit in civ.combatUnits)
                     {
                         if (unit == null || unit.data == null) continue;
-                        saveData.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
+                        snapshot.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
                         {
                             unitDataName = unit.data.unitName,
                             ownerCivIndex = civIdx,
@@ -2708,7 +2726,7 @@ public class GameManager : MonoBehaviour
                     foreach (var worker in civ.workerUnits)
                     {
                         if (worker == null || worker.data == null) continue;
-                        saveData.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
+                        snapshot.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
                         {
                             unitDataName = worker.data.unitName,
                             ownerCivIndex = civIdx,
@@ -2716,6 +2734,8 @@ public class GameManager : MonoBehaviour
                             planetIndex = worker.planetIndex,
                             currentLayer = (int)worker.currentLayer,
                             currentHealth = worker.currentHealth,
+                            experience = worker.experience,
+                            level = worker.level,
                             currentWorkPoints = worker.currentWorkPoints,
                             currentMovePoints = worker.currentMovePoints,
                             posX = worker.transform.position.x,
@@ -2727,21 +2747,24 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        try
-        {
-            if (CrisisManager.Instance != null)
-            {
-                saveData.missionStates = CrisisManager.Instance.ExportMissionStates();
-                saveData.crisisState = CrisisManager.Instance.ExportCrisisState();
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to serialize crisis and mission state: {e.Message}");
-        }
+        return snapshot;
+    }
 
-        saveData.participantStates = SaveGameRegistry.CaptureAll();
-        return saveData;
+    private static PauseMenuManager.WorldSnapshotData GetWorldSnapshot(PauseMenuManager.GameSaveData saveData)
+    {
+        if (saveData?.worldSnapshot != null && saveData.worldSnapshot.HasState())
+            return saveData.worldSnapshot;
+
+        return new PauseMenuManager.WorldSnapshotData
+        {
+            jobAssignments = saveData?.jobAssignments ?? new List<ImprovementManager.JobAssignmentSaveData>(),
+            combatUnits = saveData?.combatUnits ?? new List<PauseMenuManager.CombatUnitSaveData>(),
+            workerUnits = saveData?.workerUnits ?? new List<PauseMenuManager.WorkerUnitSaveData>(),
+            civilizationProgress = saveData?.civilizationProgress ?? new List<PauseMenuManager.CivilizationProgressSaveData>(),
+            cities = saveData?.cities ?? new List<PauseMenuManager.CitySaveData>(),
+            missionStates = saveData?.missionStates ?? new List<CrisisManager.MissionStateSaveData>(),
+            crisisState = saveData?.crisisState
+        };
     }
 
     public void SaveGame(string saveName)
@@ -2841,6 +2864,7 @@ public class GameManager : MonoBehaviour
 
     private System.Collections.IEnumerator LoadGameFromSaveDataRoutine(PauseMenuManager.GameSaveData saveData)
     {
+        var worldSnapshot = GetWorldSnapshot(saveData);
         
 
         // Basic fields
@@ -2891,7 +2915,7 @@ public class GameManager : MonoBehaviour
 
         try
         {
-            RestoreCityStatesFromSaveData(saveData);
+            RestoreCityStatesFromSnapshot(worldSnapshot);
         }
         catch (System.Exception e)
         {
@@ -2900,7 +2924,7 @@ public class GameManager : MonoBehaviour
 
         try
         {
-            RestoreCivilizationProgressFromSaveData(saveData);
+            RestoreCivilizationProgressFromSnapshot(worldSnapshot);
         }
         catch (System.Exception e)
         {
@@ -2908,13 +2932,13 @@ public class GameManager : MonoBehaviour
         }
 
         // Import improvement manager assignments AFTER units are present and registered
-        if (saveData.jobAssignments != null && saveData.jobAssignments.Count > 0)
+        if (worldSnapshot.jobAssignments != null && worldSnapshot.jobAssignments.Count > 0)
         {
             // Allow a small delay for UnitRegistry to populate (in case units are spawned next frame)
             yield return null;
             try
             {
-                ImprovementManager.Instance?.ImportJobAssignments(saveData.jobAssignments);
+                ImprovementManager.Instance?.ImportJobAssignments(worldSnapshot.jobAssignments);
             }
             catch (System.Exception e)
             {
@@ -2926,33 +2950,11 @@ public class GameManager : MonoBehaviour
         yield return null;
         try
         {
-            RestoreUnitsFromSaveData(saveData);
+            RestoreUnitsFromSnapshot(worldSnapshot);
         }
         catch (System.Exception e)
         {
             Debug.LogWarning($"Failed to restore units from save data: {e.Message}\n{e.StackTrace}");
-        }
-
-        // ===== Restore active mission states =====
-        try
-        {
-            if (CrisisManager.Instance != null)
-                CrisisManager.Instance.ImportMissionStates(saveData.missionStates);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to restore mission states: {e.Message}");
-        }
-
-        // ===== Restore active crisis state =====
-        try
-        {
-            if (CrisisManager.Instance != null)
-                CrisisManager.Instance.ImportCrisisState(saveData.crisisState);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to restore crisis state: {e.Message}");
         }
 
         try
@@ -2964,12 +2966,29 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"Failed to restore save participants: {e.Message}");
         }
 
+        try
+        {
+            bool hasCrisisParticipantState = saveData.participantStates != null
+                && saveData.participantStates.Any(s => s != null && string.Equals(s.key, "crisis-manager", StringComparison.OrdinalIgnoreCase));
+            if (!hasCrisisParticipantState && CrisisManager.Instance != null)
+            {
+                if (worldSnapshot.missionStates != null)
+                    CrisisManager.Instance.ImportMissionStates(worldSnapshot.missionStates);
+                if (worldSnapshot.crisisState != null)
+                    CrisisManager.Instance.ImportCrisisState(worldSnapshot.crisisState);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore legacy crisis state: {e.Message}");
+        }
+
         
     }
 
-    private void RestoreCityStatesFromSaveData(PauseMenuManager.GameSaveData saveData)
+    private void RestoreCityStatesFromSnapshot(PauseMenuManager.WorldSnapshotData snapshot)
     {
-        if (saveData?.cities == null || saveData.cities.Count == 0) return;
+        if (snapshot?.cities == null || snapshot.cities.Count == 0) return;
 
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs == null) return;
@@ -2993,7 +3012,7 @@ public class GameManager : MonoBehaviour
             civ?.cities?.Clear();
         }
 
-        foreach (var cityData in saveData.cities.OrderBy(c => c.ownerCivIndex).ThenBy(c => c.ownerCityListIndex))
+        foreach (var cityData in snapshot.cities.OrderBy(c => c.ownerCivIndex).ThenBy(c => c.ownerCityListIndex))
         {
             if (cityData == null) continue;
             if (!cityLookup.TryGetValue((cityData.planetIndex, cityData.centerTileIndex), out var city) || city == null)
@@ -3093,9 +3112,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void RestoreCivilizationProgressFromSaveData(PauseMenuManager.GameSaveData saveData)
+    private void RestoreCivilizationProgressFromSnapshot(PauseMenuManager.WorldSnapshotData snapshot)
     {
-        if (saveData?.civilizationProgress == null || saveData.civilizationProgress.Count == 0) return;
+        if (snapshot?.civilizationProgress == null || snapshot.civilizationProgress.Count == 0) return;
 
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs == null) return;
@@ -3106,7 +3125,7 @@ public class GameManager : MonoBehaviour
         var pantheonLookup = BuildAssetLookup(Resources.LoadAll<PantheonData>(""), p => p.pantheonName);
         var beliefLookup = BuildAssetLookup(Resources.LoadAll<BeliefData>(""), b => b.beliefName);
 
-        foreach (var progress in saveData.civilizationProgress)
+        foreach (var progress in snapshot.civilizationProgress)
         {
             if (progress == null) continue;
             if (progress.civIndex < 0 || progress.civIndex >= allCivs.Count) continue;
@@ -3364,7 +3383,7 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Restore all combat and worker units from serialized save data.
     /// </summary>
-    private void RestoreUnitsFromSaveData(PauseMenuManager.GameSaveData saveData)
+    private void RestoreUnitsFromSnapshot(PauseMenuManager.WorldSnapshotData snapshot)
     {
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs == null) return;
@@ -3385,9 +3404,9 @@ public class GameManager : MonoBehaviour
         }
 
         // Restore combat units
-        if (saveData.combatUnits != null)
+        if (snapshot.combatUnits != null)
         {
-            foreach (var usd in saveData.combatUnits)
+            foreach (var usd in snapshot.combatUnits)
             {
                 if (usd == null) continue;
                 if (!combatUnitDataLookup.TryGetValue(usd.unitDataName, out var unitData))
@@ -3438,9 +3457,9 @@ public class GameManager : MonoBehaviour
         }
 
         // Restore worker units
-        if (saveData.workerUnits != null)
+        if (snapshot.workerUnits != null)
         {
-            foreach (var wsd in saveData.workerUnits)
+            foreach (var wsd in snapshot.workerUnits)
             {
                 if (wsd == null) continue;
                 if (!workerUnitDataLookup.TryGetValue(wsd.unitDataName, out var workerData))
@@ -3481,6 +3500,7 @@ public class GameManager : MonoBehaviour
                 worker.planetIndex = wsd.planetIndex;
                 worker.RestoreState(wsd.currentHealth, wsd.currentWorkPoints, wsd.currentMovePoints,
                                     (TileLayer)wsd.currentLayer);
+                worker.RestoreProgression(wsd.experience, wsd.level);
 
                 if (!civ.workerUnits.Contains(worker))
                     civ.workerUnits.Add(worker);
@@ -3489,7 +3509,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"[SaveLoad] Restored {saveData.combatUnits?.Count ?? 0} combat units and {saveData.workerUnits?.Count ?? 0} worker units.");
+        Debug.Log($"[SaveLoad] Restored {snapshot.combatUnits?.Count ?? 0} combat units and {snapshot.workerUnits?.Count ?? 0} worker units.");
     }
 
     // --- Global UI Audio System ---

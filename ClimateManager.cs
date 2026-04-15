@@ -619,11 +619,17 @@ public class ClimateManager : MonoBehaviour
                 if (!sheltered)
                 {
                     // Sum weather damage reduction from all equipped items (capped at 100%).
-                    float reduction = 0f;
+                    float equipReduction = 0f;
                     foreach (var eq in new[] { unit.equippedWeapon, unit.equippedShield, unit.equippedArmor, unit.equippedMiscellaneous })
-                        if (eq != null && eq.reducesWeatherDamage) reduction += eq.weatherDamageReduction;
-                    reduction = Mathf.Clamp01(reduction);
-                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - reduction));
+                        if (eq != null && eq.reducesWeatherDamage) equipReduction += eq.weatherDamageReduction;
+                    equipReduction = Mathf.Clamp01(equipReduction);
+
+                    // Civilization / belief / building attrition reductions (added bonuses)
+                    float civReduction = 0f;
+                    try { civReduction = unit.owner != null ? unit.owner.GetAttritionModifierTotals(null, null).winterDamageReductionPct : 0f; } catch { civReduction = 0f; }
+
+                    float totalReduction = Mathf.Clamp01(equipReduction + civReduction);
+                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - totalReduction));
                     if (damage > 0) unit.ApplyDamage(damage);
                 }
             }
@@ -655,11 +661,16 @@ public class ClimateManager : MonoBehaviour
                 if (!sheltered)
                 {
                     // Sum weather damage reduction from all equipped items (capped at 100%).
-                    float reduction = 0f;
+                    float equipReductionW = 0f;
                     foreach (var eq in new[] { worker.equippedWeapon, worker.equippedShield, worker.equippedArmor, worker.equippedMiscellaneous })
-                        if (eq != null && eq.reducesWeatherDamage) reduction += eq.weatherDamageReduction;
-                    reduction = Mathf.Clamp01(reduction);
-                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - reduction));
+                        if (eq != null && eq.reducesWeatherDamage) equipReductionW += eq.weatherDamageReduction;
+                    equipReductionW = Mathf.Clamp01(equipReductionW);
+
+                    float civReductionW = 0f;
+                    try { civReductionW = worker.owner != null ? worker.owner.GetAttritionModifierTotals(null, null).winterDamageReductionPct : 0f; } catch { civReductionW = 0f; }
+
+                    float totalReductionW = Mathf.Clamp01(equipReductionW + civReductionW);
+                    int damage = Mathf.CeilToInt(winterAttritionDamage * (1f - totalReductionW));
                     if (damage > 0) worker.ApplyDamage(damage);
                 }
             }

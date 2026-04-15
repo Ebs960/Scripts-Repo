@@ -65,6 +65,10 @@ public class EquipmentData : ScriptableObject
     [Tooltip("Additional flat defense bonus against specific unit types (additive, can be fractional)")]
     public UnitTypeFloat[] defenseBonusAgainst;
 
+    [Header("Targeted Combat Modifiers")]
+    [Tooltip("Additional combat modifiers that only apply against matching enemy units or categories.")]
+    public CombatTargetedModifier[] combatModifiersAgainst;
+
     [Header("Work / Tool Bonuses")]
     [Tooltip("If this equipment is a tool, grants additional work points to worker units (can be fractional)")]
     public float workPointsBonus;

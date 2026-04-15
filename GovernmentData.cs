@@ -41,6 +41,11 @@ public class GovernmentData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this government while active.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+
+    [Header("Herd Modifiers")]
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
 
     // REMOVED: Unlocked Content arrays
     // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes

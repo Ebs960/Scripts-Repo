@@ -1479,15 +1479,17 @@ public class CivilizationManager : MonoBehaviour
         float bestScore = float.MinValue;
 
         if (availablePantheons == null) return;
+        var allBeliefs = Resources.LoadAll<BeliefData>("");
+        if (allBeliefs == null || allBeliefs.Length == 0) return;
 
         foreach (var pantheon in availablePantheons)
         {
             if (pantheon == null || civ.faith < pantheon.faithCost) continue;
-            if (pantheon.possibleFounderBeliefs == null || pantheon.possibleFounderBeliefs.Length == 0) continue;
 
-            foreach (var belief in pantheon.possibleFounderBeliefs)
+            foreach (var belief in allBeliefs)
             {
                 if (belief == null) continue;
+                if (!civ.CanUseBeliefForPantheon(pantheon, belief)) continue;
                 if (civ.HasActiveBeliefInCategory(belief.category)) continue;
 
                 float score = ScorePantheonAndBelief(civ, pantheon, belief);
@@ -1560,6 +1562,7 @@ public class CivilizationManager : MonoBehaviour
             foreach (var belief in allBeliefs)
             {
                 if (belief == null || belief.category != category) continue;
+                if (!civ.CanUseBelief(belief)) continue;
                 float score = ScoreBeliefForCivilization(civ, belief);
                 if (score > bestScore)
                 {

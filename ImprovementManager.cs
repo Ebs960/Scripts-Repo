@@ -525,49 +525,58 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Apply work points from a worker to the job on its tile.
     /// </summary>
-    public void AddWork(int tileIndex, int workPoints, int planetIndex = -1)
+    public int AddWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
         var job = FindBuildJob(tileIndex, planetIndex);
-        if (job == null) return;
+        if (job == null) return 0;
 
-        job.remainingWork -= workPoints;
+        int applied = Mathf.Max(0, Mathf.Min(workPoints, job.remainingWork));
+        job.remainingWork -= applied;
         job.Clamp();
 
         if (job.remainingWork <= 0)
             CompleteJob(job);
+
+        return applied;
     }
 
     /// <summary>
     /// Apply work points to a unit job on this tile.
     /// </summary>
-    public void AddUnitWork(int tileIndex, int workPoints, int planetIndex = -1)
+    public int AddUnitWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
         var job = FindUnitJob(tileIndex, planetIndex);
-        if (job == null) return;
+        if (job == null) return 0;
 
-        job.remainingWork -= workPoints;
+        int applied = Mathf.Max(0, Mathf.Min(workPoints, job.remainingWork));
+        job.remainingWork -= applied;
         job.Clamp();
 
         if (job.remainingWork <= 0)
             CompleteUnitJob(job);
+
+        return applied;
     }
 
     /// <summary>
     /// Apply work points to a worker unit job on this tile.
     /// </summary>
-    public void AddWorkerWork(int tileIndex, int workPoints, int planetIndex = -1)
+    public int AddWorkerWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
         var job = FindWorkerJob(tileIndex, planetIndex);
-        if (job == null) return;
+        if (job == null) return 0;
 
-        job.remainingWork -= workPoints;
+        int applied = Mathf.Max(0, Mathf.Min(workPoints, job.remainingWork));
+        job.remainingWork -= applied;
         job.Clamp();
 
         if (job.remainingWork <= 0)
             CompleteWorkerJob(job);
+
+        return applied;
     }
 
     /// <summary>
@@ -847,6 +856,8 @@ public class ImprovementManager : MonoBehaviour
         unit.currentLayer = occLayer;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
+        var combatProgression = job.owner != null ? job.owner.GetNewCombatUnitProgressionBonuses(unit, null) : default;
+        unit.ApplyStartingProgression(combatProgression.experienceAdd, combatProgression.levelsAdd);
         // Register this unit in the global registry, then claim occupancy
         try { unit.RegisterToRegistry(); } catch { }
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
@@ -893,6 +904,8 @@ public class ImprovementManager : MonoBehaviour
         unit.currentLayer = occLayerW;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
+        var workerProgression = job.owner != null ? job.owner.GetNewWorkerUnitProgressionBonuses(unit, null) : default;
+        unit.ApplyStartingProgression(workerProgression.experienceAdd, workerProgression.levelsAdd);
         try { unit.RegisterToRegistry(); } catch { }
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 

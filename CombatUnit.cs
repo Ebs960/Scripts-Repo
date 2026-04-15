@@ -366,36 +366,222 @@ public class CombatUnit : BaseUnit
     private struct UnitAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
     private struct EquipAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
 
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private bool MatchesTerritoryRequirement(HexTileData tile, Civilization civ, UnitTerritoryRequirement requirement)
+    {
+        if (requirement == UnitTerritoryRequirement.Any)
+            return true;
+        if (tile == null || civ == null)
+            return false;
+
+        var tileOwner = tile.owner;
+        switch (requirement)
+        {
+            case UnitTerritoryRequirement.Owned:
+                return tileOwner == civ;
+            case UnitTerritoryRequirement.Unowned:
+                return tileOwner == null;
+            case UnitTerritoryRequirement.Enemy:
+                return tileOwner != null && tileOwner != civ && DiplomacyManager.Instance != null
+                    ? DiplomacyManager.Instance.GetRelationship(civ, tileOwner) == DiplomaticState.War
+                    : tileOwner != null && tileOwner != civ && civ.relations.TryGetValue(tileOwner, out var enemyState) && enemyState == DiplomaticState.War;
+            case UnitTerritoryRequirement.Friendly:
+                if (tileOwner == null || tileOwner == civ) return false;
+                if (DiplomacyManager.Instance != null)
+                    return DiplomacyManager.Instance.GetRelationship(civ, tileOwner) != DiplomaticState.War;
+                return !civ.relations.TryGetValue(tileOwner, out var friendlyState) || friendlyState != DiplomaticState.War;
+            default:
+                return true;
+        }
+    }
+
+    private bool MatchesUnitBonusLocation(Civilization civ, UnitStatBonus bonus)
+    {
+        if (bonus == null)
+            return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
+        bool isCityTile = tile?.controllingCity != null;
+
+        if (!MatchesRequirement(bonus.cityRequirement, isCityTile))
+            return false;
+        if (bonus.useBiomeFilter && (tile == null || tile.biome != bonus.biome))
+            return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile != null && tile.isHill))
+            return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain))
+            return false;
+        if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource))
+            return false;
+        if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement))
+            return false;
+        if (!civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+            return false;
+
+        return true;
+    }
+
+    private City GetCurrentCityContext()
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
+        return tile?.controllingCity;
+    }
+
     private UnitAgg AggregateUnitBonusesLocal(Civilization civ, CombatUnitData u)
     {
         UnitAgg a = new UnitAgg(); if (civ == null || u == null) return a;
+
+        void Accumulate(UnitStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+            {
+                if (b == null || !Civilization.MatchesCombatUnitBonusTarget(u, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
+                    continue;
+                if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
+                    continue;
+
+                a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                a.rangeAdd += b.rangeAdd;
+                a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                a.rangePct += b.rangePct;
+            }
+        }
+
+        Accumulate(civ.civData?.unitBonuses);
+
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
-            {
-                if (t?.unitBonuses == null) continue;
-                foreach (var b in t.unitBonuses)
-                    if (b != null && b.unit == u)
-                    {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.rangeAdd += b.rangeAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.rangePct += b.rangePct;
-                    }
-            }
+                Accumulate(t?.unitBonuses);
+
         if (civ.researchedCultures != null)
             foreach (var c in civ.researchedCultures)
-            {
-                if (c?.unitBonuses == null) continue;
-                foreach (var b in c.unitBonuses)
-                    if (b != null && b.unit == u)
-                    {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.rangeAdd += b.rangeAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.rangePct += b.rangePct;
-                    }
-            }
+                Accumulate(c?.unitBonuses);
+
+        Accumulate(civ.currentGovernment?.unitBonuses);
+
+        if (civ.activePolicies != null)
+            foreach (var policy in civ.activePolicies)
+                Accumulate(policy?.unitBonuses);
+
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.unitBonuses);
+
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+            if (civ.IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.unitBonuses);
+
+        var cityContext = GetCurrentCityContext();
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.unitBonuses);
+        }
+
         return a;
+    }
+
+    private UnitAgg AggregateTargetedCombatBonuses(Civilization civ, CombatUnitData actualUnit, BaseUnit opponent)
+    {
+        UnitAgg a = new UnitAgg(); if (civ == null || actualUnit == null || opponent == null) return a;
+
+        void Accumulate(UnitStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+            {
+                if (b == null || !Civilization.MatchesCombatUnitBonusTarget(actualUnit, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
+                    continue;
+                if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                    continue;
+
+                a.attackAdd += b.attackAdd;
+                a.defenseAdd += b.defenseAdd;
+                a.attackPct += b.attackPct;
+                a.defensePct += b.defensePct;
+            }
+        }
+
+        Accumulate(civ.civData?.unitBonuses);
+
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+                Accumulate(t?.unitBonuses);
+
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+                Accumulate(c?.unitBonuses);
+
+        Accumulate(civ.currentGovernment?.unitBonuses);
+
+        if (civ.activePolicies != null)
+            foreach (var policy in civ.activePolicies)
+                Accumulate(policy?.unitBonuses);
+
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.unitBonuses);
+
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+            if (civ.IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.unitBonuses);
+
+        var cityContext = GetCurrentCityContext();
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.unitBonuses);
+        }
+
+        return a;
+    }
+
+    public override int GetSituationalAttackAddAgainst(BaseUnit target)
+    {
+        if (owner == null || data == null || target == null) return 0;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        return Mathf.RoundToInt(total);
+    }
+
+    public override float GetSituationalAttackPctAgainst(BaseUnit target)
+    {
+        if (owner == null || data == null || target == null) return 0f;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        return unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+    }
+
+    public override int GetSituationalDefenseAddAgainst(BaseUnit attacker)
+    {
+        if (owner == null || data == null || attacker == null) return 0;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, attacker);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, attacker);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(attacker);
+        float total = unitBonuses.defenseAdd + equipmentBonuses.defenseAdd + directEquipmentBonuses.defenseAdd + GetTargetedAbilityDefenseModifierAgainst(attacker);
+        return Mathf.RoundToInt(total);
+    }
+
+    public override float GetSituationalDefensePctAgainst(BaseUnit attacker)
+    {
+        if (owner == null || data == null || attacker == null) return 0f;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, attacker);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, attacker);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(attacker);
+        return unitBonuses.defensePct + equipmentBonuses.defensePct + directEquipmentBonuses.defensePct;
     }
 
     private EquipAgg AggregateEquipBonusesLocal(Civilization civ, EquipmentData eq)
@@ -408,9 +594,14 @@ public class CombatUnit : BaseUnit
                 foreach (var b in t.equipmentBonuses)
                     if (b != null && b.equipment == eq)
                     {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
+                        {
+                            a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                        }
+                        a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.healthPct += b.healthPct;
                         a.rangePct += b.rangePct;
                     }
             }
@@ -421,10 +612,47 @@ public class CombatUnit : BaseUnit
                 foreach (var b in c.equipmentBonuses)
                     if (b != null && b.equipment == eq)
                     {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
+                        {
+                            a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                        }
+                        a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.healthPct += b.healthPct;
                         a.rangePct += b.rangePct;
+                    }
+            }
+        return a;
+    }
+
+    private EquipAgg AggregateTargetedEquipBonuses(Civilization civ, EquipmentData eq, BaseUnit opponent)
+    {
+        EquipAgg a = new EquipAgg(); if (civ == null || eq == null || opponent == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.equipmentBonuses == null) continue;
+                foreach (var b in t.equipmentBonuses)
+                    if (b != null && b.equipment == eq
+                        && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
+                        && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.equipmentBonuses == null) continue;
+                foreach (var b in c.equipmentBonuses)
+                    if (b != null && b.equipment == eq
+                        && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
+                        && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct;
                     }
             }
         return a;
@@ -444,6 +672,21 @@ public class CombatUnit : BaseUnit
             total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
             total.attackPct += e.attackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
             total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
+        }
+        return total;
+    }
+
+    private EquipAgg AggregateAllEquippedTargetedBonusesLocal(Civilization civ, BaseUnit opponent)
+    {
+        EquipAgg total = new EquipAgg();
+        if (civ == null || opponent == null) return total;
+        EquipmentData[] items = { equippedWeapon, equippedProjectileWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
+        foreach (var it in items)
+        {
+            if (it == null) continue;
+            var e = AggregateTargetedEquipBonuses(civ, it, opponent);
+            total.attackAdd += e.attackAdd; total.defenseAdd += e.defenseAdd;
+            total.attackPct += e.attackPct; total.defensePct += e.defensePct;
         }
         return total;
     }
@@ -756,10 +999,12 @@ public class CombatUnit : BaseUnit
         }
 
         // Damage calculation using floats and per-target equipment modifiers
-        float dmgMul = GetAbilityDamageMultiplier();
+        float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target);
 
-        float attackerValue = GetBaseAttackFloat() + GetEquipmentAttackBonusAgainst(target.data.unitType);
-        float defenderValue = target.GetBaseDefenseFloat() + target.GetEquipmentDefenseBonusAgainst(this.data.unitType);
+        float attackerValue = GetBaseAttackFloat();
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
+        float defenderValue = target.GetBaseDefenseFloat();
+        defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
 
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
 
@@ -855,7 +1100,9 @@ public class CombatUnit : BaseUnit
         int combatBonus = 2;
         
         float attackerValue = GetBaseAttackFloat() + combatBonus;
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
         float defenderValue = target.CurrentDefense;
+        defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
         
         float rawDamage = Mathf.Max(0f, attackerValue - defenderValue);
 
@@ -872,7 +1119,7 @@ public class CombatUnit : BaseUnit
         }
         catch { }
 
-        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier() * chargeMulW);
+        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target) * chargeMulW);
 
         finalDamage = ApplySharedMeleeCombatModifiers(finalDamage, target);
 
@@ -982,10 +1229,12 @@ public class CombatUnit : BaseUnit
                 tileBonus += 2;
         }
 
-        float dmgMul = GetAbilityDamageMultiplier();
+        float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(attacker);
 
-        float attackerValue = GetBaseAttackFloat() + GetEquipmentAttackBonusAgainst(attacker.data.unitType);
-        float defenderValue = attacker.GetBaseDefenseFloat() + attacker.GetEquipmentDefenseBonusAgainst(this.data.unitType);
+        float attackerValue = GetBaseAttackFloat();
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker)) * (1f + GetSituationalAttackPctAgainst(attacker));
+        float defenderValue = attacker.GetBaseDefenseFloat();
+        defenderValue = (defenderValue + attacker.GetSituationalDefenseAddAgainst(this)) * (1f + attacker.GetSituationalDefensePctAgainst(this));
 
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
         int damage = Mathf.RoundToInt(rawF * dmgMul);
@@ -1009,47 +1258,10 @@ public class CombatUnit : BaseUnit
         return GetCurrentDefenseValueFloat();
     }
 
-    private float GetEquipmentAttackBonusAgainst(CombatCategory targetType)
-    {
-        float add = 0f;
-        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
-        foreach (var it in items)
-        {
-            if (it == null) continue;
-            if (it.attackBonusAgainst != null)
-            {
-                foreach (var entry in it.attackBonusAgainst)
-                {
-                    if (entry.unitType == targetType) add += entry.value;
-                }
-            }
-        }
-        return add;
-    }
-
-    private float GetEquipmentDefenseBonusAgainst(CombatCategory attackerType)
-    {
-        float add = 0f;
-        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
-        foreach (var it in items)
-        {
-            if (it == null) continue;
-            if (it.defenseBonusAgainst != null)
-            {
-                foreach (var entry in it.defenseBonusAgainst)
-                {
-                    if (entry.unitType == attackerType) add += entry.value;
-                }
-            }
-        }
-        return add;
-    }
-
-
     public void GainExperience(int xp)
     {
         experience += xp;
-        if (level < data.xpToNextLevel.Length && experience >= data.xpToNextLevel[level - 1])
+        while (data != null && level <= data.xpToNextLevel.Length && experience >= data.xpToNextLevel[level - 1])
             LevelUp();
     }
 
@@ -1060,6 +1272,20 @@ public class CombatUnit : BaseUnit
     public void RegisterKillFromProjectile(int damage)
     {
         GainExperience(damage);
+    }
+
+    public void ApplyStartingProgression(int startingExperience, int startingLevels)
+    {
+        if (startingLevels > 0)
+        {
+            for (int i = 0; i < startingLevels; i++)
+                LevelUp();
+        }
+
+        if (startingExperience > 0)
+            GainExperience(startingExperience);
+
+        currentHealth = MaxHealth;
     }
 
     private void LevelUp()

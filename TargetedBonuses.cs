@@ -26,9 +26,43 @@ public enum UnitTerritoryRequirement
 }
 
 [System.Serializable]
+public struct CombatTargetedModifier
+{
+    [Tooltip("If set, this modifier only applies against this specific enemy combat unit.")]
+    public CombatUnitData targetUnit;
+    [Tooltip("If set, this modifier only applies against this specific enemy worker unit.")]
+    public WorkerUnitData targetWorker;
+    [Tooltip("If enabled, this modifier only applies against enemy combat units in the selected category.")]
+    public bool useTargetUnitCategoryFilter;
+    public CombatCategory targetUnitCategory;
+
+    [Header("Additive (flat)")]
+    public float attackAdd;
+    public float defenseAdd;
+
+    [Header("Multiplicative (%)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float attackPct;
+    public float defensePct;
+}
+
+[System.Serializable]
 public class UnitStatBonus
 {
+    [Header("Unit Filters")]
     public CombatUnitData unit;
+    [Tooltip("If enabled, this bonus only applies to combat units in the selected category.")]
+    public bool useUnitCategoryFilter = false;
+    public CombatCategory unitCategory;
+
+    [Header("Combat Target Filters")]
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy combat unit.")]
+    public CombatUnitData targetUnit;
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy worker unit.")]
+    public WorkerUnitData targetWorker;
+    [Tooltip("If enabled, attack/defense portions of this bonus only apply against enemy combat units in the selected category.")]
+    public bool useTargetUnitCategoryFilter = false;
+    public CombatCategory targetUnitCategory;
 
     [Header("Location Filters")]
     [Tooltip("Whether the unit must be standing in a city tile.")]
@@ -42,6 +76,11 @@ public class UnitStatBonus
     public ResourceData resource;
     [Tooltip("Require a territory relationship for the tile the unit is standing on.")]
     public UnitTerritoryRequirement territoryRequirement = UnitTerritoryRequirement.Any;
+
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
 
     [Header("Additive (flat)")]
     public int attackAdd;
@@ -58,13 +97,27 @@ public class UnitStatBonus
     [Header("Healing")]
     [Tooltip("Percent faster healing/reinforcement rate for this unit (0.10 = +10% faster).")]
     public float healingRatePct = 0f;
+    [Header("New Unit Progression")]
+    [Tooltip("Bonus experience granted to newly built matching combat units.")]
+    public int startingExperienceAdd = 0;
+    [Tooltip("Bonus levels granted to newly built matching combat units.")]
+    public int startingLevelsAdd = 0;
 }
 
 [System.Serializable]
 public class UnitYieldBonus
 {
+    [Header("Unit Filters")]
     [Tooltip("Target combat unit archetype whose per-turn yields will be modified")] 
     public CombatUnitData unit;
+    [Tooltip("If enabled, this bonus only applies to combat units in the selected category.")]
+    public bool useUnitCategoryFilter = false;
+    public CombatCategory unitCategory;
+
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
 
     [Header("Yield Add (flat per unit per turn)")]
     public int foodAdd;
@@ -91,6 +144,15 @@ public class WorkerUnitStatBonus
 {
     public WorkerUnitData worker;
 
+    [Header("Combat Target Filters")]
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy combat unit.")]
+    public CombatUnitData targetUnit;
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy worker unit.")]
+    public WorkerUnitData targetWorker;
+    [Tooltip("If enabled, attack/defense portions of this bonus only apply against enemy combat units in the selected category.")]
+    public bool useTargetUnitCategoryFilter = false;
+    public CombatCategory targetUnitCategory;
+
     [Header("Location Filters")]
     [Tooltip("Whether the worker must be standing in a city tile.")]
     public BoolRequirement cityRequirement;
@@ -104,25 +166,46 @@ public class WorkerUnitStatBonus
     [Tooltip("Require a territory relationship for the tile the worker is standing on.")]
     public UnitTerritoryRequirement territoryRequirement = UnitTerritoryRequirement.Any;
 
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
     [Header("Additive (flat)")]
+    public int attackAdd;
+    public int defenseAdd;
     public int workPointsAdd;
     public int movePointsAdd;
     public int healthAdd;
+    public int rangeAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float attackPct;
+    public float defensePct;
     public float workPointsPct;
     public float movePointsPct;
     public float healthPct;
+    public float rangePct;
     [Header("Healing")]
     [Tooltip("Percent faster healing/reinforcement rate for this worker (0.10 = +10% faster).")]
     public float healingRatePct = 0f;
+    [Header("New Unit Progression")]
+    [Tooltip("Bonus experience granted to newly built matching worker units.")]
+    public int startingExperienceAdd = 0;
+    [Tooltip("Bonus levels granted to newly built matching worker units.")]
+    public int startingLevelsAdd = 0;
 }
 
 [System.Serializable]
 public class WorkerUnitYieldBonus
 {
     public WorkerUnitData worker;
+
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
 
     [Header("Yield Add (flat per unit per turn)")]
     public int foodAdd;
@@ -146,6 +229,15 @@ public class WorkerUnitYieldBonus
 public class EquipmentStatBonus
 {
     public EquipmentData equipment;
+
+    [Header("Combat Target Filters")]
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy combat unit.")]
+    public CombatUnitData targetUnit;
+    [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy worker unit.")]
+    public WorkerUnitData targetWorker;
+    [Tooltip("If enabled, attack/defense portions of this bonus only apply against enemy combat units in the selected category.")]
+    public bool useTargetUnitCategoryFilter = false;
+    public CombatCategory targetUnitCategory;
 
     [Header("Additive (flat)")]
     public int attackAdd;
@@ -215,6 +307,11 @@ public class BuildingYieldBonus
 {
     public BuildingData building;
 
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
     [Header("Yield Add (flat per turn)")]
     public int foodAdd;
     public int productionAdd;
@@ -276,6 +373,11 @@ public class CityYieldBonus
 {
     public CityYieldScope scope = CityYieldScope.AllCities;
 
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
     [Header("Yield Add (flat per city per turn)")]
     public int foodAdd;
     public int productionAdd;
@@ -303,6 +405,11 @@ public class DiseaseModifierBonus
     public DiseaseData disease;
     [Tooltip("If true, this modifier applies to all diseases.")]
     public bool affectsAllDiseases;
+
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
 
     [Header("Immunity")]
     [Tooltip("If true, the owning civilization/city/herd is immune to the matching disease.")]
@@ -355,6 +462,30 @@ public struct DiseaseModifierTotals
     public float CityLoyaltyPenaltyMultiplier => Mathf.Max(0f, 1f + cityLoyaltyPenaltyPct);
     public float HerdMortalityMultiplier => Mathf.Max(0f, 1f + herdMortalityPct);
     public float HerdForagePenaltyMultiplier => Mathf.Max(0f, 1f + herdForagePenaltyPct);
+}
+
+[System.Serializable]
+public class AttritionModifierBonus
+{
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
+    [Header("Attrition Reductions")]
+    [Tooltip("Percent reduction to winter attrition damage. 0.10 = 10% reduction.")]
+    public float winterDamageReductionPct;
+    [Tooltip("Percent reduction to famine attrition damage. 0.10 = 10% reduction.")]
+    public float famineDamageReductionPct;
+}
+
+public struct AttritionModifierTotals
+{
+    public float winterDamageReductionPct;
+    public float famineDamageReductionPct;
+
+    public float WinterDamageMultiplier => Mathf.Max(0f, 1f - winterDamageReductionPct);
+    public float FamineDamageMultiplier => Mathf.Max(0f, 1f - famineDamageReductionPct);
 }
 
 [System.Serializable]

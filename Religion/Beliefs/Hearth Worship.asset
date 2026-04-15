@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
   m_Name: Hearth Worship
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: 
-  description: 
-  icon: {fileID: 0}
+  beliefName: Hearth Worship
+  description: Capital gains +7% food
+  icon: {fileID: 21300000, guid: fbf4d8c164eba0b41bb7d06c831b140d, type: 3}
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -35,4 +35,24 @@ MonoBehaviour:
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses: []
-  cityYieldBonuses: []
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  cityYieldBonuses:
+  - scope: 1
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0.07
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0

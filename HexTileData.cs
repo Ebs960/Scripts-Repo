@@ -255,7 +255,7 @@ public class HexTileData
 
         foreach (var belief in civ.EnumerateActiveBeliefs())
         {
-            if (belief?.tileYieldBonuses == null) continue;
+            if (belief?.tileYieldBonuses == null || !Civilization.IsBeliefSeasonActive(belief, tile.season)) continue;
             foreach (var b in belief.tileYieldBonuses)
             {
                 if (!MatchesTileYieldBonus(tile, b)) continue;

@@ -40,6 +40,11 @@ public class PolicyData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this policy.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+
+    [Header("Herd Modifiers")]
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;

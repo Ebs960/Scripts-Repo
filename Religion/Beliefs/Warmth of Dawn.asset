@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
-  m_Name: Balance with Nature
+  m_Name: Warmth of Dawn
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: Balance with Nature
-  description: Provides +1 Food to tiles with a Forest
-  icon: {fileID: 21300000, guid: 20be8c8281000d04ea125cb558e72233, type: 3}
+  beliefName: Warmth of Dawn
+  description: +1 Food to temperate tiles in the Spring and Summer
+  icon: {fileID: 21300000, guid: 2ba6c69f840748a47b556cd401e9beb3, type: 3}
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -31,18 +31,23 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   category: 0
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
+  - {fileID: 11400000, guid: 82795ae18808b8a449fc0d0129028aed, type: 2}
+  useSeasonFilter: 0
+  seasons: 
   unitYieldBonuses: []
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses:
-  - useBiomeFilter: 0
-    biome: 0
+  - useBiomeFilter: 1
+    biome: 5
     hillRequirement: 0
     mountainRequirement: 0
-    useSeasonFilter: 0
-    seasons: 
-    useResourceFilter: 1
-    resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
+    useSeasonFilter: 1
+    seasons: 0000000001000000
+    useResourceFilter: 0
+    resource: {fileID: 0}
     foodAdd: 1
     productionAdd: 0
     goldAdd: 0

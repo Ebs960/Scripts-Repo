@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
+  m_Name: Stoneskin Blessing
+  m_EditorClassIdentifier: Assembly-CSharp::BeliefData
+  beliefName: Stoneskin Blessing
+  description: +1 Defense in friendly territory
+  icon: {fileID: 21300000, guid: 5de3fd7926ab579429026c223434c4c8, type: 3}
+  extraFaithInHolySite: 0
+  extraFoodInHolySite: 0
+  extraProductionInHolySite: 0
+  goldPerCity: 0
+  culturePerCity: 0
+  happinessBonus: 0
+  combatStrengthNearHolySite: 0
+  growthRateModifier: 0
+  productionRateModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  category: 0
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: 646758db0e9301c4f89f721adb5747f1, type: 2}
+  - {fileID: 11400000, guid: 596d9e32f08af9e43af44b23325c3d81, type: 2}
+  useSeasonFilter: 0
+  seasons: 
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  buildingYieldBonuses: []
+  tileYieldBonuses: []
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 0
+    unitCategory: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 2
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    defenseAdd: 1
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  workerBonuses:
+  - worker: {fileID: 0}
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 2
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    defenseAdd: 1
+    workPointsAdd: 0
+    movePointsAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0
+    defensePct: 0
+    workPointsPct: 0
+    movePointsPct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  cityYieldBonuses: []

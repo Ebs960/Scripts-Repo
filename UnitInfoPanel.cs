@@ -558,18 +558,26 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         if (workPointsText != null) workPointsText.gameObject.SetActive(true);
 
-        if (levelText != null) levelText.gameObject.SetActive(false);
-        if (experienceText != null) experienceText.gameObject.SetActive(false);
+        if (levelText != null) levelText.gameObject.SetActive(true);
+        if (experienceText != null) experienceText.gameObject.SetActive(true);
         if (rangeText != null) rangeText.gameObject.SetActive(false);
 
 
         unitNameText.text = currentWorkerUnit.data.unitName;
         unitTypeText.text = "Worker Unit";
         
-        healthText.text = $"Health: {currentWorkerUnit.currentHealth}/{currentWorkerUnit.data.baseHealth}";
+        healthText.text = $"Health: {currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
         movePointsText.text = $"Move Points: {currentWorkerUnit.currentMovePoints}";
         attackText.text = $"Attack: {currentWorkerUnit.CurrentAttack}";
         defenseText.text = $"Defense: {currentWorkerUnit.CurrentDefense}";
+        if (levelText != null) levelText.text = $"Level: {currentWorkerUnit.level}";
+        if (experienceText != null)
+        {
+            int nextXp = currentWorkerUnit.ExperienceToNextLevel;
+            experienceText.text = nextXp == int.MaxValue
+                ? $"XP: {currentWorkerUnit.experience}"
+                : $"XP: {currentWorkerUnit.experience}/{nextXp}";
+        }
         if (attackPointsText != null)
         {
             attackPointsText.gameObject.SetActive(true);
@@ -578,7 +586,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         if (workPointsText != null)
         {
-            workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
+            workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.MaxWorkPoints}";
         }
         LogWorkerBuildDebug(currentWorkerUnit);
         PopulateWorkerBuildUnits(currentWorkerUnit);

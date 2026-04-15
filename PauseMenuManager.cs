@@ -80,6 +80,7 @@ public class PauseMenuManager : MonoBehaviour
         public Vector3 cameraRotation;
     public bool gameInProgress;
     public bool isAutosave; // Mark if this is an autosave
+    public WorldSnapshotData worldSnapshot;
     // Persisted manager/job state
     public List<ImprovementManager.JobAssignmentSaveData> jobAssignments;
 
@@ -97,6 +98,29 @@ public class PauseMenuManager : MonoBehaviour
         {
             dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             isAutosave = false;
+        }
+    }
+
+    [Serializable]
+    public class WorldSnapshotData
+    {
+        public List<ImprovementManager.JobAssignmentSaveData> jobAssignments = new List<ImprovementManager.JobAssignmentSaveData>();
+        public List<CombatUnitSaveData> combatUnits = new List<CombatUnitSaveData>();
+        public List<WorkerUnitSaveData> workerUnits = new List<WorkerUnitSaveData>();
+        public List<CivilizationProgressSaveData> civilizationProgress = new List<CivilizationProgressSaveData>();
+        public List<CitySaveData> cities = new List<CitySaveData>();
+        public List<CrisisManager.MissionStateSaveData> missionStates = new List<CrisisManager.MissionStateSaveData>();
+        public CrisisManager.CrisisSaveData crisisState;
+
+        public bool HasState()
+        {
+            return (jobAssignments != null && jobAssignments.Count > 0)
+                || (combatUnits != null && combatUnits.Count > 0)
+                || (workerUnits != null && workerUnits.Count > 0)
+                || (civilizationProgress != null && civilizationProgress.Count > 0)
+                || (cities != null && cities.Count > 0)
+                || (missionStates != null && missionStates.Count > 0)
+                || crisisState != null;
         }
     }
 
@@ -206,6 +230,8 @@ public class PauseMenuManager : MonoBehaviour
         public int planetIndex;
         public int currentLayer;
         public int currentHealth;
+        public int experience;
+        public int level;
         public int currentWorkPoints;
         public int currentMovePoints;
         public float posX, posY, posZ;

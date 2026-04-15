@@ -51,6 +51,9 @@ public class Civilization : MonoBehaviour
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
     public City CapitalCity => capitalCity;
+    [Header("Attrition Settings")]
+    [Tooltip("Base HP damage applied to units each turn while the civilization is in famine (food <= 0).")]
+    public int famineAttritionDamage = 1;
 
     /// <summary>Register a newly trained combat unit and fire the OnUnitTrained event.</summary>
     public void RegisterTrainedCombatUnit(CombatUnit unit)
@@ -1134,43 +1137,44 @@ public class Civilization : MonoBehaviour
     {
         if (unit == null || unit.data == null) return 0f;
         float total = 0f;
+        int planetIndex = unit.planetIndex;
 
         // Civ identity
         if (civData?.unitBonuses != null)
             foreach (var b in civData.unitBonuses)
-                if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Techs
         if (researchedTechs != null)
             foreach (var t in researchedTechs)
                 if (t?.unitBonuses != null)
-                    foreach (var b in t.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in t.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Cultures
         if (researchedCultures != null)
             foreach (var c in researchedCultures)
                 if (c?.unitBonuses != null)
-                    foreach (var b in c.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in c.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Government
         if (currentGovernment != null && currentGovernment.unitBonuses != null)
-            foreach (var b in currentGovernment.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            foreach (var b in currentGovernment.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Policies
         if (activePolicies != null)
             foreach (var p in activePolicies)
                 if (p?.unitBonuses != null)
-                    foreach (var b in p.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in p.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Pantheons
         foreach (var pb in EnumeratePantheonBonuses())
             if (pb?.unitBonuses != null)
-                foreach (var b in pb.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in pb.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Active beliefs
         foreach (var belief in EnumerateActiveBeliefs())
-            if (belief?.unitBonuses != null)
-                foreach (var b in belief.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
+                foreach (var b in belief.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // City buildings (if context provided)
         if (cityContext != null && cityContext.builtBuildings != null)
@@ -1178,7 +1182,7 @@ public class Civilization : MonoBehaviour
             foreach (var (bd, _) in cityContext.builtBuildings)
             {
                 if (bd == null || bd.unitBonuses == null) continue;
-                foreach (var b in bd.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in bd.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
@@ -1192,36 +1196,37 @@ public class Civilization : MonoBehaviour
     {
         if (worker == null || worker.data == null) return 0f;
         float total = 0f;
+        int planetIndex = worker.planetIndex;
 
         if (civData?.workerBonuses != null)
             foreach (var b in civData.workerBonuses)
-                if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (researchedTechs != null)
             foreach (var t in researchedTechs)
                 if (t?.workerBonuses != null)
-                    foreach (var b in t.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in t.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (researchedCultures != null)
             foreach (var c in researchedCultures)
                 if (c?.workerBonuses != null)
-                    foreach (var b in c.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in c.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (currentGovernment != null && currentGovernment.workerBonuses != null)
-            foreach (var b in currentGovernment.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            foreach (var b in currentGovernment.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (activePolicies != null)
             foreach (var p in activePolicies)
                 if (p?.workerBonuses != null)
-                    foreach (var b in p.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in p.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         foreach (var pb in EnumeratePantheonBonuses())
             if (pb?.workerBonuses != null)
-                foreach (var b in pb.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in pb.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         foreach (var belief in EnumerateActiveBeliefs())
-            if (belief?.workerBonuses != null)
-                foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
+                foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (cityContext != null && cityContext.builtBuildings != null)
         {
@@ -1229,11 +1234,137 @@ public class Civilization : MonoBehaviour
             {
                 if (bd == null) continue;
                 if (bd.workerBonuses != null)
-                    foreach (var b in bd.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in bd.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
         return total;
+    }
+
+    public struct UnitTrainingProgressionBonusTotals
+    {
+        public int experienceAdd;
+        public int levelsAdd;
+    }
+
+    public UnitTrainingProgressionBonusTotals GetNewCombatUnitProgressionBonuses(CombatUnit unit, City cityContext = null)
+    {
+        UnitTrainingProgressionBonusTotals totals = default;
+        if (unit == null || unit.data == null)
+            return totals;
+
+        int planetIndex = unit.planetIndex;
+
+        void Accumulate(UnitStatBonus[] bonuses)
+        {
+            if (bonuses == null)
+                return;
+
+            foreach (var bonus in bonuses)
+            {
+                if (bonus == null)
+                    continue;
+                if (!MatchesCombatUnitBonusTarget(unit.data, bonus.unit, bonus.useUnitCategoryFilter, bonus.unitCategory))
+                    continue;
+                if (!MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+                    continue;
+                if (!MatchesUnitStatBonusLocation(unit, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement))
+                    continue;
+
+                totals.experienceAdd += bonus.startingExperienceAdd;
+                totals.levelsAdd += bonus.startingLevelsAdd;
+            }
+        }
+
+        Accumulate(civData?.unitBonuses);
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                Accumulate(tech?.unitBonuses);
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                Accumulate(culture?.unitBonuses);
+
+        Accumulate(currentGovernment?.unitBonuses);
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                Accumulate(policy?.unitBonuses);
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.unitBonuses);
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief.unitBonuses);
+
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.unitBonuses);
+        }
+
+        return totals;
+    }
+
+    public UnitTrainingProgressionBonusTotals GetNewWorkerUnitProgressionBonuses(WorkerUnit worker, City cityContext = null)
+    {
+        UnitTrainingProgressionBonusTotals totals = default;
+        if (worker == null || worker.data == null)
+            return totals;
+
+        int planetIndex = worker.planetIndex;
+
+        void Accumulate(WorkerUnitStatBonus[] bonuses)
+        {
+            if (bonuses == null)
+                return;
+
+            foreach (var bonus in bonuses)
+            {
+                if (bonus == null || bonus.worker != worker.data)
+                    continue;
+                if (!MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+                    continue;
+                if (!MatchesUnitStatBonusLocation(worker, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement))
+                    continue;
+
+                totals.experienceAdd += bonus.startingExperienceAdd;
+                totals.levelsAdd += bonus.startingLevelsAdd;
+            }
+        }
+
+        Accumulate(civData?.workerBonuses);
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                Accumulate(tech?.workerBonuses);
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                Accumulate(culture?.workerBonuses);
+
+        Accumulate(currentGovernment?.workerBonuses);
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                Accumulate(policy?.workerBonuses);
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.workerBonuses);
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief.workerBonuses);
+
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.workerBonuses);
+        }
+
+        return totals;
     }
 
     private static bool MatchesDiseaseModifier(DiseaseModifierBonus bonus, DiseaseData disease)
@@ -1267,6 +1398,8 @@ public class Civilization : MonoBehaviour
         if (disease == null)
             return totals;
 
+        int planetIndex = cityContext != null ? cityContext.planetIndex : herdContext != null ? herdContext.planetIndex : -1;
+
         void Accumulate(DiseaseModifierBonus[] bonuses)
         {
             if (bonuses == null)
@@ -1274,7 +1407,7 @@ public class Civilization : MonoBehaviour
 
             foreach (var bonus in bonuses)
             {
-                if (MatchesDiseaseModifier(bonus, disease))
+                if (MatchesDiseaseModifier(bonus, disease) && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
                     AccumulateDiseaseModifier(ref totals, bonus);
             }
         }
@@ -1299,7 +1432,8 @@ public class Civilization : MonoBehaviour
             Accumulate(pantheonBonuses?.diseaseBonuses);
 
         foreach (var belief in EnumerateActiveBeliefs())
-            Accumulate(belief?.diseaseBonuses);
+            if (IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.diseaseBonuses);
 
         if (cityContext != null && cityContext.builtBuildings != null)
         {
@@ -1314,6 +1448,101 @@ public class Civilization : MonoBehaviour
         }
 
         return totals;
+    }
+
+    private static void AccumulateAttritionModifier(ref AttritionModifierTotals totals, AttritionModifierBonus bonus)
+    {
+        if (bonus == null) return;
+        totals.winterDamageReductionPct += bonus.winterDamageReductionPct;
+        totals.famineDamageReductionPct += bonus.famineDamageReductionPct;
+    }
+
+    public AttritionModifierTotals GetAttritionModifierTotals(City cityContext = null, Herd herdContext = null)
+    {
+        AttritionModifierTotals totals = default;
+        int planetIndex = cityContext != null ? cityContext.planetIndex : herdContext != null ? herdContext.planetIndex : -1;
+
+        void Accumulate(AttritionModifierBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    AccumulateAttritionModifier(ref totals, b);
+        }
+
+        Accumulate(civData?.attritionBonuses);
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                Accumulate(tech?.attritionBonuses);
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                Accumulate(culture?.attritionBonuses);
+
+        Accumulate(currentGovernment?.attritionBonuses);
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                Accumulate(policy?.attritionBonuses);
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.attritionBonuses);
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.attritionBonuses);
+
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.attritionBonuses);
+        }
+
+        if (herdContext != null && herdContext.builtStructures != null)
+        {
+            foreach (var b in herdContext.builtStructures)
+                Accumulate(b?.attritionBonuses);
+        }
+
+        return totals;
+    }
+
+    public float GetHerdStarvationPercentReduction(Herd herdContext = null)
+    {
+        float total = 0f;
+        int planetIndex = herdContext != null ? herdContext.planetIndex : -1;
+
+        total += civData != null ? civData.herdStarvationPercentReduction : 0f;
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                if (tech != null) total += tech.herdStarvationPercentReduction;
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                if (culture != null) total += culture.herdStarvationPercentReduction;
+
+        if (currentGovernment != null)
+            total += currentGovernment.herdStarvationPercentReduction;
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                if (policy != null) total += policy.herdStarvationPercentReduction;
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            if (pantheonBonuses != null) total += pantheonBonuses.herdStarvationPercentReduction;
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (IsBeliefSeasonActive(belief, planetIndex)) total += belief.herdStarvationPercentReduction;
+
+        if (herdContext != null && herdContext.builtStructures != null)
+        {
+            foreach (var building in herdContext.builtStructures)
+                if (building != null) total += building.herdStarvationPercentReduction;
+        }
+
+        return total;
     }
 
     private void NotifyBeliefsChanged()
@@ -1331,6 +1560,131 @@ public class Civilization : MonoBehaviour
             if (b != null && b.category == category) return true;
         }
         return false;
+    }
+
+    public bool CanUseBelief(BeliefData belief)
+    {
+        if (belief == null)
+            return false;
+
+        if (belief.exclusiveToPantheons == null || belief.exclusiveToPantheons.Length == 0)
+            return true;
+
+        if (foundedPantheons == null || foundedPantheons.Count == 0)
+            return false;
+
+        foreach (var pantheon in foundedPantheons)
+        {
+            if (pantheon == null) continue;
+            for (int i = 0; i < belief.exclusiveToPantheons.Length; i++)
+            {
+                if (belief.exclusiveToPantheons[i] == pantheon)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool CanUseBeliefForPantheon(PantheonData pantheon, BeliefData belief)
+    {
+        if (pantheon == null || belief == null)
+            return false;
+
+        if (belief.exclusiveToPantheons == null || belief.exclusiveToPantheons.Length == 0)
+            return true;
+
+        for (int i = 0; i < belief.exclusiveToPantheons.Length; i++)
+        {
+            if (belief.exclusiveToPantheons[i] == pantheon)
+                return true;
+        }
+
+        return false;
+    }
+
+    public static bool MatchesSeasonFilter(Season currentSeason, bool useSeasonFilter, Season[] seasons)
+    {
+        if (!useSeasonFilter)
+            return true;
+
+        if (seasons == null || seasons.Length == 0)
+            return false;
+
+        foreach (var season in seasons)
+        {
+            if (season == currentSeason)
+                return true;
+        }
+
+        return false;
+    }
+
+    public static bool MatchesCombatUnitBonusTarget(CombatUnitData actualUnit, CombatUnitData targetUnit, bool useUnitCategoryFilter, CombatCategory unitCategory)
+    {
+        if (actualUnit == null)
+            return false;
+
+        bool hasSpecificUnitTarget = targetUnit != null;
+        if (hasSpecificUnitTarget && targetUnit != actualUnit)
+            return false;
+
+        if (useUnitCategoryFilter && actualUnit.unitType != unitCategory)
+            return false;
+
+        return hasSpecificUnitTarget || useUnitCategoryFilter;
+    }
+
+    public static bool HasCombatBonusOpponentFilter(CombatUnitData targetUnit, WorkerUnitData targetWorker, bool useTargetUnitCategoryFilter)
+    {
+        return targetUnit != null || targetWorker != null || useTargetUnitCategoryFilter;
+    }
+
+    public static bool MatchesCombatBonusOpponent(BaseUnit opponent, CombatUnitData targetUnit, WorkerUnitData targetWorker, bool useTargetUnitCategoryFilter, CombatCategory targetUnitCategory)
+    {
+        if (!HasCombatBonusOpponentFilter(targetUnit, targetWorker, useTargetUnitCategoryFilter))
+            return true;
+
+        if (opponent == null)
+            return false;
+
+        if (targetUnit != null)
+        {
+            if (opponent is not CombatUnit combatOpponent || combatOpponent.data != targetUnit)
+                return false;
+        }
+
+        if (targetWorker != null)
+        {
+            if (opponent is not WorkerUnit workerOpponent || workerOpponent.data != targetWorker)
+                return false;
+        }
+
+        if (useTargetUnitCategoryFilter)
+        {
+            if (opponent is not CombatUnit categoryOpponent || categoryOpponent.data == null || categoryOpponent.data.unitType != targetUnitCategory)
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool MatchesSeasonFilterForPlanet(bool useSeasonFilter, Season[] seasons, int planetIndex = -1)
+    {
+        Season currentSeason = ClimateManager.Instance != null
+            ? ClimateManager.Instance.GetSeasonForPlanet(planetIndex >= 0 ? planetIndex : 0)
+            : Season.Spring;
+        return MatchesSeasonFilter(currentSeason, useSeasonFilter, seasons);
+    }
+
+    public bool IsBeliefSeasonActive(BeliefData belief, int planetIndex = -1)
+    {
+        return belief != null && MatchesSeasonFilterForPlanet(belief.useSeasonFilter, belief.seasons, planetIndex);
+    }
+
+    public static bool IsBeliefSeasonActive(BeliefData belief, Season currentSeason)
+    {
+        return belief != null && MatchesSeasonFilter(currentSeason, belief.useSeasonFilter, belief.seasons);
     }
 
     /// <summary>
@@ -1351,6 +1705,9 @@ public class Civilization : MonoBehaviour
     public bool SetCustomBelief(BeliefCategory category, BeliefData belief)
     {
         if (belief == null) return RemoveCustomBeliefInCategory(category);
+
+        if (!CanUseBelief(belief))
+            return false;
 
         // Remove any existing custom belief in this category
         RemoveCustomBeliefInCategory(category);
@@ -1500,6 +1857,7 @@ public class Civilization : MonoBehaviour
             {
                 if (p == null) continue;
                 if (!chosenFounderBeliefs.TryGetValue(p, out BeliefData b) || b == null) continue;
+                if (!IsBeliefSeasonActive(b)) continue;
                 foodModifier += b.foodModifier;
                 productionModifier += b.productionModifier;
                 goldModifier += b.goldModifier;
@@ -1511,6 +1869,7 @@ public class Civilization : MonoBehaviour
 
         if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null)
         {
+            if (!IsBeliefSeasonActive(foundedReligion.founderBelief)) return;
             foodModifier += foundedReligion.founderBelief.foodModifier;
             productionModifier += foundedReligion.founderBelief.productionModifier;
             goldModifier += foundedReligion.founderBelief.goldModifier;
@@ -1623,7 +1982,7 @@ public class Civilization : MonoBehaviour
             foreach (var u in combatUnits)
             {
                 if (u == null || u.data == null) continue;
-        var yields = ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+        var yields = ComputeUnitPerTurnYield(u.data, u.planetIndex, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci  += yields.science;
@@ -1669,7 +2028,7 @@ public class Civilization : MonoBehaviour
             foreach (var w in workerUnits)
             {
                 if (w == null || w.data == null) continue;
-                var yields = ComputeWorkerPerTurnYield(w.data);
+                var yields = ComputeWorkerPerTurnYield(w.data, w.planetIndex);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci  += yields.science;
@@ -1749,15 +2108,9 @@ public class Civilization : MonoBehaviour
                             int deficit = totalAnimalConsumption - h.foodReserve;
                             h.foodReserve = 0;
 
-                            // Default starvation percent loss
+                            // Default starvation percent loss, reduced by civ/tech/culture/government/policy/pantheon/belief/structure bonuses.
                             float baseStarvePercent = 0.25f;
-                            // Sum reductions from researched techs and cultures
-                            float reduction = 0f;
-                            if (researchedTechs != null)
-                                foreach (var t in researchedTechs) if (t != null) reduction += t.herdStarvationPercentReduction;
-                            if (researchedCultures != null)
-                                foreach (var c in researchedCultures) if (c != null) reduction += c.herdStarvationPercentReduction;
-
+                            float reduction = GetHerdStarvationPercentReduction(h);
                             float netPercent = Mathf.Max(0f, baseStarvePercent - reduction);
 
                             // If there are animals, remove netPercent of total animals (round up)
@@ -1910,7 +2263,7 @@ public class Civilization : MonoBehaviour
         warWeariness = Mathf.Clamp01(warWeariness);
 
         // Check famine: true if food stockpile <= 0 (AFTER consumption)
-        // Famine applies loyalty penalties (via City.UpdateLoyalty) but does NOT cause unit attrition.
+        // Famine applies loyalty penalties (via City.UpdateLoyalty) and unit attrition when active.
         famineActive = (food <= 0);
         if (famineActive)
         {
@@ -1918,6 +2271,58 @@ public class Civilization : MonoBehaviour
             {
                 UIManager.Instance.ShowNotification($"FAMINE! {civData.civName} has no food. Cities are losing loyalty!");
             }
+
+            if (cities != null)
+            {
+                foreach (var city in cities.ToArray())
+                {
+                    if (city == null || city.level <= 1) continue;
+
+                    try
+                    {
+                        var cityAttritionTotals = GetAttritionModifierTotals(city, null);
+                        city.faminePopulationLossProgress += cityAttritionTotals.FamineDamageMultiplier;
+                        while (city.faminePopulationLossProgress >= 1f && city.level > 1)
+                        {
+                            city.level--;
+                            city.faminePopulationLossProgress -= 1f;
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            // Apply per-turn famine attrition to owned units (combat + workers)
+            try
+            {
+                var attrTotals = GetAttritionModifierTotals(null, null);
+                int baseDamage = Mathf.Max(0, famineAttritionDamage);
+                int damageToApply = Mathf.CeilToInt(baseDamage * attrTotals.FamineDamageMultiplier);
+                if (damageToApply > 0)
+                {
+                    if (combatUnits != null)
+                    {
+                        foreach (var u in combatUnits.ToArray())
+                        {
+                            try { if (u != null) u.ApplyDamage(damageToApply); } catch { }
+                        }
+                    }
+
+                    if (workerUnits != null)
+                    {
+                        foreach (var w in workerUnits.ToArray())
+                        {
+                            try { if (w != null) w.ApplyDamage(damageToApply); } catch { }
+                        }
+                    }
+
+                    if (isPlayerControlled && UIManager.Instance != null)
+                    {
+                        UIManager.Instance.ShowNotification($"Famine: units took {damageToApply} attrition damage this turn.");
+                    }
+                }
+            }
+            catch { }
         }
         else if (food < totalFoodConsumption * 2 && isPlayerControlled && UIManager.Instance != null)
         {
@@ -2693,18 +3098,8 @@ return false;
 return false;
         }
         
-        // Check if the chosen belief is valid for this pantheon
-        bool validBelief = false;
-        foreach (var belief in pantheon.possibleFounderBeliefs)
-        {
-            if (belief == founderBelief)
-            {
-                validBelief = true;
-                break;
-            }
-        }
-
-        if (!validBelief)
+        // Beliefs are globally available by default; only explicit pantheon exclusivity restricts them.
+        if (!CanUseBeliefForPantheon(pantheon, founderBelief))
         {
             return false;
         }
@@ -2810,7 +3205,7 @@ return true;
         if (chosenFounderBeliefs != null && chosenFounderBeliefs.TryGetValue(spiritPantheon, out BeliefData oldBelief))
         {
             chosenFounderBeliefs.Remove(spiritPantheon);
-            if (oldBelief != null && god.possibleFounderBeliefs != null && System.Array.Exists(god.possibleFounderBeliefs, b => b == oldBelief))
+            if (oldBelief != null && CanUseBeliefForPantheon(god, oldBelief))
             {
                 chosenFounderBeliefs[god] = oldBelief;
             }
@@ -2972,7 +3367,7 @@ return true;
             foreach (var u in combatUnits)
             {
                 if (u == null || u.data == null) continue;
-                var yields = ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+                var yields = ComputeUnitPerTurnYield(u.data, u.planetIndex, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci += yields.science;
@@ -3011,7 +3406,7 @@ return true;
             foreach (var w in workerUnits)
             {
                 if (w == null || w.data == null) continue;
-                var yields = ComputeWorkerPerTurnYield(w.data);
+                var yields = ComputeWorkerPerTurnYield(w.data, w.planetIndex);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci += yields.science;
@@ -4122,7 +4517,7 @@ return true;
         public float attackPct, defensePct, healthPct, rangePct;
     }
 
-    private YieldBonusAgg AggregateUnitYieldBonuses(CombatUnitData unit)
+    private YieldBonusAgg AggregateUnitYieldBonuses(CombatUnitData unit, int planetIndex = -1)
     {
         YieldBonusAgg agg = new YieldBonusAgg();
         if (unit == null) return agg;
@@ -4135,7 +4530,7 @@ return true;
                 if (tech == null || tech.unitYieldBonuses == null) continue;
                 foreach (var b in tech.unitYieldBonuses)
                 {
-                    if (b != null && b.unit == unit)
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -4148,7 +4543,7 @@ return true;
                 if (culture == null || culture.unitYieldBonuses == null) continue;
                 foreach (var b in culture.unitYieldBonuses)
                 {
-                    if (b != null && b.unit == unit)
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -4161,7 +4556,7 @@ return true;
                 if (policy == null || policy.unitYieldBonuses == null) continue;
                 foreach (var b in policy.unitYieldBonuses)
                 {
-                    if (b != null && b.unit == unit)
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -4171,7 +4566,7 @@ return true;
         {
             foreach (var b in currentGovernment.unitYieldBonuses)
             {
-                if (b != null && b.unit == unit)
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
             }
         }
@@ -4180,15 +4575,15 @@ return true;
         {
             if (pantheonBonuses?.unitYieldBonuses == null) continue;
             foreach (var b in pantheonBonuses.unitYieldBonuses)
-                if (b != null && b.unit == unit)
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
         }
 
         foreach (var belief in EnumerateActiveBeliefs())
         {
-            if (belief?.unitYieldBonuses == null) continue;
+            if (belief?.unitYieldBonuses == null || !IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var b in belief.unitYieldBonuses)
-                if (b != null && b.unit == unit)
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
         }
 
@@ -4274,6 +4669,11 @@ return true;
 
     public (int food, int gold, int science, int culture, int faith, int policy) ComputeUnitPerTurnYield(CombatUnitData unit, params EquipmentData[] equippedItems)
     {
+        return ComputeUnitPerTurnYield(unit, -1, equippedItems);
+    }
+
+    public (int food, int gold, int science, int culture, int faith, int policy) ComputeUnitPerTurnYield(CombatUnitData unit, int planetIndex, params EquipmentData[] equippedItems)
+    {
         if (unit == null) return (0,0,0,0,0,0);
         int baseFood = unit.foodPerTurn;
         int baseGold = unit.goldPerTurn;
@@ -4297,7 +4697,7 @@ return true;
             }
         }
 
-        var u = AggregateUnitYieldBonuses(unit);
+        var u = AggregateUnitYieldBonuses(unit, planetIndex);
         // Sum equipment-based yield modifiers from bonuses too
         YieldBonusAgg eAgg = new YieldBonusAgg();
         if (equippedItems != null)
@@ -4320,7 +4720,7 @@ return true;
         return (food, gold, sci, cul, fai, pol);
     }
 
-    private YieldBonusAgg AggregateWorkerYieldBonuses(WorkerUnitData worker)
+    private YieldBonusAgg AggregateWorkerYieldBonuses(WorkerUnitData worker, int planetIndex = -1)
     {
         YieldBonusAgg agg = new YieldBonusAgg();
         if (worker == null) return agg;
@@ -4332,7 +4732,7 @@ return true;
                 if (tech == null || tech.workerYieldBonuses == null) continue;
                 foreach (var b in tech.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker)
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -4344,7 +4744,7 @@ return true;
                 if (culture == null || culture.workerYieldBonuses == null) continue;
                 foreach (var b in culture.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker)
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -4356,7 +4756,7 @@ return true;
                 if (policy == null || policy.workerYieldBonuses == null) continue;
                 foreach (var b in policy.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker)
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -4365,7 +4765,7 @@ return true;
         {
             foreach (var b in currentGovernment.workerYieldBonuses)
             {
-                if (b != null && b.worker == worker)
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
             }
         }
@@ -4374,15 +4774,15 @@ return true;
         {
             if (pantheonBonuses?.workerYieldBonuses == null) continue;
             foreach (var b in pantheonBonuses.workerYieldBonuses)
-                if (b != null && b.worker == worker)
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
         }
 
         foreach (var belief in EnumerateActiveBeliefs())
         {
-            if (belief?.workerYieldBonuses == null) continue;
+            if (belief?.workerYieldBonuses == null || !IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var b in belief.workerYieldBonuses)
-                if (b != null && b.worker == worker)
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
         }
 
@@ -4390,6 +4790,11 @@ return true;
     }
 
     public (int food, int gold, int science, int culture, int faith, int policy) ComputeWorkerPerTurnYield(WorkerUnitData worker)
+    {
+        return ComputeWorkerPerTurnYield(worker, -1);
+    }
+
+    public (int food, int gold, int science, int culture, int faith, int policy) ComputeWorkerPerTurnYield(WorkerUnitData worker, int planetIndex)
     {
         if (worker == null) return (0,0,0,0,0,0);
         int baseFood = worker.foodPerTurn;
@@ -4399,7 +4804,7 @@ return true;
         int baseFai  = worker.faithPerTurn;
         int basePol  = worker.policyPointsPerTurn;
 
-        var w = AggregateWorkerYieldBonuses(worker);
+        var w = AggregateWorkerYieldBonuses(worker, planetIndex);
         int food = Mathf.RoundToInt((baseFood + w.foodAdd) * (1f + w.foodPct));
         int gold = Mathf.RoundToInt((baseGold + w.goldAdd) * (1f + w.goldPct));
         int sci  = Mathf.RoundToInt((baseSci  + w.scienceAdd) * (1f + w.sciencePct));
@@ -4593,7 +4998,6 @@ return true;
                 a.faith + b.faith
             );
         }
-
         public override string ToString()
         {
             return $"food:{food} prod:{production} gold:{gold} sci:{science} cul:{culture} faith:{faith}";

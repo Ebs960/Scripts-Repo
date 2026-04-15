@@ -151,6 +151,9 @@ public class City : MonoBehaviour
     [Tooltip("Immunity cooldowns: disease → remaining immune turns after recovery.")]
     public Dictionary<DiseaseData, int> diseaseImmunities = new Dictionary<DiseaseData, int>();
 
+    [HideInInspector]
+    public float faminePopulationLossProgress = 0f;
+
     // Dictionary to track which tile each district in queue will be placed on
     private Dictionary<DistrictData, int> districtTileTargets = new Dictionary<DistrictData, int>();
 
@@ -1456,14 +1459,15 @@ if (UIManager.Instance != null)
                 }
                 unit.Initialize(resolvedUnit, owner);
                 unit.planetIndex = planetIndex;
-                owner.RegisterTrainedCombatUnit(unit);
-                producedUnits.Add(resolvedUnit);
-
                 // Set tile index and register occupancy
                 if (unit.currentTileIndex < 0)
                 {
                     unit.currentTileIndex = centerTileIndex;
                 }
+                var combatProgression = owner != null ? owner.GetNewCombatUnitProgressionBonuses(unit, this) : default;
+                unit.ApplyStartingProgression(combatProgression.experienceAdd, combatProgression.levelsAdd);
+                owner.RegisterTrainedCombatUnit(unit);
+                producedUnits.Add(resolvedUnit);
                 try { unit.RegisterToRegistry(); } catch { }
                 var prodOcc = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
                 if (prodOcc != null)
@@ -1495,6 +1499,9 @@ if (UIManager.Instance != null)
                 if (planetGenerator != null) wGO.transform.SetParent(planetGenerator.transform, true);
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);
+                worker.planetIndex = planetIndex;
+                var workerProgression = owner != null ? owner.GetNewWorkerUnitProgressionBonuses(worker, this) : default;
+                worker.ApplyStartingProgression(workerProgression.experienceAdd, workerProgression.levelsAdd);
                 owner.workerUnits.Add(worker);
                 try { worker.RegisterToRegistry(); } catch { }
 
@@ -1831,6 +1838,34 @@ Destroy(oldTuple.instance);
         }
     }
 
+    private bool MatchesBuildingYieldBonus(BuildingYieldBonus bonus)
+    {
+        if (bonus == null)
+            return false;
+
+        Season currentSeason = ClimateManager.Instance != null
+            ? ClimateManager.Instance.GetSeasonForPlanet(planetIndex)
+            : Season.Spring;
+        return Civilization.MatchesSeasonFilter(currentSeason, bonus.useSeasonFilter, bonus.seasons);
+    }
+
+    private bool MatchesCityYieldBonus(CityYieldBonus bonus)
+    {
+        if (bonus == null)
+            return false;
+
+        Season currentSeason = ClimateManager.Instance != null
+            ? ClimateManager.Instance.GetSeasonForPlanet(planetIndex)
+            : Season.Spring;
+        if (!Civilization.MatchesSeasonFilter(currentSeason, bonus.useSeasonFilter, bonus.seasons))
+            return false;
+
+        if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this))
+            return false;
+
+        return true;
+    }
+
     private CityYieldAgg AggregateReligionBuildingBonuses(BuildingData data, BuildingYieldType kind)
     {
         CityYieldAgg agg = default;
@@ -1840,15 +1875,15 @@ Destroy(oldTuple.instance);
         {
             if (pantheonBonuses?.buildingYieldBonuses == null) continue;
             foreach (var bonus in pantheonBonuses.buildingYieldBonuses)
-                if (bonus != null && bonus.building == data)
+                if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
                     AddBuildingBonus(ref agg, bonus, kind);
         }
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
-            if (belief?.buildingYieldBonuses == null) continue;
+            if (belief?.buildingYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var bonus in belief.buildingYieldBonuses)
-                if (bonus != null && bonus.building == data)
+                if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
                     AddBuildingBonus(ref agg, bonus, kind);
         }
 
@@ -1870,7 +1905,7 @@ Destroy(oldTuple.instance);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
-            if (belief?.tileYieldBonuses == null) continue;
+            if (belief?.tileYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var bonus in belief.tileYieldBonuses)
                 if (MatchesTileYieldBonus(tile, bonus))
                     AddTileBonus(ref agg, bonus, kind);
@@ -1889,19 +1924,17 @@ Destroy(oldTuple.instance);
             if (pantheonBonuses?.cityYieldBonuses == null) continue;
             foreach (var bonus in pantheonBonuses.cityYieldBonuses)
             {
-                if (bonus == null) continue;
-                if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this)) continue;
+                if (!MatchesCityYieldBonus(bonus)) continue;
                 AddCityBonus(ref agg, bonus, kind);
             }
         }
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
-            if (belief?.cityYieldBonuses == null) continue;
+            if (belief?.cityYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var bonus in belief.cityYieldBonuses)
             {
-                if (bonus == null) continue;
-                if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this)) continue;
+                if (!MatchesCityYieldBonus(bonus)) continue;
                 AddCityBonus(ref agg, bonus, kind);
             }
         }

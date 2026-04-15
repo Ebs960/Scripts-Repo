@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
-  m_Name: Balance with Nature
+  m_Name: Call of the Crow
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: Balance with Nature
-  description: Provides +1 Food to tiles with a Forest
-  icon: {fileID: 21300000, guid: 20be8c8281000d04ea125cb558e72233, type: 3}
+  beliefName: Call of the Crow
+  description: Units heal 20% every turn in owned territory in the winter.
+  icon: {fileID: 21300000, guid: ea8746671788647419be48d66a88eb53, type: 3}
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -31,33 +31,44 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   category: 0
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
+  - {fileID: 11400000, guid: db6f3fb99e2eb5b41a48f5f600eb5d67, type: 2}
+  useSeasonFilter: 0
+  seasons: 
   unitYieldBonuses: []
   workerYieldBonuses: []
   buildingYieldBonuses: []
-  tileYieldBonuses:
-  - useBiomeFilter: 0
+  tileYieldBonuses: []
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 0
+    unitCategory: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
     biome: 0
     hillRequirement: 0
     mountainRequirement: 0
-    useSeasonFilter: 0
-    seasons: 
-    useResourceFilter: 1
-    resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
-    foodAdd: 1
-    productionAdd: 0
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
-  unitBonuses: []
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 1
+    useSeasonFilter: 1
+    seasons: 03000000
+    attackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0.2
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

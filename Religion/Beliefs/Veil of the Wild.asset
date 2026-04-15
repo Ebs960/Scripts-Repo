@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
-  m_Name: Balance with Nature
+  m_Name: Veil of the Wild
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: Balance with Nature
-  description: Provides +1 Food to tiles with a Forest
-  icon: {fileID: 21300000, guid: 20be8c8281000d04ea125cb558e72233, type: 3}
+  beliefName: Veil of the Wild
+  description: Units gain +2 defense in Forests and Jungles
+  icon: {fileID: 21300000, guid: 429e33aa9fed6414fb25f845a71534e9, type: 3}
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -31,10 +31,37 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   category: 0
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: cf0a4698ad9f8dc41af1c599ddc629e6, type: 2}
+  - {fileID: 11400000, guid: c296610bb952eba4e84420ae11be6df8, type: 2}
+  useSeasonFilter: 0
+  seasons: 
   unitYieldBonuses: []
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses:
+  - useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    useResourceFilter: 1
+    resource: {fileID: 11400000, guid: 040c7316ec5483e4a8515b88b4a59027, type: 2}
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   - useBiomeFilter: 0
     biome: 0
     hillRequirement: 0

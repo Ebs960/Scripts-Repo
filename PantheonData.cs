@@ -43,6 +43,9 @@ public class PantheonBonuses
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this pantheon.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
 }
@@ -58,10 +61,6 @@ public class PantheonData : ScriptableObject
     [Header("Cost")]
     [Tooltip("Faith required to found this Pantheon")]
     public int faithCost;
-
-    [Header("Choices")]
-    [Tooltip("Which founder beliefs you can pick as your Pantheon bonus")]
-    public BeliefData[] possibleFounderBeliefs;
 
     [Header("Type & Upgrades")]
     [Tooltip("Explicit pantheon tier. Spirits are early pantheons, while Gods are their stronger form.")]

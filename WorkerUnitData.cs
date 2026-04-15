@@ -64,6 +64,32 @@ public class WorkerUnitData : ScriptableObject
     public int baseDefense = 0;
     public bool canFoundCity;
 
+    [Header("Progression")]
+    [Tooltip("Total XP thresholds required to reach the next levels. Entry 0 is the XP needed to reach level 2.")]
+    public int[] xpToNextLevel;
+    [Tooltip("Fallback total-XP curve used when xpToNextLevel does not define the next threshold. Total XP required is fallbackXpPerLevel times level squared.")]
+    public int fallbackXpPerLevel = 10;
+    [Tooltip("Flat attack gained per level above 1.")]
+    public int attackPerLevel = 0;
+    [Tooltip("Flat defense gained per level above 1.")]
+    public int defensePerLevel = 0;
+    [Tooltip("Flat health gained per level above 1.")]
+    public int healthPerLevel = 0;
+    [Tooltip("Flat work points gained per level above 1.")]
+    public int workPointsPerLevel = 0;
+    [Tooltip("Flat move points gained per level above 1.")]
+    public int movePointsPerLevel = 0;
+    [Tooltip("Flat range gained per level above 1.")]
+    public float rangePerLevel = 0f;
+    [Tooltip("XP gained per work point successfully applied to a project.")]
+    public int experiencePerWorkPoint = 1;
+    [Tooltip("Flat XP gained when successfully foraging.")]
+    public int forageExperience = 5;
+    [Tooltip("XP gained per point of combat damage dealt.")]
+    public int experiencePerCombatDamage = 1;
+    [Tooltip("Flat XP bonus gained when this worker lands the killing blow.")]
+    public int killExperience = 5;
+
     [Header("Charge")]
     [Tooltip("Percent bonus to attack when the unit must move more than 1 tile to make the attack (0 = disabled). Example: 0.2 = +20%")]
     public float chargeBonusPercent = 0f;

@@ -9,7 +9,11 @@ public class Ability
     public int requiredLevel;
     public int attackModifier;
     public int defenseModifier;
-    public float damageMultiplier;
+    public float damageMultiplier = 1f;
+    public CombatUnitData targetUnit;
+    public WorkerUnitData targetWorker;
+    public bool useTargetUnitCategoryFilter;
+    public CombatCategory targetUnitCategory;
     
     // New modifiers for health and range
     public int healthModifier;

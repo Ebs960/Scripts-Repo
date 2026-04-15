@@ -66,6 +66,10 @@ public class CivData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this civilization's base identity.")]
     public DiseaseModifierBonus[] diseaseBonuses;
+    [Tooltip("Attrition modifiers provided directly on the civilization asset.")]
+    public AttritionModifierBonus[] attritionBonuses;
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
 
     [Header("Gameplay Flags")]
     public bool isTribe;                     // Limited to max 3 cities, starts at war

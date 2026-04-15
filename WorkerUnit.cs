@@ -14,6 +14,9 @@ public class WorkerUnit : BaseUnit
 {
     [Header("Worker Progression")]
     public int level = 1;
+    public int experience { get; private set; } = 0;
+    public int ExperienceToNextLevel => GetExperienceRequiredForNextLevel();
+    public int MaxWorkPoints => GetMaxWorkPoints();
 
     [field: SerializeField] public WorkerUnitData data { get; private set; }
 
@@ -54,10 +57,10 @@ public class WorkerUnit : BaseUnit
     #region Implement Abstract Members from BaseUnit
 
     public override string UnitName => data?.unitName ?? "Worker";
-    public override int BaseAttack => data?.baseAttack ?? 0;
-    public override int BaseDefense => data?.baseDefense ?? 0;
-    public override int BaseHealth => data?.baseHealth ?? 0;
-    public override float BaseRange => 1f;
+    public override int BaseAttack => (data?.baseAttack ?? 0) + GetLeveledAttackBonus();
+    public override int BaseDefense => (data?.baseDefense ?? 0) + GetLeveledDefenseBonus();
+    public override int BaseHealth => (data?.baseHealth ?? 0) + GetLeveledHealthBonus();
+    public override float BaseRange => 1f + GetLeveledRangeBonus();
 
     public override int MaxHealth
     {
@@ -83,7 +86,7 @@ public class WorkerUnit : BaseUnit
 
         // Worker-specific resets
         var wb = AggregateWorkerBonusesLocal(owner, data);
-        currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+        currentWorkPoints = Mathf.RoundToInt((GetBaseWorkPoints() + wb.workAdd) * (1f + wb.workPct));
 
         // If trapped, decrement trapped duration (was in previous worker logic)
         if (IsTrapped)
@@ -106,7 +109,7 @@ public class WorkerUnit : BaseUnit
     public new int GetStartingMovePoints()
     {
         var wb = AggregateWorkerBonusesLocal(owner, data);
-        int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+        int baseMove = Mathf.RoundToInt((GetBaseMovePoints() + wb.moveAdd) * (1f + wb.movePct));
         // Winter/trapped penalties are handled centrally in BaseUnit.RestoreMovePointsForNewTurn()
         return baseMove;
     }
@@ -159,7 +162,8 @@ public class WorkerUnit : BaseUnit
         {
             FaceTowardBuildTile(tileIndex);
             PlayBuildActionAnimation();
-            ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+            int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+            GainWorkExperience(applied);
             currentWorkPoints = 0;
             return true;
         }
@@ -168,7 +172,8 @@ public class WorkerUnit : BaseUnit
         {
             FaceTowardBuildTile(tileIndex);
             PlayBuildActionAnimation();
-            ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+            int applied = ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+            GainWorkExperience(applied);
             currentWorkPoints = 0;
             return true;
         }
@@ -177,7 +182,8 @@ public class WorkerUnit : BaseUnit
         {
             FaceTowardBuildTile(tileIndex);
             PlayBuildActionAnimation();
-            ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+            int applied = ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+            GainWorkExperience(applied);
             currentWorkPoints = 0;
             return true;
         }
@@ -255,13 +261,14 @@ public class WorkerUnit : BaseUnit
         ownerProp.SetValue(this, unitOwner);
 
         level = 1;
+    experience = 0;
         currentTileIndex = startTileIndex;
 
         var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
         currentHealth = MaxHealth;
-        currentWorkPoints = Mathf.RoundToInt((unitData.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+        currentWorkPoints = Mathf.RoundToInt((GetBaseWorkPoints() + wb.workAdd) * (1f + wb.workPct));
         int oldMP = currentMovePoints;
-        currentMovePoints = Mathf.RoundToInt((unitData.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+        currentMovePoints = Mathf.RoundToInt((GetBaseMovePoints() + wb.moveAdd) * (1f + wb.movePct));
         try { GameEventManager.Instance?.RaiseMovePointsChanged(this, oldMP, currentMovePoints); } catch { }
         takesWeatherDamage = unitData.takesWeatherDamage;
 
@@ -316,12 +323,48 @@ public class WorkerUnit : BaseUnit
         }
     }
 
+    public void RestoreProgression(int savedExperience, int savedLevel)
+    {
+        experience = Mathf.Max(0, savedExperience);
+        level = Mathf.Max(1, savedLevel);
+        currentHealth = Mathf.Min(currentHealth, MaxHealth);
+        currentWorkPoints = Mathf.Min(currentWorkPoints, MaxWorkPoints);
+        currentMovePoints = Mathf.Min(currentMovePoints, GetStartingMovePoints());
+    }
+
+    public void ApplyStartingProgression(int startingExperience, int startingLevels)
+    {
+        if (startingLevels > 0)
+        {
+            for (int i = 0; i < startingLevels; i++)
+                LevelUp();
+        }
+
+        if (startingExperience > 0)
+            GainExperience(startingExperience);
+
+        currentHealth = MaxHealth;
+        currentWorkPoints = MaxWorkPoints;
+        currentMovePoints = GetStartingMovePoints();
+    }
+
+    public void GainExperience(int xp)
+    {
+        if (xp <= 0 || data == null)
+            return;
+
+        experience += xp;
+        while (experience >= GetExperienceRequiredForNextLevel())
+            LevelUp();
+    }
+
     public void ContributeWork()
     {
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasBuildJobAtTile(currentTileIndex, planetIndex)) return;
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
@@ -330,7 +373,8 @@ public class WorkerUnit : BaseUnit
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasUnitJobAtTile(currentTileIndex, planetIndex)) return;
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddUnitWork(currentTileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddUnitWork(currentTileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
@@ -339,7 +383,8 @@ public class WorkerUnit : BaseUnit
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasWorkerJobAtTile(currentTileIndex, planetIndex)) return;
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
@@ -452,27 +497,237 @@ public class WorkerUnit : BaseUnit
 
     #region Stats and Bonuses
 
-    private struct WorkerAgg { public float workAdd, moveAdd, healthAdd; public float workPct, movePct, healthPct; }
+    private struct WorkerAgg
+    {
+        public float attackAdd, defenseAdd, workAdd, moveAdd, healthAdd, rangeAdd;
+        public float attackPct, defensePct, workPct, movePct, healthPct, rangePct;
+    }
+
+    private int GetLevelBonusCount()
+    {
+        return Mathf.Max(0, level - 1);
+    }
+
+    private int GetLeveledAttackBonus()
+    {
+        return data == null ? 0 : GetLevelBonusCount() * data.attackPerLevel;
+    }
+
+    private int GetLeveledDefenseBonus()
+    {
+        return data == null ? 0 : GetLevelBonusCount() * data.defensePerLevel;
+    }
+
+    private int GetLeveledHealthBonus()
+    {
+        return data == null ? 0 : GetLevelBonusCount() * data.healthPerLevel;
+    }
+
+    private int GetLeveledWorkBonus()
+    {
+        return data == null ? 0 : GetLevelBonusCount() * data.workPointsPerLevel;
+    }
+
+    private int GetLeveledMoveBonus()
+    {
+        return data == null ? 0 : GetLevelBonusCount() * data.movePointsPerLevel;
+    }
+
+    private float GetLeveledRangeBonus()
+    {
+        return data == null ? 0f : GetLevelBonusCount() * data.rangePerLevel;
+    }
+
+    private int GetBaseWorkPoints()
+    {
+        return Mathf.Max(0, (data?.baseWorkPoints ?? 0) + GetLeveledWorkBonus());
+    }
+
+    private int GetBaseMovePoints()
+    {
+        return Mathf.Max(0, (data?.baseMovePoints ?? 0) + GetLeveledMoveBonus());
+    }
+
+    private int GetMaxWorkPoints()
+    {
+        if (owner == null || data == null)
+            return GetBaseWorkPoints();
+
+        var wb = AggregateWorkerBonusesLocal(owner, data);
+        return Mathf.RoundToInt((GetBaseWorkPoints() + wb.workAdd) * (1f + wb.workPct));
+    }
+
+    private int GetExperienceRequiredForNextLevel()
+    {
+        if (data == null)
+            return int.MaxValue;
+
+        if (data.xpToNextLevel != null && level - 1 >= 0 && level - 1 < data.xpToNextLevel.Length && data.xpToNextLevel[level - 1] > 0)
+            return data.xpToNextLevel[level - 1];
+
+        if (data.fallbackXpPerLevel <= 0)
+            return int.MaxValue;
+
+        long required = (long)data.fallbackXpPerLevel * level * level;
+        return required >= int.MaxValue ? int.MaxValue : (int)required;
+    }
+
+    private void GainWorkExperience(int workApplied)
+    {
+        if (workApplied <= 0 || data == null)
+            return;
+
+        GainExperience(workApplied * Mathf.Max(0, data.experiencePerWorkPoint));
+    }
+
+    private void LevelUp()
+    {
+        int previousMaxHealth = MaxHealth;
+        level++;
+        int healthGain = Mathf.Max(0, MaxHealth - previousMaxHealth);
+        if (healthGain > 0)
+            currentHealth = Mathf.Min(MaxHealth, currentHealth + healthGain);
+    }
+
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private bool MatchesTerritoryRequirement(HexTileData tile, Civilization civ, UnitTerritoryRequirement requirement)
+    {
+        if (requirement == UnitTerritoryRequirement.Any)
+            return true;
+        if (tile == null || civ == null)
+            return false;
+
+        var tileOwner = tile.owner;
+        switch (requirement)
+        {
+            case UnitTerritoryRequirement.Owned:
+                return tileOwner == civ;
+            case UnitTerritoryRequirement.Unowned:
+                return tileOwner == null;
+            case UnitTerritoryRequirement.Enemy:
+                return tileOwner != null && tileOwner != civ && DiplomacyManager.Instance != null
+                    ? DiplomacyManager.Instance.GetRelationship(civ, tileOwner) == DiplomaticState.War
+                    : tileOwner != null && tileOwner != civ && civ.relations.TryGetValue(tileOwner, out var enemyState) && enemyState == DiplomaticState.War;
+            case UnitTerritoryRequirement.Friendly:
+                if (tileOwner == null || tileOwner == civ) return false;
+                if (DiplomacyManager.Instance != null)
+                    return DiplomacyManager.Instance.GetRelationship(civ, tileOwner) != DiplomaticState.War;
+                return !civ.relations.TryGetValue(tileOwner, out var friendlyState) || friendlyState != DiplomaticState.War;
+            default:
+                return true;
+        }
+    }
+
+    private bool MatchesWorkerBonusLocation(Civilization civ, WorkerUnitStatBonus bonus)
+    {
+        if (bonus == null)
+            return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
+        bool isCityTile = tile?.controllingCity != null;
+
+        if (!MatchesRequirement(bonus.cityRequirement, isCityTile))
+            return false;
+        if (bonus.useBiomeFilter && (tile == null || tile.biome != bonus.biome))
+            return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile != null && tile.isHill))
+            return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain))
+            return false;
+        if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource))
+            return false;
+        if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement))
+            return false;
+        if (!civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+            return false;
+
+        return true;
+    }
+
+    private City GetCurrentCityContext()
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
+        return tile?.controllingCity;
+    }
     
     private WorkerAgg AggregateWorkerBonusesLocal(Civilization civ, WorkerUnitData wu)
     {
         WorkerAgg a = new WorkerAgg();
         if (civ == null || wu == null) return a;
 
+        void Accumulate(WorkerUnitStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+            {
+                if (b == null || b.worker != wu || !MatchesWorkerBonusLocation(civ, b))
+                    continue;
+                if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
+                    continue;
+
+                a.attackAdd += b.attackAdd;
+                a.defenseAdd += b.defenseAdd;
+                a.workAdd += b.workPointsAdd;
+                a.moveAdd += b.movePointsAdd;
+                a.healthAdd += b.healthAdd;
+                a.rangeAdd += b.rangeAdd;
+
+                a.attackPct += b.attackPct;
+                a.defensePct += b.defensePct;
+                a.workPct += b.workPointsPct;
+                a.movePct += b.movePointsPct;
+                a.healthPct += b.healthPct;
+                a.rangePct += b.rangePct;
+            }
+        }
+
+        Accumulate(civ.civData?.workerBonuses);
+
         if (civ.researchedTechs != null)
         {
             foreach (var t in civ.researchedTechs)
             {
-                if (t?.workerBonuses == null) continue;
-                foreach (var b in t.workerBonuses)
-                {
-                    if (b != null && b.worker == wu)
-                    {
-                        a.workAdd += b.workPointsAdd; a.moveAdd += b.movePointsAdd; a.healthAdd += b.healthAdd;
-                        a.workPct += b.workPointsPct; a.movePct += b.movePointsPct; a.healthPct += b.healthPct;
-                    }
-                }
+                Accumulate(t?.workerBonuses);
             }
+        }
+
+        if (civ.researchedCultures != null)
+        {
+            foreach (var culture in civ.researchedCultures)
+                Accumulate(culture?.workerBonuses);
+        }
+
+        Accumulate(civ.currentGovernment?.workerBonuses);
+
+        if (civ.activePolicies != null)
+        {
+            foreach (var policy in civ.activePolicies)
+                Accumulate(policy?.workerBonuses);
+        }
+
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.workerBonuses);
+
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+            if (civ.IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.workerBonuses);
+
+        var cityContext = GetCurrentCityContext();
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.workerBonuses);
         }
 
         // Equipment bonuses
@@ -488,11 +743,141 @@ public class WorkerUnit : BaseUnit
         return a;
     }
 
+    private WorkerAgg AggregateTargetedWorkerBonuses(Civilization civ, WorkerUnitData wu, BaseUnit opponent)
+    {
+        WorkerAgg a = new WorkerAgg();
+        if (civ == null || wu == null || opponent == null) return a;
+
+        void Accumulate(WorkerUnitStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+            {
+                if (b == null || b.worker != wu || !MatchesWorkerBonusLocation(civ, b))
+                    continue;
+                if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                    continue;
+
+                a.attackAdd += b.attackAdd;
+                a.defenseAdd += b.defenseAdd;
+                a.attackPct += b.attackPct;
+                a.defensePct += b.defensePct;
+            }
+        }
+
+        Accumulate(civ.civData?.workerBonuses);
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+                Accumulate(t?.workerBonuses);
+        if (civ.researchedCultures != null)
+            foreach (var culture in civ.researchedCultures)
+                Accumulate(culture?.workerBonuses);
+        Accumulate(civ.currentGovernment?.workerBonuses);
+        if (civ.activePolicies != null)
+            foreach (var policy in civ.activePolicies)
+                Accumulate(policy?.workerBonuses);
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.workerBonuses);
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+            if (civ.IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief?.workerBonuses);
+
+        var cityContext = GetCurrentCityContext();
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.workerBonuses);
+        }
+
+        return a;
+    }
+
+    public override int GetSituationalAttackAddAgainst(BaseUnit target)
+    {
+        if (owner == null || data == null || target == null) return 0;
+        var workerBonuses = AggregateTargetedWorkerBonuses(owner, data, target);
+        var equipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = workerBonuses.attackAdd + equipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        return Mathf.RoundToInt(total);
+    }
+
+    public override float GetSituationalAttackPctAgainst(BaseUnit target)
+    {
+        if (owner == null || data == null || target == null) return 0f;
+        var workerBonuses = AggregateTargetedWorkerBonuses(owner, data, target);
+        var equipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        return workerBonuses.attackPct + equipmentBonuses.attackPct;
+    }
+
+    public override int GetSituationalDefenseAddAgainst(BaseUnit attacker)
+    {
+        if (owner == null || data == null || attacker == null) return 0;
+        var workerBonuses = AggregateTargetedWorkerBonuses(owner, data, attacker);
+        var equipmentBonuses = AggregateEquippedItemTargetedModifiers(attacker);
+        float total = workerBonuses.defenseAdd + equipmentBonuses.defenseAdd + GetTargetedAbilityDefenseModifierAgainst(attacker);
+        return Mathf.RoundToInt(total);
+    }
+
+    public override float GetSituationalDefensePctAgainst(BaseUnit attacker)
+    {
+        if (owner == null || data == null || attacker == null) return 0f;
+        var workerBonuses = AggregateTargetedWorkerBonuses(owner, data, attacker);
+        var equipmentBonuses = AggregateEquippedItemTargetedModifiers(attacker);
+        return workerBonuses.defensePct + equipmentBonuses.defensePct;
+    }
+
     public override int CurrentDefense
     {
         get
         {
             return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
+        }
+    }
+
+    public override int CurrentAttack
+    {
+        get
+        {
+            float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
+            valF += GetStatusEffectAttackModifier();
+
+            if (owner != null && data != null)
+            {
+                var wb = AggregateWorkerBonusesLocal(owner, data);
+                valF = (valF + wb.attackAdd) * (1f + wb.attackPct);
+            }
+
+            valF *= FatigueMultiplier;
+            valF *= MoraleDamageMultiplier;
+            return Mathf.Max(0, Mathf.RoundToInt(valF));
+        }
+    }
+
+    protected override float ApplyOwnerDefenseBonuses(float defenseValue)
+    {
+        float valF = defenseValue;
+        if (owner != null && data != null)
+        {
+            var wb = AggregateWorkerBonusesLocal(owner, data);
+            valF = (valF + wb.defenseAdd) * (1f + wb.defensePct);
+        }
+        return valF;
+    }
+
+    public override float CurrentRange
+    {
+        get
+        {
+            float valF = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+            valF += GetStatusEffectRangeModifier();
+
+            if (owner != null && data != null)
+            {
+                var wb = AggregateWorkerBonusesLocal(owner, data);
+                valF = (valF + wb.rangeAdd) * (1f + wb.rangePct);
+            }
+
+            return Mathf.Max(1f, valF);
         }
     }
 
@@ -523,6 +908,8 @@ public class WorkerUnit : BaseUnit
     {
         int max = MaxHealth;
         currentHealth = Mathf.Min(currentHealth, max);
+        currentWorkPoints = Mathf.Min(currentWorkPoints, MaxWorkPoints);
+        currentMovePoints = Mathf.Min(currentMovePoints, GetStartingMovePoints());
     }
 
     /// <summary>
@@ -540,7 +927,7 @@ public class WorkerUnit : BaseUnit
                 int tileSteps = ts.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
                 if (tileSteps >= 0)
                 {
-                    int maxSteps = Mathf.FloorToInt(BaseRange);
+                    int maxSteps = Mathf.FloorToInt(CurrentRange);
                     return tileSteps <= maxSteps;
                 }
             }
@@ -556,9 +943,21 @@ public class WorkerUnit : BaseUnit
 
         // Attack visuals are handled centrally by BaseUnit.PerformAttack (no local trigger)
 
-        int damage = ApplySharedMeleeCombatModifiers(Mathf.Max(1, CurrentAttack), target);
+        float attackValue = Mathf.Max(1f, CurrentAttack);
+        attackValue = (attackValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
+        float defenseValue = target.CurrentDefense;
+        defenseValue = (defenseValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
+        int damage = Mathf.Max(1, Mathf.RoundToInt(attackValue - defenseValue));
+        damage = Mathf.RoundToInt(damage * GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target));
+        damage = ApplySharedMeleeCombatModifiers(damage, target);
         var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = null, damage = damage, isMelee = true, isRanged = false };
         bool died = PerformAttack(ctx);
+        if (data != null)
+        {
+            GainExperience(Mathf.Max(0, damage) * Mathf.Max(0, data.experiencePerCombatDamage));
+            if (died && data.killExperience > 0)
+                GainExperience(data.killExperience);
+        }
 
         if (died)
         {
@@ -589,6 +988,8 @@ public class WorkerUnit : BaseUnit
         if (!CanForage(resource, tileIndex)) return;
         PlayForageAnimation();
         // Worker-side bookkeeping only; ResourceManager handles the actual resource consumption.
+        if (data != null && data.forageExperience > 0)
+            GainExperience(data.forageExperience);
         currentWorkPoints = 0;
     }
 
@@ -627,7 +1028,8 @@ public class WorkerUnit : BaseUnit
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
         FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
@@ -642,7 +1044,8 @@ public class WorkerUnit : BaseUnit
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
         FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
@@ -659,7 +1062,8 @@ public class WorkerUnit : BaseUnit
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
         FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
-        ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+        GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
 
