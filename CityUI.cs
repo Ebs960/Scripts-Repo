@@ -10,6 +10,8 @@ public class CityUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private TextMeshProUGUI cityNameText;
     [SerializeField] private TextMeshProUGUI levelText;
+    [SerializeField] private Button makeCapitalButton;
+    [SerializeField] private TextMeshProUGUI makeCapitalButtonText;
 
     [Header("Yield Display")]
     [SerializeField] private TextMeshProUGUI foodStorageText; // For "Food Storage X/Y"
@@ -74,6 +76,7 @@ public class CityUI : MonoBehaviour
 
     private void Awake()
     {
+        EnsureCapitalControls();
         if (governorDropdown != null)
         {
             governorDropdown.onValueChanged.RemoveAllListeners();
@@ -81,6 +84,60 @@ public class CityUI : MonoBehaviour
         }
         if (closeButton != null)
             closeButton.onClick.AddListener(Hide);
+        if (makeCapitalButton != null)
+        {
+            makeCapitalButton.onClick.RemoveAllListeners();
+            makeCapitalButton.onClick.AddListener(OnMakeCapitalClicked);
+        }
+    }
+
+    private void EnsureCapitalControls()
+    {
+        if (makeCapitalButton != null)
+            return;
+
+        var buttonObject = new GameObject("MakeCapitalButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(transform, false);
+
+        var buttonRect = buttonObject.GetComponent<RectTransform>();
+        buttonRect.anchorMin = new Vector2(1f, 1f);
+        buttonRect.anchorMax = new Vector2(1f, 1f);
+        buttonRect.pivot = new Vector2(1f, 1f);
+        buttonRect.anchoredPosition = new Vector2(-70f, -18f);
+        buttonRect.sizeDelta = new Vector2(150f, 34f);
+
+        var buttonImage = buttonObject.GetComponent<Image>();
+        buttonImage.color = new Color(0.22f, 0.28f, 0.18f, 0.95f);
+
+        makeCapitalButton = buttonObject.GetComponent<Button>();
+
+        var labelObject = new GameObject("Label", typeof(RectTransform));
+        labelObject.transform.SetParent(buttonObject.transform, false);
+        var labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        makeCapitalButtonText = labelObject.AddComponent<TextMeshProUGUI>();
+        makeCapitalButtonText.alignment = TextAlignmentOptions.Center;
+        makeCapitalButtonText.fontSize = 20f;
+        makeCapitalButtonText.text = "Make Capital";
+        if (cityNameText != null)
+        {
+            makeCapitalButtonText.font = cityNameText.font;
+            makeCapitalButtonText.color = cityNameText.color;
+        }
+    }
+
+    private void OnMakeCapitalClicked()
+    {
+        if (currentCity == null || currentCity.owner == null)
+            return;
+
+        currentCity.owner.SetCapitalCity(currentCity);
+        UIManager.Instance?.ShowNotification($"{currentCity.cityName} is now the capital.");
+        RefreshUI();
     }
 
     public void ShowForCity(City city)
@@ -139,6 +196,13 @@ if (currentCity == null)
             return;
         }
 
+        if (cityNameText != null)
+            cityNameText.text = currentCity.isCapital ? $"{currentCity.cityName} [Capital]" : currentCity.cityName;
+        if (levelText != null)
+            levelText.text = $"Level {currentCity.level}";
+
+        UpdateCapitalControls();
+
         int netFood = currentCity.GetFoodPerTurn();
         netFoodPerTurnText.text = $"Net Food: {netFood:+#;-#;0}/turn"; // Shows + for positive, - for negative
         goldPerTurnText.text = $"Gold: {currentCity.GetGoldPerTurn():+#;-#;0}/turn";
@@ -172,6 +236,26 @@ if (currentCity == null)
         
         // Populate the unified build options list
         PopulateBuildOptionsList();
+    }
+
+    private void UpdateCapitalControls()
+    {
+        if (makeCapitalButton == null)
+            return;
+
+        bool isPlayerOwned = currentCity != null
+            && currentCity.owner != null
+            && CivilizationManager.Instance != null
+            && currentCity.owner == CivilizationManager.Instance.playerCiv;
+
+        makeCapitalButton.gameObject.SetActive(isPlayerOwned);
+        if (!isPlayerOwned)
+            return;
+
+        bool alreadyCapital = currentCity != null && currentCity.isCapital;
+        makeCapitalButton.interactable = !alreadyCapital;
+        if (makeCapitalButtonText != null)
+            makeCapitalButtonText.text = alreadyCapital ? "Current Capital" : "Make Capital";
     }
 
     /// <summary>

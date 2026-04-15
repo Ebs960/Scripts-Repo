@@ -3,6 +3,19 @@ using UnityEngine;
 // Shared serializable types for targeted bonuses applied by Techs and Cultures.
 // These are data-only containers; game systems should read them and apply the effects at runtime.
 
+public enum BoolRequirement
+{
+    Any,
+    MustBeTrue,
+    MustBeFalse,
+}
+
+public enum CityYieldScope
+{
+    AllCities,
+    CapitalOnly,
+}
+
 [System.Serializable]
 public class UnitStatBonus
 {
@@ -171,6 +184,67 @@ public class BuildingYieldBonus
     public int policyPointsAdd;
 
     [Header("Yield % (per turn)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float foodPct;
+    public float productionPct;
+    public float goldPct;
+    public float sciencePct;
+    public float culturePct;
+    public float faithPct;
+    public float policyPointsPct;
+}
+
+[System.Serializable]
+public class TileYieldBonus
+{
+    [Header("Tile Filters")]
+    public bool useBiomeFilter;
+    public Biome biome;
+    public BoolRequirement hillRequirement;
+    public BoolRequirement mountainRequirement;
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons on the tile.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+    [Tooltip("Require a specific resource on the tile (enable with useResourceFilter)")]
+    public bool useResourceFilter;
+    public ResourceData resource;
+
+    [Header("Yield Add (flat per turn)")]
+    public int foodAdd;
+    public int productionAdd;
+    public int goldAdd;
+    public int scienceAdd;
+    public int cultureAdd;
+    public int faithAdd;
+    public int policyPointsAdd;
+
+    [Header("Yield % (per turn)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float foodPct;
+    public float productionPct;
+    public float goldPct;
+    public float sciencePct;
+    public float culturePct;
+    public float faithPct;
+    public float policyPointsPct;
+}
+
+[System.Serializable]
+public class CityYieldBonus
+{
+    public CityYieldScope scope = CityYieldScope.AllCities;
+
+    [Header("Yield Add (flat per city per turn)")]
+    public int foodAdd;
+    public int productionAdd;
+    public int goldAdd;
+    public int scienceAdd;
+    public int cultureAdd;
+    public int faithAdd;
+    public int policyPointsAdd;
+
+    [Header("Yield % (per city per turn)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float foodPct;
     public float productionPct;

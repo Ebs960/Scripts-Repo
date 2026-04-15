@@ -220,6 +220,10 @@ public class CombatUnitData : ScriptableObject
     [Range(0, 10)]
     public int attackPointsPerTurn = 1;
 
+    [Header("Charge")]
+    [Tooltip("Percent bonus to attack when the unit must move more than 1 tile to make the attack (0 = disabled). Example: 0.2 = +20%")]
+    public float chargeBonusPercent = 0f;
+
     [Header("Production & Purchase")]
     public int productionCost;
     public int goldCost;

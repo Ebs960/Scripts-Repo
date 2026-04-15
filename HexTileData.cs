@@ -204,6 +204,90 @@ public class HexTileData
 
     // Local yield bonus aggregator
     private struct YieldAgg { public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyAdd; public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPct; }
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private static bool MatchesTileYieldBonus(HexTileData tile, TileYieldBonus bonus)
+    {
+        if (tile == null || bonus == null) return false;
+        if (bonus.useBiomeFilter && tile.biome != bonus.biome) return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile.isHill)) return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile.isMountain)) return false;
+        if (bonus.useResourceFilter)
+        {
+            if (tile.resource == null) return false;
+            if (tile.resource != bonus.resource) return false;
+        }
+        if (bonus.useSeasonFilter)
+        {
+            if (bonus.seasons == null || bonus.seasons.Length == 0) return false;
+            bool matched = false;
+            foreach (var s in bonus.seasons) { if (s == tile.season) { matched = true; break; } }
+            if (!matched) return false;
+        }
+        return true;
+    }
+
+    private static YieldAgg AggregateReligionTileBonusesLocal(Civilization civ, HexTileData tile)
+    {
+        YieldAgg a = new YieldAgg();
+        if (civ == null || tile == null) return a;
+
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.tileYieldBonuses == null) continue;
+            foreach (var b in pantheonBonuses.tileYieldBonuses)
+            {
+                if (!MatchesTileYieldBonus(tile, b)) continue;
+                a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+            }
+        }
+
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+        {
+            if (belief?.tileYieldBonuses == null) continue;
+            foreach (var b in belief.tileYieldBonuses)
+            {
+                if (!MatchesTileYieldBonus(tile, b)) continue;
+                a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+            }
+        }
+
+        return a;
+    }
+
+    /// <summary>
+    /// Returns the effective tile yields after applying pantheon/belief tile bonuses for the given civilization.
+    /// </summary>
+    public static TileYield GetTotalYieldWithReligion(Civilization civ, HexTileData tile)
+    {
+        if (tile == null) return default;
+        var baseYield = tile.GetTotalYield();
+        var agg = AggregateReligionTileBonusesLocal(civ, tile);
+        TileYield y = new TileYield();
+        y.Food = Mathf.RoundToInt((baseYield.Food + agg.foodAdd) * (1f + agg.foodPct));
+        y.Production = Mathf.RoundToInt((baseYield.Production + agg.productionAdd) * (1f + agg.productionPct));
+        y.Gold = Mathf.RoundToInt((baseYield.Gold + agg.goldAdd) * (1f + agg.goldPct));
+        y.Science = Mathf.RoundToInt((baseYield.Science + agg.scienceAdd) * (1f + agg.sciencePct));
+        y.Culture = Mathf.RoundToInt((baseYield.Culture + agg.cultureAdd) * (1f + agg.culturePct));
+        y.Faith = Mathf.RoundToInt((baseYield.Faith + agg.faithAdd) * (1f + agg.faithPct));
+        y.Policy = Mathf.RoundToInt((baseYield.Policy + agg.policyAdd) * (1f + agg.policyPct));
+        return y;
+    }
+
     private static YieldAgg AggregateImprovementBonusesLocal(Civilization civ, ImprovementData imp)
     {
         YieldAgg a = new YieldAgg(); if (civ == null || imp == null) return a;
@@ -284,6 +368,18 @@ public class HexTileData
             Policy = Mathf.RoundToInt(policyPointYield * seasonalYieldModifier),
             Faith = Mathf.RoundToInt(faithYield * seasonalYieldModifier)
         };
+
+        if (HasOwner)
+        {
+            var tileAgg = AggregateReligionTileBonusesLocal(owner, this);
+            y.Food = Mathf.RoundToInt((y.Food + tileAgg.foodAdd) * (1f + tileAgg.foodPct));
+            y.Production = Mathf.RoundToInt((y.Production + tileAgg.productionAdd) * (1f + tileAgg.productionPct));
+            y.Gold = Mathf.RoundToInt((y.Gold + tileAgg.goldAdd) * (1f + tileAgg.goldPct));
+            y.Science = Mathf.RoundToInt((y.Science + tileAgg.scienceAdd) * (1f + tileAgg.sciencePct));
+            y.Culture = Mathf.RoundToInt((y.Culture + tileAgg.cultureAdd) * (1f + tileAgg.culturePct));
+            y.Policy = Mathf.RoundToInt((y.Policy + tileAgg.policyAdd) * (1f + tileAgg.policyPct));
+            y.Faith = Mathf.RoundToInt((y.Faith + tileAgg.faithAdd) * (1f + tileAgg.faithPct));
+        }
 
         if (HasImprovement)
         {

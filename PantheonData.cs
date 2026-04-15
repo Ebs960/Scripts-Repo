@@ -27,6 +27,18 @@ public class PantheonBonuses
     public float scienceModifier;
     public float cultureModifier;
     public float faithModifier;
+
+    [Header("Targeted Yield Bonuses")]
+    [Tooltip("Per-turn yield modifiers for specific combat units owned by the civilization.")]
+    public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific worker units owned by the civilization.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific buildings in owned cities.")]
+    public BuildingYieldBonus[] buildingYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for tiles matching terrain filters in owned territory.")]
+    public TileYieldBonus[] tileYieldBonuses;
+    [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
+    public CityYieldBonus[] cityYieldBonuses;
 }
 
 [CreateAssetMenu(menuName="CivGame/Religion/Pantheon")]

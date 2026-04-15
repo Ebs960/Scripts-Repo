@@ -762,7 +762,22 @@ public class CombatUnit : BaseUnit
         float defenderValue = target.GetBaseDefenseFloat() + target.GetEquipmentDefenseBonusAgainst(this.data.unitType);
 
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
-        int damage = Mathf.RoundToInt(rawF * dmgMul);
+
+        // Charge bonus: if attacker had to move more than 1 tile to reach this target, apply a percent bonus
+        float chargeMul = 1f;
+        try
+        {
+            var tsLocal = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (tsLocal != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int moveDist = tsLocal.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (moveDist > 1 && data != null && data.chargeBonusPercent > 0f)
+                    chargeMul += data.chargeBonusPercent;
+            }
+        }
+        catch { }
+
+        int damage = Mathf.RoundToInt(rawF * dmgMul * chargeMul);
 
         damage = ApplySharedMeleeCombatModifiers(damage, target);
 
@@ -843,7 +858,21 @@ public class CombatUnit : BaseUnit
         float defenderValue = target.CurrentDefense;
         
         float rawDamage = Mathf.Max(0f, attackerValue - defenderValue);
-        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier());
+
+        float chargeMulW = 1f;
+        try
+        {
+            var tsLocalW = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (tsLocalW != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int moveDistW = tsLocalW.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (moveDistW > 1 && data != null && data.chargeBonusPercent > 0f)
+                    chargeMulW += data.chargeBonusPercent;
+            }
+        }
+        catch { }
+
+        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier() * chargeMulW);
 
         finalDamage = ApplySharedMeleeCombatModifiers(finalDamage, target);
 

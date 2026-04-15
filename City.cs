@@ -48,6 +48,8 @@ public class City : MonoBehaviour
     public string cityName;
     public Civilization owner;
     public Civilization OriginalOwner;
+    [Tooltip("Whether this city is the civilization's designated capital.")]
+    public bool isCapital;
     public int centerTileIndex;
     [Tooltip("Which planet this city belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
@@ -81,6 +83,8 @@ public class City : MonoBehaviour
     public float loyalty = 100f;
     [Tooltip("If loyalty falls to or below this, the city revolts")]
     public float revoltThreshold = 30f;
+    [Tooltip("Flat loyalty support applied while this city is the capital.")]
+    public float capitalLoyaltyBonus = 10f;
 
     [Header("Territory")]
     public int baseRadius = 1;
@@ -557,6 +561,9 @@ if (UIManager.Instance != null)
             governorBonus += governor.GetLoyaltyContribution();
         }
 
+        if (isCapital)
+            governorBonus += capitalLoyaltyBonus;
+
         loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus;
 
         // Clamp 0–100
@@ -574,15 +581,14 @@ if (UIManager.Instance != null)
     {
 // 1) Remove from old owner
         var oldOwner = owner;
-        if (oldOwner.cities.Contains(this))
-            oldOwner.cities.Remove(this);
+    oldOwner?.RemoveCity(this);
 
         // 2) Create or fetch rebel faction
         var rebelCiv = CivilizationManager.Instance.CreateRebelFaction(this);
 
         // 3) Transfer city to rebel civ
         owner = rebelCiv;
-        rebelCiv.cities.Add(this);
+        rebelCiv?.AddCity(this);
 
         // 4) Reassign any garrisoned units (those on the city tile)
         //    Combat units:
@@ -1545,16 +1551,181 @@ Destroy(oldTuple.instance);
 
     public int GetFoodPerTurn()
     {
-    int baseFood = SumYield(t => t.food) + SumBuiltWithBonuses(BuildingYieldType.Food);
+        int baseFood = SumYield(t => t.food) + SumBuiltWithBonuses(BuildingYieldType.Food);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
             baseFood += bonuses.food;
         }
-        return baseFood;
+        return ApplyCityScopedReligionBonuses(baseFood, BuildingYieldType.Food);
     }
 
     enum BuildingYieldType { Food, Production, Gold, Science, Culture, Faith, PolicyPoints }
+    struct CityYieldAgg
+    {
+        public int add;
+        public float pct;
+    }
+
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private bool MatchesTileYieldBonus(HexTileData tile, TileYieldBonus bonus)
+    {
+        if (tile == null || bonus == null) return false;
+        if (bonus.useBiomeFilter && tile.biome != bonus.biome) return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile.isHill)) return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile.isMountain)) return false;
+        if (bonus.useResourceFilter)
+        {
+            if (tile.resource == null) return false;
+            if (tile.resource != bonus.resource) return false;
+        }
+        if (bonus.useSeasonFilter)
+        {
+            if (bonus.seasons == null || bonus.seasons.Length == 0) return false;
+            bool matched = false;
+            foreach (var s in bonus.seasons) { if (s == tile.season) { matched = true; break; } }
+            if (!matched) return false;
+        }
+        return true;
+    }
+
+    private static void AddBuildingBonus(ref CityYieldAgg agg, BuildingYieldBonus bonus, BuildingYieldType kind)
+    {
+        if (bonus == null) return;
+        switch (kind)
+        {
+            case BuildingYieldType.Food: agg.add += bonus.foodAdd; agg.pct += bonus.foodPct; break;
+            case BuildingYieldType.Production: agg.add += bonus.productionAdd; agg.pct += bonus.productionPct; break;
+            case BuildingYieldType.Gold: agg.add += bonus.goldAdd; agg.pct += bonus.goldPct; break;
+            case BuildingYieldType.Science: agg.add += bonus.scienceAdd; agg.pct += bonus.sciencePct; break;
+            case BuildingYieldType.Culture: agg.add += bonus.cultureAdd; agg.pct += bonus.culturePct; break;
+            case BuildingYieldType.Faith: agg.add += bonus.faithAdd; agg.pct += bonus.faithPct; break;
+            case BuildingYieldType.PolicyPoints: agg.add += bonus.policyPointsAdd; agg.pct += bonus.policyPointsPct; break;
+        }
+    }
+
+    private static void AddTileBonus(ref CityYieldAgg agg, TileYieldBonus bonus, BuildingYieldType kind)
+    {
+        if (bonus == null) return;
+        switch (kind)
+        {
+            case BuildingYieldType.Food: agg.add += bonus.foodAdd; agg.pct += bonus.foodPct; break;
+            case BuildingYieldType.Production: agg.add += bonus.productionAdd; agg.pct += bonus.productionPct; break;
+            case BuildingYieldType.Gold: agg.add += bonus.goldAdd; agg.pct += bonus.goldPct; break;
+            case BuildingYieldType.Science: agg.add += bonus.scienceAdd; agg.pct += bonus.sciencePct; break;
+            case BuildingYieldType.Culture: agg.add += bonus.cultureAdd; agg.pct += bonus.culturePct; break;
+            case BuildingYieldType.Faith: agg.add += bonus.faithAdd; agg.pct += bonus.faithPct; break;
+            case BuildingYieldType.PolicyPoints: agg.add += bonus.policyPointsAdd; agg.pct += bonus.policyPointsPct; break;
+        }
+    }
+
+    private static void AddCityBonus(ref CityYieldAgg agg, CityYieldBonus bonus, BuildingYieldType kind)
+    {
+        if (bonus == null) return;
+        switch (kind)
+        {
+            case BuildingYieldType.Food: agg.add += bonus.foodAdd; agg.pct += bonus.foodPct; break;
+            case BuildingYieldType.Production: agg.add += bonus.productionAdd; agg.pct += bonus.productionPct; break;
+            case BuildingYieldType.Gold: agg.add += bonus.goldAdd; agg.pct += bonus.goldPct; break;
+            case BuildingYieldType.Science: agg.add += bonus.scienceAdd; agg.pct += bonus.sciencePct; break;
+            case BuildingYieldType.Culture: agg.add += bonus.cultureAdd; agg.pct += bonus.culturePct; break;
+            case BuildingYieldType.Faith: agg.add += bonus.faithAdd; agg.pct += bonus.faithPct; break;
+            case BuildingYieldType.PolicyPoints: agg.add += bonus.policyPointsAdd; agg.pct += bonus.policyPointsPct; break;
+        }
+    }
+
+    private CityYieldAgg AggregateReligionBuildingBonuses(BuildingData data, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null || data == null) return agg;
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.buildingYieldBonuses == null) continue;
+            foreach (var bonus in pantheonBonuses.buildingYieldBonuses)
+                if (bonus != null && bonus.building == data)
+                    AddBuildingBonus(ref agg, bonus, kind);
+        }
+
+        foreach (var belief in owner.EnumerateActiveBeliefs())
+        {
+            if (belief?.buildingYieldBonuses == null) continue;
+            foreach (var bonus in belief.buildingYieldBonuses)
+                if (bonus != null && bonus.building == data)
+                    AddBuildingBonus(ref agg, bonus, kind);
+        }
+
+        return agg;
+    }
+
+    private CityYieldAgg AggregateReligionTileBonuses(HexTileData tile, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null || tile == null) return agg;
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.tileYieldBonuses == null) continue;
+            foreach (var bonus in pantheonBonuses.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
+        foreach (var belief in owner.EnumerateActiveBeliefs())
+        {
+            if (belief?.tileYieldBonuses == null) continue;
+            foreach (var bonus in belief.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
+        return agg;
+    }
+
+    private CityYieldAgg AggregateReligionCityBonuses(BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null) return agg;
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.cityYieldBonuses == null) continue;
+            foreach (var bonus in pantheonBonuses.cityYieldBonuses)
+            {
+                if (bonus == null) continue;
+                if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this)) continue;
+                AddCityBonus(ref agg, bonus, kind);
+            }
+        }
+
+        foreach (var belief in owner.EnumerateActiveBeliefs())
+        {
+            if (belief?.cityYieldBonuses == null) continue;
+            foreach (var bonus in belief.cityYieldBonuses)
+            {
+                if (bonus == null) continue;
+                if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this)) continue;
+                AddCityBonus(ref agg, bonus, kind);
+            }
+        }
+
+        return agg;
+    }
+
+    private int ApplyCityScopedReligionBonuses(int value, BuildingYieldType kind)
+    {
+        var agg = AggregateReligionCityBonuses(kind);
+        return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct));
+    }
 
     int SumBuiltWithBonuses(BuildingYieldType kind)
     {
@@ -1609,6 +1780,8 @@ Destroy(oldTuple.instance);
                     case BuildingYieldType.PolicyPoints: add = agg.policyAdd; pct = agg.policyPct; break;
                 }
                 baseVal = Mathf.RoundToInt((baseVal + add) * (1f + pct));
+                var religionAgg = AggregateReligionBuildingBonuses(data, kind);
+                baseVal = Mathf.RoundToInt((baseVal + religionAgg.add) * (1f + religionAgg.pct));
             }
             total += baseVal;
         }
@@ -1617,13 +1790,13 @@ Destroy(oldTuple.instance);
     
     public int GetGoldPerTurn()
     {
-    int baseGold = SumYield(t => t.gold) + SumBuiltWithBonuses(BuildingYieldType.Gold);
+        int baseGold = SumYield(t => t.gold) + SumBuiltWithBonuses(BuildingYieldType.Gold);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
             baseGold += bonuses.gold;
         }
-        return baseGold;
+        return ApplyCityScopedReligionBonuses(baseGold, BuildingYieldType.Gold);
     }
 
     public int GetProductionPerTurn()
@@ -1634,38 +1807,38 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseProd += bonuses.production;
         }
-        return baseProd;
+        return ApplyCityScopedReligionBonuses(baseProd, BuildingYieldType.Production);
     }
     
     public int GetSciencePerTurn()
     {
-    int baseScience = SumYield(t => t.science) + SumBuiltWithBonuses(BuildingYieldType.Science);
+        int baseScience = SumYield(t => t.science) + SumBuiltWithBonuses(BuildingYieldType.Science);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
             baseScience += bonuses.science;
         }
-        return baseScience;
+        return ApplyCityScopedReligionBonuses(baseScience, BuildingYieldType.Science);
     }
     
     public int GetCulturePerTurn()
     {
-    int baseCulture = SumYield(t => t.culture) + SumBuiltWithBonuses(BuildingYieldType.Culture);
+        int baseCulture = SumYield(t => t.culture) + SumBuiltWithBonuses(BuildingYieldType.Culture);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
             baseCulture += bonuses.culture;
         }
-        return baseCulture;
+        return ApplyCityScopedReligionBonuses(baseCulture, BuildingYieldType.Culture);
     }
     
     public int GetPolicyPointPerTurn()
     {
-    int basePolicyPoints = SumYield(t => 0) + SumBuiltWithBonuses(BuildingYieldType.PolicyPoints); // Assuming tiles don't give policy points directly
+        int basePolicyPoints = SumYield(t => 0) + SumBuiltWithBonuses(BuildingYieldType.PolicyPoints);
         
         // Governors don't have base policy point bonuses, but traits might add them in the future
         
-        return basePolicyPoints;
+        return ApplyCityScopedReligionBonuses(basePolicyPoints, BuildingYieldType.PolicyPoints);
     }
 
     // Placeholder for summing yields from owned tiles within radius
@@ -1724,6 +1897,15 @@ Destroy(oldTuple.instance);
                 if (maybe != null)
                 {
                     total += selector(maybe);
+
+                    var tileBonusAgg = AggregateReligionTileBonuses(maybe, kind: testResult == 1000 ? BuildingYieldType.Food :
+                        testResult == 2000 ? BuildingYieldType.Production :
+                        testResult == 3000 ? BuildingYieldType.Gold :
+                        testResult == 4000 ? BuildingYieldType.Science :
+                        testResult == 5000 ? BuildingYieldType.Culture :
+                        testResult == 6000 ? BuildingYieldType.Faith : BuildingYieldType.PolicyPoints);
+                    int baseTileYield = selector(maybe);
+                    total += Mathf.RoundToInt((baseTileYield + tileBonusAgg.add) * (1f + tileBonusAgg.pct)) - baseTileYield;
 
                     // Underwater biome bonus yields: when an ocean tile has a non-default
                     // underwaterBiome AND an underwater improvement or district, grant the
@@ -1848,17 +2030,11 @@ Destroy(oldTuple.instance);
             var oldOwner = owner;
             
             // 1) Remove from old owner
-            if (oldOwner.cities.Contains(this))
-            {
-                oldOwner.cities.Remove(this);
-            }
+            oldOwner?.RemoveCity(this);
             
             // 2) Transfer city to attacker
             owner = attackerCiv;
-            if (!attackerCiv.cities.Contains(this))
-            {
-                attackerCiv.cities.Add(this);
-            }
+            attackerCiv?.AddCity(this);
             
             // 3) Reassign any garrisoned units (those on the city tile)
             //    Combat units:
@@ -1917,10 +2093,7 @@ Destroy(oldTuple.instance);
         {
             // No attacker found - city is destroyed/abandoned
             Debug.LogWarning($"⚠️ {cityName} surrendered but no attacker found. City will be destroyed.");
-            if (owner != null && owner.cities.Contains(this))
-            {
-                owner.cities.Remove(this);
-            }
+            owner?.RemoveCity(this);
             
             // Show notification
             if (UIManager.Instance != null)
@@ -1979,7 +2152,7 @@ Destroy(oldTuple.instance);
                     : ts.GetDominantReligion(tileIndex);
             }
         }
-        return faith;
+        return ApplyCityScopedReligionBonuses(faith, BuildingYieldType.Faith);
     }
 
     /// <summary>
@@ -2218,9 +2391,7 @@ cityUI.ShowForCity(this);
         // 4. Replace in the owner's city list
         if (owner != null)
         {
-            int idx = owner.cities.IndexOf(this);
-            if (idx >= 0)
-                owner.cities[idx] = newCity;
+            owner.ReplaceCityReference(this, newCity);
         }
 
         // 5. Destroy the old city object

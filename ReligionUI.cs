@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 public class ReligionUI : MonoBehaviour
 {
@@ -66,6 +67,27 @@ public class ReligionUI : MonoBehaviour
     
     // Cached manager reference to avoid repeated FindAnyObjectByType calls
     private ReligionManager _cachedReligionManager;
+
+    [Header("Belief Drag & Drop")]
+    [Tooltip("Parent transform that will contain generated belief buttons (assign in Inspector)")]
+    public Transform beliefListContainer;
+    [Tooltip("Prefab for a belief button. Expected to have a BeliefButtonUI component.")]
+    public GameObject beliefButtonPrefab;
+    [Tooltip("Optional canvas transform to reparent dragged items to while dragging")]
+    public RectTransform dragLayer;
+
+    [Header("Belief Slots")]
+    public BeliefSlotUI survivalSlot;
+    public BeliefSlotUI harvestSlot;
+    public BeliefSlotUI ritualSlot;
+    public BeliefSlotUI warfareSlot;
+    public BeliefSlotUI knowledgeSlot;
+
+    // Assigned beliefs by category (UI-level selection)
+    private readonly System.Collections.Generic.Dictionary<BeliefCategory, BeliefData> _assignedBeliefs = new System.Collections.Generic.Dictionary<BeliefCategory, BeliefData>();
+    [Header("Apply Controls")]
+    public UnityEngine.UI.Button applyBeliefsButton;
+    public UnityEngine.UI.Button cancelBeliefsButton;
     
     void Start()
     {
@@ -86,6 +108,26 @@ public class ReligionUI : MonoBehaviour
         
         // Hide the panel initially
         religionPanel.SetActive(false);
+        // Populate belief list if prefabs/containers are set
+        if (beliefListContainer != null && beliefButtonPrefab != null)
+            PopulateBeliefList();
+
+        if (applyBeliefsButton != null)
+            applyBeliefsButton.onClick.AddListener(OnApplyBeliefsClicked);
+        if (cancelBeliefsButton != null)
+            cancelBeliefsButton.onClick.AddListener(OnCancelBeliefsClicked);
+
+        // Ensure slot owners are set so clear buttons work
+        if (survivalSlot != null) survivalSlot.owner = this;
+        if (harvestSlot != null) harvestSlot.owner = this;
+        if (ritualSlot != null) ritualSlot.owner = this;
+        if (warfareSlot != null) warfareSlot.owner = this;
+        if (knowledgeSlot != null) knowledgeSlot.owner = this;
+    }
+
+    private void OnDestroy()
+    {
+        UnsubscribeFromPlayerCiv();
     }
     
     /// <summary>
@@ -93,13 +135,165 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     public void Show(Civilization playerCiv)
     {
+        if (this.playerCiv != playerCiv)
+            UnsubscribeFromPlayerCiv();
+
         this.playerCiv = playerCiv;
+        SubscribeToPlayerCiv();
+        SyncAssignedBeliefsFromCiv();
+        PopulateBeliefList();
         
         // Update UI state based on player civilization's religion status
         UpdateUIState();
         
         // Show the panel
         religionPanel.SetActive(true);
+
+        // Refresh belief slot visuals from assigned map
+        RefreshBeliefSlots();
+    }
+
+    private void RefreshBeliefSlots()
+    {
+        survivalSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Survival) ? _assignedBeliefs[BeliefCategory.Survival] : null);
+        harvestSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Harvest) ? _assignedBeliefs[BeliefCategory.Harvest] : null);
+        ritualSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Ritual) ? _assignedBeliefs[BeliefCategory.Ritual] : null);
+        warfareSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Warfare) ? _assignedBeliefs[BeliefCategory.Warfare] : null);
+        knowledgeSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Knowledge) ? _assignedBeliefs[BeliefCategory.Knowledge] : null);
+    }
+
+    /// <summary>
+    /// Populate the belief list UI, grouping buttons by category.
+    /// </summary>
+    public void PopulateBeliefList()
+    {
+        if (beliefListContainer == null || beliefButtonPrefab == null) return;
+
+        // Clear existing
+        for (int i = beliefListContainer.childCount - 1; i >= 0; i--)
+        {
+            var c = beliefListContainer.GetChild(i);
+            Destroy(c.gameObject);
+        }
+
+        // Gather all beliefs available from ReligionManager and loaded assets
+        var rm = _cachedReligionManager ?? FindAnyObjectByType<ReligionManager>();
+        var allBeliefs = new System.Collections.Generic.List<BeliefData>();
+        var resourceBeliefs = Resources.LoadAll<BeliefData>("");
+        if (resourceBeliefs != null)
+        {
+            foreach (var belief in resourceBeliefs)
+                if (belief != null && !allBeliefs.Contains(belief)) allBeliefs.Add(belief);
+        }
+
+        // For now, use culture-unlocked beliefs (if playerCiv present) and any beliefs referenced in PantheonData assets
+        if (playerCiv != null && playerCiv.cultureUnlockedBeliefs != null)
+            allBeliefs.AddRange(playerCiv.cultureUnlockedBeliefs);
+
+        // Add beliefs from available pantheons
+        var pantheons = rm != null ? rm.availablePantheons : null;
+        if (pantheons != null)
+        {
+            foreach (var p in pantheons)
+            {
+                if (p == null || p.possibleFounderBeliefs == null) continue;
+                foreach (var b in p.possibleFounderBeliefs)
+                    if (b != null && !allBeliefs.Contains(b)) allBeliefs.Add(b);
+            }
+        }
+
+        // Group by category and create header + buttons
+        foreach (BeliefCategory cat in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            // Header
+            var headerGO = new GameObject("Header_" + cat.ToString(), typeof(RectTransform));
+            headerGO.transform.SetParent(beliefListContainer, false);
+            var headerText = headerGO.AddComponent<TextMeshProUGUI>();
+            headerText.text = cat.ToString();
+
+            // Buttons for this category
+            foreach (var b in allBeliefs)
+            {
+                if (b == null) continue;
+                if (b.category != cat) continue;
+                if (playerCiv != null && playerCiv.HasActiveBeliefInCategory(b.category) && playerCiv.GetCustomBeliefInCategory(b.category) != b)
+                    continue;
+                var btnGO = Instantiate(beliefButtonPrefab, beliefListContainer);
+                var btn = btnGO.GetComponent<BeliefButtonUI>();
+                if (btn != null) btn.Initialize(b, this, dragLayer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called by BeliefSlotUI when a belief is dropped onto a slot.
+    /// </summary>
+    public void AssignBeliefToCategory(BeliefCategory category, BeliefData belief)
+    {
+        // Enforce single belief per category at UI-level (replace)
+        if (belief == null)
+        {
+            _assignedBeliefs.Remove(category);
+        }
+        else
+        {
+            _assignedBeliefs[category] = belief;
+        }
+        RefreshBeliefSlots();
+    }
+
+    /// <summary>
+    /// Clear the assigned belief for the category (UI-level) and optionally apply immediately.
+    /// </summary>
+    public void ClearBeliefCategory(BeliefCategory category)
+    {
+        if (_assignedBeliefs.ContainsKey(category))
+            _assignedBeliefs.Remove(category);
+        RefreshBeliefSlots();
+    }
+
+    private void OnApplyBeliefsClicked()
+    {
+        if (playerCiv == null) return;
+
+        var failed = new System.Collections.Generic.List<BeliefCategory>();
+        foreach (var kv in _assignedBeliefs)
+        {
+            var cat = kv.Key;
+            var belief = kv.Value;
+            if (belief == null) continue;
+
+            bool ok = playerCiv.SetCustomBelief(cat, belief);
+            if (!ok) failed.Add(cat);
+        }
+
+        if (failed.Count > 0)
+        {
+            Debug.LogWarning($"[ReligionUI] Failed to apply beliefs for categories: {string.Join(",", failed)} (conflict with existing pantheon/religion beliefs)");
+        }
+        else
+        {
+            Debug.Log("[ReligionUI] Beliefs applied to civilization.");
+        }
+    }
+
+    private void OnCancelBeliefsClicked()
+    {
+        // Revert assigned beliefs to current civ custom assignments
+        if (playerCiv == null)
+        {
+            _assignedBeliefs.Clear();
+            RefreshBeliefSlots();
+            return;
+        }
+
+        _assignedBeliefs.Clear();
+        foreach (BeliefCategory cat in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            var b = playerCiv.GetCustomBeliefInCategory(cat);
+            if (b != null) _assignedBeliefs[cat] = b;
+        }
+        RefreshBeliefSlots();
     }
     
     /// <summary>
@@ -107,7 +301,41 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
+        UnsubscribeFromPlayerCiv();
         religionPanel.SetActive(false);
+    }
+
+    private void SubscribeToPlayerCiv()
+    {
+        if (playerCiv != null)
+            playerCiv.OnBeliefsChanged += HandleBeliefsChanged;
+    }
+
+    private void UnsubscribeFromPlayerCiv()
+    {
+        if (playerCiv != null)
+            playerCiv.OnBeliefsChanged -= HandleBeliefsChanged;
+    }
+
+    private void HandleBeliefsChanged()
+    {
+        SyncAssignedBeliefsFromCiv();
+        PopulateBeliefList();
+        UpdateUIState();
+        RefreshBeliefSlots();
+    }
+
+    private void SyncAssignedBeliefsFromCiv()
+    {
+        _assignedBeliefs.Clear();
+        if (playerCiv == null) return;
+
+        foreach (BeliefCategory cat in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            var belief = playerCiv.GetCustomBeliefInCategory(cat);
+            if (belief != null)
+                _assignedBeliefs[cat] = belief;
+        }
     }
     
     /// <summary>
@@ -166,6 +394,7 @@ public class ReligionUI : MonoBehaviour
                     foreach (var b in playerCiv.cultureUnlockedBeliefs)
                         if (b != null && !combinedBeliefs.Contains(b)) combinedBeliefs.Add(b);
                 }
+                combinedBeliefs.RemoveAll(b => b == null || (playerCiv.HasActiveBeliefInCategory(b.category) && playerCiv.GetCustomBeliefInCategory(b.category) != b));
                 availableFounderBeliefs = combinedBeliefs;
                 
                 founderBeliefDropdown.ClearOptions();
@@ -274,6 +503,9 @@ public class ReligionUI : MonoBehaviour
                 if (_cachedReligionManager != null)
                 {
                     availableReligions = _cachedReligionManager.GetAvailableReligions();
+                    availableReligions.RemoveAll(r => r == null
+                        || (playerCiv.foundedPantheons == null || !playerCiv.foundedPantheons.Contains(r.requiredPantheon))
+                        || (r.founderBelief != null && playerCiv.HasActiveBeliefInCategory(r.founderBelief.category)));
                 }
                 
                 // Update religion dropdown
@@ -284,9 +516,7 @@ public class ReligionUI : MonoBehaviour
                     List<string> religionNames = new List<string>();
                     foreach (ReligionData religion in availableReligions)
                     {
-                            // Only list religions that require any of the pantheons this civ has founded
-                            if (playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Contains(religion.requiredPantheon))
-                            religionNames.Add(religion.religionName);
+                        religionNames.Add(religion.religionName);
                     }
                     
                     if (religionNames.Count > 0)

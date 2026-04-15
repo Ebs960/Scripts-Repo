@@ -2543,6 +2543,9 @@ public class GameManager : MonoBehaviour
                 if (civ.cultureUnlockedBeliefs != null)
                     foreach (var belief in civ.cultureUnlockedBeliefs)
                         if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
+                if (civ.customAssignedBeliefs != null)
+                    foreach (var belief in civ.customAssignedBeliefs)
+                        if (belief != null) civProgress.customAssignedBeliefNames.Add(belief.name);
                 if (civ.earnedLegacies != null)
                     foreach (var leg in civ.earnedLegacies)
                         if (leg != null) civProgress.earnedLegacyNames.Add(leg.legacyName);
@@ -2635,6 +2638,7 @@ public class GameManager : MonoBehaviour
                             ownerCivIndex = civIdx,
                             originalOwnerCivIndex = civilizationManager.GetCivIndex(city.OriginalOwner),
                             ownerCityListIndex = cityIdx,
+                            isCapital = city.isCapital,
                             centerTileIndex = city.centerTileIndex,
                             planetIndex = city.planetIndex,
                             cityName = city.cityName,
@@ -3003,6 +3007,7 @@ public class GameManager : MonoBehaviour
 
             city.owner = ownerCiv;
             city.OriginalOwner = originalOwnerCiv ?? ownerCiv;
+            city.isCapital = cityData.isCapital;
             city.cityName = cityData.cityName;
             city.level = cityData.level;
             city.foodStorage = cityData.foodStorage;
@@ -3012,9 +3017,9 @@ public class GameManager : MonoBehaviour
 
             if (ownerCiv != null)
             {
-                ownerCiv.cities ??= new List<City>();
-                if (!ownerCiv.cities.Contains(city))
-                    ownerCiv.cities.Add(city);
+                ownerCiv.AddCity(city);
+                if (cityData.isCapital)
+                    ownerCiv.SetCapitalCity(city);
             }
 
             var savedBuildings = new List<BuildingData>();
@@ -3114,6 +3119,7 @@ public class GameManager : MonoBehaviour
             var unlockedGovernorTraits = ResolveAssets(progress.unlockedGovernorTraitNames, governorTraitLookup);
             var unlockedPantheons = ResolveAssets(progress.cultureUnlockedPantheonNames, pantheonLookup);
             var unlockedBeliefs = ResolveAssets(progress.cultureUnlockedBeliefNames, beliefLookup);
+            var customAssignedBeliefs = ResolveAssets(progress.customAssignedBeliefNames, beliefLookup);
 
             techLookup.TryGetValue(progress.currentTechName ?? string.Empty, out var currentTech);
             cultureLookup.TryGetValue(progress.currentCultureName ?? string.Empty, out var currentCulture);
@@ -3141,7 +3147,8 @@ public class GameManager : MonoBehaviour
                 progress.faithModifier,
                 unlockedGovernorTraits,
                 unlockedPantheons,
-                unlockedBeliefs);
+                unlockedBeliefs,
+                customAssignedBeliefs);
 
             // Restore herd production queues saved for this civilization
             try

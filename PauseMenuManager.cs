@@ -130,6 +130,7 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> unlockedGovernorTraitNames = new List<string>();
         public List<string> cultureUnlockedPantheonNames = new List<string>();
         public List<string> cultureUnlockedBeliefNames = new List<string>();
+        public List<string> customAssignedBeliefNames = new List<string>();
         // Per-civ governor state
         public List<GovernorSaveData> governors = new List<GovernorSaveData>();
         // Herd queues owned by this civilization (per-herd, identified by planet & tile)
@@ -216,6 +217,7 @@ public class PauseMenuManager : MonoBehaviour
         public int ownerCivIndex = -1;
         public int originalOwnerCivIndex = -1;
         public int ownerCityListIndex = -1;
+        public bool isCapital;
         public int centerTileIndex = -1;
         public int planetIndex = -1;
         public string cityName;

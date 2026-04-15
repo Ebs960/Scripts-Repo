@@ -36,4 +36,29 @@ public class BeliefData : ScriptableObject
     public float scienceModifier;       // New
     public float cultureModifier;       // New
     public float faithModifier;         // New
+
+    [Header("Category")]
+    [Tooltip("Category of this belief. Civilization may only hold one belief per category at a time.")]
+    public BeliefCategory category = BeliefCategory.Survival;
+
+    [Header("Targeted Yield Bonuses")]
+    [Tooltip("Per-turn yield modifiers for specific combat units owned by the civilization.")]
+    public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific worker units owned by the civilization.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific buildings in owned cities.")]
+    public BuildingYieldBonus[] buildingYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for tiles matching terrain filters in owned territory.")]
+    public TileYieldBonus[] tileYieldBonuses;
+    [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
+    public CityYieldBonus[] cityYieldBonuses;
 } 
+
+public enum BeliefCategory
+{
+    Survival,
+    Harvest,
+    Ritual,
+    Warfare,
+    Knowledge
+}

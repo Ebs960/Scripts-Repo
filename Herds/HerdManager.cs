@@ -109,7 +109,13 @@ public class HerdManager : MonoBehaviour
         var td = ts.GetTileData(tileIndex);
         if (td == null) return 0;
 
-        int tileForage = Mathf.Max(0, td.food);
+        TileYield yields;
+        if (herd != null && herd.owner != null)
+            yields = HexTileData.GetTotalYieldWithReligion(herd.owner, td);
+        else
+            yields = td.GetTotalYield();
+
+        int tileForage = Mathf.Max(0, yields.Food);
         int herdCount = GetHerdsAdjacentCount(planetIndex, tileIndex);
         if (herdCount <= 0) return 0;
 

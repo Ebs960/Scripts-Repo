@@ -181,6 +181,7 @@ public class CivilizationManager : MonoBehaviour
         PerformImprovementUpgradeDecisions(civ);
         yield return null;
         PerformStrategicDecisions(civ);
+        EvaluateCapitalRelocation(civ);
         PerformDiplomaticDecisions(civ);
         yield return null;
         PerformTechnologicalDecisions(civ);
@@ -345,9 +346,12 @@ public class CivilizationManager : MonoBehaviour
             var currentRelation = DiplomacyManager.Instance.GetRelationship(civ, otherCiv);
             var reputation = memory.GetReputation(otherCiv);
             var trustLevel = memory.GetTrustLevel(otherCiv);
+            float diplomaticWeightDelta = otherCiv.GetDiplomaticWeight() - civ.GetDiplomaticWeight();
             
             // Evaluate if this civ has traits we like/dislike
             float traitModifier = EvaluateCivilizationTraits(civ, otherCiv);
+            float diplomaticWeightModifier = Mathf.Clamp(diplomaticWeightDelta * 0.12f, -10f, 10f);
+            float adjustedReputation = reputation + traitModifier + diplomaticWeightModifier;
             
             // Consider diplomatic actions based on agenda
             bool isDiplomaticLeader = leader.primaryAgenda == LeaderAgenda.Diplomatic 
@@ -360,7 +364,7 @@ public class CivilizationManager : MonoBehaviour
                 // Lower threshold for secondary-only diplomatic leaders
                 float repThreshold = leader.primaryAgenda == LeaderAgenda.Diplomatic ? 20f : 30f;
                 float allianceChance = leader.primaryAgenda == LeaderAgenda.Diplomatic ? 0.3f : 0.15f;
-                if (reputation > repThreshold && trustLevel >= 6 && UnityEngine.Random.value < allianceChance)
+                if (adjustedReputation > repThreshold && trustLevel >= 6 && UnityEngine.Random.value < allianceChance)
                 {
                     // Propose alliance
                     DiplomacyManager.Instance.ProposeDeal(civ, otherCiv, DealType.Alliance);
@@ -368,7 +372,9 @@ public class CivilizationManager : MonoBehaviour
             }
             else if (isMilitaristicLeader && currentRelation == DiplomaticState.Peace)
             {
-                if (reputation < -30f && ComputeMilitaryStrength(civ) > ComputeMilitaryStrength(otherCiv) * 1.3f)
+                if (adjustedReputation < -30f
+                    && ComputeMilitaryStrength(civ) > ComputeMilitaryStrength(otherCiv) * 1.3f
+                    && civ.GetDiplomaticWeight() >= otherCiv.GetDiplomaticWeight() * 0.8f)
                 {
                     // Consider war declaration
                     if (UnityEngine.Random.value < 0.2f)
@@ -409,6 +415,9 @@ public class CivilizationManager : MonoBehaviour
         {
             modifier += leader.GetTraitModifier(CivilizationTrait.Scientific, true);
         }
+
+        float diplomaticWeightDelta = target.GetDiplomaticWeight() - evaluator.GetDiplomaticWeight();
+        modifier += Mathf.Clamp(diplomaticWeightDelta * 0.05f, -6f, 6f);
         
         // Check for wealth
         int targetGold = 0;
@@ -421,6 +430,52 @@ public class CivilizationManager : MonoBehaviour
         }
         
         return modifier;
+    }
+
+    private void EvaluateCapitalRelocation(Civilization civ)
+    {
+        if (civ == null || civ == playerCiv || civ.cities == null || civ.cities.Count <= 1)
+            return;
+
+        civ.EnsureCapitalCity();
+
+        City bestCity = null;
+        float bestScore = float.MinValue;
+
+        foreach (var city in civ.cities)
+        {
+            if (city == null || city.owner != civ) continue;
+            float score = city.level * 8f
+                + city.productionPerTurn * 1.5f
+                + city.defenseRating * 0.2f
+                + city.loyalty * 0.75f;
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestCity = city;
+            }
+        }
+
+        if (bestCity == null)
+            return;
+
+        var currentCapital = civ.CapitalCity;
+        if (currentCapital == null)
+        {
+            civ.SetCapitalCity(bestCity);
+            return;
+        }
+
+        float currentScore = currentCapital.level * 8f
+            + currentCapital.productionPerTurn * 1.5f
+            + currentCapital.defenseRating * 0.2f
+            + currentCapital.loyalty * 0.75f;
+
+        bool currentCapitalWeak = currentCapital.loyalty < 45f;
+        if (bestCity != currentCapital && (bestScore >= currentScore + 20f || (currentCapitalWeak && bestCity.loyalty >= currentCapital.loyalty + 15f)))
+        {
+            civ.SetCapitalCity(bestCity);
+        }
     }
     
     /// <summary>
@@ -1156,23 +1211,7 @@ public class CivilizationManager : MonoBehaviour
             var availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
             if (availablePantheons != null && availablePantheons.Count > 0)
             {
-                PantheonData bestPantheon = null;
-                BeliefData bestBelief = null;
-                float bestScore = float.MinValue;
-
-                foreach (var pantheon in availablePantheons)
-                {
-                    if (pantheon == null || civ.faith < pantheon.faithCost) continue;
-                    if (pantheon.possibleFounderBeliefs == null || pantheon.possibleFounderBeliefs.Length == 0) continue;
-
-                    foreach (var belief in pantheon.possibleFounderBeliefs)
-                    {
-                        if (belief == null) continue;
-                        float score = ScorePantheonAndBelief(civ, pantheon, belief);
-                        if (score > bestScore) { bestScore = score; bestPantheon = pantheon; bestBelief = belief; }
-                    }
-                }
-
+                TryChooseBestPantheonAndBelief(civ, availablePantheons, out var bestPantheon, out var bestBelief);
                 if (bestPantheon != null && bestBelief != null)
                 {
                     civ.FoundPantheon(bestPantheon, bestBelief);
@@ -1213,19 +1252,16 @@ public class CivilizationManager : MonoBehaviour
 
                     if (bestHolySiteCity != null)
                     {
-                        // Pick religion whose required pantheon we have
-                        foreach (var religion in availableReligions)
-                        {
-                            if (religion == null) continue;
-                            if (civ.faith < religion.faithCost) continue;
-                            if (religion.requiredPantheon != null && !civ.foundedPantheons.Contains(religion.requiredPantheon)) continue;
-                            civ.FoundReligion(religion, bestHolySiteCity);
-                            break;
-                        }
+                        var bestReligion = ChooseBestReligion(civ, availableReligions);
+                        if (bestReligion != null)
+                            civ.FoundReligion(bestReligion, bestHolySiteCity);
                     }
                 }
             }
         }
+
+        if (civ.hasFoundedReligion || !civ.CanFoundMorePantheons())
+            AssignStrategicCustomBeliefs(civ);
 
         // ── 4. Purchase Missionaries / Apostles when faith is high enough ──
         if (civ.hasFoundedReligion && civ.foundedReligion != null)
@@ -1395,7 +1431,150 @@ public class CivilizationManager : MonoBehaviour
         if (leader.primaryAgenda == LeaderAgenda.Religious || leader.secondaryAgenda == LeaderAgenda.Religious)
             score *= 1.4f;
 
+        if (!civ.HasActiveBeliefInCategory(belief.category))
+            score += 8f;
+
         return score;
+    }
+
+    private float ScoreBeliefForCivilization(Civilization civ, BeliefData belief)
+    {
+        if (civ == null || belief == null) return float.MinValue;
+
+        var leader = civ.leader;
+        if (leader == null) return 0f;
+
+        float economic = leader.GetFocusPriority(FocusArea.Economic);
+        float scientific = leader.GetFocusPriority(FocusArea.Scientific);
+        float cultural = leader.GetFocusPriority(FocusArea.Cultural);
+        float religious = leader.GetFocusPriority(FocusArea.Religious);
+        float military = leader.GetFocusPriority(FocusArea.Military);
+
+        float score = 0f;
+        score += belief.foodModifier * economic * 5f;
+        score += belief.productionModifier * economic * 4f;
+        score += belief.goldModifier * economic * 4f;
+        score += belief.goldPerCity * economic * Mathf.Max(1, civ.cities != null ? civ.cities.Count : 1);
+        score += belief.extraFoodInHolySite * economic * 2f;
+        score += belief.extraProductionInHolySite * economic * 2f;
+        score += belief.growthRateModifier * economic * 6f;
+        score += belief.scienceModifier * scientific * 5f;
+        score += belief.cultureModifier * cultural * 5f;
+        score += belief.culturePerCity * cultural * Mathf.Max(1, civ.cities != null ? civ.cities.Count : 1);
+        score += belief.faithModifier * religious * 6f;
+        score += belief.extraFaithInHolySite * religious * 4f;
+        score += belief.happinessBonus * cultural * 3f;
+        score += belief.combatStrengthNearHolySite * military * 5f;
+
+        if (!civ.HasActiveBeliefInCategory(belief.category))
+            score += 10f;
+
+        return score;
+    }
+
+    private void TryChooseBestPantheonAndBelief(Civilization civ, List<PantheonData> availablePantheons, out PantheonData bestPantheon, out BeliefData bestBelief)
+    {
+        bestPantheon = null;
+        bestBelief = null;
+        float bestScore = float.MinValue;
+
+        if (availablePantheons == null) return;
+
+        foreach (var pantheon in availablePantheons)
+        {
+            if (pantheon == null || civ.faith < pantheon.faithCost) continue;
+            if (pantheon.possibleFounderBeliefs == null || pantheon.possibleFounderBeliefs.Length == 0) continue;
+
+            foreach (var belief in pantheon.possibleFounderBeliefs)
+            {
+                if (belief == null) continue;
+                if (civ.HasActiveBeliefInCategory(belief.category)) continue;
+
+                float score = ScorePantheonAndBelief(civ, pantheon, belief);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestPantheon = pantheon;
+                    bestBelief = belief;
+                }
+            }
+        }
+    }
+
+    private ReligionData ChooseBestReligion(Civilization civ, List<ReligionData> availableReligions)
+    {
+        ReligionData bestReligion = null;
+        float bestScore = float.MinValue;
+
+        if (availableReligions == null) return null;
+
+        foreach (var religion in availableReligions)
+        {
+            if (religion == null) continue;
+            if (civ.faith < religion.faithCost) continue;
+            if (religion.requiredPantheon != null && (civ.foundedPantheons == null || !civ.foundedPantheons.Contains(religion.requiredPantheon))) continue;
+            if (religion.founderBelief != null && civ.HasActiveBeliefInCategory(religion.founderBelief.category)) continue;
+
+            float score = religion.founderBelief != null ? ScoreBeliefForCivilization(civ, religion.founderBelief) : 0f;
+            score -= religion.faithCost * 0.05f;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestReligion = religion;
+            }
+        }
+
+        return bestReligion;
+    }
+
+    private void AssignStrategicCustomBeliefs(Civilization civ)
+    {
+        if (civ == null) return;
+
+        var allBeliefs = Resources.LoadAll<BeliefData>("");
+        if (allBeliefs == null || allBeliefs.Length == 0) return;
+
+        foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            bool blockedByFounderBelief = false;
+            if (civ.foundedPantheons != null && civ.chosenFounderBeliefs != null)
+            {
+                foreach (var pantheon in civ.foundedPantheons)
+                {
+                    if (pantheon == null) continue;
+                    if (civ.chosenFounderBeliefs.TryGetValue(pantheon, out var pantheonBelief) && pantheonBelief != null && pantheonBelief.category == category)
+                    {
+                        blockedByFounderBelief = true;
+                        break;
+                    }
+                }
+            }
+            if (!blockedByFounderBelief && civ.hasFoundedReligion && civ.foundedReligion != null && civ.foundedReligion.founderBelief != null && civ.foundedReligion.founderBelief.category == category)
+                blockedByFounderBelief = true;
+            if (blockedByFounderBelief)
+                continue;
+
+            BeliefData bestBelief = null;
+            float bestScore = float.MinValue;
+            foreach (var belief in allBeliefs)
+            {
+                if (belief == null || belief.category != category) continue;
+                float score = ScoreBeliefForCivilization(civ, belief);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestBelief = belief;
+                }
+            }
+
+            if (bestBelief == null) continue;
+
+            var currentBelief = civ.GetCustomBeliefInCategory(category);
+            float currentScore = currentBelief != null ? ScoreBeliefForCivilization(civ, currentBelief) : float.MinValue;
+            if (currentBelief == null || bestScore > currentScore + 0.5f)
+                civ.SetCustomBelief(category, bestBelief);
+        }
     }
 
     /// <summary>
@@ -1768,19 +1947,9 @@ break; // Only propose one alliance per turn
                 var availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
                 if (availablePantheons != null && availablePantheons.Count > 0)
                 {
-                    // Check if we have enough faith
-                    var pantheon = availablePantheons[0]; // Pick first available
-                    if (pantheon != null && civ.faith >= pantheon.faithCost)
-                    {
-                        // Get available beliefs for this pantheon
-                        if (pantheon.possibleFounderBeliefs != null && pantheon.possibleFounderBeliefs.Length > 0)
-                        {
-                            var belief = pantheon.possibleFounderBeliefs[0]; // Pick first belief
-                            if (civ.FoundPantheon(pantheon, belief))
-                            {
-}
-                        }
-                    }
+                    TryChooseBestPantheonAndBelief(civ, availablePantheons, out var pantheon, out var belief);
+                    if (pantheon != null && belief != null)
+                        civ.FoundPantheon(pantheon, belief);
                 }
             }
         }
@@ -1797,17 +1966,16 @@ break; // Only propose one alliance per turn
                     var holySiteCity = civ.cities.FirstOrDefault(c => c != null && c.HasHolySite());
                     if (holySiteCity != null)
                     {
-                        var religion = availableReligions[0]; // Pick first available
-                        if (religion != null && civ.faith >= religion.faithCost)
-                        {
-                            if (civ.FoundReligion(religion, holySiteCity))
-                            {
-}
-                        }
+                        var religion = ChooseBestReligion(civ, availableReligions);
+                        if (religion != null)
+                            civ.FoundReligion(religion, holySiteCity);
                     }
                 }
             }
         }
+
+        if (civ.hasFoundedReligion || !civ.CanFoundMorePantheons())
+            AssignStrategicCustomBeliefs(civ);
         
         // Queue religious buildings in cities
         if (civ.cities != null && civ.cities.Count > 0)

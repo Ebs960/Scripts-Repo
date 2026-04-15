@@ -47,8 +47,10 @@ public class Civilization : MonoBehaviour
     public Dictionary<int, HashSet<int>> ownedTilesByPlanet = new Dictionary<int, HashSet<int>>();
     public List<int> ownedTileIndices       = new List<int>();
     public List<City> cities                = new List<City>();
+    [SerializeField] private City capitalCity;
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
+    public City CapitalCity => capitalCity;
 
     /// <summary>Register a newly trained combat unit and fire the OnUnitTrained event.</summary>
     public void RegisterTrainedCombatUnit(CombatUnit unit)
@@ -374,6 +376,9 @@ public class Civilization : MonoBehaviour
     // Pantheons/beliefs unlocked by adopted cultures (in addition to global available list)
     public List<PantheonData> cultureUnlockedPantheons = new List<PantheonData>();
     public List<BeliefData> cultureUnlockedBeliefs = new List<BeliefData>();
+    // Custom beliefs assigned via UI (one per BeliefCategory). These are additional active beliefs
+    // that are not tied to a specific pantheon or founded religion.
+    public List<BeliefData> customAssignedBeliefs = new List<BeliefData>();
 
     [Header("Pantheon Limits")]
     [Tooltip("Base maximum number of pantheons this civilization may found (default 1).")]
@@ -414,6 +419,7 @@ public class Civilization : MonoBehaviour
     public event Action<TechData> OnTechResearched;  // The event
     // Fired after research/culture changes that may affect availability (units/buildings/improvements)
     public event Action OnUnlocksChanged;
+    public event Action OnBeliefsChanged;
     // Mission-system hooks
     public event Action<Civilization, PolicyData> OnPolicyAdopted;
     public event Action<Civilization, GovernmentData> OnGovernmentChanged;
@@ -472,7 +478,8 @@ public class Civilization : MonoBehaviour
         float restoredFaithModifier,
         List<GovernorTrait> restoredUnlockedGovernorTraits,
         List<PantheonData> restoredPantheons,
-        List<BeliefData> restoredBeliefs)
+        List<BeliefData> restoredBeliefs,
+        List<BeliefData> restoredCustomBeliefs)
     {
         researchedTechs = restoredTechs ?? new List<TechData>();
         currentTech = restoredCurrentTech;
@@ -501,6 +508,7 @@ public class Civilization : MonoBehaviour
         unlockedGovernorTraits = restoredUnlockedGovernorTraits ?? new List<GovernorTrait>();
         cultureUnlockedPantheons = restoredPantheons ?? new List<PantheonData>();
         cultureUnlockedBeliefs = restoredBeliefs ?? new List<BeliefData>();
+        customAssignedBeliefs = restoredCustomBeliefs ?? new List<BeliefData>();
 
         RecalculateCivilizationModifiers();
         RefreshUnlockedContentLists();
@@ -530,6 +538,7 @@ public class Civilization : MonoBehaviour
         }
 
         OnUnlocksChanged?.Invoke();
+        OnBeliefsChanged?.Invoke();
     }
 
     /// <summary>
@@ -1013,7 +1022,7 @@ public class Civilization : MonoBehaviour
         faithModifier += leader.faithModifier;
     }
 
-    private IEnumerable<PantheonBonuses> EnumeratePantheonBonuses()
+    public IEnumerable<PantheonBonuses> EnumeratePantheonBonuses()
     {
         if (foundedPantheons == null)
             yield break;
@@ -1025,6 +1034,115 @@ public class Civilization : MonoBehaviour
 
             yield return pantheon.bonuses;
         }
+    }
+
+    public IEnumerable<BeliefData> EnumerateActiveBeliefs()
+    {
+        if (foundedPantheons != null && chosenFounderBeliefs != null)
+        {
+            foreach (var pantheon in foundedPantheons)
+            {
+                if (pantheon == null) continue;
+                if (chosenFounderBeliefs.TryGetValue(pantheon, out var belief) && belief != null)
+                    yield return belief;
+            }
+        }
+
+        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null)
+            yield return foundedReligion.founderBelief;
+
+        // Yield any custom assigned beliefs (UI-applied)
+        if (customAssignedBeliefs != null)
+        {
+            foreach (var cb in customAssignedBeliefs)
+                if (cb != null) yield return cb;
+        }
+    }
+
+    private void NotifyBeliefsChanged()
+    {
+        OnBeliefsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns true if any active belief (pantheon-chosen or founded religion) is of the given category.
+    /// </summary>
+    public bool HasActiveBeliefInCategory(BeliefCategory category)
+    {
+        foreach (var b in EnumerateActiveBeliefs())
+        {
+            if (b != null && b.category == category) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Get the custom-assigned belief (UI) for a category, or null.
+    /// </summary>
+    public BeliefData GetCustomBeliefInCategory(BeliefCategory category)
+    {
+        if (customAssignedBeliefs == null) return null;
+        foreach (var b in customAssignedBeliefs)
+            if (b != null && b.category == category) return b;
+        return null;
+    }
+
+    /// <summary>
+    /// Set/replace a custom-assigned belief for the given category.
+    /// Returns false if the category is blocked by a non-custom active belief (pantheon/religion).
+    /// </summary>
+    public bool SetCustomBelief(BeliefCategory category, BeliefData belief)
+    {
+        if (belief == null) return RemoveCustomBeliefInCategory(category);
+
+        // Remove any existing custom belief in this category
+        RemoveCustomBeliefInCategory(category);
+
+        // Ensure no non-custom active belief exists in this category
+        // (i.e., founded pantheon or founded religion)
+        if (foundedPantheons != null && chosenFounderBeliefs != null)
+        {
+            foreach (var pant in foundedPantheons)
+            {
+                if (pant == null) continue;
+                if (chosenFounderBeliefs != null && chosenFounderBeliefs.TryGetValue(pant, out var pb) && pb != null && pb.category == category)
+                    return false;
+            }
+        }
+        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null && foundedReligion.founderBelief.category == category)
+            return false;
+
+        if (customAssignedBeliefs == null) customAssignedBeliefs = new List<BeliefData>();
+        customAssignedBeliefs.Add(belief);
+
+        UpdateFaithYieldModifier();
+        return true;
+    }
+
+    /// <summary>
+    /// Remove any custom-assigned belief in the category. Returns true if removed or nothing to remove.
+    /// </summary>
+    public bool RemoveCustomBeliefInCategory(BeliefCategory category)
+    {
+        if (customAssignedBeliefs == null) return true;
+        for (int i = customAssignedBeliefs.Count - 1; i >= 0; i--)
+        {
+            var b = customAssignedBeliefs[i];
+            if (b != null && b.category == category)
+            {
+                customAssignedBeliefs.RemoveAt(i);
+                UpdateFaithYieldModifier();
+                return true;
+            }
+        }
+        return true;
+    }
+
+    public bool IsCapitalCity(City city)
+    {
+        if (city == null) return false;
+        EnsureCapitalCity();
+        return capitalCity == city;
     }
 
     private List<CombatUnitData> GetPantheonGrantedCombatUnits()
@@ -1992,6 +2110,25 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
     public void SetRelation(Civilization other, DiplomaticState state)
         => relations[other] = state;
 
+    public float GetDiplomaticWeight()
+    {
+        EnsureCapitalCity();
+
+        float cityWeight = (cities != null ? cities.Count : 0) * 2f;
+        float researchWeight = (researchedTechs != null ? researchedTechs.Count : 0) * 0.35f;
+        float cultureWeight = (researchedCultures != null ? researchedCultures.Count : 0) * 0.35f;
+
+        if (capitalCity == null)
+            return cityWeight + researchWeight + cultureWeight;
+
+        return cityWeight
+            + researchWeight
+            + cultureWeight
+            + capitalCity.level * 5f
+            + capitalCity.loyalty * 0.2f
+            + capitalCity.defenseRating * 0.05f;
+    }
+
     /// <summary>
     /// Gets the appropriate building data, using unique building if available
     /// </summary>
@@ -2059,11 +2196,118 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
     /// </summary>
     public void AddCity(City city)
     {
+        if (city == null) return;
+
         if (!cities.Contains(city))
         {
             cities.Add(city);
+            if (city.owner != this)
+                city.owner = this;
+            EnsureCapitalCity();
             OnCityFounded?.Invoke(this, city);
-}
+        }
+        else
+        {
+            EnsureCapitalCity();
+        }
+    }
+
+    public void RemoveCity(City city)
+    {
+        if (city == null || cities == null) return;
+        if (cities.Remove(city))
+        {
+            if (capitalCity == city)
+                capitalCity = null;
+            city.isCapital = false;
+            EnsureCapitalCity();
+        }
+    }
+
+    public void ReplaceCityReference(City oldCity, City newCity)
+    {
+        if (oldCity == null || newCity == null || cities == null) return;
+
+        int index = cities.IndexOf(oldCity);
+        if (index >= 0)
+            cities[index] = newCity;
+        else if (!cities.Contains(newCity))
+            cities.Add(newCity);
+
+        bool shouldBeCapital = capitalCity == oldCity || oldCity.isCapital;
+        oldCity.isCapital = false;
+        if (shouldBeCapital)
+        {
+            capitalCity = newCity;
+            newCity.isCapital = true;
+        }
+
+        EnsureCapitalCity();
+    }
+
+    public void SetCapitalCity(City city)
+    {
+        if (city == null || city.owner != this) return;
+        if (cities != null && !cities.Contains(city))
+            cities.Add(city);
+
+        capitalCity = city;
+        if (cities != null)
+        {
+            foreach (var existingCity in cities)
+            {
+                if (existingCity == null) continue;
+                existingCity.isCapital = existingCity == city;
+            }
+        }
+    }
+
+    public void EnsureCapitalCity()
+    {
+        if (cities == null)
+        {
+            capitalCity = null;
+            return;
+        }
+
+        cities.RemoveAll(city => city == null);
+
+        City resolvedCapital = null;
+        if (capitalCity != null && cities.Contains(capitalCity) && capitalCity.owner == this)
+        {
+            resolvedCapital = capitalCity;
+        }
+        else
+        {
+            foreach (var city in cities)
+            {
+                if (city != null && city.owner == this && city.isCapital)
+                {
+                    resolvedCapital = city;
+                    break;
+                }
+            }
+
+            if (resolvedCapital == null)
+            {
+                foreach (var city in cities)
+                {
+                    if (city != null && city.owner == this)
+                    {
+                        resolvedCapital = city;
+                        break;
+                    }
+                }
+            }
+        }
+
+        capitalCity = resolvedCapital;
+
+        foreach (var city in cities)
+        {
+            if (city == null) continue;
+            city.isCapital = city == capitalCity;
+        }
     }
     
     /// <summary>
@@ -2202,10 +2446,16 @@ return false;
                 break;
             }
         }
-        
+
         if (!validBelief)
         {
-return false;
+            return false;
+        }
+
+        // Enforce uniqueness: cannot have another active belief in the same category
+        if (founderBelief != null && HasActiveBeliefInCategory(founderBelief.category))
+        {
+            return false;
         }
         
     // Found the pantheon: add to list and store chosen belief
@@ -2258,6 +2508,12 @@ return false;
 return false;
         }
         
+        // Enforce uniqueness: cannot found a religion whose founder belief conflicts with existing active belief category
+        if (religion.founderBelief != null && HasActiveBeliefInCategory(religion.founderBelief.category))
+        {
+            return false;
+        }
+
         // Found the religion
         faith -= religion.faithCost;
         foundedReligion = religion;
@@ -2315,6 +2571,7 @@ return true;
         RecalculateCivilizationModifiers();
         RefreshUnlockedContentLists();
         InvalidateAvailabilityCache();
+        NotifyBeliefsChanged();
     }
     
     /// <summary>
@@ -3584,6 +3841,24 @@ return true;
         public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPointsPct;
     }
 
+    private static void AddUnitYieldBonus(ref YieldBonusAgg agg, UnitYieldBonus bonus)
+    {
+        if (bonus == null) return;
+        agg.foodAdd += bonus.foodAdd; agg.productionAdd += bonus.productionAdd; agg.goldAdd += bonus.goldAdd;
+        agg.scienceAdd += bonus.scienceAdd; agg.cultureAdd += bonus.cultureAdd; agg.faithAdd += bonus.faithAdd; agg.policyPointsAdd += bonus.policyPointsAdd;
+        agg.foodPct += bonus.foodPct; agg.productionPct += bonus.productionPct; agg.goldPct += bonus.goldPct;
+        agg.sciencePct += bonus.sciencePct; agg.culturePct += bonus.culturePct; agg.faithPct += bonus.faithPct; agg.policyPointsPct += bonus.policyPointsPct;
+    }
+
+    private static void AddWorkerYieldBonus(ref YieldBonusAgg agg, WorkerUnitYieldBonus bonus)
+    {
+        if (bonus == null) return;
+        agg.foodAdd += bonus.foodAdd; agg.goldAdd += bonus.goldAdd; agg.scienceAdd += bonus.scienceAdd;
+        agg.cultureAdd += bonus.cultureAdd; agg.faithAdd += bonus.faithAdd; agg.policyPointsAdd += bonus.policyPointsAdd;
+        agg.foodPct += bonus.foodPct; agg.goldPct += bonus.goldPct; agg.sciencePct += bonus.sciencePct;
+        agg.culturePct += bonus.culturePct; agg.faithPct += bonus.faithPct; agg.policyPointsPct += bonus.policyPointsPct;
+    }
+
     public struct EquipBonusAgg
     {
         public int attackAdd, defenseAdd, healthAdd, rangeAdd;
@@ -3604,12 +3879,7 @@ return true;
                 foreach (var b in tech.unitYieldBonuses)
                 {
                     if (b != null && b.unit == unit)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
-                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
-                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddUnitYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3622,12 +3892,7 @@ return true;
                 foreach (var b in culture.unitYieldBonuses)
                 {
                     if (b != null && b.unit == unit)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
-                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
-                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddUnitYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3640,12 +3905,7 @@ return true;
                 foreach (var b in policy.unitYieldBonuses)
                 {
                     if (b != null && b.unit == unit)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
-                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
-                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddUnitYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3655,13 +3915,24 @@ return true;
             foreach (var b in currentGovernment.unitYieldBonuses)
             {
                 if (b != null && b.unit == unit)
-                {
-                    agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
-                    agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                    agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
-                    agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                }
+                    AddUnitYieldBonus(ref agg, b);
             }
+        }
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.unitYieldBonuses == null) continue;
+            foreach (var b in pantheonBonuses.unitYieldBonuses)
+                if (b != null && b.unit == unit)
+                    AddUnitYieldBonus(ref agg, b);
+        }
+
+        foreach (var belief in EnumerateActiveBeliefs())
+        {
+            if (belief?.unitYieldBonuses == null) continue;
+            foreach (var b in belief.unitYieldBonuses)
+                if (b != null && b.unit == unit)
+                    AddUnitYieldBonus(ref agg, b);
         }
 
         return agg;
@@ -3805,12 +4076,7 @@ return true;
                 foreach (var b in tech.workerYieldBonuses)
                 {
                     if (b != null && b.worker == worker)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
-                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
-                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddWorkerYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3822,12 +4088,7 @@ return true;
                 foreach (var b in culture.workerYieldBonuses)
                 {
                     if (b != null && b.worker == worker)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
-                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
-                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddWorkerYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3839,12 +4100,7 @@ return true;
                 foreach (var b in policy.workerYieldBonuses)
                 {
                     if (b != null && b.worker == worker)
-                    {
-                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
-                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
-                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                    }
+                        AddWorkerYieldBonus(ref agg, b);
                 }
             }
         }
@@ -3853,14 +4109,26 @@ return true;
             foreach (var b in currentGovernment.workerYieldBonuses)
             {
                 if (b != null && b.worker == worker)
-                {
-                    agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
-                    agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
-                    agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
-                    agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
-                }
+                    AddWorkerYieldBonus(ref agg, b);
             }
         }
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.workerYieldBonuses == null) continue;
+            foreach (var b in pantheonBonuses.workerYieldBonuses)
+                if (b != null && b.worker == worker)
+                    AddWorkerYieldBonus(ref agg, b);
+        }
+
+        foreach (var belief in EnumerateActiveBeliefs())
+        {
+            if (belief?.workerYieldBonuses == null) continue;
+            foreach (var b in belief.workerYieldBonuses)
+                if (b != null && b.worker == worker)
+                    AddWorkerYieldBonus(ref agg, b);
+        }
+
         return agg;
     }
 
