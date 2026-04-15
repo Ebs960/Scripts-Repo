@@ -59,6 +59,14 @@ public class CivData : ScriptableObject
     public float cultureModifier;           // New
     public float faithModifier;             // New
 
+    [Header("Unit Bonuses")]
+    [Tooltip("Per-unit stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Disease modifiers granted by this civilization's base identity.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
+
     [Header("Gameplay Flags")]
     public bool isTribe;                     // Limited to max 3 cities, starts at war
     public bool isCityState;                 // Single-city civ with diplomatic traits

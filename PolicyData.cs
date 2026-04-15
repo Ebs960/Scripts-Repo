@@ -30,10 +30,16 @@ public class PolicyData : ScriptableObject
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this policy.")]
     public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-unit stat bonuses granted by this policy (e.g., healing speed).")]
+    public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this policy (applies when equipped).")]
     public EquipmentYieldBonus[] equipmentYieldBonuses;
     [Tooltip("Per-worker per-turn yield bonuses granted by this policy.")]
     public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this policy (e.g., healing speed).")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Disease modifiers granted by this policy.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;

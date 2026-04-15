@@ -102,6 +102,13 @@ public class Herd : MonoBehaviour
     public int health = 100;
     public int maxHealth = 100;
 
+    [Header("Disease")]
+    [Tooltip("Active diseases currently afflicting this herd.")]
+    public List<DiseaseInstance> activeDiseases = new List<DiseaseInstance>();
+
+    [Tooltip("Immunity cooldowns: disease → remaining immune turns after recovery.")]
+    public Dictionary<DiseaseData, int> diseaseImmunities = new Dictionary<DiseaseData, int>();
+
     void OnEnable()
     {
         if (HerdManager.Instance != null) HerdManager.Instance.RegisterHerd(this);
@@ -176,12 +183,147 @@ public class Herd : MonoBehaviour
             }
         }
 
+        // Apply disease forage penalty
+        if (activeDiseases != null && activeDiseases.Count > 0 && lastGrazedAmount > 0)
+        {
+            float forageMult = 1f;
+            foreach (var di in activeDiseases)
+            {
+                if (di == null || di.data == null) continue;
+                var totals = owner != null ? owner.GetDiseaseModifierTotals(di.data, herdContext: this) : default;
+                forageMult -= di.data.herdForagePenaltyPct * totals.HerdForagePenaltyMultiplier;
+            }
+            forageMult = Mathf.Max(0f, forageMult);
+            lastGrazedAmount = Mathf.FloorToInt(lastGrazedAmount * forageMult);
+        }
+
         // Add to reserve (cap by storage capacity)
         if (lastGrazedAmount > 0)
         {
             try { foodReserve = Mathf.Min(storageCapacity, foodReserve + lastGrazedAmount); } catch { foodReserve += lastGrazedAmount; }
         }
         if (worldUI != null) worldUI.MarkDirty();
+    }
+
+    /// <summary>
+    /// Process disease effects for this herd: animal mortality, duration ticking, and immunity.
+    /// Called per turn by DiseaseManager.
+    /// </summary>
+    public void ProcessDiseaseTurn()
+    {
+        if (activeDiseases == null || activeDiseases.Count == 0) return;
+
+        for (int i = activeDiseases.Count - 1; i >= 0; i--)
+        {
+            var di = activeDiseases[i];
+            if (di == null || di.data == null) { activeDiseases.RemoveAt(i); continue; }
+            var totals = owner != null ? owner.GetDiseaseModifierTotals(di.data, herdContext: this) : default;
+
+            // Animal mortality: kill a percentage of each species
+            float mortalityRate = di.data.herdMortalityRatePerTurn * totals.HerdMortalityMultiplier;
+            if (mortalityRate > 0f && animals != null)
+            {
+                for (int a = animals.Count - 1; a >= 0; a--)
+                {
+                    var entry = animals[a];
+                    if (entry == null || entry.count <= 0) continue;
+                    int deaths = Mathf.Max(1, Mathf.FloorToInt(entry.count * mortalityRate));
+                    entry.count = Mathf.Max(0, entry.count - deaths);
+                    if (entry.count <= 0) animals.RemoveAt(a);
+                }
+            }
+
+            // Tick duration
+            if (!di.TickDuration())
+            {
+                if (di.data.immunityTurnsAfterRecovery > 0)
+                    diseaseImmunities[di.data] = di.data.immunityTurnsAfterRecovery;
+                activeDiseases.RemoveAt(i);
+            }
+        }
+
+        // Tick immunity cooldowns
+        var expiredKeys = new List<DiseaseData>();
+        foreach (var kv in diseaseImmunities)
+        {
+            diseaseImmunities[kv.Key] = kv.Value - 1;
+            if (diseaseImmunities[kv.Key] <= 0)
+                expiredKeys.Add(kv.Key);
+        }
+        foreach (var key in expiredKeys)
+            diseaseImmunities.Remove(key);
+    }
+
+    /// <summary>
+    /// Returns the total number of animals across all species in this herd.
+    /// </summary>
+    public int GetTotalAnimalCount()
+    {
+        int total = 0;
+        if (animals != null)
+            foreach (var e in animals)
+                if (e != null) total += e.count;
+        return total;
+    }
+
+    /// <summary>
+    /// Returns true if this herd has immunity to the given disease.
+    /// </summary>
+    public bool HasDiseaseImmunity(DiseaseData disease)
+    {
+        if (disease == null) return false;
+        if (owner != null && disease.immunityTechs != null)
+        {
+            foreach (var tech in disease.immunityTechs)
+                if (tech != null && owner.researchedTechs.Contains(tech))
+                    return true;
+        }
+        if (owner != null && owner.GetDiseaseModifierTotals(disease, herdContext: this).grantsImmunity)
+            return true;
+        if (diseaseImmunities != null && diseaseImmunities.ContainsKey(disease))
+            return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true if this herd is currently infected by the given disease.
+    /// </summary>
+    public bool HasDisease(DiseaseData disease)
+    {
+        if (disease == null || activeDiseases == null) return false;
+        return activeDiseases.Exists(d => d.data == disease);
+    }
+
+    /// <summary>
+    /// Infects this herd with a disease. No-op if already infected or immune.
+    /// </summary>
+    public bool InfectWithDisease(DiseaseData disease)
+    {
+        if (disease == null) return false;
+        if (HasDisease(disease)) return false;
+        if (HasDiseaseImmunity(disease)) return false;
+        int duration = disease.baseDuration > 0 ? disease.baseDuration : -1;
+        if (owner != null && duration > 0)
+        {
+            var totals = owner.GetDiseaseModifierTotals(disease, herdContext: this);
+            duration = Mathf.Max(1, Mathf.RoundToInt(duration * totals.DurationMultiplier));
+        }
+        activeDiseases.Add(new DiseaseInstance(disease, duration));
+        return true;
+    }
+
+    /// <summary>
+    /// Cures a specific disease from this herd. Optionally grants immunity.
+    /// </summary>
+    public bool CureDisease(DiseaseData disease, bool grantImmunity = true)
+    {
+        if (disease == null || activeDiseases == null) return false;
+        int idx = activeDiseases.FindIndex(d => d.data == disease);
+        if (idx < 0) return false;
+        if (grantImmunity && disease.immunityTurnsAfterRecovery > 0)
+            diseaseImmunities[disease] = disease.immunityTurnsAfterRecovery;
+        activeDiseases.RemoveAt(idx);
+        return true;
     }
 
     /// <summary>

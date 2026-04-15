@@ -144,6 +144,13 @@ public class City : MonoBehaviour
     private int cachedPolicyPoints;
     private int cachedFaith;
 
+    [Header("Disease")]
+    [Tooltip("Active diseases currently afflicting this city.")]
+    public List<DiseaseInstance> activeDiseases = new List<DiseaseInstance>();
+
+    [Tooltip("Immunity cooldowns: disease → remaining immune turns after recovery.")]
+    public Dictionary<DiseaseData, int> diseaseImmunities = new Dictionary<DiseaseData, int>();
+
     // Dictionary to track which tile each district in queue will be placed on
     private Dictionary<DistrictData, int> districtTileTargets = new Dictionary<DistrictData, int>();
 
@@ -510,6 +517,9 @@ if (UIManager.Instance != null)
     cachedCulture += roadY.Culture;
     cachedPolicyPoints += roadY.Policy;
     cachedFaith += roadY.Faith;
+
+        // 1b) Apply disease yield penalties
+        ApplyDiseaseYieldPenalties();
         
         // 2) Process loyalty
         ProcessLoyalty();
@@ -520,6 +530,8 @@ if (UIManager.Instance != null)
         ProcessGrowth();
         // 5) Morale decay
         moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn);
+        // 5b) Apply disease morale/loyalty/population effects
+        ApplyDiseaseTurnEffects();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
         // Surrender is handled in TakeDamage() when a unit attacks
         // If defense reaches 0 from other means, check for units on tile
@@ -527,6 +539,182 @@ if (UIManager.Instance != null)
             HandleSurrender(lastAttackingCiv); // Use last attacking civ, or find from units on tile
         // 7) Update label
         UpdateLabel();
+    }
+
+    /// <summary>
+    /// Reduces cached yields based on active disease penalties.
+    /// Called after yields are computed but before they are consumed.
+    /// </summary>
+    private void ApplyDiseaseYieldPenalties()
+    {
+        if (activeDiseases == null || activeDiseases.Count == 0) return;
+
+        float foodMult = 1f;
+        float prodMult = 1f;
+        float goldMult = 1f;
+        float sciMult = 1f;
+        float culMult = 1f;
+        float faithMult = 1f;
+
+        foreach (var di in activeDiseases)
+        {
+            if (di == null || di.data == null) continue;
+            var totals = owner != null ? owner.GetDiseaseModifierTotals(di.data, this) : default;
+            float penaltyMultiplier = totals.CityYieldPenaltyMultiplier;
+            foodMult  -= di.data.cityFoodPenaltyPct * penaltyMultiplier;
+            prodMult  -= di.data.cityProductionPenaltyPct * penaltyMultiplier;
+            goldMult  -= di.data.cityGoldPenaltyPct * penaltyMultiplier;
+            sciMult   -= di.data.citySciencePenaltyPct * penaltyMultiplier;
+            culMult   -= di.data.cityCulturePenaltyPct * penaltyMultiplier;
+            faithMult -= di.data.cityFaithPenaltyPct * penaltyMultiplier;
+        }
+
+        // Clamp multipliers so yields can't go negative from disease alone
+        foodMult  = Mathf.Max(0f, foodMult);
+        prodMult  = Mathf.Max(0f, prodMult);
+        goldMult  = Mathf.Max(0f, goldMult);
+        sciMult   = Mathf.Max(0f, sciMult);
+        culMult   = Mathf.Max(0f, culMult);
+        faithMult = Mathf.Max(0f, faithMult);
+
+        cachedFood       = Mathf.RoundToInt(cachedFood * foodMult);
+        cachedProduction = Mathf.RoundToInt(cachedProduction * prodMult);
+        cachedGold       = Mathf.RoundToInt(cachedGold * goldMult);
+        cachedScience    = Mathf.RoundToInt(cachedScience * sciMult);
+        cachedCulture    = Mathf.RoundToInt(cachedCulture * culMult);
+        cachedFaith      = Mathf.RoundToInt(cachedFaith * faithMult);
+    }
+
+    /// <summary>
+    /// Applies per-turn disease effects: population loss, morale drop, loyalty drop.
+    /// Also ticks disease durations and handles recovery/immunity.
+    /// </summary>
+    private void ApplyDiseaseTurnEffects()
+    {
+        if (activeDiseases == null || activeDiseases.Count == 0) return;
+
+        for (int i = activeDiseases.Count - 1; i >= 0; i--)
+        {
+            var di = activeDiseases[i];
+            if (di == null || di.data == null) { activeDiseases.RemoveAt(i); continue; }
+            var totals = owner != null ? owner.GetDiseaseModifierTotals(di.data, this) : default;
+
+            // Population loss (fractional accumulation)
+            di.accumulatedPopulationLoss += di.data.cityPopulationLossPerTurn * totals.CityPopulationLossMultiplier;
+            while (di.accumulatedPopulationLoss >= 1f && level > 1)
+            {
+                level--;
+                di.accumulatedPopulationLoss -= 1f;
+            }
+
+            // Morale penalty
+            int moralePenalty = Mathf.Max(0, Mathf.RoundToInt(di.data.cityMoralePenaltyPerTurn * totals.CityMoralePenaltyMultiplier));
+            moraleRating = Mathf.Max(0, moraleRating - moralePenalty);
+
+            // Loyalty penalty
+            loyalty = Mathf.Clamp(loyalty - (di.data.cityLoyaltyPenaltyPerTurn * totals.CityLoyaltyPenaltyMultiplier), 0f, 100f);
+
+            // Tick duration
+            if (!di.TickDuration())
+            {
+                // Disease expired — grant immunity
+                if (di.data.immunityTurnsAfterRecovery > 0)
+                    diseaseImmunities[di.data] = di.data.immunityTurnsAfterRecovery;
+                activeDiseases.RemoveAt(i);
+            }
+        }
+
+        // Tick immunity cooldowns
+        var expiredKeys = new List<DiseaseData>();
+        foreach (var kv in diseaseImmunities)
+        {
+            diseaseImmunities[kv.Key] = kv.Value - 1;
+            if (diseaseImmunities[kv.Key] <= 0)
+                expiredKeys.Add(kv.Key);
+        }
+        foreach (var key in expiredKeys)
+            diseaseImmunities.Remove(key);
+    }
+
+    /// <summary>
+    /// Returns true if this city currently has immunity to the given disease.
+    /// </summary>
+    public bool HasDiseaseImmunity(DiseaseData disease)
+    {
+        if (disease == null) return false;
+        // Tech-granted immunity
+        if (owner != null && disease.immunityTechs != null)
+        {
+            foreach (var tech in disease.immunityTechs)
+            {
+                if (tech != null && owner.researchedTechs.Contains(tech))
+                    return true;
+            }
+        }
+        if (owner != null && owner.GetDiseaseModifierTotals(disease, this).grantsImmunity)
+            return true;
+        // Recovery immunity cooldown
+        if (diseaseImmunities != null && diseaseImmunities.ContainsKey(disease))
+            return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the resistance multiplier (0-1) for this city against a specific disease.
+    /// 0 = fully resistant, 1 = no resistance.
+    /// </summary>
+    public float GetDiseaseResistance(DiseaseData disease)
+    {
+        if (disease == null || disease.resistanceBuildings == null) return 1f;
+        float resistance = 0f;
+        foreach (var rb in disease.resistanceBuildings)
+        {
+            if (rb == null) continue;
+            if (builtBuildings.Exists(b => b.data == rb))
+                resistance += disease.resistancePctPerBuilding;
+        }
+        return Mathf.Clamp01(1f - resistance);
+    }
+
+    /// <summary>
+    /// Returns true if this city is currently infected by the given disease.
+    /// </summary>
+    public bool HasDisease(DiseaseData disease)
+    {
+        if (disease == null || activeDiseases == null) return false;
+        return activeDiseases.Exists(d => d.data == disease);
+    }
+
+    /// <summary>
+    /// Infects this city with a disease. No-op if already infected or immune.
+    /// </summary>
+    public bool InfectWithDisease(DiseaseData disease)
+    {
+        if (disease == null) return false;
+        if (HasDisease(disease)) return false;
+        if (HasDiseaseImmunity(disease)) return false;
+        int duration = disease.baseDuration > 0 ? disease.baseDuration : -1;
+        if (owner != null && duration > 0)
+        {
+            var totals = owner.GetDiseaseModifierTotals(disease, this);
+            duration = Mathf.Max(1, Mathf.RoundToInt(duration * totals.DurationMultiplier));
+        }
+        activeDiseases.Add(new DiseaseInstance(disease, duration));
+        return true;
+    }
+
+    /// <summary>
+    /// Cures a specific disease from this city. Optionally grants immunity.
+    /// </summary>
+    public bool CureDisease(DiseaseData disease, bool grantImmunity = true)
+    {
+        if (disease == null || activeDiseases == null) return false;
+        int idx = activeDiseases.FindIndex(d => d.data == disease);
+        if (idx < 0) return false;
+        if (grantImmunity && disease.immunityTurnsAfterRecovery > 0)
+            diseaseImmunities[disease] = disease.immunityTurnsAfterRecovery;
+        activeDiseases.RemoveAt(idx);
+        return true;
     }
 
     /// <summary>

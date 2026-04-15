@@ -31,10 +31,16 @@ public class GovernmentData : ScriptableObject
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this government while active.")]
     public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-unit stat bonuses granted by this government while active (e.g., healing speed).")]
+    public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this government (applies when equipped).")]
     public EquipmentYieldBonus[] equipmentYieldBonuses;
     [Tooltip("Per-worker per-turn yield bonuses granted by this government while active.")]
     public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this government while active (e.g., healing speed).")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Disease modifiers granted by this government while active.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
 
     // REMOVED: Unlocked Content arrays
     // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes

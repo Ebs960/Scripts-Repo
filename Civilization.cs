@@ -1059,6 +1059,263 @@ public class Civilization : MonoBehaviour
         }
     }
 
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private bool MatchesTerritoryRequirement(HexTileData tile, UnitTerritoryRequirement requirement)
+    {
+        if (requirement == UnitTerritoryRequirement.Any)
+            return true;
+        if (tile == null)
+            return false;
+
+        var tileOwner = tile.owner;
+        switch (requirement)
+        {
+            case UnitTerritoryRequirement.Owned:
+                return tileOwner == this;
+            case UnitTerritoryRequirement.Unowned:
+                return tileOwner == null;
+            case UnitTerritoryRequirement.Enemy:
+                return tileOwner != null && tileOwner != this && DiplomacyManager.Instance != null
+                    ? DiplomacyManager.Instance.GetRelationship(this, tileOwner) == DiplomaticState.War
+                    : tileOwner != null && tileOwner != this && relations.TryGetValue(tileOwner, out var enemyState) && enemyState == DiplomaticState.War;
+            case UnitTerritoryRequirement.Friendly:
+                if (tileOwner == null || tileOwner == this) return false;
+                if (DiplomacyManager.Instance != null)
+                    return DiplomacyManager.Instance.GetRelationship(this, tileOwner) != DiplomaticState.War;
+                return !relations.TryGetValue(tileOwner, out var friendlyState) || friendlyState != DiplomaticState.War;
+            default:
+                return true;
+        }
+    }
+
+    private bool MatchesUnitStatBonusLocation(BaseUnit unit, BoolRequirement cityRequirement, bool useBiomeFilter, Biome biome,
+        BoolRequirement hillRequirement, BoolRequirement mountainRequirement, bool useResourceFilter, ResourceData resource,
+        UnitTerritoryRequirement territoryRequirement)
+    {
+        if (unit == null) return false;
+
+        HexTileData tile = null;
+        if (unit.currentTileIndex >= 0)
+        {
+            var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+            if (ts != null && ts.IsReady())
+                tile = ts.GetTileData(unit.currentTileIndex);
+        }
+
+        bool inCity = tile != null && tile.HasCity;
+        if (!MatchesRequirement(cityRequirement, inCity)) return false;
+        if (tile == null) return cityRequirement == BoolRequirement.Any && territoryRequirement == UnitTerritoryRequirement.Any && !useBiomeFilter && !useResourceFilter && hillRequirement == BoolRequirement.Any && mountainRequirement == BoolRequirement.Any;
+        if (useBiomeFilter && tile.biome != biome) return false;
+        if (!MatchesRequirement(hillRequirement, tile.isHill)) return false;
+        if (!MatchesRequirement(mountainRequirement, tile.isMountain)) return false;
+        if (useResourceFilter)
+        {
+            if (tile.resource == null) return false;
+            if (tile.resource != resource) return false;
+        }
+        if (!MatchesTerritoryRequirement(tile, territoryRequirement)) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Sum per-unit healing speed bonuses (as fractional percent, e.g. 0.10 = +10%) for the given combat unit.
+    /// Includes bonuses from civ identity, researched techs/cultures, current government, active policies, pantheons, beliefs, and city buildings when provided.
+    /// </summary>
+    public float GetUnitHealingPct(CombatUnit unit, City cityContext = null)
+    {
+        if (unit == null || unit.data == null) return 0f;
+        float total = 0f;
+
+        // Civ identity
+        if (civData?.unitBonuses != null)
+            foreach (var b in civData.unitBonuses)
+                if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Techs
+        if (researchedTechs != null)
+            foreach (var t in researchedTechs)
+                if (t?.unitBonuses != null)
+                    foreach (var b in t.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Cultures
+        if (researchedCultures != null)
+            foreach (var c in researchedCultures)
+                if (c?.unitBonuses != null)
+                    foreach (var b in c.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Government
+        if (currentGovernment != null && currentGovernment.unitBonuses != null)
+            foreach (var b in currentGovernment.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Policies
+        if (activePolicies != null)
+            foreach (var p in activePolicies)
+                if (p?.unitBonuses != null)
+                    foreach (var b in p.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Pantheons
+        foreach (var pb in EnumeratePantheonBonuses())
+            if (pb?.unitBonuses != null)
+                foreach (var b in pb.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // Active beliefs
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief?.unitBonuses != null)
+                foreach (var b in belief.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        // City buildings (if context provided)
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (bd, _) in cityContext.builtBuildings)
+            {
+                if (bd == null || bd.unitBonuses == null) continue;
+                foreach (var b in bd.unitBonuses) if (b != null && b.unit == unit.data && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>
+    /// Same as GetUnitHealingPct but for worker unit archetypes.
+    /// </summary>
+    public float GetWorkerHealingPct(WorkerUnit worker, City cityContext = null)
+    {
+        if (worker == null || worker.data == null) return 0f;
+        float total = 0f;
+
+        if (civData?.workerBonuses != null)
+            foreach (var b in civData.workerBonuses)
+                if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        if (researchedTechs != null)
+            foreach (var t in researchedTechs)
+                if (t?.workerBonuses != null)
+                    foreach (var b in t.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        if (researchedCultures != null)
+            foreach (var c in researchedCultures)
+                if (c?.workerBonuses != null)
+                    foreach (var b in c.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        if (currentGovernment != null && currentGovernment.workerBonuses != null)
+            foreach (var b in currentGovernment.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        if (activePolicies != null)
+            foreach (var p in activePolicies)
+                if (p?.workerBonuses != null)
+                    foreach (var b in p.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        foreach (var pb in EnumeratePantheonBonuses())
+            if (pb?.workerBonuses != null)
+                foreach (var b in pb.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief?.workerBonuses != null)
+                foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (bd, _) in cityContext.builtBuildings)
+            {
+                if (bd == null) continue;
+                if (bd.workerBonuses != null)
+                    foreach (var b in bd.workerBonuses) if (b != null && b.worker == worker.data && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            }
+        }
+
+        return total;
+    }
+
+    private static bool MatchesDiseaseModifier(DiseaseModifierBonus bonus, DiseaseData disease)
+    {
+        if (bonus == null || disease == null)
+            return false;
+
+        return bonus.affectsAllDiseases || bonus.disease == disease;
+    }
+
+    private static void AccumulateDiseaseModifier(ref DiseaseModifierTotals totals, DiseaseModifierBonus bonus)
+    {
+        if (bonus == null)
+            return;
+
+        totals.grantsImmunity |= bonus.grantsImmunity;
+        totals.infectionChancePct += bonus.infectionChancePct;
+        totals.spreadChancePct += bonus.spreadChancePct;
+        totals.durationPct += bonus.durationPct;
+        totals.cityPopulationLossPct += bonus.cityPopulationLossPct;
+        totals.cityYieldPenaltyPct += bonus.cityYieldPenaltyPct;
+        totals.cityMoralePenaltyPct += bonus.cityMoralePenaltyPct;
+        totals.cityLoyaltyPenaltyPct += bonus.cityLoyaltyPenaltyPct;
+        totals.herdMortalityPct += bonus.herdMortalityPct;
+        totals.herdForagePenaltyPct += bonus.herdForagePenaltyPct;
+    }
+
+    public DiseaseModifierTotals GetDiseaseModifierTotals(DiseaseData disease, City cityContext = null, Herd herdContext = null)
+    {
+        DiseaseModifierTotals totals = default;
+        if (disease == null)
+            return totals;
+
+        void Accumulate(DiseaseModifierBonus[] bonuses)
+        {
+            if (bonuses == null)
+                return;
+
+            foreach (var bonus in bonuses)
+            {
+                if (MatchesDiseaseModifier(bonus, disease))
+                    AccumulateDiseaseModifier(ref totals, bonus);
+            }
+        }
+
+        Accumulate(civData?.diseaseBonuses);
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                Accumulate(tech?.diseaseBonuses);
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                Accumulate(culture?.diseaseBonuses);
+
+        Accumulate(currentGovernment?.diseaseBonuses);
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                Accumulate(policy?.diseaseBonuses);
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.diseaseBonuses);
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            Accumulate(belief?.diseaseBonuses);
+
+        if (cityContext != null && cityContext.builtBuildings != null)
+        {
+            foreach (var (building, _) in cityContext.builtBuildings)
+                Accumulate(building?.diseaseBonuses);
+        }
+
+        if (herdContext != null && herdContext.builtStructures != null)
+        {
+            foreach (var building in herdContext.builtStructures)
+                Accumulate(building?.diseaseBonuses);
+        }
+
+        return totals;
+    }
+
     private void NotifyBeliefsChanged()
     {
         OnBeliefsChanged?.Invoke();

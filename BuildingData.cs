@@ -102,6 +102,12 @@ public class BuildingData : ScriptableObject
     [Header("Other Effects")]
     public float defenseBonus;
     public float happinessBonus;
+    [Tooltip("Per-unit stat bonuses granted by this building when present (e.g., healing speed).")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this building when present (e.g., healing speed).")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Disease modifiers granted by this building when present.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
     [Header("Herd / Nomad Options")]
     [Tooltip("If true, this building may be constructed by/for herds (mobile structures)")]
     public bool buildableByHerd = false;

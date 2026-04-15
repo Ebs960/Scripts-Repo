@@ -16,10 +16,32 @@ public enum CityYieldScope
     CapitalOnly,
 }
 
+public enum UnitTerritoryRequirement
+{
+    Any,
+    Owned,
+    Friendly,
+    Enemy,
+    Unowned,
+}
+
 [System.Serializable]
 public class UnitStatBonus
 {
     public CombatUnitData unit;
+
+    [Header("Location Filters")]
+    [Tooltip("Whether the unit must be standing in a city tile.")]
+    public BoolRequirement cityRequirement;
+    public bool useBiomeFilter;
+    public Biome biome;
+    public BoolRequirement hillRequirement;
+    public BoolRequirement mountainRequirement;
+    [Tooltip("Require a specific resource on the unit's tile.")]
+    public bool useResourceFilter;
+    public ResourceData resource;
+    [Tooltip("Require a territory relationship for the tile the unit is standing on.")]
+    public UnitTerritoryRequirement territoryRequirement = UnitTerritoryRequirement.Any;
 
     [Header("Additive (flat)")]
     public int attackAdd;
@@ -33,6 +55,9 @@ public class UnitStatBonus
     public float defensePct;
     public float healthPct;
     public float rangePct;
+    [Header("Healing")]
+    [Tooltip("Percent faster healing/reinforcement rate for this unit (0.10 = +10% faster).")]
+    public float healingRatePct = 0f;
 }
 
 [System.Serializable]
@@ -66,6 +91,19 @@ public class WorkerUnitStatBonus
 {
     public WorkerUnitData worker;
 
+    [Header("Location Filters")]
+    [Tooltip("Whether the worker must be standing in a city tile.")]
+    public BoolRequirement cityRequirement;
+    public bool useBiomeFilter;
+    public Biome biome;
+    public BoolRequirement hillRequirement;
+    public BoolRequirement mountainRequirement;
+    [Tooltip("Require a specific resource on the worker's tile.")]
+    public bool useResourceFilter;
+    public ResourceData resource;
+    [Tooltip("Require a territory relationship for the tile the worker is standing on.")]
+    public UnitTerritoryRequirement territoryRequirement = UnitTerritoryRequirement.Any;
+
     [Header("Additive (flat)")]
     public int workPointsAdd;
     public int movePointsAdd;
@@ -76,6 +114,9 @@ public class WorkerUnitStatBonus
     public float workPointsPct;
     public float movePointsPct;
     public float healthPct;
+    [Header("Healing")]
+    [Tooltip("Percent faster healing/reinforcement rate for this worker (0.10 = +10% faster).")]
+    public float healingRatePct = 0f;
 }
 
 [System.Serializable]
@@ -253,6 +294,67 @@ public class CityYieldBonus
     public float culturePct;
     public float faithPct;
     public float policyPointsPct;
+}
+
+[System.Serializable]
+public class DiseaseModifierBonus
+{
+    [Tooltip("Specific disease affected by this modifier. Ignored when affectsAllDiseases is true.")]
+    public DiseaseData disease;
+    [Tooltip("If true, this modifier applies to all diseases.")]
+    public bool affectsAllDiseases;
+
+    [Header("Immunity")]
+    [Tooltip("If true, the owning civilization/city/herd is immune to the matching disease.")]
+    public bool grantsImmunity;
+
+    [Header("Chance & Duration (%)")]
+    [Tooltip("Signed percent modifier to infection chance. -0.25 = 25% less likely, 0.25 = 25% more likely.")]
+    public float infectionChancePct;
+    [Tooltip("Signed percent modifier to spread chance from already infected sources.")]
+    public float spreadChancePct;
+    [Tooltip("Signed percent modifier to disease duration.")]
+    public float durationPct;
+
+    [Header("City Severity (%)")]
+    [Tooltip("Signed percent modifier to city population loss caused by the disease.")]
+    public float cityPopulationLossPct;
+    [Tooltip("Signed percent modifier to all city yield penalties caused by the disease.")]
+    public float cityYieldPenaltyPct;
+    [Tooltip("Signed percent modifier to morale loss caused by the disease.")]
+    public float cityMoralePenaltyPct;
+    [Tooltip("Signed percent modifier to loyalty loss caused by the disease.")]
+    public float cityLoyaltyPenaltyPct;
+
+    [Header("Herd Severity (%)")]
+    [Tooltip("Signed percent modifier to herd animal mortality caused by the disease.")]
+    public float herdMortalityPct;
+    [Tooltip("Signed percent modifier to herd forage penalties caused by the disease.")]
+    public float herdForagePenaltyPct;
+}
+
+public struct DiseaseModifierTotals
+{
+    public bool grantsImmunity;
+    public float infectionChancePct;
+    public float spreadChancePct;
+    public float durationPct;
+    public float cityPopulationLossPct;
+    public float cityYieldPenaltyPct;
+    public float cityMoralePenaltyPct;
+    public float cityLoyaltyPenaltyPct;
+    public float herdMortalityPct;
+    public float herdForagePenaltyPct;
+
+    public float InfectionChanceMultiplier => Mathf.Max(0f, 1f + infectionChancePct);
+    public float SpreadChanceMultiplier => Mathf.Max(0f, 1f + spreadChancePct);
+    public float DurationMultiplier => Mathf.Max(0f, 1f + durationPct);
+    public float CityPopulationLossMultiplier => Mathf.Max(0f, 1f + cityPopulationLossPct);
+    public float CityYieldPenaltyMultiplier => Mathf.Max(0f, 1f + cityYieldPenaltyPct);
+    public float CityMoralePenaltyMultiplier => Mathf.Max(0f, 1f + cityMoralePenaltyPct);
+    public float CityLoyaltyPenaltyMultiplier => Mathf.Max(0f, 1f + cityLoyaltyPenaltyPct);
+    public float HerdMortalityMultiplier => Mathf.Max(0f, 1f + herdMortalityPct);
+    public float HerdForagePenaltyMultiplier => Mathf.Max(0f, 1f + herdForagePenaltyPct);
 }
 
 [System.Serializable]

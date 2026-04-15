@@ -18,8 +18,6 @@ MonoBehaviour:
   faithCost: 20
   possibleFounderBeliefs: []
   tier: 0
-  legacyIsSpirit: 1
-  tierInitialized: 1
   canUpgradeToGod: 1
   upgradedPantheon: {fileID: 11400000, guid: 5daefd69ed9f14e41aa05a8a4e6eb954, type: 2}
   bonuses:
@@ -32,6 +30,11 @@ MonoBehaviour:
     foodModifier: 0
     productionModifier: 0
     goldModifier: 0
-    scienceModifier: 0.1
+    scienceModifier: 0.05
     cultureModifier: 0
     faithModifier: 0
+    unitYieldBonuses: []
+    workerYieldBonuses: []
+    buildingYieldBonuses: []
+    tileYieldBonuses: []
+    cityYieldBonuses: []

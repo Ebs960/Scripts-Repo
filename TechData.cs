@@ -134,6 +134,8 @@ public class TechData : ScriptableObject
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this technology.")]
     public BuildingYieldBonus[] buildingBonuses;
+    [Tooltip("Disease modifiers granted by this technology.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
 

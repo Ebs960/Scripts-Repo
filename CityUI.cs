@@ -26,6 +26,9 @@ public class CityUI : MonoBehaviour
 
     [Header("Governor UI")]
     [SerializeField] private GovernorPanel governorPanel;
+    [Header("Disease Display")]
+    [SerializeField] private Transform diseaseContainer; // container to hold disease entries
+    [SerializeField] private GameObject diseaseEntryPrefab; // prefab with children: Icon(Image), Name(TextMeshProUGUI), Mods(TextMeshProUGUI)
 
     [Header("Production Queue Display - Current Item")] // Placeholder for "Thing we are making"
     [SerializeField] private TextMeshProUGUI currentProductionItemNameText;
@@ -236,6 +239,52 @@ if (currentCity == null)
         
         // Populate the unified build options list
         PopulateBuildOptionsList();
+
+        // Populate disease list
+        PopulateDiseaseList();
+    }
+
+    private void PopulateDiseaseList()
+    {
+        if (diseaseContainer == null || diseaseEntryPrefab == null) return;
+        // Clear existing
+        foreach (Transform t in diseaseContainer) Destroy(t.gameObject);
+
+        if (currentCity == null) return;
+        if (currentCity.activeDiseases == null || currentCity.activeDiseases.Count == 0)
+        {
+            var noneGO = new GameObject("NoDisease");
+            noneGO.transform.SetParent(diseaseContainer, false);
+            var txt = noneGO.AddComponent<TextMeshProUGUI>();
+            txt.text = "No active diseases";
+            txt.fontSize = 18f;
+            return;
+        }
+
+        foreach (var di in currentCity.activeDiseases)
+        {
+            if (di == null || di.data == null) continue;
+            var go = Instantiate(diseaseEntryPrefab, diseaseContainer);
+            var iconImg = go.transform.Find("Icon")?.GetComponent<UnityEngine.UI.Image>();
+            var nameTxt = go.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
+            var modsTxt = go.transform.Find("Mods")?.GetComponent<TextMeshProUGUI>();
+
+            if (iconImg != null) iconImg.sprite = di.data.icon;
+            if (nameTxt != null) nameTxt.text = di.data.diseaseName ?? "(Unknown)";
+
+            // Compute modifiers from civilization
+            string mods = "";
+            if (currentCity.owner != null)
+            {
+                var totals = currentCity.owner.GetDiseaseModifierTotals(di.data, currentCity);
+                if (totals.grantsImmunity) mods += "IMMUNE ";
+                if (Mathf.Abs(totals.infectionChancePct) > 0.0001f) mods += $"Infect%:{totals.infectionChancePct * 100:+0;-0}% ";
+                if (Mathf.Abs(totals.spreadChancePct) > 0.0001f) mods += $"Spread%:{totals.spreadChancePct * 100:+0;-0}% ";
+                if (Mathf.Abs(totals.durationPct) > 0.0001f) mods += $"Dur%:{totals.durationPct * 100:+0;-0}% ";
+                if (Mathf.Abs(totals.cityYieldPenaltyPct) > 0.0001f) mods += $"Yield%:{totals.cityYieldPenaltyPct * 100:+0;-0}% ";
+            }
+            if (modsTxt != null) modsTxt.text = string.IsNullOrEmpty(mods) ? "No modifiers" : mods.Trim();
+        }
     }
 
     private void UpdateCapitalControls()

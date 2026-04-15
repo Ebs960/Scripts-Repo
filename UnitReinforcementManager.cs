@@ -96,7 +96,22 @@ public class UnitReinforcementManager : MonoBehaviour
                 float reinforcementRate = GetReinforcementRate(bu);
                 if (reinforcementRate > 0f)
                 {
-                    int healAmount = Mathf.RoundToInt(bu.MaxHealth * (reinforcementRate / 100f));
+                    // Determine city context if unit is garrisoned
+                    City cityContext = null;
+                    if (bu is CombatUnit cu && cu.isGarrisonedInCity)
+                    {
+                        var ts2 = TileSystem.GetForPlanet(cu.planetIndex) ?? TileSystem.Instance;
+                        if (ts2 != null) { var td = ts2.GetTileData(cu.currentTileIndex); if (td != null) cityContext = td.controllingCity; }
+                    }
+
+                    float extraPct = 0f;
+                    if (bu is CombatUnit cu2)
+                        extraPct = cu2.owner != null ? cu2.owner.GetUnitHealingPct(cu2, cityContext) : 0f;
+                    else if (w is WorkerUnit wu)
+                        extraPct = wu.owner != null ? wu.owner.GetWorkerHealingPct(wu, cityContext) : 0f;
+
+                    float effectiveRate = reinforcementRate * (1f + extraPct);
+                    int healAmount = Mathf.RoundToInt(bu.MaxHealth * (effectiveRate / 100f));
                     bu.Heal(healAmount);
                 }
             }
@@ -164,9 +179,21 @@ public class UnitReinforcementManager : MonoBehaviour
             }
         }
         
+        // Determine city context if unit is garrisoned
+        City cityContext = null;
+        if (unit.isGarrisonedInCity)
+        {
+            var ts2 = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+            if (ts2 != null) { var td = ts2.GetTileData(unit.currentTileIndex); if (td != null) cityContext = td.controllingCity; }
+        }
+
+        // Apply civilization/unit-specific healing modifiers
+        float extraPct = unit.owner != null ? unit.owner.GetUnitHealingPct(unit, cityContext) : 0f;
+        float effectiveRate = reinforcementRate * (1f + extraPct);
+
         // Calculate healing amount (percentage of max HP)
-        int healAmount = Mathf.RoundToInt(unit.MaxHealth * (reinforcementRate / 100f));
-        
+        int healAmount = Mathf.RoundToInt(unit.MaxHealth * (effectiveRate / 100f));
+
         // Apply healing
         int oldHealth = unit.currentHealth;
         unit.Heal(healAmount);

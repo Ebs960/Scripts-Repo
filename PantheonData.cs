@@ -37,6 +37,12 @@ public class PantheonBonuses
     public BuildingYieldBonus[] buildingYieldBonuses;
     [Tooltip("Per-turn yield modifiers for tiles matching terrain filters in owned territory.")]
     public TileYieldBonus[] tileYieldBonuses;
+    [Tooltip("Per-unit stat bonuses granted by this pantheon (e.g., healing speed).")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this pantheon (e.g., healing speed).")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Disease modifiers granted by this pantheon.")]
+    public DiseaseModifierBonus[] diseaseBonuses;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
 }
