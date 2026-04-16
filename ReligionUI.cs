@@ -69,6 +69,12 @@ public class ReligionUI : MonoBehaviour
     private ReligionManager _cachedReligionManager;
 
     [Header("Belief Drag & Drop")]
+    [Tooltip("Standalone panel used for belief assignment UI")]
+    public GameObject beliefPanel;
+    [Tooltip("Button on the religion panel that opens the separate belief panel")]
+    public UnityEngine.UI.Button openBeliefPanelButton;
+    [Tooltip("Optional button on the belief panel that closes it")]
+    public UnityEngine.UI.Button closeBeliefPanelButton;
     [Tooltip("Parent transform that will contain generated belief buttons (assign in Inspector)")]
     public Transform beliefListContainer;
     [Tooltip("Prefab for a belief button. Expected to have a BeliefButtonUI component.")]
@@ -99,6 +105,10 @@ public class ReligionUI : MonoBehaviour
         // Upgrade listeners
         if (upgradePantheonButton != null)
             upgradePantheonButton.onClick.AddListener(OnUpgradePantheonClicked);
+        if (openBeliefPanelButton != null)
+            openBeliefPanelButton.onClick.AddListener(OpenBeliefPanel);
+        if (closeBeliefPanelButton != null)
+            closeBeliefPanelButton.onClick.AddListener(CloseBeliefPanel);
         
         // Set up dropdown change listeners
         pantheonDropdown.onValueChanged.AddListener(OnPantheonSelected);
@@ -108,6 +118,8 @@ public class ReligionUI : MonoBehaviour
         
         // Hide the panel initially
         religionPanel.SetActive(false);
+        if (beliefPanel != null)
+            beliefPanel.SetActive(false);
         // Populate belief list if prefabs/containers are set
         if (beliefListContainer != null && beliefButtonPrefab != null)
             PopulateBeliefList();
@@ -125,9 +137,26 @@ public class ReligionUI : MonoBehaviour
         if (knowledgeSlot != null) knowledgeSlot.owner = this;
     }
 
+    private void Awake()
+    {
+        if (beliefPanel != null)
+            beliefPanel.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        if (beliefPanel != null)
+            beliefPanel.SetActive(false);
+    }
+
     private void OnDestroy()
     {
         UnsubscribeFromPlayerCiv();
+    }
+
+    private void OnDisable()
+    {
+        CloseBeliefPanel();
     }
     
     /// <summary>
@@ -148,9 +177,27 @@ public class ReligionUI : MonoBehaviour
         
         // Show the panel
         religionPanel.SetActive(true);
+        CloseBeliefPanel();
 
         // Refresh belief slot visuals from assigned map
         RefreshBeliefSlots();
+    }
+
+    public void OpenBeliefPanel()
+    {
+        if (beliefPanel == null)
+            return;
+
+        SyncAssignedBeliefsFromCiv();
+        PopulateBeliefList();
+        RefreshBeliefSlots();
+        beliefPanel.SetActive(true);
+    }
+
+    public void CloseBeliefPanel()
+    {
+        if (beliefPanel != null)
+            beliefPanel.SetActive(false);
     }
 
     private void RefreshBeliefSlots()
@@ -290,6 +337,7 @@ public class ReligionUI : MonoBehaviour
     public void Hide()
     {
         UnsubscribeFromPlayerCiv();
+        CloseBeliefPanel();
         religionPanel.SetActive(false);
     }
 
@@ -368,6 +416,9 @@ public class ReligionUI : MonoBehaviour
     {
         if (playerCiv == null)
             return;
+
+        if (openBeliefPanelButton != null)
+            openBeliefPanelButton.interactable = true;
             
         // Update faith amount and per turn
         faithAmountText.text = $"Faith: {playerCiv.faith}";
