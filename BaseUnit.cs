@@ -237,7 +237,7 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual void ResetAttackPointsForNewTurn()
     {
         int oldAttackPoints = currentAttackPoints;
-        currentAttackPoints = attackPointsPerTurn;
+        currentAttackPoints = ApplyResourceUpkeepToTurnPoints(attackPointsPerTurn);
         try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
     }
 
@@ -1096,6 +1096,7 @@ public abstract class BaseUnit : MonoBehaviour
             valF += GetStatusEffectAttackModifier();
             valF *= FatigueMultiplier;
             valF *= MoraleDamageMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
             return Mathf.Max(0, Mathf.RoundToInt(valF));
         }
     }
@@ -1117,6 +1118,7 @@ public abstract class BaseUnit : MonoBehaviour
         valF = ApplyOwnerDefenseBonuses(valF);
         valF = ApplyTileDefenseBonuses(valF);
         valF = ApplyFortifyDefenseBonus(valF);
+        valF = ApplyResourceUpkeepToStat(valF);
         return valF;
     }
 
@@ -1144,7 +1146,8 @@ public abstract class BaseUnit : MonoBehaviour
         {
             float valF = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
             valF += GetStatusEffectRangeModifier();
-            return Mathf.Max(1f, valF);
+            valF = ApplyResourceUpkeepToStat(valF);
+            return IsDeactivatedByResourceUpkeep ? 0f : Mathf.Max(1f, valF);
         }
     }
 
@@ -2483,6 +2486,60 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public int currentMovePoints { get; protected set; }
 
+    [System.NonSerialized] private bool resourceUpkeepSatisfied = true;
+    [System.NonSerialized] private ResourceUpkeepFailureBehavior resourceUpkeepFailureBehavior = ResourceUpkeepFailureBehavior.Deactivate;
+    [System.NonSerialized] private float resourceUpkeepFailureDebuffMultiplier = 1f;
+
+    public bool IsResourceUpkeepSatisfied => resourceUpkeepSatisfied;
+    public bool IsDeactivatedByResourceUpkeep => !resourceUpkeepSatisfied && resourceUpkeepFailureBehavior == ResourceUpkeepFailureBehavior.Deactivate;
+    public bool IsDebuffedByResourceUpkeep => !resourceUpkeepSatisfied && resourceUpkeepFailureBehavior == ResourceUpkeepFailureBehavior.Debuff;
+    public float ResourceUpkeepDebuffMultiplier => IsDebuffedByResourceUpkeep ? Mathf.Clamp01(resourceUpkeepFailureDebuffMultiplier) : 1f;
+
+    public void SetResourceUpkeepState(bool satisfied, ResourceUpkeepFailureBehavior failureBehavior, float debuffMultiplier)
+    {
+        resourceUpkeepSatisfied = satisfied;
+        resourceUpkeepFailureBehavior = failureBehavior;
+        resourceUpkeepFailureDebuffMultiplier = Mathf.Clamp01(debuffMultiplier);
+        ApplyResourceUpkeepToCurrentActionPools();
+    }
+
+    protected int ApplyResourceUpkeepToTurnPoints(int amount)
+    {
+        if (IsDeactivatedByResourceUpkeep)
+            return 0;
+
+        if (IsDebuffedByResourceUpkeep)
+            return Mathf.Max(0, Mathf.FloorToInt(amount * ResourceUpkeepDebuffMultiplier));
+
+        return amount;
+    }
+
+    protected float ApplyResourceUpkeepToStat(float value)
+    {
+        if (IsDeactivatedByResourceUpkeep)
+            return 0f;
+
+        if (IsDebuffedByResourceUpkeep)
+            return value * ResourceUpkeepDebuffMultiplier;
+
+        return value;
+    }
+
+    private void ApplyResourceUpkeepToCurrentActionPools()
+    {
+        int oldMove = currentMovePoints;
+        int moveCap = ApplyResourceUpkeepToTurnPoints(currentMovePoints);
+        currentMovePoints = Mathf.Min(currentMovePoints, moveCap);
+        if (oldMove != currentMovePoints)
+            try { GameEventManager.Instance?.RaiseMovePointsChanged(this, oldMove, currentMovePoints); } catch { }
+
+        int oldAttackPoints = currentAttackPoints;
+        int attackCap = ApplyResourceUpkeepToTurnPoints(currentAttackPoints);
+        currentAttackPoints = Mathf.Min(currentAttackPoints, attackCap);
+        if (oldAttackPoints != currentAttackPoints)
+            try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
+    }
+
     /// <summary>
     /// Returns the starting movement points this unit would have at the beginning of a turn.
     /// Default implementation delegates to known unit types (WorkerUnit, CombatUnit animals).
@@ -2543,6 +2600,7 @@ public abstract class BaseUnit : MonoBehaviour
             move = Mathf.Max(1, move - 1);
         }
         move = Mathf.Max(0, move);
+        move = ApplyResourceUpkeepToTurnPoints(move);
         int old = currentMovePoints;
         currentMovePoints = move;
         try { GameEventManager.Instance?.RaiseMovePointsChanged(this, old, currentMovePoints); } catch { }

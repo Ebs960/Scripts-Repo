@@ -483,9 +483,9 @@ public class CombatUnit : BaseUnit
                 Accumulate(belief?.unitBonuses);
 
         var cityContext = GetCurrentCityContext();
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.unitBonuses);
         }
 
@@ -537,9 +537,9 @@ public class CombatUnit : BaseUnit
                 Accumulate(belief?.unitBonuses);
 
         var cityContext = GetCurrentCityContext();
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.unitBonuses);
         }
 
@@ -711,6 +711,7 @@ public class CombatUnit : BaseUnit
             // Morale and fatigue scaling
             valF *= FatigueMultiplier;
             valF *= MoraleDamageMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
             
             // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
             return Mathf.RoundToInt(valF);
@@ -774,7 +775,8 @@ public class CombatUnit : BaseUnit
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.rangeAdd) * (1f + e.rangePct);
             }
-            return valF; // Return as float, no rounding
+            valF = ApplyResourceUpkeepToStat(valF);
+            return IsDeactivatedByResourceUpkeep ? 0f : valF; // Return as float, no rounding
         }
     }
 

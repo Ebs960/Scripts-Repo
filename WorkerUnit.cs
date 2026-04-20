@@ -86,7 +86,7 @@ public class WorkerUnit : BaseUnit
 
         // Worker-specific resets
         var wb = AggregateWorkerBonusesLocal(owner, data);
-        currentWorkPoints = Mathf.RoundToInt((GetBaseWorkPoints() + wb.workAdd) * (1f + wb.workPct));
+        currentWorkPoints = ApplyResourceUpkeepToTurnPoints(Mathf.RoundToInt((GetBaseWorkPoints() + wb.workAdd) * (1f + wb.workPct)));
 
         // If trapped, decrement trapped duration (was in previous worker logic)
         if (IsTrapped)
@@ -724,9 +724,9 @@ public class WorkerUnit : BaseUnit
                 Accumulate(belief?.workerBonuses);
 
         var cityContext = GetCurrentCityContext();
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.workerBonuses);
         }
 
@@ -783,9 +783,9 @@ public class WorkerUnit : BaseUnit
                 Accumulate(belief?.workerBonuses);
 
         var cityContext = GetCurrentCityContext();
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.workerBonuses);
         }
 
@@ -849,6 +849,7 @@ public class WorkerUnit : BaseUnit
 
             valF *= FatigueMultiplier;
             valF *= MoraleDamageMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
             return Mathf.Max(0, Mathf.RoundToInt(valF));
         }
     }
@@ -877,7 +878,8 @@ public class WorkerUnit : BaseUnit
                 valF = (valF + wb.rangeAdd) * (1f + wb.rangePct);
             }
 
-            return Mathf.Max(1f, valF);
+            valF = ApplyResourceUpkeepToStat(valF);
+            return IsDeactivatedByResourceUpkeep ? 0f : Mathf.Max(1f, valF);
         }
     }
 

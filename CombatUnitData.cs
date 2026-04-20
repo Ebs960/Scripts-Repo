@@ -297,6 +297,15 @@ public class CombatUnitData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("Resource Upkeep (per turn)")]
+    [Tooltip("Resources this unit consumes from the civilization stockpile each turn.")]
+    public ResourceCost[] resourceUpkeepPerTurn;
+    [Tooltip("What happens when the civilization cannot pay this unit's per-turn upkeep.")]
+    public ResourceUpkeepFailureBehavior upkeepFailureBehavior = ResourceUpkeepFailureBehavior.Deactivate;
+    [Tooltip("Applied to combat stats, action points, and movement when upkeep failure uses Debuff mode.")]
+    [Range(0f, 1f)]
+    public float upkeepFailureDebuffMultiplier = 0.5f;
+
     [Header("Capture")]
     [Tooltip("If true this animal can be captured by capture actions and converted into herd counts")]
     public bool captureable = false;

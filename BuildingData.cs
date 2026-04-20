@@ -99,6 +99,19 @@ public class BuildingData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("Resource Production (per turn)")]
+    [Tooltip("Resources this building adds to the civilization stockpile each turn while present in a city.")]
+    public ResourceCost[] resourceProductionPerTurn;
+
+    [Header("Resource Upkeep (per turn)")]
+    [Tooltip("Resources this building consumes from the civilization stockpile each turn.")]
+    public ResourceCost[] resourceUpkeepPerTurn;
+    [Tooltip("What happens when the civilization cannot pay this building's per-turn upkeep.")]
+    public ResourceUpkeepFailureBehavior upkeepFailureBehavior = ResourceUpkeepFailureBehavior.Deactivate;
+    [Tooltip("Applied to this building's numeric output when upkeep failure uses Debuff mode.")]
+    [Range(0f, 1f)]
+    public float upkeepFailureDebuffMultiplier = 0.5f;
+
     [Header("Other Effects")]
     public float defenseBonus;
     public float happinessBonus;

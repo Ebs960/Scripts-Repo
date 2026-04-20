@@ -96,6 +96,9 @@ public class City : MonoBehaviour
     [Header("Built Content")]
     // Track (BuildingData, its spawned GameObject) so we can replace/destroy instances
     public List<(BuildingData data, GameObject instance)> builtBuildings = new List<(BuildingData, GameObject)>();
+    [System.NonSerialized] private List<bool> buildingUpkeepSatisfied = new List<bool>();
+    [System.NonSerialized] private List<ResourceUpkeepFailureBehavior> buildingUpkeepFailureBehavior = new List<ResourceUpkeepFailureBehavior>();
+    [System.NonSerialized] private List<float> buildingUpkeepFailureMultiplier = new List<float>();
     // Track (DistrictData, its spawned GameObject, tile index) for districts
     public List<(DistrictData data, GameObject instance, int tileIndex)> builtDistricts = new List<(DistrictData, GameObject, int)>();
     public List<CombatUnitData> producedUnits = new List<CombatUnitData>();
@@ -901,7 +904,7 @@ if (UIManager.Instance != null)
     /// Quick lookup of your city's harbor status
     /// </summary>
     private bool HasHarbor()
-        => builtBuildings.Exists(tuple => tuple.data.providesHarbor);
+        => HasOperationalBuilding(data => data != null && data.providesHarbor);
         
     /// <summary>
     /// Quick lookup if city has a holy site
@@ -1762,6 +1765,104 @@ Destroy(oldTuple.instance);
         public float pct;
     }
 
+    private void EnsureBuildingUpkeepState()
+    {
+        int count = builtBuildings != null ? builtBuildings.Count : 0;
+
+        while (buildingUpkeepSatisfied.Count < count)
+        {
+            buildingUpkeepSatisfied.Add(true);
+            buildingUpkeepFailureBehavior.Add(ResourceUpkeepFailureBehavior.Deactivate);
+            buildingUpkeepFailureMultiplier.Add(1f);
+        }
+
+        if (buildingUpkeepSatisfied.Count > count)
+        {
+            buildingUpkeepSatisfied.RemoveRange(count, buildingUpkeepSatisfied.Count - count);
+            buildingUpkeepFailureBehavior.RemoveRange(count, buildingUpkeepFailureBehavior.Count - count);
+            buildingUpkeepFailureMultiplier.RemoveRange(count, buildingUpkeepFailureMultiplier.Count - count);
+        }
+    }
+
+    public void ResetBuildingResourceUpkeepState()
+    {
+        EnsureBuildingUpkeepState();
+        for (int i = 0; i < buildingUpkeepSatisfied.Count; i++)
+        {
+            buildingUpkeepSatisfied[i] = true;
+            buildingUpkeepFailureBehavior[i] = ResourceUpkeepFailureBehavior.Deactivate;
+            buildingUpkeepFailureMultiplier[i] = 1f;
+        }
+    }
+
+    public void SetBuildingResourceUpkeepState(int buildingIndex, bool satisfied, ResourceUpkeepFailureBehavior failureBehavior, float debuffMultiplier)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingUpkeepSatisfied.Count)
+            return;
+
+        buildingUpkeepSatisfied[buildingIndex] = satisfied;
+        buildingUpkeepFailureBehavior[buildingIndex] = failureBehavior;
+        buildingUpkeepFailureMultiplier[buildingIndex] = Mathf.Clamp01(debuffMultiplier);
+    }
+
+    private bool IsBuildingDeactivated(int buildingIndex)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingUpkeepSatisfied.Count)
+            return false;
+
+        return !buildingUpkeepSatisfied[buildingIndex] && buildingUpkeepFailureBehavior[buildingIndex] == ResourceUpkeepFailureBehavior.Deactivate;
+    }
+
+    private float GetBuildingOperationalMultiplier(int buildingIndex)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingUpkeepSatisfied.Count)
+            return 1f;
+
+        if (buildingUpkeepSatisfied[buildingIndex])
+            return 1f;
+
+        if (buildingUpkeepFailureBehavior[buildingIndex] == ResourceUpkeepFailureBehavior.Deactivate)
+            return 0f;
+
+        return Mathf.Clamp01(buildingUpkeepFailureMultiplier[buildingIndex]);
+    }
+
+    public IEnumerable<(BuildingData data, GameObject instance, float upkeepMultiplier)> EnumerateOperationalBuildings()
+    {
+        EnsureBuildingUpkeepState();
+        if (builtBuildings == null)
+            yield break;
+
+        for (int i = 0; i < builtBuildings.Count; i++)
+        {
+            if (IsBuildingDeactivated(i))
+                continue;
+
+            var (data, instance) = builtBuildings[i];
+            if (data == null)
+                continue;
+
+            yield return (data, instance, GetBuildingOperationalMultiplier(i));
+        }
+    }
+
+    public bool HasOperationalBuilding(System.Predicate<BuildingData> predicate)
+    {
+        if (predicate == null)
+            return false;
+
+        foreach (var (data, _, _) in EnumerateOperationalBuildings())
+        {
+            if (predicate(data))
+                return true;
+        }
+
+        return false;
+    }
+
     private static bool MatchesRequirement(BoolRequirement requirement, bool value)
     {
         return requirement switch
@@ -1951,7 +2052,7 @@ Destroy(oldTuple.instance);
     int SumBuiltWithBonuses(BuildingYieldType kind)
     {
         int total = 0;
-        foreach (var (data, _) in builtBuildings)
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
             if (data == null) continue;
             int baseVal = 0;
@@ -2004,6 +2105,7 @@ Destroy(oldTuple.instance);
                 var religionAgg = AggregateReligionBuildingBonuses(data, kind);
                 baseVal = Mathf.RoundToInt((baseVal + religionAgg.add) * (1f + religionAgg.pct));
             }
+            baseVal = Mathf.RoundToInt(baseVal * upkeepMultiplier);
             total += baseVal;
         }
         return total;
@@ -2060,6 +2162,52 @@ Destroy(oldTuple.instance);
         // Governors don't have base policy point bonuses, but traits might add them in the future
         
         return ApplyCityScopedReligionBonuses(basePolicyPoints, BuildingYieldType.PolicyPoints);
+    }
+
+    public void AddBuildingResourceProductionTo(Dictionary<ResourceData, int> totals)
+    {
+        if (totals == null)
+            return;
+
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+        {
+            if (data == null || data.resourceProductionPerTurn == null)
+                continue;
+
+            foreach (var resourceYield in data.resourceProductionPerTurn)
+            {
+                if (resourceYield == null || resourceYield.resource == null || resourceYield.amount <= 0)
+                    continue;
+
+                if (!totals.ContainsKey(resourceYield.resource))
+                    totals[resourceYield.resource] = 0;
+
+                totals[resourceYield.resource] += Mathf.RoundToInt(resourceYield.amount * upkeepMultiplier);
+            }
+        }
+    }
+
+    public int GetResourceProductionPerTurn(ResourceData resource)
+    {
+        if (resource == null)
+            return 0;
+
+        int total = 0;
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+        {
+            if (data == null || data.resourceProductionPerTurn == null)
+                continue;
+
+            foreach (var resourceYield in data.resourceProductionPerTurn)
+            {
+                if (resourceYield == null || resourceYield.resource != resource || resourceYield.amount <= 0)
+                    continue;
+
+                total += Mathf.RoundToInt(resourceYield.amount * upkeepMultiplier);
+            }
+        }
+
+        return total;
     }
 
     // Placeholder for summing yields from owned tiles within radius

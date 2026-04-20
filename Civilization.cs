@@ -71,6 +71,97 @@ public class Civilization : MonoBehaviour
     private readonly Dictionary<int, int[]> _ownedBiomeCountsByPlanet = new Dictionary<int, int[]>();
     private int[] _ownedBiomeCountsAnyPlanet; // index = (int)Biome, value = total owned tiles of that biome across all planets
 
+    private bool CanAffordResourceCosts(ResourceCost[] costs)
+    {
+        if (costs == null || costs.Length == 0)
+            return true;
+
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0)
+                continue;
+
+            if (GetResourceCount(cost.resource) < cost.amount)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool TryConsumeResourceCosts(ResourceCost[] costs)
+    {
+        if (!CanAffordResourceCosts(costs))
+            return false;
+
+        if (costs == null)
+            return true;
+
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0)
+                continue;
+
+            ConsumeResource(cost.resource, cost.amount);
+        }
+
+        return true;
+    }
+
+    private void ApplyPerTurnResourceUpkeep()
+    {
+        if (cities != null)
+        {
+            foreach (var city in cities)
+                city?.ResetBuildingResourceUpkeepState();
+
+            foreach (var city in cities)
+            {
+                if (city == null || city.builtBuildings == null)
+                    continue;
+
+                for (int i = 0; i < city.builtBuildings.Count; i++)
+                {
+                    var building = city.builtBuildings[i].data;
+                    if (building == null)
+                        continue;
+
+                    bool satisfied = TryConsumeResourceCosts(building.resourceUpkeepPerTurn);
+                    city.SetBuildingResourceUpkeepState(i, satisfied, building.upkeepFailureBehavior, building.upkeepFailureDebuffMultiplier);
+                }
+            }
+        }
+
+        if (combatUnits != null)
+        {
+            foreach (var unit in combatUnits)
+            {
+                if (unit == null)
+                    continue;
+
+                var data = unit.data;
+                bool satisfied = data == null || TryConsumeResourceCosts(data.resourceUpkeepPerTurn);
+                unit.SetResourceUpkeepState(satisfied,
+                    data != null ? data.upkeepFailureBehavior : ResourceUpkeepFailureBehavior.Deactivate,
+                    data != null ? data.upkeepFailureDebuffMultiplier : 1f);
+            }
+        }
+
+        if (workerUnits != null)
+        {
+            foreach (var unit in workerUnits)
+            {
+                if (unit == null)
+                    continue;
+
+                var data = unit.data;
+                bool satisfied = data == null || TryConsumeResourceCosts(data.resourceUpkeepPerTurn);
+                unit.SetResourceUpkeepState(satisfied,
+                    data != null ? data.upkeepFailureBehavior : ResourceUpkeepFailureBehavior.Deactivate,
+                    data != null ? data.upkeepFailureDebuffMultiplier : 1f);
+            }
+        }
+    }
+
     private void EnsureBiomeAggregateArrays()
     {
         if (_biomeEnumCount <= 0)
@@ -1163,9 +1254,9 @@ public class Civilization : MonoBehaviour
                 foreach (var b in belief.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // City buildings (if context provided)
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (bd, _) in cityContext.builtBuildings)
+            foreach (var (bd, _, _) in cityContext.EnumerateOperationalBuildings())
             {
                 if (bd == null || bd.unitBonuses == null) continue;
                 foreach (var b in bd.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
@@ -1214,9 +1305,9 @@ public class Civilization : MonoBehaviour
             if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (bd, _) in cityContext.builtBuildings)
+            foreach (var (bd, _, _) in cityContext.EnumerateOperationalBuildings())
             {
                 if (bd == null) continue;
                 if (bd.workerBonuses != null)
@@ -1285,9 +1376,9 @@ public class Civilization : MonoBehaviour
             if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief.unitBonuses);
 
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.unitBonuses);
         }
 
@@ -1344,9 +1435,9 @@ public class Civilization : MonoBehaviour
             if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief.workerBonuses);
 
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.workerBonuses);
         }
 
@@ -1421,9 +1512,9 @@ public class Civilization : MonoBehaviour
             if (IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.diseaseBonuses);
 
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.diseaseBonuses);
         }
 
@@ -1480,9 +1571,9 @@ public class Civilization : MonoBehaviour
             if (IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.attritionBonuses);
 
-        if (cityContext != null && cityContext.builtBuildings != null)
+        if (cityContext != null)
         {
-            foreach (var (building, _) in cityContext.builtBuildings)
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
                 Accumulate(building?.attritionBonuses);
         }
 
@@ -1870,6 +1961,8 @@ public class Civilization : MonoBehaviour
         {
             turnCount = round;
 
+            ApplyPerTurnResourceUpkeep();
+
             // 1) Reset units (iterate a snapshot to avoid collection-modified exceptions)
             if (combatUnits != null)
             {
@@ -1916,6 +2009,7 @@ public class Civilization : MonoBehaviour
         int totalFoodThisTurn = 0;
         int totalPolicyThisTurn = 0;
         int totalFaithThisTurn = 0;
+        var buildingResourcesThisTurn = new Dictionary<ResourceData, int>();
         var globalBonuses = CalculateTotalBonuses(researchedTechs, researchedCultures);
 
         foreach (var city in cities)
@@ -1938,11 +2032,20 @@ public class Civilization : MonoBehaviour
                     totalFoodThisTurn += cityFood;
                     totalPolicyThisTurn += cityPolicy;
                     totalFaithThisTurn += cityFaith;
+                    city.AddBuildingResourceProductionTo(buildingResourcesThisTurn);
                 }
                 catch (System.Exception e)
                 {
                     Debug.LogError($"[Civilization] Error collecting yields from city {city.cityName}: {e.Message}");
                 }
+            }
+        }
+
+        if (buildingResourcesThisTurn.Count > 0)
+        {
+            foreach (var kvp in buildingResourcesThisTurn)
+            {
+                AddResource(kvp.Key, kvp.Value);
             }
         }
 

@@ -76,7 +76,7 @@ public class TradeRoute
         else if (sourceCity != null && destinationCity != null)
         {
             // Original city trade calculation
-            foreach (var (building, _) in destinationCity.builtBuildings)
+            foreach (var (building, _, _) in destinationCity.EnumerateOperationalBuildings())
             {
                 if (building.isGoldBuilding)
                     goldPerTurn += 1;
