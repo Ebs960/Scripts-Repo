@@ -15,7 +15,7 @@ public enum CultureGroup
     Mesoamerican,
     NorthAmerican,
     CentralAsian,
-    Nomadic,
+    MiddleEastern,
     // add others as needed
 }
 
@@ -70,6 +70,8 @@ public class CivData : ScriptableObject
     public AttritionModifierBonus[] attritionBonuses;
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses innate to this civilization (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
 
     [Header("Gameplay Flags")]
     public bool isTribe;                     // Limited to max 3 cities, starts at war

@@ -15,9 +15,6 @@ public class ReligionData : ScriptableObject
     public int faithCost;
 
     [Header("Beliefs")]
-    [Tooltip("The primary belief that benefits the founding civilization")]
-    public BeliefData founderBelief;
-    
     // Optional additional beliefs that can be added later
     [Tooltip("Additional beliefs that can be unlocked later in the game")]
     public BeliefData[] enhancerBeliefs;

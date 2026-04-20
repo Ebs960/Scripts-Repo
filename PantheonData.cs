@@ -37,6 +37,8 @@ public class PantheonBonuses
     public BuildingYieldBonus[] buildingYieldBonuses;
     [Tooltip("Per-turn yield modifiers for tiles matching terrain filters in owned territory.")]
     public TileYieldBonus[] tileYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific improvements in owned territory.")]
+    public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-unit stat bonuses granted by this pantheon (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-worker stat bonuses granted by this pantheon (e.g., healing speed).")]
@@ -46,6 +48,8 @@ public class PantheonBonuses
     public AttritionModifierBonus[] attritionBonuses;
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses granted by this pantheon (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
 }

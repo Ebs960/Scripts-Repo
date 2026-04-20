@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
+using System.Text;
 
 public class ReligionUI : MonoBehaviour
 {
@@ -15,8 +16,6 @@ public class ReligionUI : MonoBehaviour
     public GameObject pantheonFoundingPanel;
     [Tooltip("Dropdown to select pantheon")]
     public TMP_Dropdown pantheonDropdown;
-    [Tooltip("Dropdown to select founder belief")]
-    public TMP_Dropdown founderBeliefDropdown;
     [Tooltip("Button to found the selected pantheon")]
     public Button foundPantheonButton;
     [Tooltip("Text showing pantheon faith cost")]
@@ -61,7 +60,6 @@ public class ReligionUI : MonoBehaviour
     // Current data
     private Civilization playerCiv;
     private List<PantheonData> availablePantheons = new List<PantheonData>();
-    private List<BeliefData> availableFounderBeliefs = new List<BeliefData>();
     private List<ReligionData> availableReligions = new List<ReligionData>();
     private List<City> holySiteCities = new List<City>();
     
@@ -209,6 +207,366 @@ public class ReligionUI : MonoBehaviour
         knowledgeSlot?.SetAssigned(_assignedBeliefs.ContainsKey(BeliefCategory.Knowledge) ? _assignedBeliefs[BeliefCategory.Knowledge] : null);
     }
 
+    public static string BuildBeliefEffectSummary(BeliefData belief, bool compact = false)
+    {
+        if (belief == null) return compact ? string.Empty : "No belief assigned.";
+
+        var parts = new List<string>();
+
+        if (belief.faithCost > 0)
+            parts.Add($"{belief.faithCost} Faith");
+
+        AppendSharedYieldModifiers(parts, belief.extraFaithInHolySite, belief.extraFoodInHolySite, belief.extraProductionInHolySite,
+            belief.goldPerCity, belief.culturePerCity, belief.happinessBonus, belief.combatStrengthNearHolySite,
+            belief.growthRateModifier, belief.productionRateModifier,
+            belief.foodModifier, belief.productionModifier, belief.goldModifier, belief.scienceModifier, belief.cultureModifier, belief.faithModifier);
+        AppendImprovementBonuses(parts, belief.improvementBonuses, compact);
+        AppendHerdYieldBonuses(parts, belief.herdYieldBonuses, compact);
+        AppendAttritionBonuses(parts, belief.attritionBonuses);
+
+        if (belief.herdStarvationPercentReduction > 0f)
+            parts.Add($"-{belief.herdStarvationPercentReduction:P0} herd starvation");
+
+        if (!compact && !string.IsNullOrWhiteSpace(belief.description))
+            parts.Insert(0, belief.description.Trim());
+
+        if (parts.Count == 0)
+            return string.IsNullOrWhiteSpace(belief.description) ? "No immediate effect listed." : belief.description.Trim();
+
+        string summary = string.Join(compact ? " • " : "\n", parts);
+        if (compact && summary.Length > 180)
+            summary = summary.Substring(0, 177) + "...";
+
+        return summary;
+    }
+
+    public static string BuildPantheonEffectSummary(PantheonData pantheon, bool compact = false)
+    {
+        if (pantheon == null) return compact ? string.Empty : "No pantheon assigned.";
+
+        var parts = new List<string>();
+        var bonuses = pantheon.bonuses;
+
+        if (!compact && !string.IsNullOrWhiteSpace(pantheon.description))
+            parts.Add(pantheon.description.Trim());
+
+        if (bonuses != null)
+        {
+            AppendPantheonModifiers(parts, bonuses);
+            AppendImprovementBonuses(parts, bonuses.improvementBonuses, compact);
+            AppendHerdYieldBonuses(parts, bonuses.herdYieldBonuses, compact);
+            AppendAttritionBonuses(parts, bonuses.attritionBonuses);
+
+            if (bonuses.herdStarvationPercentReduction > 0f)
+                parts.Add($"-{bonuses.herdStarvationPercentReduction:P0} herd starvation");
+        }
+
+        if (parts.Count == 0)
+            return string.IsNullOrWhiteSpace(pantheon.description) ? "No pantheon bonuses listed." : pantheon.description.Trim();
+
+        string summary = string.Join(compact ? " • " : "\n", parts);
+        if (compact && summary.Length > 180)
+            summary = summary.Substring(0, 177) + "...";
+
+        return summary;
+    }
+
+    private static void AppendPantheonModifiers(List<string> parts, PantheonBonuses bonuses)
+    {
+        if (bonuses == null) return;
+
+        AppendSignedInt(parts, bonuses.attackBonus, "Attack");
+        AppendSignedInt(parts, bonuses.defenseBonus, "Defense");
+        AppendSignedInt(parts, bonuses.movementBonus, "Movement");
+        AppendSignedPercent(parts, bonuses.foodModifier, "Food");
+        AppendSignedPercent(parts, bonuses.productionModifier, "Production");
+        AppendSignedPercent(parts, bonuses.goldModifier, "Gold");
+        AppendSignedPercent(parts, bonuses.scienceModifier, "Science");
+        AppendSignedPercent(parts, bonuses.cultureModifier, "Culture");
+        AppendSignedPercent(parts, bonuses.faithModifier, "Faith");
+    }
+
+    private static void AppendSharedYieldModifiers(
+        List<string> parts,
+        int extraFaithInHolySite,
+        int extraFoodInHolySite,
+        int extraProductionInHolySite,
+        int goldPerCity,
+        int culturePerCity,
+        int happinessBonus,
+        int combatStrengthNearHolySite,
+        float growthRateModifier,
+        float productionRateModifier,
+        float foodModifier,
+        float productionModifier,
+        float goldModifier,
+        float scienceModifier,
+        float cultureModifier,
+        float faithModifier)
+    {
+        AppendSignedInt(parts, extraFaithInHolySite, "Faith in Holy Site");
+        AppendSignedInt(parts, extraFoodInHolySite, "Food in Holy Site");
+        AppendSignedInt(parts, extraProductionInHolySite, "Production in Holy Site");
+        AppendSignedInt(parts, goldPerCity, "Gold per city");
+        AppendSignedInt(parts, culturePerCity, "Culture per city");
+        AppendSignedInt(parts, happinessBonus, "Happiness");
+        AppendSignedInt(parts, combatStrengthNearHolySite, "Combat strength near Holy Site");
+        AppendSignedPercent(parts, growthRateModifier, "Growth");
+        AppendSignedPercent(parts, productionRateModifier, "Production rate");
+        AppendSignedPercent(parts, foodModifier, "Food");
+        AppendSignedPercent(parts, productionModifier, "Production");
+        AppendSignedPercent(parts, goldModifier, "Gold");
+        AppendSignedPercent(parts, scienceModifier, "Science");
+        AppendSignedPercent(parts, cultureModifier, "Culture");
+        AppendSignedPercent(parts, faithModifier, "Faith");
+    }
+
+    private static void AppendImprovementBonuses(List<string> parts, ImprovementYieldBonus[] bonuses, bool compact)
+    {
+        if (bonuses == null || bonuses.Length == 0)
+            return;
+
+        int added = 0;
+        foreach (var bonus in bonuses)
+        {
+            if (bonus == null)
+                continue;
+
+            string summary = FormatImprovementBonus(bonus);
+            if (string.IsNullOrEmpty(summary))
+                continue;
+
+            parts.Add(summary);
+            added++;
+
+            if (compact && added >= 2)
+            {
+                if (bonuses.Length > added)
+                    parts.Add($"+{bonuses.Length - added} more improvement bonus(es)");
+                break;
+            }
+        }
+    }
+
+    private static string FormatImprovementBonus(ImprovementYieldBonus bonus)
+    {
+        if (bonus == null)
+            return string.Empty;
+
+        var yieldParts = new List<string>();
+        AppendYieldValue(yieldParts, bonus.foodAdd, "Food");
+        AppendYieldValue(yieldParts, bonus.productionAdd, "Production");
+        AppendYieldValue(yieldParts, bonus.goldAdd, "Gold");
+        AppendYieldValue(yieldParts, bonus.scienceAdd, "Science");
+        AppendYieldValue(yieldParts, bonus.cultureAdd, "Culture");
+        AppendYieldValue(yieldParts, bonus.faithAdd, "Faith");
+        AppendYieldValue(yieldParts, bonus.policyPointsAdd, "Policy");
+        AppendYieldPercent(yieldParts, bonus.foodPct, "Food");
+        AppendYieldPercent(yieldParts, bonus.productionPct, "Production");
+        AppendYieldPercent(yieldParts, bonus.goldPct, "Gold");
+        AppendYieldPercent(yieldParts, bonus.sciencePct, "Science");
+        AppendYieldPercent(yieldParts, bonus.culturePct, "Culture");
+        AppendYieldPercent(yieldParts, bonus.faithPct, "Faith");
+        AppendYieldPercent(yieldParts, bonus.policyPointsPct, "Policy");
+
+        if (yieldParts.Count == 0)
+            return string.Empty;
+
+        string improvementName = bonus.improvement != null && !string.IsNullOrWhiteSpace(bonus.improvement.improvementName)
+            ? bonus.improvement.improvementName
+            : "Improvements";
+        return $"{improvementName}: {string.Join(", ", yieldParts)}";
+    }
+
+    private static void AppendAttritionBonuses(List<string> parts, AttritionModifierBonus[] bonuses)
+    {
+        if (bonuses == null)
+            return;
+
+        foreach (var bonus in bonuses)
+        {
+            if (bonus == null)
+                continue;
+
+            AppendReduction(parts, bonus.winterDamageReductionPct, "winter attrition");
+            AppendReduction(parts, bonus.famineDamageReductionPct, "famine attrition");
+            AppendReduction(parts, bonus.biomeDamageReductionPct, "biome damage");
+        }
+    }
+
+    private static void AppendHerdYieldBonuses(List<string> parts, HerdYieldBonus[] bonuses, bool compact)
+    {
+        if (bonuses == null || bonuses.Length == 0)
+            return;
+
+        int added = 0;
+        foreach (var bonus in bonuses)
+        {
+            if (bonus == null)
+                continue;
+
+            string summary = FormatHerdYieldBonus(bonus);
+            if (string.IsNullOrEmpty(summary))
+                continue;
+
+            parts.Add(summary);
+            added++;
+
+            if (compact && added >= 2)
+            {
+                if (bonuses.Length > added)
+                    parts.Add($"+{bonuses.Length - added} more herd bonus(es)");
+                break;
+            }
+        }
+    }
+
+    private static string FormatHerdYieldBonus(HerdYieldBonus bonus)
+    {
+        if (bonus == null)
+            return string.Empty;
+
+        var yieldParts = new List<string>();
+        AppendYieldValue(yieldParts, bonus.foodAdd, "Food");
+        AppendYieldValue(yieldParts, bonus.productionAdd, "Production");
+        AppendYieldValue(yieldParts, bonus.goldAdd, "Gold");
+        AppendYieldValue(yieldParts, bonus.scienceAdd, "Science");
+        AppendYieldValue(yieldParts, bonus.cultureAdd, "Culture");
+        AppendYieldValue(yieldParts, bonus.faithAdd, "Faith");
+        AppendYieldValue(yieldParts, bonus.policyPointsAdd, "Policy");
+        AppendYieldPercent(yieldParts, bonus.foodPct, "Food");
+        AppendYieldPercent(yieldParts, bonus.productionPct, "Production");
+        AppendYieldPercent(yieldParts, bonus.goldPct, "Gold");
+        AppendYieldPercent(yieldParts, bonus.sciencePct, "Science");
+        AppendYieldPercent(yieldParts, bonus.culturePct, "Culture");
+        AppendYieldPercent(yieldParts, bonus.faithPct, "Faith");
+        AppendYieldPercent(yieldParts, bonus.policyPointsPct, "Policy");
+
+        if (yieldParts.Count == 0)
+            return string.Empty;
+
+        string speciesLabel = bonus.useSpeciesFilter
+            ? $"Herds ({bonus.species})"
+            : "All Herds";
+        return $"{speciesLabel}: {string.Join(", ", yieldParts)}";
+    }
+
+    private static void AppendSignedInt(List<string> parts, float value, string label)
+    {
+        if (Mathf.Abs(value) <= 0.0001f)
+            return;
+
+        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:0.##} {label}");
+    }
+
+    private static void AppendSignedPercent(List<string> parts, float value, string label)
+    {
+        if (Mathf.Abs(value) <= 0.0001f)
+            return;
+
+        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:P0} {label}");
+    }
+
+    private static void AppendReduction(List<string> parts, float value, string label)
+    {
+        if (Mathf.Abs(value) <= 0.0001f)
+            return;
+
+        string prefix = value >= 0f ? "-" : "+";
+        parts.Add($"{prefix}{Mathf.Abs(value):P0} {label}");
+    }
+
+    private static void AppendYieldValue(List<string> parts, int value, string label)
+    {
+        if (value == 0)
+            return;
+
+        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value} {label}");
+    }
+
+    private static void AppendYieldPercent(List<string> parts, float value, string label)
+    {
+        if (Mathf.Abs(value) <= 0.0001f)
+            return;
+
+        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:P0} {label}");
+    }
+
+    private void RefreshReligionSummaryText()
+    {
+        if (beliefDescriptionText == null)
+            return;
+
+        if (playerCiv == null)
+        {
+            beliefDescriptionText.text = "-";
+            return;
+        }
+
+        var summary = new StringBuilder();
+
+        if (playerCiv.hasFoundedReligion && playerCiv.foundedReligion != null && !string.IsNullOrWhiteSpace(playerCiv.foundedReligion.description))
+            summary.AppendLine(playerCiv.foundedReligion.description.Trim());
+
+        if (playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Count > 0)
+        {
+            if (summary.Length > 0)
+                summary.AppendLine();
+
+            summary.AppendLine("Pantheons:");
+            foreach (var pantheon in playerCiv.foundedPantheons)
+            {
+                if (pantheon == null)
+                    continue;
+
+                summary.Append("- ");
+                summary.Append(pantheon.pantheonName);
+                string pantheonSummary = BuildPantheonEffectSummary(pantheon, false);
+                if (!string.IsNullOrWhiteSpace(pantheonSummary))
+                {
+                    summary.Append(": ");
+                    summary.AppendLine(pantheonSummary.Replace("\n", "\n  "));
+                }
+                else
+                {
+                    summary.AppendLine();
+                }
+            }
+        }
+
+        var activeBeliefs = new List<BeliefData>();
+        foreach (var belief in playerCiv.EnumerateActiveBeliefs())
+        {
+            if (belief != null)
+                activeBeliefs.Add(belief);
+        }
+
+        if (activeBeliefs.Count > 0)
+        {
+            if (summary.Length > 0)
+                summary.AppendLine();
+
+            summary.AppendLine("Beliefs:");
+            foreach (var belief in activeBeliefs)
+            {
+                summary.Append("- ");
+                summary.Append(belief.beliefName);
+                string beliefSummary = BuildBeliefEffectSummary(belief, false);
+                if (!string.IsNullOrWhiteSpace(beliefSummary))
+                {
+                    summary.Append(": ");
+                    summary.AppendLine(beliefSummary.Replace("\n", "\n  "));
+                }
+                else
+                {
+                    summary.AppendLine();
+                }
+            }
+        }
+
+        beliefDescriptionText.text = summary.Length > 0 ? summary.ToString().TrimEnd() : "No pantheon or belief bonuses assigned yet.";
+    }
+
     /// <summary>
     /// Populate the belief list UI, grouping buttons by category.
     /// </summary>
@@ -247,8 +605,6 @@ public class ReligionUI : MonoBehaviour
                 if (b == null) continue;
                 if (b.category != cat) continue;
                 if (playerCiv != null && !playerCiv.CanUseBelief(b)) continue;
-                if (playerCiv != null && playerCiv.HasActiveBeliefInCategory(b.category) && playerCiv.GetCustomBeliefInCategory(b.category) != b)
-                    continue;
                 var btnGO = Instantiate(beliefButtonPrefab, beliefListContainer);
                 var btn = btnGO.GetComponent<BeliefButtonUI>();
                 if (btn != null) btn.Initialize(b, this, dragLayer);
@@ -291,6 +647,32 @@ public class ReligionUI : MonoBehaviour
     {
         if (playerCiv == null) return;
 
+        int totalFaithCost = 0;
+        foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            var currentBelief = playerCiv.GetCustomBeliefInCategory(category);
+            _assignedBeliefs.TryGetValue(category, out var selectedBelief);
+
+            if (currentBelief == selectedBelief || selectedBelief == null)
+                continue;
+
+            totalFaithCost += playerCiv.GetBeliefFaithCost(selectedBelief);
+        }
+
+        if (playerCiv.faith < totalFaithCost)
+        {
+            Debug.LogWarning($"[ReligionUI] Not enough faith to adopt selected beliefs. Need {totalFaithCost}, have {playerCiv.faith}.");
+            return;
+        }
+
+        foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
+        {
+            if (_assignedBeliefs.ContainsKey(category))
+                continue;
+
+            playerCiv.RemoveCustomBeliefInCategory(category);
+        }
+
         var failed = new System.Collections.Generic.List<BeliefCategory>();
         foreach (var kv in _assignedBeliefs)
         {
@@ -304,7 +686,7 @@ public class ReligionUI : MonoBehaviour
 
         if (failed.Count > 0)
         {
-            Debug.LogWarning($"[ReligionUI] Failed to apply beliefs for categories: {string.Join(",", failed)} (conflict with existing pantheon/religion beliefs)");
+            Debug.LogWarning($"[ReligionUI] Failed to apply beliefs for categories: {string.Join(",", failed)}.");
         }
         else
         {
@@ -359,41 +741,6 @@ public class ReligionUI : MonoBehaviour
         PopulateBeliefList();
         UpdateUIState();
         RefreshBeliefSlots();
-    }
-
-    private void RefreshFounderBeliefOptions(PantheonData selectedPantheon)
-    {
-        availableFounderBeliefs.Clear();
-
-        if (selectedPantheon != null)
-        {
-            var allBeliefs = Resources.LoadAll<BeliefData>("");
-            if (allBeliefs != null)
-            {
-                foreach (var belief in allBeliefs)
-                {
-                    if (belief == null) continue;
-                    if (playerCiv != null && playerCiv.HasActiveBeliefInCategory(belief.category) && playerCiv.GetCustomBeliefInCategory(belief.category) != belief)
-                        continue;
-                    if (playerCiv != null && !playerCiv.CanUseBeliefForPantheon(selectedPantheon, belief))
-                        continue;
-                    availableFounderBeliefs.Add(belief);
-                }
-            }
-        }
-
-        founderBeliefDropdown.ClearOptions();
-        if (availableFounderBeliefs.Count > 0)
-        {
-            List<string> beliefNames = new List<string>();
-            foreach (BeliefData belief in availableFounderBeliefs)
-                beliefNames.Add(belief.beliefName);
-            founderBeliefDropdown.AddOptions(beliefNames);
-        }
-        else
-        {
-            founderBeliefDropdown.AddOptions(new List<string> { "No Available Beliefs" });
-        }
     }
 
     private void SyncAssignedBeliefsFromCiv()
@@ -456,20 +803,13 @@ public class ReligionUI : MonoBehaviour
             }
             pantheonDropdown.AddOptions(pantheonNames);
             
-            // Update founder belief dropdown based on selected pantheon
-            if (availablePantheons.Count > 0 && pantheonDropdown.value >= 0)
-            {
-                PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-                RefreshFounderBeliefOptions(selectedPantheon);
-            }
-            
             // Update cost and button state
             if (availablePantheons.Count > 0 && pantheonDropdown.value >= 0)
             {
                 PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
                 int cost = playerCiv.GetPantheonCost(selectedPantheon);
                 pantheonCostText.text = $"Cost: {cost} Faith";
-                foundPantheonButton.interactable = playerCiv.faith >= cost && availableFounderBeliefs.Count > 0;
+                foundPantheonButton.interactable = playerCiv.faith >= cost;
             }
             else
             {
@@ -484,9 +824,8 @@ public class ReligionUI : MonoBehaviour
             religionInfoPanel.SetActive(true);
             // Display the first founded pantheon as the primary one in the UI
             var primaryPantheon = playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Count > 0 ? playerCiv.foundedPantheons[0] : null;
-            var primaryBelief = (primaryPantheon != null && playerCiv.chosenFounderBeliefs != null && playerCiv.chosenFounderBeliefs.ContainsKey(primaryPantheon)) ? playerCiv.chosenFounderBeliefs[primaryPantheon] : null;
             religionNameText.text = primaryPantheon != null ? primaryPantheon.pantheonName : "-";
-            beliefDescriptionText.text = primaryBelief != null ? primaryBelief.description : "-";
+            RefreshReligionSummaryText();
             
             if (primaryPantheon != null && primaryPantheon.icon != null)
                 religionIcon.sprite = primaryPantheon.icon;
@@ -561,8 +900,7 @@ public class ReligionUI : MonoBehaviour
                 {
                     availableReligions = _cachedReligionManager.GetAvailableReligions();
                     availableReligions.RemoveAll(r => r == null
-                        || (playerCiv.foundedPantheons == null || !playerCiv.foundedPantheons.Contains(r.requiredPantheon))
-                        || (r.founderBelief != null && playerCiv.HasActiveBeliefInCategory(r.founderBelief.category)));
+                        || (playerCiv.foundedPantheons == null || !playerCiv.foundedPantheons.Contains(r.requiredPantheon)));
                 }
                 
                 // Update religion dropdown
@@ -600,7 +938,7 @@ public class ReligionUI : MonoBehaviour
                 
                 // Update religion info
                 religionNameText.text = playerCiv.foundedReligion.religionName;
-                beliefDescriptionText.text = $"Founder Belief: {playerCiv.foundedReligion.founderBelief.description}";
+                RefreshReligionSummaryText();
                 
                 if (playerCiv.foundedReligion.icon != null)
                     religionIcon.sprite = playerCiv.foundedReligion.icon;
@@ -736,13 +1074,11 @@ public class ReligionUI : MonoBehaviour
             
         PantheonData selectedPantheon = availablePantheons[index];
 
-        RefreshFounderBeliefOptions(selectedPantheon);
-
         // Update cost text
         pantheonCostText.text = $"Cost: {selectedPantheon.faithCost} Faith";
 
-        // Enable found button if player has enough faith and at least one founder belief is valid
-        foundPantheonButton.interactable = playerCiv.faith >= selectedPantheon.faithCost && availableFounderBeliefs.Count > 0;
+        // Enable found button if player has enough faith
+        foundPantheonButton.interactable = playerCiv.faith >= selectedPantheon.faithCost;
     }
     
     /// <summary>
@@ -768,15 +1104,13 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnFoundPantheonClicked()
     {
-        if (pantheonDropdown.value < 0 || pantheonDropdown.value >= availablePantheons.Count ||
-            founderBeliefDropdown.value < 0 || founderBeliefDropdown.value >= availableFounderBeliefs.Count)
+        if (pantheonDropdown.value < 0 || pantheonDropdown.value >= availablePantheons.Count)
             return;
-            
+
         PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-        BeliefData selectedBelief = availableFounderBeliefs[founderBeliefDropdown.value];
-        
+
         // Attempt to found the pantheon
-        if (playerCiv.FoundPantheon(selectedPantheon, selectedBelief))
+        if (playerCiv.FoundPantheon(selectedPantheon))
         {
             // Update UI if successful
             UpdateUIState();

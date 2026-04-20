@@ -46,8 +46,6 @@ public class GovernmentData : ScriptableObject
     [Header("Herd Modifiers")]
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
-
-    // REMOVED: Unlocked Content arrays
-    // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
-    // Government-specific units should have GovernmentData in their requiredTechs or requiredCultures
+    [Tooltip("Per-herd per-turn yield bonuses granted by this government (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
 } 

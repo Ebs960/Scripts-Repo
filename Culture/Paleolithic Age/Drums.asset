@@ -38,7 +38,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  unlocksPantheon: 0
+  unlocksPantheon: 1
   unlocksReligion: 0
   flatFoodBonus: 0
   flatProductionBonus: 0
@@ -58,10 +58,27 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
   cityCapIncrease: 0
   pantheonCapIncrease: 0
-  unlocksPantheons: []
-  unlocksBeliefs: []
+  unlocksPantheons:
+  - {fileID: 11400000, guid: 596d9e32f08af9e43af44b23325c3d81, type: 2}
+  - {fileID: 11400000, guid: 7d1ad9a69f9fc464cb3ee2a8a9233d5a, type: 2}
+  - {fileID: 11400000, guid: b95bdf9fbbd69844abb62832c8fa4fee, type: 2}
+  unlocksBeliefs:
+  - {fileID: 11400000, guid: 155952eb47506f94281d72832c85c2bd, type: 2}
+  - {fileID: 11400000, guid: 39e39ad54914e2e44bd77fc38c99ff55, type: 2}
+  - {fileID: 11400000, guid: 251098f0e6b080a49a0b3837840bff80, type: 2}
+  - {fileID: 11400000, guid: 54c986eb06349cc44983a5d36bf08b06, type: 2}
+  - {fileID: 11400000, guid: 012e35ae69f85a94480facce550c0d0a, type: 2}
+  - {fileID: 11400000, guid: 31bdb9b7438dd354c90215ad1f5dc67e, type: 2}
+  - {fileID: 11400000, guid: 30e26c0e94914a0408b0fab0e30b919c, type: 2}
+  - {fileID: 11400000, guid: 08e95d8c9568724458605c3e02693199, type: 2}
+  - {fileID: 11400000, guid: c10ec77486dfdd0409074583bd0e3a58, type: 2}
+  - {fileID: 11400000, guid: d6bf288ffc5ebe84da7ab6474174266c, type: 2}
+  - {fileID: 11400000, guid: ec7ad4b8b09366a48868ff01ec38862b, type: 2}
   unitLimitModifiers: []
   buildingLimitModifiers: []

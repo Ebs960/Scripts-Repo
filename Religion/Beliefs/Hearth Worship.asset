@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Hearth Worship
   description: Capital gains +7% food
   icon: {fileID: 21300000, guid: fbf4d8c164eba0b41bb7d06c831b140d, type: 3}
+  faithCost: 6
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -31,10 +32,14 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   category: 0
+  exclusiveToPantheons: []
+  useSeasonFilter: 0
+  seasons: 
   unitYieldBonuses: []
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses: []
+  improvementBonuses: []
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []
@@ -42,6 +47,8 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   cityYieldBonuses:
   - scope: 1
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0

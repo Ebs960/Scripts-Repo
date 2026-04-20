@@ -45,6 +45,8 @@ public class PolicyData : ScriptableObject
     [Header("Herd Modifiers")]
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses granted by this policy (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;

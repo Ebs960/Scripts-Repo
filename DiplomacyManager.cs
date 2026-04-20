@@ -448,4 +448,181 @@ public class DiplomacyManager : MonoBehaviour
             GetDiplomaticMemory(b).RecordEvent(a, DiplomaticEventType.AcceptedAlliance);
         }
     }
+
+    // ════════════════════════════════════════════════════════════════
+    //  COMPLEX DEAL EVALUATION  (multi-item DiplomaticOffer support)
+    // ════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Evaluate a multi-item <see cref="DiplomaticOffer"/> from the AI's perspective.
+    /// Returns true if the AI would accept the deal.
+    /// </summary>
+    public bool EvaluateComplexDeal(Civilization ai, DiplomaticOffer offer)
+    {
+        if (offer == null || offer.IsEmpty) return false;
+
+        // --- personality & memory modifiers ---
+        float personalityBias = 1f;
+        if (ai.leader != null)
+        {
+            personalityBias += ai.leader.diplomacy / 20f;  // diplomatic leaders are more flexible
+            if (ai.leader.prefersTrade) personalityBias += 0.15f;
+        }
+
+        var memory = GetDiplomaticMemory(ai);
+        float rep = memory.GetReputation(offer.proposer) / 100f; // -1..+1
+        int trust = memory.GetTrustLevel(offer.proposer);
+
+        // Hard refusal if very low trust and recent betrayal
+        if (trust <= 1 && memory.HasRecentEvent(offer.proposer, DiplomaticEventType.BrokePeace, 15))
+            return false;
+
+        // --- value comparison ---
+        // "receiving" = what the AI gets  (proposerItems)
+        // "giving"    = what the AI loses (recipientItems)
+        float receiving = offer.GetProposerValue(ai);
+        float giving    = offer.GetRecipientValue(ai);
+
+        // Apply personality and reputation adjustments
+        float adjustedReceiving = receiving * personalityBias * (1 + rep * 0.3f);
+        float adjustedGiving    = giving;
+
+        // Trust discount – the AI is suspicious of deals from untrustworthy civs
+        if (trust < 5)
+            adjustedReceiving *= 0.7f + trust * 0.06f; // 0.7 at trust 0 → 1.0 at trust 5
+
+        // Check for diplomatic action items (peace, alliance, war)
+        bool containsPeace    = ContainsDealItemType(offer, DealItemType.MakePeace);
+        bool containsAlliance = ContainsDealItemType(offer, DealItemType.Alliance);
+        bool containsWar      = ContainsDealItemType(offer, DealItemType.DeclareWarOn);
+
+        if (containsPeace)
+        {
+            var relation = GetRelationship(ai, offer.proposer);
+            if (relation != DiplomaticState.War)
+                return false; // can't make peace if not at war
+
+            float myStr    = CivilizationManager.Instance.ComputeMilitaryStrength(ai) + 1f;
+            float theirStr = CivilizationManager.Instance.ComputeMilitaryStrength(offer.proposer) + 1f;
+            // More likely to accept peace if losing
+            if (myStr / theirStr < 0.9f)
+                adjustedReceiving += 100f;
+        }
+
+        if (containsAlliance)
+        {
+            if (trust < 4 || rep < -0.3f)
+                return false; // won't ally with untrustworthy civs
+            adjustedReceiving += 50f;
+        }
+
+        if (containsWar)
+        {
+            if (ai.leader != null && ai.leader.aggressiveness < 4)
+                adjustedGiving += 100f; // peaceful leaders weigh war more heavily
+        }
+
+        // Final decision: accept if value is roughly fair (ratio >= 0.7)
+        if (adjustedGiving < 1f) adjustedGiving = 1f;
+        float fairness = adjustedReceiving / adjustedGiving;
+        return fairness >= 0.7f;
+    }
+
+    /// <summary>
+    /// Execute all items in a <see cref="DiplomaticOffer"/>.
+    /// Transfers gold, resources, techs, cities, and applies diplomatic state changes.
+    /// </summary>
+    public void ExecuteComplexDeal(DiplomaticOffer offer)
+    {
+        if (offer == null) return;
+
+        var from = offer.proposer;
+        var to   = offer.recipient;
+
+        // Execute items the proposer gives to the recipient
+        foreach (var item in offer.proposerItems)
+            ExecuteDealItem(item, from, to);
+
+        // Execute items the recipient gives to the proposer
+        foreach (var item in offer.recipientItems)
+            ExecuteDealItem(item, to, from);
+
+        // Record positive diplomatic event
+        GetDiplomaticMemory(from).RecordEvent(to, DiplomaticEventType.HonoredTreaty);
+        GetDiplomaticMemory(to).RecordEvent(from, DiplomaticEventType.HonoredTreaty);
+    }
+
+    private void ExecuteDealItem(DealItem item, Civilization giver, Civilization receiver)
+    {
+        switch (item.itemType)
+        {
+            case DealItemType.Gold:
+                int gold = Mathf.Min(item.goldAmount, giver.gold);
+                giver.gold -= gold;
+                receiver.gold += gold;
+                break;
+
+            case DealItemType.GoldPerTurn:
+                // Per-turn gold is harder to enforce without a deal tracker.
+                // For now, transfer the lump sum equivalent.
+                int lump = item.goldPerTurn * item.goldPerTurnDuration;
+                lump = Mathf.Min(lump, giver.gold);
+                giver.gold -= lump;
+                receiver.gold += lump;
+                break;
+
+            case DealItemType.Resource:
+                if (item.resource != null)
+                {
+                    int amt = item.resourceAmount;
+                    if (giver.resourceStockpile.TryGetValue(item.resource, out int owned))
+                        amt = Mathf.Min(amt, owned);
+                    else
+                        amt = 0;
+
+                    if (amt > 0)
+                    {
+                        giver.resourceStockpile[item.resource] = giver.resourceStockpile.GetValueOrDefault(item.resource) - amt;
+                        receiver.resourceStockpile[item.resource] = receiver.resourceStockpile.GetValueOrDefault(item.resource) + amt;
+                    }
+                }
+                break;
+
+            case DealItemType.Technology:
+                if (item.tech != null && !receiver.researchedTechs.Contains(item.tech))
+                    receiver.researchedTechs.Add(item.tech);
+                break;
+
+            case DealItemType.City:
+                if (item.city != null && giver.cities.Contains(item.city))
+                {
+                    giver.cities.Remove(item.city);
+                    receiver.cities.Add(item.city);
+                    item.city.owner = receiver;
+                }
+                break;
+
+            case DealItemType.MakePeace:
+                SetState(giver, receiver, DiplomaticState.Peace);
+                break;
+
+            case DealItemType.Alliance:
+                SetState(giver, receiver, DiplomaticState.Alliance);
+                break;
+
+            case DealItemType.DeclareWarOn:
+                if (item.targetCiv != null)
+                    SetState(giver, item.targetCiv, DiplomaticState.War);
+                break;
+        }
+    }
+
+    private static bool ContainsDealItemType(DiplomaticOffer offer, DealItemType type)
+    {
+        foreach (var item in offer.proposerItems)
+            if (item.itemType == type) return true;
+        foreach (var item in offer.recipientItems)
+            if (item.itemType == type) return true;
+        return false;
+    }
 }

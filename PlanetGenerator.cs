@@ -4126,10 +4126,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 elevationExponent = 1.00f;
                 hillNoiseCutoff = 0.75f;
                 mountainNoiseCutoff = 0.90f;
-                flatElevationMin = 32.0f;
-                flatElevationMax = 34.0f;
-                hillElevationMin = 34.5f;
-                hillElevationMax = 37.0f;
+                flatElevationMin = 22.0f;
+                flatElevationMax = 24.0f;
+                hillElevationMin = 24.5f;
+                hillElevationMax = 27.0f;
                 mountainElevationMin = 37.01f;
                 mountainElevationMax = 43.0f;
                 ridgeStrength = 0.06f;

@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
+  m_Name: Fire Harvest
+  m_EditorClassIdentifier: Assembly-CSharp::BeliefData
+  beliefName: Fire Harvest
+  description: Farms gain +2 Food during the Summer
+  icon: {fileID: 21300000, guid: 2ba2329f0dbc7dc4eb8dc157454c6cc2, type: 3}
+  faithCost: 30
+  extraFaithInHolySite: 0
+  extraFoodInHolySite: 0
+  extraProductionInHolySite: 0
+  goldPerCity: 0
+  culturePerCity: 0
+  happinessBonus: 0
+  combatStrengthNearHolySite: 0
+  growthRateModifier: 0
+  productionRateModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  category: 1
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: 7d1ad9a69f9fc464cb3ee2a8a9233d5a, type: 2}
+  - {fileID: 11400000, guid: aeb2b715c32cbcf4fb11ae423b841319, type: 2}
+  useSeasonFilter: 1
+  seasons: 01000000
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  buildingYieldBonuses: []
+  tileYieldBonuses: []
+  improvementBonuses: []
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  cityYieldBonuses: []

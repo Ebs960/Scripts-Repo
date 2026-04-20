@@ -317,6 +317,30 @@ public class HexTileData
                         a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
                     }
             }
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.improvementBonuses == null) continue;
+            foreach (var b in pantheonBonuses.improvementBonuses)
+                if (b != null && b.improvement == imp)
+                {
+                    a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                    a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                    a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                    a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+                }
+        }
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+        {
+            if (belief?.improvementBonuses == null) continue;
+            foreach (var b in belief.improvementBonuses)
+                if (b != null && b.improvement == imp)
+                {
+                    a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                    a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                    a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                    a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+                }
+        }
         return a;
     }
 

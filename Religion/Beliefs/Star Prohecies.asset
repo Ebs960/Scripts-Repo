@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
+  m_Name: Star Prohecies
+  m_EditorClassIdentifier: Assembly-CSharp::BeliefData
+  beliefName: Star Prophecies
+  description: +2 Culture and +15% Science in the Capital City
+  icon: {fileID: 21300000, guid: e52d919dd47ea3645821fc350f3016d0, type: 3}
+  faithCost: 40
+  extraFaithInHolySite: 0
+  extraFoodInHolySite: 0
+  extraProductionInHolySite: 0
+  goldPerCity: 0
+  culturePerCity: 0
+  happinessBonus: 0
+  combatStrengthNearHolySite: 0
+  growthRateModifier: 0
+  productionRateModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  category: 4
+  exclusiveToPantheons:
+  - {fileID: 11400000, guid: b95bdf9fbbd69844abb62832c8fa4fee, type: 2}
+  - {fileID: 11400000, guid: 5daefd69ed9f14e41aa05a8a4e6eb954, type: 2}
+  useSeasonFilter: 0
+  seasons: 
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  buildingYieldBonuses: []
+  tileYieldBonuses: []
+  improvementBonuses: []
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  cityYieldBonuses:
+  - scope: 1
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 2
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0.15
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0

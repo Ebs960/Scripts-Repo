@@ -1212,9 +1212,9 @@ public class CivilizationManager : MonoBehaviour
             if (availablePantheons != null && availablePantheons.Count > 0)
             {
                 TryChooseBestPantheonAndBelief(civ, availablePantheons, out var bestPantheon, out var bestBelief);
-                if (bestPantheon != null && bestBelief != null)
+                if (bestPantheon != null)
                 {
-                    civ.FoundPantheon(bestPantheon, bestBelief);
+                    civ.FoundPantheon(bestPantheon);
                 }
             }
         }
@@ -1515,9 +1515,8 @@ public class CivilizationManager : MonoBehaviour
             if (religion == null) continue;
             if (civ.faith < religion.faithCost) continue;
             if (religion.requiredPantheon != null && (civ.foundedPantheons == null || !civ.foundedPantheons.Contains(religion.requiredPantheon))) continue;
-            if (religion.founderBelief != null && civ.HasActiveBeliefInCategory(religion.founderBelief.category)) continue;
 
-            float score = religion.founderBelief != null ? ScoreBeliefForCivilization(civ, religion.founderBelief) : 0f;
+            float score = 0f;
             score -= religion.faithCost * 0.05f;
 
             if (score > bestScore)
@@ -1539,31 +1538,16 @@ public class CivilizationManager : MonoBehaviour
 
         foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
         {
-            bool blockedByFounderBelief = false;
-            if (civ.foundedPantheons != null && civ.chosenFounderBeliefs != null)
-            {
-                foreach (var pantheon in civ.foundedPantheons)
-                {
-                    if (pantheon == null) continue;
-                    if (civ.chosenFounderBeliefs.TryGetValue(pantheon, out var pantheonBelief) && pantheonBelief != null && pantheonBelief.category == category)
-                    {
-                        blockedByFounderBelief = true;
-                        break;
-                    }
-                }
-            }
-            if (!blockedByFounderBelief && civ.hasFoundedReligion && civ.foundedReligion != null && civ.foundedReligion.founderBelief != null && civ.foundedReligion.founderBelief.category == category)
-                blockedByFounderBelief = true;
-            if (blockedByFounderBelief)
-                continue;
-
+            var currentBelief = civ.GetCustomBeliefInCategory(category);
             BeliefData bestBelief = null;
             float bestScore = float.MinValue;
             foreach (var belief in allBeliefs)
             {
                 if (belief == null || belief.category != category) continue;
                 if (!civ.CanUseBelief(belief)) continue;
+                if (currentBelief != belief && civ.faith < civ.GetBeliefFaithCost(belief)) continue;
                 float score = ScoreBeliefForCivilization(civ, belief);
+                score -= civ.GetBeliefFaithCost(belief) * 0.05f;
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -1573,7 +1557,6 @@ public class CivilizationManager : MonoBehaviour
 
             if (bestBelief == null) continue;
 
-            var currentBelief = civ.GetCustomBeliefInCategory(category);
             float currentScore = currentBelief != null ? ScoreBeliefForCivilization(civ, currentBelief) : float.MinValue;
             if (currentBelief == null || bestScore > currentScore + 0.5f)
                 civ.SetCustomBelief(category, bestBelief);
@@ -1951,8 +1934,8 @@ break; // Only propose one alliance per turn
                 if (availablePantheons != null && availablePantheons.Count > 0)
                 {
                     TryChooseBestPantheonAndBelief(civ, availablePantheons, out var pantheon, out var belief);
-                    if (pantheon != null && belief != null)
-                        civ.FoundPantheon(pantheon, belief);
+                    if (pantheon != null)
+                        civ.FoundPantheon(pantheon);
                 }
             }
         }

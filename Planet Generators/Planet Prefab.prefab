@@ -230,7 +230,6 @@ MonoBehaviour:
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
   elevationFreq: 4
-  useManualElevationFreq: 1
   moistureFreq: 0.2
   moistureBias: 0
   temperatureBias: 0
@@ -242,6 +241,8 @@ MonoBehaviour:
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 4
   climateSmoothingStrength: 0.365
+  enableIceWorldThermals: 1
+  iceWorldThermalCount: 4
   coastalMoistureBoost: 0.276
   coastalMoistureRange: 2
   flatElevationMin: 5
@@ -250,9 +251,9 @@ MonoBehaviour:
   hillElevationMax: 9.5
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
-  oceanElevation: 9
-  seasElevation: 23
-  coastElevation: 31.5
+  oceanElevation: 10
+  seasElevation: 20
+  coastElevation: 21
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1

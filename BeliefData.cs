@@ -8,6 +8,10 @@ public class BeliefData : ScriptableObject
     [TextArea] public string description;
     public Sprite icon;
 
+    [Header("Cost")]
+    [Tooltip("Faith required to adopt this belief.")]
+    public int faithCost;
+
     [Header("Effects")]
     [Tooltip("Flat bonus faith in Holy Site per turn")]
     public int extraFaithInHolySite;
@@ -59,6 +63,8 @@ public class BeliefData : ScriptableObject
     public BuildingYieldBonus[] buildingYieldBonuses;
     [Tooltip("Per-turn yield modifiers for tiles matching terrain filters in owned territory.")]
     public TileYieldBonus[] tileYieldBonuses;
+    [Tooltip("Per-turn yield modifiers for specific improvements in owned territory.")]
+    public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-unit stat bonuses granted by this belief (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-worker stat bonuses granted by this belief (e.g., healing speed).")]
@@ -68,6 +74,8 @@ public class BeliefData : ScriptableObject
     public AttritionModifierBonus[] attritionBonuses;
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses granted by this belief (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
 } 

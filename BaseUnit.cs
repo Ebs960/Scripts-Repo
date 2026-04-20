@@ -2620,6 +2620,20 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
 
         damagePercent = BiomeHelper.GetBiomeDamage(tileData.biome);
+        if (damagePercent <= 0f)
+            return false;
+
+        if (owner != null)
+        {
+            try
+            {
+                damagePercent *= owner.GetAttritionModifierTotals(null, null).BiomeDamageMultiplier;
+            }
+            catch
+            {
+            }
+        }
+
         return damagePercent > 0f;
     }
 

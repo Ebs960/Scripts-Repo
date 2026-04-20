@@ -144,6 +144,8 @@ public class TechData : ScriptableObject
     [Header("Herd Modifiers")]
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g., 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses granted by this technology (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
     [Tooltip("If true, this technology enables the Herding game mechanic for the civ that researches it.")]
     public bool enablesHerding = false;
 

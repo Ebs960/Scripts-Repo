@@ -22,6 +22,7 @@ public class PlayerUI : MonoBehaviour
 
     [SerializeField] private Button techButton;
     [SerializeField] private Button cultureButton;
+    [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
     [SerializeField] private Button diplomacyButton;
     [SerializeField] private Button equipmentButton;
@@ -139,6 +140,28 @@ public class PlayerUI : MonoBehaviour
                 else
                 {
                     Debug.LogError($"PlayerUI: Cannot show culture panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
+                }
+            });
+        }
+
+        if (religionButton != null)
+        {
+            religionButton.onClick.RemoveAllListeners();
+            religionButton.onClick.AddListener(() =>
+            {
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
+                {
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                }
+
+                if (UIManager.Instance != null && civToUse != null)
+                {
+                    UIManager.Instance.ShowReligionPanel(civToUse);
+                }
+                else
+                {
+                    Debug.LogError($"PlayerUI: Cannot show religion panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
                 }
             });
         }

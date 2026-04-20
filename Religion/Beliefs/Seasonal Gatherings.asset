@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
+  m_Name: Seasonal Gatherings
+  m_EditorClassIdentifier: Assembly-CSharp::BeliefData
+  beliefName: Seasonal Gatherings
+  description: +1 Culture and +1 Faith to Small Shrines and Mystic's Huts, and Shaman's
+    Huts.
+  icon: {fileID: 21300000, guid: 03b0cba19a96a0e4d84d0c5543440745, type: 3}
+  faithCost: 0
+  extraFaithInHolySite: 0
+  extraFoodInHolySite: 0
+  extraProductionInHolySite: 0
+  goldPerCity: 0
+  culturePerCity: 0
+  happinessBonus: 0
+  combatStrengthNearHolySite: 0
+  growthRateModifier: 0
+  productionRateModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  category: 2
+  exclusiveToPantheons: []
+  useSeasonFilter: 0
+  seasons: 
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  buildingYieldBonuses:
+  - building: {fileID: 11400000, guid: cda92fd9cbf87af41a6cdaee3088ce8b, type: 2}
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 1
+    faithAdd: 1
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  - building: {fileID: 11400000, guid: a610375e334c67f4eac2f9fa57b5ab2b, type: 2}
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 1
+    faithAdd: 1
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  - building: {fileID: 11400000, guid: e0d635fb32e29cf44a36f8466086629c, type: 2}
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 1
+    faithAdd: 1
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  tileYieldBonuses: []
+  improvementBonuses: []
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  cityYieldBonuses: []

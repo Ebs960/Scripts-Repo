@@ -111,6 +111,8 @@ public class BuildingData : ScriptableObject
     public AttritionModifierBonus[] attritionBonuses;
     [Tooltip("Reduces the percent of herd animals lost to starvation when this building/structure is present (e.g. 0.05 = -5 percentage points)")]
     public float herdStarvationPercentReduction = 0f;
+    [Tooltip("Per-herd per-turn yield bonuses granted by this building/structure (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
     [Header("Herd / Nomad Options")]
     [Tooltip("If true, this building may be constructed by/for herds (mobile structures)")]
     public bool buildableByHerd = false;

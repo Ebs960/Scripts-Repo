@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Stoneskin Blessing
   description: +1 Defense in friendly territory
   icon: {fileID: 21300000, guid: 5de3fd7926ab579429026c223434c4c8, type: 3}
+  faithCost: 9
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -40,6 +41,7 @@ MonoBehaviour:
   workerYieldBonuses: []
   buildingYieldBonuses: []
   tileYieldBonuses: []
+  improvementBonuses: []
   unitBonuses:
   - unit: {fileID: 0}
     useUnitCategoryFilter: 0

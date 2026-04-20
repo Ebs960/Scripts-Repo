@@ -78,7 +78,43 @@ public class LeaderData : ScriptableObject
     public float cultureModifier = 0f;         // Percentage boost to culture output
     public float faithModifier = 0f;           // Percentage boost to faith output
     public float militaryStrengthModifier = 0f; // Percentage boost to military units
+    [Tooltip("Per-herd per-turn yield bonuses granted by this leader (can filter by animal species).")]
+    public HerdYieldBonus[] herdYieldBonuses;
     
+    [Header("Diplomacy Visuals")]
+    [Tooltip("Palace / throne-room background shown behind the leader during negotiations")]
+    public Sprite background;
+    [Tooltip("Animator controller for leader character (idle, speaking, angry, declareWar, happy, agreement triggers)")]
+    public RuntimeAnimatorController leaderAnimator;
+
+    [Header("Leader Mood Sprites (fallback when no Animator is set)")]
+    [Tooltip("Idle / neutral pose")]
+    public Sprite idleSprite;
+    [Tooltip("Speaking during negotiations")]
+    public Sprite speakingSprite;
+    [Tooltip("Angry / displeased expression")]
+    public Sprite angrySprite;
+    [Tooltip("Declaring war dramatic pose")]
+    public Sprite declareWarSprite;
+    [Tooltip("Happy / pleased expression")]
+    public Sprite happySprite;
+    [Tooltip("Agreement / handshake pose")]
+    public Sprite agreementSprite;
+
+    [Header("Leader Mood GIFs (StreamingAssets relative paths)")]
+    [Tooltip("Animated GIF shown for idle mood. Path relative to StreamingAssets, for example: LeaderGifs/Caesar/idle.gif")]
+    public string idleGifPath;
+    [Tooltip("Animated GIF shown for speaking mood. Path relative to StreamingAssets.")]
+    public string speakingGifPath;
+    [Tooltip("Animated GIF shown for angry mood. Path relative to StreamingAssets.")]
+    public string angryGifPath;
+    [Tooltip("Animated GIF shown for declare-war mood. Path relative to StreamingAssets.")]
+    public string declareWarGifPath;
+    [Tooltip("Animated GIF shown for happy mood. Path relative to StreamingAssets.")]
+    public string happyGifPath;
+    [Tooltip("Animated GIF shown for agreement mood. Path relative to StreamingAssets.")]
+    public string agreementGifPath;
+
     [Header("Diplomatic Traits")]
     public bool prefersAlliance = false;       // More likely to accept alliances
     public bool prefersTrade = false;          // More likely to accept trade deals
@@ -95,6 +131,60 @@ public class LeaderData : ScriptableObject
         else if (!isLiked && System.Array.Exists(dislikesTraits, t => t == trait))
             return -0.3f; // -30% diplomatic penalty
         return 0f;
+    }
+
+    /// <summary>
+    /// Returns the sprite for the given mood.
+    /// Falls back to portrait if no mood sprite is assigned.
+    /// </summary>
+    public Sprite GetMoodSprite(LeaderMood mood)
+    {
+        Sprite s = mood switch
+        {
+            LeaderMood.Idle       => idleSprite,
+            LeaderMood.Speaking   => speakingSprite,
+            LeaderMood.Angry      => angrySprite,
+            LeaderMood.DeclareWar => declareWarSprite,
+            LeaderMood.Happy      => happySprite,
+            LeaderMood.Agreement  => agreementSprite,
+            _ => null,
+        };
+        return s != null ? s : portrait;
+    }
+
+    /// <summary>
+    /// Returns the StreamingAssets-relative GIF path for the given mood.
+    /// Empty string means no GIF is configured for that mood.
+    /// </summary>
+    public string GetMoodGifPath(LeaderMood mood)
+    {
+        return mood switch
+        {
+            LeaderMood.Idle       => idleGifPath,
+            LeaderMood.Speaking   => speakingGifPath,
+            LeaderMood.Angry      => angryGifPath,
+            LeaderMood.DeclareWar => declareWarGifPath,
+            LeaderMood.Happy      => happyGifPath,
+            LeaderMood.Agreement  => agreementGifPath,
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>
+    /// Returns the Animator trigger name for a mood.
+    /// </summary>
+    public static string GetAnimTrigger(LeaderMood mood)
+    {
+        return mood switch
+        {
+            LeaderMood.Idle       => "Idle",
+            LeaderMood.Speaking   => "Speaking",
+            LeaderMood.Angry      => "Angry",
+            LeaderMood.DeclareWar => "DeclareWar",
+            LeaderMood.Happy      => "Happy",
+            LeaderMood.Agreement  => "Agreement",
+            _ => "Idle",
+        };
     }
     
     /// <summary>
@@ -166,6 +256,19 @@ public enum VictoryType
     Religious,          // Convert the world
     Diplomatic,         // Win through alliances and votes
     Economic            // Accumulate vast wealth
+}
+
+/// <summary>
+/// Mood / animation state for a leader during diplomacy.
+/// </summary>
+public enum LeaderMood
+{
+    Idle,
+    Speaking,
+    Angry,
+    DeclareWar,
+    Happy,
+    Agreement
 }
 
 /// <summary>

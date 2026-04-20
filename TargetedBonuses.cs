@@ -477,15 +477,19 @@ public class AttritionModifierBonus
     public float winterDamageReductionPct;
     [Tooltip("Percent reduction to famine attrition damage. 0.10 = 10% reduction.")]
     public float famineDamageReductionPct;
+    [Tooltip("Percent reduction to biome/environmental damage from damaging terrain tiles like desert, tundra, lava, and similar hazards. 0.10 = 10% reduction.")]
+    public float biomeDamageReductionPct;
 }
 
 public struct AttritionModifierTotals
 {
     public float winterDamageReductionPct;
     public float famineDamageReductionPct;
+    public float biomeDamageReductionPct;
 
     public float WinterDamageMultiplier => Mathf.Max(0f, 1f - winterDamageReductionPct);
     public float FamineDamageMultiplier => Mathf.Max(0f, 1f - famineDamageReductionPct);
+    public float BiomeDamageMultiplier => Mathf.Max(0f, 1f - biomeDamageReductionPct);
 }
 
 [System.Serializable]
@@ -510,4 +514,37 @@ public class GenericYieldBonus
     public float sciencePct;
     public float culturePct;
     public float faithPct;
+}
+
+[System.Serializable]
+public class HerdYieldBonus
+{
+    [Header("Species Filter")]
+    [Tooltip("If enabled, this bonus only applies to herds containing the selected animal species.")]
+    public bool useSpeciesFilter = false;
+    public Herd.HerdSpecies species;
+
+    [Header("Season Filter")]
+    [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
+    public bool useSeasonFilter = false;
+    public Season[] seasons;
+
+    [Header("Yield Add (flat per herd per turn)")]
+    public int foodAdd;
+    public int productionAdd;
+    public int goldAdd;
+    public int scienceAdd;
+    public int cultureAdd;
+    public int faithAdd;
+    public int policyPointsAdd;
+
+    [Header("Yield % (per herd per turn)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float foodPct;
+    public float productionPct;
+    public float goldPct;
+    public float sciencePct;
+    public float culturePct;
+    public float faithPct;
+    public float policyPointsPct;
 }

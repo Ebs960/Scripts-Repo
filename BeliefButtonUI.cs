@@ -29,7 +29,12 @@ public class BeliefButtonUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         if (label == null) label = GetComponentInChildren<TextMeshProUGUI>();
         if (iconImage == null) iconImage = GetComponentInChildren<Image>();
 
-        if (label != null) label.text = belief != null ? belief.beliefName : "-";
+        if (label != null)
+        {
+            label.text = belief != null
+                ? belief.faithCost > 0 ? $"{belief.beliefName} ({belief.faithCost} Faith)" : belief.beliefName
+                : "-";
+        }
         if (iconImage != null) iconImage.sprite = belief != null ? belief.icon : null;
     }
 

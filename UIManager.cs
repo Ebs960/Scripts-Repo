@@ -460,6 +460,30 @@ public class UIManager : MonoBehaviour
         HidePanel("CulturePanel");
     }
 
+    public void ShowReligionPanel(Civilization civ)
+    {
+        if (religionPanel == null) return;
+
+        ShowPanel("ReligionPanel");
+
+        var religionUI = religionPanel.GetComponent<ReligionUI>();
+        if (religionUI != null)
+        {
+            religionUI.Show(civ);
+        }
+    }
+
+    public void HideReligionPanel()
+    {
+        if (religionPanel == null) return;
+
+        var religionUI = religionPanel.GetComponent<ReligionUI>();
+        if (religionUI != null)
+            religionUI.Hide();
+        else
+            HidePanel("ReligionPanel");
+    }
+
     public void ShowTradePanel(Civilization civ)
     {
         if (tradePanel == null) return;
@@ -1774,10 +1798,160 @@ public class UIManager : MonoBehaviour
         if (mission.constraints != null && mission.constraints.Length > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Constraints apply while active.");
+            sb.AppendLine("Constraints:");
+            foreach (var constraint in mission.constraints)
+            {
+                string line = FormatMissionConstraint(constraint, mission);
+                if (!string.IsNullOrWhiteSpace(line))
+                    sb.Append("• ").AppendLine(line);
+            }
         }
 
         return sb.ToString().Trim();
+    }
+
+    private string FormatMissionConstraint(MissionData.MissionConstraint constraint, MissionData mission)
+    {
+        if (constraint == null) return string.Empty;
+
+        string activationText = string.Empty;
+        if (constraint.activatesAfterObjectiveIndex >= 0)
+        {
+            int objectiveNumber = constraint.activatesAfterObjectiveIndex + 1;
+            activationText = $" after objective {objectiveNumber}";
+        }
+
+        return constraint.type switch
+        {
+            MissionData.ConstraintType.NoUnitLosses => BuildNoUnitLossesConstraintText(constraint, activationText),
+            MissionData.ConstraintType.MaintainImprovementCount => BuildMaintainCountConstraintText(
+                constraint,
+                activationText,
+                "improvement",
+                GetImprovementConstraintTargetLabel(constraint),
+                mission),
+            MissionData.ConstraintType.MaintainBuildingCount => BuildMaintainCountConstraintText(
+                constraint,
+                activationText,
+                "building",
+                GetBuildingConstraintTargetLabel(constraint),
+                mission),
+            _ => string.IsNullOrWhiteSpace(constraint.failureFlavorText)
+                ? $"Must satisfy mission constraint{activationText}."
+                : constraint.failureFlavorText.Trim(),
+        };
+    }
+
+    private string BuildNoUnitLossesConstraintText(MissionData.MissionConstraint constraint, string activationText)
+    {
+        string target = GetUnitConstraintTargetLabel(constraint);
+        if (string.IsNullOrWhiteSpace(target))
+            return $"Do not lose any units{activationText}.";
+
+        return $"Do not lose {target}{activationText}.";
+    }
+
+    private string BuildMaintainCountConstraintText(
+        MissionData.MissionConstraint constraint,
+        string activationText,
+        string noun,
+        string targetLabel,
+        MissionData mission)
+    {
+        string comparison = constraint.comparison switch
+        {
+            MissionData.CountComparison.AtLeast => $"Maintain at least {constraint.targetValue}",
+            MissionData.CountComparison.AtMost => $"Maintain at most {constraint.targetValue}",
+            _ => $"Maintain exactly {constraint.targetValue}",
+        };
+
+        string suffix = string.IsNullOrWhiteSpace(targetLabel) ? $" {noun}" : $" {targetLabel}";
+        string sentence = comparison + suffix + activationText + ".";
+
+        if (!string.IsNullOrWhiteSpace(constraint.failureFlavorText))
+            sentence += $" Fails if {constraint.failureFlavorText.Trim()}";
+
+        return sentence;
+    }
+
+    private string GetUnitConstraintTargetLabel(MissionData.MissionConstraint constraint)
+    {
+        if (constraint == null) return string.Empty;
+
+        if (constraint.specificUnit != null)
+            return $"the {constraint.specificUnit.unitName}";
+
+        var parts = new List<string>();
+
+        if (constraint.specificUnits != null)
+        {
+            foreach (var unit in constraint.specificUnits)
+            {
+                if (unit != null)
+                    parts.Add(unit.unitName);
+            }
+        }
+
+        if (constraint.specificWorkerUnits != null)
+        {
+            foreach (var worker in constraint.specificWorkerUnits)
+            {
+                if (worker != null)
+                    parts.Add(worker.unitName);
+            }
+        }
+
+        if (parts.Count > 0)
+            return $"any of these units: {string.Join(", ", parts)}";
+
+        if (constraint.specificCategories != null && constraint.specificCategories.Length > 0)
+            return $"any {string.Join(" or ", constraint.specificCategories)} units";
+
+        return string.Empty;
+    }
+
+    private string GetImprovementConstraintTargetLabel(MissionData.MissionConstraint constraint)
+    {
+        if (constraint == null) return string.Empty;
+        if (constraint.specificImprovement != null)
+            return $"{constraint.specificImprovement.improvementName} improvements";
+
+        if (constraint.specificImprovements != null)
+        {
+            var names = new List<string>();
+            foreach (var improvement in constraint.specificImprovements)
+            {
+                if (improvement != null)
+                    names.Add(improvement.improvementName);
+            }
+
+            if (names.Count > 0)
+                return $"improvements of these types: {string.Join(", ", names)}";
+        }
+
+        return "improvements";
+    }
+
+    private string GetBuildingConstraintTargetLabel(MissionData.MissionConstraint constraint)
+    {
+        if (constraint == null) return string.Empty;
+        if (constraint.specificBuilding != null)
+            return $"{constraint.specificBuilding.buildingName} buildings";
+
+        if (constraint.specificBuildings != null)
+        {
+            var names = new List<string>();
+            foreach (var building in constraint.specificBuildings)
+            {
+                if (building != null)
+                    names.Add(building.buildingName);
+            }
+
+            if (names.Count > 0)
+                return $"buildings of these types: {string.Join(", ", names)}";
+        }
+
+        return "buildings";
     }
 
     private bool TryGetRewardDisplay(CrisisManager.MissionState state, out string rewardTitle, out string rewardBody, out Sprite rewardSprite)

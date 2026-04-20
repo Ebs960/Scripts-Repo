@@ -69,9 +69,9 @@ MonoBehaviour:
   triplanarBlend: 1
   useTriplanar: 0
   normalStrength: 1.23
-  biomeNormalStrength: 1.19
-  normalSampleRadius: 1
-  biomeBlendRadius: 1.55
+  biomeNormalStrength: 2.21
+  normalSampleRadius: 4.4
+  biomeBlendRadius: 2.82
   biomeBlendSharpness: 4.51
   detailAlbedoMap: {fileID: 2800000, guid: 2b1b4885129772345a1a3a355e1214e0, type: 3}
   detailNormalMap: {fileID: 2800000, guid: c21bd1927c78740498ddbc06e9171da8, type: 3}
@@ -119,7 +119,7 @@ MonoBehaviour:
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
   cliffTiling: 19
-  cliffStrength: 0.9
+  cliffStrength: 0.684
   cliffSlopeThreshold: 0.2
   cliffSlopeBlend: 0
   cliffStepThreshold: 0.1
@@ -157,9 +157,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d66eddd58c6487a4bbf53f8d7e162afe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LightingController
-  sunDirection: {x: 0.55700666, y: -0.5063697, z: 0.6582806}
+  sunDirection: {x: 0.50439614, y: 0.62469506, z: 0.59610456}
   sunColor: {r: 1, g: 1, b: 1, a: 1}
-  sunIntensity: 6.45
+  sunIntensity: 8.47
   autoSyncToSceneSun: 1
   normalizeDirectionOnValidate: 1
   syncInterval: 0.25

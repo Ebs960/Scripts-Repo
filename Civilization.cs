@@ -371,9 +371,8 @@ public class Civilization : MonoBehaviour
     public float faithModifier;
 
     [Header("Religion")]
-    // Support multiple pantheons (spirits/gods). Key: the pantheon asset, Value: chosen founder belief for that pantheon
+    // Support multiple pantheons (spirits/gods). Key: the pantheon asset.
     public List<PantheonData> foundedPantheons = new List<PantheonData>();
-    public Dictionary<PantheonData, BeliefData> chosenFounderBeliefs = new Dictionary<PantheonData, BeliefData>();
     public ReligionData foundedReligion;
     public bool hasFoundedReligion;
     // Pantheons/beliefs unlocked by adopted cultures (in addition to global available list)
@@ -1041,19 +1040,6 @@ public class Civilization : MonoBehaviour
 
     public IEnumerable<BeliefData> EnumerateActiveBeliefs()
     {
-        if (foundedPantheons != null && chosenFounderBeliefs != null)
-        {
-            foreach (var pantheon in foundedPantheons)
-            {
-                if (pantheon == null) continue;
-                if (chosenFounderBeliefs.TryGetValue(pantheon, out var belief) && belief != null)
-                    yield return belief;
-            }
-        }
-
-        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null)
-            yield return foundedReligion.founderBelief;
-
         // Yield any custom assigned beliefs (UI-applied)
         if (customAssignedBeliefs != null)
         {
@@ -1455,6 +1441,7 @@ public class Civilization : MonoBehaviour
         if (bonus == null) return;
         totals.winterDamageReductionPct += bonus.winterDamageReductionPct;
         totals.famineDamageReductionPct += bonus.famineDamageReductionPct;
+        totals.biomeDamageReductionPct += bonus.biomeDamageReductionPct;
     }
 
     public AttritionModifierTotals GetAttritionModifierTotals(City cityContext = null, Herd herdContext = null)
@@ -1698,9 +1685,14 @@ public class Civilization : MonoBehaviour
         return null;
     }
 
+    public int GetBeliefFaithCost(BeliefData belief)
+    {
+        return belief != null ? Mathf.Max(0, belief.faithCost) : 0;
+    }
+
     /// <summary>
     /// Set/replace a custom-assigned belief for the given category.
-    /// Returns false if the category is blocked by a non-custom active belief (pantheon/religion).
+    /// Replacing a belief costs the full faith cost of the newly selected belief.
     /// </summary>
     public bool SetCustomBelief(BeliefCategory category, BeliefData belief)
     {
@@ -1709,25 +1701,22 @@ public class Civilization : MonoBehaviour
         if (!CanUseBelief(belief))
             return false;
 
-        // Remove any existing custom belief in this category
-        RemoveCustomBeliefInCategory(category);
+        var currentBelief = GetCustomBeliefInCategory(category);
+        if (currentBelief == belief)
+            return true;
 
-        // Ensure no non-custom active belief exists in this category
-        // (i.e., founded pantheon or founded religion)
-        if (foundedPantheons != null && chosenFounderBeliefs != null)
-        {
-            foreach (var pant in foundedPantheons)
-            {
-                if (pant == null) continue;
-                if (chosenFounderBeliefs != null && chosenFounderBeliefs.TryGetValue(pant, out var pb) && pb != null && pb.category == category)
-                    return false;
-            }
-        }
-        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null && foundedReligion.founderBelief.category == category)
+        int faithCost = GetBeliefFaithCost(belief);
+        if (faith < faithCost)
             return false;
+
+        // Remove any existing custom belief in this category
+        RemoveCustomBeliefInCategoryInternal(category, false);
 
         if (customAssignedBeliefs == null) customAssignedBeliefs = new List<BeliefData>();
         customAssignedBeliefs.Add(belief);
+
+        if (faithCost > 0)
+            AddFaith(-faithCost);
 
         UpdateFaithYieldModifier();
         return true;
@@ -1738,6 +1727,11 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool RemoveCustomBeliefInCategory(BeliefCategory category)
     {
+        return RemoveCustomBeliefInCategoryInternal(category, true);
+    }
+
+    private bool RemoveCustomBeliefInCategoryInternal(BeliefCategory category, bool updateModifiers)
+    {
         if (customAssignedBeliefs == null) return true;
         for (int i = customAssignedBeliefs.Count - 1; i >= 0; i--)
         {
@@ -1745,7 +1739,8 @@ public class Civilization : MonoBehaviour
             if (b != null && b.category == category)
             {
                 customAssignedBeliefs.RemoveAt(i);
-                UpdateFaithYieldModifier();
+                if (updateModifiers)
+                    UpdateFaithYieldModifier();
                 return true;
             }
         }
@@ -1786,6 +1781,7 @@ public class Civilization : MonoBehaviour
         {
             if (bonuses.unlockedWorkerUnits == null)
                 continue;
+
 
             foreach (var unit in bonuses.unlockedWorkerUnits)
             {
@@ -1851,31 +1847,17 @@ public class Civilization : MonoBehaviour
 
     private void ApplyBeliefBonuses()
     {
-        if (foundedPantheons != null && foundedPantheons.Count > 0 && chosenFounderBeliefs != null)
+        // Apply modifiers from any active beliefs (custom-assigned beliefs)
+        foreach (var b in EnumerateActiveBeliefs())
         {
-            foreach (var p in foundedPantheons)
-            {
-                if (p == null) continue;
-                if (!chosenFounderBeliefs.TryGetValue(p, out BeliefData b) || b == null) continue;
-                if (!IsBeliefSeasonActive(b)) continue;
-                foodModifier += b.foodModifier;
-                productionModifier += b.productionModifier;
-                goldModifier += b.goldModifier;
-                scienceModifier += b.scienceModifier;
-                cultureModifier += b.cultureModifier;
-                faithModifier += b.faithModifier;
-            }
-        }
-
-        if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null)
-        {
-            if (!IsBeliefSeasonActive(foundedReligion.founderBelief)) return;
-            foodModifier += foundedReligion.founderBelief.foodModifier;
-            productionModifier += foundedReligion.founderBelief.productionModifier;
-            goldModifier += foundedReligion.founderBelief.goldModifier;
-            scienceModifier += foundedReligion.founderBelief.scienceModifier;
-            cultureModifier += foundedReligion.founderBelief.cultureModifier;
-            faithModifier += foundedReligion.founderBelief.faithModifier;
+            if (b == null) continue;
+            if (!IsBeliefSeasonActive(b)) continue;
+            foodModifier += b.foodModifier;
+            productionModifier += b.productionModifier;
+            goldModifier += b.goldModifier;
+            scienceModifier += b.scienceModifier;
+            cultureModifier += b.cultureModifier;
+            faithModifier += b.faithModifier;
         }
     }
 
@@ -2078,20 +2060,27 @@ public class Civilization : MonoBehaviour
 
                     // Animal yields (food/gold/production) computed by herd per-100 rules
                     var ay = h.GetAnimalYields();
-                    // Apply civilization modifiers to herd yields (food/gold/science/culture/faith)
-                    int herdGold = Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
-                    int herdFood = Mathf.RoundToInt(ay.Food * (1 + foodModifier));
-                    int herdFaith = Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
+                    // Aggregate targeted herd yield bonuses from techs, cultures, beliefs, etc.
+                    var hb = AggregateHerdYieldBonuses(h, h.planetIndex);
+                    // Apply civilization modifiers + targeted bonuses to herd yields
+                    int herdGold = Mathf.RoundToInt((ay.Gold + hb.goldAdd) * (1 + goldModifier + hb.goldPct));
+                    int herdFood = Mathf.RoundToInt((ay.Food + hb.foodAdd) * (1 + foodModifier + hb.foodPct));
+                    int herdFaith = Mathf.RoundToInt((ay.Faith + hb.faithAdd) * (1 + faithModifier + hb.faithPct));
+                    int herdSci = Mathf.RoundToInt((ay.Science + hb.scienceAdd) * (1 + scienceModifier + hb.sciencePct));
+                    int herdCul = Mathf.RoundToInt((ay.Culture + hb.cultureAdd) * (1 + cultureModifier + hb.culturePct));
+                    int herdProd = Mathf.RoundToInt((ay.Production + hb.productionAdd) * (1 + hb.productionPct));
+                    int herdPol = ay.Policy + hb.policyPointsAdd;
                     gold += herdGold;
                     food += herdFood;
-                    totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
-                    totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
+                    totalScienceThisTurn += herdSci;
+                    totalCultureThisTurn += herdCul;
                     faith += herdFaith;
-                    policyPoints += ay.Policy;
+                    policyPoints += herdPol;
+                    // herdProd is consumed locally by herd builds; not added to civ production
                     totalGoldThisTurn += herdGold;
                     totalFoodThisTurn += herdFood;
                     totalFaithThisTurn += herdFaith;
-                    totalPolicyThisTurn += ay.Policy;
+                    totalPolicyThisTurn += herdPol;
                     // Herd production may be consumed locally for herd builds; add its production to civ stats as well
                     // (optional display/aggregation)
                     // production += h.GetProductionPerTurn();
@@ -3052,7 +3041,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
     /// <summary>
     /// Attempt to found a Pantheon (requires enough faith and prerequisite tech).
     /// </summary>
-    public bool FoundPantheon(PantheonData pantheon, BeliefData founderBelief)
+    public bool FoundPantheon(PantheonData pantheon)
     {
         // Check if the civilization meets a pantheon founding prereq:
         // either a tech that unlocks religion or an adopted culture that unlocks pantheons.
@@ -3098,29 +3087,15 @@ return false;
 return false;
         }
         
-        // Beliefs are globally available by default; only explicit pantheon exclusivity restricts them.
-        if (!CanUseBeliefForPantheon(pantheon, founderBelief))
-        {
-            return false;
-        }
+        // Found the pantheon: pay faith cost and add to list
+        faith -= pantheon.faithCost;
+        if (foundedPantheons == null) foundedPantheons = new List<PantheonData>();
+        foundedPantheons.Add(pantheon);
 
-        // Enforce uniqueness: cannot have another active belief in the same category
-        if (founderBelief != null && HasActiveBeliefInCategory(founderBelief.category))
-        {
-            return false;
-        }
-        
-    // Found the pantheon: add to list and store chosen belief
-    faith -= pantheon.faithCost;
-    if (foundedPantheons == null) foundedPantheons = new List<PantheonData>();
-    foundedPantheons.Add(pantheon);
-    if (chosenFounderBeliefs == null) chosenFounderBeliefs = new Dictionary<PantheonData, BeliefData>();
-    chosenFounderBeliefs[pantheon] = founderBelief;
-
-    // Apply any faith yield modifiers from beliefs (recompute across all)
-    UpdateFaithYieldModifier();
-    OnPantheonFounded?.Invoke(this, pantheon);
-return true;
+        // Recompute belief/faith modifiers and notify
+        UpdateFaithYieldModifier();
+        OnPantheonFounded?.Invoke(this, pantheon);
+        return true;
     }
     
     /// <summary>
@@ -3160,12 +3135,6 @@ return false;
 return false;
         }
         
-        // Enforce uniqueness: cannot found a religion whose founder belief conflicts with existing active belief category
-        if (religion.founderBelief != null && HasActiveBeliefInCategory(religion.founderBelief.category))
-        {
-            return false;
-        }
-
         // Found the religion
         faith -= religion.faithCost;
         foundedReligion = religion;
@@ -3184,7 +3153,6 @@ return true;
 
     /// <summary>
     /// Upgrade an existing founded pantheon (spirit) into its upgraded pantheon (God), if available.
-    /// Preserves the chosen founder belief mapping where possible.
     /// </summary>
     public bool UpgradePantheon(PantheonData spiritPantheon)
     {
@@ -3200,17 +3168,7 @@ return true;
 
         foundedPantheons[idx] = god;
 
-        // Preserve chosen belief mapping if the belief is still valid for the upgraded pantheon,
-        // otherwise remove the mapping for that pantheon.
-        if (chosenFounderBeliefs != null && chosenFounderBeliefs.TryGetValue(spiritPantheon, out BeliefData oldBelief))
-        {
-            chosenFounderBeliefs.Remove(spiritPantheon);
-            if (oldBelief != null && CanUseBeliefForPantheon(god, oldBelief))
-            {
-                chosenFounderBeliefs[god] = oldBelief;
-            }
-        }
-// Recompute belief-based modifiers
+        // Recompute belief-based modifiers
         UpdateFaithYieldModifier();
         return true;
     }
@@ -4812,6 +4770,77 @@ return true;
         int fai  = Mathf.RoundToInt((baseFai  + w.faithAdd) * (1f + w.faithPct));
         int pol  = Mathf.RoundToInt((basePol  + w.policyPointsAdd) * (1f + w.policyPointsPct));
         return (food, gold, sci, cul, fai, pol);
+    }
+
+    private static void AddHerdYieldBonus(ref YieldBonusAgg agg, HerdYieldBonus bonus)
+    {
+        if (bonus == null) return;
+        agg.foodAdd += bonus.foodAdd; agg.productionAdd += bonus.productionAdd; agg.goldAdd += bonus.goldAdd;
+        agg.scienceAdd += bonus.scienceAdd; agg.cultureAdd += bonus.cultureAdd; agg.faithAdd += bonus.faithAdd; agg.policyPointsAdd += bonus.policyPointsAdd;
+        agg.foodPct += bonus.foodPct; agg.productionPct += bonus.productionPct; agg.goldPct += bonus.goldPct;
+        agg.sciencePct += bonus.sciencePct; agg.culturePct += bonus.culturePct; agg.faithPct += bonus.faithPct; agg.policyPointsPct += bonus.policyPointsPct;
+    }
+
+    private bool MatchesHerdSpeciesFilter(HerdYieldBonus bonus, Herd herd)
+    {
+        if (bonus == null || herd == null) return false;
+        if (!bonus.useSpeciesFilter) return true;
+        if (herd.animals == null) return false;
+        foreach (var entry in herd.animals)
+            if (entry != null && entry.count > 0 && entry.species == bonus.species)
+                return true;
+        return false;
+    }
+
+    public YieldBonusAgg AggregateHerdYieldBonuses(Herd herd, int planetIndex = -1)
+    {
+        YieldBonusAgg agg = new YieldBonusAgg();
+        if (herd == null) return agg;
+
+        void Scan(HerdYieldBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && MatchesHerdSpeciesFilter(b, herd) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    AddHerdYieldBonus(ref agg, b);
+        }
+
+        // CivData
+        Scan(civData?.herdYieldBonuses);
+
+        // Leader
+        if (leader != null) Scan(leader.herdYieldBonuses);
+
+        // Techs
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs) Scan(tech?.herdYieldBonuses);
+
+        // Cultures
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures) Scan(culture?.herdYieldBonuses);
+
+        // Government
+        Scan(currentGovernment?.herdYieldBonuses);
+
+        // Policies
+        if (activePolicies != null)
+            foreach (var policy in activePolicies) Scan(policy?.herdYieldBonuses);
+
+        // Pantheons
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Scan(pantheonBonuses?.herdYieldBonuses);
+
+        // Beliefs
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief != null && IsBeliefSeasonActive(belief, planetIndex))
+                Scan(belief.herdYieldBonuses);
+
+        // Herd structures (BuildingData)
+        if (herd.builtStructures != null)
+            foreach (var structure in herd.builtStructures)
+                Scan(structure?.herdYieldBonuses);
+
+        return agg;
     }
 
     // --- CombinedBonuses (from BonusCalculator) ---
