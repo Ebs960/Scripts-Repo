@@ -76,8 +76,15 @@ public class VassalContract
     public bool IsInterferenceOnCooldown(int currentTurn)
         => (currentTurn - lastInterferenceTurn) < interferenceCooldown;
 
+    /// <summary>
+    /// Effective breakaway threshold. Capitulated subjects need more built-up liberty desire
+    /// before daring to break away (they know they were beaten once already).
+    /// </summary>
+    public float EffectiveBreakawayThreshold =>
+        isCapitulated ? breakawayThreshold + 15f : breakawayThreshold;
+
     /// <summary>Has the subject's liberty desire crossed the breakaway threshold?</summary>
-    public bool WantsIndependence() => libertyDesire >= breakawayThreshold;
+    public bool WantsIndependence() => libertyDesire >= EffectiveBreakawayThreshold;
 
     /// <summary>
     /// Apply one turn of liberty desire growth from all pressure sources.
@@ -88,8 +95,10 @@ public class VassalContract
         float delta = 0f;
 
         // Base decay toward stability for content subjects
+        // Capitulated subjects are more suppressed — stronger passive decay
+        float decayRate = isCapitulated ? 1.0f : 0.5f;
         if (libertyDesire > 20f && subjectOpinion > 20f)
-            delta -= 0.5f;
+            delta -= decayRate;
 
         // Religious pressure
         if (religionRule == ReligionToleranceRule.ForcedConversion)       delta += 3f;

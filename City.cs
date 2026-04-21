@@ -777,14 +777,22 @@ if (UIManager.Instance != null)
     /// <summary>
     /// What happens when loyalty collapses
     /// </summary>
-    public void TriggerRevolt()
+    public void TriggerRevolt() => TriggerRevolt(null);
+
+    /// <summary>
+    /// TriggerRevolt with an optional name for the rebel faction.
+    /// When rebelName is supplied the spawned rebel civ is renamed accordingly.
+    /// </summary>
+    public void TriggerRevolt(string rebelName)
     {
 // 1) Remove from old owner
         var oldOwner = owner;
     oldOwner?.RemoveCity(this);
 
         // 2) Create or fetch rebel faction
-        var rebelCiv = CivilizationManager.Instance.CreateRebelFaction(this);
+        var rebelCiv = string.IsNullOrEmpty(rebelName)
+            ? CivilizationManager.Instance.CreateRebelFaction(this)
+            : CivilizationManager.Instance.CreateRebelFaction(this, rebelName);
 
         // 3) Transfer city to rebel civ
         owner = rebelCiv;

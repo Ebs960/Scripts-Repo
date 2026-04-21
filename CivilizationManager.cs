@@ -2760,7 +2760,24 @@ return result;
         civ.Initialize(template, null, false, grid, planet);
 
         RegisterCiv(civ);
-return civ;
+        return civ;
+    }
+
+    /// <summary>
+    /// Like CreateRebelFaction but applies a custom name (used for noble-faction rebellions
+    /// so the rebel civ is named after the largest city in the bloc).
+    /// </summary>
+    public Civilization CreateRebelFaction(City revoltedCity, string rebelName)
+    {
+        var civ = CreateRebelFaction(revoltedCity);
+        if (civ != null && !string.IsNullOrEmpty(rebelName))
+        {
+            civ.gameObject.name = rebelName;
+            // Update civData name if the ScriptableObject is writable at runtime
+            if (civ.civData != null)
+                civ.civData.civName = rebelName;
+        }
+        return civ;
     }
 
     void Update()

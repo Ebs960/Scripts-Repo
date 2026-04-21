@@ -321,6 +321,7 @@ public class ClimateManager : MonoBehaviour
         CheckSeasonChange();
         ApplyPerTurnWinterAttrition();
         ApplyPerTurnMissilePollution();
+        ApplyPerTurnSubjectProcessing(turnNumber);
     }
 
     /// <summary>
@@ -358,6 +359,17 @@ public class ClimateManager : MonoBehaviour
         {
             MissileManager.Instance.ProcessPollutionTick(kvp.Key);
         }
+    }
+
+    /// <summary>
+    /// Processes vassal tribute transfer and liberty desire ticks each turn.
+    /// Delegates to SubjectManager.
+    /// </summary>
+    private void ApplyPerTurnSubjectProcessing(int turnNumber)
+    {
+        if (SubjectManager.Instance == null) return;
+        SubjectManager.Instance.ProcessTributeTick(turnNumber);
+        SubjectManager.Instance.ProcessLibertyTick(turnNumber);
     }
 
     private void CheckSeasonChange()

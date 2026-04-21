@@ -271,9 +271,52 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         Debug.Log($"[SubjectManager] {overlord.civData?.civName} altered tribute from {subject.civData?.civName} to {newGoldPct:P0}.");
     }
 
-    // ── Independence ──────────────────────────────────────────────────────────
+    // ── Military Obligation ───────────────────────────────────────────────────
 
-    private void AttemptIndependence(VassalContract contract, int currentTurn)
+    /// <summary>
+    /// Called when the subject is dragged into a war by their overlord.
+    /// Transfers up to militaryObligationCount of the subject's strongest combat units
+    /// to the overlord's army by reassigning their owner civ, giving the overlord real
+    /// military support rather than just a diplomatic flag.
+    /// Adds a WarLosses grievance to subject governors who lose units this way.
+    /// </summary>
+    public void FulfilMilitaryObligation(VassalContract contract, int currentTurn)
+    {
+        if (contract == null || contract.militaryObligationCount <= 0) return;
+        if (contract.subject == null || contract.overlord == null) return;
+
+        var subject  = contract.subject;
+        var overlord = contract.overlord;
+
+        // Pick strongest available units (by maxHp as a proxy for combat power)
+        var candidates = subject.combatUnits?
+            .Where(u => u != null && !u.isGarrisoned)
+            .OrderByDescending(u => u.maxHp)
+            .Take(contract.militaryObligationCount)
+            .ToList();
+
+        if (candidates == null || candidates.Count == 0) return;
+
+        foreach (var unit in candidates)
+        {
+            // Transfer unit to overlord
+            subject.combatUnits.Remove(unit);
+            unit.owner = overlord;
+            overlord.combatUnits.Add(unit);
+        }
+
+        // Anger subject governors for the levy
+        foreach (var gov in subject.governors)
+            gov.AddGrievance(GrievanceSource.WarLosses);
+
+        // Increase tribute exhaustion to reflect the burden
+        contract.tributeExhaustion = Mathf.Min(100f, contract.tributeExhaustion + candidates.Count * 5f);
+
+        Debug.Log($"[SubjectManager] {subject.civData?.civName ?? subject.name} provided " +
+                  $"{candidates.Count} units to overlord {overlord.civData?.civName ?? overlord.name}.");
+    }
+
+    // ── Independence ──────────────────────────────────────────────────────────    private void AttemptIndependence(VassalContract contract, int currentTurn)
     {
         // Simple probability gate: confident, resentful subjects break away
         float breakawayChance = (contract.libertyDesire - contract.breakawayThreshold) * 0.02f

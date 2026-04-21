@@ -47,6 +47,21 @@ public class PolicyManager : MonoBehaviour
     public bool AdoptPolicy(Civilization civ, PolicyData p)
     {
         if (!GetAvailablePolicies(civ).Contains(p)) return false;
+
+        // Council veto: religion-affecting policies require council approval
+        if (p.faithModifier != 0f && civ.HasCouncilVeto(VetoDomain.Religion))
+        {
+            Debug.Log($"[PolicyManager] Policy '{p.policyName}' blocked by council veto (Religion).");
+            return false;
+        }
+
+        // Council veto: tax-increasing policies require council approval
+        if (p.goldModifier < 0f && civ.HasCouncilVeto(VetoDomain.Taxation))
+        {
+            Debug.Log($"[PolicyManager] Policy '{p.policyName}' blocked by council veto (Taxation).");
+            return false;
+        }
+
         civ.policyPoints -= p.policyPointCost;
         civ.AdoptPolicy(p);
         ApplyGovernorPoliticalReactions(civ, p.governorOpinionEffects);
@@ -92,6 +107,14 @@ public class PolicyManager : MonoBehaviour
     public bool ChangeGovernment(Civilization civ, GovernmentData g)
     {
         if (!GetAvailableGovernments(civ).Contains(g)) return false;
+
+        // Council veto on succession/government change
+        if (civ.HasCouncilVeto(VetoDomain.Succession))
+        {
+            Debug.Log($"[PolicyManager] Government change to '{g.governmentName}' blocked by council veto (Succession).");
+            return false;
+        }
+
         civ.policyPoints -= g.policyPointCost;
         civ.ChangeGovernment(g);
         ApplyGovernorPoliticalReactions(civ, g.governorOpinionEffects);

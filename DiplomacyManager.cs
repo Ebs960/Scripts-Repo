@@ -255,17 +255,50 @@ public class DiplomacyManager : MonoBehaviour
 
     /// <summary>
     /// Actually enact the deal: update both sides' state (symmetric).
+    /// Returns false if blocked by a council veto.
     /// </summary>
-    private void ExecuteDeal(Civilization a, Civilization b, DealType deal)
+    private bool ExecuteDeal(Civilization a, Civilization b, DealType deal)
     {
+        // Council veto: check whether 'a's council can block this deal type
+        if (deal == DealType.War && IsVetoed(a, VetoDomain.WarDeclaration))
+        {
+            Debug.Log($"[DiplomacyManager] War declaration by {a.civData?.civName ?? a.name} " +
+                      $"VETOED by royal council.");
+            return false;
+        }
+
         var newState = (DiplomaticState)Enum.Parse(typeof(DiplomaticState), deal.ToString());
 
         relations[a][b] = newState;
         relations[b][a] = newState;
 
+        // Hook: create a VassalContract when a vassal deal is executed.
+        // 'a' proposed the deal so 'a' is the overlord; 'b' becomes the subject.
+        if (deal == DealType.Vassal && SubjectManager.Instance != null)
+        {
+            int currentTurn = TurnManager.Instance?.round ?? 0;
+            // Capitulated = AI accepted because it was far weaker (ratio < 0.5 in EvaluateProposalAI)
+            float aStr = CivilizationManager.Instance?.ComputeMilitaryStrength(a) + 1f ?? 1f;
+            float bStr = CivilizationManager.Instance?.ComputeMilitaryStrength(b) + 1f ?? 1f;
+            bool capitulated = (bStr / aStr) < 0.5f;
+            SubjectManager.Instance.CreateContract(a, b,
+                goldPct:     0.10f,
+                sciencePct:  0f,
+                autonomy:    50,
+                capitulated: capitulated,
+                currentTurn: currentTurn);
+        }
+
         OnDiplomacyChanged?.Invoke(a, b, newState);
         OnDiplomacyChanged?.Invoke(b, a, newState);
+        return true;
     }
+
+    /// <summary>
+    /// Returns true if the civ's royal council holds a veto over the specified domain.
+    /// </summary>
+    private static bool IsVetoed(Civilization civ, VetoDomain domain)
+        => civ != null && civ.HasCouncilVeto(domain);
 
     /// <summary>
     /// Enhanced AI logic with personality, memory, and situational awareness
@@ -423,8 +456,85 @@ public class DiplomacyManager : MonoBehaviour
             RecordStateChangeEvents(a, b, oldState, state);
         }
 
+        // If an overlord declares war, drag in subjects whose autonomy is below threshold.
+        // If peace is made, subjects follow unless they have high autonomy.
+        if (state == DiplomaticState.War && SubjectManager.Instance != null)
+        {
+            DragSubjectsIntoWar(a, b);
+            DragSubjectsIntoWar(b, a); // target's subjects also join against the aggressor
+        }
+        else if (state == DiplomaticState.Peace && SubjectManager.Instance != null)
+        {
+            DragSubjectsIntoPeace(a, b);
+        }
+
+        // Dissolve vassal contracts when war starts between overlord and subject
+        if (state == DiplomaticState.War && SubjectManager.Instance != null)
+        {
+            var existingContract = SubjectManager.Instance.GetContract(a, b)
+                                ?? SubjectManager.Instance.GetContract(b, a);
+            if (existingContract != null)
+                SubjectManager.Instance.DissolveContract(existingContract.overlord, existingContract.subject);
+        }
+
         OnDiplomacyChanged?.Invoke(a, b, state);
         OnDiplomacyChanged?.Invoke(b, a, state);
+    }
+
+    /// <summary>
+    /// When 'overlord' goes to war with 'target', drag subjects (autonomy &lt; 80) into the war.
+    /// </summary>
+    private void DragSubjectsIntoWar(Civilization overlord, Civilization target)
+    {
+        if (SubjectManager.Instance == null) return;
+        var subjects = SubjectManager.Instance.GetSubjects(overlord);
+        foreach (var contract in subjects)
+        {
+            var subject = contract.subject;
+            if (subject == null || subject == target) continue;
+            if (!SubjectManager.Instance.CanDeclareWar(subject, target)) continue;
+
+            // Set war state without re-triggering this hook (update dict directly)
+            if (!relations.ContainsKey(subject)) relations[subject] = new Dictionary<Civilization, DiplomaticState>();
+            if (!relations.ContainsKey(target))  relations[target]  = new Dictionary<Civilization, DiplomaticState>();
+            relations[subject][target] = DiplomaticState.War;
+            relations[target][subject] = DiplomaticState.War;
+
+            OnDiplomacyChanged?.Invoke(subject, target, DiplomaticState.War);
+            OnDiplomacyChanged?.Invoke(target, subject, DiplomaticState.War);
+
+            // Fulfil military obligation: transfer unit access to overlord
+            SubjectManager.Instance.FulfilMilitaryObligation(contract, TurnManager.Instance?.round ?? 0);
+
+            Debug.Log($"[DiplomacyManager] Subject {subject.civData?.civName ?? subject.name} " +
+                      $"dragged into war against {target.civData?.civName ?? target.name} by overlord.");
+        }
+    }
+
+    /// <summary>
+    /// When 'a' and 'b' make peace, subjects of each follow if autonomy is below 75.
+    /// </summary>
+    private void DragSubjectsIntoPeace(Civilization a, Civilization b)
+    {
+        if (SubjectManager.Instance == null) return;
+        foreach (var civ in new[] { a, b })
+        {
+            var subjects = SubjectManager.Instance.GetSubjects(civ);
+            foreach (var contract in subjects)
+            {
+                var subject = contract.subject;
+                if (subject == null) continue;
+                if (contract.autonomyLevel >= 75) continue; // high-autonomy subjects make their own peace
+                var other = civ == a ? b : a;
+                if (!relations.ContainsKey(subject)) continue;
+                if (relations[subject].GetValueOrDefault(other, DiplomaticState.Peace) != DiplomaticState.War) continue;
+
+                relations[subject][other] = DiplomaticState.Peace;
+                relations[other][subject] = DiplomaticState.Peace;
+                OnDiplomacyChanged?.Invoke(subject, other, DiplomaticState.Peace);
+                OnDiplomacyChanged?.Invoke(other, subject, DiplomaticState.Peace);
+            }
+        }
     }
     
     /// <summary>
