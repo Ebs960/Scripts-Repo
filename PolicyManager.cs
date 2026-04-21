@@ -49,6 +49,7 @@ public class PolicyManager : MonoBehaviour
         if (!GetAvailablePolicies(civ).Contains(p)) return false;
         civ.policyPoints -= p.policyPointCost;
         civ.AdoptPolicy(p);
+        ApplyGovernorPoliticalReactions(civ, p.governorOpinionEffects);
         return true;
     }
 
@@ -93,6 +94,27 @@ public class PolicyManager : MonoBehaviour
         if (!GetAvailableGovernments(civ).Contains(g)) return false;
         civ.policyPoints -= g.policyPointCost;
         civ.ChangeGovernment(g);
+        ApplyGovernorPoliticalReactions(civ, g.governorOpinionEffects);
         return true;
+    }
+
+    /// <summary>
+    /// Push governor opinion reactions for every effect in the array.
+    /// Filters by personality, religion mismatch, culture mismatch, and council state.
+    /// Call this after a government change or policy adoption.
+    /// </summary>
+    public void ApplyGovernorPoliticalReactions(Civilization civ, GovernorOpinionEffect[] effects)
+    {
+        if (effects == null || effects.Length == 0 || civ?.governors == null) return;
+        foreach (var effect in effects)
+        {
+            if (effect == null) continue;
+            foreach (var gov in civ.governors)
+            {
+                if (gov == null) continue;
+                if (effect.Matches(gov, civ))
+                    gov.AddOpinionModifier(effect.reason, effect.value, effect.durationTurns);
+            }
+        }
     }
 } 

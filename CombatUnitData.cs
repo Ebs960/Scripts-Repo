@@ -190,7 +190,16 @@ public class CombatUnitData : ScriptableObject
     public int transportCapacity = 3;
     [Tooltip("Whether this transport can travel to the moon (only spaceships)")]
     public bool canTravelToMoon = false;
-    
+
+    [Header("Missile Capabilities")]
+    [Tooltip("Whether this unit can carry and launch missiles (e.g. missile submarine, missile cruiser, MLRS).")]
+    public bool canStoreMissiles = false;
+    [Tooltip("Maximum number of missiles this unit can carry.")]
+    [Range(0, 20)]
+    public int maxMissileStorage = 0;
+    [Tooltip("Specific missile types this unit is allowed to carry. Leave empty to allow all types.")]
+    public MissileData[] allowedMissileTypes;
+
     [Header("Naval Requirements")]
     [Tooltip("Must control at least one coastal tile (coast, seas, ocean)")]
     public bool requiresCoastalCity = false;

@@ -19,9 +19,9 @@ public class City : MonoBehaviour
 
     // Production Queue Entry Definition
     public class ProdEntry {
-        public enum Type { Unit, Worker, Building, District, Equipment, Projectile }
+        public enum Type { Unit, Worker, Building, District, Equipment, Projectile, Missile }
         public Type       type;
-        public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, DistrictData, EquipmentData, or ProjectileData
+        public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, DistrictData, EquipmentData, ProjectileData, or MissileData
         public int        remainingPts;    // turns left in production
         public int        goldCost;        // for instant buy
         public ResourceData[] requiredResources;
@@ -103,6 +103,12 @@ public class City : MonoBehaviour
     public List<(DistrictData data, GameObject instance, int tileIndex)> builtDistricts = new List<(DistrictData, GameObject, int)>();
     public List<CombatUnitData> producedUnits = new List<CombatUnitData>();
     public List<EquipmentData> producedEquipment = new List<EquipmentData>();
+
+    [Header("Missile Storage")]
+    [Tooltip("Missiles produced by this city and ready to be launched.")]
+    public List<MissileData> storedMissiles = new List<MissileData>();
+    [Tooltip("Maximum number of missiles this city can store at once.")]
+    public int maxMissileStorage = 10;
 
     [Header("Yields & Improvements")]
     public List<ImprovementData> nearbyImprovements = new List<ImprovementData>();
@@ -771,7 +777,7 @@ if (UIManager.Instance != null)
     /// <summary>
     /// What happens when loyalty collapses
     /// </summary>
-    private void TriggerRevolt()
+    public void TriggerRevolt()
     {
 // 1) Remove from old owner
         var oldOwner = owner;
@@ -1018,6 +1024,20 @@ if (UIManager.Instance != null)
             productionQueue.Add(new ProdEntry(projectile, projectile.productionCost, projectile.goldCost, 
                                             projectile.requiredResources, null, false, false, 
                                             ProdEntry.Type.Projectile));
+            return true;
+        }
+        if (d is MissileData missileData)
+        {
+            // Validate tech requirements
+            if (missileData.requiredTechs != null)
+            {
+                foreach (var tech in missileData.requiredTechs)
+                    if (tech != null && (owner == null || !owner.researchedTechs.Contains(tech))) return false;
+            }
+            if (storedMissiles.Count >= maxMissileStorage) return false;
+            productionQueue.Add(new ProdEntry(missileData, missileData.productionCost, missileData.goldCost,
+                                            null, null, false, false,
+                                            ProdEntry.Type.Missile));
             return true;
         }
         if (d is DistrictData district) {
@@ -1548,7 +1568,18 @@ if (UIManager.Instance != null)
                 if (projectile != null && owner != null)
                 {
                     owner.AddProjectile(projectile, 1); // Produce 1 unit of projectiles per completion
-}
+                }
+                break;
+
+            case MissileData missile:
+                // Add finished missile to this city's stored missile inventory
+                if (missile != null)
+                {
+                    if (storedMissiles.Count < maxMissileStorage)
+                        storedMissiles.Add(missile);
+                    else
+                        Debug.LogWarning($"[City] {cityName}: missile storage full ({maxMissileStorage}). Missile '{missile.missileName}' was lost.");
+                }
                 break;
                 
             case DistrictData district:

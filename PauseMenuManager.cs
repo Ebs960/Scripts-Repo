@@ -216,6 +216,7 @@ public class PauseMenuManager : MonoBehaviour
         public int level;
         public bool hasActedThisTurn;
         public float posX, posY, posZ;
+        public List<string> storedMissileNames = new List<string>(); // missile inventory
     }
 
     /// <summary>
@@ -254,6 +255,7 @@ public class PauseMenuManager : MonoBehaviour
         public int productionPerTurn;
         public List<string> builtBuildingNames = new List<string>();
         public List<CityProductionEntrySaveData> productionQueue = new List<CityProductionEntrySaveData>();
+        public List<string> storedMissileNames = new List<string>(); // missile inventory
     }
 
     [Serializable]

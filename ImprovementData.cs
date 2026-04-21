@@ -183,6 +183,15 @@ public class ImprovementData : ScriptableObject
     [Tooltip("If true, this improvement is built in the orbit layer above a tile. Uses allowedBiomes to check the surface biome below. Requires the building unit to be in orbit or a spaceport on the tile.")]
     public bool isOrbitalImprovement = false;
 
+    [Header("Missile Silo")]
+    [Tooltip("If true, this improvement acts as a missile silo and can store and launch missiles. The missile inventory is managed by MissileManager keyed on tile index.")]
+    public bool isMissileSilo = false;
+    [Tooltip("Maximum number of missiles this silo can store.")]
+    [Range(0, 50)]
+    public int siloMissileCapacity = 5;
+    [Tooltip("Specific missile types this silo is allowed to store. Leave empty to allow all types.")]
+    public MissileData[] allowedMissileTypes;
+
     [Header("Yield Bonus (per turn)")]
     public int foodPerTurn;
     public int productionPerTurn;

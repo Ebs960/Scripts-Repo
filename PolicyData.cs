@@ -51,4 +51,9 @@ public class PolicyData : ScriptableObject
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;
+
+    [Header("Governor Political Reactions")]
+    [Tooltip("Opinion reactions pushed to governors when this policy is adopted. " +
+             "Use personality filters to target specific lord archetypes.")]
+    public GovernorOpinionEffect[] governorOpinionEffects;
 } 

@@ -42,6 +42,46 @@ public class Governor
     public float Opinion { get; set; } = 50f;
     public List<OpinionModifier> OpinionModifiers { get; private set; } = new List<OpinionModifier>();
 
+    // --- Political Identity ---
+    /// <summary>Governor's personal religion. May differ from civ's state religion.</summary>
+    public ReligionData PersonalReligion { get; set; }
+    /// <summary>Governor's personal culture. May differ from the civ's dominant culture.</summary>
+    public CultureData PersonalCulture { get; set; }
+    /// <summary>
+    /// Derived ambition score (0-100). High score = this governor actively schemes.
+    /// Computed from personality (Ambitious trait) and power rank.
+    /// </summary>
+    public int AmbitionScore => ComputeAmbitionScore();
+
+    // --- Loyalty Floor / Ceiling (political limits on opinion range) ---
+    /// <summary>Opinion can never fall below this floor, even from stacking negatives.</summary>
+    public float LoyaltyFloor { get; set; } = -100f;
+    /// <summary>Opinion can never rise above this ceiling.</summary>
+    public float LoyaltyCeiling { get; set; } = 100f;
+
+    // --- Power Rank (based on governed domain size) ---
+    /// <summary>
+    /// A rough measure of this lord's political weight.
+    /// Each governed city = 2 points, each governed herd = 1 point.
+    /// Used for council eligibility and faction power calculation.
+    /// </summary>
+    public int PowerRank => Cities.Count * 2 + Herds.Count;
+
+    // --- Council State ---
+    public bool IsCouncilEligible { get; set; }
+    public bool IsOnCouncil { get; set; }
+
+    // --- Grievance Stacks ---
+    /// <summary>Accumulated grievances by source. Each source stacks independently.</summary>
+    public Dictionary<GrievanceSource, int> Grievances { get; private set; } = new Dictionary<GrievanceSource, int>();
+
+    // --- Faction Membership ---
+    /// <summary>The noble bloc this governor belongs to, or null if unaffiliated.</summary>
+    public FactionBloc Faction { get; set; }
+
+    // --- Rebellion State ---
+    public bool IsInRebellion { get; set; }
+
     public Governor(int id, string name, Specialization spec)
     {
         Id = id;
@@ -56,6 +96,13 @@ public class Governor
         OpinionModifiers = new List<OpinionModifier>();
         Opinion = 50f;
         stats = new Dictionary<TraitTrigger, int>();
+        Grievances = new Dictionary<GrievanceSource, int>();
+        LoyaltyFloor = -100f;
+        LoyaltyCeiling = 100f;
+        IsCouncilEligible = false;
+        IsOnCouncil = false;
+        Faction = null;
+        IsInRebellion = false;
         
         // Initialize all stats to 0
         foreach (TraitTrigger trigger in System.Enum.GetValues(typeof(TraitTrigger)))
@@ -295,18 +342,94 @@ public class Governor
         if (HasPersonality(PersonalityTrait.Ambitious))
             total -= 1f; // -1 per turn passive drift
 
-        Opinion = Mathf.Clamp(total, -100f, 100f);
+        Opinion = Mathf.Clamp(total, LoyaltyFloor, LoyaltyCeiling);
         return Opinion;
     }
 
     /// <summary>
     /// Opinion mapped to loyalty contribution for city: high opinion = big loyalty bonus, negative = loyalty drain.
-    /// Range: roughly -15 to +20.
+    /// Range: roughly -15 to +20. Clamped by LoyaltyFloor/Ceiling.
     /// </summary>
     public float GetLoyaltyContribution()
     {
+        float clamped = Mathf.Clamp(Opinion, LoyaltyFloor, LoyaltyCeiling);
         // Map -100..100 opinion to -15..+20 loyalty per turn
-        return Mathf.Lerp(-15f, 20f, (Opinion + 100f) / 200f);
+        return Mathf.Lerp(-15f, 20f, (clamped + 100f) / 200f);
+    }
+
+    // ===================== Political State =====================
+
+    /// <summary>
+    /// Add a grievance stack for a specific source. Automatically fires a matching opinion penalty.
+    /// </summary>
+    public void AddGrievance(GrievanceSource source, int stacks = 1)
+    {
+        if (!Grievances.ContainsKey(source)) Grievances[source] = 0;
+        Grievances[source] += stacks;
+
+        // Each grievance source maps to a canonical opinion hit
+        float opinionHit = GetGrievanceOpinionHit(source) * stacks;
+        string reason = $"Grievance: {source}";
+        AddOpinionModifier(reason, opinionHit, 30);
+    }
+
+    /// <summary>
+    /// Clear all grievance stacks for a source (e.g. after a concession is made).
+    /// Does NOT retroactively undo opinion modifiers; those decay naturally.
+    /// </summary>
+    public void ClearGrievance(GrievanceSource source)
+    {
+        Grievances.Remove(source);
+    }
+
+    /// <summary>Returns total grievance stack count across all sources.</summary>
+    public int TotalGrievances()
+    {
+        int total = 0;
+        foreach (var kv in Grievances) total += kv.Value;
+        return total;
+    }
+
+    /// <summary>
+    /// How many total grievance stacks does this governor have that could justify rebellion?
+    /// Rebellion is plausible when score exceeds PowerRank * 2.
+    /// </summary>
+    public bool IsRebellionReady() => TotalGrievances() >= PowerRank * 2 && Opinion < -20f;
+
+    private static float GetGrievanceOpinionHit(GrievanceSource source)
+    {
+        switch (source)
+        {
+            case GrievanceSource.CityReassigned:         return -15f;
+            case GrievanceSource.OverruledDecision:      return -8f;
+            case GrievanceSource.TaxIncreased:           return -5f;
+            case GrievanceSource.TitleRevoked:           return -20f;
+            case GrievanceSource.CouncilSeatDenied:      return -12f;
+            case GrievanceSource.ReligionForced:         return -18f;
+            case GrievanceSource.PrivilegeRevoked:       return -10f;
+            case GrievanceSource.PublicInsult:           return -15f;
+            case GrievanceSource.AllianceBrokenWithAlly: return -6f;
+            case GrievanceSource.WarLosses:              return -10f;
+            default:                                      return -5f;
+        }
+    }
+
+    private int ComputeAmbitionScore()
+    {
+        int score = HasPersonality(PersonalityTrait.Ambitious) ? 40 : 0;
+        score += PowerRank * 3;                         // bigger domain = more ambitious
+        score += Mathf.Max(0, (int)(50f - Opinion));    // unhappier = schemes more
+        return Mathf.Clamp(score, 0, 100);
+    }
+
+    /// <summary>
+    /// Re-evaluate whether this governor should be eligible for a council seat.
+    /// Call this whenever city/herd assignments change or government changes.
+    /// Eligibility threshold: PowerRank >= 4 (governs 2+ cities or equivalent).
+    /// </summary>
+    public void RefreshCouncilEligibility()
+    {
+        IsCouncilEligible = PowerRank >= 4;
     }
 }
 

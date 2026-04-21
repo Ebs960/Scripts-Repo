@@ -81,6 +81,14 @@ public class HexTileData
     [Tooltip("True when this tile is affected by mosquitoes and can damage non-immune major-civ units.")]
     public bool hasMosquitoes;
 
+    // --- Missile Pollution ---
+    [Tooltip("Current radiation/pollution intensity on this tile (0 = clean). Set by missile detonation.")]
+    public int pollutionLevel = 0;
+    [Tooltip("Turns remaining before pollution naturally clears. Ticked down by MissileManager each turn.")]
+    public int pollutionTurnsRemaining = 0;
+    /// <summary>True when this tile currently has active missile radiation pollution.</summary>
+    public bool IsPolluted => pollutionLevel > 0 && pollutionTurnsRemaining > 0;
+
     // --- Static Features ---
     [Tooltip("Improvement built here, if any")]
     public ImprovementData improvement;

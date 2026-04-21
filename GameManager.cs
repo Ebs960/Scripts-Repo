@@ -2694,6 +2694,13 @@ public class GameManager : MonoBehaviour
                             }
                         }
 
+                        // Save city missile inventory
+                        if (city.storedMissiles != null)
+                        {
+                            foreach (var missile in city.storedMissiles)
+                                if (missile != null) citySave.storedMissileNames.Add(missile.missileName);
+                        }
+
                         snapshot.cities.Add(citySave);
                     }
                 }
@@ -2703,7 +2710,7 @@ public class GameManager : MonoBehaviour
                     foreach (var unit in civ.combatUnits)
                     {
                         if (unit == null || unit.data == null) continue;
-                        snapshot.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
+                        var unitSave = new PauseMenuManager.CombatUnitSaveData
                         {
                             unitDataName = unit.data.unitName,
                             ownerCivIndex = civIdx,
@@ -2717,7 +2724,12 @@ public class GameManager : MonoBehaviour
                             posX = unit.transform.position.x,
                             posY = unit.transform.position.y,
                             posZ = unit.transform.position.z,
-                        });
+                        };
+                        // Save unit missile inventory
+                        if (unit.storedMissiles != null)
+                            foreach (var m in unit.storedMissiles)
+                                if (m != null) unitSave.storedMissileNames.Add(m.missileName);
+                        snapshot.combatUnits.Add(unitSave);
                     }
                 }
 
@@ -3088,6 +3100,15 @@ public class GameManager : MonoBehaviour
             }
 
             city.RestoreProductionQueueForSave(restoredQueue, districtTargets);
+
+            // Restore city missile inventory
+            if (cityData.storedMissileNames != null && cityData.storedMissileNames.Count > 0)
+            {
+                var missileLookup = BuildAssetLookup(ResourceCache.GetAllMissiles(), m => m.missileName);
+                city.storedMissiles.Clear();
+                foreach (var name in cityData.storedMissileNames)
+                    if (missileLookup.TryGetValue(name, out var md)) city.storedMissiles.Add(md);
+            }
         }
     }
 
@@ -3107,6 +3128,8 @@ public class GameManager : MonoBehaviour
                 return new City.ProdEntry(equipment, equipment.productionCost, goldCost, null, null, false, false, type);
             case GameCombat.ProjectileData projectile:
                 return new City.ProdEntry(projectile, projectile.productionCost, goldCost, projectile.requiredResources, null, false, false, type);
+            case MissileData missile:
+                return new City.ProdEntry(missile, missile.productionCost, goldCost, null, null, false, false, type);
             default:
                 return null;
         }
@@ -3448,6 +3471,15 @@ public class GameManager : MonoBehaviour
                 unit.currentTileIndex = usd.currentTileIndex;
                 unit.RestoreState(usd.currentHealth, usd.experience, usd.level,
                                   usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
+
+                // Restore unit missile inventory
+                if (usd.storedMissileNames != null && usd.storedMissileNames.Count > 0)
+                {
+                    var missileLookup = BuildAssetLookup(ResourceCache.GetAllMissiles(), m => m.missileName);
+                    unit.storedMissiles.Clear();
+                    foreach (var name in usd.storedMissileNames)
+                        if (missileLookup.TryGetValue(name, out var md)) unit.storedMissiles.Add(md);
+                }
 
                 if (!civ.combatUnits.Contains(unit))
                     civ.combatUnits.Add(unit);

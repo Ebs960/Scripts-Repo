@@ -48,4 +48,13 @@ public class GovernmentData : ScriptableObject
     public float herdStarvationPercentReduction = 0f;
     [Tooltip("Per-herd per-turn yield bonuses granted by this government (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
+
+    [Header("Council & Political Structure")]
+    [Tooltip("How many governors may sit on the royal council under this government type.")]
+    public int councilSeatCount = 0;
+    [Tooltip("Which domains the seated council may veto. Flags — combine freely.")]
+    public VetoDomain councilVetoDomains = VetoDomain.None;
+    [Tooltip("Opinion reactions pushed to governors when this government is adopted. " +
+             "Use negative values to anger ambitious/discontented lords.")]
+    public GovernorOpinionEffect[] governorOpinionEffects;
 } 

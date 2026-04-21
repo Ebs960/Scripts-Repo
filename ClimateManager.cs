@@ -320,6 +320,7 @@ public class ClimateManager : MonoBehaviour
         currentTurn = turnNumber;
         CheckSeasonChange();
         ApplyPerTurnWinterAttrition();
+        ApplyPerTurnMissilePollution();
     }
 
     /// <summary>
@@ -339,6 +340,23 @@ public class ClimateManager : MonoBehaviour
             {
                 ApplyWinterAttrition(planetIndex);
             }
+        }
+    }
+
+    /// <summary>
+    /// Ticks missile radiation pollution on all planets each turn.
+    /// Delegates to MissileManager which owns the per-tile pollution logic.
+    /// </summary>
+    private void ApplyPerTurnMissilePollution()
+    {
+        if (MissileManager.Instance == null) return;
+
+        var planetData = GameManager.Instance?.GetPlanetData();
+        if (planetData == null) return;
+
+        foreach (var kvp in planetData)
+        {
+            MissileManager.Instance.ProcessPollutionTick(kvp.Key);
         }
     }
 

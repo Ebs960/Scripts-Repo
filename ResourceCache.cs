@@ -50,6 +50,7 @@ public static class ResourceCache
     private static WorkerUnitData[] _allWorkerUnits;
     private static BuildingData[] _allBuildings;
     private static ProjectileData[] _allProjectiles;
+    private static MissileData[] _allMissiles;
     private static CivData[] _allCivDatas;
     private static EquipmentData[] _allEquipment;
     private static DistrictData[] _allDistricts;
@@ -63,6 +64,7 @@ public static class ResourceCache
     private static bool _workerUnitsLoaded = false;
     private static bool _buildingsLoaded = false;
     private static bool _projectilesLoaded = false;
+    private static bool _missilesLoaded = false;
     private static bool _civDatasLoaded = false;
     private static bool _equipmentLoaded = false;
     private static bool _districtsLoaded = false;
@@ -401,6 +403,20 @@ public static class ResourceCache
             _allProjectiles = Resources.LoadAll<ProjectileData>("Projectiles");
             _projectilesLoaded = true;
         }
+    }
+
+    /// <summary>
+    /// Get all missile data assets (cached, lazy-loaded from Resources/Missiles).
+    /// </summary>
+    public static MissileData[] GetAllMissiles()
+    {
+        EnsureInitialized();
+        if (!_missilesLoaded)
+        {
+            _allMissiles = Resources.LoadAll<MissileData>("Missiles");
+            _missilesLoaded = true;
+        }
+        return _allMissiles ?? new MissileData[0];
     }
     
     /// <summary>

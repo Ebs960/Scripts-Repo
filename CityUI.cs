@@ -39,8 +39,15 @@ public class CityUI : MonoBehaviour
     [SerializeField] private Transform buildingsContainer; // Container for building options
     [SerializeField] private Transform unitsContainer; // Container for unit options
     [SerializeField] private Transform equipmentContainer; // Container for equipment options
-    [SerializeField] private Transform projectilesContainer; // NEW: Container for projectile options
+    [SerializeField] private Transform projectilesContainer; // Container for projectile options
+    [SerializeField] private Transform missilesContainer; // Container for missile production options
     [SerializeField] private GameObject buildOptionPrefab; // button + icon + cost
+
+    [Header("Missile Launch")]
+    [Tooltip("Button shown when the city has stored missiles ready to launch. Opens MissilePanelUI.")]
+    [SerializeField] private Button launchMissileButton;
+    [Tooltip("Text label on the launch missile button showing stored count.")]
+    [SerializeField] private TextMeshProUGUI launchMissileButtonText;
 
     // Performance caches
     private List<BuildingData> _cachedAvailableBuildings = new List<BuildingData>();
@@ -48,6 +55,7 @@ public class CityUI : MonoBehaviour
     private List<WorkerUnitData> _cachedAvailableWorkers = new List<WorkerUnitData>();
     private List<EquipmentData> _cachedAvailableEquipment = new List<EquipmentData>();
     private List<GameCombat.ProjectileData> _cachedAvailableProjectiles = new List<GameCombat.ProjectileData>();
+    private List<MissileData> _cachedAvailableMissiles = new List<MissileData>();
     private bool _buildOptionsCacheDirty = true;
 
     [Header("Governor Info")]
@@ -65,13 +73,15 @@ public class CityUI : MonoBehaviour
     private List<CombatUnitData> availableUnits = new List<CombatUnitData>();
     private List<WorkerUnitData> availableWorkerUnits = new List<WorkerUnitData>();
     private List<EquipmentData> availableEquipment = new List<EquipmentData>();
-    private List<GameCombat.ProjectileData> availableProjectiles = new List<GameCombat.ProjectileData>(); // NEW
+    private List<GameCombat.ProjectileData> availableProjectiles = new List<GameCombat.ProjectileData>();
+    private List<MissileData> availableMissiles = new List<MissileData>();
 
     // Removed tab buttons and panel references
 
     void Start()
     {
-        // Removed tab button listeners
+        if (launchMissileButton != null)
+            launchMissileButton.onClick.AddListener(OnLaunchMissileClicked);
     }
 
     // Mapping of dropdown entries (index-1 => governor in this list). Index 0 is "None".
@@ -404,6 +414,8 @@ if (currentCity == null)
             availableEquipment.AddRange(_cachedAvailableEquipment);
             availableProjectiles.Clear();
             availableProjectiles.AddRange(_cachedAvailableProjectiles);
+            availableMissiles.Clear();
+            availableMissiles.AddRange(_cachedAvailableMissiles);
             return;
         }
 
@@ -412,6 +424,7 @@ if (currentCity == null)
         availableWorkerUnits.Clear();
         availableEquipment.Clear();
         availableProjectiles.Clear();
+        availableMissiles.Clear();
 
         if (currentCity.owner == null) return;
 
@@ -474,6 +487,22 @@ if (currentCity == null)
             }
         }
 
+        // Missiles: show all missile types whose tech requirements the civ meets
+        availableMissiles.Clear();
+        if (ownerCiv != null)
+        {
+            var allMissiles = ResourceCache.GetAllMissiles();
+            foreach (var missile in allMissiles)
+            {
+                if (missile == null) continue;
+                bool techOk = true;
+                if (missile.requiredTechs != null)
+                    foreach (var tech in missile.requiredTechs)
+                        if (tech != null && !ownerCiv.researchedTechs.Contains(tech)) { techOk = false; break; }
+                if (techOk) availableMissiles.Add(missile);
+            }
+        }
+
         // Cache the results for next time
         _cachedAvailableBuildings.Clear();
         _cachedAvailableBuildings.AddRange(availableBuildings);
@@ -485,6 +514,8 @@ if (currentCity == null)
         _cachedAvailableEquipment.AddRange(availableEquipment);
         _cachedAvailableProjectiles.Clear();
         _cachedAvailableProjectiles.AddRange(availableProjectiles);
+        _cachedAvailableMissiles.Clear();
+        _cachedAvailableMissiles.AddRange(availableMissiles);
         _buildOptionsCacheDirty = false;
     }
     
@@ -521,7 +552,7 @@ if (currentCity == null)
             CreateBuildOptionButton(eq, eq.icon, eq.equipmentName, eq.productionCost, equipmentContainer);
         }
         
-        // NEW: Projectile options
+        // Projectile options
         if (projectilesContainer != null)
         {
             foreach (var projectile in availableProjectiles.OrderBy(p => p.productionCost))
@@ -529,6 +560,34 @@ if (currentCity == null)
                 CreateBuildOptionButton(projectile, projectile.icon, projectile.projectileName, projectile.productionCost, projectilesContainer);
             }
         }
+
+        // Missile production options
+        if (missilesContainer != null)
+        {
+            foreach (Transform t in missilesContainer) Destroy(t.gameObject);
+            foreach (var missile in availableMissiles.OrderBy(m => m.productionCost))
+            {
+                CreateBuildOptionButton(missile, missile.icon, missile.missileName, missile.productionCost, missilesContainer);
+            }
+        }
+
+        // Refresh launch missile button visibility
+        RefreshLaunchMissileButton();
+    }
+
+    private void RefreshLaunchMissileButton()
+    {
+        if (launchMissileButton == null) return;
+        int stored = currentCity?.storedMissiles?.Count ?? 0;
+        launchMissileButton.gameObject.SetActive(stored > 0);
+        if (launchMissileButtonText != null)
+            launchMissileButtonText.text = stored > 0 ? $"Launch Missile ({stored})" : "Launch Missile";
+    }
+
+    private void OnLaunchMissileClicked()
+    {
+        if (currentCity == null) return;
+        MissilePanelUI.Instance?.OpenForCity(currentCity);
     }
 
     private void CreateBuildOptionButton(ScriptableObject itemData, Sprite itemIcon, string itemName, int itemCost, Transform container)

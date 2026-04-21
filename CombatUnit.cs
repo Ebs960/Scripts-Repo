@@ -106,6 +106,12 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public bool isGarrisonedInCity { get; set; }
 
+    /// <summary>
+    /// Missiles currently carried by this unit (missile submarines, missile cruisers, MLRS, etc.).
+    /// Only populated when <see cref="CombatUnitData.canStoreMissiles"/> is true.
+    /// </summary>
+    public List<MissileData> storedMissiles = new List<MissileData>();
+
     // unitLabelPrefab, unitLabelInstance are inherited from BaseUnit
 
 

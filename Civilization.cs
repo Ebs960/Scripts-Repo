@@ -531,6 +531,14 @@ public class Civilization : MonoBehaviour
 
     // List of governor traits this civ has unlocked (for trait assignment UI)
     public List<GovernorTrait> unlockedGovernorTraits = new List<GovernorTrait>();
+
+    // --- Royal Council ---
+    /// <summary>Governors currently seated on the royal council.</summary>
+    public List<Governor> royalCouncil = new List<Governor>();
+
+    // --- Noble Factions ---
+    /// <summary>Active noble factions that have formed within this civilization.</summary>
+    public List<FactionBloc> nobleFactions = new List<FactionBloc>();
     
     [Header("City Cap")]
     [Tooltip("Base maximum number of cities this civilization may own. Set to 0 for Paleolithic nomads.")]
@@ -701,7 +709,15 @@ public class Civilization : MonoBehaviour
     {
     if (!governorsEnabled) return false;
         if (governor == null || city == null) return false;
-        // Remove from any previous city
+
+        // If the city already has a governor, anger them for the reassignment
+        if (city.governor != null && city.governor != governor)
+        {
+            city.governor.AddGrievance(GrievanceSource.CityReassigned);
+            city.governor.Cities.Remove(city);
+        }
+
+        // Remove this city from any other governor who has it listed
         foreach (var c in governors.SelectMany(g => g.Cities).ToList())
         {
             if (c == city)
@@ -714,6 +730,9 @@ public class Civilization : MonoBehaviour
         city.governor = governor;
         if (!governor.Cities.Contains(city))
             governor.Cities.Add(city);
+
+        // Refresh eligibility now that domain size changed
+        governor.RefreshCouncilEligibility();
         return true;
     }
 
@@ -778,6 +797,197 @@ public class Civilization : MonoBehaviour
     public List<Herd> GetGovernorHerds(Governor governor)
     {
         return governor?.Herds ?? new List<Herd>();
+    }
+
+    // ── Royal Council ─────────────────────────────────────────────────────────
+
+    /// <summary>Maximum council seats allowed by the current government type.</summary>
+    public int MaxCouncilSeats => currentGovernment != null ? currentGovernment.councilSeatCount : 0;
+
+    /// <summary>
+    /// Which domains can the council currently veto?
+    /// Returns None if there are no seated councillors.
+    /// </summary>
+    public VetoDomain ActiveVetoDomains => (royalCouncil.Count > 0 && currentGovernment != null)
+        ? currentGovernment.councilVetoDomains : VetoDomain.None;
+
+    /// <summary>
+    /// Returns true if the council currently holds a veto over the given domain.
+    /// </summary>
+    public bool HasCouncilVeto(VetoDomain domain)
+        => (ActiveVetoDomains & domain) != VetoDomain.None;
+
+    /// <summary>
+    /// Seat a governor on the royal council, if a slot is available.
+    /// Clears any CouncilSeatDenied grievance on success.
+    /// </summary>
+    public bool AddToCouncil(Governor gov)
+    {
+        if (gov == null || royalCouncil.Contains(gov)) return false;
+        if (royalCouncil.Count >= MaxCouncilSeats) return false;
+
+        royalCouncil.Add(gov);
+        gov.IsOnCouncil = true;
+        gov.ClearGrievance(GrievanceSource.CouncilSeatDenied);
+        gov.AddOpinionModifier("Granted Council Seat", 20f, -1);
+
+        // If this governor was in a faction, they may leave it now
+        gov.Faction?.RemoveMember(gov);
+        return true;
+    }
+
+    /// <summary>Remove a governor from the royal council.</summary>
+    public bool RemoveFromCouncil(Governor gov)
+    {
+        if (gov == null || !royalCouncil.Contains(gov)) return false;
+        royalCouncil.Remove(gov);
+        gov.IsOnCouncil = false;
+        gov.AddGrievance(GrievanceSource.TitleRevoked);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns all governors who are eligible for a council seat but not currently seated.
+    /// Useful for generating "powerful lord not on council" unrest penalties.
+    /// </summary>
+    public List<Governor> GetUnseatedPowerfulLords()
+    {
+        var result = new List<Governor>();
+        foreach (var gov in governors)
+        {
+            if (gov == null || gov.IsOnCouncil) continue;
+            gov.RefreshCouncilEligibility();
+            if (gov.IsCouncilEligible) result.Add(gov);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Apply ongoing "powerful lord not on council" opinion penalties.
+    /// Call once per turn from BeginTurn. Unseated eligible lords drift negative faster.
+    /// </summary>
+    public void ProcessCouncilPressure()
+    {
+        if (MaxCouncilSeats <= 0) return;
+        foreach (var gov in GetUnseatedPowerfulLords())
+        {
+            // Powerful lords not on council add a CouncilSeatDenied grievance each time seat stays unfilled
+            // (only re-add every 10 turns to avoid spam)
+            if (!gov.Grievances.ContainsKey(GrievanceSource.CouncilSeatDenied))
+                gov.AddGrievance(GrievanceSource.CouncilSeatDenied);
+        }
+    }
+
+    // ── Noble Factions ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Per-turn faction logic: form new factions, invite angry lords, generate demands.
+    /// Call from BeginTurn after governor opinion ticks have run.
+    /// </summary>
+    public void ProcessFactionTick(int currentTurn)
+    {
+        // 1. Invite unaffiliated angry lords into existing or new factions
+        foreach (var gov in governors)
+        {
+            if (gov == null || gov.IsOnCouncil || gov.Faction != null) continue;
+            if (gov.Opinion > 10f) continue;  // Content lords don't join blocs
+
+            // Try existing faction
+            FactionBloc joined = null;
+            foreach (var bloc in nobleFactions)
+            {
+                if (bloc.CanJoin(gov)) { bloc.AddMember(gov); joined = bloc; break; }
+            }
+
+            // Found a new faction if no existing one fits and this lord is angry enough
+            if (joined == null && gov.AmbitionScore > 50 && gov.Opinion < -10f)
+            {
+                var alignment = DetermineAlignment(gov);
+                string name = $"The {gov.Name} Faction";
+                var newBloc = new FactionBloc(name, alignment, gov);
+                nobleFactions.Add(newBloc);
+            }
+        }
+
+        // 2. Dissolve factions that have too few members or are no longer angry
+        for (int i = nobleFactions.Count - 1; i >= 0; i--)
+        {
+            var bloc = nobleFactions[i];
+            if (bloc.Members.Count == 0 ||
+                (bloc.Members.Count == 1 && bloc.Leader?.Opinion > 30f))
+            {
+                foreach (var m in bloc.Members) m.Faction = null;
+                nobleFactions.RemoveAt(i);
+            }
+        }
+
+        // 3. Factions with high power generate demands
+        foreach (var bloc in nobleFactions)
+        {
+            if (bloc.ActiveDemands.Count == 0 && bloc.ComputePower() > 10f)
+                bloc.GenerateDemand(currentTurn);
+        }
+    }
+
+    /// <summary>
+    /// Accept or refuse a faction demand. Refusal may trigger multi-city rebellion.
+    /// </summary>
+    public bool ResolveFactionDemand(FactionBloc bloc, FactionDemand demand, bool accepted, int currentTurn)
+    {
+        if (bloc == null || demand == null) return false;
+
+        // Handle accepted demands mechanically
+        if (accepted)
+        {
+            switch (demand.type)
+            {
+                case FactionDemandType.GrantCouncilSeat:
+                    if (bloc.Leader != null) AddToCouncil(bloc.Leader);
+                    break;
+                case FactionDemandType.ReduceTaxation:
+                    // Symbolic concession: give a temporary opinion boost
+                    foreach (var m in bloc.Members)
+                        m.AddOpinionModifier("Tax Concession Granted", 10f, 15);
+                    break;
+                case FactionDemandType.GrantReligiousFreedom:
+                    foreach (var m in bloc.Members)
+                    {
+                        m.ClearGrievance(GrievanceSource.ReligionForced);
+                        m.AddOpinionModifier("Religious Freedom Granted", 15f, 25);
+                    }
+                    break;
+                case FactionDemandType.AdoptPolicy:
+                    if (demand.targetPolicy != null && PolicyManager.Instance != null)
+                        PolicyManager.Instance.AdoptPolicy(this, demand.targetPolicy);
+                    break;
+                case FactionDemandType.ChangeGovernment:
+                    if (demand.targetGovernment != null && PolicyManager.Instance != null)
+                        PolicyManager.Instance.ChangeGovernment(this, demand.targetGovernment);
+                    break;
+            }
+        }
+
+        return bloc.ResolveDemand(demand, accepted, this, currentTurn);
+    }
+
+    private static FactionAlignment DetermineAlignment(Governor gov)
+    {
+        if (gov.HasPersonality(PersonalityTrait.Zealous))    return FactionAlignment.Religious;
+        if (gov.specialization == Governor.Specialization.Economic) return FactionAlignment.Mercantile;
+        if (gov.AmbitionScore > 70 && gov.Opinion < -30f)   return FactionAlignment.Separatist;
+        if (gov.HasPersonality(PersonalityTrait.Ambitious))  return FactionAlignment.Independent;
+        return FactionAlignment.Conservative;
+    }
+
+    // ── Policy / Government reaction hooks ───────────────────────────────────
+
+    /// <summary>
+    /// Push governor opinion reactions for all active policy effects.
+    /// Called by PolicyManager after adoption/government-change.
+    /// </summary>
+    public void ApplyGovernorPoliticalReactions(GovernorOpinionEffect[] effects)
+    {
+        PolicyManager.Instance?.ApplyGovernorPoliticalReactions(this, effects);
     }
 
     void Awake()
@@ -2339,6 +2549,13 @@ public class Civilization : MonoBehaviour
 
         // 5) Advance culture
         ProcessCulture();
+
+        // 6) Noble politics: council pressure and faction formation/demands
+        if (governorsEnabled && governors.Count > 0)
+        {
+            ProcessCouncilPressure();
+            ProcessFactionTick(round);
+        }
 
         // --- NEW: Unrest & famine handling ---
         // Update war weariness
