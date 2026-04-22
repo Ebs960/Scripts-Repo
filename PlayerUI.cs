@@ -25,6 +25,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
     [SerializeField] private Button diplomacyButton;
+    [SerializeField] private Button politicalAffairsButton;
     [SerializeField] private Button equipmentButton;
 
     [Header("Player Panel - Yields")]
@@ -236,6 +237,33 @@ Civilization civToUse = currentCiv;
                 else
                 {
                     Debug.LogError($"PlayerUI: Cannot show diplomacy panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
+                }
+            });
+        }
+
+        if (politicalAffairsButton != null)
+        {
+            politicalAffairsButton.onClick.RemoveAllListeners();
+            politicalAffairsButton.onClick.AddListener(() =>
+            {
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
+                {
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                }
+
+                if (UIManager.Instance != null && civToUse != null)
+                {
+                    UIManager.Instance.ShowPoliticalAffairsPanel(civToUse);
+                }
+                else if (UIManager.Instance != null)
+                {
+                    // Fallback - show for player civ
+                    UIManager.Instance.ShowPoliticalAffairsPanel();
+                }
+                else
+                {
+                    Debug.LogError($"PlayerUI: Cannot show Political Affairs panel - UIManager is null");
                 }
             });
         }

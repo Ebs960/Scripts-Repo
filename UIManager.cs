@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using TMPro;
@@ -106,6 +107,8 @@ public class UIManager : MonoBehaviour
     private TMP_FontAsset defaultFont;
     private CrisisMissionTrackerUI crisisMissionTrackerUI;
     private LegacyTrackerUI legacyTrackerUI;
+    private PoliticalAffairsPanelUI politicalAffairsPanelUI;
+    private Button politicalAffairsButton;
     private bool startupMissionCrisisViewsHidden;
 
     private void LogMissionSelectionBlocked(string context, CrisisData crisis, List<MissionData> missions = null)
@@ -328,6 +331,39 @@ public class UIManager : MonoBehaviour
         return true;
     }
 
+    public void ShowPoliticalAffairsPanel(Civilization civ = null)
+    {
+        civ ??= CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
+        if (civ == null) return;
+
+        EnsurePoliticalAffairsPanelUi();
+        politicalAffairsPanelUI?.Show(civ);
+    }
+
+    private void EnsurePoliticalAffairsPanelUi()
+    {
+        if (politicalAffairsPanelUI != null) return;
+        if (playerUI == null) return;
+
+        var parentRect = playerUI.GetComponent<RectTransform>();
+        if (parentRect == null)
+            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+        if (parentRect == null) return;
+
+        var go = new GameObject("PoliticalAffairsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(PoliticalAffairsPanelUI));
+        var rect = go.GetComponent<RectTransform>();
+        rect.SetParent(parentRect, false);
+        rect.anchorMin = new Vector2(0.15f, 0.12f);
+        rect.anchorMax = new Vector2(0.85f, 0.88f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        go.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.13f, 0.97f);
+
+        politicalAffairsPanelUI = go.GetComponent<PoliticalAffairsPanelUI>();
+        politicalAffairsPanelUI.BuildRuntimeUi(defaultFont, PlayUIClick);
+        politicalAffairsPanelUI.Hide();
+    }
+
     private void DisplayNotification(string message)
     {
         var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>();
@@ -358,6 +394,7 @@ public class UIManager : MonoBehaviour
         TrySubscribeMissionCrisisUi();
         EnsureCrisisMissionTrackerUi();
         EnsureLegacyTrackerUi();
+        EnsurePoliticalAffairsButtonUi();
 
         bool loadingNow = IsLoadingActive();
         // If we transitioned from loading->not loading, try to flush queued notifications
@@ -433,6 +470,53 @@ public class UIManager : MonoBehaviour
         legacyRect.sizeDelta = new Vector2(320f, 0f);
 
         legacyTrackerUI = legacyObject.GetComponent<LegacyTrackerUI>();
+    }
+
+    private void EnsurePoliticalAffairsButtonUi()
+    {
+        if (politicalAffairsButton != null) return;
+        if (playerUI == null) return;
+
+        var parentRect = playerUI.GetComponent<RectTransform>();
+        if (parentRect == null)
+            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+        if (parentRect == null) return;
+
+        var buttonObject = new GameObject("PoliticalAffairsButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        var buttonRect = buttonObject.GetComponent<RectTransform>();
+        buttonRect.SetParent(parentRect, false);
+        buttonRect.anchorMin = new Vector2(1f, 0f);
+        buttonRect.anchorMax = new Vector2(1f, 0f);
+        buttonRect.pivot = new Vector2(1f, 0f);
+        buttonRect.anchoredPosition = new Vector2(-16f, 88f);
+        buttonRect.sizeDelta = new Vector2(180f, 40f);
+
+        var image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0.14f, 0.22f, 0.28f, 0.92f);
+
+        politicalAffairsButton = buttonObject.GetComponent<Button>();
+        politicalAffairsButton.targetGraphic = image;
+        politicalAffairsButton.onClick.AddListener(() =>
+        {
+            var civ = CivilizationManager.Instance?.playerCiv;
+            if (civ != null)
+                ShowPoliticalAffairsPanel(civ);
+        });
+
+        var labelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        var labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.SetParent(buttonRect, false);
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(10f, 6f);
+        labelRect.offsetMax = new Vector2(-10f, -6f);
+
+        var label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.font = defaultFont;
+        label.text = "Political Affairs";
+        label.fontSize = 22f;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
     }
 
     private void HideStartupMissionCrisisViews()

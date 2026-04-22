@@ -84,6 +84,11 @@ public class DiplomacyUI : MonoBehaviour
     public Button acceptDealButton;
     public Button rejectDealButton;
     public Button offerVassalageButton;
+    public Button breakVassalageButton;
+    public Button raiseTributeButton;
+    public Button lowerTributeButton;
+    public Button forceReligionButton;
+    public Button replaceGovernorButton;
     public Button declareWarButton;
     public Button makePeaceButton;
     public Button cancelButton;
@@ -110,6 +115,8 @@ public class DiplomacyUI : MonoBehaviour
 
     private void SetupButtonListeners()
     {
+        EnsureRuntimeActionButtons();
+
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
@@ -133,12 +140,44 @@ public class DiplomacyUI : MonoBehaviour
         if (acceptDealButton != null)    acceptDealButton.onClick.AddListener(OnAcceptDealClicked);
         if (rejectDealButton != null)    rejectDealButton.onClick.AddListener(OnRejectDealClicked);
         if (offerVassalageButton != null) offerVassalageButton.onClick.AddListener(OnOfferVassalageClicked);
+        if (breakVassalageButton != null) breakVassalageButton.onClick.AddListener(OnBreakVassalageClicked);
+        if (raiseTributeButton != null) raiseTributeButton.onClick.AddListener(OnRaiseTributeClicked);
+        if (lowerTributeButton != null) lowerTributeButton.onClick.AddListener(OnLowerTributeClicked);
+        if (forceReligionButton != null) forceReligionButton.onClick.AddListener(OnForceReligionClicked);
+        if (replaceGovernorButton != null) replaceGovernorButton.onClick.AddListener(OnReplaceGovernorClicked);
         if (declareWarButton != null)    declareWarButton.onClick.AddListener(OnDeclareWarClicked);
         if (makePeaceButton != null)     makePeaceButton.onClick.AddListener(OnMakePeaceClicked);
         if (cancelButton != null)        cancelButton.onClick.AddListener(Hide);
 
         // Item picker close
         if (itemPickerCloseButton != null) itemPickerCloseButton.onClick.AddListener(CloseItemPicker);
+    }
+
+    private void EnsureRuntimeActionButtons()
+    {
+        if (offerVassalageButton != null || declareWarButton == null) return;
+
+        offerVassalageButton = CloneActionButton(declareWarButton, "OfferVassalageButton", "Offer Vassalage");
+        breakVassalageButton = CloneActionButton(declareWarButton, "BreakVassalageButton", "Break Vassalage");
+        raiseTributeButton = CloneActionButton(declareWarButton, "RaiseTributeButton", "Raise Tribute");
+        lowerTributeButton = CloneActionButton(declareWarButton, "LowerTributeButton", "Lower Tribute");
+        forceReligionButton = CloneActionButton(declareWarButton, "ForceReligionButton", "Force Religion");
+        replaceGovernorButton = CloneActionButton(declareWarButton, "ReplaceGovernorButton", "Replace Governor");
+    }
+
+    private static Button CloneActionButton(Button template, string objectName, string label)
+    {
+        if (template == null) return null;
+        var clone = Instantiate(template.gameObject, template.transform.parent);
+        clone.name = objectName;
+        var button = clone.GetComponent<Button>();
+        if (button == null) return null;
+
+        foreach (var text in clone.GetComponentsInChildren<TextMeshProUGUI>(true))
+            text.text = label;
+        foreach (var text in clone.GetComponentsInChildren<Text>(true))
+            text.text = label;
+        return button;
     }
 
     // ────────────────────────── Public API ──────────────────────────
@@ -484,6 +523,10 @@ public class DiplomacyUI : MonoBehaviour
             : DiplomaticState.Peace;
         bool atWar = relation == DiplomaticState.War;
         bool alreadyVassal = relation == DiplomaticState.Vassal;
+        var subjectContract = hasCiv && SubjectManager.Instance != null
+            ? SubjectManager.Instance.GetContract(playerCiv, selectedCiv)
+            : null;
+        bool isOurSubject = subjectContract != null;
 
         // Proposal flow
         if (proposeDealButton != null)
@@ -494,6 +537,16 @@ public class DiplomacyUI : MonoBehaviour
             rejectDealButton.gameObject.SetActive(hasCiv && isIncomingProposal);
         if (offerVassalageButton != null)
             offerVassalageButton.gameObject.SetActive(hasCiv && !isIncomingProposal && !atWar && !alreadyVassal);
+        if (breakVassalageButton != null)
+            breakVassalageButton.gameObject.SetActive(isOurSubject);
+        if (raiseTributeButton != null)
+            raiseTributeButton.gameObject.SetActive(isOurSubject);
+        if (lowerTributeButton != null)
+            lowerTributeButton.gameObject.SetActive(isOurSubject);
+        if (forceReligionButton != null)
+            forceReligionButton.gameObject.SetActive(isOurSubject);
+        if (replaceGovernorButton != null)
+            replaceGovernorButton.gameObject.SetActive(isOurSubject);
 
         // War / Peace
         if (declareWarButton != null)
@@ -750,6 +803,60 @@ public class DiplomacyUI : MonoBehaviour
 
         RefreshLeaderPresentation();
         RefreshActionButtons();
+    }
+
+    private void OnBreakVassalageClicked()
+    {
+        if (selectedCiv == null || SubjectManager.Instance == null) return;
+        if (!SubjectManager.Instance.DissolveContract(playerCiv, selectedCiv)) return;
+
+        SetLeaderMood(LeaderMood.Angry);
+        SetDialogue($"{selectedCiv.leader.leaderName} is released from vassalage.");
+        UIManager.Instance.ShowNotification($"Vassalage ended with {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+        RefreshLeaderPresentation();
+        RefreshActionButtons();
+    }
+
+    private void OnRaiseTributeClicked()
+    {
+        if (selectedCiv == null || SubjectManager.Instance == null) return;
+        var contract = SubjectManager.Instance.GetContract(playerCiv, selectedCiv);
+        if (contract == null) return;
+
+        float newRate = Mathf.Clamp(contract.goldTributePct + 0.05f, 0f, 0.50f);
+        SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
+        SetDialogue($"Your envoys impose a heavier tribute on {selectedCiv.leader.leaderName}.");
+        UIManager.Instance.ShowNotification($"Tribute raised to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+    }
+
+    private void OnLowerTributeClicked()
+    {
+        if (selectedCiv == null || SubjectManager.Instance == null) return;
+        var contract = SubjectManager.Instance.GetContract(playerCiv, selectedCiv);
+        if (contract == null) return;
+
+        float newRate = Mathf.Clamp(contract.goldTributePct - 0.05f, 0f, 0.50f);
+        SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
+        contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + 8f, -100f, 100f);
+        contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - 5f, 0f, 100f);
+        SetDialogue($"You ease the burden on {selectedCiv.leader.leaderName}.");
+        UIManager.Instance.ShowNotification($"Tribute lowered to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+    }
+
+    private void OnForceReligionClicked()
+    {
+        if (selectedCiv == null || SubjectManager.Instance == null) return;
+        SubjectManager.Instance.InterfereForceReligion(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0);
+        SetDialogue($"{selectedCiv.leader.leaderName} is commanded to conform in matters of faith.");
+        UIManager.Instance.ShowNotification($"Religion pressure applied to {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+    }
+
+    private void OnReplaceGovernorClicked()
+    {
+        if (selectedCiv == null || SubjectManager.Instance == null) return;
+        SubjectManager.Instance.InterfereReplaceGovernor(playerCiv, selectedCiv, null, TurnManager.Instance?.round ?? 0);
+        SetDialogue($"A new appointee is installed to watch over {selectedCiv.leader.leaderName}'s lands.");
+        UIManager.Instance.ShowNotification($"Governor replaced in {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
     private void OnMakePeaceClicked()

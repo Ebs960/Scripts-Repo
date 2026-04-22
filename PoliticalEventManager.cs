@@ -60,9 +60,78 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
 
         ExpireEventsForCivilization(civ, currentTurn);
         SyncFactionDemandEvents(civ, currentTurn);
+        ProcessGovernorPetitions(civ, currentTurn);
         ProcessCouncilSuccession(civ, currentTurn);
         ProcessVassalPetitions(civ, currentTurn);
         TryPresentPendingPlayerEvent(civ);
+    }
+
+    public IReadOnlyList<PoliticalEventRecord> GetActiveEventsForCiv(Civilization civ)
+    {
+        if (civ == null) return Array.Empty<PoliticalEventRecord>();
+        string civName = civ.civData?.civName ?? civ.name;
+        return activeEvents
+            .Where(e => e.status == PoliticalEventStatus.Pending && e.targetCivName == civName)
+            .OrderBy(e => e.expiryTurn)
+            .ThenBy(e => e.createdTurn)
+            .ToList();
+    }
+
+    private void ProcessGovernorPetitions(Civilization civ, int currentTurn)
+    {
+        if (!civ.isPlayerControlled || civ.governors == null) return;
+
+        foreach (var governor in civ.governors)
+        {
+            if (governor == null || governor.Faction != null || governor.IsInRebellion) continue;
+
+            bool upset = governor.Opinion <= -20f || governor.TotalGrievances() >= 2 || PoliticalDistanceUtility.GetGovernorDistancePenalty(governor) >= 8f;
+            if (!upset) continue;
+
+            string sourceKey = $"GovernorPetition|{civ.civData?.civName ?? civ.name}|{governor.Id}";
+            if (HasActiveEvent(sourceKey)) continue;
+            if (IsOnCooldown(sourceKey, currentTurn, governorPetitionCooldownTurns)) continue;
+
+            var options = new List<PoliticalEventOption>
+            {
+                new PoliticalEventOption { optionId = "gift", label = "Send Gifts", summary = "Improve the governor's opinion with gold and favors.", targetGovernorId = governor.Id },
+                new PoliticalEventOption { optionId = "refuse", label = "Refuse", summary = "Deny the petition and risk deeper resentment.", targetGovernorId = governor.Id },
+            };
+
+            string body = $"{governor.Name} petitions for recognition and relief. Their opinion is {Mathf.RoundToInt(governor.Opinion)} and grievances are mounting.";
+            if (!governor.IsOnCouncil && governor.IsCouncilEligible && civ.royalCouncil.Count < civ.MaxCouncilSeats)
+            {
+                options.Insert(0, new PoliticalEventOption
+                {
+                    optionId = "grant_council_seat",
+                    label = "Grant Council Seat",
+                    summary = "Seat this lord on the royal council and clear council resentment.",
+                    targetGovernorId = governor.Id,
+                });
+                body = $"{governor.Name} petitions for a place in government. Their influence is growing, and exclusion from the council is becoming dangerous.";
+            }
+
+            QueueEvent(new PoliticalEventRecord
+            {
+                id = nextEventId++,
+                eventType = PoliticalEventType.GovernorPetition,
+                sourceKey = sourceKey,
+                targetCivName = civ.civData?.civName ?? civ.name,
+                title = $"Petition from {governor.Name}",
+                body = body,
+                createdTurn = currentTurn,
+                expiryTurn = currentTurn + 4,
+                targetGovernorId = governor.Id,
+                primaryActor = new PoliticalActorRef
+                {
+                    actorType = PoliticalActorType.Governor,
+                    civName = civ.civData?.civName ?? civ.name,
+                    governorId = governor.Id,
+                    displayName = governor.Name,
+                },
+                options = options,
+            });
+        }
     }
 
     private void SyncFactionDemandEvents(Civilization civ, int currentTurn)
@@ -256,6 +325,9 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             case PoliticalEventType.FactionDemand:
                 ResolveFactionEvent(record, civ, option, currentTurn);
                 break;
+            case PoliticalEventType.GovernorPetition:
+                ResolveGovernorPetition(record, civ, option, currentTurn);
+                break;
             case PoliticalEventType.CouncilElection:
                 ResolveCouncilElection(record, civ, option);
                 break;
@@ -291,6 +363,35 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         if (governor == null) return;
         civ.AddToCouncil(governor);
         UIManager.Instance?.ShowNotification($"{governor.Name} takes a seat on the royal council.");
+    }
+
+    private void ResolveGovernorPetition(PoliticalEventRecord record, Civilization civ, PoliticalEventOption option, int currentTurn)
+    {
+        if (civ == null) return;
+        var governor = civ.governors.FirstOrDefault(g => g != null && g.Id == record.targetGovernorId);
+        if (governor == null) return;
+
+        switch (option.optionId)
+        {
+            case "grant_council_seat":
+                if (civ.AddToCouncil(governor))
+                {
+                    governor.AddOpinionModifier("Council Petition Granted", 12f, 20);
+                    UIManager.Instance?.ShowNotification($"{governor.Name} has been seated on the royal council.");
+                }
+                break;
+            case "gift":
+                governor.AddOpinionModifier("Received Gift", 15f, 15);
+                governor.ClearGrievance(GrievanceSource.PublicInsult);
+                UIManager.Instance?.ShowNotification($"Gifts were sent to {governor.Name}.");
+                break;
+            default:
+                governor.AddGrievance(GrievanceSource.OverruledDecision);
+                governor.AddOpinionModifier("Petition Refused", -15f, 20);
+                RememberCooldown(record.sourceKey, currentTurn);
+                UIManager.Instance?.ShowNotification($"You refused the petition from {governor.Name}.");
+                break;
+        }
     }
 
     private void ResolveVassalPetition(PoliticalEventRecord record, Civilization civ, PoliticalEventOption option, int currentTurn)
@@ -345,6 +446,9 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 case PoliticalEventType.FactionDemand:
                     ResolveExpiredFactionDemand(record, civ, currentTurn);
                     break;
+                case PoliticalEventType.GovernorPetition:
+                    ResolveExpiredGovernorPetition(record, civ, currentTurn);
+                    break;
                 case PoliticalEventType.CouncilElection:
                     ResolveExpiredCouncilElection(civ);
                     break;
@@ -370,6 +474,12 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         var fallback = civ.GetUnseatedPowerfulLords().OrderByDescending(g => g.PowerRank).FirstOrDefault();
         if (fallback != null)
             civ.AddToCouncil(fallback);
+    }
+
+    private void ResolveExpiredGovernorPetition(PoliticalEventRecord record, Civilization civ, int currentTurn)
+    {
+        var refuseOption = new PoliticalEventOption { optionId = "refuse" };
+        ResolveGovernorPetition(record, civ, refuseOption, currentTurn);
     }
 
     private void ResolveExpiredVassalPetition(PoliticalEventRecord record, Civilization civ, int currentTurn)

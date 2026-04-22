@@ -148,6 +148,8 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             var c = _contracts[i];
             if (c.overlord == null || c.subject == null) continue;
 
+            EnforceSubjectReligionRule(c);
+
             c.TickLibertyDesire(currentTurn);
 
             // Update military confidence (rough proxy: subject unit count vs overlord)
@@ -213,6 +215,40 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         var contract = GetContract(overlord, subject);
         if (contract == null || contract.IsInterferenceOnCooldown(currentTurn)) return;
 
+        var targetCity = subject.cities?
+            .Where(c => c != null && c.owner == subject)
+            .OrderByDescending(c => c.isCapital)
+            .ThenByDescending(c => c.level)
+            .FirstOrDefault();
+        if (targetCity == null) return;
+
+        var oldGov = targetCity.governor;
+
+        if (newGov == null)
+        {
+            newGov = subject.governors?
+                .FirstOrDefault(g => g != null && g != oldGov && !g.Cities.Contains(targetCity));
+
+            if (newGov == null && subject.governorsEnabled && subject.governors.Count < subject.governorCount)
+            {
+                var specialization = oldGov != null ? oldGov.specialization : Governor.Specialization.Military;
+                newGov = subject.CreateGovernor("Imperial Appointee", specialization);
+            }
+        }
+
+        if (oldGov != null)
+        {
+            subject.RemoveGovernorFromCity(oldGov, targetCity);
+            oldGov.AddGrievance(GrievanceSource.TitleRevoked);
+            oldGov.AddOpinionModifier("Removed by Overlord", -20f, 25);
+        }
+
+        if (newGov != null)
+        {
+            subject.AssignGovernorToCity(newGov, targetCity);
+            newGov.AddOpinionModifier("Installed by Overlord", 8f, 20);
+        }
+
         contract.resentment = Mathf.Min(100f, contract.resentment + 20f);
         contract.lastInterferenceTurn = currentTurn;
 
@@ -220,7 +256,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         foreach (var gov in subject.governors)
             gov.AddOpinionModifier("Overlord Replaced Local Governor", -12f, 20);
 
-        Debug.Log($"[SubjectManager] {overlord.civData?.civName} replaced a governor in {subject.civData?.civName}.");
+        Debug.Log($"[SubjectManager] {overlord.civData?.civName} replaced the governor of {targetCity.cityName} in {subject.civData?.civName}.");
     }
 
     /// <summary>
@@ -234,6 +270,8 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         contract.religionRule = ReligionToleranceRule.ForcedConversion;
         contract.resentment = Mathf.Min(100f, contract.resentment + 30f);
         contract.lastInterferenceTurn = currentTurn;
+
+        ApplyForcedConversion(contract);
 
         // Anger zealous subject governors hardest
         foreach (var gov in subject.governors)
@@ -326,18 +364,152 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
         if (Random.value < breakawayChance)
         {
-            Debug.Log($"[SubjectManager] {contract.subjectCivName} declares independence from {contract.overlordCivName}!");
+            var breakawayLeader = TryCreateIndependenceRebel(contract.subject, contract.overlord) ?? contract.subject;
+            string breakawayName = breakawayLeader.civData?.civName ?? breakawayLeader.name;
+
+            Debug.Log($"[SubjectManager] {breakawayName} declares independence from {contract.overlordCivName}!");
 
             // Notify both civs
             UIManager.Instance?.ShowNotification(
-                $"{contract.subjectCivName} has declared independence from {contract.overlordCivName}!");
+                $"{breakawayName} has declared independence from {contract.overlordCivName}!");
 
             // Set to war
-            contract.overlord.SetRelation(contract.subject, DiplomaticState.War);
-            contract.subject.SetRelation(contract.overlord, DiplomaticState.War);
+            contract.overlord.SetRelation(breakawayLeader, DiplomaticState.War);
+            breakawayLeader.SetRelation(contract.overlord, DiplomaticState.War);
 
             _contracts.Remove(contract);
         }
+    }
+
+    private void EnforceSubjectReligionRule(VassalContract contract)
+    {
+        if (contract == null || contract.religionRule != ReligionToleranceRule.ForcedConversion)
+            return;
+
+        ApplyForcedConversion(contract);
+    }
+
+    private void ApplyForcedConversion(VassalContract contract)
+    {
+        var subject = contract?.subject;
+        var overlord = contract?.overlord;
+        if (subject == null || overlord == null) return;
+        if (!overlord.hasFoundedReligion || overlord.foundedReligion == null) return;
+
+        bool changedReligion = subject.foundedReligion != overlord.foundedReligion || !subject.hasFoundedReligion;
+        subject.hasFoundedReligion = true;
+        subject.foundedReligion = overlord.foundedReligion;
+
+        if (subject.governors != null)
+        {
+            foreach (var gov in subject.governors)
+            {
+                if (gov == null) continue;
+                gov.PersonalReligion = overlord.foundedReligion;
+            }
+        }
+
+        if (changedReligion)
+        {
+            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion - 10f, -100f, 100f);
+            contract.resentment = Mathf.Min(100f, contract.resentment + 5f);
+        }
+    }
+
+    private Civilization TryCreateIndependenceRebel(Civilization subject, Civilization overlord)
+    {
+        if (subject == null || overlord == null) return null;
+        if (subject == CivilizationManager.Instance?.playerCiv) return null;
+        if (subject.cities == null || subject.cities.Count == 0) return null;
+
+        var anchorCity = subject.CapitalCity
+            ?? subject.cities.OrderByDescending(c => c?.level ?? 0).FirstOrDefault(c => c != null);
+        if (anchorCity == null) return null;
+
+        string rebelName = BuildIndependenceRebelName(anchorCity);
+        var rebelCiv = CivilizationManager.Instance?.CreateRebelFaction(anchorCity, rebelName);
+        if (rebelCiv == null || rebelCiv == subject) return null;
+
+        TransferSubjectRealmToRebel(subject, rebelCiv);
+        CivilizationManager.Instance?.UnregisterCiv(subject);
+        Destroy(subject.gameObject);
+        return rebelCiv;
+    }
+
+    private string BuildIndependenceRebelName(City anchorCity)
+    {
+        string cityName = !string.IsNullOrWhiteSpace(anchorCity?.cityName) ? anchorCity.cityName : "Free Cities";
+        return $"{cityName} Liberation Front";
+    }
+
+    private void TransferSubjectRealmToRebel(Civilization subject, Civilization rebelCiv)
+    {
+        var subjectCities = subject.cities?.Where(c => c != null).ToList() ?? new List<City>();
+        foreach (var city in subjectCities)
+        {
+            subject.RemoveCity(city);
+            rebelCiv.AddCity(city);
+        }
+
+        if (rebelCiv.cities.Count > 0)
+        {
+            var newCapital = rebelCiv.cities.OrderByDescending(c => c?.level ?? 0).FirstOrDefault(c => c != null);
+            if (newCapital != null)
+                rebelCiv.SetCapitalCity(newCapital);
+        }
+
+        var subjectCombatUnits = subject.combatUnits?.Where(u => u != null).ToList() ?? new List<CombatUnit>();
+        foreach (var unit in subjectCombatUnits)
+        {
+            subject.combatUnits.Remove(unit);
+            rebelCiv.combatUnits.Add(unit);
+            unit.Initialize(unit.data, rebelCiv);
+        }
+
+        var subjectWorkerUnits = subject.workerUnits?.Where(w => w != null).ToList() ?? new List<WorkerUnit>();
+        foreach (var worker in subjectWorkerUnits)
+        {
+            subject.workerUnits.Remove(worker);
+            rebelCiv.workerUnits.Add(worker);
+            worker.Initialize(worker.data, rebelCiv, worker.currentTileIndex);
+        }
+
+        if (subject.herds != null)
+        {
+            foreach (var herd in subject.herds.Where(h => h != null).ToList())
+            {
+                subject.herds.Remove(herd);
+                if (!rebelCiv.herds.Contains(herd))
+                    rebelCiv.herds.Add(herd);
+                herd.owner = rebelCiv;
+            }
+        }
+
+        if (subject.governors != null)
+        {
+            rebelCiv.governorsEnabled = subject.governorsEnabled;
+            rebelCiv.governorCount = Mathf.Max(rebelCiv.governorCount, subject.governorCount);
+
+            foreach (var governor in subject.governors.Where(g => g != null).ToList())
+            {
+                subject.governors.Remove(governor);
+                if (!rebelCiv.governors.Contains(governor))
+                    rebelCiv.governors.Add(governor);
+                governor.Faction = null;
+                governor.IsOnCouncil = false;
+            }
+        }
+
+        rebelCiv.hasFoundedReligion = subject.hasFoundedReligion;
+        rebelCiv.foundedReligion = subject.foundedReligion;
+        rebelCiv.gold += subject.gold;
+        rebelCiv.science += subject.science;
+        rebelCiv.food += subject.food;
+        subject.gold = 0;
+        subject.science = 0;
+        subject.food = 0;
+        subject.royalCouncil?.Clear();
+        subject.nobleFactions?.Clear();
     }
 
     // ── Save / Load ───────────────────────────────────────────────────────────

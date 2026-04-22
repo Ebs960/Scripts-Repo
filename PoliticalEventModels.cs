@@ -6,6 +6,7 @@ using UnityEngine;
 public enum PoliticalEventType
 {
     FactionDemand,
+    GovernorPetition,
     CouncilElection,
     VassalPetition
 }
