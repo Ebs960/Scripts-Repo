@@ -205,7 +205,7 @@ public class FactionBloc
 
         // Name the rebel civ after the largest city (by level) in the bloc
         var allCities = Members.SelectMany(m => m.Cities).Where(c => c != null && c.owner == civ).ToList();
-        var largestCity = allCities.OrderByDescending(c => c.cityLevel).FirstOrDefault();
+        var largestCity = allCities.OrderByDescending(c => c.level).FirstOrDefault();
         string rebelName = largestCity != null
             ? $"{largestCity.cityName} Rebels"
             : $"{FactionName} Rebels";
@@ -222,6 +222,16 @@ public class FactionBloc
 
         Debug.Log($"[FactionBloc] '{FactionName}' has risen in rebellion against {civ.civData?.civName ?? civ.name}! " +
                   $"Rebel civ named '{rebelName}'. {Members.Count} lords, {allCities.Count} cities affected.");
+    }
+
+    public void RestoreRebellionState(bool isInRebellion)
+    {
+        IsInRebellion = isInRebellion;
+        foreach (var member in Members)
+        {
+            if (member != null)
+                member.IsInRebellion = isInRebellion;
+        }
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────

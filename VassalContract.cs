@@ -114,6 +114,9 @@ public class VassalContract
         // Resentment from interference
         delta += resentment * 0.03f;
 
+        // Distance from the overlord's capital weakens direct control.
+        delta += PoliticalDistanceUtility.GetVassalDistanceLibertyPressure(this);
+
         // Autonomy level slows growth
         delta *= Mathf.Lerp(1.5f, 0.5f, autonomyLevel / 100f);
 

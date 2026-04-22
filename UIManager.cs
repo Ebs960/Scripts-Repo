@@ -302,6 +302,32 @@ public class UIManager : MonoBehaviour
         DisplayNotification(message);
     }
 
+    public bool ShowPoliticalSelection(string title, string subtitle, IReadOnlyList<MissionSelectionPopupUI.OptionData> options, Action<int> onSelected)
+    {
+        if (modalVisible) return false;
+
+        EnsureMissionCrisisPrefabViews();
+        if (selectionPopupInstance == null) return false;
+
+        if (!selectionPopupInstance.gameObject.activeSelf)
+            selectionPopupInstance.gameObject.SetActive(true);
+
+        selectionPopupInstance.Show(
+            title,
+            subtitle,
+            options,
+            index =>
+            {
+                onSelected?.Invoke(index);
+                CloseCurrentMissionCrisisModal();
+            });
+
+        SuppressGameplayHudForMissionCrisisModal();
+        modalVisible = true;
+        StartModalWatchdog();
+        return true;
+    }
+
     private void DisplayNotification(string message)
     {
         var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>();

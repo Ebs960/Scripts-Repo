@@ -342,6 +342,9 @@ public class Governor
         if (HasPersonality(PersonalityTrait.Ambitious))
             total -= 1f; // -1 per turn passive drift
 
+        // Far-flung lords are harder to keep loyal to the capital.
+        total -= PoliticalDistanceUtility.GetGovernorDistancePenalty(this);
+
         Opinion = Mathf.Clamp(total, LoyaltyFloor, LoyaltyCeiling);
         return Opinion;
     }

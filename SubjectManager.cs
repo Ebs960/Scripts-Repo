@@ -288,10 +288,10 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         var subject  = contract.subject;
         var overlord = contract.overlord;
 
-        // Pick strongest available units (by maxHp as a proxy for combat power)
+        // Pick strongest available units (by max health as a proxy for combat power)
         var candidates = subject.combatUnits?
-            .Where(u => u != null && !u.isGarrisoned)
-            .OrderByDescending(u => u.maxHp)
+            .Where(u => u != null && !u.isGarrisonedInCity)
+            .OrderByDescending(u => u.MaxHealth)
             .Take(contract.militaryObligationCount)
             .ToList();
 
@@ -301,7 +301,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         {
             // Transfer unit to overlord
             subject.combatUnits.Remove(unit);
-            unit.owner = overlord;
+            unit.Initialize(unit.data, overlord);
             overlord.combatUnits.Add(unit);
         }
 
@@ -316,10 +316,12 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                   $"{candidates.Count} units to overlord {overlord.civData?.civName ?? overlord.name}.");
     }
 
-    // ── Independence ──────────────────────────────────────────────────────────    private void AttemptIndependence(VassalContract contract, int currentTurn)
+    // ── Independence ──────────────────────────────────────────────────────────
+
+    private void AttemptIndependence(VassalContract contract, int currentTurn)
     {
         // Simple probability gate: confident, resentful subjects break away
-        float breakawayChance = (contract.libertyDesire - contract.breakawayThreshold) * 0.02f
+        float breakawayChance = (contract.libertyDesire - contract.EffectiveBreakawayThreshold) * 0.02f
                               + contract.militaryConfidence * 0.005f;
 
         if (Random.value < breakawayChance)

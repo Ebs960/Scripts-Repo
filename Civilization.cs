@@ -718,14 +718,15 @@ public class Civilization : MonoBehaviour
         }
 
         // Remove this city from any other governor who has it listed
-        foreach (var c in governors.SelectMany(g => g.Cities).ToList())
+        foreach (var otherGovernor in governors)
         {
-            if (c == city)
-            {
-                c.governor = null;
-                governor.Cities.Remove(c);
-            }
+            if (otherGovernor == null || otherGovernor == governor) continue;
+            if (!otherGovernor.Cities.Contains(city)) continue;
+
+            otherGovernor.Cities.Remove(city);
+            otherGovernor.RefreshCouncilEligibility();
         }
+
         // Assign
         city.governor = governor;
         if (!governor.Cities.Contains(city))
@@ -2556,6 +2557,8 @@ public class Civilization : MonoBehaviour
             ProcessCouncilPressure();
             ProcessFactionTick(round);
         }
+
+        PoliticalEventManager.Instance?.ProcessCivilization(this, round);
 
         // --- NEW: Unrest & famine handling ---
         // Update war weariness

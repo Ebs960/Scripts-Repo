@@ -83,6 +83,7 @@ public class DiplomacyUI : MonoBehaviour
     public Button proposeDealButton;
     public Button acceptDealButton;
     public Button rejectDealButton;
+    public Button offerVassalageButton;
     public Button declareWarButton;
     public Button makePeaceButton;
     public Button cancelButton;
@@ -131,6 +132,7 @@ public class DiplomacyUI : MonoBehaviour
         if (proposeDealButton != null)   proposeDealButton.onClick.AddListener(OnProposeDealClicked);
         if (acceptDealButton != null)    acceptDealButton.onClick.AddListener(OnAcceptDealClicked);
         if (rejectDealButton != null)    rejectDealButton.onClick.AddListener(OnRejectDealClicked);
+        if (offerVassalageButton != null) offerVassalageButton.onClick.AddListener(OnOfferVassalageClicked);
         if (declareWarButton != null)    declareWarButton.onClick.AddListener(OnDeclareWarClicked);
         if (makePeaceButton != null)     makePeaceButton.onClick.AddListener(OnMakePeaceClicked);
         if (cancelButton != null)        cancelButton.onClick.AddListener(Hide);
@@ -481,6 +483,7 @@ public class DiplomacyUI : MonoBehaviour
             ? DiplomacyManager.Instance.GetRelationship(playerCiv, selectedCiv)
             : DiplomaticState.Peace;
         bool atWar = relation == DiplomaticState.War;
+        bool alreadyVassal = relation == DiplomaticState.Vassal;
 
         // Proposal flow
         if (proposeDealButton != null)
@@ -489,6 +492,8 @@ public class DiplomacyUI : MonoBehaviour
             acceptDealButton.gameObject.SetActive(hasCiv && isIncomingProposal);
         if (rejectDealButton != null)
             rejectDealButton.gameObject.SetActive(hasCiv && isIncomingProposal);
+        if (offerVassalageButton != null)
+            offerVassalageButton.gameObject.SetActive(hasCiv && !isIncomingProposal && !atWar && !alreadyVassal);
 
         // War / Peace
         if (declareWarButton != null)
@@ -718,6 +723,30 @@ public class DiplomacyUI : MonoBehaviour
 
         DiplomacyManager.Instance.SetState(playerCiv, selectedCiv, DiplomaticState.War);
         UIManager.Instance.ShowNotification($"War declared against {selectedCiv.civData.civName}!");
+
+        RefreshLeaderPresentation();
+        RefreshActionButtons();
+    }
+
+    private void OnOfferVassalageClicked()
+    {
+        if (selectedCiv == null) return;
+
+        DiplomacyManager.Instance.ProposeDeal(playerCiv, selectedCiv, DealType.Vassal);
+
+        var relation = DiplomacyManager.Instance.GetRelationship(playerCiv, selectedCiv);
+        if (relation == DiplomaticState.Vassal)
+        {
+            SetLeaderMood(LeaderMood.Agreement);
+            SetDialogue($"{selectedCiv.leader.leaderName} submits to your rule.");
+            UIManager.Instance.ShowNotification($"{selectedCiv.civData?.civName ?? selectedCiv.name} accepted vassalage.");
+        }
+        else
+        {
+            SetLeaderMood(LeaderMood.Angry);
+            SetDialogue($"{selectedCiv.leader.leaderName} rejects your demand for submission.");
+            UIManager.Instance.ShowNotification($"{selectedCiv.civData?.civName ?? selectedCiv.name} refused vassalage.");
+        }
 
         RefreshLeaderPresentation();
         RefreshActionButtons();
