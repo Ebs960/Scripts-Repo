@@ -6,10 +6,8 @@ public class ReligionManager : MonoBehaviour
     public static ReligionManager Instance { get; private set; }
 
     [Header("Religion Data")]
-    [Tooltip("All available pantheons in the game")]
-    public PantheonData[] availablePantheons;
-    [Tooltip("All available religions in the game")]
-    public ReligionData[] availableReligions;
+    [Tooltip("Optional database that supplies all pantheons, religions, and beliefs without relying on Resources folders.")]
+    public ReligionDatabase religionDatabase;
     
     [Header("Religion Limits")]
     [Tooltip("Maximum number of religions that can be founded in a game")]
@@ -45,6 +43,13 @@ public class ReligionManager : MonoBehaviour
             Instance = this;
         else
             Destroy(gameObject);
+
+        ApplyReligionDatabase();
+    }
+
+    private void OnValidate()
+    {
+        ApplyReligionDatabase();
     }
     
     void Start()
@@ -57,6 +62,11 @@ public class ReligionManager : MonoBehaviour
         // Register for turn changes
         if(TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+    }
+
+    private void ApplyReligionDatabase()
+    {
+        ResourceCache.SetReligionDatabase(religionDatabase);
     }
     
     void OnDestroy()
@@ -242,6 +252,7 @@ public class ReligionManager : MonoBehaviour
     public List<PantheonData> GetAvailablePantheons()
     {
         List<PantheonData> result = new List<PantheonData>();
+        var allPantheons = ResourceCache.GetAllPantheonData();
         
         // Get all civilizations in the game - use cached reference to avoid expensive FindAnyObjectByType call
         if (cachedCivManager == null)
@@ -251,9 +262,9 @@ public class ReligionManager : MonoBehaviour
             return result;
             
         // Add all available pantheons
-        if (availablePantheons != null)
+        if (allPantheons != null)
         {
-            result.AddRange(availablePantheons);
+            result.AddRange(allPantheons);
         }
         
         // Remove pantheons that have already been chosen by any civilization
@@ -275,11 +286,12 @@ public class ReligionManager : MonoBehaviour
     public List<ReligionData> GetAvailableReligions()
     {
         List<ReligionData> result = new List<ReligionData>();
+        var allReligions = ResourceCache.GetAllReligionData();
         
         // Add all available religions
-        if (availableReligions != null)
+        if (allReligions != null)
         {
-            result.AddRange(availableReligions);
+            result.AddRange(allReligions);
         }
         
         // Remove already founded religions

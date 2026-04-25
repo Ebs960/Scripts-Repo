@@ -583,7 +583,7 @@ public class ReligionUI : MonoBehaviour
 
         // Gather all beliefs available from loaded assets.
         var allBeliefs = new System.Collections.Generic.List<BeliefData>();
-        var resourceBeliefs = Resources.LoadAll<BeliefData>("");
+        var resourceBeliefs = ResourceCache.GetAllBeliefData();
         if (resourceBeliefs != null)
         {
             foreach (var belief in resourceBeliefs)

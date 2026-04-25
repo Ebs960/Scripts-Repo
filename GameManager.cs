@@ -3145,8 +3145,8 @@ public class GameManager : MonoBehaviour
         var techLookup = BuildAssetLookup(ResourceCache.GetAllTechData(), t => t.techName);
         var cultureLookup = BuildAssetLookup(ResourceCache.GetAllCultureData(), c => c.cultureName);
         var governorTraitLookup = BuildAssetLookup(Resources.LoadAll<GovernorTrait>(""), t => t.traitName);
-        var pantheonLookup = BuildAssetLookup(Resources.LoadAll<PantheonData>(""), p => p.pantheonName);
-        var beliefLookup = BuildAssetLookup(Resources.LoadAll<BeliefData>(""), b => b.beliefName);
+        var pantheonLookup = BuildAssetLookup(ResourceCache.GetAllPantheonData(), p => p.pantheonName);
+        var beliefLookup = BuildAssetLookup(ResourceCache.GetAllBeliefData(), b => b.beliefName);
 
         foreach (var progress in snapshot.civilizationProgress)
         {

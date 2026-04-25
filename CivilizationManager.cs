@@ -1479,7 +1479,7 @@ public class CivilizationManager : MonoBehaviour
         float bestScore = float.MinValue;
 
         if (availablePantheons == null) return;
-        var allBeliefs = Resources.LoadAll<BeliefData>("");
+        var allBeliefs = ResourceCache.GetAllBeliefData();
         if (allBeliefs == null || allBeliefs.Length == 0) return;
 
         foreach (var pantheon in availablePantheons)
@@ -1533,7 +1533,7 @@ public class CivilizationManager : MonoBehaviour
     {
         if (civ == null) return;
 
-        var allBeliefs = Resources.LoadAll<BeliefData>("");
+        var allBeliefs = ResourceCache.GetAllBeliefData();
         if (allBeliefs == null || allBeliefs.Length == 0) return;
 
         foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))

@@ -17,6 +17,7 @@ public static class ResourceCache
 {
     // Optional ResearchDatabase instance. Can be set at runtime via SetResearchDatabase()
     private static ResearchDatabase _researchDatabase = null;
+    private static ReligionDatabase _religionDatabase = null;
 
     /// <summary>
     /// Assign a ResearchDatabase at runtime (useful for GameManager/TechManager wiring).
@@ -43,6 +44,19 @@ public static class ResourceCache
 
     public static ResearchDatabase GetResearchDatabase() => _researchDatabase;
 
+    public static void SetReligionDatabase(ReligionDatabase db)
+    {
+        _religionDatabase = db;
+        _pantheonDataLoaded = false;
+        _religionDataLoaded = false;
+        _beliefDataLoaded = false;
+        _allPantheonData = null;
+        _allReligionData = null;
+        _allBeliefData = null;
+    }
+
+    public static ReligionDatabase GetReligionDatabase() => _religionDatabase;
+
     private static bool _initialized = false;
     
     // Cached resource arrays - loaded lazily on first access
@@ -58,6 +72,9 @@ public static class ResourceCache
     private static ResourceData[] _allResourceData;
     private static TechData[] _allTechData;
     private static CultureData[] _allCultureData;
+    private static PantheonData[] _allPantheonData;
+    private static ReligionData[] _allReligionData;
+    private static BeliefData[] _allBeliefData;
     
     // Track which resources have been loaded (for lazy loading)
     private static bool _combatUnitsLoaded = false;
@@ -72,6 +89,9 @@ public static class ResourceCache
     private static bool _resourceDataLoaded = false;
     private static bool _techDataLoaded = false;
     private static bool _cultureDataLoaded = false;
+    private static bool _pantheonDataLoaded = false;
+    private static bool _religionDataLoaded = false;
+    private static bool _beliefDataLoaded = false;
     
     /// <summary>
     /// Initialize the resource cache - now just marks as initialized, resources load lazily
@@ -111,6 +131,9 @@ public static class ResourceCache
         _allResourceData = null;
         _allTechData = null;
         _allCultureData = null;
+        _allPantheonData = null;
+        _allReligionData = null;
+        _allBeliefData = null;
         
         // Reset loaded flags
         _combatUnitsLoaded = false;
@@ -124,6 +147,9 @@ public static class ResourceCache
         _resourceDataLoaded = false;
         _techDataLoaded = false;
         _cultureDataLoaded = false;
+        _pantheonDataLoaded = false;
+        _religionDataLoaded = false;
+        _beliefDataLoaded = false;
         _unitNamesLoaded = false;
         _cachedUnitNames = null;
     }
@@ -584,6 +610,73 @@ public static class ResourceCache
             }
         }
         return _allCultureData ?? new CultureData[0];
+    }
+
+    public static PantheonData[] GetAllPantheonData()
+    {
+        EnsureInitialized();
+        if (!_pantheonDataLoaded)
+        {
+            if (_religionDatabase != null && _religionDatabase.pantheons != null && _religionDatabase.pantheons.Length > 0)
+            {
+                _allPantheonData = _religionDatabase.pantheons;
+            }
+            else
+            {
+                Debug.LogError("[ResourceCache] No ReligionDatabase assigned. Pantheon list will be empty. Assign a ReligionDatabase to ReligionManager or call ResourceCache.SetReligionDatabase().");
+                _allPantheonData = new PantheonData[0];
+            }
+
+            _pantheonDataLoaded = true;
+        }
+
+        return _allPantheonData ?? new PantheonData[0];
+    }
+
+    public static ReligionData[] GetAllReligionData()
+    {
+        EnsureInitialized();
+        if (!_religionDataLoaded)
+        {
+            if (_religionDatabase != null && _religionDatabase.religions != null && _religionDatabase.religions.Length > 0)
+            {
+                _allReligionData = _religionDatabase.religions;
+            }
+            else
+            {
+                Debug.LogError("[ResourceCache] No ReligionDatabase assigned. Religion list will be empty. Assign a ReligionDatabase to ReligionManager or call ResourceCache.SetReligionDatabase().");
+                _allReligionData = new ReligionData[0];
+            }
+
+            _religionDataLoaded = true;
+        }
+
+        return _allReligionData ?? new ReligionData[0];
+    }
+
+    /// <summary>
+    /// Get all belief data without scanning the entire Resources tree.
+    /// In editor, load directly from the belief asset folder.
+    /// In builds, fall back to a scoped Resources path if beliefs are moved there later.
+    /// </summary>
+    public static BeliefData[] GetAllBeliefData()
+    {
+        EnsureInitialized();
+        if (!_beliefDataLoaded)
+        {
+            if (_religionDatabase != null && _religionDatabase.beliefs != null && _religionDatabase.beliefs.Length > 0)
+            {
+                _allBeliefData = _religionDatabase.beliefs;
+            }
+            else
+            {
+                Debug.LogError("[ResourceCache] No ReligionDatabase assigned. Belief list will be empty. Assign a ReligionDatabase to ReligionManager or call ResourceCache.SetReligionDatabase().");
+                _allBeliefData = new BeliefData[0];
+            }
+            _beliefDataLoaded = true;
+        }
+
+        return _allBeliefData ?? new BeliefData[0];
     }
     
     /// <summary>

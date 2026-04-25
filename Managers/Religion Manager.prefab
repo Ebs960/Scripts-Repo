@@ -44,13 +44,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51b4db79efe5643459ee1ef374c49780, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  religionDatabase: {fileID: 11400000, guid: c38bd9937b107bf44bd9a90d7d48736b, type: 2}
   availablePantheons:
+  - {fileID: 11400000, guid: 646758db0e9301c4f89f721adb5747f1, type: 2}
+  - {fileID: 11400000, guid: 596d9e32f08af9e43af44b23325c3d81, type: 2}
+  - {fileID: 11400000, guid: aeb2b715c32cbcf4fb11ae423b841319, type: 2}
+  - {fileID: 11400000, guid: 7d1ad9a69f9fc464cb3ee2a8a9233d5a, type: 2}
+  - {fileID: 11400000, guid: cf0a4698ad9f8dc41af1c599ddc629e6, type: 2}
+  - {fileID: 11400000, guid: c296610bb952eba4e84420ae11be6df8, type: 2}
   - {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
+  - {fileID: 11400000, guid: db6f3fb99e2eb5b41a48f5f600eb5d67, type: 2}
+  - {fileID: 11400000, guid: 5daefd69ed9f14e41aa05a8a4e6eb954, type: 2}
+  - {fileID: 11400000, guid: b95bdf9fbbd69844abb62832c8fa4fee, type: 2}
   - {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
+  - {fileID: 11400000, guid: 82795ae18808b8a449fc0d0129028aed, type: 2}
+  - {fileID: 11400000, guid: c47520c491e6c5f48ba7de64cb0e62e8, type: 2}
+  - {fileID: 11400000, guid: 359fd58779996bb4c846c385d15ca9ec, type: 2}
   availableReligions:
   - {fileID: 11400000, guid: e37b535bebccc98478c63bc5000bc5e8, type: 2}
   - {fileID: 11400000, guid: fa31efdef22cbd341a6ad377856849ad, type: 2}
-  maxReligionsPerGame: 5
+  maxReligionsPerGame: 12
   holySitePressurePerTurn: 10
   pressureDecayPerTile: 2
   maxPressureSpreadDistance: 6
