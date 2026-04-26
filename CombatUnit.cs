@@ -714,9 +714,8 @@ public class CombatUnit : BaseUnit
                 valF = (valF + e.attackAdd) * (1f + e.attackPct);
             }
 
-            // Morale and fatigue scaling
+            // Fatigue scaling
             valF *= FatigueMultiplier;
-            valF *= MoraleDamageMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
             
             // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
@@ -1353,7 +1352,7 @@ public class CombatUnit : BaseUnit
             maxHPF += agg.healthAdd;
             // Apply multiplicative
             maxHPF = maxHPF * (1f + agg.healthPct);
-            // Attack/Defense/Range/Morale handled dynamically via getters or in combat
+            // Attack/Defense/Range handled dynamically via getters or in combat
             // Apply equipment-targeted bonuses across all equipped items
             var eagg = AggregateAllEquippedBonusesLocal(owner);
             maxHPF = (maxHPF + eagg.healthAdd) * (1f + eagg.healthPct);
@@ -1506,7 +1505,7 @@ public class CombatUnit : BaseUnit
         RestoreMovePointsForNewTurn();
         ResetAttackPointsForNewTurn();
 
-        // Warfare depth systems (morale recovery, fatigue recovery, status effect ticks)
+        // Warfare depth systems (fatigue recovery, status effect ticks)
         ProcessWarfareSystems();
 
         // If trapped, decrement duration (trappedTurnsRemaining is in BaseUnit)

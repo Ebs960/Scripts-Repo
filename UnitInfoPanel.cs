@@ -45,7 +45,6 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Stack Controls")]
     [SerializeField] private Button unstackButton; // Unstack this unit from its group (costs full turn)
     [SerializeField] private TextMeshProUGUI stackInfoText; // Shows "Stack: 1/3 [Tab to cycle]"
-    [SerializeField] private TextMeshProUGUI moraleText; // Shows current morale %
     [SerializeField] private StackOrderPanel stackOrderPanel; // Icon list for reordering the stack
 
     private CombatUnit currentCombatUnit;
@@ -363,7 +362,6 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Hide stack controls
         if (unstackButton != null) unstackButton.gameObject.SetActive(false);
         if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
-        if (moraleText != null) moraleText.gameObject.SetActive(false);
         stackOrderPanel?.Refresh(null);
 
         // Clear unit references
@@ -656,16 +654,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         {
             if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
             if (unstackButton != null) unstackButton.gameObject.SetActive(false);
-            if (moraleText != null) moraleText.gameObject.SetActive(false);
             return;
-        }
-
-        // Morale display
-        if (moraleText != null)
-        {
-            moraleText.gameObject.SetActive(true);
-            int moralePct = Mathf.RoundToInt(unit.currentMorale);
-            moraleText.text = $"Morale: {moralePct}%";
         }
 
         // Stack info

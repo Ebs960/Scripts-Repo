@@ -81,7 +81,7 @@ public class WorkerUnit : BaseUnit
         RestoreMovePointsForNewTurn();
         ResetAttackPointsForNewTurn();
 
-        // Warfare depth systems (morale recovery, fatigue recovery, status effect ticks)
+        // Warfare depth systems (fatigue recovery, status effect ticks)
         ProcessWarfareSystems();
 
         // Worker-specific resets
@@ -848,7 +848,6 @@ public class WorkerUnit : BaseUnit
             }
 
             valF *= FatigueMultiplier;
-            valF *= MoraleDamageMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
             return Mathf.Max(0, Mathf.RoundToInt(valF));
         }

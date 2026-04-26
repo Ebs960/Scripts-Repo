@@ -37,7 +37,6 @@ public static class AIScorer
 
     public static float W_FORTIFY_BASE       = 1f;
 
-    public static float W_MORALE_TARGET_BONUS = 3f;   // bonus for attacking low-morale enemies
     public static float W_FATIGUE_TARGET_BONUS = 2f;   // bonus for attacking fatigued enemies
 
     public static float W_RESOURCE_YIELD     = 2f;
@@ -66,12 +65,12 @@ public static class AIScorer
         W_RETREAT_HEALTH, W_RETREAT_SAFETY, W_FORTIFY_BASE,
         W_RESOURCE_YIELD, W_RESOURCE_STRATEGIC, W_RESOURCE_UNIQUE,
         W_EXPLORE_BASE, W_EXPLORE_UNEXPLORED, W_EXPLORE_DISTANCE,
-        W_MORALE_TARGET_BONUS, W_FATIGUE_TARGET_BONUS
+        W_FATIGUE_TARGET_BONUS
     };
 
     private static void RestoreFromSnapshot(float[] s)
     {
-        if (s == null || s.Length < 27) return;
+        if (s == null || s.Length < 26) return;
         W_KILL_BONUS = s[0]; W_FOOD_ON_KILL = s[1]; W_DAMAGE_DEALT = s[2]; W_DAMAGE_TAKEN = s[3];
         W_TARGET_VALUE = s[4]; W_LOW_HEALTH_TARGET = s[5]; W_DANGER_PENALTY = s[6]; W_DISTANCE_PENALTY = s[7];
         W_TERRAIN_DEFENSE = s[8]; W_HILL_BONUS = s[9]; W_FORAGE_FOOD = s[10]; W_FORAGE_OTHER = s[11];
@@ -79,7 +78,7 @@ public static class AIScorer
         W_RETREAT_HEALTH = s[16]; W_RETREAT_SAFETY = s[17]; W_FORTIFY_BASE = s[18];
         W_RESOURCE_YIELD = s[19]; W_RESOURCE_STRATEGIC = s[20]; W_RESOURCE_UNIQUE = s[21];
         W_EXPLORE_BASE = s[22]; W_EXPLORE_UNEXPLORED = s[23]; W_EXPLORE_DISTANCE = s[24];
-        W_MORALE_TARGET_BONUS = s[25]; W_FATIGUE_TARGET_BONUS = s[26];
+        W_FATIGUE_TARGET_BONUS = s[25];
     }
 
     /// <summary>
@@ -228,10 +227,7 @@ public static class AIScorer
         // Target military value (removing a strong unit is worth more)
         score += defender.BaseAttack * W_TARGET_VALUE;
 
-        // Morale/fatigue vulnerability: prefer attacking weakened units
-        if (defender.currentMorale < 40f)
-            score += (1f - defender.currentMorale / 100f) * W_MORALE_TARGET_BONUS;
-
+        // Fatigue vulnerability: prefer attacking weakened units
         if (defender.currentFatigue > 50f)
             score += (defender.currentFatigue / 100f) * W_FATIGUE_TARGET_BONUS;
 

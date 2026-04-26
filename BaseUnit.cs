@@ -9,7 +9,7 @@ using GameCombat;
 /// 
 /// Architecture:
 /// - BaseUnit handles common systems (equipment, movement, damage, animations)
-/// - CombatUnit adds: morale, fatigue, formations, battle system
+/// - CombatUnit adds: fatigue, formations, battle system
 /// - WorkerUnit adds: work points, building, foraging, city founding
 /// </summary>
 [RequireComponent(typeof(Animator))]
@@ -144,10 +144,6 @@ public abstract class BaseUnit : MonoBehaviour
         // Fatigue from attacking
         if (ctx.attacker != null)
             ctx.attacker.AddFatigue(8f);
-
-        // Morale boost for attacker on kill
-        if (died && ctx.attacker != null)
-            ctx.attacker.OnEnemyKilled();
 
         // Centralized XP awarding: attackers that are CombatUnit gain XP for hits and additional XP on kills
         try
@@ -458,15 +454,11 @@ public abstract class BaseUnit : MonoBehaviour
     public Herd storedInHerd = null;
     #endregion
 
-    #region Status Effects, Morale & Fatigue
+    #region Status Effects & Fatigue
 
     [System.NonSerialized]
     protected List<StatusEffect> activeStatusEffects = new List<StatusEffect>();
 
-    /// <summary>Current morale (0–100). Affects damage dealt. At 0, the unit routs.</summary>
-    [System.NonSerialized]
-    public float currentMorale = 100f;
-    public const float MaxMorale = 100f;
     /// <summary>Current fatigue (0–100). Rises from actions, reduces attack and defense.</summary>
     [System.NonSerialized]
     public float currentFatigue = 0f;
@@ -588,22 +580,6 @@ public abstract class BaseUnit : MonoBehaviour
         return total;
     }
 
-    // ── Morale API ──
-
-    /// <summary>Modify morale by delta (positive = inspire, negative = shock). Clamped to 0–100.</summary>
-    public void ModifyMorale(float delta)
-    {
-        float sumEffects = 0f;
-        foreach (var e in activeStatusEffects)
-            sumEffects += e.GetMoraleModifier();
-        currentMorale = Mathf.Clamp(currentMorale + delta + sumEffects, 0f, MaxMorale);
-    }
-
-    /// <summary>
-    /// Morale multiplier for combat stats. 1.1 at full morale, drops to 0.5 at zero morale.
-    /// </summary>
-    public float MoraleDamageMultiplier => Mathf.Lerp(0.5f, 1.1f, currentMorale / MaxMorale);
-
     /// <summary>
     /// Fatigue multiplier for combat stats. 1.0 at 0 fatigue, drops to 0.7 at max fatigue.
     /// </summary>
@@ -622,43 +598,13 @@ public abstract class BaseUnit : MonoBehaviour
         currentFatigue = Mathf.Max(0f, currentFatigue - recovery);
     }
 
-    /// <summary>Recover morale at start of turn. Nearby allies help.</summary>
-    public void RecoverMoraleForNewTurn()
-    {
-        float baseRecovery = 5f;
-        if (IsFortified) baseRecovery += 5f;
-        int nearbyAllies = CombatHelpers.CountNearbyAllies(this, 2);
-        baseRecovery += nearbyAllies * 2f;
-        currentMorale = Mathf.Min(MaxMorale, currentMorale + baseRecovery);
-    }
-
-    /// <summary>Called when this unit takes damage — reduces morale based on severity.</summary>
-    public void OnDamageMoraleShock(int damageAmount)
-    {
-        float shock = (float)damageAmount / Mathf.Max(1, MaxHealth) * 30f;
-        ModifyMorale(-shock);
-    }
-
-    /// <summary>Called when an ally dies nearby — morale penalty.</summary>
-    public void OnAllyKilledNearby()
-    {
-        ModifyMorale(-8f);
-    }
-
-    /// <summary>Called when this unit kills an enemy — morale boost.</summary>
-    public void OnEnemyKilled()
-    {
-        ModifyMorale(10f);
-    }
-
     /// <summary>
-    /// Process morale/fatigue/status effects at start of turn.
+    /// Process fatigue/status effects at start of turn.
     /// Call from subclass ResetForNewTurn after base resets.
     /// </summary>
     public void ProcessWarfareSystems()
     {
         RecoverFatigueForNewTurn();
-        RecoverMoraleForNewTurn();
 
         // Tick status effects (DoT, HoT, expiry)
         // Tick() contract: positive = damage (Poison/Burn), negative = healing (Regeneration)
@@ -1095,7 +1041,6 @@ public abstract class BaseUnit : MonoBehaviour
             float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
             valF += GetStatusEffectAttackModifier();
             valF *= FatigueMultiplier;
-            valF *= MoraleDamageMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
             return Mathf.Max(0, Mathf.RoundToInt(valF));
         }
@@ -1114,7 +1059,6 @@ public abstract class BaseUnit : MonoBehaviour
         float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
         valF += GetStatusEffectDefenseModifier();
         valF *= FatigueMultiplier;
-        valF *= MoraleDamageMultiplier;
         valF = ApplyOwnerDefenseBonuses(valF);
         valF = ApplyTileDefenseBonuses(valF);
         valF = ApplyFortifyDefenseBonus(valF);
@@ -1626,9 +1570,6 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Update label
         UpdateUnitLabel();
-
-        // Morale shock from taking damage
-        OnDamageMoraleShock(damageAmount);
 
         // Raise damage event with attacker context
         try { GameEventManager.Instance?.RaiseDamageAppliedEvent(attacker, this, damageAmount); } catch { }
@@ -2446,9 +2387,6 @@ public abstract class BaseUnit : MonoBehaviour
             return Mathf.Max(0, baseDamage);
 
         int modifiedDamage = Mathf.Max(0, baseDamage);
-
-        // Morale multiplier
-        modifiedDamage = Mathf.RoundToInt(modifiedDamage * MoraleDamageMultiplier);
 
         int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
         if (flankCount > 0)
