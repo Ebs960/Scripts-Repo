@@ -1,32 +1,26 @@
 // Assets/Scripts/UI/StrategyHudController.cs
 using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
 /// Top-level HUD controller for the new architecture.
-/// Manages instantiation and data-binding of HUD widgets under serialized anchors.
-/// All screen positions are configurable via Inspector (no hardcoded anchoredPositions).
+/// Binds already-placed HUD widgets in-scene (no runtime prefab instantiation).
+/// Visibility mirrors UIManager.playerUI behavior so this HUD appears/disappears
+/// for the same reasons as the existing PlayerUI.
 /// </summary>
 public class StrategyHudController : MonoBehaviour
 {
-    [Header("HUD Anchors")]
-    [SerializeField] private Transform topBarAnchor;
-    [SerializeField] private Transform leftScienceCultureAnchor;
-    [SerializeField] private Transform rightLayerDropdownAnchor;
-    [SerializeField] private Transform bottomBarAnchor;
+    [Header("Assigned HUD Widgets (already in scene)")]
+    [SerializeField] private HudTopBar topBar;
+    [SerializeField] private HudLeftPanel leftPanel;
+    [SerializeField] private HudRightPanel rightPanel;
+    [SerializeField] private HudBottomBar bottomBar;
 
-    [Header("Widget Prefabs")]
-    [SerializeField] private GameObject topBarPrefab;
-    [SerializeField] private GameObject leftScienceCulturePrefab;
-    [SerializeField] private GameObject rightLayerDropdownPrefab;
-    [SerializeField] private GameObject bottomBarPrefab;
-
-    private GameObject topBarInstance;
-    private GameObject leftScienceCultureInstance;
-    private GameObject rightLayerDropdownInstance;
-    private GameObject bottomBarInstance;
+    [Header("HUD Roots (optional explicit roots for visibility toggling)")]
+    [SerializeField] private GameObject topBarRoot;
+    [SerializeField] private GameObject leftPanelRoot;
+    [SerializeField] private GameObject rightPanelRoot;
+    [SerializeField] private GameObject bottomBarRoot;
 
     private Civilization currentCiv;
 
@@ -44,7 +38,6 @@ public class StrategyHudController : MonoBehaviour
         {
             HandleTurnChanged(playerCiv);
         }
-
     }
 
     // Overload to handle TurnManager's (Civilization,int) event signature
@@ -61,6 +54,11 @@ public class StrategyHudController : MonoBehaviour
         }
     }
 
+    private void LateUpdate()
+    {
+        SyncVisibilityWithPlayerUi();
+    }
+
     /// <summary>
     /// Handle turn changes by updating HUD for the new active civilization.
     /// </summary>
@@ -70,14 +68,8 @@ public class StrategyHudController : MonoBehaviour
         
         currentCiv = newCiv;
 
-        // Only update HUD if it's the player's turn
-        if (!newCiv.isPlayerControlled)
-        {
-            HideAllWidgets();
-            return;
-        }
-
         RefreshAllWidgets();
+        SyncVisibilityWithPlayerUi();
     }
 
     /// <summary>
@@ -95,116 +87,48 @@ public class StrategyHudController : MonoBehaviour
 
     private void RefreshTopBar()
     {
-        if (topBarAnchor == null) return;
-
-        // Destroy existing instance
-        if (topBarInstance != null)
-            Destroy(topBarInstance);
-
-        // Instantiate new widget under anchor
-        if (topBarPrefab != null)
-        {
-            topBarInstance = Instantiate(topBarPrefab, topBarAnchor);
-            // Position is controlled by RectTransform anchoring
-            topBarInstance.name = "TopBar_Instance";
-
-            // Bind data
-            var topBarWidget = topBarInstance.GetComponent<HudTopBar>();
-            if (topBarWidget != null)
-                topBarWidget.Bind(currentCiv);
-        }
+        if (topBar != null)
+            topBar.Bind(currentCiv);
     }
 
     private void RefreshLeftPanel()
     {
-        if (leftScienceCultureAnchor == null) return;
-
-        // Destroy existing instance
-        if (leftScienceCultureInstance != null)
-            Destroy(leftScienceCultureInstance);
-
-        // Instantiate new widget under anchor
-        if (leftScienceCulturePrefab != null)
-        {
-            leftScienceCultureInstance = Instantiate(leftScienceCulturePrefab, leftScienceCultureAnchor);
-            leftScienceCultureInstance.name = "LeftPanel_Instance";
-
-            // Bind data
-            var leftWidget = leftScienceCultureInstance.GetComponent<HudLeftPanel>();
-            if (leftWidget != null)
-                leftWidget.Bind(currentCiv);
-        }
+        if (leftPanel != null)
+            leftPanel.Bind(currentCiv);
     }
 
     private void RefreshRightPanel()
     {
-        if (rightLayerDropdownAnchor == null) return;
-
-        // Destroy existing instance
-        if (rightLayerDropdownInstance != null)
-            Destroy(rightLayerDropdownInstance);
-
-        // Instantiate new widget under anchor
-        if (rightLayerDropdownPrefab != null)
-        {
-            rightLayerDropdownInstance = Instantiate(rightLayerDropdownPrefab, rightLayerDropdownAnchor);
-            rightLayerDropdownInstance.name = "RightPanel_Instance";
-
-            // Bind data
-            var rightWidget = rightLayerDropdownInstance.GetComponent<HudRightPanel>();
-            if (rightWidget != null)
-                rightWidget.Bind(currentCiv);
-        }
+        if (rightPanel != null)
+            rightPanel.Bind(currentCiv);
     }
 
     private void RefreshBottomBar()
     {
-        if (bottomBarAnchor == null) return;
-
-        // Destroy existing instance
-        if (bottomBarInstance != null)
-            Destroy(bottomBarInstance);
-
-        // Instantiate new widget under anchor
-        if (bottomBarPrefab != null)
-        {
-            bottomBarInstance = Instantiate(bottomBarPrefab, bottomBarAnchor);
-            bottomBarInstance.name = "BottomBar_Instance";
-
-            // Bind data
-            var bottomWidget = bottomBarInstance.GetComponent<HudBottomBar>();
-            if (bottomWidget != null)
-                bottomWidget.Bind(currentCiv);
-        }
+        if (bottomBar != null)
+            bottomBar.Bind(currentCiv);
     }
 
-    /// <summary>
-    /// Hide all widgets when it's not the player's turn.
-    /// </summary>
-    private void HideAllWidgets()
+    private bool ShouldHudBeVisible()
     {
-        if (topBarInstance != null)
-            topBarInstance.SetActive(false);
-        if (leftScienceCultureInstance != null)
-            leftScienceCultureInstance.SetActive(false);
-        if (rightLayerDropdownInstance != null)
-            rightLayerDropdownInstance.SetActive(false);
-        if (bottomBarInstance != null)
-            bottomBarInstance.SetActive(false);
+        bool playerTurn = currentCiv != null && currentCiv.isPlayerControlled;
+        bool playerUiVisible = UIManager.Instance == null || UIManager.Instance.playerUI == null || UIManager.Instance.playerUI.activeSelf;
+        return playerTurn && playerUiVisible;
     }
 
-    /// <summary>
-    /// Show all widgets (call this when returning to player's turn).
-    /// </summary>
-    public void ShowAllWidgets()
+    private void SyncVisibilityWithPlayerUi()
     {
-        if (topBarInstance != null)
-            topBarInstance.SetActive(true);
-        if (leftScienceCultureInstance != null)
-            leftScienceCultureInstance.SetActive(true);
-        if (rightLayerDropdownInstance != null)
-            rightLayerDropdownInstance.SetActive(true);
-        if (bottomBarInstance != null)
-            bottomBarInstance.SetActive(true);
+        bool visible = ShouldHudBeVisible();
+        SetWidgetVisible(topBarRoot, topBar != null ? topBar.gameObject : null, visible);
+        SetWidgetVisible(leftPanelRoot, leftPanel != null ? leftPanel.gameObject : null, visible);
+        SetWidgetVisible(rightPanelRoot, rightPanel != null ? rightPanel.gameObject : null, visible);
+        SetWidgetVisible(bottomBarRoot, bottomBar != null ? bottomBar.gameObject : null, visible);
+    }
+
+    private static void SetWidgetVisible(GameObject explicitRoot, GameObject fallbackRoot, bool visible)
+    {
+        var target = explicitRoot != null ? explicitRoot : fallbackRoot;
+        if (target != null)
+            target.SetActive(visible);
     }
 }
