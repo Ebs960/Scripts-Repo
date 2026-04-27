@@ -6,6 +6,7 @@ using System.Text;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 public class UIManager : MonoBehaviour
 {
@@ -48,7 +49,8 @@ public class UIManager : MonoBehaviour
     public GameObject equipmentPanel;
     public GameObject unitInfoPanel;
     public GameObject pauseMenuPanel;
-    public GameObject playerUI;
+    [FormerlySerializedAs("playerUI")]
+    public GameObject gameplayHudRoot;
     public SpaceMapUI spaceMapUI;
 
     [Header("Mission and Crisis UI")]
@@ -79,7 +81,7 @@ public class UIManager : MonoBehaviour
     private TurnManager subscribedTurnManager;
     private readonly Queue<ModalRequest> modalQueue = new Queue<ModalRequest>();
     private bool modalVisible;
-    private bool restorePlayerUiAfterModal;
+    private bool restoreGameplayHudAfterModal;
     private bool restoreUnitInfoPanelAfterModal;
     private bool restoreMinimapAfterModal;
     private MinimapUI cachedMinimapUI;
@@ -151,14 +153,15 @@ public class UIManager : MonoBehaviour
             { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
             { "pauseMenuPanel", pauseMenuPanel },
-            { "PlayerUI", playerUI },
-            { "playerUI", playerUI }
+            { "PlayerUI", gameplayHudRoot },
+            { "playerUI", gameplayHudRoot },
+            { "gameplayHudRoot", gameplayHudRoot }
         };
         HideAllPanels();
 
-        // Keep PlayerUI active - it should be visible at game start (unless loading is active)
-        if (playerUI != null && !IsLoadingActive()) 
-            playerUI.SetActive(true);
+        // Keep Gameplay HUD active - it should be visible at game start (unless loading is active)
+        if (gameplayHudRoot != null && !IsLoadingActive())
+            gameplayHudRoot.SetActive(true);
 
         // Ensure the Unit Info panel is visible at startup by default (it will be hidden
         // automatically when other top-level panels are shown via ShowPanel()). Only
@@ -263,13 +266,13 @@ public class UIManager : MonoBehaviour
     {
         foreach (var panel in panelDict.Values)
         {
-            if (panel != null && panel != playerUI)
+            if (panel != null && panel != gameplayHudRoot)
                 panel.SetActive(false);
         }
 
-        // Always keep the main PlayerUI visible (unless loading is active)
-        if (playerUI != null && !IsLoadingActive())
-            playerUI.SetActive(true);
+        // Always keep the main Gameplay HUD visible (unless loading is active)
+        if (gameplayHudRoot != null && !IsLoadingActive())
+            gameplayHudRoot.SetActive(true);
     }
 
     /// <summary>
@@ -342,11 +345,11 @@ public class UIManager : MonoBehaviour
     private void EnsurePoliticalAffairsPanelUi()
     {
         if (politicalAffairsPanelUI != null) return;
-        if (playerUI == null) return;
+        if (gameplayHudRoot == null) return;
 
-        var parentRect = playerUI.GetComponent<RectTransform>();
+        var parentRect = gameplayHudRoot.GetComponent<RectTransform>();
         if (parentRect == null)
-            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+            parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
         if (parentRect == null) return;
 
         var go = new GameObject("PoliticalAffairsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(PoliticalAffairsPanelUI));
@@ -429,11 +432,11 @@ public class UIManager : MonoBehaviour
     private void EnsureCrisisMissionTrackerUi()
     {
         if (crisisMissionTrackerUI != null) return;
-        if (playerUI == null) return;
+        if (gameplayHudRoot == null) return;
 
-        var parentRect = playerUI.GetComponent<RectTransform>();
+        var parentRect = gameplayHudRoot.GetComponent<RectTransform>();
         if (parentRect == null)
-            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+            parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
         if (parentRect == null) return;
 
         var trackerObject = new GameObject("CrisisMissionTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(CrisisMissionTrackerUI));
@@ -451,11 +454,11 @@ public class UIManager : MonoBehaviour
     private void EnsureLegacyTrackerUi()
     {
         if (legacyTrackerUI != null) return;
-        if (playerUI == null) return;
+        if (gameplayHudRoot == null) return;
 
-        var parentRect = playerUI.GetComponent<RectTransform>();
+        var parentRect = gameplayHudRoot.GetComponent<RectTransform>();
         if (parentRect == null)
-            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+            parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
         if (parentRect == null) return;
 
         var legacyObject = new GameObject("LegacyTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(LegacyTrackerUI));
@@ -807,7 +810,7 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Make the Herd panel modal: hide all managed panels (including playerUI),
+        // Make the Herd panel modal: hide all managed panels (including gameplayHudRoot),
         // then activate the herd panel and populate it.
         foreach (var kv in panelDict)
         {
@@ -1360,7 +1363,7 @@ public class UIManager : MonoBehaviour
 
     private void SuppressGameplayHudForMissionCrisisModal()
     {
-        restorePlayerUiAfterModal = playerUI != null && playerUI.activeSelf;
+        restoreGameplayHudAfterModal = gameplayHudRoot != null && gameplayHudRoot.activeSelf;
         restoreUnitInfoPanelAfterModal = unitInfoPanel != null && unitInfoPanel.activeSelf;
 
         if (cachedMinimapUI == null)
@@ -1369,16 +1372,16 @@ public class UIManager : MonoBehaviour
 
         if (unitInfoPanel != null)
             unitInfoPanel.SetActive(false);
-        if (playerUI != null)
-            playerUI.SetActive(false);
+        if (gameplayHudRoot != null)
+            gameplayHudRoot.SetActive(false);
         if (cachedMinimapUI != null)
             cachedMinimapUI.gameObject.SetActive(false);
     }
 
     private void RestoreGameplayHudAfterMissionCrisisModal()
     {
-        if (playerUI != null)
-            playerUI.SetActive(restorePlayerUiAfterModal && !IsLoadingActive());
+        if (gameplayHudRoot != null)
+            gameplayHudRoot.SetActive(restoreGameplayHudAfterModal && !IsLoadingActive());
 
         if (unitInfoPanel != null)
             unitInfoPanel.SetActive(restoreUnitInfoPanelAfterModal && !IsLoadingActive());
@@ -1386,7 +1389,7 @@ public class UIManager : MonoBehaviour
         if (cachedMinimapUI != null)
             cachedMinimapUI.gameObject.SetActive(restoreMinimapAfterModal && !IsLoadingActive());
 
-        restorePlayerUiAfterModal = false;
+        restoreGameplayHudAfterModal = false;
         restoreUnitInfoPanelAfterModal = false;
         restoreMinimapAfterModal = false;
     }
@@ -2057,9 +2060,9 @@ public class UIManager : MonoBehaviour
 
     private Canvas ResolveMissionCrisisFallbackCanvas()
     {
-        if (playerUI != null)
+        if (gameplayHudRoot != null)
         {
-            var canvas = playerUI.GetComponentInParent<Canvas>();
+            var canvas = gameplayHudRoot.GetComponentInParent<Canvas>();
             if (canvas != null) return canvas;
         }
 

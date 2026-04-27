@@ -5,8 +5,8 @@ using UnityEngine;
 /// <summary>
 /// Top-level HUD controller for the new architecture.
 /// Binds already-placed HUD widgets in-scene (no runtime prefab instantiation).
-/// Visibility mirrors UIManager.playerUI behavior so this HUD appears/disappears
-/// for the same reasons as the existing PlayerUI.
+/// Visibility mirrors UIManager.gameplayHudRoot behavior so this HUD appears/disappears
+/// for the same reasons as the main gameplay HUD root.
 /// </summary>
 public class StrategyHudController : MonoBehaviour
 {
@@ -56,7 +56,7 @@ public class StrategyHudController : MonoBehaviour
 
     private void LateUpdate()
     {
-        SyncVisibilityWithPlayerUi();
+        SyncVisibilityWithGameplayHudRoot();
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ public class StrategyHudController : MonoBehaviour
         currentCiv = newCiv;
 
         RefreshAllWidgets();
-        SyncVisibilityWithPlayerUi();
+        SyncVisibilityWithGameplayHudRoot();
     }
 
     /// <summary>
@@ -112,11 +112,11 @@ public class StrategyHudController : MonoBehaviour
     private bool ShouldHudBeVisible()
     {
         bool playerTurn = currentCiv != null && currentCiv.isPlayerControlled;
-        bool playerUiVisible = UIManager.Instance == null || UIManager.Instance.playerUI == null || UIManager.Instance.playerUI.activeSelf;
-        return playerTurn && playerUiVisible;
+        bool gameplayHudVisible = UIManager.Instance == null || UIManager.Instance.gameplayHudRoot == null || UIManager.Instance.gameplayHudRoot.activeSelf;
+        return playerTurn && gameplayHudVisible;
     }
 
-    private void SyncVisibilityWithPlayerUi()
+    private void SyncVisibilityWithGameplayHudRoot()
     {
         bool visible = ShouldHudBeVisible();
         SetWidgetVisible(topBarRoot, topBar != null ? topBar.gameObject : null, visible);

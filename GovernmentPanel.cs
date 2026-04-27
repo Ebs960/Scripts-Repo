@@ -57,11 +57,11 @@ public class GovernmentPanel : MonoBehaviour
     {
         this.civ = civ;
         // Use UIManager to show panel so other panels are hidden consistently.
-        // Also explicitly hide the Player UI so the government panel is modal.
+        // Also explicitly hide the gameplay HUD root so the government panel is modal.
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowPanel("governmentPanel");
-            UIManager.Instance.HidePanel("playerUI");
+            UIManager.Instance.HidePanel("gameplayHudRoot");
         }
         else if (panelRoot != null)
             panelRoot.SetActive(true);
@@ -238,13 +238,13 @@ public class GovernmentPanel : MonoBehaviour
 
     public void Hide()
     {
-        // Use HideAllPanels so playerUI is restored
-        // (ShowForCivilization explicitly hides playerUI when opening)
+        // Use HideAllPanels so gameplay HUD root is restored
+        // (ShowForCivilization explicitly hides it when opening)
         if (UIManager.Instance != null)
         {
             UIManager.Instance.HideAllPanels();
-            if (UIManager.Instance.playerUI != null)
-                UIManager.Instance.playerUI.SetActive(true);
+            if (UIManager.Instance.gameplayHudRoot != null)
+                UIManager.Instance.gameplayHudRoot.SetActive(true);
         }
         else if (panelRoot != null)
             panelRoot.SetActive(false);
@@ -444,13 +444,13 @@ public class GovernmentPanel : MonoBehaviour
         ClearSpawned();
         civ = null;
 
-        // Use UIManager.HideAllPanels so playerUI is restored
-        // (ShowForCivilization explicitly hides playerUI when opening)
+        // Use UIManager.HideAllPanels so gameplay HUD root is restored
+        // (ShowForCivilization explicitly hides it when opening)
         if (UIManager.Instance != null)
         {
             UIManager.Instance.HideAllPanels();
-            if (UIManager.Instance.playerUI != null)
-                UIManager.Instance.playerUI.SetActive(true);
+            if (UIManager.Instance.gameplayHudRoot != null)
+                UIManager.Instance.gameplayHudRoot.SetActive(true);
         }
         else if (panelRoot != null)
             panelRoot.SetActive(false);

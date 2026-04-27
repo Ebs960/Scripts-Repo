@@ -2248,19 +2248,19 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.HideAllPanels();
-            if (UIManager.Instance.playerUI != null)
-            {
-                UIManager.Instance.playerUI.SetActive(true);
 
-                // Refresh layer dropdown now that planet generation is complete
-                // (Start-time refresh runs too early — LayerManager isn't added until ApplyPlanetLayers)
-                var pui = UIManager.Instance.playerUI.GetComponent<PlayerUI>();
-                if (pui == null) pui = UIManager.Instance.playerUI.GetComponentInChildren<PlayerUI>();
-                if (pui != null) pui.RefreshLayerDropdown();
-            }
+            if (UIManager.Instance.gameplayHudRoot != null)
+                UIManager.Instance.gameplayHudRoot.SetActive(true);
         }
 
-        // Initialize space loading panel if prefab is assigned
+        var hud = FindFirstObjectByType<HudController>(FindObjectsInactive.Include);
+        if (hud != null)
+            hud.RefreshAll();
+
+        var router = FindFirstObjectByType<HudPanelRouter>(FindObjectsInactive.Include);
+        if (router != null)
+            router.RefreshLayerDropdown();
+
         InitializeSpaceLoadingPanel();
     }
 
