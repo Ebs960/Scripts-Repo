@@ -9,6 +9,7 @@ public class UnitInfoPanel : MonoBehaviour
 {
     [Header("Panel References")]
     [SerializeField] private GameObject unitInfoPanel;
+    [SerializeField] private Image unitIconImage; // Display the unit's icon
     [SerializeField] private TextMeshProUGUI unitNameText;
     [SerializeField] private TextMeshProUGUI unitTypeText;
     [SerializeField] private TextMeshProUGUI levelText;
@@ -522,6 +523,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         unitNameText.text = currentCombatUnit.data.unitName;
         unitTypeText.text = currentCombatUnit.data.unitType.ToString();
+
+        // Display unit icon
+        if (unitIconImage != null && currentCombatUnit.data.icon != null)
+            unitIconImage.sprite = currentCombatUnit.data.icon;
         levelText.text = $"Level: {currentCombatUnit.level}";
         experienceText.text = $"XP: {currentCombatUnit.experience}/{currentCombatUnit.data.xpToNextLevel[currentCombatUnit.level - 1]}";
         

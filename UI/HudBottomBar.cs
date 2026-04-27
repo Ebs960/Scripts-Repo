@@ -9,6 +9,9 @@ public class HudBottomBar : MonoBehaviour
     [SerializeField] private GameObject unitInfoPanelRoot;
     [SerializeField] private GameObject minimapRoot;
 
+    /// <summary>
+    /// Bind this panel to a civilization and populate displays.
+    /// </summary>
     public void Bind(Civilization civ)
     {
         if (civ == null)

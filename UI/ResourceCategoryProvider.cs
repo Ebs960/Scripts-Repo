@@ -39,28 +39,6 @@ public static class ResourceCategoryProviderUtility
         return count;
     }
 
-    public static int GetYieldPerTurn(Civilization civ, ResourceCategoryDefinitionSO category)
-    {
-        int total = 0;
-        foreach (var kvp in GetMergedInventory(civ, category))
-        {
-            if (kvp.Key == null) continue;
-            int quantity = kvp.Value;
-            if (quantity == 0) continue;
-
-            total += quantity * (
-                kvp.Key.foodPerTurn +
-                kvp.Key.productionPerTurn +
-                kvp.Key.goldPerTurn +
-                kvp.Key.sciencePerTurn +
-                kvp.Key.culturePerTurn +
-                kvp.Key.policyPointsPerTurn +
-                kvp.Key.faithPerTurn);
-        }
-
-        return total;
-    }
-
     private static void MergeInto(Dictionary<ResourceData, int> target, Dictionary<ResourceData, int> source)
     {
         foreach (var kvp in source)
