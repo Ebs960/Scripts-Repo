@@ -124,7 +124,7 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         RefreshDropdownContent();
     }
 
-    private void HandleMissionCompleted(Civilization civ, MissionData mission, MissionState state)
+    private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
     {
         RefreshDropdownContent();
     }
