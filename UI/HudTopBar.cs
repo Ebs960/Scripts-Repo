@@ -1,5 +1,6 @@
 // Assets/Scripts/UI/HudTopBar.cs
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
@@ -26,6 +27,9 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
     [SerializeField] private ResourceCategoryDefinitionSO[] allResourceCategories = new ResourceCategoryDefinitionSO[6];
 
+    [Header("Panel Buttons (optional)")]
+    [SerializeField] private Button religionButton;
+    [SerializeField] private Button policyButton;
     [SerializeField] private HudPanelRouter panelRouter;
 
     private Civilization currentCiv;
@@ -85,6 +89,7 @@ public class HudTopBar : MonoBehaviour
         // Bind resource category widgets
         BindResourceCategories();
 
+        WireButtonListeners();
     }
 
     /// <summary>
@@ -109,6 +114,37 @@ public class HudTopBar : MonoBehaviour
 
             widget.Bind(currentCiv, category, count, yieldPerTurn);
         }
+    }
+
+    private void WireButtonListeners()
+    {
+        if (religionButton != null)
+        {
+            religionButton.onClick.RemoveAllListeners();
+            religionButton.onClick.AddListener(() =>
+            {
+                if (UIManager.Instance != null && currentCiv != null)
+                    UIManager.Instance.ShowReligionPanel(currentCiv);
+            });
+        }
+
+        if (policyButton != null)
+        {
+            policyButton.onClick.RemoveAllListeners();
+            policyButton.onClick.AddListener(() =>
+            {
+                if (UIManager.Instance != null)
+                    UIManager.Instance.ShowPanel("GovernmentPanel");
+            });
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (religionButton != null)
+            religionButton.onClick.RemoveAllListeners();
+        if (policyButton != null)
+            policyButton.onClick.RemoveAllListeners();
     }
 
 }
