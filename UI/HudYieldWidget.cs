@@ -6,7 +6,7 @@ using TMPro;
 
 /// <summary>
 /// Reusable widget for displaying a single yield metric on the top bar.
-/// Shows: icon, label, current amount, and per-turn delta.
+/// Shows: icon, current amount, and per-turn delta.
 /// 
 /// Supports hover-to-expand breakdown popover (via HudBreakdownPopover).
 /// </summary>
@@ -14,7 +14,6 @@ public class HudYieldWidget : MonoBehaviour
 {
     [Header("Display")]
     [SerializeField] private Image iconImage;
-    [SerializeField] private TextMeshProUGUI labelText;
     [SerializeField] private TextMeshProUGUI amountText;
     [SerializeField] private TextMeshProUGUI deltaText;
     [SerializeField] private Color positiveDeltaColor = Color.green;
@@ -84,8 +83,6 @@ public class HudYieldWidget : MonoBehaviour
         deltaPerTurn = delta;
 
         // Update display
-        if (labelText != null)
-            labelText.text = name;
 
         if (iconImage != null)
             iconImage.sprite = icon;
