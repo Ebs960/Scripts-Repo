@@ -3,13 +3,15 @@ using UnityEngine;
 
 /// <summary>
 /// Bottom bar HUD shell for already-placed UnitInfoPanel and MinimapUI roots.
-/// Kept for merge-compatibility with branches that still reference this component.
 /// </summary>
 public class HudBottomBar : MonoBehaviour
 {
     [SerializeField] private GameObject unitInfoPanelRoot;
     [SerializeField] private GameObject minimapRoot;
 
+    /// <summary>
+    /// Bind this panel to a civilization and populate displays.
+    /// </summary>
     public void Bind(Civilization civ)
     {
         if (civ == null)
