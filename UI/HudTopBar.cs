@@ -8,7 +8,6 @@ using TMPro;
 /// - Civilization name and round
 /// - Yield displays (food, gold, policy points with per-turn deltas)
 /// - Resource category displays (manually placed widgets)
-/// - Optional top bar buttons (religion/policy)
 /// 
 /// Data sourced from Civilization.cached* fields (already computed each turn).
 /// Resource widgets are manually placed in the scene/prefab; not generated at runtime.
@@ -28,7 +27,7 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
     [SerializeField] private ResourceCategoryDefinitionSO[] allResourceCategories = new ResourceCategoryDefinitionSO[6];
 
-    [Header("Panel Buttons")]
+    [Header("Panel Buttons (optional)")]
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
     [SerializeField] private HudPanelRouter panelRouter;
@@ -145,10 +144,10 @@ public class HudTopBar : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Cleanup buttons
         if (religionButton != null)
             religionButton.onClick.RemoveAllListeners();
         if (policyButton != null)
             policyButton.onClick.RemoveAllListeners();
     }
+
 }

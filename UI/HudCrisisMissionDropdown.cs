@@ -174,12 +174,22 @@ public class HudCrisisMissionDropdown : MonoBehaviour
     /// </summary>
     private void OpenCrisisMissionPanel()
     {
-        if (UIManager.Instance != null)
+        if (trackerUI != null)
         {
-            // Assuming there's a full panel for detailed crisis/mission view
-            // If not, this is a placeholder for future expansion
-            Debug.Log("HudCrisisMissionDropdown: Opening full crisis/mission panel");
+            trackerUI.gameObject.SetActive(true);
+            trackerUI.transform.SetAsLastSibling();
+            return;
         }
+
+        if (detailPopupPrefab != null && UIManager.Instance != null)
+        {
+            var popup = Instantiate(detailPopupPrefab, UIManager.Instance.transform);
+            popup.name = "CrisisMissionDetailPopup";
+            return;
+        }
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowPanel("MissionSelectionPanel");
     }
 
     /// <summary>

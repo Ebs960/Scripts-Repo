@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Right-side HUD panel hosting layer selection dropdown.
-/// Routes layer changes to planet's LayerManager.SetOnlyLayerVisible().
+/// Right-side HUD panel shell.
+/// Layer dropdown ownership stays in HudPanelRouter; this panel only validates references.
 /// </summary>
 public class HudRightPanel : MonoBehaviour
 {

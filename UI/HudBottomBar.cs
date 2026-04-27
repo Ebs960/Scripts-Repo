@@ -2,11 +2,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Bottom bar HUD widget consolidating:
-/// - UnitInfoPanel (selected unit stats, build actions, fortify, stacking)
-/// - MinimapUI (world minimap with fog of war)
-/// 
-/// Preserves all existing logic from original components.
+/// Bottom bar HUD shell for already-placed UnitInfoPanel and MinimapUI roots.
 /// </summary>
 public class HudBottomBar : MonoBehaviour
 {
