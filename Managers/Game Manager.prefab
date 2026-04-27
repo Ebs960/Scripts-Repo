@@ -91,7 +91,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 458f70b0cc7a5284796af510d8a95903, type: 2}
   - {fileID: 11400000, guid: ab34978db1ac01e409d57ca38172f215, type: 2}
   - {fileID: 11400000, guid: 08673f7e6917cdc4ba5502d71aad78fd, type: 2}
-  playerUIPrefab: {fileID: 2503341999680901819, guid: c85c2eb93c358504b88e863b70f3dbe2, type: 3}
   planetaryCameraPrefab: {fileID: 2381392174087293691, guid: fe35e703a26a8fa4c8877f56ac020fe2, type: 3}
   spaceLoadingPanelPrefab: {fileID: 6133071633519259708, guid: beab29331181187429f0c6b672d538b9, type: 3}
   loadingPanelPrefab: {fileID: 5188036789961826290, guid: 1fdb7130e1f913242b73dd1a5665e796, type: 3}

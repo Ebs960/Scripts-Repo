@@ -326,7 +326,6 @@ public class GameManager : MonoBehaviour
     public PlanetConfig[] planetConfigs = new PlanetConfig[0];
 
     [Header("UI Prefabs")]
-    public GameObject playerUIPrefab;
     public GameObject planetaryCameraPrefab; // Assign 'New Map Shit/Camera Controller.prefab'
     public GameObject spaceLoadingPanelPrefab; // Assign space loading panel prefab
     [Tooltip("Loading panel prefab for game initialization (replaces GameSceneInitializer)")]

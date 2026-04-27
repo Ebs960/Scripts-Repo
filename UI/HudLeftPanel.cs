@@ -10,11 +10,8 @@ using UnityEngine;
 /// </summary>
 public class HudLeftPanel : MonoBehaviour
 {
-    [SerializeField] private GameObject scienceProgressPrefab;
-    [SerializeField] private GameObject cultureProgressPrefab;
-
-    private GameObject scienceInstance;
-    private GameObject cultureInstance;
+    [SerializeField] private HudScienceProgress scienceProgress;
+    [SerializeField] private HudCultureProgress cultureProgress;
 
     /// <summary>
     /// Bind this panel to a civilization and populate displays.
@@ -27,32 +24,19 @@ public class HudLeftPanel : MonoBehaviour
             return;
         }
 
-        // Instantiate science widget
-        if (scienceProgressPrefab != null)
-        {
-            if (scienceInstance != null)
-                Destroy(scienceInstance);
+        if (scienceProgress != null)
+            scienceProgress.Bind(civ);
 
-            scienceInstance = Instantiate(scienceProgressPrefab, transform);
-            scienceInstance.name = "ScienceProgress_Instance";
+        if (cultureProgress != null)
+            cultureProgress.Bind(civ);
+    }
 
-            var scienceWidget = scienceInstance.GetComponent<HudScienceProgress>();
-            if (scienceWidget != null)
-                scienceWidget.Bind(civ);
-        }
+    private void Awake()
+    {
+        if (scienceProgress == null)
+            scienceProgress = GetComponentInChildren<HudScienceProgress>(true);
 
-        // Instantiate culture widget
-        if (cultureProgressPrefab != null)
-        {
-            if (cultureInstance != null)
-                Destroy(cultureInstance);
-
-            cultureInstance = Instantiate(cultureProgressPrefab, transform);
-            cultureInstance.name = "CultureProgress_Instance";
-
-            var cultureWidget = cultureInstance.GetComponent<HudCultureProgress>();
-            if (cultureWidget != null)
-                cultureWidget.Bind(civ);
-        }
+        if (cultureProgress == null)
+            cultureProgress = GetComponentInChildren<HudCultureProgress>(true);
     }
 }

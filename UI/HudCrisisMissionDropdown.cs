@@ -23,6 +23,7 @@ public class HudCrisisMissionDropdown : MonoBehaviour
 
     private CrisisMissionTrackerUI trackerUI;
     private Civilization currentCiv;
+    private GameObject contentRoot;
 
     private void Start()
     {
@@ -41,11 +42,11 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         // Subscribe to crisis/mission events
         if (CrisisManager.Instance != null)
         {
-            CrisisManager.Instance.OnCrisisStarted += (c) => RefreshDropdownContent();
-            CrisisManager.Instance.OnCrisisEnded += (c) => RefreshDropdownContent();
-            CrisisManager.Instance.OnMissionStarted += (civ, mission) => RefreshDropdownContent();
-            CrisisManager.Instance.OnMissionCompleted += (civ, mission, state) => RefreshDropdownContent();
-            CrisisManager.Instance.OnObjectiveCompleted += (civ, mission, idx) => RefreshDropdownContent();
+            CrisisManager.Instance.OnCrisisStarted += HandleCrisisChanged;
+            CrisisManager.Instance.OnCrisisEnded += HandleCrisisChanged;
+            CrisisManager.Instance.OnMissionStarted += HandleMissionStarted;
+            CrisisManager.Instance.OnMissionCompleted += HandleMissionCompleted;
+            CrisisManager.Instance.OnObjectiveCompleted += HandleObjectiveCompleted;
         }
 
         // Initial populate
@@ -56,10 +57,15 @@ public class HudCrisisMissionDropdown : MonoBehaviour
     {
         if (CrisisManager.Instance != null)
         {
-            // Removing anonymous delegates is not straightforward; safest approach is to clear all handlers
-            // for the UI-related events on destroy if this instance was the only subscriber from UI.
-            // To avoid altering other systems, we simply do nothing here (handlers are lambdas closing this instance).
+            CrisisManager.Instance.OnCrisisStarted -= HandleCrisisChanged;
+            CrisisManager.Instance.OnCrisisEnded -= HandleCrisisChanged;
+            CrisisManager.Instance.OnMissionStarted -= HandleMissionStarted;
+            CrisisManager.Instance.OnMissionCompleted -= HandleMissionCompleted;
+            CrisisManager.Instance.OnObjectiveCompleted -= HandleObjectiveCompleted;
         }
+
+        if (contentRoot != null)
+            Destroy(contentRoot);
     }
 
     /// <summary>
@@ -73,8 +79,10 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         var crises = GetActiveCrises();
         var missions = GetActiveMissions();
 
-        // Build content container
-        var contentRoot = new GameObject("CrisisMissionContent");
+        if (contentRoot != null)
+            Destroy(contentRoot);
+
+        contentRoot = new GameObject("CrisisMissionContent");
         var layout = contentRoot.AddComponent<VerticalLayoutGroup>();
         layout.childForceExpandHeight = false;
         layout.childForceExpandWidth = true;
@@ -84,7 +92,7 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         {
             if (crisisSummaryItemPrefab != null)
             {
-                var instance = Instantiate(crisisSummaryItemPrefab, contentRoot.transform);
+                var instance = Instantiate(crisisSummaryItemPrefab, contentRoot.transform, false);
                 var itemWidget = instance.GetComponent<HudCrisisSummaryItem>();
                 if (itemWidget != null)
                     itemWidget.Populate(crisis);
@@ -96,15 +104,34 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         {
             if (missionSummaryItemPrefab != null)
             {
-                var instance = Instantiate(missionSummaryItemPrefab, contentRoot.transform);
+                var instance = Instantiate(missionSummaryItemPrefab, contentRoot.transform, false);
                 var itemWidget = instance.GetComponent<HudMissionSummaryItem>();
                 if (itemWidget != null)
                     itemWidget.Populate(mission, currentCiv);
             }
         }
 
-        // Set as dropdown body content
-        dropdownButton.SetBodyContent(contentRoot);
+        dropdownButton.SetBodyContentFromInstance(contentRoot);
+    }
+
+    private void HandleCrisisChanged(CrisisData _)
+    {
+        RefreshDropdownContent();
+    }
+
+    private void HandleMissionStarted(Civilization civ, MissionData mission)
+    {
+        RefreshDropdownContent();
+    }
+
+    private void HandleMissionCompleted(Civilization civ, MissionData mission, MissionState state)
+    {
+        RefreshDropdownContent();
+    }
+
+    private void HandleObjectiveCompleted(Civilization civ, MissionData mission, int index)
+    {
+        RefreshDropdownContent();
     }
 
     /// <summary>
