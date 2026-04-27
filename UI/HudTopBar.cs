@@ -1,6 +1,5 @@
 // Assets/Scripts/UI/HudTopBar.cs
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
@@ -8,7 +7,6 @@ using TMPro;
 /// - Civilization name and round
 /// - Yield displays (food, gold, policy points with per-turn deltas)
 /// - Resource category displays (manually placed widgets)
-/// - Optional top bar buttons (religion/policy)
 /// 
 /// Data sourced from Civilization.cached* fields (already computed each turn).
 /// Resource widgets are manually placed in the scene/prefab; not generated at runtime.
@@ -28,21 +26,14 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
     [SerializeField] private ResourceCategoryDefinitionSO[] allResourceCategories = new ResourceCategoryDefinitionSO[6];
 
-    [Header("Panel Buttons")]
-    [SerializeField] private Button religionButton;
-    [SerializeField] private Button policyButton;
+    [SerializeField] private HudPanelRouter panelRouter;
 
     private Civilization currentCiv;
-    private HudPanelRouter panelRouter;
 
-    private void Start()
+    private void Awake()
     {
-        // Find or create panel router
-        panelRouter = UnityEngine.Object.FindFirstObjectByType<HudPanelRouter>();
         if (panelRouter == null)
-        {
-            Debug.LogWarning("HudTopBar: HudPanelRouter not found in scene");
-        }
+            panelRouter = GetComponentInParent<HudPanelRouter>();
     }
 
     /// <summary>
@@ -94,7 +85,6 @@ public class HudTopBar : MonoBehaviour
         // Bind resource category widgets
         BindResourceCategories();
 
-        WireButtonListeners();
     }
 
     /// <summary>
@@ -114,52 +104,11 @@ public class HudTopBar : MonoBehaviour
             var widget = resourceCategoryWidgets[i];
             var category = allResourceCategories[i];
 
-            // Get resource inventory for this category and sum quantities
-            int count = 0;
-            if (ResourceInventoryManager.Instance != null)
-            {
-                var inventory = ResourceInventoryManager.Instance.GetCategoryInventory(currentCiv, category);
-                foreach (var kvp in inventory)
-                    count += kvp.Value;
-            }
-
-            // TODO: Calculate yield per turn for this category
-            // For now, default to 0 until yield tracking per category is implemented
-            int yieldPerTurn = 0;
+            int count = ResourceCategoryProviderUtility.GetTotalCount(currentCiv, category);
+            int yieldPerTurn = ResourceCategoryProviderUtility.GetYieldPerTurn(currentCiv, category);
 
             widget.Bind(currentCiv, category, count, yieldPerTurn);
         }
     }
 
-    private void WireButtonListeners()
-    {
-        if (religionButton != null)
-        {
-            religionButton.onClick.RemoveAllListeners();
-            religionButton.onClick.AddListener(() =>
-            {
-                if (UIManager.Instance != null && currentCiv != null)
-                    UIManager.Instance.ShowReligionPanel(currentCiv);
-            });
-        }
-
-        if (policyButton != null)
-        {
-            policyButton.onClick.RemoveAllListeners();
-            policyButton.onClick.AddListener(() =>
-            {
-                if (UIManager.Instance != null)
-                    UIManager.Instance.ShowPanel("GovernmentPanel");
-            });
-        }
-    }
-
-    private void OnDestroy()
-    {
-        // Cleanup buttons
-        if (religionButton != null)
-            religionButton.onClick.RemoveAllListeners();
-        if (policyButton != null)
-            policyButton.onClick.RemoveAllListeners();
-    }
 }

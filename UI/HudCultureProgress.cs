@@ -39,19 +39,32 @@ public class HudCultureProgress : MonoBehaviour
         currentCiv = civ;
         if (civ == null) return;
 
-        // Get current culture era or goal
-        // For now, simplified display
-        if (cultureNameText != null)
-            cultureNameText.text = "Culture";
+        var activeCulture = civ.currentCulture;
+        if (activeCulture != null)
+        {
+            int cultureCost = Mathf.Max(1, activeCulture.cultureCost);
+            int progress = Mathf.RoundToInt(civ.currentCultureProgress);
+            float progressPct = progress / (float)cultureCost;
 
-        // Calculate progress based on culture toward next era/policy
-        // Placeholder implementation
-        int cultureRequired = 100; // This should come from game rules
-        float progressPct = civ.culture / (float)cultureRequired;
-        if (progressBar != null)
-            progressBar.fillAmount = Mathf.Clamp01(progressPct);
+            if (cultureNameText != null)
+                cultureNameText.text = activeCulture.cultureName;
 
-        if (progressText != null)
-            progressText.text = $"{civ.culture}/{cultureRequired}";
+            if (progressBar != null)
+                progressBar.fillAmount = Mathf.Clamp01(progressPct);
+
+            if (progressText != null)
+                progressText.text = $"{progress}/{cultureCost}";
+        }
+        else
+        {
+            if (cultureNameText != null)
+                cultureNameText.text = "No Culture";
+
+            if (progressBar != null)
+                progressBar.fillAmount = 0f;
+
+            if (progressText != null)
+                progressText.text = "0/0";
+        }
     }
 }
