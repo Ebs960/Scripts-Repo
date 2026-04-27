@@ -13,7 +13,7 @@ public class Herd : MonoBehaviour
     [Tooltip("Optional human-readable name for this herd (displayed in UI). If empty, GameObject name is used.")]
     public string herdName;
 
-    public enum HerdSpecies { Chicken, Cow, Pig, Sheep, Elephant, Camel, Other }
+    public enum HerdSpecies { Chicken, Cow, Pig, Sheep, Goat, Elephant, Camel, Other }
 
     [System.Serializable]
     public class HerdEntry { public HerdSpecies species; public int count = 0; }
@@ -56,36 +56,20 @@ public class Herd : MonoBehaviour
     [Tooltip("Maximum movement points this herd has per turn")]
     public int maxMovementPoints = 2;
 
-    // Default per-animal food consumption per turn by species (used for herd starvation calculations)
-    public static int GetFoodConsumptionPerAnimal(HerdSpecies s)
-    {
-        switch (s)
-        {
-            case HerdSpecies.Chicken: return 1;
-            case HerdSpecies.Cow: return 2;
-            case HerdSpecies.Pig: return 1;
-            case HerdSpecies.Sheep: return 1;
-            // Camels use a per-100 consumption rule (handled by Civilization),
-            // so return 0 here to avoid double-counting.
-            case HerdSpecies.Elephant: return 0;
-            case HerdSpecies.Camel: return 0;
-            default: return 1;
-        }
-    }
-
     // Returns food consumption for the species per 100 animals.
-    // Use this when applying per-100 consumption rules (e.g., camels consume very little per-animal).
+    // For every 100 animals of the species, they consume this much food.
     public static int GetFoodConsumptionPer100(HerdSpecies s)
     {
         switch (s)
         {
-            case HerdSpecies.Chicken: return 100; // 1 per animal
-            case HerdSpecies.Cow: return 200;     // 2 per animal
-            case HerdSpecies.Pig: return 100;     // 1 per animal
-            case HerdSpecies.Sheep: return 100;   // 1 per animal
-            case HerdSpecies.Elephant: return 3;  // special: 3 per 100 (slightly more food)
-            case HerdSpecies.Camel: return 2;     // special: 2 per 100
-            default: return 100;
+            case HerdSpecies.Chicken: return 1;   // 100 chickens consume 1 food
+            case HerdSpecies.Cow: return 2;       // 100 cows consume 2 food
+            case HerdSpecies.Pig: return 1;       // 100 pigs consume 1 food
+            case HerdSpecies.Sheep: return 1;     // 100 sheep consume 1 food
+            case HerdSpecies.Goat: return 1;      // 100 goats consume 1 food
+            case HerdSpecies.Elephant: return 3;  // 100 elephants consume 3 food
+            case HerdSpecies.Camel: return 2;     // 100 camels consume 2 food
+            default: return 1;
         }
     }
 
@@ -706,7 +690,7 @@ public class Herd : MonoBehaviour
         }
 
         // Animal contributions (per-100 rules); prefer explicit mapping from per-herd instance fields
-        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, elephantCount = 0;
+        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, goatCount = 0, elephantCount = 0;
         foreach (var e in animals)
         {
             if (e == null) continue;
@@ -716,6 +700,7 @@ public class Herd : MonoBehaviour
                 case HerdSpecies.Cow: cowCount += e.count; break;
                 case HerdSpecies.Pig: pigCount += e.count; break;
                 case HerdSpecies.Sheep: sheepCount += e.count; break;
+                case HerdSpecies.Goat: goatCount += e.count; break;
                 case HerdSpecies.Elephant: elephantCount += e.count; break;
                 default: break;
             }
@@ -724,6 +709,8 @@ public class Herd : MonoBehaviour
         // Per-design contributions per 100 animals
         // Cows: +2 production per 100
         total += (cowCount / 100) * 2;
+        // Goats: +1 production per 100
+        total += (goatCount / 100) * 1;
         // Elephants: +4 production per 100
         total += (elephantCount / 100) * 4;
 
@@ -750,12 +737,13 @@ public class Herd : MonoBehaviour
     /// Cows:     every 100 -> +2 Production, +1 Gold
     /// Pigs:     every 100 -> +3 Food
     /// Sheep:    every 100 -> +1 Food, +2 Gold
+    /// Goats:    every 100 -> +1 Food, +1 Gold, +1 Production
     /// Elephants: every 100 -> +4 Production (higher food cost)
     /// Camels:   every 100 -> +2 Gold, +1 Production
     /// </summary>
     public AnimalYields GetAnimalYields()
     {
-        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, elephantCount = 0, camelCount = 0;
+        int chickenCount = 0, cowCount = 0, pigCount = 0, sheepCount = 0, goatCount = 0, elephantCount = 0, camelCount = 0;
         foreach (var e in animals)
         {
             if (e == null) continue;
@@ -765,6 +753,7 @@ public class Herd : MonoBehaviour
                 case HerdSpecies.Cow: cowCount += e.count; break;
                 case HerdSpecies.Pig: pigCount += e.count; break;
                 case HerdSpecies.Sheep: sheepCount += e.count; break;
+                case HerdSpecies.Goat: goatCount += e.count; break;
                 case HerdSpecies.Elephant: elephantCount += e.count; break;
                 case HerdSpecies.Camel: camelCount += e.count; break;
                 default: break;
@@ -772,9 +761,9 @@ public class Herd : MonoBehaviour
         }
     
         AnimalYields y = new AnimalYields();
-        y.Food = (chickenCount / 100) * 2 + (pigCount / 100) * 3 + (sheepCount / 100) * 1;
-        y.Gold = (chickenCount / 100) * 1 + (cowCount / 100) * 1 + (sheepCount / 100) * 2 + (camelCount / 100) * 2;
-        y.Production = (cowCount / 100) * 2 + (camelCount / 100) * 1 + (elephantCount / 100) * 4;
+        y.Food = (chickenCount / 100) * 2 + (pigCount / 100) * 3 + (sheepCount / 100) * 1 + (goatCount / 100) * 1;
+        y.Gold = (chickenCount / 100) * 1 + (cowCount / 100) * 1 + (sheepCount / 100) * 2 + (goatCount / 100) * 1 + (camelCount / 100) * 2;
+        y.Production = (cowCount / 100) * 2 + (goatCount / 100) * 1 + (camelCount / 100) * 1 + (elephantCount / 100) * 4;
         y.Science = 0;
         y.Culture = 0;
         y.Faith = 0;

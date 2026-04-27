@@ -2365,11 +2365,9 @@ public class Civilization : MonoBehaviour
                         if (ae == null) continue;
                         int cnt = Mathf.Max(0, ae.count);
                         totalAnimals += cnt;
-                        // Apply per-100 consumption rules where defined, and fall back to per-animal for remainder
+                        // All herd species use per-100 consumption rules
                         int per100 = Herd.GetFoodConsumptionPer100(ae.species);
-                        int perAnimal = Herd.GetFoodConsumptionPerAnimal(ae.species);
-                        totalAnimalConsumption += (cnt / 100) * per100;
-                        totalAnimalConsumption += (cnt % 100) * perAnimal;
+                        totalAnimalConsumption += (cnt * per100) / 100;
                     }
 
                     // Animal yields (food/gold/production) computed by herd per-100 rules

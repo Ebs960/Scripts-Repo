@@ -11,6 +11,8 @@ public class ResourceData : ScriptableObject
     public string resourceName;
     public Sprite icon;
     public GameObject prefab;
+    [Tooltip("Category for inventory/breakdown display (Metals, Livestock, Fuel, etc.)")]
+    public ResourceCategoryDefinitionSO category;
 
     [Header("Audio")]
     [Tooltip("Sound played when this resource is clicked on the map. Leave empty for no sound.")]
