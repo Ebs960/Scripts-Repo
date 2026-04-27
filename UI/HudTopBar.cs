@@ -31,18 +31,14 @@ public class HudTopBar : MonoBehaviour
     [Header("Panel Buttons")]
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
+    [SerializeField] private HudPanelRouter panelRouter;
 
     private Civilization currentCiv;
-    private HudPanelRouter panelRouter;
 
-    private void Start()
+    private void Awake()
     {
-        // Find or create panel router
-        panelRouter = UnityEngine.Object.FindFirstObjectByType<HudPanelRouter>();
         if (panelRouter == null)
-        {
-            Debug.LogWarning("HudTopBar: HudPanelRouter not found in scene");
-        }
+            panelRouter = GetComponentInParent<HudPanelRouter>();
     }
 
     /// <summary>
@@ -114,14 +110,7 @@ public class HudTopBar : MonoBehaviour
             var widget = resourceCategoryWidgets[i];
             var category = allResourceCategories[i];
 
-            // Get resource inventory for this category and sum quantities
-            int count = 0;
-            if (ResourceInventoryManager.Instance != null)
-            {
-                var inventory = ResourceInventoryManager.Instance.GetCategoryInventory(currentCiv, category);
-                foreach (var kvp in inventory)
-                    count += kvp.Value;
-            }
+            int count = ResourceCategoryProviderUtility.GetTotalCount(currentCiv, category);
 
             // TODO: Calculate yield per turn for this category
             // For now, default to 0 until yield tracking per category is implemented

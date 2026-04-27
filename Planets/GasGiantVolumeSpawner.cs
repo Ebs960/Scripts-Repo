@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 
 /// <summary>
 /// Manages volumetric cloud effects for gas giant planets.
-/// Activation is controlled via SetVolumetricsEnabled() from PlayerUI, NOT by camera distance.
+/// Activation is controlled via SetVolumetricsEnabled() from the gameplay HUD layer routing, NOT by camera distance.
 /// Only activates on planets that have an Atmosphere layer and no Surface layer.
 /// </summary>
 public class GasGiantVolumeSpawner : MonoBehaviour
@@ -53,10 +53,10 @@ public class GasGiantVolumeSpawner : MonoBehaviour
         }
     }
 
-    // NOTE: Update() removed - volumetrics are now controlled via SetVolumetricsEnabled() from PlayerUI
+    // NOTE: Update() removed - volumetrics are now controlled via SetVolumetricsEnabled() from HUD layer routing
 
     /// <summary>
-    /// Enable or disable volumetric clouds. Called from PlayerUI when toggling atmosphere layer.
+    /// Enable or disable volumetric clouds. Called when toggling atmosphere layer.
     /// </summary>
     /// <param name="enabled">True to show volumetric clouds, false to hide them</param>
     public void SetVolumetricsEnabled(bool enabled)

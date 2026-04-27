@@ -153,8 +153,6 @@ public class UIManager : MonoBehaviour
             { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
             { "pauseMenuPanel", pauseMenuPanel },
-            { "PlayerUI", gameplayHudRoot },
-            { "playerUI", gameplayHudRoot },
             { "gameplayHudRoot", gameplayHudRoot }
         };
         HideAllPanels();

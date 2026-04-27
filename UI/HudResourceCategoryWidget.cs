@@ -30,10 +30,6 @@ public class HudResourceCategoryWidget : MonoBehaviour
     private int currentCount;
     private int yieldPerTurn;
 
-    // Resource providers for fetching inventory
-    private StockpileCategoryProvider stockpileProvider = new();
-    private OwnedNodeCategoryProvider ownedNodeProvider = new();
-
     private void Start()
     {
         WireHoverListeners();
@@ -120,21 +116,7 @@ public class HudResourceCategoryWidget : MonoBehaviour
         
         if (popoverInstance != null)
         {
-            // Get resources in this category from both sources (stockpile + owned nodes)
-            var stockpileResources = stockpileProvider.GetInventory(currentCiv, categoryDefinition);
-            var ownedResources = ownedNodeProvider.GetInventory(currentCiv, categoryDefinition);
-
-            // Merge dictionaries
-            var allResources = new Dictionary<ResourceData, int>();
-            foreach (var kvp in stockpileResources)
-                allResources[kvp.Key] = kvp.Value;
-            foreach (var kvp in ownedResources)
-            {
-                if (allResources.ContainsKey(kvp.Key))
-                    allResources[kvp.Key] += kvp.Value;
-                else
-                    allResources[kvp.Key] = kvp.Value;
-            }
+            var allResources = ResourceCategoryProviderUtility.GetMergedInventory(currentCiv, categoryDefinition);
 
             popoverInstance.Show($"{categoryDefinition.CategoryName}", allResources, breakdownItemPrefab);
         }
