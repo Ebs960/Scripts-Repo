@@ -289,7 +289,7 @@ public class LoadingPanelController : MonoBehaviour
             
             // Hide specific panels managed by UIManager
             var panels = new GameObject[] {
-                UIManager.Instance.playerUI,
+                UIManager.Instance.gameplayHudRoot,
                 UIManager.Instance.notificationPanel,
                 UIManager.Instance.cityPanel,
                 UIManager.Instance.techPanel,
@@ -319,14 +319,6 @@ public class LoadingPanelController : MonoBehaviour
         if (minimapUI != null)
         {
             minimapUI.HideVisualsForBlockingUI();
-        }
-        
-        // Hide PlayerUI instances
-        var playerUIs = FindObjectsByType<PlayerUI>(FindObjectsSortMode.None);
-        foreach (var playerUI in playerUIs)
-        {
-            if (playerUI != null)
-                StoreAndHideUIElement(playerUI.gameObject);
         }
         
         // Hide SpaceMapUI instances
@@ -413,10 +405,10 @@ MusicManager.Instance.InitializeMusicTracks();
         // Ensure UIManager panels are properly restored
         if (UIManager.Instance != null)
         {
-            // PlayerUI should be active after loading
-            if (UIManager.Instance.playerUI != null)
+            // Gameplay HUD root should be active after loading
+            if (UIManager.Instance.gameplayHudRoot != null)
             {
-                UIManager.Instance.playerUI.SetActive(true);
+                UIManager.Instance.gameplayHudRoot.SetActive(true);
             }
         }
     }
