@@ -10,11 +10,8 @@ using UnityEngine;
 /// </summary>
 public class HudBottomBar : MonoBehaviour
 {
-    [SerializeField] private GameObject unitInfoPanelPrefab;
-    [SerializeField] private GameObject minimapPrefab;
-
-    private GameObject unitInfoInstance;
-    private GameObject minimapInstance;
+    [SerializeField] private GameObject unitInfoPanelRoot;
+    [SerializeField] private GameObject minimapRoot;
 
     /// <summary>
     /// Bind this panel to a civilization and populate displays.
@@ -27,26 +24,23 @@ public class HudBottomBar : MonoBehaviour
             return;
         }
 
-        // Instantiate unit info panel
-        if (unitInfoPanelPrefab != null)
+        if (unitInfoPanelRoot != null)
+            unitInfoPanelRoot.SetActive(true);
+
+        if (minimapRoot != null)
+            minimapRoot.SetActive(true);
+    }
+
+    private void Awake()
+    {
+        if (unitInfoPanelRoot == null && UIManager.Instance != null)
+            unitInfoPanelRoot = UIManager.Instance.unitInfoPanel;
+
+        if (minimapRoot == null)
         {
-            if (unitInfoInstance != null)
-                Destroy(unitInfoInstance);
-
-            unitInfoInstance = Instantiate(unitInfoPanelPrefab, transform);
-            unitInfoInstance.name = "UnitInfoPanel_Instance";
-            // UnitInfoPanel will self-initialize via its own Start/Awake
-        }
-
-        // Instantiate minimap
-        if (minimapPrefab != null)
-        {
-            if (minimapInstance != null)
-                Destroy(minimapInstance);
-
-            minimapInstance = Instantiate(minimapPrefab, transform);
-            minimapInstance.name = "Minimap_Instance";
-            // MinimapUI will self-initialize
+            var minimap = GetComponentInChildren<MinimapUI>(true);
+            if (minimap != null)
+                minimapRoot = minimap.gameObject;
         }
     }
 }
