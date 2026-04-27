@@ -1,5 +1,4 @@
 // Assets/Scripts/UI/HudTopBar.cs
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -9,7 +8,7 @@ using TMPro;
 /// - Civilization name and round
 /// - Yield displays (food, gold, policy points with per-turn deltas)
 /// - Resource category displays (manually placed widgets)
-/// - Dropdown buttons for tech, culture, religion, policy
+/// - Optional top bar buttons (religion/policy)
 /// 
 /// Data sourced from Civilization.cached* fields (already computed each turn).
 /// Resource widgets are manually placed in the scene/prefab; not generated at runtime.
@@ -30,8 +29,6 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private ResourceCategoryDefinitionSO[] allResourceCategories = new ResourceCategoryDefinitionSO[6];
 
     [Header("Panel Buttons")]
-    [SerializeField] private Button techButton;
-    [SerializeField] private Button cultureButton;
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
 
@@ -97,7 +94,6 @@ public class HudTopBar : MonoBehaviour
         // Bind resource category widgets
         BindResourceCategories();
 
-        // Wire button listeners
         WireButtonListeners();
     }
 
@@ -137,26 +133,6 @@ public class HudTopBar : MonoBehaviour
 
     private void WireButtonListeners()
     {
-        if (techButton != null)
-        {
-            techButton.onClick.RemoveAllListeners();
-            techButton.onClick.AddListener(() =>
-            {
-                if (UIManager.Instance != null && currentCiv != null)
-                    UIManager.Instance.ShowTechPanel(currentCiv);
-            });
-        }
-
-        if (cultureButton != null)
-        {
-            cultureButton.onClick.RemoveAllListeners();
-            cultureButton.onClick.AddListener(() =>
-            {
-                if (UIManager.Instance != null && currentCiv != null)
-                    UIManager.Instance.ShowCulturePanel(currentCiv);
-            });
-        }
-
         if (religionButton != null)
         {
             religionButton.onClick.RemoveAllListeners();
@@ -181,10 +157,6 @@ public class HudTopBar : MonoBehaviour
     private void OnDestroy()
     {
         // Cleanup buttons
-        if (techButton != null)
-            techButton.onClick.RemoveAllListeners();
-        if (cultureButton != null)
-            cultureButton.onClick.RemoveAllListeners();
         if (religionButton != null)
             religionButton.onClick.RemoveAllListeners();
         if (policyButton != null)
