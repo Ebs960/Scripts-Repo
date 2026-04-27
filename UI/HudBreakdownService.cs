@@ -397,9 +397,12 @@ public class TradeRouteGoldProvider : IYieldProvider
     public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
     {
         var items = new List<HudBreakdownService.BreakdownItem>();
-        if (civ?.tradeRoutes == null) return items;
+        if (civ == null) return items;
 
-        foreach (var route in civ.tradeRoutes)
+        var routes = civ.GetInterplanetaryTradeRoutes();
+        if (routes == null) return items;
+
+        foreach (var route in routes)
         {
             if (route == null) continue;
 
