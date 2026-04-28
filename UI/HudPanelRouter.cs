@@ -7,8 +7,6 @@ using static GameManager;
 
 public class HudPanelRouter : MonoBehaviour
 {
-    [SerializeField] private Button techButton;
-    [SerializeField] private Button cultureButton;
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
     [SerializeField] private Button diplomacyButton;
@@ -78,18 +76,6 @@ public class HudPanelRouter : MonoBehaviour
 
     private void WireButtonListeners()
     {
-        if (techButton != null)
-        {
-            techButton.onClick.RemoveAllListeners();
-            techButton.onClick.AddListener(RouteTechPanel);
-        }
-
-        if (cultureButton != null)
-        {
-            cultureButton.onClick.RemoveAllListeners();
-            cultureButton.onClick.AddListener(RouteCulturePanel);
-        }
-
         if (religionButton != null)
         {
             religionButton.onClick.RemoveAllListeners();
@@ -129,26 +115,12 @@ public class HudPanelRouter : MonoBehaviour
 
     private void UnwireButtonListeners()
     {
-        if (techButton != null) techButton.onClick.RemoveAllListeners();
-        if (cultureButton != null) cultureButton.onClick.RemoveAllListeners();
         if (religionButton != null) religionButton.onClick.RemoveAllListeners();
         if (policyButton != null) policyButton.onClick.RemoveAllListeners();
         if (diplomacyButton != null) diplomacyButton.onClick.RemoveAllListeners();
         if (politicalAffairsButton != null) politicalAffairsButton.onClick.RemoveAllListeners();
         if (equipmentButton != null) equipmentButton.onClick.RemoveAllListeners();
         if (layerDropdown != null) layerDropdown.onValueChanged.RemoveAllListeners();
-    }
-
-    private void RouteTechPanel()
-    {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowTechPanel(currentCiv);
-    }
-
-    private void RouteCulturePanel()
-    {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowCulturePanel(currentCiv);
     }
 
     private void RouteReligionPanel()
