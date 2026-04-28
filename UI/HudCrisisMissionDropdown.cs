@@ -111,21 +111,6 @@ public class HudCrisisMissionDropdown : MonoBehaviour
             }
         }
 
-        if (crises.Count == 0 && missions.Count == 0 && notificationItemPrefab != null)
-        {
-            var instance = Instantiate(notificationItemPrefab, contentRoot.transform, false);
-            var itemWidget = instance.GetComponent<HudBreakdownItem>();
-            if (itemWidget != null)
-            {
-                itemWidget.Populate(new HudBreakdownService.BreakdownItem
-                {
-                    source = "No active crises or missions",
-                    amount = 0,
-                    category = "Status"
-                });
-            }
-        }
-
         dropdownButton.SetBodyContentFromInstance(contentRoot);
     }
 
@@ -139,7 +124,7 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         RefreshDropdownContent();
     }
 
-    private void HandleMissionCompleted(Civilization civ, MissionData mission, MissionState state)
+    private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
     {
         RefreshDropdownContent();
     }

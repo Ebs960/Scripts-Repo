@@ -1,18 +1,32 @@
 // Assets/Scripts/UI/HudScienceProgress.cs
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
 /// Science progress widget for left HUD panel.
-/// Shows current tech research progress and displays breakdown on hover.
+/// Shows current tech research progress with yield icon and per-turn delta.
+/// Displays breakdown on hover.
 /// </summary>
 public class HudScienceProgress : MonoBehaviour
 {
+    [Header("Progress Display")]
     [SerializeField] private Image progressBar;
+    [SerializeField] private Image techIcon; // Icon of the currently researched tech
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private TextMeshProUGUI progressText;
+
+    [Header("Yield Display")]
+    [SerializeField] private Image yieldIcon;
+    [SerializeField] private TextMeshProUGUI yieldPerTurnText;
+    [SerializeField] private Color positiveYieldColor = Color.green;
+    [SerializeField] private Color negativeYieldColor = Color.red;
+
+    [Header("Interaction")]
     [SerializeField] private Button mainButton; // Click to open tech panel
+    [SerializeField] private GameObject breakdownPopoverPrefab;
+    private HudBreakdownPopover popoverInstance;
 
     private Civilization currentCiv;
 
@@ -26,12 +40,41 @@ public class HudScienceProgress : MonoBehaviour
                     UIManager.Instance.ShowTechPanel(currentCiv);
             });
         }
+
+        WireHoverListeners();
     }
 
     private void OnDestroy()
     {
+        UnwireHoverListeners();
         if (mainButton != null)
             mainButton.onClick.RemoveAllListeners();
+        if (popoverInstance != null)
+            Destroy(popoverInstance.gameObject);
+    }
+
+    private void WireHoverListeners()
+    {
+        var eventTrigger = GetComponent<EventTrigger>();
+        if (eventTrigger == null)
+            eventTrigger = gameObject.AddComponent<EventTrigger>();
+
+        eventTrigger.triggers.Clear();
+
+        var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
+        eventTrigger.triggers.Add(pointerEnterEntry);
+
+        var pointerExitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        pointerExitEntry.callback.AddListener(data => HideBreakdownPopover());
+        eventTrigger.triggers.Add(pointerExitEntry);
+    }
+
+    private void UnwireHoverListeners()
+    {
+        var eventTrigger = GetComponent<EventTrigger>();
+        if (eventTrigger != null)
+            eventTrigger.triggers.Clear();
     }
 
     public void Bind(Civilization civ)
@@ -39,14 +82,16 @@ public class HudScienceProgress : MonoBehaviour
         currentCiv = civ;
         if (civ == null) return;
 
-        // Get current research tech
         var researchTech = civ.currentTech;
         if (researchTech != null)
         {
             if (techNameText != null)
                 techNameText.text = researchTech.techName;
 
-            // Calculate progress percentage
+            // Display the tech icon
+            if (techIcon != null && researchTech.techIcon != null)
+                techIcon.sprite = researchTech.techIcon;
+
             float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
             if (progressBar != null)
                 progressBar.fillAmount = Mathf.Clamp01(progressPct);
@@ -58,10 +103,46 @@ public class HudScienceProgress : MonoBehaviour
         {
             if (techNameText != null)
                 techNameText.text = "No Research";
+            if (techIcon != null)
+                techIcon.sprite = null;
             if (progressBar != null)
                 progressBar.fillAmount = 0;
             if (progressText != null)
                 progressText.text = "0/0";
         }
+
+        UpdateYieldDisplay(civ);
+    }
+
+    private void UpdateYieldDisplay(Civilization civ)
+    {
+        int sciencePerTurn = civ.cachedSciencePerTurn;
+
+        if (yieldPerTurnText != null)
+        {
+            yieldPerTurnText.text = (sciencePerTurn >= 0 ? "+" : "") + sciencePerTurn.ToString("N0") + "/turn";
+            yieldPerTurnText.color = sciencePerTurn >= 0 ? positiveYieldColor : negativeYieldColor;
+        }
+    }
+
+    private void ShowBreakdownPopover()
+    {
+        if (breakdownPopoverPrefab == null || currentCiv == null) return;
+
+        if (popoverInstance != null)
+            Destroy(popoverInstance.gameObject);
+
+        var popoverGO = Instantiate(breakdownPopoverPrefab, transform.parent);
+        popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
+        
+        if (popoverInstance != null)
+            popoverInstance.Show("Science", null);
+    }
+
+    private void HideBreakdownPopover()
+    {
+        if (popoverInstance != null)
+            Destroy(popoverInstance.gameObject);
+        popoverInstance = null;
     }
 }
