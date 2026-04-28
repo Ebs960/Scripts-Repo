@@ -20,6 +20,7 @@ public class HudScienceProgress : MonoBehaviour
     [Header("Yield Display")]
     [SerializeField] private Image yieldIcon;
     [SerializeField] private GameObject yieldHoverTarget;
+    [SerializeField] private HudYieldWidget yieldWidget;
     [SerializeField] private TextMeshProUGUI yieldPerTurnText;
     [SerializeField] private Color positiveYieldColor = Color.green;
     [SerializeField] private Color negativeYieldColor = Color.red;
@@ -43,12 +44,14 @@ public class HudScienceProgress : MonoBehaviour
             });
         }
 
-        WireHoverListeners();
+        if (yieldWidget == null)
+            WireHoverListeners();
     }
 
     private void OnDestroy()
     {
-        UnwireHoverListeners();
+        if (yieldWidget == null)
+            UnwireHoverListeners();
         if (mainButton != null)
             mainButton.onClick.RemoveAllListeners();
         if (popoverInstance != null)
@@ -120,6 +123,9 @@ public class HudScienceProgress : MonoBehaviour
     {
         int sciencePerTurn = civ.cachedSciencePerTurn;
 
+        if (yieldWidget != null)
+            yieldWidget.Bind("Science", civ.science, sciencePerTurn, null);
+
         if (yieldPerTurnText != null)
         {
             yieldPerTurnText.text = (sciencePerTurn >= 0 ? "+" : "") + sciencePerTurn.ToString("N0") + "/turn";
@@ -129,6 +135,7 @@ public class HudScienceProgress : MonoBehaviour
 
     private void ShowBreakdownPopover()
     {
+        if (yieldWidget != null) return;
         if (breakdownPopoverPrefab == null || currentCiv == null) return;
 
         if (popoverInstance != null)
