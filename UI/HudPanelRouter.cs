@@ -165,20 +165,23 @@ public class HudPanelRouter : MonoBehaviour
 
     private void RouteDiplomacyPanel()
     {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowDiplomacyPanel(currentCiv);
+        var civ = currentCiv ?? ResolvePlayerCivilization();
+        if (UIManager.Instance != null && civ != null)
+            UIManager.Instance.ShowDiplomacyPanel(civ);
     }
 
     private void RoutePoliticalAffairsPanel()
     {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowPoliticalAffairsPanel(currentCiv);
+        var civ = currentCiv ?? ResolvePlayerCivilization();
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowPoliticalAffairsPanel(civ);
     }
 
     private void RouteEquipmentPanel()
     {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowEquipmentPanel(currentCiv);
+        var civ = currentCiv ?? ResolvePlayerCivilization();
+        if (UIManager.Instance != null && civ != null)
+            UIManager.Instance.ShowEquipmentPanel(civ);
     }
 
     private void RouteLayerSelection(int dropdownIndex)
@@ -211,5 +214,23 @@ public class HudPanelRouter : MonoBehaviour
             return lm;
 
         return Object.FindAnyObjectByType<LayerManager>();
+    }
+
+    private Civilization ResolvePlayerCivilization()
+    {
+        if (currentCiv != null)
+            return currentCiv;
+
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs != null)
+        {
+            foreach (var civ in allCivs)
+            {
+                if (civ != null && civ.isPlayerControlled)
+                    return civ;
+            }
+        }
+
+        return TurnManager.Instance?.GetCurrentCivilization();
     }
 }
