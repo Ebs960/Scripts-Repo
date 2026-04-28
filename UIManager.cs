@@ -112,6 +112,19 @@ public class UIManager : MonoBehaviour
     private PoliticalAffairsPanelUI politicalAffairsPanelUI;
     private bool startupMissionCrisisViewsHidden;
 
+    private static readonly HashSet<string> fullscreenHudHidingPanels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "TechPanel",
+        "CulturePanel",
+        "GovernmentPanel",
+        "ReligionPanel",
+        "TradePanel",
+        "DiplomacyPanel",
+        "EquipmentPanel",
+        "PoliticalAffairsPanel"
+    };
+
+
     private void LogMissionSelectionBlocked(string context, CrisisData crisis, List<MissionData> missions = null)
     {
         // Diagnostic logging removed — this fires frequently during normal gameplay.
@@ -243,6 +256,10 @@ public class UIManager : MonoBehaviour
         {
             panel.SetActive(true);
             WireUIInteractions(panel);
+            if (ShouldHideHudForPanel(name))
+                SetGameplayHudVisible(false);
+            else
+                SyncGameplayHudVisibilityForOpenPanels();
         }
     }
 
@@ -255,6 +272,8 @@ public class UIManager : MonoBehaviour
             panelDict.TryGetValue(name.ToLowerInvariant(), out panel);
         if (panel != null)
             panel.SetActive(false);
+
+        SyncGameplayHudVisibilityForOpenPanels();
     }
 
     /// <summary>
@@ -271,6 +290,52 @@ public class UIManager : MonoBehaviour
         // Always keep the main Gameplay HUD visible (unless loading is active)
         if (gameplayHudRoot != null && !IsLoadingActive())
             gameplayHudRoot.SetActive(true);
+    }
+
+
+    private bool ShouldHideHudForPanel(string panelName)
+    {
+        return !string.IsNullOrWhiteSpace(panelName) && fullscreenHudHidingPanels.Contains(panelName);
+    }
+
+    private void SetGameplayHudVisible(bool visible)
+    {
+        if (gameplayHudRoot == null)
+            return;
+
+        if (IsLoadingActive())
+        {
+            gameplayHudRoot.SetActive(false);
+            return;
+        }
+
+        if (gameplayHudRoot.activeSelf != visible)
+            gameplayHudRoot.SetActive(visible);
+    }
+
+    private bool IsAnyHudHidingPanelOpen()
+    {
+        foreach (var kv in panelDict)
+        {
+            if (!ShouldHideHudForPanel(kv.Key))
+                continue;
+
+            if (kv.Value != null && kv.Value.activeInHierarchy)
+                return true;
+        }
+
+        if (politicalAffairsPanelUI != null && politicalAffairsPanelUI.gameObject.activeInHierarchy)
+            return true;
+
+        return false;
+    }
+
+    private void SyncGameplayHudVisibilityForOpenPanels()
+    {
+        if (modalVisible)
+            return;
+
+        SetGameplayHudVisible(!IsAnyHudHidingPanelOpen());
     }
 
     /// <summary>
@@ -338,6 +403,7 @@ public class UIManager : MonoBehaviour
 
         EnsurePoliticalAffairsPanelUi();
         politicalAffairsPanelUI?.Show(civ);
+        SyncGameplayHudVisibilityForOpenPanels();
     }
 
     private void EnsurePoliticalAffairsPanelUi()
@@ -409,6 +475,8 @@ public class UIManager : MonoBehaviour
             var next = _pendingNotifications.Dequeue();
             DisplayNotification(next);
         }
+
+        SyncGameplayHudVisibilityForOpenPanels();
 
         if (!startupMissionCrisisViewsHidden)
         {
@@ -735,11 +803,7 @@ public class UIManager : MonoBehaviour
             return;
         }
         
-        // First activate the diplomacy panel GameObject
-        diplomacyPanel.SetActive(true);
-        
-    // Wire interactions for click sounds (buttons, toggles, dropdowns, sliders, scrollbars, scrollrects)
-    WireUIInteractions(diplomacyPanel);
+        ShowPanel("DiplomacyPanel");
         
         // Then find and call the DiplomacyUI component
         var diplomacyUI = diplomacyPanel.GetComponent<DiplomacyUI>();
