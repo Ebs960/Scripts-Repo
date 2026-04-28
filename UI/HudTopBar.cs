@@ -22,6 +22,7 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private HudYieldWidget foodYieldWidget;
     [SerializeField] private HudYieldWidget goldYieldWidget;
     [SerializeField] private HudYieldWidget policyYieldWidget;
+    [SerializeField] private HudYieldWidget faithYieldWidget;
 
     [Header("Resource Categories (Manually Placed)")]
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
@@ -93,6 +94,9 @@ public class HudTopBar : MonoBehaviour
 
         if (policyYieldWidget != null)
             policyYieldWidget.Bind("Policy Points", currentCiv.policyPoints, currentCiv.cachedPolicyPerTurn, null);
+
+        if (faithYieldWidget != null)
+            faithYieldWidget.Bind("Faith", currentCiv.faith, currentCiv.cachedFaithPerTurn, null);
 
         BindResourceCategories();
         WireButtonListeners();
