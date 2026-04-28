@@ -14,6 +14,8 @@ public class HudController : MonoBehaviour
     [SerializeField] private HudCultureProgress cultureProgress;
     [SerializeField] private HudCrisisMissionDropdown crisisMissionDropdown;
     [SerializeField] private HudBreakdownService breakdownService;
+    [SerializeField] private HudGovernmentDropdown governmentDropdown;
+    [SerializeField] private HudPoliticalAffairsDropdown politicalAffairsDropdown;
 
     private Civilization currentCiv;
     private bool subscribedToTurnManager;
@@ -135,6 +137,12 @@ public class HudController : MonoBehaviour
 
         if (crisisMissionDropdown != null)
             crisisMissionDropdown.SetCurrentCivilization(currentCiv);
+
+        if (governmentDropdown != null)
+            governmentDropdown.Bind(currentCiv);
+
+        if (politicalAffairsDropdown != null)
+            politicalAffairsDropdown.Bind(currentCiv);
     }
 
     private bool IsLoadingActive()
@@ -161,5 +169,11 @@ public class HudController : MonoBehaviour
 
         if (breakdownService == null)
             breakdownService = GetComponentInChildren<HudBreakdownService>(true);
+
+        if (governmentDropdown == null)
+            governmentDropdown = GetComponentInChildren<HudGovernmentDropdown>(true);
+
+        if (politicalAffairsDropdown == null)
+            politicalAffairsDropdown = GetComponentInChildren<HudPoliticalAffairsDropdown>(true);
     }
 }

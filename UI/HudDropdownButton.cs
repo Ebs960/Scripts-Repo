@@ -40,7 +40,7 @@ public class HudDropdownButton : MonoBehaviour
     private void Start()
     {
         WireButtonListeners();
-        
+
         // Start with body collapsed
         if (bodyRoot != null)
             bodyRoot.SetActive(false);
@@ -86,13 +86,29 @@ public class HudDropdownButton : MonoBehaviour
     /// </summary>
     public void Bind(string label, Sprite icon, System.Action onMainClick)
     {
+        SetLabel(label);
+        SetIcon(icon);
+        SetMainClick(onMainClick);
+    }
+
+    public void SetLabel(string label)
+    {
         if (labelText != null)
             labelText.text = label;
+    }
 
-        if (iconImage != null)
-            iconImage.sprite = icon;
+    public void SetIcon(Sprite icon)
+    {
+        if (iconImage == null)
+            return;
 
-        onMainButtonClick = onMainClick;
+        iconImage.sprite = icon;
+        iconImage.enabled = icon != null;
+    }
+
+    public void SetMainClick(System.Action callback)
+    {
+        onMainButtonClick = callback;
     }
 
     /// <summary>
@@ -100,7 +116,7 @@ public class HudDropdownButton : MonoBehaviour
     /// </summary>
     public void SetBodyContent(GameObject contentPrefab)
     {
-        ClearBodyContent();
+        ClearBody();
 
         if (bodyRoot == null || contentPrefab == null)
             return;
@@ -110,6 +126,11 @@ public class HudDropdownButton : MonoBehaviour
     }
 
     public void ClearBodyContent()
+    {
+        ClearBody();
+    }
+
+    public void ClearBody()
     {
         if (bodyRoot == null) return;
 
@@ -121,7 +142,7 @@ public class HudDropdownButton : MonoBehaviour
     {
         if (bodyRoot == null) return;
 
-        ClearBodyContent();
+        ClearBody();
 
         if (contentInstance != null)
         {
