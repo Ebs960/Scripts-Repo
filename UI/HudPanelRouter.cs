@@ -74,6 +74,16 @@ public class HudPanelRouter : MonoBehaviour
         layerDropdown.RefreshShownValue();
     }
 
+
+    private bool IsDropdownOwned(Button button)
+    {
+        if (button == null)
+            return false;
+
+        var dropdown = button.GetComponentInParent<HudDropdownButton>(true);
+        return dropdown != null;
+    }
+
     private void WireButtonListeners()
     {
         if (religionButton != null)
@@ -82,7 +92,7 @@ public class HudPanelRouter : MonoBehaviour
             religionButton.onClick.AddListener(RouteReligionPanel);
         }
 
-        if (policyButton != null)
+        if (policyButton != null && !IsDropdownOwned(policyButton))
         {
             policyButton.onClick.RemoveAllListeners();
             policyButton.onClick.AddListener(RouteGovernmentPanel);
@@ -94,7 +104,7 @@ public class HudPanelRouter : MonoBehaviour
             diplomacyButton.onClick.AddListener(RouteDiplomacyPanel);
         }
 
-        if (politicalAffairsButton != null)
+        if (politicalAffairsButton != null && !IsDropdownOwned(politicalAffairsButton))
         {
             politicalAffairsButton.onClick.RemoveAllListeners();
             politicalAffairsButton.onClick.AddListener(RoutePoliticalAffairsPanel);
@@ -116,9 +126,9 @@ public class HudPanelRouter : MonoBehaviour
     private void UnwireButtonListeners()
     {
         if (religionButton != null) religionButton.onClick.RemoveAllListeners();
-        if (policyButton != null) policyButton.onClick.RemoveAllListeners();
+        if (policyButton != null && !IsDropdownOwned(policyButton)) policyButton.onClick.RemoveAllListeners();
         if (diplomacyButton != null) diplomacyButton.onClick.RemoveAllListeners();
-        if (politicalAffairsButton != null) politicalAffairsButton.onClick.RemoveAllListeners();
+        if (politicalAffairsButton != null && !IsDropdownOwned(politicalAffairsButton)) politicalAffairsButton.onClick.RemoveAllListeners();
         if (equipmentButton != null) equipmentButton.onClick.RemoveAllListeners();
         if (layerDropdown != null) layerDropdown.onValueChanged.RemoveAllListeners();
     }
