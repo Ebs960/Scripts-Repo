@@ -161,6 +161,31 @@ public interface IYieldProvider
     List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ);
 }
 
+internal static class BreakdownProviderHelpers
+{
+    public static void AddItem(List<HudBreakdownService.BreakdownItem> items, string source, int amount, string category)
+    {
+        if (amount == 0) return;
+        items.Add(new HudBreakdownService.BreakdownItem
+        {
+            source = source,
+            amount = amount,
+            category = category
+        });
+    }
+
+    public static (int food, int gold, int science, int culture, int faith, int policy) ComputeCombatUnitYield(Civilization civ, CombatUnit unit)
+    {
+        return civ.ComputeUnitPerTurnYield(
+            unit.data,
+            unit.planetIndex,
+            unit.Weapon,
+            unit.Shield,
+            unit.Armor,
+            unit.Miscellaneous);
+    }
+}
+
 public class CityFoodProvider : IYieldProvider
 {
     public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
@@ -303,14 +328,7 @@ public class UnitFoodYieldProvider : IYieldProvider
                 unit.Miscellaneous);
 
             int food = Mathf.RoundToInt(yields.food * (1f + civ.foodModifier));
-            if (food == 0) continue;
-
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Unit: {unit.UnitName}",
-                amount = food,
-                category = "Unit Yields"
-            });
+            BreakdownProviderHelpers.AddItem(items, $"Unit: {unit.UnitName}", food, "Unit Yields");
         }
 
         return items;
@@ -330,14 +348,7 @@ public class WorkerFoodYieldProvider : IYieldProvider
 
             var yields = civ.ComputeWorkerPerTurnYield(unit.data, unit.planetIndex);
             int food = Mathf.RoundToInt(yields.food * (1f + civ.foodModifier));
-            if (food == 0) continue;
-
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Worker: {unit.UnitName}",
-                amount = food,
-                category = "Worker Yields"
-            });
+            BreakdownProviderHelpers.AddItem(items, $"Worker: {unit.UnitName}", food, "Worker Yields");
         }
 
         return items;
@@ -397,9 +408,12 @@ public class TradeRouteGoldProvider : IYieldProvider
     public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
     {
         var items = new List<HudBreakdownService.BreakdownItem>();
-        if (civ?.tradeRoutes == null) return items;
+        if (civ == null) return items;
 
-        foreach (var route in civ.tradeRoutes)
+        var routes = civ.GetInterplanetaryTradeRoutes();
+        if (routes == null) return items;
+
+        foreach (var route in routes)
         {
             if (route == null) continue;
 
@@ -430,23 +444,10 @@ public class UnitGoldYieldProvider : IYieldProvider
         {
             if (unit?.data == null) continue;
 
-            var yields = civ.ComputeUnitPerTurnYield(
-                unit.data,
-                unit.planetIndex,
-                unit.Weapon,
-                unit.Shield,
-                unit.Armor,
-                unit.Miscellaneous);
+            var yields = BreakdownProviderHelpers.ComputeCombatUnitYield(civ, unit);
 
             int gold = Mathf.RoundToInt(yields.gold * (1f + civ.goldModifier));
-            if (gold == 0) continue;
-
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Unit: {unit.UnitName}",
-                amount = gold,
-                category = "Unit Yields"
-            });
+            BreakdownProviderHelpers.AddItem(items, $"Unit: {unit.UnitName}", gold, "Unit Yields");
         }
 
         return items;
@@ -466,14 +467,7 @@ public class WorkerGoldYieldProvider : IYieldProvider
 
             var yields = civ.ComputeWorkerPerTurnYield(unit.data, unit.planetIndex);
             int gold = Mathf.RoundToInt(yields.gold * (1f + civ.goldModifier));
-            if (gold == 0) continue;
-
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Worker: {unit.UnitName}",
-                amount = gold,
-                category = "Worker Yields"
-            });
+            BreakdownProviderHelpers.AddItem(items, $"Worker: {unit.UnitName}", gold, "Worker Yields");
         }
 
         return items;
@@ -566,21 +560,8 @@ public class UnitPolicyYieldProvider : IYieldProvider
         foreach (var unit in civ.combatUnits)
         {
             if (unit?.data == null) continue;
-            var yields = civ.ComputeUnitPerTurnYield(
-                unit.data,
-                unit.planetIndex,
-                unit.Weapon,
-                unit.Shield,
-                unit.Armor,
-                unit.Miscellaneous);
-
-            if (yields.policy == 0) continue;
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Unit: {unit.UnitName}",
-                amount = yields.policy,
-                category = "Unit Yields"
-            });
+            var yields = BreakdownProviderHelpers.ComputeCombatUnitYield(civ, unit);
+            BreakdownProviderHelpers.AddItem(items, $"Unit: {unit.UnitName}", yields.policy, "Unit Yields");
         }
 
         return items;
@@ -599,13 +580,7 @@ public class WorkerPolicyYieldProvider : IYieldProvider
             if (unit?.data == null) continue;
             var yields = civ.ComputeWorkerPerTurnYield(unit.data, unit.planetIndex);
 
-            if (yields.policy == 0) continue;
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = $"Worker: {unit.UnitName}",
-                amount = yields.policy,
-                category = "Worker Yields"
-            });
+            BreakdownProviderHelpers.AddItem(items, $"Worker: {unit.UnitName}", yields.policy, "Worker Yields");
         }
 
         return items;
