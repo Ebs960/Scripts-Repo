@@ -17,6 +17,7 @@ public class HudTopBar : MonoBehaviour
     [Header("Info Display")]
     [SerializeField] private TextMeshProUGUI civNameText;
     [SerializeField] private TextMeshProUGUI roundText;
+    [SerializeField] private TextMeshProUGUI seasonText;
 
     [Header("Yield Widgets")]
     [SerializeField] private HudYieldWidget foodYieldWidget;
@@ -60,6 +61,20 @@ public class HudTopBar : MonoBehaviour
         {
             var round = TurnManager.Instance?.round ?? 0;
             roundText.text = $"Turn {round}";
+        }
+
+        // Update season display
+        if (seasonText != null)
+        {
+            if (ClimateManager.Instance != null)
+            {
+                var season = ClimateManager.Instance.GetSeasonForPlanet(0);
+                seasonText.text = season.ToString();
+            }
+            else
+            {
+                seasonText.text = "---";
+            }
         }
 
         // Bind yield widgets
