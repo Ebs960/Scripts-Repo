@@ -110,7 +110,10 @@ public class HudTopBar : MonoBehaviour
             var category = allResourceCategories[i];
 
             int count = ResourceCategoryProviderUtility.GetTotalCount(currentCiv, category);
-            int yieldPerTurn = ResourceCategoryProviderUtility.GetYieldPerTurn(currentCiv, category);
+
+            // TODO: Calculate yield per turn for this category
+            // For now, default to 0 until yield tracking per category is implemented
+            int yieldPerTurn = 0;
 
             widget.Bind(currentCiv, category, count, yieldPerTurn);
         }

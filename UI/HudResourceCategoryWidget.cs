@@ -109,7 +109,7 @@ public class HudResourceCategoryWidget : MonoBehaviour
         {
             var allResources = ResourceCategoryProviderUtility.GetMergedInventory(currentCiv, categoryDefinition);
 
-            popoverInstance.Show(GetCategoryDisplayName(categoryDefinition), allResources, breakdownItemPrefab);
+            popoverInstance.Show($"{categoryDefinition.CategoryName}", allResources, breakdownItemPrefab);
         }
     }
 
