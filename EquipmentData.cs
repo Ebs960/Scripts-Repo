@@ -39,7 +39,9 @@ public class EquipmentData : ScriptableObject
     [Header("Type")]
     [Tooltip("Equipment slot this item will occupy")]
     public EquipmentType equipmentType = EquipmentType.Weapon;
-    
+    [Tooltip("Inventory category for HUD/resource grouping.")]
+    public ResourceCategory category = ResourceCategory.Equipment;
+
     [Header("Projectile")]
     [Tooltip("Optional DEFAULT projectile data used when this equipment fires (can be overridden by unit's active projectile)")]
     public ProjectileData projectileData;
@@ -207,4 +209,4 @@ public class EquipmentData : ScriptableObject
 
         return true;
     }
-} 
+}

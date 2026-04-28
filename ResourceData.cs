@@ -1,6 +1,16 @@
 // Assets/Scripts/Data/ResourceData.cs
 using UnityEngine;
 
+public enum ResourceCategory
+{
+    Metals,
+    Livestock,
+    Fuel,
+    Materials,
+    Luxuries,
+    Equipment
+}
+
 /// <summary>
 /// Defines a resource type: where it can spawn, what it looks like, and what yields it provides.
 /// </summary>
@@ -12,7 +22,7 @@ public class ResourceData : ScriptableObject
     public Sprite icon;
     public GameObject prefab;
     [Tooltip("Category for inventory/breakdown display (Metals, Livestock, Fuel, etc.)")]
-    public ResourceCategoryDefinitionSO category;
+    public ResourceCategory category = ResourceCategory.Materials;
 
     [Header("Audio")]
     [Tooltip("Sound played when this resource is clicked on the map. Leave empty for no sound.")]

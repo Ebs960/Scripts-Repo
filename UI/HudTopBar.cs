@@ -25,7 +25,7 @@ public class HudTopBar : MonoBehaviour
 
     [Header("Resource Categories (Manually Placed)")]
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
-    [SerializeField] private ResourceCategoryDefinitionSO[] allResourceCategories = new ResourceCategoryDefinitionSO[6];
+    [SerializeField] private ResourceCategory[] allResourceCategories = new ResourceCategory[6];
 
     [Header("Panel Buttons (optional)")]
     [SerializeField] private Button religionButton;
@@ -103,7 +103,7 @@ public class HudTopBar : MonoBehaviour
         // Bind each pre-placed widget to its corresponding category
         for (int i = 0; i < resourceCategoryWidgets.Length; i++)
         {
-            if (resourceCategoryWidgets[i] == null || i >= allResourceCategories.Length || allResourceCategories[i] == null)
+            if (resourceCategoryWidgets[i] == null || i >= allResourceCategories.Length)
                 continue;
 
             var widget = resourceCategoryWidgets[i];
