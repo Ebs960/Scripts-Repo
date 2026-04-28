@@ -10,7 +10,6 @@ public class HudController : MonoBehaviour
     [Header("HUD Sections")]
     [SerializeField] private HudTopBar topBar;
     [SerializeField] private HudPanelRouter panelRouter;
-    [SerializeField] private HudRightPanel rightPanel;
     [SerializeField] private HudScienceProgress scienceProgress;
     [SerializeField] private HudCultureProgress cultureProgress;
     [SerializeField] private HudCrisisMissionDropdown crisisMissionDropdown;
@@ -128,9 +127,6 @@ public class HudController : MonoBehaviour
         if (topBar != null)
             topBar.Bind(currentCiv);
 
-        if (rightPanel != null)
-            rightPanel.Bind(currentCiv);
-
         if (scienceProgress != null)
             scienceProgress.Bind(currentCiv);
 
@@ -153,9 +149,6 @@ public class HudController : MonoBehaviour
 
         if (panelRouter == null)
             panelRouter = GetComponentInChildren<HudPanelRouter>(true);
-
-        if (rightPanel == null)
-            rightPanel = GetComponentInChildren<HudRightPanel>(true);
 
         if (scienceProgress == null)
             scienceProgress = GetComponentInChildren<HudScienceProgress>(true);
