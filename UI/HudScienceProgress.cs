@@ -61,6 +61,15 @@ public class HudScienceProgress : MonoBehaviour
     private void WireHoverListeners()
     {
         var hoverTarget = yieldHoverTarget != null ? yieldHoverTarget : (yieldIcon != null ? yieldIcon.gameObject : gameObject);
+
+        var graphic = hoverTarget.GetComponent<Graphic>();
+        if (graphic != null)
+            graphic.raycastTarget = true;
+
+        var canvasGroup = hoverTarget.GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = true;
+
         hoverEventTrigger = hoverTarget.GetComponent<EventTrigger>();
         if (hoverEventTrigger == null)
             hoverEventTrigger = hoverTarget.AddComponent<EventTrigger>();

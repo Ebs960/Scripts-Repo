@@ -30,6 +30,6 @@ public class HudBreakdownItem : MonoBehaviour
         }
 
         if (categoryText != null)
-            categoryText.text = item.category;
+            categoryText.gameObject.SetActive(false);
     }
 }

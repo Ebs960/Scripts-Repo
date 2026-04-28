@@ -254,19 +254,16 @@ public class CityFoodConsumptionProvider : IYieldProvider
         var items = new List<HudBreakdownService.BreakdownItem>();
         if (civ?.cities == null) return items;
 
-        int total = 0;
         foreach (var city in civ.cities)
         {
             if (city == null) continue;
-            total += city.GetFoodConsumptionPerTurn();
-        }
+            int consumption = city.GetFoodConsumptionPerTurn();
+            if (consumption <= 0) continue;
 
-        if (total > 0)
-        {
             items.Add(new HudBreakdownService.BreakdownItem
             {
-                source = "City Consumption",
-                amount = -total,
+                source = $"City: {city.name}",
+                amount = -consumption,
                 category = "Consumption"
             });
         }
@@ -282,14 +279,21 @@ public class UnitFoodConsumptionProvider : IYieldProvider
         var items = new List<HudBreakdownService.BreakdownItem>();
         if (civ == null) return items;
 
-        int totalConsumption = 0;
-
         if (civ.combatUnits != null)
         {
             foreach (var unit in civ.combatUnits)
             {
                 if (unit?.data == null) continue;
-                totalConsumption += unit.data.foodConsumptionPerTurn;
+
+                int consumption = unit.data.foodConsumptionPerTurn;
+                if (consumption <= 0) continue;
+
+                items.Add(new HudBreakdownService.BreakdownItem
+                {
+                    source = $"Unit: {unit.UnitName}",
+                    amount = -consumption,
+                    category = "Consumption"
+                });
             }
         }
 
@@ -298,18 +302,17 @@ public class UnitFoodConsumptionProvider : IYieldProvider
             foreach (var unit in civ.workerUnits)
             {
                 if (unit?.data == null) continue;
-                totalConsumption += unit.data.foodConsumptionPerTurn;
-            }
-        }
 
-        if (totalConsumption > 0)
-        {
-            items.Add(new HudBreakdownService.BreakdownItem
-            {
-                source = "Units Consumption",
-                amount = -totalConsumption,
-                category = "Consumption"
-            });
+                int consumption = unit.data.foodConsumptionPerTurn;
+                if (consumption <= 0) continue;
+
+                items.Add(new HudBreakdownService.BreakdownItem
+                {
+                    source = $"Worker: {unit.UnitName}",
+                    amount = -consumption,
+                    category = "Consumption"
+                });
+            }
         }
 
         return items;
