@@ -1091,9 +1091,8 @@ GameObject:
   - component: {fileID: 8872809879307310662}
   - component: {fileID: 6308633470303976890}
   - component: {fileID: 1781992581237673976}
-  - component: {fileID: 7134324870053874671}
   m_Layer: 5
-  m_Name: Player UI
+  m_Name: GameplayHudRoot
   m_TagString: GameUI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1183,41 +1182,6 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &7134324870053874671
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2503341999680901819}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 153c62aeed795164baee87ce9e1d42b2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerPanel: {fileID: 8753358583896805337}
-  turnChangePanel: {fileID: 7403159255260000374}
-  civNameText: {fileID: 1759590151869309747}
-  roundText: {fileID: 7701481219579060577}
-  endTurnButton: {fileID: 7889866425534163290}
-  layerDropdown: {fileID: 8548702196694302691}
-  techButton: {fileID: 7163852110159899690}
-  cultureButton: {fileID: 6979382233031895176}
-  religionButton: {fileID: 3670210576663263335}
-  policyButton: {fileID: 4604736531920097982}
-  diplomacyButton: {fileID: 7901432074903709634}
-  politicalAffairsButton: {fileID: 8202702873180196348}
-  equipmentButton: {fileID: 4662414773444113112}
-  foodYieldText: {fileID: 8420685000751699043}
-  goldYieldText: {fileID: 4981190415425956536}
-  scienceYieldText: {fileID: 77603502906504622}
-  cultureYieldText: {fileID: 7470430573869850488}
-  policyPointYieldText: {fileID: 1782628329377437789}
-  faithYieldText: {fileID: 1777919741443669045}
-  resourceListContainer: {fileID: 3887869113586225249}
-  resourceEntryPrefab: {fileID: 2252029377997449781, guid: 5c9d47692a552d246ac00ec1ab8cb8dd, type: 3}
-  upcomingCivText: {fileID: 1365899867849641230}
-  upcomingCivIcon: {fileID: 3111425206282925527}
 --- !u!1 &2683573957212197689
 GameObject:
   m_ObjectHideFlags: 0
