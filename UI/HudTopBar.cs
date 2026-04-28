@@ -32,6 +32,7 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private Button policyButton;
     [SerializeField] private Button diplomacyButton;
     [SerializeField] private Button equipmentButton;
+    [SerializeField] private Button endTurnButton;
 
     [Header("Layer Dropdown (optional)")]
     [SerializeField] private TMP_Dropdown layerDropdown;
@@ -44,6 +45,7 @@ public class HudTopBar : MonoBehaviour
     private UnityEngine.Events.UnityAction policyAction;
     private UnityEngine.Events.UnityAction diplomacyAction;
     private UnityEngine.Events.UnityAction equipmentAction;
+    private UnityEngine.Events.UnityAction endTurnAction;
     private UnityEngine.Events.UnityAction<int> layerChangedAction;
 
     /// <summary>
@@ -95,6 +97,7 @@ public class HudTopBar : MonoBehaviour
         BindResourceCategories();
         WireButtonListeners();
         RefreshLayerDropdown();
+        UpdateEndTurnButtonState();
     }
 
     private void BindResourceCategories()
@@ -126,6 +129,7 @@ public class HudTopBar : MonoBehaviour
         policyAction = OpenGovernmentPanel;
         diplomacyAction = OpenDiplomacyPanel;
         equipmentAction = OpenEquipmentPanel;
+        endTurnAction = OnEndTurnButtonClicked;
         layerChangedAction = HandleLayerChanged;
 
         if (religionButton != null)
@@ -139,6 +143,9 @@ public class HudTopBar : MonoBehaviour
 
         if (equipmentButton != null)
             equipmentButton.onClick.AddListener(equipmentAction);
+
+        if (endTurnButton != null)
+            endTurnButton.onClick.AddListener(endTurnAction);
 
         if (layerDropdown != null)
             layerDropdown.onValueChanged.AddListener(layerChangedAction);
@@ -210,6 +217,39 @@ public class HudTopBar : MonoBehaviour
             UIManager.Instance.ShowEquipmentPanel(currentCiv);
     }
 
+
+    public void OnEndTurnButtonClicked()
+    {
+        if (TurnManager.Instance == null)
+        {
+            Debug.LogWarning("HudTopBar: TurnManager missing; cannot end turn.");
+            return;
+        }
+
+        if (currentCiv == null || !currentCiv.isPlayerControlled)
+            return;
+
+        var activeCiv = TurnManager.Instance.GetCurrentCivilization();
+        if (activeCiv != null && activeCiv != currentCiv)
+            return;
+
+        TurnManager.Instance.EndPlayerTurn();
+        UpdateEndTurnButtonState();
+    }
+
+    private void UpdateEndTurnButtonState()
+    {
+        if (endTurnButton == null)
+            return;
+
+        bool canEndTurn = currentCiv != null && currentCiv.isPlayerControlled;
+        var activeCiv = TurnManager.Instance != null ? TurnManager.Instance.GetCurrentCivilization() : null;
+        if (activeCiv != null)
+            canEndTurn &= activeCiv == currentCiv;
+
+        endTurnButton.interactable = canEndTurn;
+    }
+
     private void HandleLayerChanged(int dropdownIndex)
     {
         if (dropdownIndex < 0 || dropdownIndex >= layerDropdownMapping.Count)
@@ -254,6 +294,8 @@ public class HudTopBar : MonoBehaviour
             diplomacyButton.onClick.RemoveListener(diplomacyAction);
         if (equipmentButton != null && equipmentAction != null)
             equipmentButton.onClick.RemoveListener(equipmentAction);
+        if (endTurnButton != null && endTurnAction != null)
+            endTurnButton.onClick.RemoveListener(endTurnAction);
         if (layerDropdown != null && layerChangedAction != null)
             layerDropdown.onValueChanged.RemoveListener(layerChangedAction);
 
