@@ -143,12 +143,12 @@ MonoBehaviour:
   cultureIcon: {fileID: 1361606278903354058}
   cultureNameText: {fileID: 1319776962884965863}
   progressText: {fileID: 431987851283714907}
-  yieldIcon: {fileID: 0}
-  yieldPerTurnText: {fileID: 0}
+  yieldIcon: {fileID: 427804928820305043}
+  yieldPerTurnText: {fileID: 6399233395283878816}
   positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
-  mainButton: {fileID: 0}
-  breakdownPopoverPrefab: {fileID: 0}
+  mainButton: {fileID: 806694038118644103}
+  breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
 --- !u!1 &1863258656728057382
 GameObject:
   m_ObjectHideFlags: 0
