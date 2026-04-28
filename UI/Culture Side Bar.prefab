@@ -144,6 +144,8 @@ MonoBehaviour:
   cultureNameText: {fileID: 1319776962884965863}
   progressText: {fileID: 431987851283714907}
   yieldIcon: {fileID: 427804928820305043}
+  yieldHoverTarget: {fileID: 0}
+  yieldWidget: {fileID: 7749009181651580018}
   yieldPerTurnText: {fileID: 6399233395283878816}
   positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
@@ -160,6 +162,7 @@ GameObject:
   - component: {fileID: 8035461595942568199}
   - component: {fileID: 3824387825379542852}
   - component: {fileID: 427804928820305043}
+  - component: {fileID: 7749009181651580018}
   m_Layer: 5
   m_Name: Culture Yield Icon
   m_TagString: Untagged
@@ -224,6 +227,25 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &7749009181651580018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1863258656728057382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
+  iconImage: {fileID: 427804928820305043}
+  allowRuntimeIconOverride: 0
+  amountText: {fileID: 0}
+  deltaText: {fileID: 6399233395283878816}
+  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
+  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
+  breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
 --- !u!1 &2435778510301314763
 GameObject:
   m_ObjectHideFlags: 0

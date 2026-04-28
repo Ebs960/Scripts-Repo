@@ -10413,62 +10413,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1863258656728057382, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8219625131861253138}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
 --- !u!224 &365181015860977934 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3460700837523375029, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
   m_PrefabInstance: {fileID: 3825670588503319227}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &3227986651688264861 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1863258656728057382, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
-  m_PrefabInstance: {fileID: 3825670588503319227}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &8219625131861253138
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3227986651688264861}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 3528673049703923240}
-  allowRuntimeIconOverride: 0
-  amountText: {fileID: 0}
-  deltaText: {fileID: 7915401799871234331}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
---- !u!114 &3528673049703923240 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 427804928820305043, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
-  m_PrefabInstance: {fileID: 3825670588503319227}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3227986651688264861}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
---- !u!114 &7915401799871234331 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6399233395283878816, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
-  m_PrefabInstance: {fileID: 3825670588503319227}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!114 &8226970850066235272 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5132855937951243571, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
@@ -10488,10 +10439,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1708885026872005355}
     m_Modifications:
-    - target: {fileID: 2985595455818527314, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
-      propertyPath: yieldHoverTarget
-      value: 
-      objectReference: {fileID: 2308365854978838926}
     - target: {fileID: 6722173072696811957, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
       propertyPath: m_Name
       value: Research Side Bar
@@ -10579,62 +10526,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7075424012632561968, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 923362955695741296}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
---- !u!114 &1058227060485370952 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5519040133702335734, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
-  m_PrefabInstance: {fileID: 4771566163968395454}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
---- !u!1 &2308365854978838926 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7075424012632561968, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
-  m_PrefabInstance: {fileID: 4771566163968395454}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &923362955695741296
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2308365854978838926}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 2730749885949326073}
-  allowRuntimeIconOverride: 0
-  amountText: {fileID: 0}
-  deltaText: {fileID: 1058227060485370952}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
 --- !u!224 &2457171006625784367 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6926995986968324753, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
   m_PrefabInstance: {fileID: 4771566163968395454}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2730749885949326073 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7484297209873087047, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
-  m_PrefabInstance: {fileID: 4771566163968395454}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2308365854978838926}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
 --- !u!114 &7734638904666061548 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2985595455818527314, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
