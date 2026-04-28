@@ -588,7 +588,6 @@ GameObject:
   - component: {fileID: 7399740534919002349}
   - component: {fileID: 2965457004343051113}
   - component: {fileID: 7176316025386158440}
-  - component: {fileID: 6051622073956936619}
   m_Layer: 5
   m_Name: Icon
   m_TagString: Untagged
@@ -653,24 +652,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &6051622073956936619
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 420563519411921042}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 0}
-  amountText: {fileID: 0}
-  deltaText: {fileID: 0}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 0}
 --- !u!1 &435564046749185938
 GameObject:
   m_ObjectHideFlags: 0
@@ -4963,6 +4944,7 @@ MonoBehaviour:
   policyButton: {fileID: 5658769793959749434}
   diplomacyButton: {fileID: 461639307934322477}
   equipmentButton: {fileID: 1456405985575703088}
+  endTurnButton: {fileID: 4535351420986874266}
   layerDropdown: {fileID: 2074013181607868691}
 --- !u!114 &5757040030198237913
 MonoBehaviour:
@@ -6383,7 +6365,6 @@ GameObject:
   - component: {fileID: 5427573771619249119}
   - component: {fileID: 4976800745427837166}
   - component: {fileID: 4233858577515422245}
-  - component: {fileID: 8286181764179498888}
   m_Layer: 5
   m_Name: Icon
   m_TagString: Untagged
@@ -6448,24 +6429,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &8286181764179498888
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5973413466150558776}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 0}
-  amountText: {fileID: 0}
-  deltaText: {fileID: 0}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 0}
 --- !u!1 &5997841215626882112
 GameObject:
   m_ObjectHideFlags: 0
@@ -7285,7 +7248,6 @@ GameObject:
   - component: {fileID: 2615897105333713481}
   - component: {fileID: 9104079562290341044}
   - component: {fileID: 1581993153955286945}
-  - component: {fileID: 8465694049500411389}
   m_Layer: 5
   m_Name: Icon
   m_TagString: Untagged
@@ -7350,24 +7312,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &8465694049500411389
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6709487918238831898}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 0}
-  amountText: {fileID: 0}
-  deltaText: {fileID: 0}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 0}
 --- !u!1 &6988538855864550315
 GameObject:
   m_ObjectHideFlags: 0
@@ -8943,7 +8887,6 @@ GameObject:
   - component: {fileID: 726644140904540296}
   - component: {fileID: 436039634157852902}
   - component: {fileID: 809620786600218519}
-  - component: {fileID: 3605724509410839193}
   m_Layer: 5
   m_Name: Icon
   m_TagString: Untagged
@@ -9008,24 +8951,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &3605724509410839193
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8291028978451749138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
-  iconImage: {fileID: 0}
-  amountText: {fileID: 0}
-  deltaText: {fileID: 0}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
-  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
-  breakdownPopoverPrefab: {fileID: 0}
 --- !u!1 &8347357434273172469
 GameObject:
   m_ObjectHideFlags: 0
