@@ -1,4 +1,5 @@
 // Assets/Scripts/UI/HudBreakdownPopover.cs
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -71,8 +72,10 @@ public class HudBreakdownPopover : MonoBehaviour
 
         if (items == null) return;
 
+        var mergedItems = MergeBreakdownItems(items);
+
         // Instantiate breakdown items
-        foreach (var item in items)
+        foreach (var item in mergedItems)
         {
             if (breakdownItemPrefab != null)
             {
@@ -86,6 +89,36 @@ public class HudBreakdownPopover : MonoBehaviour
         // Refresh layout
         if (layoutGroup != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRoot as RectTransform);
+    }
+
+
+    private static List<HudBreakdownService.BreakdownItem> MergeBreakdownItems(List<HudBreakdownService.BreakdownItem> items)
+    {
+        var order = new List<string>();
+        var merged = new Dictionary<string, HudBreakdownService.BreakdownItem>();
+
+        foreach (var item in items)
+        {
+            if (!merged.TryGetValue(item.source, out var existing))
+            {
+                merged[item.source] = item;
+                order.Add(item.source);
+                continue;
+            }
+
+            existing.amount += item.amount;
+            merged[item.source] = existing;
+        }
+
+        var result = new List<HudBreakdownService.BreakdownItem>(order.Count);
+        foreach (var key in order)
+        {
+            var item = merged[key];
+            if (item.amount != 0)
+                result.Add(item);
+        }
+
+        return result;
     }
 
     public void Hide()
