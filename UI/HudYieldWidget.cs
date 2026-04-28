@@ -14,6 +14,7 @@ public class HudYieldWidget : MonoBehaviour
 {
     [Header("Display")]
     [SerializeField] private Image iconImage;
+    [SerializeField] private bool allowRuntimeIconOverride = false;
     [SerializeField] private TextMeshProUGUI amountText;
     [SerializeField] private TextMeshProUGUI deltaText;
     [SerializeField] private Color positiveDeltaColor = Color.green;
@@ -84,7 +85,9 @@ public class HudYieldWidget : MonoBehaviour
 
         // Update display
 
-        if (iconImage != null)
+        // By default preserve prefab-assigned icon visuals at runtime.
+        // Only override icon sprite when explicitly enabled.
+        if (allowRuntimeIconOverride && iconImage != null && icon != null)
             iconImage.sprite = icon;
 
         if (amountText != null)

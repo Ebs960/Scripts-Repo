@@ -63,6 +63,9 @@ public class HudBreakdownPopover : MonoBehaviour
             "Food" => breakdownService.GetFoodBreakdown(),
             "Gold" => breakdownService.GetGoldBreakdown(),
             "Policy Points" => breakdownService.GetPolicyBreakdown(),
+            "Science" => breakdownService.GetScienceBreakdown(),
+            "Culture" => breakdownService.GetCultureBreakdown(),
+            "Faith" => breakdownService.GetFaithBreakdown(),
             _ => null
         };
 

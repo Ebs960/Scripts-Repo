@@ -19,6 +19,8 @@ public class HudCultureProgress : MonoBehaviour
 
     [Header("Yield Display")]
     [SerializeField] private Image yieldIcon;
+    [SerializeField] private GameObject yieldHoverTarget;
+    [SerializeField] private HudYieldWidget yieldWidget;
     [SerializeField] private TextMeshProUGUI yieldPerTurnText;
     [SerializeField] private Color positiveYieldColor = Color.green;
     [SerializeField] private Color negativeYieldColor = Color.red;
@@ -27,6 +29,7 @@ public class HudCultureProgress : MonoBehaviour
     [SerializeField] private Button mainButton; // Click to open culture panel
     [SerializeField] private GameObject breakdownPopoverPrefab;
     private HudBreakdownPopover popoverInstance;
+    private EventTrigger hoverEventTrigger;
 
     private Civilization currentCiv;
 
@@ -41,12 +44,14 @@ public class HudCultureProgress : MonoBehaviour
             });
         }
 
-        WireHoverListeners();
+        if (yieldWidget == null)
+            WireHoverListeners();
     }
 
     private void OnDestroy()
     {
-        UnwireHoverListeners();
+        if (yieldWidget == null)
+            UnwireHoverListeners();
         if (mainButton != null)
             mainButton.onClick.RemoveAllListeners();
         if (popoverInstance != null)
@@ -55,26 +60,26 @@ public class HudCultureProgress : MonoBehaviour
 
     private void WireHoverListeners()
     {
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger == null)
-            eventTrigger = gameObject.AddComponent<EventTrigger>();
+        var hoverTarget = yieldHoverTarget != null ? yieldHoverTarget : (yieldIcon != null ? yieldIcon.gameObject : gameObject);
+        hoverEventTrigger = hoverTarget.GetComponent<EventTrigger>();
+        if (hoverEventTrigger == null)
+            hoverEventTrigger = hoverTarget.AddComponent<EventTrigger>();
 
-        eventTrigger.triggers.Clear();
+        hoverEventTrigger.triggers.Clear();
 
         var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
         pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
-        eventTrigger.triggers.Add(pointerEnterEntry);
+        hoverEventTrigger.triggers.Add(pointerEnterEntry);
 
         var pointerExitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
         pointerExitEntry.callback.AddListener(data => HideBreakdownPopover());
-        eventTrigger.triggers.Add(pointerExitEntry);
+        hoverEventTrigger.triggers.Add(pointerExitEntry);
     }
 
     private void UnwireHoverListeners()
     {
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger != null)
-            eventTrigger.triggers.Clear();
+        if (hoverEventTrigger != null)
+            hoverEventTrigger.triggers.Clear();
     }
 
     public void Bind(Civilization civ)
@@ -115,6 +120,9 @@ public class HudCultureProgress : MonoBehaviour
     {
         int culturePerTurn = civ.cachedCulturePerTurn;
 
+        if (yieldWidget != null)
+            yieldWidget.Bind("Culture", civ.culture, culturePerTurn, null);
+
         if (yieldPerTurnText != null)
         {
             yieldPerTurnText.text = (culturePerTurn >= 0 ? "+" : "") + culturePerTurn.ToString("N0") + "/turn";
@@ -124,6 +132,7 @@ public class HudCultureProgress : MonoBehaviour
 
     private void ShowBreakdownPopover()
     {
+        if (yieldWidget != null) return;
         if (breakdownPopoverPrefab == null || currentCiv == null) return;
 
         if (popoverInstance != null)

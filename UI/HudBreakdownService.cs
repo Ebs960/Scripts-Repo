@@ -23,6 +23,9 @@ public class HudBreakdownService : MonoBehaviour
     private readonly List<IYieldProvider> foodProviders = new();
     private readonly List<IYieldProvider> goldProviders = new();
     private readonly List<IYieldProvider> policyProviders = new();
+    private readonly List<IYieldProvider> scienceProviders = new();
+    private readonly List<IYieldProvider> cultureProviders = new();
+    private readonly List<IYieldProvider> faithProviders = new();
 
     public static HudBreakdownService Instance { get; private set; }
 
@@ -90,6 +93,8 @@ public class HudBreakdownService : MonoBehaviour
         policyProviders.Add(new UnitPolicyYieldProvider());
         policyProviders.Add(new WorkerPolicyYieldProvider());
         policyProviders.Add(new HerdPolicyYieldProvider());
+
+        // Science / Culture / Faith currently use total-per-turn fallback rows.
     }
 
     public List<BreakdownItem> GetFoodBreakdown()
@@ -120,6 +125,37 @@ public class HudBreakdownService : MonoBehaviour
 
         var items = CollectFromProviders(currentCiv, policyProviders);
         AddResidual(items, currentCiv.cachedPolicyPerTurn, "Other Policy Effects", "Policies / Government / Misc");
+        return items;
+    }
+
+
+    public List<BreakdownItem> GetScienceBreakdown()
+    {
+        if (currentCiv == null)
+            return new List<BreakdownItem>();
+
+        var items = CollectFromProviders(currentCiv, scienceProviders);
+        AddResidual(items, currentCiv.cachedSciencePerTurn, "Total Science Per Turn", "Science");
+        return items;
+    }
+
+    public List<BreakdownItem> GetCultureBreakdown()
+    {
+        if (currentCiv == null)
+            return new List<BreakdownItem>();
+
+        var items = CollectFromProviders(currentCiv, cultureProviders);
+        AddResidual(items, currentCiv.cachedCulturePerTurn, "Total Culture Per Turn", "Culture");
+        return items;
+    }
+
+    public List<BreakdownItem> GetFaithBreakdown()
+    {
+        if (currentCiv == null)
+            return new List<BreakdownItem>();
+
+        var items = CollectFromProviders(currentCiv, faithProviders);
+        AddResidual(items, currentCiv.cachedFaithPerTurn, "Total Faith Per Turn", "Faith");
         return items;
     }
 
