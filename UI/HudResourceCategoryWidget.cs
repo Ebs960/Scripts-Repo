@@ -25,7 +25,7 @@ public class HudResourceCategoryWidget : MonoBehaviour
     [SerializeField] private GameObject breakdownItemPrefab;
     private HudResourceCategoryPopover popoverInstance;
 
-    private ResourceCategoryDefinitionSO categoryDefinition;
+    private ResourceCategory categoryDefinition;
     private Civilization currentCiv;
     private int currentCount;
     private int yieldPerTurn;
@@ -72,25 +72,16 @@ public class HudResourceCategoryWidget : MonoBehaviour
     /// <summary>
     /// Bind this widget to a resource category and civilization, then populate displays.
     /// </summary>
-    public void Bind(Civilization civ, ResourceCategoryDefinitionSO category, int count, int yieldPerTurnValue)
+    public void Bind(Civilization civ, ResourceCategory category, int count, int yieldPerTurnValue)
     {
         currentCiv = civ;
         categoryDefinition = category;
         currentCount = count;
         yieldPerTurn = yieldPerTurnValue;
 
-        if (category == null)
-        {
-            Debug.LogWarning("HudResourceCategoryWidget.Bind: Category is null");
-            return;
-        }
-
         // Update display
-        if (categoryIcon != null)
-            categoryIcon.sprite = category.CategoryIcon;
-
         if (categoryNameText != null)
-            categoryNameText.text = category.CategoryName;
+            categoryNameText.text = GetCategoryDisplayName(category);
 
         if (countText != null)
             countText.text = count.ToString("N0");
@@ -104,7 +95,7 @@ public class HudResourceCategoryWidget : MonoBehaviour
 
     private void ShowBreakdownPopover()
     {
-        if (breakdownPopoverPrefab == null || categoryDefinition == null || currentCiv == null) return;
+        if (breakdownPopoverPrefab == null || currentCiv == null) return;
 
         // Destroy existing popover
         if (popoverInstance != null)
@@ -127,5 +118,10 @@ public class HudResourceCategoryWidget : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
         popoverInstance = null;
+    }
+
+    private static string GetCategoryDisplayName(ResourceCategory category)
+    {
+        return category.ToString();
     }
 }
