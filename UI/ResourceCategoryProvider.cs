@@ -15,7 +15,62 @@ public interface IResourceCategoryProvider
     /// Get inventory for a specific category and civilization.
     /// Returns map of ResourceData -> quantity.
     /// </summary>
-    Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategoryDefinitionSO category);
+    Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategory category);
+}
+
+public static class ResourceCategoryProviderUtility
+{
+    private static readonly StockpileCategoryProvider StockpileProvider = new();
+    private static readonly OwnedNodeCategoryProvider OwnedNodeProvider = new();
+
+    public static Dictionary<ResourceData, int> GetMergedInventory(Civilization civ, ResourceCategory category)
+    {
+        var merged = new Dictionary<ResourceData, int>();
+        MergeInto(merged, StockpileProvider.GetInventory(civ, category));
+        MergeInto(merged, OwnedNodeProvider.GetInventory(civ, category));
+        return merged;
+    }
+
+    public static int GetTotalCount(Civilization civ, ResourceCategory category)
+    {
+        int count = 0;
+        foreach (var kvp in GetMergedInventory(civ, category))
+            count += kvp.Value;
+        return count;
+    }
+
+    public static int GetYieldPerTurn(Civilization civ, ResourceCategory category)
+    {
+        int total = 0;
+        foreach (var kvp in GetMergedInventory(civ, category))
+        {
+            if (kvp.Key == null) continue;
+            int quantity = kvp.Value;
+            if (quantity == 0) continue;
+
+            total += quantity * (
+                kvp.Key.foodPerTurn +
+                kvp.Key.productionPerTurn +
+                kvp.Key.goldPerTurn +
+                kvp.Key.sciencePerTurn +
+                kvp.Key.culturePerTurn +
+                kvp.Key.policyPointsPerTurn +
+                kvp.Key.faithPerTurn);
+        }
+
+        return total;
+    }
+
+    private static void MergeInto(Dictionary<ResourceData, int> target, Dictionary<ResourceData, int> source)
+    {
+        foreach (var kvp in source)
+        {
+            if (target.ContainsKey(kvp.Key))
+                target[kvp.Key] += kvp.Value;
+            else
+                target[kvp.Key] = kvp.Value;
+        }
+    }
 }
 
 /// <summary>
@@ -24,11 +79,11 @@ public interface IResourceCategoryProvider
 /// </summary>
 public class OwnedNodeCategoryProvider : IResourceCategoryProvider
 {
-    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategoryDefinitionSO category)
+    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategory category)
     {
         var inventory = new Dictionary<ResourceData, int>();
 
-        if (civ == null || ResourceManager.Instance == null || category == null)
+        if (civ == null || ResourceManager.Instance == null)
             return inventory;
 
         // Get owned nodes inventory
@@ -56,11 +111,11 @@ public class OwnedNodeCategoryProvider : IResourceCategoryProvider
 /// </summary>
 public class StockpileCategoryProvider : IResourceCategoryProvider
 {
-    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategoryDefinitionSO category)
+    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategory category)
     {
         var inventory = new Dictionary<ResourceData, int>();
 
-        if (civ == null || civ.resourceStockpile == null || category == null)
+        if (civ == null || civ.resourceStockpile == null)
             return inventory;
 
         // Filter stockpile by category
@@ -83,7 +138,7 @@ public class StockpileCategoryProvider : IResourceCategoryProvider
 /// </summary>
 public class EquipmentCategoryProvider : IResourceCategoryProvider
 {
-    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategoryDefinitionSO category)
+    public Dictionary<ResourceData, int> GetInventory(Civilization civ, ResourceCategory category)
     {
         // Equipment inventory uses EquipmentData keys, which are not ResourceData.
         // For now, this provider does not map equipment to ResourceData categories.

@@ -100,21 +100,37 @@ public class HudDropdownButton : MonoBehaviour
     /// </summary>
     public void SetBodyContent(GameObject contentPrefab)
     {
+        ClearBodyContent();
+
+        if (bodyRoot == null || contentPrefab == null)
+            return;
+
+        var instance = Instantiate(contentPrefab, bodyRoot.transform);
+        instance.name = "BodyContent_Instance";
+    }
+
+    public void ClearBodyContent()
+    {
         if (bodyRoot == null) return;
 
-        // Clear existing children (except the layout component)
         foreach (Transform child in bodyRoot.transform)
-        {
             Destroy(child.gameObject);
-        }
+    }
 
-        // Instantiate new content
-        if (contentPrefab != null)
+    public void SetBodyContentFromInstance(GameObject contentInstance)
+    {
+        if (bodyRoot == null) return;
+
+        ClearBodyContent();
+
+        if (contentInstance != null)
         {
-            var instance = Instantiate(contentPrefab, bodyRoot.transform);
-            instance.name = "BodyContent_Instance";
+            contentInstance.transform.SetParent(bodyRoot.transform, false);
+            contentInstance.name = "BodyContent_Instance";
         }
     }
+
+    public Transform BodyRootTransform => bodyRoot != null ? bodyRoot.transform : null;
 
     /// <summary>
     /// Toggle body visibility and expand/collapse state.
