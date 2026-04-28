@@ -1,17 +1,12 @@
-// Assets/Scripts/UI/HudDropdownButton.cs
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Reusable two-button dropdown control for HUD widgets.
-/// 
-/// Structure:
-/// - Main Button: Opens full panel (e.g., TechPanel, CulturePanel)
-/// - Arrow Button: Toggles inline body (collapsed/expanded)
-/// - Body Root: 9-sliced background, vertically stretchable, hosts inline content
-/// 
-/// The body is dynamically populated with breakdown/detail content via Bind().
+/// Reusable HUD dropdown control with split interactions:
+/// - Main button click opens a full panel.
+/// - Arrow button click expands/collapses inline body content.
 /// </summary>
 public class HudDropdownButton : MonoBehaviour
 {
@@ -21,70 +16,54 @@ public class HudDropdownButton : MonoBehaviour
 
     [Header("Body")]
     [SerializeField] private GameObject bodyRoot;
-    [SerializeField] private Image bodyImage; // 9-sliced background
-    [SerializeField] private VerticalLayoutGroup bodyLayout; // For content sizing
+    [SerializeField] private Image bodyImage;
+    [SerializeField] private VerticalLayoutGroup bodyLayout;
+    [SerializeField] private bool startCollapsed = true;
 
     [Header("Display")]
     [SerializeField] private TextMeshProUGUI labelText;
     [SerializeField] private Image iconImage;
 
-    private bool isBodyExpanded = false;
-    private System.Action onMainButtonClick;
-    private RectTransform bodyRectTransform;
+    public event Action<HudDropdownButton, bool> OnExpandedChanged;
+
+    private bool isBodyExpanded;
+    private Action onMainButtonClick;
+
+    private bool listenersWired;
+    private UnityEngine.Events.UnityAction mainButtonListener;
+    private UnityEngine.Events.UnityAction arrowButtonListener;
+
+    public bool IsBodyExpanded => isBodyExpanded;
+    public Transform BodyRootTransform => bodyRoot != null ? bodyRoot.transform : null;
 
     private void Awake()
     {
-        bodyRectTransform = bodyRoot?.GetComponent<RectTransform>();
+        TryAutoAssignReferences();
     }
 
-    private void Start()
+    private void OnEnable()
     {
+        TryAutoAssignReferences();
         WireButtonListeners();
-
-        // Start with body collapsed
-        if (bodyRoot != null)
-            bodyRoot.SetActive(false);
-        isBodyExpanded = false;
+        ApplyInitialBodyState();
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         UnwireButtonListeners();
     }
 
-    private void WireButtonListeners()
+    private void Reset()
     {
-        if (mainButton != null)
-        {
-            mainButton.onClick.RemoveAllListeners();
-            mainButton.onClick.AddListener(() =>
-            {
-                onMainButtonClick?.Invoke();
-            });
-        }
-
-        if (arrowButton != null)
-        {
-            arrowButton.onClick.RemoveAllListeners();
-            arrowButton.onClick.AddListener(() =>
-            {
-                ToggleBody();
-            });
-        }
+        TryAutoAssignReferences();
     }
 
-    private void UnwireButtonListeners()
+    private void OnValidate()
     {
-        if (mainButton != null)
-            mainButton.onClick.RemoveAllListeners();
-        if (arrowButton != null)
-            arrowButton.onClick.RemoveAllListeners();
+        TryAutoAssignReferences();
     }
 
-    /// <summary>
-    /// Configure this dropdown button with label, icon, and main button callback.
-    /// </summary>
-    public void Bind(string label, Sprite icon, System.Action onMainClick)
+    public void Bind(string label, Sprite icon, Action onMainClick)
     {
         SetLabel(label);
         SetIcon(icon);
@@ -106,14 +85,26 @@ public class HudDropdownButton : MonoBehaviour
         iconImage.enabled = icon != null;
     }
 
-    public void SetMainClick(System.Action callback)
+    public void SetMainClick(Action callback)
     {
         onMainButtonClick = callback;
     }
 
-    /// <summary>
-    /// Populate the body with content (breakdown items, detail widgets, etc.).
-    /// </summary>
+    public void ToggleBody()
+    {
+        SetExpandedState(!isBodyExpanded, notify: true);
+    }
+
+    public void ExpandBody()
+    {
+        SetExpandedState(true, notify: true);
+    }
+
+    public void CollapseBody()
+    {
+        SetExpandedState(false, notify: true);
+    }
+
     public void SetBodyContent(GameObject contentPrefab)
     {
         ClearBody();
@@ -123,6 +114,22 @@ public class HudDropdownButton : MonoBehaviour
 
         var instance = Instantiate(contentPrefab, bodyRoot.transform);
         instance.name = "BodyContent_Instance";
+        RebuildParentLayouts();
+    }
+
+    public void SetBodyContentFromInstance(GameObject contentInstance)
+    {
+        if (bodyRoot == null)
+            return;
+
+        ClearBody();
+
+        if (contentInstance != null)
+        {
+            contentInstance.transform.SetParent(bodyRoot.transform, false);
+            contentInstance.name = "BodyContent_Instance";
+            RebuildParentLayouts();
+        }
     }
 
     public void ClearBodyContent()
@@ -132,95 +139,154 @@ public class HudDropdownButton : MonoBehaviour
 
     public void ClearBody()
     {
-        if (bodyRoot == null) return;
+        if (bodyRoot == null)
+            return;
 
-        foreach (Transform child in bodyRoot.transform)
-            Destroy(child.gameObject);
+        for (int i = bodyRoot.transform.childCount - 1; i >= 0; i--)
+            Destroy(bodyRoot.transform.GetChild(i).gameObject);
+
+        RebuildParentLayouts();
     }
 
-    public void SetBodyContentFromInstance(GameObject contentInstance)
+    public void RebuildParentLayouts()
     {
-        if (bodyRoot == null) return;
-
-        ClearBody();
-
-        if (contentInstance != null)
+        var current = transform as RectTransform;
+        while (current != null)
         {
-            contentInstance.transform.SetParent(bodyRoot.transform, false);
-            contentInstance.name = "BodyContent_Instance";
+            LayoutRebuilder.ForceRebuildLayoutImmediate(current);
+            current = current.parent as RectTransform;
         }
     }
 
-    public Transform BodyRootTransform => bodyRoot != null ? bodyRoot.transform : null;
-
-    /// <summary>
-    /// Toggle body visibility and expand/collapse state.
-    /// </summary>
-    public void ToggleBody()
+    public void SetBodyHeight(float height)
     {
-        isBodyExpanded = !isBodyExpanded;
+        if (bodyRoot == null)
+            return;
+
+        var bodyRect = bodyRoot.GetComponent<RectTransform>();
+        if (bodyRect != null)
+        {
+            bodyRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            RebuildParentLayouts();
+        }
+    }
+
+    private void ApplyInitialBodyState()
+    {
+        SetExpandedState(!startCollapsed, notify: false);
+        RebuildParentLayouts();
+    }
+
+    private void SetExpandedState(bool expanded, bool notify)
+    {
+        isBodyExpanded = expanded;
 
         if (bodyRoot != null)
             bodyRoot.SetActive(isBodyExpanded);
 
-        // Optional: Animate arrow rotation or other visual feedback
         UpdateArrowVisuals();
+
+        if (notify)
+            OnExpandedChanged?.Invoke(this, isBodyExpanded);
+
+        RebuildParentLayouts();
     }
 
-    /// <summary>
-    /// Expand the body (show inline content).
-    /// </summary>
-    public void ExpandBody()
-    {
-        if (isBodyExpanded) return;
-
-        isBodyExpanded = true;
-        if (bodyRoot != null)
-            bodyRoot.SetActive(true);
-        UpdateArrowVisuals();
-    }
-
-    /// <summary>
-    /// Collapse the body (hide inline content).
-    /// </summary>
-    public void CollapseBody()
-    {
-        if (!isBodyExpanded) return;
-
-        isBodyExpanded = false;
-        if (bodyRoot != null)
-            bodyRoot.SetActive(false);
-        UpdateArrowVisuals();
-    }
-
-    /// <summary>
-    /// Update arrow visuals (e.g., rotation) based on expanded state.
-    /// </summary>
     private void UpdateArrowVisuals()
     {
-        if (arrowButton == null) return;
+        if (arrowButton == null)
+            return;
 
-        // Optional: Rotate arrow image
-        var arrowImage = arrowButton.GetComponentInChildren<Image>();
+        var arrowImage = arrowButton.GetComponentInChildren<Image>(true);
         if (arrowImage != null)
-        {
-            arrowImage.transform.localRotation = Quaternion.Euler(0, 0, isBodyExpanded ? -90 : 0);
-        }
+            arrowImage.transform.localRotation = Quaternion.Euler(0f, 0f, isBodyExpanded ? -90f : 0f);
     }
 
-    /// <summary>
-    /// Force set the body content size (height).
-    /// </summary>
-    public void SetBodyHeight(float height)
+    private void WireButtonListeners()
     {
-        if (bodyRectTransform != null)
+        if (listenersWired)
+            return;
+
+        mainButtonListener = () => onMainButtonClick?.Invoke();
+        arrowButtonListener = ToggleBody;
+
+        if (mainButton != null)
+            mainButton.onClick.AddListener(mainButtonListener);
+
+        if (arrowButton != null)
+            arrowButton.onClick.AddListener(arrowButtonListener);
+
+        listenersWired = true;
+    }
+
+    private void UnwireButtonListeners()
+    {
+        if (!listenersWired)
+            return;
+
+        if (mainButton != null && mainButtonListener != null)
+            mainButton.onClick.RemoveListener(mainButtonListener);
+
+        if (arrowButton != null && arrowButtonListener != null)
+            arrowButton.onClick.RemoveListener(arrowButtonListener);
+
+        listenersWired = false;
+    }
+
+    private void TryAutoAssignReferences()
+    {
+        if (mainButton == null)
+            mainButton = FindButtonByNames("Main Button", "Main Button Area") ?? GetComponent<Button>();
+
+        if (arrowButton == null)
+            arrowButton = FindButtonByNames("Arrow Button");
+
+        if (bodyRoot == null)
+            bodyRoot = FindChildByNames("Body Root")?.gameObject;
+
+        if (labelText == null)
+            labelText = FindTmpByNames("Label Text", "Text (TMP)");
+
+        if (iconImage == null)
         {
-            bodyRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            var iconTransform = FindChildByNames("Icon");
+            if (iconTransform != null)
+                iconImage = iconTransform.GetComponent<Image>();
+        }
+
+        if (bodyRoot != null)
+        {
+            if (bodyImage == null)
+                bodyImage = bodyRoot.GetComponent<Image>();
+
+            if (bodyLayout == null)
+                bodyLayout = bodyRoot.GetComponent<VerticalLayoutGroup>();
         }
     }
 
-    /// <summary>
-    /// Get body visibility state.
-    /// </summary>
-    public bool IsBodyExpanded => isBodyExpanded;
+    private Button FindButtonByNames(params string[] names)
+    {
+        var child = FindChildByNames(names);
+        return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private TextMeshProUGUI FindTmpByNames(params string[] names)
+    {
+        var child = FindChildByNames(names);
+        return child != null ? child.GetComponent<TextMeshProUGUI>() : null;
+    }
+
+    private Transform FindChildByNames(params string[] names)
+    {
+        foreach (var candidate in GetComponentsInChildren<Transform>(true))
+        {
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (candidate.name == names[i])
+                    return candidate;
+            }
+        }
+
+        return null;
+    }
 }
