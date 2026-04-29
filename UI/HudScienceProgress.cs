@@ -19,6 +19,8 @@ public class HudScienceProgress : MonoBehaviour
 
     [Header("Yield Display")]
     [SerializeField] private Image yieldIcon;
+    [SerializeField] private GameObject yieldHoverTarget;
+    [SerializeField] private HudYieldWidget yieldWidget;
     [SerializeField] private TextMeshProUGUI yieldPerTurnText;
     [SerializeField] private Color positiveYieldColor = Color.green;
     [SerializeField] private Color negativeYieldColor = Color.red;
@@ -27,6 +29,7 @@ public class HudScienceProgress : MonoBehaviour
     [SerializeField] private Button mainButton; // Click to open tech panel
     [SerializeField] private GameObject breakdownPopoverPrefab;
     private HudBreakdownPopover popoverInstance;
+    private EventTrigger hoverEventTrigger;
 
     private Civilization currentCiv;
 
@@ -41,12 +44,14 @@ public class HudScienceProgress : MonoBehaviour
             });
         }
 
-        WireHoverListeners();
+        if (yieldWidget == null)
+            WireHoverListeners();
     }
 
     private void OnDestroy()
     {
-        UnwireHoverListeners();
+        if (yieldWidget == null)
+            UnwireHoverListeners();
         if (mainButton != null)
             mainButton.onClick.RemoveAllListeners();
         if (popoverInstance != null)
@@ -55,26 +60,35 @@ public class HudScienceProgress : MonoBehaviour
 
     private void WireHoverListeners()
     {
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger == null)
-            eventTrigger = gameObject.AddComponent<EventTrigger>();
+        var hoverTarget = yieldHoverTarget != null ? yieldHoverTarget : (yieldIcon != null ? yieldIcon.gameObject : gameObject);
 
-        eventTrigger.triggers.Clear();
+        var graphic = hoverTarget.GetComponent<Graphic>();
+        if (graphic != null)
+            graphic.raycastTarget = true;
+
+        var canvasGroup = hoverTarget.GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = true;
+
+        hoverEventTrigger = hoverTarget.GetComponent<EventTrigger>();
+        if (hoverEventTrigger == null)
+            hoverEventTrigger = hoverTarget.AddComponent<EventTrigger>();
+
+        hoverEventTrigger.triggers.Clear();
 
         var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
         pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
-        eventTrigger.triggers.Add(pointerEnterEntry);
+        hoverEventTrigger.triggers.Add(pointerEnterEntry);
 
         var pointerExitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
         pointerExitEntry.callback.AddListener(data => HideBreakdownPopover());
-        eventTrigger.triggers.Add(pointerExitEntry);
+        hoverEventTrigger.triggers.Add(pointerExitEntry);
     }
 
     private void UnwireHoverListeners()
     {
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger != null)
-            eventTrigger.triggers.Clear();
+        if (hoverEventTrigger != null)
+            hoverEventTrigger.triggers.Clear();
     }
 
     public void Bind(Civilization civ)
@@ -118,6 +132,9 @@ public class HudScienceProgress : MonoBehaviour
     {
         int sciencePerTurn = civ.cachedSciencePerTurn;
 
+        if (yieldWidget != null)
+            yieldWidget.Bind("Science", civ.science, sciencePerTurn, null);
+
         if (yieldPerTurnText != null)
         {
             yieldPerTurnText.text = (sciencePerTurn >= 0 ? "+" : "") + sciencePerTurn.ToString("N0") + "/turn";
@@ -127,6 +144,7 @@ public class HudScienceProgress : MonoBehaviour
 
     private void ShowBreakdownPopover()
     {
+        if (yieldWidget != null) return;
         if (breakdownPopoverPrefab == null || currentCiv == null) return;
 
         if (popoverInstance != null)
@@ -142,7 +160,6 @@ public class HudScienceProgress : MonoBehaviour
     private void HideBreakdownPopover()
     {
         if (popoverInstance != null)
-            Destroy(popoverInstance.gameObject);
-        popoverInstance = null;
+            popoverInstance.NotifySourceHoverExit();
     }
 }

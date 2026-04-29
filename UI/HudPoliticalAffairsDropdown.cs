@@ -13,17 +13,31 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
     private Civilization currentCiv;
 
+    private void Awake()
+    {
+        EnsureDropdownReference();
+    }
+
+    private void Reset()
+    {
+        EnsureDropdownReference();
+    }
+
+    private void OnValidate()
+    {
+        EnsureDropdownReference();
+    }
+
     public void Bind(Civilization civ)
     {
         currentCiv = civ;
-
-        if (dropdownButton == null)
-            dropdownButton = GetComponent<HudDropdownButton>();
+        EnsureDropdownReference();
 
         if (dropdownButton != null)
+        {
             dropdownButton.SetMainClick(OpenPoliticalAffairsPanel);
-
-        Refresh();
+            Refresh();
+        }
     }
 
     public void Refresh()
@@ -33,11 +47,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
         int governorCount = currentCiv?.governors?.Count ?? 0;
         dropdownButton.SetLabel($"Political Affairs: {governorCount} Governors");
-        RebuildBody();
-    }
 
-    private void RebuildBody()
-    {
         dropdownButton.ClearBody();
         var bodyRoot = dropdownButton.BodyRootTransform;
         if (bodyRoot == null)
@@ -46,6 +56,8 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         BuildGovernorSection(bodyRoot);
         BuildVassalSection(bodyRoot);
         BuildFactionSection(bodyRoot);
+
+        dropdownButton.RebuildParentLayouts();
     }
 
     private void BuildGovernorSection(Transform bodyRoot)
@@ -61,16 +73,25 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
         foreach (var governor in governors)
         {
-            if (governorRowPrefab == null)
-            {
-                AddEmptyRow(governor?.Name ?? "Governor", bodyRoot);
-                continue;
-            }
+            string fallback = governor?.Name ?? "Governor";
 
-            var row = Instantiate(governorRowPrefab, bodyRoot, false);
-            var rowComponent = row.GetComponent<HudGovernorSummaryRow>();
-            if (rowComponent != null)
-                rowComponent.Populate(governor, currentCiv);
+            if (governorRowPrefab != null)
+            {
+                var row = Instantiate(governorRowPrefab, bodyRoot, false);
+                var rowComponent = row.GetComponent<HudGovernorSummaryRow>();
+                if (rowComponent != null)
+                {
+                    rowComponent.Populate(governor, currentCiv);
+                }
+                else
+                {
+                    SetRowTextIfPresent(row, fallback);
+                }
+            }
+            else
+            {
+                CreateSimpleTextRow("GovernorRow", fallback, bodyRoot, 16, FontStyles.Normal);
+            }
         }
     }
 
@@ -99,16 +120,26 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
         foreach (var entry in entries)
         {
-            if (vassalRowPrefab == null)
-            {
-                AddEmptyRow($"{entry.Key.civData?.civName ?? entry.Key.name} ({entry.Value})", bodyRoot);
-                continue;
-            }
+            string civName = entry.Key.civData?.civName ?? entry.Key.name;
+            string fallback = $"{civName} ({entry.Value})";
 
-            var row = Instantiate(vassalRowPrefab, bodyRoot, false);
-            var rowComponent = row.GetComponent<HudVassalSummaryRow>();
-            if (rowComponent != null)
-                rowComponent.Populate(entry.Key, entry.Value);
+            if (vassalRowPrefab != null)
+            {
+                var row = Instantiate(vassalRowPrefab, bodyRoot, false);
+                var rowComponent = row.GetComponent<HudVassalSummaryRow>();
+                if (rowComponent != null)
+                {
+                    rowComponent.Populate(entry.Key, entry.Value);
+                }
+                else
+                {
+                    SetRowTextIfPresent(row, fallback);
+                }
+            }
+            else
+            {
+                CreateSimpleTextRow("VassalRow", fallback, bodyRoot, 16, FontStyles.Normal);
+            }
         }
     }
 
@@ -125,16 +156,25 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
         foreach (var faction in factions)
         {
-            if (factionRowPrefab == null)
-            {
-                AddEmptyRow(faction?.FactionName ?? "Faction", bodyRoot);
-                continue;
-            }
+            string fallback = faction?.FactionName ?? "Faction";
 
-            var row = Instantiate(factionRowPrefab, bodyRoot, false);
-            var rowComponent = row.GetComponent<HudFactionSummaryRow>();
-            if (rowComponent != null)
-                rowComponent.Populate(faction);
+            if (factionRowPrefab != null)
+            {
+                var row = Instantiate(factionRowPrefab, bodyRoot, false);
+                var rowComponent = row.GetComponent<HudFactionSummaryRow>();
+                if (rowComponent != null)
+                {
+                    rowComponent.Populate(faction);
+                }
+                else
+                {
+                    SetRowTextIfPresent(row, fallback);
+                }
+            }
+            else
+            {
+                CreateSimpleTextRow("FactionRow", fallback, bodyRoot, 16, FontStyles.Normal);
+            }
         }
     }
 
@@ -143,19 +183,11 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         if (sectionHeaderPrefab != null)
         {
             var instance = Instantiate(sectionHeaderPrefab, parent, false);
-            var tmp = instance.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-                tmp.text = text;
+            SetRowTextIfPresent(instance, text);
             return;
         }
 
-        var go = new GameObject("SectionHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var label = go.GetComponent<TextMeshProUGUI>();
-        label.text = text;
-        label.fontSize = 19;
-        label.fontStyle = FontStyles.Bold;
-        label.color = Color.white;
+        CreateSimpleTextRow("SectionHeader", text, parent, 19, FontStyles.Bold);
     }
 
     private void AddEmptyRow(string text, Transform parent)
@@ -163,23 +195,47 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         if (emptyStatePrefab != null)
         {
             var instance = Instantiate(emptyStatePrefab, parent, false);
-            var tmp = instance.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-                tmp.text = text;
+            SetRowTextIfPresent(instance, text);
             return;
         }
 
-        var go = new GameObject("EmptyState", typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var label = go.GetComponent<TextMeshProUGUI>();
-        label.text = text;
-        label.fontSize = 16;
-        label.color = Color.white;
+        CreateSimpleTextRow("EmptyState", text, parent, 16, FontStyles.Italic);
     }
 
     private void OpenPoliticalAffairsPanel()
     {
         if (UIManager.Instance != null)
             UIManager.Instance.ShowPoliticalAffairsPanel(currentCiv);
+    }
+
+    private void EnsureDropdownReference()
+    {
+        if (dropdownButton == null)
+            dropdownButton = GetComponent<HudDropdownButton>();
+    }
+
+    private static void SetRowTextIfPresent(GameObject instance, string text)
+    {
+        var tmp = instance.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmp != null)
+            tmp.text = text;
+    }
+
+    private static void CreateSimpleTextRow(string objectName, string text, Transform parent, float fontSize, FontStyles fontStyle)
+    {
+        var go = new GameObject(objectName, typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+
+        var label = go.GetComponent<TextMeshProUGUI>();
+        label.text = text;
+        label.fontSize = fontSize;
+        label.fontStyle = fontStyle;
+        label.color = Color.white;
+        label.enableWordWrapping = true;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
     }
 }

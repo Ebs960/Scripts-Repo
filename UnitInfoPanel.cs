@@ -568,6 +568,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         unitNameText.text = currentWorkerUnit.data.unitName;
         unitTypeText.text = "Worker Unit";
+
+        // Display worker icon (was missing, causing stale/blank icon in worker panel)
+        if (unitIconImage != null)
+            unitIconImage.sprite = currentWorkerUnit.data != null ? currentWorkerUnit.data.icon : null;
         
         healthText.text = $"Health: {currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
         movePointsText.text = $"Move Points: {currentWorkerUnit.currentMovePoints}";
