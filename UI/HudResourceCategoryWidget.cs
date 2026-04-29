@@ -101,8 +101,12 @@ public class HudResourceCategoryWidget : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
 
-        // Instantiate and position
-        var popoverGO = Instantiate(breakdownPopoverPrefab, transform);
+        // Get root canvas to parent popover for top-rendering
+        Canvas rootCanvas = GetComponentInParent<Canvas>();
+        if (rootCanvas == null) return;
+
+        // Instantiate as child of canvas to ensure it renders on top
+        var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
         popoverInstance = popoverGO.GetComponent<HudResourceCategoryPopover>();
         
         if (popoverInstance != null)
@@ -132,10 +136,29 @@ public class HudResourceCategoryWidget : MonoBehaviour
         var sourceRect = transform as RectTransform;
         if (sourceRect == null) return;
 
-        popoverRect.anchorMin = new Vector2(0f, 1f);
-        popoverRect.anchorMax = new Vector2(0f, 1f);
-        popoverRect.pivot = new Vector2(0f, 1f);
-        popoverRect.anchoredPosition = new Vector2(0f, -sourceRect.rect.height);
-        popoverRect.localScale = Vector3.one;
+        Canvas canvas = popoverRect.GetComponentInParent<Canvas>();
+        if (canvas == null) return;
+        
+        RectTransform canvasRect = canvas.transform as RectTransform;
+        if (canvasRect == null) return;
+        
+        // Get the widget's position in screen space
+        var widgetWorldCorners = new Vector3[4];
+        sourceRect.GetWorldCorners(widgetWorldCorners);
+        Vector3 widgetBottomLeft = widgetWorldCorners[0];
+        
+        // Convert to canvas local space
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            RectTransformUtility.WorldToScreenPoint(canvas.worldCamera, widgetBottomLeft),
+            canvas.worldCamera,
+            out Vector2 canvasLocalPos))
+        {
+            popoverRect.anchorMin = Vector2.zero;
+            popoverRect.anchorMax = Vector2.zero;
+            popoverRect.pivot = new Vector2(0f, 1f);
+            popoverRect.anchoredPosition = canvasLocalPos;
+            popoverRect.localScale = Vector3.one;
+        }
     }
 }
