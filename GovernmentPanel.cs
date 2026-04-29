@@ -1,5 +1,6 @@
 // (duplicate removed) - file contains a single GovernmentPanel class above
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -46,12 +47,29 @@ public class GovernmentPanel : MonoBehaviour
     List<GameObject> spawned = new List<GameObject>();
     // Runtime UI pieces (gameobjects we may create at runtime if inspector fields are empty)
     private GameObject autoCloseButton; // created runtime if no closeButton assigned
+    private bool closeButtonWired;
     private GameObject confirmDialog; // root GameObject used at runtime (either confirmDialogRoot or created)
     private GovernmentData pendingGovernment;
     private PolicyData pendingPolicy;
     // note: confirmMessageText, confirmOkButton, confirmCancelButton, confirmEffectsContainer and confirmIconImage
     // are exposed as public inspector fields above so designers can wire them; runtime creation will assign
     // those public fields when creating the fallback dialog if they aren't already assigned.
+
+    private void EnsureCloseButtonWired()
+    {
+        if (closeButton == null)
+            return;
+
+        if (!closeButtonWired)
+        {
+            closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.AddListener(Close);
+            closeButtonWired = true;
+        }
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(closeButton.gameObject);
+    }
 
     public void ShowForCivilization(Civilization civ)
     {
@@ -67,6 +85,7 @@ public class GovernmentPanel : MonoBehaviour
             panelRoot.SetActive(true);
 
         EnsureRuntimeUI();
+        EnsureCloseButtonWired();
         if (headerText != null)
             headerText.text = civ != null ? ( (civ.civData != null ? civ.civData.civName : civ.gameObject.name) + " - Government & Policies" ) : "Government & Policies";
         RefreshAll();
@@ -87,12 +106,32 @@ public class GovernmentPanel : MonoBehaviour
             panelRoot.SetActive(false);
     }
 
+
+    private void OnEnable()
+    {
+        EnsureRuntimeUI();
+        EnsureCloseButtonWired();
+
+        if (civ == null)
+        {
+            civ = CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
+            if (civ == null)
+                civ = TurnManager.Instance?.GetCurrentCivilization();
+        }
+
+        if (panelRoot != null && panelRoot.activeInHierarchy)
+            RefreshAll();
+    }
+
     private void Update()
     {
         // Close on Escape when panel is active
-        if (panelRoot != null && panelRoot.activeSelf && Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
+        if (panelRoot != null && panelRoot.activeSelf)
         {
-            Close();
+            EnsureCloseButtonWired();
+
+            if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
+                Close();
         }
     }
 
@@ -107,11 +146,7 @@ public class GovernmentPanel : MonoBehaviour
                 {
                     // Use the inspector-assigned close button
                     autoCloseButton = closeButton.gameObject;
-                    // Ensure listener is set
-                    closeButton.onClick.RemoveAllListeners();
-                    closeButton.onClick.AddListener(Close);
-                    // Ensure click sound wiring
-                    if (UIManager.Instance != null) UIManager.Instance.WireUIInteractions(closeButton.gameObject);
+                    EnsureCloseButtonWired();
                 }
                 else
                 {
@@ -467,7 +502,11 @@ public class GovernmentPanel : MonoBehaviour
         if (policiesHeaderText != null) policiesHeaderText.gameObject.SetActive(false);
     }
 
-    void OnDisable() => ClearSpawned();
+    void OnDisable()
+    {
+        closeButtonWired = false;
+        ClearSpawned();
+    }
 
     /// <summary>
     /// Populate the confirm dialog's effects container and icon based on the pending government or policy.

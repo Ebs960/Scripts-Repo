@@ -13,12 +13,25 @@ public class HudGovernmentDropdown : MonoBehaviour
 
     private Civilization currentCiv;
 
+    private void Awake()
+    {
+        EnsureDropdownReference();
+    }
+
+    private void Reset()
+    {
+        EnsureDropdownReference();
+    }
+
+    private void OnValidate()
+    {
+        EnsureDropdownReference();
+    }
+
     public void Bind(Civilization civ)
     {
         currentCiv = civ;
-
-        if (dropdownButton == null)
-            dropdownButton = GetComponent<HudDropdownButton>();
+        EnsureDropdownReference();
 
         if (dropdownButton != null)
             dropdownButton.SetMainClick(OpenGovernmentPanel);
@@ -32,10 +45,10 @@ public class HudGovernmentDropdown : MonoBehaviour
             return;
 
         string govName = ResolveGovernmentName();
+        dropdownButton.SetLabel(govName);
+
         if (governmentNameText != null)
             governmentNameText.text = govName;
-
-        dropdownButton.SetLabel(govName);
 
         int policyCount = currentCiv?.activePolicies?.Count ?? 0;
         if (policyCountText != null)
@@ -47,6 +60,7 @@ public class HudGovernmentDropdown : MonoBehaviour
     private void RebuildBody()
     {
         dropdownButton.ClearBody();
+
         var bodyRoot = dropdownButton.BodyRootTransform;
         if (bodyRoot == null)
             return;
@@ -55,6 +69,7 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (policies == null || policies.Count == 0)
         {
             AddEmptyRow("No active policies", bodyRoot);
+            dropdownButton.RebuildParentLayouts();
             return;
         }
 
@@ -63,25 +78,34 @@ public class HudGovernmentDropdown : MonoBehaviour
             if (policy == null)
                 continue;
 
-            if (policyRowPrefab == null)
-            {
-                AddEmptyRow($"{GetPolicyName(policy)}\n{BuildPolicyEffectSummary(policy)}", bodyRoot);
-                continue;
-            }
+            string line = $"{GetPolicyName(policy)}\n{BuildPolicyEffectSummary(policy)}";
 
-            var row = Instantiate(policyRowPrefab, bodyRoot, false);
-            var rowComponent = row.GetComponent<HudGovernmentPolicyRow>();
-            if (rowComponent != null)
+            if (policyRowPrefab != null)
             {
-                rowComponent.Populate(policy, BuildPolicyEffectSummary(policy));
+                var row = Instantiate(policyRowPrefab, bodyRoot, false);
+                var rowComponent = row.GetComponent<HudGovernmentPolicyRow>();
+                if (rowComponent != null)
+                {
+                    rowComponent.Populate(policy, BuildPolicyEffectSummary(policy));
+                }
+                else
+                {
+                    SetRowTextIfPresent(row, line);
+                }
             }
             else
             {
-                var tmp = row.GetComponentInChildren<TextMeshProUGUI>();
-                if (tmp != null)
-                    tmp.text = $"{GetPolicyName(policy)}\n{BuildPolicyEffectSummary(policy)}";
+                CreateSimpleTextRow("PolicyRow", line, bodyRoot, 18, FontStyles.Normal);
             }
         }
+
+        dropdownButton.RebuildParentLayouts();
+    }
+
+    private void EnsureDropdownReference()
+    {
+        if (dropdownButton == null)
+            dropdownButton = GetComponent<HudDropdownButton>();
     }
 
     private string ResolveGovernmentName()
@@ -93,7 +117,10 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(gov.governmentName))
             return gov.governmentName;
 
-        return gov.name;
+        if (!string.IsNullOrWhiteSpace(gov.name))
+            return gov.name;
+
+        return "No Government";
     }
 
     private void OpenGovernmentPanel()
@@ -107,18 +134,36 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (emptyStatePrefab != null)
         {
             var instance = Instantiate(emptyStatePrefab, parent, false);
-            var tmp = instance.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-                tmp.text = text;
+            SetRowTextIfPresent(instance, text);
             return;
         }
 
-        var go = new GameObject("EmptyState", typeof(RectTransform), typeof(TextMeshProUGUI));
+        CreateSimpleTextRow("EmptyState", text, parent, 18, FontStyles.Italic);
+    }
+
+    private static void SetRowTextIfPresent(GameObject instance, string text)
+    {
+        var tmp = instance.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmp != null)
+            tmp.text = text;
+    }
+
+    private static void CreateSimpleTextRow(string objectName, string text, Transform parent, float fontSize, FontStyles fontStyle)
+    {
+        var go = new GameObject(objectName, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent, false);
+
         var label = go.GetComponent<TextMeshProUGUI>();
         label.text = text;
-        label.fontSize = 18;
+        label.fontSize = fontSize;
+        label.fontStyle = fontStyle;
         label.color = Color.white;
+        label.enableWordWrapping = true;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
     }
 
     private string BuildPolicyEffectSummary(PolicyData policy)
@@ -146,7 +191,9 @@ public class HudGovernmentDropdown : MonoBehaviour
             var traitNames = new List<string>();
             foreach (var trait in policy.unlockedGovernorTraits)
             {
-                if (trait == null) continue;
+                if (trait == null)
+                    continue;
+
                 traitNames.Add(!string.IsNullOrWhiteSpace(trait.traitName) ? trait.traitName : trait.name);
             }
 
@@ -163,7 +210,9 @@ public class HudGovernmentDropdown : MonoBehaviour
         var sb = new StringBuilder();
         for (int i = 0; i < effects.Count; i++)
         {
-            if (i > 0) sb.Append(" • ");
+            if (i > 0)
+                sb.Append(" • ");
+
             sb.Append(effects[i]);
         }
 
@@ -182,6 +231,7 @@ public class HudGovernmentDropdown : MonoBehaviour
     {
         if (!string.IsNullOrWhiteSpace(policy.policyName))
             return policy.policyName;
+
         return policy.name;
     }
 }
