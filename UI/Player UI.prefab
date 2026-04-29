@@ -4954,6 +4954,7 @@ MonoBehaviour:
   equipmentButton: {fileID: 1456405985575703088}
   endTurnButton: {fileID: 4535351420986874266}
   layerDropdown: {fileID: 2074013181607868691}
+  turnChangePanel: {fileID: 6660902435325007938}
 --- !u!114 &5757040030198237913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7110,7 +7111,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &7861535105129943093
 RectTransform:
   m_ObjectHideFlags: 0
