@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -36,6 +35,8 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
     private bool isHoverLocked;
     private bool pendingSourceExit;
     private Coroutine lockRoutine;
+    private readonly List<HudBreakdownItem> pooledItemWidgets = new List<HudBreakdownItem>();
+    private int pooledItemCountInUse;
 
     /// <summary>
     /// Show breakdown for a specific yield type.
@@ -56,11 +57,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
     {
         if (contentRoot == null) return;
 
-        // Clear existing items
-        foreach (Transform child in contentRoot)
-        {
-            Destroy(child.gameObject);
-        }
+        pooledItemCountInUse = 0;
 
         // Get breakdown data from service
         var breakdownService = UnityEngine.Object.FindFirstObjectByType<HudBreakdownService>();
@@ -91,12 +88,13 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         {
             if (breakdownItemPrefab != null)
             {
-                var instance = Instantiate(breakdownItemPrefab, contentRoot);
-                var itemWidget = instance.GetComponent<HudBreakdownItem>();
+                var itemWidget = GetOrCreatePooledItemWidget();
                 if (itemWidget != null)
                     itemWidget.Populate(item);
             }
         }
+
+        HideUnusedPooledItems();
 
         // Refresh layout
         if (layoutGroup != null)
@@ -194,10 +192,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         if (canvasRect == null)
             return;
 
-        Vector2 screenPoint = pointerScreenPosition
-            ?? Mouse.current?.position.ReadValue()
-            ?? Pointer.current?.position.ReadValue()
-            ?? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        Vector2 screenPoint = pointerScreenPosition ?? UIPointerUtil.GetScreenPositionOrCenter();
         var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
 
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, cam, out var localPoint))
@@ -213,5 +208,35 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
             StopCoroutine(lockRoutine);
 
         Destroy(gameObject);
+    }
+
+    private HudBreakdownItem GetOrCreatePooledItemWidget()
+    {
+        while (pooledItemCountInUse >= pooledItemWidgets.Count)
+        {
+            var instance = Instantiate(breakdownItemPrefab, contentRoot);
+            var widget = instance != null ? instance.GetComponent<HudBreakdownItem>() : null;
+            if (widget == null)
+            {
+                if (instance != null) Destroy(instance);
+                return null;
+            }
+            pooledItemWidgets.Add(widget);
+        }
+
+        var pooled = pooledItemWidgets[pooledItemCountInUse++];
+        if (pooled != null)
+            pooled.gameObject.SetActive(true);
+        return pooled;
+    }
+
+    private void HideUnusedPooledItems()
+    {
+        for (int i = pooledItemCountInUse; i < pooledItemWidgets.Count; i++)
+        {
+            var widget = pooledItemWidgets[i];
+            if (widget != null)
+                widget.gameObject.SetActive(false);
+        }
     }
 }

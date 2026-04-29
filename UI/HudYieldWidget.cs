@@ -1,7 +1,7 @@
 // Assets/Scripts/UI/HudYieldWidget.cs
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
@@ -10,7 +10,7 @@ using TMPro;
 /// 
 /// Supports hover-to-expand breakdown popover (via HudBreakdownPopover).
 /// </summary>
-public class HudYieldWidget : MonoBehaviour
+public class HudYieldWidget : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Display")]
     [SerializeField] private Image iconImage;
@@ -22,56 +22,16 @@ public class HudYieldWidget : MonoBehaviour
 
     [Header("Hover Popover")]
     [SerializeField] private GameObject breakdownPopoverPrefab;
-    private Button hoverButton;
     private HudBreakdownPopover popoverInstance;
 
     private string yieldName;
     private int currentAmount;
     private int deltaPerTurn;
 
-    private void Awake()
-    {
-        hoverButton = GetComponent<Button>();
-        if (hoverButton == null)
-            hoverButton = gameObject.AddComponent<Button>();
-    }
-
-    private void Start()
-    {
-        WireHoverListeners();
-    }
-
     private void OnDestroy()
     {
-        UnwireHoverListeners();
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
-    }
-
-    private void WireHoverListeners()
-    {
-        if (hoverButton == null) return;
-
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger == null)
-            eventTrigger = gameObject.AddComponent<EventTrigger>();
-
-        // Hover Enter: Show popover
-        var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-        pointerEnterEntry.callback.AddListener(ShowBreakdownPopoverFromEvent);
-        eventTrigger.triggers.Add(pointerEnterEntry);
-
-        // Hover Exit: Hide popover
-        var pointerExitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-        pointerExitEntry.callback.AddListener(data => HideBreakdownPopover());
-        eventTrigger.triggers.Add(pointerExitEntry);
-    }
-
-    private void UnwireHoverListeners()
-    {
-        var eventTrigger = GetComponent<EventTrigger>();
-        if (eventTrigger != null)
-            eventTrigger.triggers.Clear();
     }
 
     /// <summary>
@@ -100,10 +60,14 @@ public class HudYieldWidget : MonoBehaviour
         }
     }
 
-    private void ShowBreakdownPopoverFromEvent(BaseEventData data)
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        var pointerData = data as PointerEventData;
-        ShowBreakdownPopover(pointerData != null ? (Vector2?)pointerData.position : null);
+        ShowBreakdownPopover(eventData != null ? (Vector2?)eventData.position : null);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        HideBreakdownPopover();
     }
 
     private void ShowBreakdownPopover(Vector2? pointerScreenPosition = null)
