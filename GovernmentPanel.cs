@@ -1,5 +1,6 @@
 // (duplicate removed) - file contains a single GovernmentPanel class above
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -113,7 +114,7 @@ public class GovernmentPanel : MonoBehaviour
 
         if (civ == null)
         {
-            civ = CivilizationManager.Instance?.GetAllCivs()?.Find(c => c != null && c.isPlayerControlled);
+            civ = CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
             if (civ == null)
                 civ = TurnManager.Instance?.GetCurrentCivilization();
         }
