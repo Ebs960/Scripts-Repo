@@ -114,13 +114,22 @@ public class HudCultureProgress : MonoBehaviour
                 cultureIcon.sprite = null;
         }
 
-        int cultureRequired = 100;
-        float progressPct = civ.culture / (float)cultureRequired;
-        if (progressBar != null)
-            progressBar.fillAmount = Mathf.Clamp01(progressPct);
+        if (adoptingCulture != null && adoptingCulture.cultureCost > 0)
+        {
+            float progressPct = civ.currentCultureProgress / adoptingCulture.cultureCost;
+            if (progressBar != null)
+                progressBar.fillAmount = Mathf.Clamp01(progressPct);
 
-        if (progressText != null)
-            progressText.text = $"{civ.culture}/{cultureRequired}";
+            if (progressText != null)
+                progressText.text = $"{Mathf.FloorToInt(civ.currentCultureProgress)}/{adoptingCulture.cultureCost}";
+        }
+        else
+        {
+            if (progressBar != null)
+                progressBar.fillAmount = 0;
+            if (progressText != null)
+                progressText.text = "0/0";
+        }
 
         UpdateYieldDisplay(civ);
     }

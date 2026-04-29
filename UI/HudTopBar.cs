@@ -40,6 +40,7 @@ public class HudTopBar : MonoBehaviour
     
     [Header("Turn Change UI (optional)")]
     [SerializeField] private GameObject turnChangePanel;
+    [SerializeField] private TextMeshProUGUI turnChangeText;
 
     private Civilization currentCiv;
     private readonly List<PlanetLayerType> layerDropdownMapping = new();
@@ -264,6 +265,7 @@ public class HudTopBar : MonoBehaviour
             roundText.text = $"Turn {round}";
 
         bool isPlayersTurn = civ != null && civ.isPlayerControlled;
+        UpdateTurnChangePanelText(civ, round, isPlayersTurn);
         SetTurnChangePanelVisible(!isPlayersTurn);
         UpdateEndTurnButtonState();
     }
@@ -273,7 +275,25 @@ public class HudTopBar : MonoBehaviour
         var turnManager = TurnManager.Instance;
         var activeCiv = turnManager != null ? turnManager.GetCurrentCivilization() : null;
         bool isPlayersTurn = activeCiv != null && activeCiv.isPlayerControlled;
+        UpdateTurnChangePanelText(activeCiv, turnManager != null ? turnManager.round : 0, isPlayersTurn);
         SetTurnChangePanelVisible(!isPlayersTurn);
+    }
+
+    private void UpdateTurnChangePanelText(Civilization activeCiv, int round, bool isPlayersTurn)
+    {
+        if (turnChangeText == null)
+            return;
+
+        if (isPlayersTurn || activeCiv == null)
+        {
+            turnChangeText.text = "Your turn";
+            return;
+        }
+
+        string civName = activeCiv.civData != null && !string.IsNullOrEmpty(activeCiv.civData.civName)
+            ? activeCiv.civData.civName
+            : activeCiv.name;
+        turnChangeText.text = $"{civName}'s turn (Turn {round})";
     }
 
     private void SetTurnChangePanelVisible(bool visible)
