@@ -1060,8 +1060,8 @@ MonoBehaviour:
   minimapImage: {fileID: 8280042980049759750}
   layerDropdown: {fileID: 4796230883351284583}
   minimapContainer: {fileID: 2569911654292508293}
-  zoomInButton: {fileID: 6924044681161247334}
-  zoomOutButton: {fileID: 551640169055990870}
+  zoomInHitArea: {fileID: 3544120029245252054}
+  zoomOutHitArea: {fileID: 5693648008668181242}
   zoomLevelText: {fileID: 3513231434145898316}
   positionIndicator: {fileID: 8306577482277223502}
   minimapResolution: {x: 2048, y: 2048}
