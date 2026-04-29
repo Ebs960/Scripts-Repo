@@ -40,6 +40,7 @@ public class HudTopBar : MonoBehaviour
     
     [Header("Turn Change UI (optional)")]
     [SerializeField] private GameObject turnChangePanel;
+    [SerializeField] private Image turnChangeIcon;
     [SerializeField] private TextMeshProUGUI turnChangeText;
 
     private Civilization currentCiv;
@@ -287,6 +288,8 @@ public class HudTopBar : MonoBehaviour
         if (isPlayersTurn || activeCiv == null)
         {
             turnChangeText.text = "Your turn";
+            if (turnChangeIcon != null)
+                turnChangeIcon.sprite = null;
             return;
         }
 
@@ -294,6 +297,10 @@ public class HudTopBar : MonoBehaviour
             ? activeCiv.civData.civName
             : activeCiv.name;
         turnChangeText.text = $"{civName}'s turn (Turn {round})";
+
+        // Set the icon from the civilization's data
+        if (turnChangeIcon != null)
+            turnChangeIcon.sprite = activeCiv.civData != null ? activeCiv.civData.icon : null;
     }
 
     private void SetTurnChangePanelVisible(bool visible)
