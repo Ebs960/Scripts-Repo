@@ -95,6 +95,7 @@ MonoBehaviour:
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
   rectTransform: {fileID: 8371246374031460560}
   layoutGroup: {fileID: 5927757520903785714}
+  hoverLockDelaySeconds: 0.75
 --- !u!1 &5331277359991424056
 GameObject:
   m_ObjectHideFlags: 0
