@@ -18,7 +18,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &8540917934770016297
 Transform:
   m_ObjectHideFlags: 0
@@ -157,9 +157,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d66eddd58c6487a4bbf53f8d7e162afe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LightingController
-  sunDirection: {x: 0.3578999, y: 0.6983054, z: -0.61990094}
+  sunDirection: {x: 0.4287464, y: -0.5144958, z: -0.7426107}
   sunColor: {r: 1, g: 1, b: 1, a: 1}
   sunIntensity: 10
-  autoSyncToSceneSun: 1
+  autoSyncToSceneSun: 0
   normalizeDirectionOnValidate: 1
   syncInterval: 0.25
