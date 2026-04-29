@@ -49,7 +49,6 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         // Populate content via HudBreakdownService
         PopulateBreakdown(yieldName, breakdownData);
 
-        PositionTopAtMouse(pointerScreenPosition);
         BeginHoverLockCountdown();
     }
 
