@@ -14,6 +14,7 @@ public class HudYieldWidget : MonoBehaviour
 {
     [Header("Display")]
     [SerializeField] private Image iconImage;
+    [SerializeField] private bool allowRuntimeIconOverride = false;
     [SerializeField] private TextMeshProUGUI amountText;
     [SerializeField] private TextMeshProUGUI deltaText;
     [SerializeField] private Color positiveDeltaColor = Color.green;
@@ -57,7 +58,7 @@ public class HudYieldWidget : MonoBehaviour
 
         // Hover Enter: Show popover
         var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-        pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
+        pointerEnterEntry.callback.AddListener(ShowBreakdownPopoverFromEvent);
         eventTrigger.triggers.Add(pointerEnterEntry);
 
         // Hover Exit: Hide popover
@@ -84,7 +85,9 @@ public class HudYieldWidget : MonoBehaviour
 
         // Update display
 
-        if (iconImage != null)
+        // By default preserve prefab-assigned icon visuals at runtime.
+        // Only override icon sprite when explicitly enabled.
+        if (allowRuntimeIconOverride && iconImage != null && icon != null)
             iconImage.sprite = icon;
 
         if (amountText != null)
@@ -97,7 +100,13 @@ public class HudYieldWidget : MonoBehaviour
         }
     }
 
-    private void ShowBreakdownPopover()
+    private void ShowBreakdownPopoverFromEvent(BaseEventData data)
+    {
+        var pointerData = data as PointerEventData;
+        ShowBreakdownPopover(pointerData != null ? (Vector2?)pointerData.position : null);
+    }
+
+    private void ShowBreakdownPopover(Vector2? pointerScreenPosition = null)
     {
         if (breakdownPopoverPrefab == null) return;
 
@@ -110,14 +119,13 @@ public class HudYieldWidget : MonoBehaviour
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.Show(yieldName, GetBreakdownData());
+            popoverInstance.Show(yieldName, GetBreakdownData(), pointerScreenPosition);
     }
 
     private void HideBreakdownPopover()
     {
         if (popoverInstance != null)
-            Destroy(popoverInstance.gameObject);
-        popoverInstance = null;
+            popoverInstance.NotifySourceHoverExit();
     }
 
     /// <summary>
