@@ -14,7 +14,7 @@ using TMPro;
 /// - Scroll wheel or buttons to zoom; click to move the camera to that spot.
 /// - TextMeshPro support for dropdown and zoom level display.
 /// </summary>
-public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler
+public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler, IPointerClickHandler
 {
     [Header("UI References")]
     [Tooltip("RawImage used to display the generated minimap texture")]
@@ -23,10 +23,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public TMP_Dropdown layerDropdown;
     [Tooltip("Optional container for the minimap – used for scaling")]
     public RectTransform minimapContainer;
-    [Tooltip("Button to zoom in on the minimap")]
-    public Button zoomInButton;
-    [Tooltip("Button to zoom out on the minimap")]
-    public Button zoomOutButton;
+    [Tooltip("Clickable zoom-in region (RectTransform). This replaces legacy Button wiring.")]
+    public RectTransform zoomInHitArea;
+    [Tooltip("Clickable zoom-out region (RectTransform). This replaces legacy Button wiring.")]
+    public RectTransform zoomOutHitArea;
     [Tooltip("Optional text display showing current zoom level")]
     public TextMeshProUGUI zoomLevelText;
     [Tooltip("Position indicator (shows where camera is looking on minimap)")]
@@ -482,18 +482,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // if (minimapImage == null) { /* optional: assign via inspector */ }
 
-        // Set up zoom button listeners
-        if (zoomInButton != null)
-        {
-            zoomInButton.onClick.RemoveListener(ZoomIn);
-            zoomInButton.onClick.AddListener(ZoomIn);
-        }
-        if (zoomOutButton != null)
-        {
-            zoomOutButton.onClick.RemoveListener(ZoomOut);
-            zoomOutButton.onClick.AddListener(ZoomOut);
-        }
-        
         // Hide individual UI elements during loading, but keep GameObject active for coroutines
         // Hide UI while we generate minimaps (always pre-generation now)
         RefreshUIVisibility();
@@ -512,18 +500,18 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             minimapImage.color = new Color(1, 1, 1, 0); // Transparent
             minimapImage.raycastTarget = false; // Disable interaction
         }
-        if (zoomInButton != null) 
+        if (zoomInHitArea != null) 
         {
-            var canvasGroup = zoomInButton.GetComponent<CanvasGroup>();
-            if (canvasGroup == null) canvasGroup = zoomInButton.gameObject.AddComponent<CanvasGroup>();
+            var canvasGroup = zoomInHitArea.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = zoomInHitArea.gameObject.AddComponent<CanvasGroup>();
             canvasGroup.alpha = 0;
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
         }
-        if (zoomOutButton != null) 
+        if (zoomOutHitArea != null) 
         {
-            var canvasGroup = zoomOutButton.GetComponent<CanvasGroup>();
-            if (canvasGroup == null) canvasGroup = zoomOutButton.gameObject.AddComponent<CanvasGroup>();
+            var canvasGroup = zoomOutHitArea.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = zoomOutHitArea.gameObject.AddComponent<CanvasGroup>();
             canvasGroup.alpha = 0;
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
@@ -557,27 +545,25 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             minimapImage.color = Color.white; // Visible
             minimapImage.raycastTarget = true; // Enable interaction
         }
-        if (zoomInButton != null) 
+        if (zoomInHitArea != null) 
         {
-            var canvasGroup = zoomInButton.GetComponent<CanvasGroup>();
+            var canvasGroup = zoomInHitArea.GetComponent<CanvasGroup>();
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1;
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
             }
-            zoomInButton.interactable = true;
         }
-        if (zoomOutButton != null) 
+        if (zoomOutHitArea != null) 
         {
-            var canvasGroup = zoomOutButton.GetComponent<CanvasGroup>();
+            var canvasGroup = zoomOutHitArea.GetComponent<CanvasGroup>();
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1;
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
             }
-            zoomOutButton.interactable = true;
         }
         if (zoomLevelText != null) 
         {
@@ -1353,6 +1339,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         SetZoom(Mathf.Clamp(_currentZoom + delta * zoomSpeed, minZoom, maxZoom));
     }
 
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData == null) return;
+        if (TryHandleZoomHitAreaClick(eventData)) eventData.Use();
+    }
+
     private bool IsPointerOnMinimapImage(PointerEventData eventData)
     {
         if (minimapImage == null) return false;
@@ -1366,6 +1358,32 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             return true;
 
         return currentTarget == minimapImage.gameObject || pressTarget == minimapImage.gameObject;
+    }
+
+    private bool TryHandleZoomHitAreaClick(PointerEventData eventData)
+    {
+        if (!CanDisplayUIElements()) return false;
+
+        if (IsPointerInsideRect(eventData, zoomInHitArea))
+        {
+            ZoomIn();
+            return true;
+        }
+
+        if (IsPointerInsideRect(eventData, zoomOutHitArea))
+        {
+            ZoomOut();
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsPointerInsideRect(PointerEventData eventData, RectTransform rect)
+    {
+        if (eventData == null || rect == null) return false;
+        var cam = eventData.pressEventCamera != null ? eventData.pressEventCamera : eventData.enterEventCamera;
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, eventData.position, cam);
     }
 
     private void SetZoom(float zoom)
@@ -1430,18 +1448,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void UpdateZoomButtonStates()
     {
-        if (zoomInButton != null)
+        if (zoomInHitArea != null)
         {
             bool canZoomIn = _currentZoom < maxZoom;
-            zoomInButton.interactable = canZoomIn;
-            var cg = zoomInButton.GetComponent<CanvasGroup>();
+            var cg = zoomInHitArea.GetComponent<CanvasGroup>();
             if (cg != null) cg.interactable = canZoomIn;
         }
-        if (zoomOutButton != null)
+        if (zoomOutHitArea != null)
         {
             bool canZoomOut = _currentZoom > minZoom;
-            zoomOutButton.interactable = canZoomOut;
-            var cg = zoomOutButton.GetComponent<CanvasGroup>();
+            var cg = zoomOutHitArea.GetComponent<CanvasGroup>();
             if (cg != null) cg.interactable = canZoomOut;
         }
     }
