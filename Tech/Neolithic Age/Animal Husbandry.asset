@@ -15,7 +15,7 @@ MonoBehaviour:
   techName: Animal Husbandry
   techAge: 1
   description: Yayyy animals
-  techIcon: {fileID: 21300000, guid: 0f7de6fb76c45d1419e5e641dd1f672c, type: 3}
+  techIcon: {fileID: 21300000, guid: 0aad21824858fc94e9a20c829ea6bcd3, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
@@ -26,13 +26,6 @@ MonoBehaviour:
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlockedUnits: []
-  unlockedWorkerUnits: []
-  unlocksImprovements:
-  - {fileID: 11400000, guid: b97a16c3f18c59f4686a0ac125583f82, type: 2}
-  unlockedBuildings: []
-  unlockedEquipment: []
-  unlockedPolicies: []
   unlockedGovernments: []
   unlockedReligions: []
   unlockedLeaders: []
@@ -61,10 +54,18 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  enablesHerding: 0
+  preventsMosquitoDamage: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 1
   pantheonCapIncrease: 0
+  unlocksUnitStacking: 0
+  unitStackSizeGranted: 2
