@@ -484,9 +484,15 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         // Set up zoom button listeners
         if (zoomInButton != null)
+        {
+            zoomInButton.onClick.RemoveListener(ZoomIn);
             zoomInButton.onClick.AddListener(ZoomIn);
+        }
         if (zoomOutButton != null)
+        {
+            zoomOutButton.onClick.RemoveListener(ZoomOut);
             zoomOutButton.onClick.AddListener(ZoomOut);
+        }
         
         // Hide individual UI elements during loading, but keep GameObject active for coroutines
         // Hide UI while we generate minimaps (always pre-generation now)
@@ -1229,6 +1235,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _isDragging = true;
         _lastDragPosition = eventData.position;
 
+        eventData.Use();
+
         // If not zoomed in, this will be a click-to-move
         if (_currentZoom <= 1.1f)
         {
@@ -1248,7 +1256,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_isDragging)
         {
             _isDragging = false;
-            
+            eventData.Use();
+
             // If it was a short click (not much dragging), treat as click-to-move even when zoomed
             float dragDistance = Vector2.Distance(eventData.position, _lastDragPosition);
             if (dragDistance < 10f) // 10 pixels threshold
@@ -1266,6 +1275,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         if (!IsPointerOnMinimapImage(eventData)) return;
         if (!_isDragging || minimapImage == null || _currentZoom <= 1.1f) return;
+        eventData.Use();
 
         // Calculate drag delta in screen space
         Vector2 dragDelta = eventData.position - _lastDragPosition;
@@ -1335,6 +1345,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public void OnScroll(PointerEventData eventData)
     {
         if (!IsPointerOnMinimapImage(eventData)) return;
+        eventData.Use();
         float delta = eventData.scrollDelta.y;
         if (Mathf.Approximately(delta, 0f)) return;
         SetZoom(Mathf.Clamp(_currentZoom + delta * zoomSpeed, minZoom, maxZoom));
