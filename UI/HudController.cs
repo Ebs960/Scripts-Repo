@@ -18,6 +18,7 @@ public class HudController : MonoBehaviour
 
     private Civilization currentCiv;
     private bool subscribedToTurnManager;
+    private Civilization observedCiv;
 
     private void Awake()
     {
@@ -42,6 +43,7 @@ public class HudController : MonoBehaviour
 
         if (TurnManager.Instance != null && subscribedToTurnManager)
             TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        UnsubscribeFromCivEvents();
 
         subscribedToTurnManager = false;
     }
@@ -77,6 +79,7 @@ public class HudController : MonoBehaviour
 
         if (currentCiv == null)
             currentCiv = ResolvePlayerCivilization();
+        SubscribeToCivEvents(currentCiv);
 
         RefreshAll();
     }
@@ -84,6 +87,7 @@ public class HudController : MonoBehaviour
     private void ResolveAndBindPlayerCivilization()
     {
         currentCiv = ResolvePlayerCivilization();
+        SubscribeToCivEvents(currentCiv);
         RefreshAll();
     }
 
@@ -137,6 +141,40 @@ public class HudController : MonoBehaviour
 
         if (politicalAffairsDropdown != null)
             politicalAffairsDropdown.Bind(currentCiv);
+    }
+
+    private void SubscribeToCivEvents(Civilization civ)
+    {
+        if (observedCiv == civ)
+            return;
+
+        UnsubscribeFromCivEvents();
+        observedCiv = civ;
+        if (observedCiv == null)
+            return;
+
+        observedCiv.OnTechStarted += HandleProgressSelectionChanged;
+        observedCiv.OnCultureStarted += HandleCultureSelectionChanged;
+    }
+
+    private void UnsubscribeFromCivEvents()
+    {
+        if (observedCiv == null)
+            return;
+
+        observedCiv.OnTechStarted -= HandleProgressSelectionChanged;
+        observedCiv.OnCultureStarted -= HandleCultureSelectionChanged;
+        observedCiv = null;
+    }
+
+    private void HandleProgressSelectionChanged(TechData _)
+    {
+        RefreshAll();
+    }
+
+    private void HandleCultureSelectionChanged(CultureData _)
+    {
+        RefreshAll();
     }
 
     private bool IsLoadingActive()

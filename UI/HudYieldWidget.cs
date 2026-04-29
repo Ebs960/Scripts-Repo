@@ -1,8 +1,8 @@
 // Assets/Scripts/UI/HudYieldWidget.cs
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Reusable widget for displaying a single yield metric on the top bar.
@@ -10,7 +10,7 @@ using TMPro;
 /// 
 /// Supports hover-to-expand breakdown popover (via HudBreakdownPopover).
 /// </summary>
-public class HudYieldWidget : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class HudYieldWidget : MonoBehaviour
 {
     [Header("Display")]
     [SerializeField] private Image iconImage;
@@ -23,15 +23,45 @@ public class HudYieldWidget : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [Header("Hover Popover")]
     [SerializeField] private GameObject breakdownPopoverPrefab;
     private HudBreakdownPopover popoverInstance;
+    private EventTrigger hoverEventTrigger;
 
     private string yieldName;
     private int currentAmount;
     private int deltaPerTurn;
 
+    private void Start()
+    {
+        WireHoverListeners();
+    }
+
     private void OnDestroy()
     {
+        UnwireHoverListeners();
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
+    }
+
+    private void WireHoverListeners()
+    {
+        hoverEventTrigger = GetComponent<EventTrigger>();
+        if (hoverEventTrigger == null)
+            hoverEventTrigger = gameObject.AddComponent<EventTrigger>();
+
+        hoverEventTrigger.triggers.Clear();
+
+        var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
+        hoverEventTrigger.triggers.Add(pointerEnterEntry);
+
+        var pointerExitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        pointerExitEntry.callback.AddListener(data => HideBreakdownPopover());
+        hoverEventTrigger.triggers.Add(pointerExitEntry);
+    }
+
+    private void UnwireHoverListeners()
+    {
+        if (hoverEventTrigger != null)
+            hoverEventTrigger.triggers.Clear();
     }
 
     /// <summary>
@@ -60,17 +90,7 @@ public class HudYieldWidget : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
     }
 
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        ShowBreakdownPopover(eventData != null ? (Vector2?)eventData.position : null);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        HideBreakdownPopover();
-    }
-
-    private void ShowBreakdownPopover(Vector2? pointerScreenPosition = null)
+    private void ShowBreakdownPopover()
     {
         if (breakdownPopoverPrefab == null) return;
 
@@ -85,14 +105,15 @@ public class HudYieldWidget : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (popoverInstance != null)
         {
             PositionPopoverUnderIcon(popoverGO.GetComponent<RectTransform>());
-            popoverInstance.Show(yieldName, GetBreakdownData(), pointerScreenPosition);
+            popoverInstance.Show(yieldName, GetBreakdownData());
         }
     }
 
     private void HideBreakdownPopover()
     {
         if (popoverInstance != null)
-            popoverInstance.NotifySourceHoverExit();
+            Destroy(popoverInstance.gameObject);
+        popoverInstance = null;
     }
 
     /// <summary>
