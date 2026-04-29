@@ -102,11 +102,12 @@ public class HudResourceCategoryWidget : MonoBehaviour
             Destroy(popoverInstance.gameObject);
 
         // Instantiate and position
-        var popoverGO = Instantiate(breakdownPopoverPrefab, transform.parent);
+        var popoverGO = Instantiate(breakdownPopoverPrefab, transform);
         popoverInstance = popoverGO.GetComponent<HudResourceCategoryPopover>();
         
         if (popoverInstance != null)
         {
+            PositionPopoverUnderIcon(popoverGO.GetComponent<RectTransform>());
             var allResources = ResourceCategoryProviderUtility.GetMergedInventory(currentCiv, categoryDefinition);
 
             popoverInstance.Show(categoryDefinition.ToString(), allResources, breakdownItemPrefab);
@@ -123,5 +124,18 @@ public class HudResourceCategoryWidget : MonoBehaviour
     private static string GetCategoryDisplayName(ResourceCategory category)
     {
         return category.ToString();
+    }
+
+    private void PositionPopoverUnderIcon(RectTransform popoverRect)
+    {
+        if (popoverRect == null) return;
+        var sourceRect = transform as RectTransform;
+        if (sourceRect == null) return;
+
+        popoverRect.anchorMin = new Vector2(0f, 1f);
+        popoverRect.anchorMax = new Vector2(0f, 1f);
+        popoverRect.pivot = new Vector2(0f, 1f);
+        popoverRect.anchoredPosition = new Vector2(0f, -sourceRect.rect.height);
+        popoverRect.localScale = Vector3.one;
     }
 }
