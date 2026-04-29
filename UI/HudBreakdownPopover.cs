@@ -184,19 +184,6 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         if (rect == null)
             return;
 
-        var parentRect = rect.parent as RectTransform;
-        if (parentRect == null)
-            return;
-
-        Vector2 screenPoint = pointerScreenPosition ?? UIPointerUtil.GetScreenPositionOrCenter();
-        var canvas = rect.GetComponentInParent<Canvas>();
-        var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, cam, out var localPoint))
-        {
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = localPoint;
-            rect.SetAsLastSibling();
         var canvas = GetComponentInParent<Canvas>();
         if (canvas == null)
             return;

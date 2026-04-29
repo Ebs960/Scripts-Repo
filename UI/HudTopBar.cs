@@ -198,16 +198,6 @@ public class HudTopBar : MonoBehaviour
 
         foreach (var layer in layersToCheck)
         {
-        {
-            PlanetLayerType.Surface,
-            PlanetLayerType.Underwater,
-            PlanetLayerType.Mantle,
-            PlanetLayerType.Atmosphere,
-            PlanetLayerType.Orbit
-        };
-
-        foreach (var layer in layersToCheck)
-        {
             if (lm != null && lm.IsLayerSupported(layer))
             {
                 layerDropdownMapping.Add(layer);
@@ -250,6 +240,47 @@ public class HudTopBar : MonoBehaviour
             UIManager.Instance.ShowEquipmentPanel(currentCiv);
     }
 
+    private void SubscribeTurnEvents()
+    {
+        if (isSubscribedToTurnChanges || TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        isSubscribedToTurnChanges = true;
+    }
+
+    private void UnsubscribeTurnEvents()
+    {
+        if (!isSubscribedToTurnChanges || TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        isSubscribedToTurnChanges = false;
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        if (roundText != null)
+            roundText.text = $"Turn {round}";
+
+        bool isPlayersTurn = civ != null && civ.isPlayerControlled;
+        SetTurnChangePanelVisible(!isPlayersTurn);
+        UpdateEndTurnButtonState();
+    }
+
+    private void UpdateTurnChangePanelForCurrentTurn()
+    {
+        var turnManager = TurnManager.Instance;
+        var activeCiv = turnManager != null ? turnManager.GetCurrentCivilization() : null;
+        bool isPlayersTurn = activeCiv != null && activeCiv.isPlayerControlled;
+        SetTurnChangePanelVisible(!isPlayersTurn);
+    }
+
+    private void SetTurnChangePanelVisible(bool visible)
+    {
+        if (turnChangePanel != null && turnChangePanel.activeSelf != visible)
+            turnChangePanel.SetActive(visible);
+    }
 
     public void OnEndTurnButtonClicked()
     {
@@ -313,179 +344,10 @@ public class HudTopBar : MonoBehaviour
             return lm;
 
         return Object.FindAnyObjectByType<LayerManager>();
-        }
-
-        layerDropdown.SetValueWithoutNotify(0);
-        layerDropdown.AddOptions(options);
-        layerDropdown.RefreshShownValue();
-    }
-
-    private void OpenReligionPanel()
-    {
-        UnsubscribeTurnEvents();
-        if (!listenersWired)
-            return;
-
-        if (religionButton != null && religionAction != null)
-            religionButton.onClick.RemoveListener(religionAction);
-        if (policyButton != null && policyAction != null)
-            policyButton.onClick.RemoveListener(policyAction);
-        if (diplomacyButton != null && diplomacyAction != null)
-            diplomacyButton.onClick.RemoveListener(diplomacyAction);
-        if (equipmentButton != null && equipmentAction != null)
-            equipmentButton.onClick.RemoveListener(equipmentAction);
-        if (endTurnButton != null && endTurnAction != null)
-            endTurnButton.onClick.RemoveListener(endTurnAction);
-        if (layerDropdown != null && layerChangedAction != null)
-            layerDropdown.onValueChanged.RemoveListener(layerChangedAction);
-
-        listenersWired = false;
-    }
-
-    private void SubscribeTurnEvents()
-    {
-        if (isSubscribedToTurnChanges || TurnManager.Instance == null)
-            return;
-
-        TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
-        isSubscribedToTurnChanges = true;
-    }
-
-    private void UnsubscribeTurnEvents()
-    {
-        if (!isSubscribedToTurnChanges || TurnManager.Instance == null)
-            return;
-
-        TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
-        isSubscribedToTurnChanges = false;
-    }
-
-    private void HandleTurnChanged(Civilization civ, int round)
-    {
-        if (roundText != null)
-            roundText.text = $"Turn {round}";
-
-        bool isPlayersTurn = civ != null && civ.isPlayerControlled;
-        SetTurnChangePanelVisible(!isPlayersTurn);
-        UpdateEndTurnButtonState();
-    }
-
-    private void UpdateTurnChangePanelForCurrentTurn()
-    {
-        var turnManager = TurnManager.Instance;
-        var activeCiv = turnManager != null ? turnManager.GetCurrentCivilization() : null;
-        bool isPlayersTurn = activeCiv != null && activeCiv.isPlayerControlled;
-        SetTurnChangePanelVisible(!isPlayersTurn);
-    }
-
-    private void SetTurnChangePanelVisible(bool visible)
-    {
-        if (turnChangePanel != null && turnChangePanel.activeSelf != visible)
-            turnChangePanel.SetActive(visible);
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowReligionPanel(currentCiv);
-    }
-
-    private void OpenGovernmentPanel()
-    {
-        if (UIManager.Instance != null)
-            UIManager.Instance.ShowPanel("GovernmentPanel");
-    }
-
-    private void OpenDiplomacyPanel()
-    {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowDiplomacyPanel(currentCiv);
-    }
-
-    private void OpenEquipmentPanel()
-    {
-        if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowEquipmentPanel(currentCiv);
-    }
-
-
-    public void OnEndTurnButtonClicked()
-    {
-        if (TurnManager.Instance == null)
-        {
-            Debug.LogWarning("HudTopBar: TurnManager missing; cannot end turn.");
-            return;
-        }
-
-        if (currentCiv == null || !currentCiv.isPlayerControlled)
-            return;
-
-        var activeCiv = TurnManager.Instance.GetCurrentCivilization();
-        if (activeCiv != null && activeCiv != currentCiv)
-            return;
-
-        TurnManager.Instance.EndPlayerTurn();
-        UpdateEndTurnButtonState();
-    }
-
-    private void UpdateEndTurnButtonState()
-    {
-        if (endTurnButton == null)
-            return;
-
-        bool canEndTurn = currentCiv != null && currentCiv.isPlayerControlled;
-        var activeCiv = TurnManager.Instance != null ? TurnManager.Instance.GetCurrentCivilization() : null;
-        if (activeCiv != null)
-            canEndTurn &= activeCiv == currentCiv;
-
-        endTurnButton.interactable = canEndTurn;
-    }
-
-    private void HandleLayerChanged(int dropdownIndex)
-    {
-        if (dropdownIndex < 0 || dropdownIndex >= layerDropdownMapping.Count)
-            return;
-
-        var lm = GetActiveLayerManager();
-        if (lm == null)
-        {
-            Debug.LogWarning("HudTopBar: No LayerManager found on active planet.");
-            return;
-        }
-
-        lm.SetOnlyLayerVisible(layerDropdownMapping[dropdownIndex]);
-    }
-
-    private LayerManager GetActiveLayerManager()
-    {
-        var gen = GameManager.Instance != null
-            ? GameManager.Instance.GetCurrentPlanetGenerator()
-            : Object.FindAnyObjectByType<PlanetGenerator>();
-
-        if (gen == null)
-            return Object.FindAnyObjectByType<LayerManager>();
-
-        var lm = gen.GetComponent<LayerManager>();
-        if (lm != null)
-            return lm;
-
-        return Object.FindAnyObjectByType<LayerManager>();
     }
 
     private void OnDestroy()
     {
-        if (!listenersWired)
-            return;
-
-        if (religionButton != null && religionAction != null)
-            religionButton.onClick.RemoveListener(religionAction);
-        if (policyButton != null && policyAction != null)
-            policyButton.onClick.RemoveListener(policyAction);
-        if (diplomacyButton != null && diplomacyAction != null)
-            diplomacyButton.onClick.RemoveListener(diplomacyAction);
-        if (equipmentButton != null && equipmentAction != null)
-            equipmentButton.onClick.RemoveListener(equipmentAction);
-        if (endTurnButton != null && endTurnAction != null)
-            endTurnButton.onClick.RemoveListener(endTurnAction);
-        if (layerDropdown != null && layerChangedAction != null)
-            layerDropdown.onValueChanged.RemoveListener(layerChangedAction);
-
-        listenersWired = false;
+        UnsubscribeTurnEvents();
     }
 }
