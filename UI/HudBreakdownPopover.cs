@@ -196,7 +196,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
 
         Vector2 screenPoint = pointerScreenPosition
             ?? Mouse.current?.position.ReadValue()
-            ?? (Vector2)Pointer.current?.position.ReadValue()
+            ?? Pointer.current?.position.ReadValue()
             ?? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
         var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
 
