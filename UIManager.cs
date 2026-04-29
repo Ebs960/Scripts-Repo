@@ -411,9 +411,13 @@ public class UIManager : MonoBehaviour
         if (politicalAffairsPanelUI != null) return;
         if (gameplayHudRoot == null) return;
 
-        var parentRect = gameplayHudRoot.GetComponent<RectTransform>();
+        // IMPORTANT: Parent this panel to the root canvas (not gameplayHudRoot).
+        // The political affairs panel is considered HUD-hiding, so if it is parented to
+        // gameplayHudRoot it will deactivate itself when HUD visibility is synced,
+        // causing rapid active/inactive flicker.
+        var parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
         if (parentRect == null)
-            parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+            parentRect = gameplayHudRoot.GetComponent<RectTransform>();
         if (parentRect == null) return;
 
         var go = new GameObject("PoliticalAffairsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(PoliticalAffairsPanelUI));
