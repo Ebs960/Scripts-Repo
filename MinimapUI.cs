@@ -566,6 +566,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
             }
+            zoomInButton.interactable = true;
         }
         if (zoomOutButton != null) 
         {
@@ -576,6 +577,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
             }
+            zoomOutButton.interactable = true;
         }
         if (zoomLevelText != null) 
         {
@@ -1429,9 +1431,19 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private void UpdateZoomButtonStates()
     {
         if (zoomInButton != null)
-            zoomInButton.interactable = _currentZoom < maxZoom;
+        {
+            bool canZoomIn = _currentZoom < maxZoom;
+            zoomInButton.interactable = canZoomIn;
+            var cg = zoomInButton.GetComponent<CanvasGroup>();
+            if (cg != null) cg.interactable = canZoomIn;
+        }
         if (zoomOutButton != null)
-            zoomOutButton.interactable = _currentZoom > minZoom;
+        {
+            bool canZoomOut = _currentZoom > minZoom;
+            zoomOutButton.interactable = canZoomOut;
+            var cg = zoomOutButton.GetComponent<CanvasGroup>();
+            if (cg != null) cg.interactable = canZoomOut;
+        }
     }
 
     /// <summary>
