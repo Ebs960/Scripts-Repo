@@ -2256,10 +2256,6 @@ public class GameManager : MonoBehaviour
         if (hud != null)
             hud.RefreshAll();
 
-        var router = FindFirstObjectByType<HudPanelRouter>(FindObjectsInactive.Include);
-        if (router != null)
-            router.RefreshLayerDropdown();
-
         InitializeSpaceLoadingPanel();
     }
 
