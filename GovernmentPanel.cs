@@ -87,6 +87,22 @@ public class GovernmentPanel : MonoBehaviour
             panelRoot.SetActive(false);
     }
 
+
+    private void OnEnable()
+    {
+        EnsureRuntimeUI();
+
+        if (civ == null)
+        {
+            civ = CivilizationManager.Instance?.GetAllCivs()?.Find(c => c != null && c.isPlayerControlled);
+            if (civ == null)
+                civ = TurnManager.Instance?.GetCurrentCivilization();
+        }
+
+        if (panelRoot != null && panelRoot.activeInHierarchy)
+            RefreshAll();
+    }
+
     private void Update()
     {
         // Close on Escape when panel is active
