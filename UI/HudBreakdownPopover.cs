@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -39,7 +40,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
     /// <summary>
     /// Show breakdown for a specific yield type.
     /// </summary>
-    public void Show(string yieldName, object breakdownData)
+    public void Show(string yieldName, object breakdownData, Vector2? pointerScreenPosition = null)
     {
         if (titleText != null)
             titleText.text = yieldName + " Breakdown";
@@ -47,7 +48,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         // Populate content via HudBreakdownService
         PopulateBreakdown(yieldName, breakdownData);
 
-        PositionTopAtMouse();
+        PositionTopAtMouse(pointerScreenPosition);
         BeginHoverLockCountdown();
     }
 
@@ -179,7 +180,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         lockRoutine = null;
     }
 
-    private void PositionTopAtMouse()
+    private void PositionTopAtMouse(Vector2? pointerScreenPosition = null)
     {
         var rect = rectTransform != null ? rectTransform : transform as RectTransform;
         if (rect == null)
@@ -193,7 +194,10 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         if (canvasRect == null)
             return;
 
-        var screenPoint = Input.mousePosition;
+        Vector2 screenPoint = pointerScreenPosition
+            ?? Mouse.current?.position.ReadValue()
+            ?? (Vector2)Pointer.current?.position.ReadValue()
+            ?? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
         var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
 
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, cam, out var localPoint))

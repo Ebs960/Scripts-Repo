@@ -58,7 +58,7 @@ public class HudYieldWidget : MonoBehaviour
 
         // Hover Enter: Show popover
         var pointerEnterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-        pointerEnterEntry.callback.AddListener(data => ShowBreakdownPopover());
+        pointerEnterEntry.callback.AddListener(ShowBreakdownPopoverFromEvent);
         eventTrigger.triggers.Add(pointerEnterEntry);
 
         // Hover Exit: Hide popover
@@ -100,7 +100,13 @@ public class HudYieldWidget : MonoBehaviour
         }
     }
 
-    private void ShowBreakdownPopover()
+    private void ShowBreakdownPopoverFromEvent(BaseEventData data)
+    {
+        var pointerData = data as PointerEventData;
+        ShowBreakdownPopover(pointerData != null ? (Vector2?)pointerData.position : null);
+    }
+
+    private void ShowBreakdownPopover(Vector2? pointerScreenPosition = null)
     {
         if (breakdownPopoverPrefab == null) return;
 
@@ -113,7 +119,7 @@ public class HudYieldWidget : MonoBehaviour
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.Show(yieldName, GetBreakdownData());
+            popoverInstance.Show(yieldName, GetBreakdownData(), pointerScreenPosition);
     }
 
     private void HideBreakdownPopover()
