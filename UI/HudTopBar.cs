@@ -1,16 +1,15 @@
 // Assets/Scripts/UI/HudTopBar.cs
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using static GameManager;
 
 /// <summary>
 /// Top bar HUD widget showing:
 /// - Civilization name and round
 /// - Yield displays (food, gold, policy points with per-turn deltas)
 /// - Resource category displays (manually placed widgets)
-/// 
-/// Data sourced from Civilization.cached* fields (already computed each turn).
-/// Resource widgets are manually placed in the scene/prefab; not generated at runtime.
 /// </summary>
 public class HudTopBar : MonoBehaviour
 {
@@ -23,6 +22,7 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private HudYieldWidget foodYieldWidget;
     [SerializeField] private HudYieldWidget goldYieldWidget;
     [SerializeField] private HudYieldWidget policyYieldWidget;
+    [SerializeField] private HudYieldWidget faithYieldWidget;
 
     [Header("Resource Categories (Manually Placed)")]
     [SerializeField] private HudResourceCategoryWidget[] resourceCategoryWidgets = new HudResourceCategoryWidget[6];
@@ -31,15 +31,27 @@ public class HudTopBar : MonoBehaviour
     [Header("Panel Buttons (optional)")]
     [SerializeField] private Button religionButton;
     [SerializeField] private Button policyButton;
-    [SerializeField] private HudPanelRouter panelRouter;
+    [SerializeField] private Button diplomacyButton;
+    [SerializeField] private Button equipmentButton;
+    [SerializeField] private Button endTurnButton;
+
+    [Header("Layer Dropdown (optional)")]
+    [SerializeField] private TMP_Dropdown layerDropdown;
+    
+    [Header("Turn Change UI (optional)")]
+    [SerializeField] private GameObject turnChangePanel;
 
     private Civilization currentCiv;
+    private readonly List<PlanetLayerType> layerDropdownMapping = new();
 
-    private void Awake()
-    {
-        if (panelRouter == null)
-            panelRouter = GetComponentInParent<HudPanelRouter>();
-    }
+    private bool listenersWired;
+    private UnityEngine.Events.UnityAction religionAction;
+    private UnityEngine.Events.UnityAction policyAction;
+    private UnityEngine.Events.UnityAction diplomacyAction;
+    private UnityEngine.Events.UnityAction equipmentAction;
+    private UnityEngine.Events.UnityAction endTurnAction;
+    private UnityEngine.Events.UnityAction<int> layerChangedAction;
+    private bool isSubscribedToTurnChanges;
 
     /// <summary>
     /// Bind this widget to a civilization and populate displays.
@@ -53,7 +65,6 @@ public class HudTopBar : MonoBehaviour
             return;
         }
 
-        // Update info display
         if (civNameText != null)
             civNameText.text = currentCiv.civData != null && !string.IsNullOrEmpty(currentCiv.civData.civName) ? currentCiv.civData.civName : (currentCiv.name ?? "Unknown");
 
@@ -63,7 +74,6 @@ public class HudTopBar : MonoBehaviour
             roundText.text = $"Turn {round}";
         }
 
-        // Update season display
         if (seasonText != null)
         {
             if (ClimateManager.Instance != null)
@@ -77,45 +87,45 @@ public class HudTopBar : MonoBehaviour
             }
         }
 
-        // Bind yield widgets
-        // Food: display per-turn delta (production - consumption)
         if (foodYieldWidget != null)
         {
             int foodDelta = currentCiv.cachedFoodPerTurn - currentCiv.cachedFoodConsumption;
             foodYieldWidget.Bind("Food", currentCiv.food, foodDelta, null);
         }
 
-        // Gold: display per-turn production
         if (goldYieldWidget != null)
-        {
             goldYieldWidget.Bind("Gold", currentCiv.gold, currentCiv.cachedGoldPerTurn, null);
-        }
 
-        // Policy Points: display per-turn production
         if (policyYieldWidget != null)
-        {
             policyYieldWidget.Bind("Policy Points", currentCiv.policyPoints, currentCiv.cachedPolicyPerTurn, null);
-        }
 
-        // Wire panel router
-        if (panelRouter != null)
-            panelRouter.SetCurrentCivilization(currentCiv);
+        if (faithYieldWidget != null)
+            faithYieldWidget.Bind("Faith", currentCiv.faith, currentCiv.cachedFaithPerTurn, null);
 
-        // Bind resource category widgets
         BindResourceCategories();
-
         WireButtonListeners();
+        SubscribeTurnEvents();
+        RefreshLayerDropdown();
+        UpdateTurnChangePanelForCurrentTurn();
+        UpdateEndTurnButtonState();
     }
 
-    /// <summary>
-    /// Bind manually-placed resource category widgets for current civilization.
-    /// Widgets are pre-placed in the scene/prefab; this just updates their display data.
-    /// </summary>
+    private void OnEnable()
+    {
+        SubscribeTurnEvents();
+        UpdateTurnChangePanelForCurrentTurn();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeTurnEvents();
+    }
+
     private void BindResourceCategories()
     {
-        if (currentCiv == null || resourceCategoryWidgets == null || allResourceCategories == null) return;
+        if (currentCiv == null || resourceCategoryWidgets == null || allResourceCategories == null)
+            return;
 
-        // Bind each pre-placed widget to its corresponding category
         for (int i = 0; i < resourceCategoryWidgets.Length; i++)
         {
             if (resourceCategoryWidgets[i] == null || i >= allResourceCategories.Length)
@@ -125,9 +135,6 @@ public class HudTopBar : MonoBehaviour
             var category = allResourceCategories[i];
 
             int count = ResourceCategoryProviderUtility.GetTotalCount(currentCiv, category);
-
-            // TODO: Calculate yield per turn for this category
-            // For now, default to 0 until yield tracking per category is implemented
             int yieldPerTurn = 0;
 
             widget.Bind(currentCiv, category, count, yieldPerTurn);
@@ -136,33 +143,227 @@ public class HudTopBar : MonoBehaviour
 
     private void WireButtonListeners()
     {
+        if (listenersWired)
+            return;
+
+        religionAction = OpenReligionPanel;
+        policyAction = OpenGovernmentPanel;
+        diplomacyAction = OpenDiplomacyPanel;
+        equipmentAction = OpenEquipmentPanel;
+        endTurnAction = OnEndTurnButtonClicked;
+        layerChangedAction = HandleLayerChanged;
+
         if (religionButton != null)
-        {
-            religionButton.onClick.RemoveAllListeners();
-            religionButton.onClick.AddListener(() =>
-            {
-                if (UIManager.Instance != null && currentCiv != null)
-                    UIManager.Instance.ShowReligionPanel(currentCiv);
-            });
-        }
+            religionButton.onClick.AddListener(religionAction);
 
         if (policyButton != null)
+            policyButton.onClick.AddListener(policyAction);
+
+        if (diplomacyButton != null)
+            diplomacyButton.onClick.AddListener(diplomacyAction);
+
+        if (equipmentButton != null)
+            equipmentButton.onClick.AddListener(equipmentAction);
+
+        if (endTurnButton != null)
+            endTurnButton.onClick.AddListener(endTurnAction);
+
+        if (layerDropdown != null)
+            layerDropdown.onValueChanged.AddListener(layerChangedAction);
+
+        listenersWired = true;
+    }
+
+    private void RefreshLayerDropdown()
+    {
+        if (layerDropdown == null)
+            return;
+
+        var lm = GetActiveLayerManager();
+
+        layerDropdownMapping.Clear();
+        layerDropdown.ClearOptions();
+
+        var options = new List<TMP_Dropdown.OptionData>();
+        PlanetLayerType[] layersToCheck =
         {
-            policyButton.onClick.RemoveAllListeners();
-            policyButton.onClick.AddListener(() =>
+            PlanetLayerType.Surface,
+            PlanetLayerType.Underwater,
+            PlanetLayerType.Mantle,
+            PlanetLayerType.Atmosphere,
+            PlanetLayerType.Orbit
+        };
+
+        foreach (var layer in layersToCheck)
+        {
+            if (lm != null && lm.IsLayerSupported(layer))
             {
-                if (UIManager.Instance != null)
-                    UIManager.Instance.ShowPanel("GovernmentPanel");
-            });
+                layerDropdownMapping.Add(layer);
+                options.Add(new TMP_Dropdown.OptionData(layer.ToString()));
+            }
         }
+
+        if (options.Count == 0)
+        {
+            layerDropdownMapping.Add(PlanetLayerType.Surface);
+            options.Add(new TMP_Dropdown.OptionData("Surface"));
+        }
+
+        layerDropdown.SetValueWithoutNotify(0);
+        layerDropdown.AddOptions(options);
+        layerDropdown.RefreshShownValue();
+    }
+
+    private void OpenReligionPanel()
+    {
+        if (UIManager.Instance != null && currentCiv != null)
+            UIManager.Instance.ShowReligionPanel(currentCiv);
+    }
+
+    private void OpenGovernmentPanel()
+    {
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowPanel("GovernmentPanel");
+    }
+
+    private void OpenDiplomacyPanel()
+    {
+        if (UIManager.Instance != null && currentCiv != null)
+            UIManager.Instance.ShowDiplomacyPanel(currentCiv);
+    }
+
+    private void OpenEquipmentPanel()
+    {
+        if (UIManager.Instance != null && currentCiv != null)
+            UIManager.Instance.ShowEquipmentPanel(currentCiv);
+    }
+
+
+    public void OnEndTurnButtonClicked()
+    {
+        if (TurnManager.Instance == null)
+        {
+            Debug.LogWarning("HudTopBar: TurnManager missing; cannot end turn.");
+            return;
+        }
+
+        if (currentCiv == null || !currentCiv.isPlayerControlled)
+            return;
+
+        var activeCiv = TurnManager.Instance.GetCurrentCivilization();
+        if (activeCiv != null && activeCiv != currentCiv)
+            return;
+
+        TurnManager.Instance.EndPlayerTurn();
+        SetTurnChangePanelVisible(true);
+        UpdateEndTurnButtonState();
+    }
+
+    private void UpdateEndTurnButtonState()
+    {
+        if (endTurnButton == null)
+            return;
+
+        bool canEndTurn = currentCiv != null && currentCiv.isPlayerControlled;
+        var activeCiv = TurnManager.Instance != null ? TurnManager.Instance.GetCurrentCivilization() : null;
+        if (activeCiv != null)
+            canEndTurn &= activeCiv == currentCiv;
+
+        endTurnButton.interactable = canEndTurn;
+    }
+
+    private void HandleLayerChanged(int dropdownIndex)
+    {
+        if (dropdownIndex < 0 || dropdownIndex >= layerDropdownMapping.Count)
+            return;
+
+        var lm = GetActiveLayerManager();
+        if (lm == null)
+        {
+            Debug.LogWarning("HudTopBar: No LayerManager found on active planet.");
+            return;
+        }
+
+        lm.SetOnlyLayerVisible(layerDropdownMapping[dropdownIndex]);
+    }
+
+    private LayerManager GetActiveLayerManager()
+    {
+        var gen = GameManager.Instance != null
+            ? GameManager.Instance.GetCurrentPlanetGenerator()
+            : Object.FindAnyObjectByType<PlanetGenerator>();
+
+        if (gen == null)
+            return Object.FindAnyObjectByType<LayerManager>();
+
+        var lm = gen.GetComponent<LayerManager>();
+        if (lm != null)
+            return lm;
+
+        return Object.FindAnyObjectByType<LayerManager>();
     }
 
     private void OnDestroy()
     {
-        if (religionButton != null)
-            religionButton.onClick.RemoveAllListeners();
-        if (policyButton != null)
-            policyButton.onClick.RemoveAllListeners();
+        UnsubscribeTurnEvents();
+        if (!listenersWired)
+            return;
+
+        if (religionButton != null && religionAction != null)
+            religionButton.onClick.RemoveListener(religionAction);
+        if (policyButton != null && policyAction != null)
+            policyButton.onClick.RemoveListener(policyAction);
+        if (diplomacyButton != null && diplomacyAction != null)
+            diplomacyButton.onClick.RemoveListener(diplomacyAction);
+        if (equipmentButton != null && equipmentAction != null)
+            equipmentButton.onClick.RemoveListener(equipmentAction);
+        if (endTurnButton != null && endTurnAction != null)
+            endTurnButton.onClick.RemoveListener(endTurnAction);
+        if (layerDropdown != null && layerChangedAction != null)
+            layerDropdown.onValueChanged.RemoveListener(layerChangedAction);
+
+        listenersWired = false;
     }
 
+    private void SubscribeTurnEvents()
+    {
+        if (isSubscribedToTurnChanges || TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        isSubscribedToTurnChanges = true;
+    }
+
+    private void UnsubscribeTurnEvents()
+    {
+        if (!isSubscribedToTurnChanges || TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        isSubscribedToTurnChanges = false;
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        if (roundText != null)
+            roundText.text = $"Turn {round}";
+
+        bool isPlayersTurn = civ != null && civ.isPlayerControlled;
+        SetTurnChangePanelVisible(!isPlayersTurn);
+        UpdateEndTurnButtonState();
+    }
+
+    private void UpdateTurnChangePanelForCurrentTurn()
+    {
+        var turnManager = TurnManager.Instance;
+        var activeCiv = turnManager != null ? turnManager.GetCurrentCivilization() : null;
+        bool isPlayersTurn = activeCiv != null && activeCiv.isPlayerControlled;
+        SetTurnChangePanelVisible(!isPlayersTurn);
+    }
+
+    private void SetTurnChangePanelVisible(bool visible)
+    {
+        if (turnChangePanel != null && turnChangePanel.activeSelf != visible)
+            turnChangePanel.SetActive(visible);
+    }
 }

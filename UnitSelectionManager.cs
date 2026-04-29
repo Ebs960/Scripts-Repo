@@ -338,6 +338,9 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleInput()
     {
+        if (IsPointerOverUIBlockingGameplay())
+            return;
+
         // MIGRATED: Use InputManager for UI blocking check
         if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
             return;
@@ -393,6 +396,28 @@ public class UnitSelectionManager : MonoBehaviour
         {
             HandleSpaceMapKey();
         }
+    }
+
+    private static bool IsPointerOverUIBlockingGameplay()
+    {
+        if (EventSystem.current == null)
+            return false;
+
+        if (Mouse.current != null && EventSystem.current.IsPointerOverGameObject())
+            return true;
+
+        var touch = Touchscreen.current;
+        if (touch != null)
+        {
+            foreach (var t in touch.touches)
+            {
+                if (!t.press.isPressed) continue;
+                if (EventSystem.current.IsPointerOverGameObject(t.touchId.ReadValue()))
+                    return true;
+            }
+        }
+
+        return false;
     }
     
     /// <summary>
