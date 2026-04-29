@@ -568,6 +568,8 @@ MonoBehaviour:
   techNameText: {fileID: 8959933235994765027}
   progressText: {fileID: 6919525186644772956}
   yieldIcon: {fileID: 7484297209873087047}
+  yieldHoverTarget: {fileID: 7075424012632561968}
+  yieldWidget: {fileID: 7528921240477439872}
   yieldPerTurnText: {fileID: 5519040133702335734}
   positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
@@ -584,6 +586,7 @@ GameObject:
   - component: {fileID: 1170507506996326861}
   - component: {fileID: 2594610503318968104}
   - component: {fileID: 7484297209873087047}
+  - component: {fileID: 7528921240477439872}
   m_Layer: 5
   m_Name: Research Icon
   m_TagString: Untagged
@@ -648,6 +651,25 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &7528921240477439872
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7075424012632561968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8d958c7fc384a04790b466790df6da9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HudYieldWidget
+  iconImage: {fileID: 7484297209873087047}
+  allowRuntimeIconOverride: 0
+  amountText: {fileID: 0}
+  deltaText: {fileID: 5519040133702335734}
+  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
+  negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
+  breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
 --- !u!1 &7305589245590747265
 GameObject:
   m_ObjectHideFlags: 0
