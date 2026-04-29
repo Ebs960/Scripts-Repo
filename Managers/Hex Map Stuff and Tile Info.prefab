@@ -157,9 +157,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d66eddd58c6487a4bbf53f8d7e162afe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LightingController
-  sunDirection: {x: 0.50439614, y: 0.62469506, z: 0.59610456}
+  sunDirection: {x: 0.4287464, y: -0.5144958, z: -0.7426107}
   sunColor: {r: 1, g: 1, b: 1, a: 1}
-  sunIntensity: 8.47
-  autoSyncToSceneSun: 1
+  sunIntensity: 10
+  autoSyncToSceneSun: 0
   normalizeDirectionOnValidate: 1
   syncInterval: 0.25
