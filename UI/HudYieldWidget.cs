@@ -119,8 +119,7 @@ public class HudYieldWidget : MonoBehaviour
     private void HideBreakdownPopover()
     {
         if (popoverInstance != null)
-            Destroy(popoverInstance.gameObject);
-        popoverInstance = null;
+            popoverInstance.NotifySourceHoverExit();
     }
 
     /// <summary>

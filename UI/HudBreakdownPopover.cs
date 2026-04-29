@@ -1,8 +1,10 @@
 // Assets/Scripts/UI/HudBreakdownPopover.cs
+using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /// <summary>
 /// Popover window shown on hover over yield widgets.
@@ -17,7 +19,7 @@ using TMPro;
 /// 
 /// Content is populated by HudBreakdownService.
 /// </summary>
-public class HudBreakdownPopover : MonoBehaviour
+public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Display")]
     [SerializeField] private TextMeshProUGUI titleText;
@@ -27,6 +29,12 @@ public class HudBreakdownPopover : MonoBehaviour
     [Header("Sizing")]
     [SerializeField] private RectTransform rectTransform;
     [SerializeField] private VerticalLayoutGroup layoutGroup;
+    [SerializeField] private float hoverLockDelaySeconds = 0.75f;
+
+    private bool isPointerOverPopover;
+    private bool isHoverLocked;
+    private bool pendingSourceExit;
+    private Coroutine lockRoutine;
 
     /// <summary>
     /// Show breakdown for a specific yield type.
@@ -38,6 +46,9 @@ public class HudBreakdownPopover : MonoBehaviour
 
         // Populate content via HudBreakdownService
         PopulateBreakdown(yieldName, breakdownData);
+
+        PositionTopAtMouse();
+        BeginHoverLockCountdown();
     }
 
     private void PopulateBreakdown(string yieldName, object breakdownData)
@@ -121,8 +132,82 @@ public class HudBreakdownPopover : MonoBehaviour
         return result;
     }
 
+
+    public void NotifySourceHoverExit()
+    {
+        if (!isHoverLocked)
+        {
+            pendingSourceExit = true;
+            return;
+        }
+
+        if (!isPointerOverPopover)
+            Hide();
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        isPointerOverPopover = true;
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        isPointerOverPopover = false;
+        if (isHoverLocked)
+            Hide();
+    }
+
+    private void BeginHoverLockCountdown()
+    {
+        isHoverLocked = false;
+        pendingSourceExit = false;
+
+        if (lockRoutine != null)
+            StopCoroutine(lockRoutine);
+
+        lockRoutine = StartCoroutine(HoverLockRoutine());
+    }
+
+    private IEnumerator HoverLockRoutine()
+    {
+        yield return new WaitForSeconds(hoverLockDelaySeconds);
+        isHoverLocked = true;
+
+        if (pendingSourceExit && !isPointerOverPopover)
+            Hide();
+
+        lockRoutine = null;
+    }
+
+    private void PositionTopAtMouse()
+    {
+        var rect = rectTransform != null ? rectTransform : transform as RectTransform;
+        if (rect == null)
+            return;
+
+        var canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+            return;
+
+        var canvasRect = canvas.transform as RectTransform;
+        if (canvasRect == null)
+            return;
+
+        var screenPoint = Input.mousePosition;
+        var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, cam, out var localPoint))
+        {
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = localPoint;
+        }
+    }
+
     public void Hide()
     {
+        if (lockRoutine != null)
+            StopCoroutine(lockRoutine);
+
         Destroy(gameObject);
     }
 }
