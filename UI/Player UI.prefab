@@ -530,7 +530,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -884,6 +884,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &786460733989528057
 GameObject:
   m_ObjectHideFlags: 0
@@ -1214,6 +1215,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &903031472913265618
 GameObject:
   m_ObjectHideFlags: 0
@@ -1384,6 +1386,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &1474487559099958725
 GameObject:
   m_ObjectHideFlags: 0
@@ -1977,6 +1980,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &2207970050012683690
 GameObject:
   m_ObjectHideFlags: 0
@@ -3084,6 +3088,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &3187423355367125565
 GameObject:
   m_ObjectHideFlags: 0
@@ -3179,6 +3184,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &3263329839584777034
 GameObject:
   m_ObjectHideFlags: 0
@@ -3675,7 +3681,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -4472,7 +4478,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -4814,6 +4820,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &4591438212953339509
 GameObject:
   m_ObjectHideFlags: 0
@@ -4955,6 +4962,8 @@ MonoBehaviour:
   endTurnButton: {fileID: 4535351420986874266}
   layerDropdown: {fileID: 2074013181607868691}
   turnChangePanel: {fileID: 6660902435325007938}
+  turnChangeIcon: {fileID: 0}
+  turnChangeText: {fileID: 0}
 --- !u!114 &5757040030198237913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5489,7 +5498,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -5875,6 +5884,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &5671303782519239001
 GameObject:
   m_ObjectHideFlags: 0
@@ -8115,6 +8125,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 0}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1 &7897985291635532841
 GameObject:
   m_ObjectHideFlags: 0
@@ -10182,6 +10193,7 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
+  breakdownItemPrefab: {fileID: 0}
 --- !u!1001 &382086167581245623
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10292,6 +10304,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4214336556346342222, guid: 4691a51de96ee704ba31c4955c8d8372, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7332160238684127679, guid: 4691a51de96ee704ba31c4955c8d8372, type: 3}
+      propertyPath: m_Color.a
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7375562312211440418, guid: 4691a51de96ee704ba31c4955c8d8372, type: 3}
+      propertyPath: m_Color.a
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7858798613596555229, guid: 4691a51de96ee704ba31c4955c8d8372, type: 3}
