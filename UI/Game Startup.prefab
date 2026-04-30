@@ -6111,7 +6111,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000012397766, y: 0}
+  m_AnchoredPosition: {x: -0.000008583069, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &6984598164392376406
@@ -17292,6 +17292,8 @@ MonoBehaviour:
   mapTypeIcon: {fileID: 0}
   mapTypeDescription: {fileID: 286975469015206770}
   planetPreview: {fileID: 0}
+  placeholderCivIcon: {fileID: 21300000, guid: 0f7de6fb76c45d1419e5e641dd1f672c, type: 3}
+  placeholderLeaderIcon: {fileID: 21300000, guid: 9bf5a5fc4f006af4699ea15f98a1f31d, type: 3}
   backToMenuButton: {fileID: 2888859437634740172}
   startGameButton: {fileID: 2115395561125161101}
   terrainRoughnessDropdown: {fileID: 3106324314298798636}
