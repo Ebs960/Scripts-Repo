@@ -100,8 +100,10 @@ public class HudYieldWidget : MonoBehaviour
             Destroy(popoverInstance.gameObject);
 
         // Get root canvas to parent popover for top rendering
-        Canvas rootCanvas = GetComponentInParent<Canvas>();
-        if (rootCanvas == null) return;
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+
+        var rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
 
         // Instantiate as child of root canvas to ensure it renders on top
         var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
@@ -131,14 +133,16 @@ public class HudYieldWidget : MonoBehaviour
         var widgetRect = transform as RectTransform;
         if (widgetRect == null) return;
 
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null) return;
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
 
-        RectTransform canvasRect = canvas.transform as RectTransform;
+        Canvas rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
+        RectTransform canvasRect = rootCanvas.transform as RectTransform;
         if (canvasRect == null) return;
 
-        Vector2 widgetScreenPos = RectTransformUtility.WorldToScreenPoint(canvas.worldCamera, widgetRect.position);
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, widgetScreenPos, canvas.worldCamera, out Vector2 canvasLocalPos))
+        Camera uiCamera = rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : rootCanvas.worldCamera;
+        Vector2 widgetScreenPos = RectTransformUtility.WorldToScreenPoint(uiCamera, widgetRect.position);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, widgetScreenPos, uiCamera, out Vector2 canvasLocalPos))
             return;
 
         popoverRect.anchorMin = Vector2.zero;

@@ -23,6 +23,14 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         EnsureDropdownReference();
     }
 
+    private void OnEnable()
+    {
+        EnsureDropdownReference();
+
+        if (dropdownButton != null)
+            dropdownButton.SetMainClick(OpenPoliticalAffairsPanel);
+    }
+
     private void OnValidate()
     {
         EnsureDropdownReference();
