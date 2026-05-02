@@ -99,17 +99,21 @@ public class HudYieldWidget : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
 
-        // Get root canvas to parent popover for top-rendering
+        // Get root canvas to parent popover for top rendering
         Canvas rootCanvas = GetComponentInParent<Canvas>();
         if (rootCanvas == null) return;
 
-        // Instantiate as child of canvas to ensure it renders on top
+        // Instantiate as child of root canvas to ensure it renders on top
         var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
+        popoverGO.transform.SetAsLastSibling();
+
+        // Position popover with the same X as the widget and Y offset below it
+        PositionPopoverNearWidget(popoverGO.GetComponent<RectTransform>());
+
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
-        
+
         if (popoverInstance != null)
         {
-            PositionPopoverUnderIcon(popoverGO.GetComponent<RectTransform>());
             popoverInstance.Show(yieldName, GetBreakdownData());
         }
     }
@@ -119,6 +123,42 @@ public class HudYieldWidget : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
         popoverInstance = null;
+    }
+
+    private void PositionPopoverNearWidget(RectTransform popoverRect)
+    {
+        if (popoverRect == null) return;
+        var widgetRect = transform as RectTransform;
+        if (widgetRect == null) return;
+
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null) return;
+
+        RectTransform canvasRect = canvas.transform as RectTransform;
+        if (canvasRect == null) return;
+
+        Vector2 widgetScreenPos = RectTransformUtility.WorldToScreenPoint(canvas.worldCamera, widgetRect.position);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, widgetScreenPos, canvas.worldCamera, out Vector2 canvasLocalPos))
+            return;
+
+        popoverRect.anchorMin = Vector2.zero;
+        popoverRect.anchorMax = Vector2.zero;
+        popoverRect.pivot = new Vector2(0.5f, 1f);
+        popoverRect.anchoredPosition = canvasLocalPos + new Vector2(0f, -90f);
+        popoverRect.localScale = Vector3.one;
+
+        // Clamp to canvas bounds so it doesn't run off screen
+        var size = popoverRect.sizeDelta;
+        float halfWidth = size.x * 0.5f;
+        float minX = -canvasRect.sizeDelta.x * 0.5f + halfWidth;
+        float maxX = canvasRect.sizeDelta.x * 0.5f - halfWidth;
+        float minY = -canvasRect.sizeDelta.y;
+        float maxY = canvasRect.sizeDelta.y * 0.5f;
+
+        popoverRect.anchoredPosition = new Vector2(
+            Mathf.Clamp(popoverRect.anchoredPosition.x, minX, maxX),
+            Mathf.Clamp(popoverRect.anchoredPosition.y, -canvasRect.sizeDelta.y, maxY)
+        );
     }
 
     /// <summary>
@@ -135,37 +175,5 @@ public class HudYieldWidget : MonoBehaviour
             currentAmount,
             deltaPerTurn
         };
-    }
-
-    private void PositionPopoverUnderIcon(RectTransform popoverRect)
-    {
-        if (popoverRect == null) return;
-        var sourceRect = transform as RectTransform;
-        if (sourceRect == null) return;
-
-        Canvas canvas = popoverRect.GetComponentInParent<Canvas>();
-        if (canvas == null) return;
-        
-        RectTransform canvasRect = canvas.transform as RectTransform;
-        if (canvasRect == null) return;
-        
-        // Get the widget's position in screen space
-        var widgetWorldCorners = new Vector3[4];
-        sourceRect.GetWorldCorners(widgetWorldCorners);
-        Vector3 widgetBottomLeft = widgetWorldCorners[0];
-        
-        // Convert to canvas local space
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
-            RectTransformUtility.WorldToScreenPoint(canvas.worldCamera, widgetBottomLeft),
-            canvas.worldCamera,
-            out Vector2 canvasLocalPos))
-        {
-            popoverRect.anchorMin = Vector2.zero;
-            popoverRect.anchorMax = Vector2.zero;
-            popoverRect.pivot = new Vector2(0f, 1f);
-            popoverRect.anchoredPosition = canvasLocalPos;
-            popoverRect.localScale = Vector3.one;
-        }
     }
 }

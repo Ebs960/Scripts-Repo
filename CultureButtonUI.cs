@@ -1,13 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Helper UI component used by CultureUI. Attach this to your cultureButtonPrefab.
 /// It displays the culture name and updates its appearance based on state/selection.
 /// </summary>
 [RequireComponent(typeof(Button))]
-public class CultureButtonUI : MonoBehaviour
+public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public enum CultureState { Available, Researched, Researching, Locked }
 
@@ -155,5 +156,16 @@ public class CultureButtonUI : MonoBehaviour
             default:
                 return lockedColor;
         }
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (RepresentedCulture == null) return;
+        TooltipSystem.Instance?.ShowCultureTooltip(RepresentedCulture, null);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        TooltipSystem.Instance?.HideTooltip();
     }
 } 

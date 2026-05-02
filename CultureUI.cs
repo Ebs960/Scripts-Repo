@@ -34,6 +34,9 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private Sprite noResearchIcon;
     [SerializeField] private Button closeButton;
 
+    [Header("Economic Impact Preview")]
+    [SerializeField] private TextMeshProUGUI selectedCultureEconomicImpactText;
+
     private Civilization playerCiv;
     private CultureData currentlySelectedCulture;
     private readonly List<CultureButtonUI> cultureButtons = new();
@@ -559,6 +562,9 @@ public class CultureUI : MonoBehaviour
         string cultYieldInfo = FormatYieldInfo(culture);
         if (!string.IsNullOrEmpty(cultYieldInfo) && selectedCultureUnlocksText != null)
             selectedCultureUnlocksText.text = selectedCultureUnlocksText.text + "\n" + cultYieldInfo;
+        
+        // Display economic impact preview
+        UpdateEconomicImpactDisplay(culture);
     }
 
     private string FormatYieldInfo(CultureData culture)
@@ -608,6 +614,9 @@ public class CultureUI : MonoBehaviour
         if (civ.workerUnits != null)
             foreach (var w in civ.workerUnits)
                 if (w != null && w.data != null) total += civ.ComputeWorkerPerTurnYield(w.data).culture;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) total += h.GetAnimalYields().Culture;
         return total;
     }
 
@@ -633,7 +642,126 @@ public class CultureUI : MonoBehaviour
                 selectedCultureIconImage.gameObject.SetActive(false);
             }
         }
+        if (selectedCultureEconomicImpactText != null) selectedCultureEconomicImpactText.text = "";
     }
+
+    private void UpdateEconomicImpactDisplay(CultureData culture)
+    {
+        if (playerCiv == null || culture == null)
+            return;
+
+        int currentGold = GetTotalGoldPerTurn(playerCiv);
+        int currentScience = GetTotalSciencePerTurn(playerCiv);
+        int currentCulture = GetTotalCulturePerTurn(playerCiv);
+        int currentFaith = GetTotalFaithPerTurn(playerCiv);
+        int currentFood = GetTotalFoodPerTurn(playerCiv);
+
+        int projectedGold = Mathf.RoundToInt(currentGold * (1f + culture.goldModifier)) + culture.flatGoldBonus;
+        int projectedScience = Mathf.RoundToInt(currentScience * (1f + culture.scienceModifier)) + culture.flatScienceBonus;
+        int projectedCulture = Mathf.RoundToInt(currentCulture * (1f + culture.cultureModifier)) + culture.flatCultureBonus;
+        int projectedFaith = Mathf.RoundToInt(currentFaith * (1f + culture.faithModifier)) + culture.flatFaithBonus;
+        int projectedFood = Mathf.RoundToInt(currentFood * (1f + culture.foodModifier)) + culture.flatFoodBonus;
+
+        int goldDiff = projectedGold - currentGold;
+        int scienceDiff = projectedScience - currentScience;
+        int cultureDiff = projectedCulture - currentCulture;
+        int faithDiff = projectedFaith - currentFaith;
+        int foodDiff = projectedFood - currentFood;
+
+        if (selectedCultureEconomicImpactText != null)
+        {
+            string impactSummary = "";
+            if (goldDiff != 0) impactSummary += $"\n<color=yellow>Gold:</color> {currentGold} → {projectedGold} ({(goldDiff > 0 ? "+" : "")}{goldDiff})";
+            if (scienceDiff != 0) impactSummary += $"\n<color=cyan>Science:</color> {currentScience} → {projectedScience} ({(scienceDiff > 0 ? "+" : "")}{scienceDiff})";
+            if (cultureDiff != 0) impactSummary += $"\n<color=magenta>Culture:</color> {currentCulture} → {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
+            if (faithDiff != 0) impactSummary += $"\n<color=white>Faith:</color> {currentFaith} → {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
+            if (foodDiff != 0) impactSummary += $"\n<color=green>Food:</color> {currentFood} → {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
+            
+            if (!string.IsNullOrEmpty(impactSummary))
+                selectedCultureEconomicImpactText.text = "<b>Economic Impact:</b>" + impactSummary;
+            else
+                selectedCultureEconomicImpactText.text = "<b>Economic Impact:</b>\n<i>No yield changes</i>";
+        }
+
+
+    }
+
+    private int GetTotalGoldPerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int gold = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) gold += city.GetGoldPerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) gold += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).gold;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) gold += civ.ComputeWorkerPerTurnYield(w.data).gold;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) gold += h.GetAnimalYields().Gold;
+        return gold;
+    }
+
+    private int GetTotalSciencePerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int science = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) science += city.GetSciencePerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) science += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).science;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) science += civ.ComputeWorkerPerTurnYield(w.data).science;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) science += h.GetAnimalYields().Science;
+        return science;
+    }
+
+    private int GetTotalFaithPerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int faith = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) faith += city.GetFaithPerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) faith += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).faith;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) faith += civ.ComputeWorkerPerTurnYield(w.data).faith;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) faith += h.GetAnimalYields().Faith;
+        return faith;
+    }
+
+    private int GetTotalFoodPerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int food = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) food += city.GetFoodPerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) food += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).food;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) food += civ.ComputeWorkerPerTurnYield(w.data).food;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) food += h.GetAnimalYields().Food;
+        return food;
+    }
+
 
     private static void AddUniqueUnlock(List<string> list, string value)
     {

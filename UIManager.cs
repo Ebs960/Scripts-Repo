@@ -401,9 +401,13 @@ public class UIManager : MonoBehaviour
         civ ??= CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
         if (civ == null) return;
 
-        EnsurePoliticalAffairsPanelUi();
-        politicalAffairsPanelUI?.Show(civ);
-        SyncGameplayHudVisibilityForOpenPanels();
+        ShowPanel("PoliticalAffairsPanel");
+
+        var politicalAffairsUI = politicalAffairsPanelUI;
+        if (politicalAffairsUI != null)
+        {
+            politicalAffairsUI.Show(civ);
+        }
     }
 
     private void EnsurePoliticalAffairsPanelUi()
@@ -432,6 +436,10 @@ public class UIManager : MonoBehaviour
         politicalAffairsPanelUI = go.GetComponent<PoliticalAffairsPanelUI>();
         politicalAffairsPanelUI.BuildRuntimeUi(defaultFont, PlayUIClick);
         politicalAffairsPanelUI.Hide();
+        
+        // Add to panel dictionary so it can be managed like other panels
+        panelDict["PoliticalAffairsPanel"] = go;
+        panelDict["politicalAffairsPanel"] = go;
     }
 
     private void DisplayNotification(string message)

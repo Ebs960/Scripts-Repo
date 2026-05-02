@@ -315,16 +315,23 @@ public class MainMenuManager : MonoBehaviour
         // Initialize autosave settings
         InitializeAutosaveSettings();
         
-        // Update selected civ icon
+        // Initialize selected civ icon with placeholder
         if (selectedCivIcon != null)
         {
-            selectedCivIcon.sprite = null;
-            selectedCivIcon.gameObject.SetActive(false);
+            selectedCivIcon.sprite = placeholderCivIcon;
+            selectedCivIcon.gameObject.SetActive(true);
         }
         
         if (selectedCivDescription != null)
         {
             selectedCivDescription.text = "";
+        }
+        
+        // Initialize selected leader icon with placeholder
+        if (selectedLeaderIcon != null)
+        {
+            selectedLeaderIcon.sprite = placeholderLeaderIcon;
+            selectedLeaderIcon.gameObject.SetActive(true);
         }
 
         if (animalPrevalenceDropdown != null)
@@ -714,11 +721,11 @@ public class MainMenuManager : MonoBehaviour
         }
         civButtons.Clear();
         
-        // Hide selected civ icon and disable selection button until a civ is selected
+        // Show placeholder civ icon until a civ is selected
         if (selectedCivIcon != null)
         {
-            selectedCivIcon.sprite = null;
-            selectedCivIcon.gameObject.SetActive(false);
+            selectedCivIcon.sprite = placeholderCivIcon;
+            selectedCivIcon.gameObject.SetActive(true);
         }
         
         if (selectedCivName != null)
@@ -807,10 +814,10 @@ public class MainMenuManager : MonoBehaviour
             selectedCivName.text = civData.civName;
         }
         
-        // Show the civilization icon
-        if (selectedCivIcon != null && civData.icon != null)
+        // Show the civilization icon (use placeholder if none assigned)
+        if (selectedCivIcon != null)
         {
-            selectedCivIcon.sprite = civData.icon;
+            selectedCivIcon.sprite = civData.icon != null ? civData.icon : placeholderCivIcon;
             selectedCivIcon.gameObject.SetActive(true);
         }
         
@@ -1022,8 +1029,12 @@ public class MainMenuManager : MonoBehaviour
         }
         leaderButtons.Clear();
 
-        // Reset display
-        if (selectedLeaderIcon != null) selectedLeaderIcon.gameObject.SetActive(false);
+        // Reset display and show placeholder leader icon until one is chosen
+        if (selectedLeaderIcon != null)
+        {
+            selectedLeaderIcon.sprite = placeholderLeaderIcon;
+            selectedLeaderIcon.gameObject.SetActive(true);
+        }
         if (selectedLeaderName != null) selectedLeaderName.text = "Select a Leader";
         if (selectedLeaderDescription != null) selectedLeaderDescription.text = "";
         if (selectLeaderButton != null) selectLeaderButton.interactable = false;
@@ -1056,10 +1067,10 @@ public class MainMenuManager : MonoBehaviour
         selectedLeader = leaderData;
         if (selectLeaderButton != null) selectLeaderButton.interactable = true;
 
-        // Update display
-        if (selectedLeaderIcon != null && leaderData.portrait != null)
+        // Update display (use placeholder if none assigned)
+        if (selectedLeaderIcon != null)
         {
-            selectedLeaderIcon.sprite = leaderData.portrait;
+            selectedLeaderIcon.sprite = leaderData.portrait != null ? leaderData.portrait : placeholderLeaderIcon;
             selectedLeaderIcon.gameObject.SetActive(true);
         }
         if (selectedLeaderName != null)

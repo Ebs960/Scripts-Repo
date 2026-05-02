@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Helper UI component used by TechUI. Attach this to your techButtonPrefab.
@@ -8,7 +9,7 @@ using TMPro;
 /// based on research state and selection.
 /// </summary>
 [RequireComponent(typeof(Button))]
-public class TechButtonUI : MonoBehaviour
+public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public enum TechState { Available, Researched, Researching, Locked }
 
@@ -170,5 +171,16 @@ public class TechButtonUI : MonoBehaviour
             default:
                 return lockedColor;
         }
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (RepresentedTech == null) return;
+        TooltipSystem.Instance?.ShowTechTooltip(RepresentedTech, null);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        TooltipSystem.Instance?.HideTooltip();
     }
 } 

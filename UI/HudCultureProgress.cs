@@ -28,6 +28,7 @@ public class HudCultureProgress : MonoBehaviour
     [Header("Interaction")]
     [SerializeField] private Button mainButton; // Click to open culture panel
     [SerializeField] private GameObject breakdownPopoverPrefab;
+    [SerializeField] private Sprite placeholderCultureIcon;
     private HudBreakdownPopover popoverInstance;
     private EventTrigger hoverEventTrigger;
 
@@ -103,15 +104,15 @@ public class HudCultureProgress : MonoBehaviour
                 cultureNameText.text = adoptingCulture.cultureName;
 
             // Display the culture icon
-            if (cultureIcon != null && adoptingCulture.cultureIcon != null)
-                cultureIcon.sprite = adoptingCulture.cultureIcon;
+            if (cultureIcon != null)
+                cultureIcon.sprite = adoptingCulture.cultureIcon != null ? adoptingCulture.cultureIcon : placeholderCultureIcon;
         }
         else
         {
             if (cultureNameText != null)
                 cultureNameText.text = "Culture";
             if (cultureIcon != null)
-                cultureIcon.sprite = null;
+                cultureIcon.sprite = placeholderCultureIcon;
         }
 
         if (adoptingCulture != null && adoptingCulture.cultureCost > 0)

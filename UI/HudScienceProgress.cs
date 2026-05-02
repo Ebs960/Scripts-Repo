@@ -28,6 +28,7 @@ public class HudScienceProgress : MonoBehaviour
     [Header("Interaction")]
     [SerializeField] private Button mainButton; // Click to open tech panel
     [SerializeField] private GameObject breakdownPopoverPrefab;
+    [SerializeField] private Sprite placeholderTechIcon;
     private HudBreakdownPopover popoverInstance;
     private EventTrigger hoverEventTrigger;
 
@@ -103,8 +104,8 @@ public class HudScienceProgress : MonoBehaviour
                 techNameText.text = researchTech.techName;
 
             // Display the tech icon
-            if (techIcon != null && researchTech.techIcon != null)
-                techIcon.sprite = researchTech.techIcon;
+            if (techIcon != null)
+                techIcon.sprite = researchTech.techIcon != null ? researchTech.techIcon : placeholderTechIcon;
 
             float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
             if (progressBar != null)
@@ -118,7 +119,7 @@ public class HudScienceProgress : MonoBehaviour
             if (techNameText != null)
                 techNameText.text = "No Research";
             if (techIcon != null)
-                techIcon.sprite = null;
+                techIcon.sprite = placeholderTechIcon;
             if (progressBar != null)
                 progressBar.fillAmount = 0;
             if (progressText != null)
