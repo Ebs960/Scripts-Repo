@@ -111,15 +111,12 @@ public class HudResourceCategoryWidget : MonoBehaviour
         var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
         popoverGO.transform.SetAsLastSibling();
 
-        // Position popover with the same X as the widget and Y offset below it
-        PositionPopoverNearWidget(popoverGO.GetComponent<RectTransform>());
-
         popoverInstance = popoverGO.GetComponent<HudResourceCategoryPopover>();
 
         if (popoverInstance != null)
         {
             var allResources = ResourceCategoryProviderUtility.GetMergedInventory(currentCiv, categoryDefinition);
-            popoverInstance.Show(categoryDefinition.ToString(), allResources, breakdownItemPrefab);
+            popoverInstance.ShowAtSource(categoryDefinition.ToString(), allResources, breakdownItemPrefab, transform as RectTransform, new Vector2(0f, -12f));
         }
     }
 

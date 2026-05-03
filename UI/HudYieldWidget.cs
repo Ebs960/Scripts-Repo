@@ -109,14 +109,11 @@ public class HudYieldWidget : MonoBehaviour
         var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
         popoverGO.transform.SetAsLastSibling();
 
-        // Position popover with the same X as the widget and Y offset below it
-        PositionPopoverNearWidget(popoverGO.GetComponent<RectTransform>());
-
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
 
         if (popoverInstance != null)
         {
-            popoverInstance.Show(yieldName, GetBreakdownData());
+            popoverInstance.ShowAtSource(yieldName, GetBreakdownData(), transform as RectTransform, new Vector2(0f, -12f));
         }
     }
 
