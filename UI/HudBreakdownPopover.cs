@@ -52,6 +52,59 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         BeginHoverLockCountdown();
     }
 
+    public void ShowAtSource(string yieldName, object breakdownData, RectTransform sourceRect, Vector2 offset)
+    {
+        Show(yieldName, breakdownData);
+        PositionRelativeToSource(sourceRect, offset);
+    }
+
+    public void PositionRelativeToSource(RectTransform sourceRect, Vector2 offset)
+    {
+        if (sourceRect == null)
+            return;
+
+        var popupRect = rectTransform != null ? rectTransform : transform as RectTransform;
+        if (popupRect == null)
+            return;
+
+        var parentRect = popupRect.parent as RectTransform;
+        if (parentRect == null)
+            return;
+
+        var corners = new Vector3[4];
+        sourceRect.GetWorldCorners(corners);
+        Vector3 bottomCenterWorld = (corners[0] + corners[3]) * 0.5f;
+
+        var rootCanvas = GetComponentInParent<Canvas>()?.rootCanvas;
+        Camera uiCamera = rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? rootCanvas.worldCamera
+            : null;
+
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(uiCamera, bottomCenterWorld);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, uiCamera, out Vector2 localPoint))
+            return;
+
+        popupRect.pivot = new Vector2(0.5f, 1f);
+        popupRect.anchoredPosition = localPoint + offset;
+
+        ClampToParentBounds(popupRect, parentRect);
+    }
+
+    private static void ClampToParentBounds(RectTransform popupRect, RectTransform parentRect)
+    {
+        var size = popupRect.rect.size;
+        float minX = parentRect.rect.xMin + size.x * popupRect.pivot.x;
+        float maxX = parentRect.rect.xMax - size.x * (1f - popupRect.pivot.x);
+        float minY = parentRect.rect.yMin + size.y * (1f - popupRect.pivot.y);
+        float maxY = parentRect.rect.yMax - size.y * popupRect.pivot.y;
+
+        var pos = popupRect.anchoredPosition;
+        popupRect.anchoredPosition = new Vector2(
+            Mathf.Clamp(pos.x, minX, maxX),
+            Mathf.Clamp(pos.y, minY, maxY)
+        );
+    }
+
     private void PopulateBreakdown(string yieldName, object breakdownData)
     {
         if (contentRoot == null) return;
