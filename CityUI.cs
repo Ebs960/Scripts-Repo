@@ -46,6 +46,8 @@ public class CityUI : MonoBehaviour
     [Header("Missile Launch")]
     [Tooltip("Button shown when the city has stored missiles ready to launch. Opens MissilePanelUI.")]
     [SerializeField] private Button launchMissileButton;
+    [Tooltip("Additional button that can also open the missile panel. Allows designer-assigned placement.")]
+    [SerializeField] private Button openMissilePanelButton;
     [Tooltip("Text label on the launch missile button showing stored count.")]
     [SerializeField] private TextMeshProUGUI launchMissileButtonText;
 
@@ -82,6 +84,8 @@ public class CityUI : MonoBehaviour
     {
         if (launchMissileButton != null)
             launchMissileButton.onClick.AddListener(OnLaunchMissileClicked);
+        if (openMissilePanelButton != null)
+            openMissilePanelButton.onClick.AddListener(OnLaunchMissileClicked);
     }
 
     // Mapping of dropdown entries (index-1 => governor in this list). Index 0 is "None".
@@ -577,9 +581,11 @@ if (currentCity == null)
 
     private void RefreshLaunchMissileButton()
     {
-        if (launchMissileButton == null) return;
         int stored = currentCity?.storedMissiles?.Count ?? 0;
-        launchMissileButton.gameObject.SetActive(stored > 0);
+        if (launchMissileButton != null)
+            launchMissileButton.gameObject.SetActive(stored > 0);
+        if (openMissilePanelButton != null)
+            openMissilePanelButton.gameObject.SetActive(stored > 0);
         if (launchMissileButtonText != null)
             launchMissileButtonText.text = stored > 0 ? $"Launch Missile ({stored})" : "Launch Missile";
     }

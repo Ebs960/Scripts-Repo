@@ -37,6 +37,16 @@ public class MainMenuManager : MonoBehaviour
     public Button selectCivButton;         // Confirm civ selection
     public Button backFromCivButton;       // Back button to return to main menu
 
+    [System.Serializable]
+    public struct CivilizationSelectionEntry
+    {
+        public CivData civData;
+        public Button civButton;
+    }
+
+    [Header("Manual Civilization Button Entries")]
+    public List<CivilizationSelectionEntry> civSelectionEntries = new List<CivilizationSelectionEntry>();
+
     [Header("Leader Selection")]
     public Transform leaderButtonContainer;
     public Button leaderButtonPrefab;
@@ -713,12 +723,6 @@ public class MainMenuManager : MonoBehaviour
     // Populates the civilization list with available civilizations
     void PopulateCivilizationList()
     {
-        // Clear existing buttons
-        foreach (var button in civButtons)
-        {
-            if (button != null)
-                Destroy(button.gameObject);
-        }
         civButtons.Clear();
         
         // Show placeholder civ icon until a civ is selected
@@ -742,8 +746,38 @@ public class MainMenuManager : MonoBehaviour
             selectCivButton.interactable = false;
         
         selectedCivilization = null;
+
+        bool hasManualEntries = civSelectionEntries != null && civSelectionEntries.Count > 0;
+        if (hasManualEntries)
+        {
+            foreach (var entry in civSelectionEntries)
+            {
+                if (entry.civData == null || entry.civButton == null)
+                    continue;
+
+                if (entry.civData.isTribe || entry.civData.isCityState)
+                {
+                    entry.civButton.gameObject.SetActive(false);
+                    continue;
+                }
+
+                var button = entry.civButton;
+                var civData = entry.civData;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnCivButtonClicked(button, civData));
+
+                var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                    buttonText.text = civData.civName;
+
+                button.gameObject.SetActive(true);
+                civButtons.Add(button);
+            }
+
+            return;
+        }
         
-        // Load all CivData assets from Resources/Civilizations
+        // Fallback: load all CivData assets from Resources/Civilizations
         CivData[] allCivs = ResourceCache.GetAllCivDatas();
         if (allCivs == null || allCivs.Length == 0)
         {
