@@ -34,6 +34,7 @@ public class MainMenuManager : MonoBehaviour
     public Image selectedCivIcon;          // Image to display selected civ's icon
     public TextMeshProUGUI selectedCivName; // Text to display selected civ's name
     public TextMeshProUGUI selectedCivDescription; // Text to display selected civ's description
+    public TextMeshProUGUI selectedCivBonuses; // Text to display selected civ's bonuses
     public Button selectCivButton;         // Confirm civ selection
     public Button backFromCivButton;       // Back button to return to main menu
 
@@ -343,6 +344,11 @@ public class MainMenuManager : MonoBehaviour
         if (selectedCivDescription != null)
         {
             selectedCivDescription.text = "";
+        }
+
+        if (selectedCivBonuses != null)
+        {
+            selectedCivBonuses.text = "";
         }
         
         // Initialize selected leader icon with placeholder
@@ -749,6 +755,11 @@ public class MainMenuManager : MonoBehaviour
         {
             selectedCivDescription.text = "";
         }
+
+        if (selectedCivBonuses != null)
+        {
+            selectedCivBonuses.text = "";
+        }
         
         if (selectCivButton != null)
             selectCivButton.interactable = false;
@@ -883,37 +894,67 @@ public class MainMenuManager : MonoBehaviour
             selectedCivIcon.gameObject.SetActive(true);
         }
         
-        // Show civilization description
+        // Show civilization description only
         if (selectedCivDescription != null)
         {
-            // Show CivData.description, then bonuses
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
             if (!string.IsNullOrWhiteSpace(civData.description))
             {
-                sb.AppendLine(civData.description.Trim());
+                selectedCivDescription.text = civData.description.Trim();
             }
             else
             {
-                sb.AppendLine($"The {civData.civName} are a notable civilization.");
+                selectedCivDescription.text = $"The {civData.civName} are a notable civilization.";
             }
+        }
 
-            // List bonuses
-            var bonuses = new List<string>();
-            if (civData.productionModifier > 0) bonuses.Add($"+{civData.productionModifier:P0} Production");
-            if (civData.goldModifier > 0) bonuses.Add($"+{civData.goldModifier:P0} Gold");
-            if (civData.scienceModifier > 0) bonuses.Add($"+{civData.scienceModifier:P0} Science");
-            if (civData.cultureModifier > 0) bonuses.Add($"+{civData.cultureModifier:P0} Culture");
-            if (civData.faithModifier > 0) bonuses.Add($"+{civData.faithModifier:P0} Faith");
-            if (bonuses.Count > 0)
+        // Show civilization bonuses + unique access
+        if (selectedCivBonuses != null)
+        {
+            var civBonuses = new List<string>();
+            if (civData.foodModifier != 0f) civBonuses.Add($"{(civData.foodModifier > 0 ? "+" : "")}{civData.foodModifier:P0} Food");
+            if (civData.productionModifier != 0f) civBonuses.Add($"{(civData.productionModifier > 0 ? "+" : "")}{civData.productionModifier:P0} Production");
+            if (civData.goldModifier != 0f) civBonuses.Add($"{(civData.goldModifier > 0 ? "+" : "")}{civData.goldModifier:P0} Gold");
+            if (civData.scienceModifier != 0f) civBonuses.Add($"{(civData.scienceModifier > 0 ? "+" : "")}{civData.scienceModifier:P0} Science");
+            if (civData.cultureModifier != 0f) civBonuses.Add($"{(civData.cultureModifier > 0 ? "+" : "")}{civData.cultureModifier:P0} Culture");
+            if (civData.faithModifier != 0f) civBonuses.Add($"{(civData.faithModifier > 0 ? "+" : "")}{civData.faithModifier:P0} Faith");
+            if (civData.attackBonus != 0f) civBonuses.Add($"{(civData.attackBonus > 0 ? "+" : "")}{civData.attackBonus:P0} Attack");
+            if (civData.defenseBonus != 0f) civBonuses.Add($"{(civData.defenseBonus > 0 ? "+" : "")}{civData.defenseBonus:P0} Defense");
+            if (civData.movementBonus != 0f) civBonuses.Add($"{(civData.movementBonus > 0 ? "+" : "")}{civData.movementBonus:P0} Movement");
+
+            var uniqueAccess = new List<string>();
+            if (civData.uniqueUnits != null)
             {
-                sb.AppendLine();
-                sb.AppendLine("<b>Bonuses:</b>");
-                foreach (var bonus in bonuses)
+                foreach (var unit in civData.uniqueUnits)
                 {
-                    sb.AppendLine("+ " + bonus);
+                    if (unit != null && !string.IsNullOrWhiteSpace(unit.unitName))
+                    {
+                        uniqueAccess.Add($"Unique Unit: {unit.unitName}");
+                    }
                 }
             }
-            selectedCivDescription.text = sb.ToString().Trim();
+            if (civData.uniqueBuildings != null)
+            {
+                foreach (var building in civData.uniqueBuildings)
+                {
+                    if (building != null && !string.IsNullOrWhiteSpace(building.buildingName))
+                    {
+                        uniqueAccess.Add($"Unique Building: {building.buildingName}");
+                    }
+                }
+            }
+
+            var allEntries = new List<string>();
+            allEntries.AddRange(civBonuses);
+            allEntries.AddRange(uniqueAccess);
+
+            if (allEntries.Count > 0)
+            {
+                selectedCivBonuses.text = string.Join("\n", allEntries);
+            }
+            else
+            {
+                selectedCivBonuses.text = "No civilization bonuses.";
+            }
         }
         
         // Enable the select button
