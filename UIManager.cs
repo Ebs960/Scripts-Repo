@@ -426,33 +426,17 @@ public class UIManager : MonoBehaviour
     private void EnsurePoliticalAffairsPanelUi()
     {
         if (politicalAffairsPanelUI != null) return;
-        if (gameplayHudRoot == null) return;
 
-        // IMPORTANT: Parent this panel to the root canvas (not gameplayHudRoot).
-        // The political affairs panel is considered HUD-hiding, so if it is parented to
-        // gameplayHudRoot it will deactivate itself when HUD visibility is synced,
-        // causing rapid active/inactive flicker.
-        var parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
-        if (parentRect == null)
-            parentRect = gameplayHudRoot.GetComponent<RectTransform>();
-        if (parentRect == null) return;
+        politicalAffairsPanelUI = FindFirstObjectByType<PoliticalAffairsPanelUI>(FindObjectsInactive.Include);
+        if (politicalAffairsPanelUI == null)
+        {
+            Debug.LogWarning("[UIManager] Political Affairs panel is not present in scene/prefabs. Please add a dedicated PoliticalAffairsPanelUI object like other panel UIs.");
+            return;
+        }
 
-        var go = new GameObject("PoliticalAffairsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(PoliticalAffairsPanelUI));
-        var rect = go.GetComponent<RectTransform>();
-        rect.SetParent(parentRect, false);
-        rect.anchorMin = new Vector2(0.15f, 0.12f);
-        rect.anchorMax = new Vector2(0.85f, 0.88f);
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        go.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.13f, 0.97f);
-
-        politicalAffairsPanelUI = go.GetComponent<PoliticalAffairsPanelUI>();
-        politicalAffairsPanelUI.BuildRuntimeUi(defaultFont, PlayUIClick);
-        politicalAffairsPanelUI.Hide();
-        
-        // Add to panel dictionary so it can be managed like other panels
-        panelDict["PoliticalAffairsPanel"] = go;
-        panelDict["politicalAffairsPanel"] = go;
+        var panelGo = politicalAffairsPanelUI.gameObject;
+        panelDict["PoliticalAffairsPanel"] = panelGo;
+        panelDict["politicalAffairsPanel"] = panelGo;
     }
 
     private void DisplayNotification(string message)
