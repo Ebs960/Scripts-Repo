@@ -117,12 +117,14 @@ public class HudCultureProgress : MonoBehaviour
 
         if (adoptingCulture != null && adoptingCulture.cultureCost > 0)
         {
-            float progressPct = civ.currentCultureProgress / adoptingCulture.cultureCost;
+            float progressPct = civ.currentCultureProgress / (float)adoptingCulture.cultureCost;
             if (progressBar != null)
                 progressBar.fillAmount = Mathf.Clamp01(progressPct);
 
             if (progressText != null)
                 progressText.text = $"{Mathf.FloorToInt(civ.currentCultureProgress)}/{adoptingCulture.cultureCost}";
+
+            Debug.Log($"[HudCultureProgress] Bind civ={civ.civData?.civName} culture={adoptingCulture.cultureName} progress={civ.currentCultureProgress} cost={adoptingCulture.cultureCost} fill={(progressBar != null ? progressBar.fillAmount : -1f)}");
         }
         else
         {
@@ -157,11 +159,16 @@ public class HudCultureProgress : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
 
-        var popoverGO = Instantiate(breakdownPopoverPrefab, transform.parent);
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+        var rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
+
+        var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
+        popoverGO.transform.SetAsLastSibling();
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.Show("Culture", null);
+            popoverInstance.ShowAtSource("Culture", null, transform as RectTransform, new Vector2(0f, -12f));
     }
 
     private void HideBreakdownPopover()

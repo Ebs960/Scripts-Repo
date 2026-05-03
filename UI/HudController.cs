@@ -81,6 +81,8 @@ public class HudController : MonoBehaviour
             currentCiv = ResolvePlayerCivilization();
         SubscribeToCivEvents(currentCiv);
 
+        Debug.Log($"[HudController] HandleTurnChanged turn={turn} eventCiv={(civ != null ? civ.civData?.civName : "null")} boundCiv={(currentCiv != null ? currentCiv.civData?.civName : "null")} techProgress={(currentCiv != null ? currentCiv.currentTechProgress : 0f)} cultureProgress={(currentCiv != null ? currentCiv.currentCultureProgress : 0f)}");
+
         RefreshAll();
     }
 

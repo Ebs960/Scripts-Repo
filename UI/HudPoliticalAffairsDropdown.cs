@@ -16,11 +16,21 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
     private void Awake()
     {
         EnsureDropdownReference();
+        Debug.Log($"[HudPoliticalAffairsDropdown] Awake on '{name}' dropdownButton={(dropdownButton != null ? dropdownButton.name : "null")}");
     }
 
     private void Reset()
     {
         EnsureDropdownReference();
+    }
+
+    private void OnEnable()
+    {
+        EnsureDropdownReference();
+        Debug.Log($"[HudPoliticalAffairsDropdown] OnEnable on '{name}' dropdownButton={(dropdownButton != null ? dropdownButton.name : "null")}");
+
+        if (dropdownButton != null)
+            dropdownButton.SetMainClick(OpenPoliticalAffairsPanel);
     }
 
     private void OnValidate()
@@ -32,6 +42,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
     {
         currentCiv = civ;
         EnsureDropdownReference();
+        Debug.Log($"[HudPoliticalAffairsDropdown] Bind civ={(currentCiv != null ? currentCiv.civData?.civName : "null")} dropdownButton={(dropdownButton != null ? dropdownButton.name : "null")}");
 
         if (dropdownButton != null)
         {
@@ -44,6 +55,8 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
     {
         if (dropdownButton == null)
             return;
+
+        Debug.Log($"[HudPoliticalAffairsDropdown] Refresh civ={(currentCiv != null ? currentCiv.civData?.civName : "null")}");
 
         int governorCount = currentCiv?.governors?.Count ?? 0;
         dropdownButton.SetLabel($"Political Affairs: {governorCount} Governors");
@@ -204,6 +217,18 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
     private void OpenPoliticalAffairsPanel()
     {
+        if (currentCiv == null)
+        {
+            currentCiv = CivilizationManager.Instance?.GetAllCivs()?.Find(c => c != null && c.isPlayerControlled);
+            if (currentCiv == null)
+            {
+                Debug.LogWarning("[HudPoliticalAffairsDropdown] Cannot open Political Affairs panel because currentCiv is null.");
+                return;
+            }
+        }
+
+        Debug.Log($"[HudPoliticalAffairsDropdown] OpenPoliticalAffairsPanel civ={currentCiv.civData?.civName}");
+
         if (UIManager.Instance != null)
             UIManager.Instance.ShowPoliticalAffairsPanel(currentCiv);
     }

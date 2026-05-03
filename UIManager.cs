@@ -399,7 +399,20 @@ public class UIManager : MonoBehaviour
     public void ShowPoliticalAffairsPanel(Civilization civ = null)
     {
         civ ??= CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
-        if (civ == null) return;
+        if (civ == null)
+        {
+            Debug.LogWarning("[UIManager] Cannot show Political Affairs panel because current civilization is null.");
+            return;
+        }
+
+        if (politicalAffairsPanelUI == null)
+            EnsurePoliticalAffairsPanelUi();
+
+        if (politicalAffairsPanelUI == null)
+        {
+            Debug.LogWarning("[UIManager] Political Affairs panel reference is missing.");
+            return;
+        }
 
         ShowPanel("PoliticalAffairsPanel");
 
