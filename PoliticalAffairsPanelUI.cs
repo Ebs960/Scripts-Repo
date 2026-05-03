@@ -48,11 +48,8 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
         BuildCurrentEventsSection(civ);
     }
 
-    public void Hide()
-    {
-        if (panelRoot != null)
-            panelRoot.SetActive(false);
-    }
+        titleText.text = "Political Affairs";
+        subtitleText.text = $"Governors, lords, vassals, and ongoing events for {civ.civData?.civName ?? civ.name}.";
 
     private void ClearEntries()
     {
@@ -101,7 +98,71 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
                 lines.Add($"  - {lord.Name} | Influence {Mathf.RoundToInt(lord.Influence)} | Grievances {lord.TotalGrievances()}");
         }
 
-        CreateEntry("Lords & Royal Council", string.Join("\n", lines));
+        BuildGovernorSection(civ);
+        BuildCouncilSection(civ);
+        BuildVassalSection(civ);
+        BuildCurrentEventsSection(civ);
+    }
+
+    public void Hide()
+    {
+        if (root != null)
+            root.SetActive(false);
+    }
+
+    private void BuildGovernorSection(Civilization civ)
+    {
+        var lines = new List<string>();
+        var governors = civ.governors?.Where(g => g != null).ToList() ?? new List<Governor>();
+        lines.Add($"Total Governors: {governors.Count}/{Mathf.Max(0, civ.governorCount)}");
+        lines.Add($"Governors Unlocked: {(civ.governorsEnabled ? "Yes" : "No")}");
+
+        if (governors.Count == 0)
+        {
+            lines.Add("No governors currently appointed.");
+        }
+        else
+        {
+            foreach (var governor in governors.OrderBy(g => g.Name))
+            {
+                int cityCount = governor.Cities?.Count ?? 0;
+                int herdCount = governor.Herds?.Count ?? 0;
+                string faction = governor.Faction != null ? governor.Faction.FactionName : "Unaffiliated";
+                lines.Add($"• {governor.Name} | Opinion {Mathf.RoundToInt(governor.Opinion)} | Ambition {Mathf.RoundToInt(governor.AmbitionScore)} | Power {governor.PowerRank} | Cities {cityCount} | Herds {herdCount} | Faction {faction}");
+            }
+        }
+
+        CreateEntry("Governors", string.Join("\n", lines), null);
+    }
+
+    private void BuildCouncilSection(Civilization civ)
+    {
+        var lines = new List<string>();
+        int maxSeats = civ.MaxCouncilSeats;
+        int occupied = civ.royalCouncil?.Count ?? 0;
+        lines.Add($"Royal Council Seats: {occupied}/{Mathf.Max(0, maxSeats)}");
+
+        if (occupied <= 0)
+        {
+            lines.Add("No lords currently seated on the council.");
+        }
+        else
+        {
+            foreach (var lord in civ.royalCouncil.Where(g => g != null))
+                lines.Add($"• {lord.Name} ({lord.specialization}) | Opinion {Mathf.RoundToInt(lord.Opinion)}");
+        }
+
+        var eligible = civ.governors
+            .Where(g => g != null && g.IsCouncilEligible && !civ.royalCouncil.Contains(g))
+            .ToList();
+        if (eligible != null && eligible.Count > 0)
+        {
+            lines.Add("Eligible Lords Not Seated:");
+            foreach (var lord in eligible.Where(g => g != null))
+                lines.Add($"  - {lord.Name} | Power {lord.PowerRank} | Grievances {lord.TotalGrievances()}");
+        }
+
+        CreateEntry("Lords & Royal Council", string.Join("\n", lines), null);
     }
 
     private void BuildVassalSection(Civilization civ)
@@ -127,7 +188,7 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
             }
         }
 
-        CreateEntry("Vassals & Overlord Affairs", string.Join("\n", lines));
+        CreateEntry("Vassals & Overlord Affairs", string.Join("\n", lines), null);
     }
 
     private void BuildCurrentEventsSection(Civilization civ)
@@ -135,7 +196,7 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
         var events = PoliticalEventManager.Instance?.GetActiveEventsForCiv(civ);
         if (events == null || events.Count == 0)
         {
-            CreateEntry("Current Events", "No active political events right now.");
+            CreateEntry("Current Events", "No active political events right now.", null);
             return;
         }
 
@@ -146,23 +207,34 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
         }
     }
 
-    private void CreateEntry(string header, string body, PoliticalEventRecord record = null)
+    private void CreateEntry(string header, string body, PoliticalEventRecord record)
     {
-        if (contentRoot == null || entryPrefab == null) return;
+        var panel = new GameObject(header, typeof(RectTransform), typeof(Image), typeof(LayoutElement), typeof(VerticalLayoutGroup));
+        panel.transform.SetParent(contentRoot, false);
+        panel.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.06f);
+        panel.GetComponent<LayoutElement>().minHeight = 120f;
 
-        var entryObject = Instantiate(entryPrefab, contentRoot);
-        var headerText = entryObject.transform.Find("EntryTitle")?.GetComponent<TextMeshProUGUI>();
-        var bodyText = entryObject.transform.Find("EntryBody")?.GetComponent<TextMeshProUGUI>();
-        var buttonRoot = buttonContainer != null ? buttonContainer : entryObject.transform.Find("Buttons");
+        var layout = panel.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(12, 12, 12, 12);
+        layout.spacing = 6;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
 
-        if (headerText != null) headerText.text = header;
-        if (bodyText != null) bodyText.text = body;
+        var title = CreateText(panel.transform, "EntryTitle", 22, FontStyles.Bold, TextAlignmentOptions.TopLeft);
+        title.text = header;
+        var text = CreateText(panel.transform, "EntryBody", 18, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+        text.text = body;
 
-        if (record == null || optionButtonPrefab == null || buttonRoot == null)
-            return;
+        if (record == null) return;
 
-        foreach (Transform child in buttonRoot)
-            Destroy(child.gameObject);
+        var buttonRow = new GameObject("Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        buttonRow.transform.SetParent(panel.transform, false);
+        var rowLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
+        rowLayout.spacing = 8;
+        rowLayout.childControlWidth = false;
+        rowLayout.childForceExpandWidth = false;
 
         for (int i = 0; i < record.options.Count; i++)
         {
@@ -178,5 +250,48 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
                 Show(playerCiv);
             });
         }
+    }
+
+    private TextMeshProUGUI CreateText(string name, int size, FontStyles style, TMP_FontAsset font, TextAlignmentOptions alignment)
+        => CreateText(transform, name, size, style, alignment, font);
+
+    private TextMeshProUGUI CreateText(Transform parent, string name, int size, FontStyles style, TextAlignmentOptions alignment, TMP_FontAsset font = null)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        tmp.font = font != null ? font : TMP_Settings.defaultFontAsset;
+        tmp.fontSize = size;
+        tmp.fontStyle = style;
+        tmp.alignment = alignment;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
+        tmp.color = Color.white;
+        return tmp;
+    }
+
+    private Button CreateButton(string label, TMP_FontAsset font, Action onClick, Transform parent = null)
+    {
+        parent ??= transform;
+        var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+        go.transform.SetParent(parent, false);
+        go.GetComponent<Image>().color = new Color(0.22f, 0.28f, 0.38f, 1f);
+        go.GetComponent<LayoutElement>().preferredHeight = 36f;
+        go.GetComponent<LayoutElement>().preferredWidth = 180f;
+
+        var button = go.GetComponent<Button>();
+        button.onClick.AddListener(() =>
+        {
+            playClick?.Invoke();
+            onClick?.Invoke();
+        });
+
+        var text = CreateText(go.transform, "Label", 18, FontStyles.Normal, TextAlignmentOptions.Center, font);
+        text.text = label;
+        var rect = text.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        return button;
     }
 }
