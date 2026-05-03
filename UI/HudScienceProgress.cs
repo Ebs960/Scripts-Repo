@@ -181,7 +181,7 @@ public class HudScienceProgress : MonoBehaviour
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.ShowAtSource("Science", null, transform as RectTransform, new Vector2(0f, -24f));
+            popoverInstance.ShowAtSource("Science", null, transform as RectTransform, new Vector2(0f, -12f));
     }
 
     private void SetProgressValue(float progress)
