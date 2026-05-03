@@ -105,8 +105,8 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
             {
                 int cityCount = governor.Cities?.Count ?? 0;
                 int herdCount = governor.Herds?.Count ?? 0;
-                string faction = governor.Faction != null ? governor.Faction.Name : "Unaffiliated";
-                lines.Add($"• {governor.Name} | Opinion {Mathf.RoundToInt(governor.Opinion)} | Ambition {Mathf.RoundToInt(governor.AmbitionScore)} | Influence {Mathf.RoundToInt(governor.Influence)} | Cities {cityCount} | Herds {herdCount} | Faction {faction}");
+                string faction = governor.Faction != null ? governor.Faction.FactionName : "Unaffiliated";
+                lines.Add($"• {governor.Name} | Opinion {Mathf.RoundToInt(governor.Opinion)} | Ambition {Mathf.RoundToInt(governor.AmbitionScore)} | Power {governor.PowerRank} | Cities {cityCount} | Herds {herdCount} | Faction {faction}");
             }
         }
 
@@ -130,12 +130,14 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
                 lines.Add($"• {lord.Name} ({lord.specialization}) | Opinion {Mathf.RoundToInt(lord.Opinion)}");
         }
 
-        var eligible = civ.GetEligibleGovernorsForCouncil();
+        var eligible = civ.governors
+            .Where(g => g != null && g.IsCouncilEligible && !civ.royalCouncil.Contains(g))
+            .ToList();
         if (eligible != null && eligible.Count > 0)
         {
             lines.Add("Eligible Lords Not Seated:");
             foreach (var lord in eligible.Where(g => g != null))
-                lines.Add($"  - {lord.Name} | Influence {Mathf.RoundToInt(lord.Influence)} | Grievances {lord.TotalGrievances()}");
+                lines.Add($"  - {lord.Name} | Power {lord.PowerRank} | Grievances {lord.TotalGrievances()}");
         }
 
         CreateEntry("Lords & Royal Council", string.Join("\n", lines), null);
