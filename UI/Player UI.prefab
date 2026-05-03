@@ -1213,11 +1213,11 @@ MonoBehaviour:
   allowRuntimeIconOverride: 0
   amountText: {fileID: 6925686550531803633}
   deltaText: {fileID: 1947174732538734775}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveDeltaColor: {r: 0, g: 0, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
-  breakdownItemPrefab: {fileID: 0}
-  popoverOffset: {x: 0, y: -24}
+  breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
+  popoverOffset: {x: 0, y: 0}
 --- !u!1 &1274516939274831943
 GameObject:
   m_ObjectHideFlags: 0
@@ -3014,11 +3014,11 @@ MonoBehaviour:
   allowRuntimeIconOverride: 0
   amountText: {fileID: 5613419185732403362}
   deltaText: {fileID: 2636564717574247669}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveDeltaColor: {r: 0, g: 0, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
-  breakdownItemPrefab: {fileID: 0}
-  popoverOffset: {x: 0, y: -24}
+  breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
+  popoverOffset: {x: 0, y: 0}
 --- !u!1 &3187423355367125565
 GameObject:
   m_ObjectHideFlags: 0
@@ -4751,8 +4751,8 @@ MonoBehaviour:
   positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
-  breakdownItemPrefab: {fileID: 0}
-  popoverOffset: {x: 0, y: -24}
+  breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
+  popoverOffset: {x: 0, y: 0}
 --- !u!1 &4591438212953339509
 GameObject:
   m_ObjectHideFlags: 0
@@ -10123,11 +10123,11 @@ MonoBehaviour:
   allowRuntimeIconOverride: 0
   amountText: {fileID: 2592753723392386651}
   deltaText: {fileID: 6811612253942544505}
-  positiveDeltaColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveDeltaColor: {r: 0, g: 0, b: 0, a: 1}
   negativeDeltaColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 3987088488014610963, guid: c32be61d5f424344c8931aaf97aa474f, type: 3}
-  breakdownItemPrefab: {fileID: 0}
-  popoverOffset: {x: 0, y: -24}
+  breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
+  popoverOffset: {x: 0, y: 0}
 --- !u!1001 &382086167581245623
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10382,6 +10382,14 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8082535188746020054, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: -2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8082535188746020054, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8875116641856726545, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -10432,6 +10440,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2508373661996246915, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
       propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2508373661996246915, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: -2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2508373661996246915, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: m_AnchoredPosition.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2985595455818527314, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
