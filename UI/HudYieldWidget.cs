@@ -23,6 +23,7 @@ public class HudYieldWidget : MonoBehaviour
     [Header("Hover Popover")]
     [SerializeField] private GameObject breakdownPopoverPrefab;
     [SerializeField] private GameObject breakdownItemPrefab;
+    [SerializeField] private Vector2 popoverOffset = new Vector2(0f, -24f);
     private HudBreakdownPopover popoverInstance;
     private EventTrigger hoverEventTrigger;
 
@@ -100,21 +101,20 @@ public class HudYieldWidget : MonoBehaviour
             Destroy(popoverInstance.gameObject);
 
         // Get root canvas to parent popover for top rendering
-        Canvas rootCanvas = GetComponentInParent<Canvas>();
-        if (rootCanvas == null) return;
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+
+        var rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
 
         // Instantiate as child of root canvas to ensure it renders on top
         var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
         popoverGO.transform.SetAsLastSibling();
 
-        // Position popover with the same X as the widget and Y offset below it
-        PositionPopoverNearWidget(popoverGO.GetComponent<RectTransform>());
-
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
 
         if (popoverInstance != null)
         {
-            popoverInstance.Show(yieldName, GetBreakdownData());
+            popoverInstance.ShowAtSource(yieldName, GetBreakdownData(), transform as RectTransform, popoverOffset);
         }
     }
 
@@ -123,42 +123,6 @@ public class HudYieldWidget : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
         popoverInstance = null;
-    }
-
-    private void PositionPopoverNearWidget(RectTransform popoverRect)
-    {
-        if (popoverRect == null) return;
-        var widgetRect = transform as RectTransform;
-        if (widgetRect == null) return;
-
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null) return;
-
-        RectTransform canvasRect = canvas.transform as RectTransform;
-        if (canvasRect == null) return;
-
-        Vector2 widgetScreenPos = RectTransformUtility.WorldToScreenPoint(canvas.worldCamera, widgetRect.position);
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, widgetScreenPos, canvas.worldCamera, out Vector2 canvasLocalPos))
-            return;
-
-        popoverRect.anchorMin = Vector2.zero;
-        popoverRect.anchorMax = Vector2.zero;
-        popoverRect.pivot = new Vector2(0.5f, 1f);
-        popoverRect.anchoredPosition = canvasLocalPos + new Vector2(0f, -90f);
-        popoverRect.localScale = Vector3.one;
-
-        // Clamp to canvas bounds so it doesn't run off screen
-        var size = popoverRect.sizeDelta;
-        float halfWidth = size.x * 0.5f;
-        float minX = -canvasRect.sizeDelta.x * 0.5f + halfWidth;
-        float maxX = canvasRect.sizeDelta.x * 0.5f - halfWidth;
-        float minY = -canvasRect.sizeDelta.y;
-        float maxY = canvasRect.sizeDelta.y * 0.5f;
-
-        popoverRect.anchoredPosition = new Vector2(
-            Mathf.Clamp(popoverRect.anchoredPosition.x, minX, maxX),
-            Mathf.Clamp(popoverRect.anchoredPosition.y, -canvasRect.sizeDelta.y, maxY)
-        );
     }
 
     /// <summary>

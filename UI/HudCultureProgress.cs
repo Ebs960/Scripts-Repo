@@ -13,6 +13,7 @@ public class HudCultureProgress : MonoBehaviour
 {
     [Header("Progress Display")]
     [SerializeField] private Image progressBar;
+    [SerializeField] private Slider progressSlider;
     [SerializeField] private Image cultureIcon; // Icon of the currently adopted culture
     [SerializeField] private TextMeshProUGUI cultureNameText;
     [SerializeField] private TextMeshProUGUI progressText;
@@ -117,17 +118,16 @@ public class HudCultureProgress : MonoBehaviour
 
         if (adoptingCulture != null && adoptingCulture.cultureCost > 0)
         {
-            float progressPct = civ.currentCultureProgress / adoptingCulture.cultureCost;
-            if (progressBar != null)
-                progressBar.fillAmount = Mathf.Clamp01(progressPct);
+            float progressPct = civ.currentCultureProgress / (float)adoptingCulture.cultureCost;
+            SetProgressValue(progressPct);
 
             if (progressText != null)
                 progressText.text = $"{Mathf.FloorToInt(civ.currentCultureProgress)}/{adoptingCulture.cultureCost}";
+
         }
         else
         {
-            if (progressBar != null)
-                progressBar.fillAmount = 0;
+            SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
         }
@@ -157,11 +157,25 @@ public class HudCultureProgress : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
 
-        var popoverGO = Instantiate(breakdownPopoverPrefab, transform.parent);
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+        var rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
+
+        var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
+        popoverGO.transform.SetAsLastSibling();
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.Show("Culture", null);
+            popoverInstance.ShowAtSource("Culture", null, transform as RectTransform, new Vector2(0f, -24f));
+    }
+
+    private void SetProgressValue(float progress)
+    {
+        float clamped = Mathf.Clamp01(progress);
+        if (progressSlider != null)
+            progressSlider.value = clamped;
+        else if (progressBar != null)
+            progressBar.fillAmount = clamped;
     }
 
     private void HideBreakdownPopover()

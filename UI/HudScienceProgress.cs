@@ -13,6 +13,7 @@ public class HudScienceProgress : MonoBehaviour
 {
     [Header("Progress Display")]
     [SerializeField] private Image progressBar;
+    [SerializeField] private Slider progressSlider;
     [SerializeField] private Image techIcon; // Icon of the currently researched tech
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private TextMeshProUGUI progressText;
@@ -107,12 +108,20 @@ public class HudScienceProgress : MonoBehaviour
             if (techIcon != null)
                 techIcon.sprite = researchTech.techIcon != null ? researchTech.techIcon : placeholderTechIcon;
 
-            float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
-            if (progressBar != null)
-                progressBar.fillAmount = Mathf.Clamp01(progressPct);
+            if (researchTech.scienceCost <= 0)
+            {
+                SetProgressValue(0f);
+                if (progressText != null) progressText.text = "0/0";
+            }
+            else
+            {
+                float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
+                SetProgressValue(progressPct);
 
-            if (progressText != null)
-                progressText.text = $"{civ.currentTechProgress}/{researchTech.scienceCost}";
+                if (progressText != null)
+                    progressText.text = $"{Mathf.FloorToInt(civ.currentTechProgress)}/{researchTech.scienceCost}";
+            }
+
         }
         else
         {
@@ -120,8 +129,7 @@ public class HudScienceProgress : MonoBehaviour
                 techNameText.text = "No Research";
             if (techIcon != null)
                 techIcon.sprite = placeholderTechIcon;
-            if (progressBar != null)
-                progressBar.fillAmount = 0;
+            SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
         }
@@ -151,11 +159,25 @@ public class HudScienceProgress : MonoBehaviour
         if (popoverInstance != null)
             Destroy(popoverInstance.gameObject);
 
-        var popoverGO = Instantiate(breakdownPopoverPrefab, transform.parent);
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+        var rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
+
+        var popoverGO = Instantiate(breakdownPopoverPrefab, rootCanvas.transform, false);
+        popoverGO.transform.SetAsLastSibling();
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.Show("Science", null);
+            popoverInstance.ShowAtSource("Science", null, transform as RectTransform, new Vector2(0f, -24f));
+    }
+
+    private void SetProgressValue(float progress)
+    {
+        float clamped = Mathf.Clamp01(progress);
+        if (progressSlider != null)
+            progressSlider.value = clamped;
+        else if (progressBar != null)
+            progressBar.fillAmount = clamped;
     }
 
     private void HideBreakdownPopover()
