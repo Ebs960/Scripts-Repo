@@ -7209,7 +7209,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: -0.0000015497208, y: -0.0009765625}
-  m_SizeDelta: {x: -200, y: -513}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1809026290714113805
 MonoBehaviour:
@@ -8397,7 +8397,7 @@ GameObject:
   - component: {fileID: 5937847937267336601}
   - component: {fileID: 7786776104723272078}
   m_Layer: 5
-  m_Name: Civ Setup UI
+  m_Name: Civ Selection UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11293,7 +11293,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &6790655303372880840
 RectTransform:
   m_ObjectHideFlags: 0
@@ -12765,7 +12765,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Aztec
+  m_text: Aztecs
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 237f6ed9e4c0cbe408256cc3e579f440, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: 93cd6d65e28d2964584290eee9ee36fa, type: 2}
@@ -14292,7 +14292,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 677, y: 162}
-  m_SizeDelta: {x: 500, y: 500}
+  m_SizeDelta: {x: 510, y: 510}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &215518244420785025
 CanvasRenderer:
@@ -20255,7 +20255,7 @@ GameObject:
   - component: {fileID: 3467056130280204639}
   - component: {fileID: 3435283900644910846}
   m_Layer: 5
-  m_Name: Civ Description
+  m_Name: Selected Civ Bonuses
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20793,14 +20793,13 @@ GameObject:
   - component: {fileID: 8045105009115644271}
   - component: {fileID: 7680488214064800739}
   - component: {fileID: 3796208909422653088}
-  - component: {fileID: 981041157794404055}
   m_Layer: 5
   m_Name: Main Menu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &8045105009115644271
 RectTransform:
   m_ObjectHideFlags: 0
@@ -20862,851 +20861,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &981041157794404055
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7665446675435556154}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa3a4ca041737254d8c561d5ea6fe40a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mainMenuPanel: {fileID: 7665446675435556154}
-  civSelectionPanel: {fileID: 1891758490138450254}
-  leaderSelectionPanel: {fileID: 9214452239970396316}
-  gameSetupPanel: {fileID: 6904693074768424747}
-  optionsPanel: {fileID: 0}
-  civButtonContainer: {fileID: 0}
-  civButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
-  selectedCivIcon: {fileID: 4455260892027446425}
-  selectedCivName: {fileID: 7938257582225529031}
-  selectedCivDescription: {fileID: 8242020593247106046}
-  selectCivButton: {fileID: 2976428671851259230}
-  backFromCivButton: {fileID: 5970420862294223929}
-  civSelectionEntries:
-  - civData: {fileID: 0}
-    civButton: {fileID: 0}
-    backgroundTargetImage: {fileID: 0}
-    backgroundSprite: {fileID: 0}
-  enableCivEntryBackgroundOverrides: 0
-  leaderButtonContainer: {fileID: 8094600615348097157}
-  leaderButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
-  selectedLeaderIcon: {fileID: 7900067413204209939}
-  selectedLeaderName: {fileID: 952924866777195135}
-  selectedLeaderDescription: {fileID: 8113938142183424717}
-  selectLeaderButton: {fileID: 2250839886836066489}
-  backFromLeaderButton: {fileID: 3201546602749412978}
-  newGameButton: {fileID: 3794759851740996759}
-  loadGameButton: {fileID: 5516998952986199058}
-  optionsButton: {fileID: 1554255541612576903}
-  quitGameButton: {fileID: 4473424201126436966}
-  aiCountDropdown: {fileID: 2386387368977409810}
-  cityStateCountDropdown: {fileID: 7674976222161941374}
-  tribeCountDropdown: {fileID: 1040131399643772318}
-  mapSizeDropdown: {fileID: 428578345526273556}
-  landPresetDropdown: {fileID: 5357012293280673972}
-  climatePresetDropdown: {fileID: 6611323019968183941}
-  moisturePresetDropdown: {fileID: 27948694622289514}
-  mapTypeName: {fileID: 7566517935838265213}
-  mapTypeIcon: {fileID: 0}
-  mapTypeDescription: {fileID: 286975469015206770}
-  planetPreview: {fileID: 0}
-  placeholderCivIcon: {fileID: 21300000, guid: 0f7de6fb76c45d1419e5e641dd1f672c, type: 3}
-  placeholderLeaderIcon: {fileID: 21300000, guid: 9bf5a5fc4f006af4699ea15f98a1f31d, type: 3}
-  backToMenuButton: {fileID: 2888859437634740172}
-  startGameButton: {fileID: 2115395561125161101}
-  terrainRoughnessDropdown: {fileID: 3106324314298798636}
-  enableNewWorldToggle: {fileID: 418347241197857715}
-  newWorldContinentCountInput: {fileID: 5214119737855447608}
-  newWorldBufferInput: {fileID: 8985920279090335287}
-  enableSecondNewWorldToggle: {fileID: 8043855424272210969}
-  secondNewWorldBufferInput: {fileID: 2653908404194243450}
-  carveNewWorldOnTerrestrialToggle: {fileID: 9206644424973933415}
-  mapTypeSpriteEntries:
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: b2a80e13ca76a1d438e21ab4acc04ce3, type: 3}
-  - mapTypeName: Ancient Emerald Heartland
-    sprite: {fileID: 21300000, guid: 8d8e95bd1118d5c4882de423b1fc6e99, type: 3}
-  - mapTypeName: Ancient Frost Heartland
-    sprite: {fileID: 21300000, guid: c66c54f5e07f737469cfc5e8b253e0d1, type: 3}
-  - mapTypeName: Ancient Monsoon Heartland
-    sprite: {fileID: 21300000, guid: 79201b694f4705446b0c0a80820177a0, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 8065fa6b91c0e454f9f33b06045cb288, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 80ae8e63bca267749b66e359dfc08b74, type: 3}
-  - mapTypeName: Arctic Atoll
-    sprite: {fileID: 21300000, guid: 95fb586c60cd5514a804af299a339f54, type: 3}
-  - mapTypeName: Arctic Highlands
-    sprite: {fileID: 21300000, guid: 3bdbd4f660e2bb348b0567caa9cc19ef, type: 3}
-  - mapTypeName: Arctic Peaks
-    sprite: {fileID: 21300000, guid: c72c2502035240d44b527b847b49090f, type: 3}
-  - mapTypeName: Arctic Plains
-    sprite: {fileID: 21300000, guid: 96cb289c1bc17d34cbc85f60b9739593, type: 3}
-  - mapTypeName: Arctic Range
-    sprite: {fileID: 21300000, guid: 5ad06fd7f27c95044ab24022a8819afe, type: 3}
-  - mapTypeName: Arctic Uplands
-    sprite: {fileID: 21300000, guid: e7090dcca9c11f84aa5efce6a2bb421a, type: 3}
-  - mapTypeName: Arctic Waters
-    sprite: {fileID: 21300000, guid: 5992f84aebda9744994c2f1cc2cf6422, type: 3}
-  - mapTypeName: Arid Atoll
-    sprite: {fileID: 21300000, guid: b896bc4d285b2f949b15c0e73c815294, type: 3}
-  - mapTypeName: Arid Highlands
-    sprite: {fileID: 21300000, guid: 5dc1c47ded0fc04409cb3b4ecd3ecd24, type: 3}
-  - mapTypeName: Arid Peaks
-    sprite: {fileID: 21300000, guid: 70032a7986ddecf4dab2bc01f26722ac, type: 3}
-  - mapTypeName: Arid Plains
-    sprite: {fileID: 21300000, guid: f231d32dc8d0bfe4c9d3ac0684b3b248, type: 3}
-  - mapTypeName: Arid Range
-    sprite: {fileID: 21300000, guid: 44208b52c3f59ca46a3b7ea1bb1d9f0e, type: 3}
-  - mapTypeName: Arid Uplands
-    sprite: {fileID: 21300000, guid: 6fdbd85e832fa6d47b168079b1732551, type: 3}
-  - mapTypeName: Arid Waters
-    sprite: {fileID: 21300000, guid: 5622ecb4abc2ac94fb1c5416074b6a60, type: 3}
-  - mapTypeName: Barren Atoll
-    sprite: {fileID: 21300000, guid: edd26235014b25346a2c074b5e9c787e, type: 3}
-  - mapTypeName: Barren Highlands
-    sprite: {fileID: 21300000, guid: 4572f121537019446870ea6f9d2dc23b, type: 3}
-  - mapTypeName: Barren Peaks
-    sprite: {fileID: 21300000, guid: bc30fc66100701c42bd74a21e29cac7d, type: 3}
-  - mapTypeName: Barren Plains
-    sprite: {fileID: 21300000, guid: fb60eed3f1b75a345ae1793c54c17f66, type: 3}
-  - mapTypeName: Barren Range
-    sprite: {fileID: 21300000, guid: d4c4dd79fa0c53542a64924c71c1744d, type: 3}
-  - mapTypeName: Barren Uplands
-    sprite: {fileID: 21300000, guid: 2a676bdb34f24314f94a6cf9d4d42d8b, type: 3}
-  - mapTypeName: Barren Waters
-    sprite: {fileID: 21300000, guid: b133fa1eb5bd0fd4a9f6be1ad0c0e4c2, type: 3}
-  - mapTypeName: Boreal Atoll
-    sprite: {fileID: 21300000, guid: 596256240cf697640853cb6149b9a4f1, type: 3}
-  - mapTypeName: Boreal Highlands
-    sprite: {fileID: 21300000, guid: 23f3f6eec17d402448504bc248fc28f2, type: 3}
-  - mapTypeName: Boreal Peaks
-    sprite: {fileID: 21300000, guid: f97fcafe272a77845821b5370b251be2, type: 3}
-  - mapTypeName: Boreal Plains
-    sprite: {fileID: 21300000, guid: 58c1ec415a2685d4cb4bd581b32c06ce, type: 3}
-  - mapTypeName: Boreal Range
-    sprite: {fileID: 21300000, guid: 345bd679d809bdf44b361ed36be5c310, type: 3}
-  - mapTypeName: Boreal Uplands
-    sprite: {fileID: 21300000, guid: 9580382fe728b16419b73818c132254d, type: 3}
-  - mapTypeName: Boreal Waters
-    sprite: {fileID: 21300000, guid: 79d15fa81bda8cf40aae204fad25296e, type: 3}
-  - mapTypeName: Boundless Fertile Wilderness
-    sprite: {fileID: 21300000, guid: 0a7e579293defab46b07d40a48f5358c, type: 3}
-  - mapTypeName: Boundless Glacial Wilderness
-    sprite: {fileID: 21300000, guid: f070efa03cb42894c894250fe65bc4a2, type: 3}
-  - mapTypeName: Boundless Mirage Wilderness
-    sprite: {fileID: 21300000, guid: 2efa6f5de8ae6f64f80b3fb1d4d82bc8, type: 3}
-  - mapTypeName: Boundless Oasis Wilderness
-    sprite: {fileID: 21300000, guid: 3dbb61b4740187e47849b18b340201b2, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: efab70e011bcc6a47bd489b3f6f7a7ba, type: 3}
-  - mapTypeName: Boundless Lush Wilderness
-    sprite: {fileID: 21300000, guid: 5123a20cc4d177d4e93cac31ff936a48, type: 3}
-  - mapTypeName: Burning Continental Divide
-    sprite: {fileID: 21300000, guid: 408b0ec7c27a0964cb55a90464b415c1, type: 3}
-  - mapTypeName: Burning Escarpments
-    sprite: {fileID: 21300000, guid: 3e0584f2fa284cb4d915a5eac789989d, type: 3}
-  - mapTypeName: Burning Isles
-    sprite: {fileID: 21300000, guid: f1d2574ec7c221146b9375b4fdd7d1a1, type: 3}
-  - mapTypeName: Burning Lagoons
-    sprite: {fileID: 21300000, guid: e3e4ee60103e9ff469188dab41f1b3d3, type: 3}
-  - mapTypeName: Burning Low Plateaus
-    sprite: {fileID: 21300000, guid: e09104d27067d5b429751605c475436d, type: 3}
-  - mapTypeName: Burning Lowlands
-    sprite: {fileID: 21300000, guid: 5b99d86e0f703b34bad913d10c43757a, type: 3}
-  - mapTypeName: Burning Mountains
-    sprite: {fileID: 21300000, guid: e09908c9cb373014a94ed3fd61c5104f, type: 3}
-  - mapTypeName: Burning Ridges
-    sprite: {fileID: 21300000, guid: df4d02c481ee33840806ca678d960c5f, type: 3}
-  - mapTypeName: Dry Basin
-    sprite: {fileID: 21300000, guid: a2d850657d9fa194ea25db85362bd8e1, type: 3}
-  - mapTypeName: Dry Hills
-    sprite: {fileID: 21300000, guid: fca1e8217cb008045a669471dd6f5adb, type: 3}
-  - mapTypeName: Dry Massif
-    sprite: {fileID: 21300000, guid: 8b88d6653a7599d4dbcd45a2a159802f, type: 3}
-  - mapTypeName: Dry Peaks
-    sprite: {fileID: 21300000, guid: 63ae9b106bd6c9f468d8aabc0446f9b8, type: 3}
-  - mapTypeName: Dry Plateaus
-    sprite: {fileID: 21300000, guid: a242a5f9385f89947b4706f1ae2ac822, type: 3}
-  - mapTypeName: Dry Ponds
-    sprite: {fileID: 21300000, guid: a82182dde27fdc04393b503ad21c4194, type: 3}
-  - mapTypeName: Dry Shards
-    sprite: {fileID: 21300000, guid: 0b1b15cccb5364f4bb650dc141649f33, type: 3}
-  - mapTypeName: Dry Shards
-    sprite: {fileID: 21300000, guid: 19c7c8cd2b5765148afc3d713ee272ac, type: 3}
-  - mapTypeName: Colossal Burning Frontier
-    sprite: {fileID: 21300000, guid: f3ae7e654d694d14b97a4f878f8d7b27, type: 3}
-  - mapTypeName: Colossal Frozen Frontier
-    sprite: {fileID: 21300000, guid: 4f4ce86b6603d9d40aee6b4c64cc920b, type: 3}
-  - mapTypeName: Colossal Sweltering Frontier
-    sprite: {fileID: 21300000, guid: 2bb65b207b4e76f488fdf26205540da3, type: 3}
-  - mapTypeName: Colossal Taiga Frontier
-    sprite: {fileID: 21300000, guid: f0ee4313fce43724fb4ef94b95bff1c8, type: 3}
-  - mapTypeName: Colossal Temperate Frontier
-    sprite: {fileID: 21300000, guid: 4c073613d3f198049a06eb4a059c9b4f, type: 3}
-  - mapTypeName: Colossal Tropical Frontier
-    sprite: {fileID: 21300000, guid: 555ccd32fd9ee864fa87f51dce49c6dd, type: 3}
-  - mapTypeName: Demonic Alps
-    sprite: {fileID: 21300000, guid: 587ca669610f38c40a27aae233d2240a, type: 3}
-  - mapTypeName: Demonic Chain
-    sprite: {fileID: 21300000, guid: b10e3e308b6659f4c8c0c33198566469, type: 3}
-  - mapTypeName: Demonic Cliffs
-    sprite: {fileID: 21300000, guid: 47298f69fe79af34f9003177e90a87b1, type: 3}
-  - mapTypeName: Demonic Coasts
-    sprite: {fileID: 21300000, guid: ddfe2532bbdb8354babcbb3556b623dd, type: 3}
-  - mapTypeName: Demonic Coastal Plain
-    sprite: {fileID: 21300000, guid: 10ca50634021e994095d17937d213f9d, type: 3}
-  - mapTypeName: Demonic Coves
-    sprite: {fileID: 21300000, guid: e14b79eb6e50c9749a2a96fec01fef77, type: 3}
-  - mapTypeName: Demonic Shield
-    sprite: {fileID: 21300000, guid: 64705686136435d48b1ddc3528d47a07, type: 3}
-  - mapTypeName: Demonic Summits
-    sprite: {fileID: 21300000, guid: 19c6530ca6e97f24dbe20a94786ebe01, type: 3}
-  - mapTypeName: Desert Basin
-    sprite: {fileID: 21300000, guid: c7d1408836ad0f94498dd619420913bc, type: 3}
-  - mapTypeName: Desert Hills
-    sprite: {fileID: 21300000, guid: 89e292744a230b84da7bdfb4fced7f8a, type: 3}
-  - mapTypeName: Desert Massif
-    sprite: {fileID: 21300000, guid: e702ec2e62b183d43beab84e6656ed06, type: 3}
-  - mapTypeName: Desert Peaks
-    sprite: {fileID: 21300000, guid: 8f4c452eb40953c469a27e2da7e3f058, type: 3}
-  - mapTypeName: Desert Plateaus
-    sprite: {fileID: 21300000, guid: 387bb92392ffdca4c8279c78b6a10573, type: 3}
-  - mapTypeName: Desert Ponds
-    sprite: {fileID: 21300000, guid: 3b29e69e859848c4eba99c039c56d38b, type: 3}
-  - mapTypeName: Desert Shards
-    sprite: {fileID: 21300000, guid: 4e71b98055eabe34ab7994ae30ca428f, type: 3}
-  - mapTypeName: Desert Tablelands
-    sprite: {fileID: 21300000, guid: 8fa14555b6ff81b44afc6ccc89c27cf6, type: 3}
-  - mapTypeName: Emerald Alps
-    sprite: {fileID: 21300000, guid: b37a94aadf6c1534d80cf7a30a950599, type: 3}
-  - mapTypeName: Emerald Chain
-    sprite: {fileID: 21300000, guid: 74e509c39eebda9459d92d3ebc405ba6, type: 3}
-  - mapTypeName: Emerald Cliffs
-    sprite: {fileID: 21300000, guid: 30636373ed2194b498799d2d6ee5fbdb, type: 3}
-  - mapTypeName: Emerald Coastal Plain
-    sprite: {fileID: 21300000, guid: 53509eda637f4f240954de5d19d09e19, type: 3}
-  - mapTypeName: Emerald Coves
-    sprite: {fileID: 21300000, guid: 723150486b7fa8444a7622c6d38e0fda, type: 3}
-  - mapTypeName: Emerald Shield
-    sprite: {fileID: 21300000, guid: ec31253be870ab34dac1c2bcc048f90f, type: 3}
-  - mapTypeName: Emerald Summits
-    sprite: {fileID: 21300000, guid: 1c9f76676a78ac848a674d34ca9f5b32, type: 3}
-  - mapTypeName: Endless Arctic Vastness
-    sprite: {fileID: 21300000, guid: 00b7377daf55fe14a8764374ee49da02, type: 3}
-  - mapTypeName: Endless Arid Vastness
-    sprite: {fileID: 21300000, guid: f3b44b691ad48fb44832522719bcdf55, type: 3}
-  - mapTypeName: Endless Barren Vastness
-    sprite: {fileID: 21300000, guid: 83de92ce8acf8494291e0859e8a46a10, type: 3}
-  - mapTypeName: Endless Boreal Vastness
-    sprite: {fileID: 21300000, guid: a63e7888e4bdb084eb2a66ca8473da5b, type: 3}
-  - mapTypeName: Endless Grassy Vastness
-    sprite: {fileID: 21300000, guid: 1417ac7bcba6c4244a2925f6cd524ce2, type: 3}
-  - mapTypeName: Endless Sunlit Vastness
-    sprite: {fileID: 21300000, guid: 0810c8d439813fb46bf98e7ee8ab1e8c, type: 3}
-  - mapTypeName: Fertile Archipelago
-    sprite: {fileID: 21300000, guid: 3ca05f93db4e2d44e9b6f257cd0f727d, type: 3}
-  - mapTypeName: Fertile Country
-    sprite: {fileID: 21300000, guid: d42aac6abab43614aab981c0c24e3a30, type: 3}
-  - mapTypeName: Fertile Great Range
-    sprite: {fileID: 21300000, guid: 623b584967f41f4419a4979013f0dca2, type: 3}
-  - mapTypeName: Fertile Heights
-    sprite: {fileID: 21300000, guid: a1ae487640698ba4a83747c827718696, type: 3}
-  - mapTypeName: Fertile Highlands
-    sprite: {fileID: 21300000, guid: 8680f9977c574ec4094265b3e4590400, type: 3}
-  - mapTypeName: Fertile Rivers
-    sprite: {fileID: 21300000, guid: d8b02494b8911bf45a3a47fecadb4740, type: 3}
-  - mapTypeName: Fertile Summit
-    sprite: {fileID: 21300000, guid: b557efa356df1c942a0c82d841c9270a, type: 3}
-  - mapTypeName: Fertile Valley
-    sprite: {fileID: 21300000, guid: 96a8513abe73bd4408421f5348d8e95c, type: 3}
-  - mapTypeName: Forested Burning Frontier
-    sprite: {fileID: 21300000, guid: 90d6a853cdcfc8c4e9a996f9dec3ceb3, type: 3}
-  - mapTypeName: Forested Frozen Frontier
-    sprite: {fileID: 21300000, guid: 483cfb6b89f4ba147ab5be20667c0b2b, type: 3}
-  - mapTypeName: Forested Sweltering Frontier
-    sprite: {fileID: 21300000, guid: 3f6f5d60045da1c42900c69fcb25a1cd, type: 3}
-  - mapTypeName: Forested Taiga Frontier
-    sprite: {fileID: 21300000, guid: 1e3f313aa358f7a4c968279cf5156510, type: 3}
-  - mapTypeName: Forested Temperate Frontier
-    sprite: {fileID: 21300000, guid: c1b8f049d0ffd8246b722c687e5e23a4, type: 3}
-  - mapTypeName: Forested Tropical Frontier
-    sprite: {fileID: 21300000, guid: 787584ee03d01e7479b48da8661285ab, type: 3}
-  - mapTypeName: Frost Alps
-    sprite: {fileID: 21300000, guid: d6222acedc5f5c14d8cb6e6b167d8110, type: 3}
-  - mapTypeName: Frost Chain
-    sprite: {fileID: 21300000, guid: 0f517b8249a9a324e988cf9e9e3f93e5, type: 3}
-  - mapTypeName: Frost Cliffs
-    sprite: {fileID: 21300000, guid: 31460b87cfacca245bd864795513238f, type: 3}
-  - mapTypeName: Frost Coastal Plain
-    sprite: {fileID: 21300000, guid: 168a9b52b4d2e1d4e9bea7fb2f3b7f36, type: 3}
-  - mapTypeName: Frost Coasts
-    sprite: {fileID: 21300000, guid: f0922428c99eb7144870325c5e0e7e34, type: 3}
-  - mapTypeName: Frost Coves
-    sprite: {fileID: 21300000, guid: 2d174189c2c0a0142b57fe58ec826749, type: 3}
-  - mapTypeName: Frost Shield
-    sprite: {fileID: 21300000, guid: 651ea11a1d08ff348b37c90b126bf714, type: 3}
-  - mapTypeName: Frost Summits
-    sprite: {fileID: 21300000, guid: 15b17694e959436468c81ed87dc4094c, type: 3}
-  - mapTypeName: Frozen Continental Divide
-    sprite: {fileID: 21300000, guid: 26d86e206e91a644c8b5a5e889ea5fd6, type: 3}
-  - mapTypeName: Frozen Escarpments
-    sprite: {fileID: 21300000, guid: 6f26886152a90b84e99a21bdc7ee538d, type: 3}
-  - mapTypeName: Frozen Isles
-    sprite: {fileID: 21300000, guid: e27d51029c894ae488ede3b1e70407b5, type: 3}
-  - mapTypeName: Frozen Lagoons
-    sprite: {fileID: 21300000, guid: 812c0f082c061d94ea62bd2eaa178278, type: 3}
-  - mapTypeName: Frozen Low Plateaus
-    sprite: {fileID: 21300000, guid: 9d51606661057384bb0ee294de834f51, type: 3}
-  - mapTypeName: Frozen Mountains
-    sprite: {fileID: 21300000, guid: b9009223eb5a90943b90665a1fe8b937, type: 3}
-  - mapTypeName: Frozen Ridges
-    sprite: {fileID: 21300000, guid: 0d609a9023c70404b8db4cc2e50bad6c, type: 3}
-  - mapTypeName: Glacial Archipelago
-    sprite: {fileID: 21300000, guid: 52ec89615da0e02489be2413ab161b9e, type: 3}
-  - mapTypeName: Glacial Country
-    sprite: {fileID: 21300000, guid: cbecaea61716a7b4ab501b51aa77440e, type: 3}
-  - mapTypeName: Glacial Great Range
-    sprite: {fileID: 21300000, guid: 1c48e2a628a216944a9aa2021b8b83f6, type: 3}
-  - mapTypeName: Glacial Heights
-    sprite: {fileID: 21300000, guid: 8966839fa2b9e544aa3964f5603efdb1, type: 3}
-  - mapTypeName: Glacial Highlands
-    sprite: {fileID: 21300000, guid: 22800c4123d007c4fbd5fe8adf5e3898, type: 3}
-  - mapTypeName: Glacial Rivers
-    sprite: {fileID: 21300000, guid: d2d4d24d3878108439dac205b349cd51, type: 3}
-  - mapTypeName: Glacial Summit
-    sprite: {fileID: 21300000, guid: dc32ffb5e238c95439d60b593b9a8b72, type: 3}
-  - mapTypeName: Glacial Valley
-    sprite: {fileID: 21300000, guid: d34a83337bff2f944a6b573e62a00afb, type: 3}
-  - mapTypeName: Grassy Atoll
-    sprite: {fileID: 21300000, guid: 2e819e2d3843a074a837d4a2aefe7b61, type: 3}
-  - mapTypeName: Grassy Highlands
-    sprite: {fileID: 21300000, guid: 07bf700cada3e2d4eb76805dad1ef899, type: 3}
-  - mapTypeName: Grassy Peaks
-    sprite: {fileID: 21300000, guid: 8c459aa84d1de8c48bfcbbb87628d21f, type: 3}
-  - mapTypeName: Grassy Plains
-    sprite: {fileID: 21300000, guid: 6ce26a65bb0454f40997be615f42290d, type: 3}
-  - mapTypeName: Grassy Range
-    sprite: {fileID: 21300000, guid: 3cfb08e68007169458363a1e612ea08a, type: 3}
-  - mapTypeName: Grassy Uplands
-    sprite: {fileID: 21300000, guid: 2f36ddcd3eda11d4db3f4960b81a088c, type: 3}
-  - mapTypeName: Grassy Waters
-    sprite: {fileID: 21300000, guid: df5c7509fc697da4484b3f8e04f77537, type: 3}
-  - mapTypeName: Great Dry Expanse
-    sprite: {fileID: 21300000, guid: 6fc6bdaf977046a4abe3187ffe1cf67a, type: 3}
-  - mapTypeName: Great Desert Expanse
-    sprite: {fileID: 21300000, guid: 61f6e82333c034c44a58bf4284203af7, type: 3}
-  - mapTypeName: Great Northern Expanse
-    sprite: {fileID: 21300000, guid: 3df1dbb9054ee6548a3f97282304ab1d, type: 3}
-  - mapTypeName: Great Polar Expanse
-    sprite: {fileID: 21300000, guid: 07ebdc426aa9632438c3c1476106acc4, type: 3}
-  - mapTypeName: Great Savanna Expanse
-    sprite: {fileID: 21300000, guid: 7d9ae3fae65361745bcf8cba851463d3, type: 3}
-  - mapTypeName: Great Scorched Expanse
-    sprite: {fileID: 21300000, guid: 0abc0f4e140aae842b55ec5db235ea74, type: 3}
-  - mapTypeName: Ice Continental Rise
-    sprite: {fileID: 21300000, guid: d4179db34dcb1664887472e18ff65b15, type: 3}
-  - mapTypeName: Ice Crags
-    sprite: {fileID: 21300000, guid: 22f70702e808e7b4c9318578c548bd6d, type: 3}
-  - mapTypeName: Ice Crest
-    sprite: {fileID: 21300000, guid: 8b6fbbf9d6146064f8cef3e59e4c0b81, type: 3}
-  - mapTypeName: Ice Flats
-    sprite: {fileID: 21300000, guid: 736b91a81bd34e042b094fe389475e03, type: 3}
-  - mapTypeName: Ice Lakes
-    sprite: {fileID: 21300000, guid: 490684413acd32f40a0dccbbacaa1900, type: 3}
-  - mapTypeName: Ice Seas
-    sprite: {fileID: 21300000, guid: 6ba02861af38c724d9618f03b61b947b, type: 3}
-  - mapTypeName: Ice Steppes
-    sprite: {fileID: 21300000, guid: d7dcd791c5c12b04882f477f5a0d5ddb, type: 3}
-  - mapTypeName: Ice Uplands
-    sprite: {fileID: 21300000, guid: 7f71fdd037db20140bf34168a79b2d3e, type: 3}
-  - mapTypeName: Infernal Continental Rise
-    sprite: {fileID: 21300000, guid: 32d1f3aa477da6945a6a5a9c20f0af88, type: 3}
-  - mapTypeName: Infernal Crags
-    sprite: {fileID: 21300000, guid: d161f001e35cf1b45b1748e2bedb8b05, type: 3}
-  - mapTypeName: Infernal Crest
-    sprite: {fileID: 21300000, guid: f5b94adb31d201f48b84b6269753bb13, type: 3}
-  - mapTypeName: Infernal Flats
-    sprite: {fileID: 21300000, guid: 9fc81ac292d5dc047b168f7d06e4cee8, type: 3}
-  - mapTypeName: Infernal Lakes
-    sprite: {fileID: 21300000, guid: 32cfa783ff73ac84d89987f382b087d7, type: 3}
-  - mapTypeName: Infernal Seas
-    sprite: {fileID: 21300000, guid: 6aecb1458c1c1bc44bba2a2c0869c164, type: 3}
-  - mapTypeName: Infernal Steppes
-    sprite: {fileID: 21300000, guid: cfd03b25a4fd0e642acade55b8a4237d, type: 3}
-  - mapTypeName: Infernal Uplands
-    sprite: {fileID: 21300000, guid: 8e0c038af8d596346ab5dec25457496a, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 24df6bb0cf1b21c41a199607ef1e4661, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 012cd99bec145ce46a62c42881d05402, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: cdf5331d2e1356d4e8044494187a9526, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 0f74e7e6eaca90e439c736f1cf777f3e, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 6e8b7a052f83ec54b85de8b73f034796, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: b2a5a064d7abf984e8e4aa57df03f1a8, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 8664955687fdc2048807f42afe549bd2, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 9b326dc0ec3b91b46b08246d9823c2b5, type: 3}
-  - mapTypeName: Majestic Arctic Vastness
-    sprite: {fileID: 21300000, guid: 80f19b9a5528a6a4bb311e1d16780060, type: 3}
-  - mapTypeName: Majestic Arid Vastness
-    sprite: {fileID: 21300000, guid: 8a4a9aa10680ebf43b427f489fac2dc9, type: 3}
-  - mapTypeName: Majestic Barren Vastness
-    sprite: {fileID: 21300000, guid: b9fb8b069269c984c8fb072dc72efdf3, type: 3}
-  - mapTypeName: Majestic Boreal Vastness
-    sprite: {fileID: 21300000, guid: 20567b1caf8b5b44bb0b14215584f326, type: 3}
-  - mapTypeName: Majestic Grassy Vastness
-    sprite: {fileID: 21300000, guid: e27cfc77a3676ef41a7ebfc401f1bc50, type: 3}
-  - mapTypeName: Majestic Sunlit Vastness
-    sprite: {fileID: 21300000, guid: ebef041d1f4841c4fa348721834aaab9, type: 3}
-  - mapTypeName: Mighty Fertile Wilderness
-    sprite: {fileID: 21300000, guid: 1a7339002edf51548b7289b88d6daac9, type: 3}
-  - mapTypeName: Mighty Glacial Wilderness
-    sprite: {fileID: 21300000, guid: 4ca6acc5d94cce84c8e7152945f18b19, type: 3}
-  - mapTypeName: Mighty Mirage Wilderness
-    sprite: {fileID: 21300000, guid: b5238f3f11ca13d41b65b7cd0c7ad47e, type: 3}
-  - mapTypeName: Mighty Oasis Wilderness
-    sprite: {fileID: 21300000, guid: dff20d536792fe342ad4d7e56c262c92, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 47fcf2ac31a7d3d4887f5edbad19d8d4, type: 3}
-  - mapTypeName: Mighty Lush Wilderness
-    sprite: {fileID: 21300000, guid: fba2873a8c20ac9458f26e1f35d91720, type: 3}
-  - mapTypeName: Mirage Archipelago
-    sprite: {fileID: 21300000, guid: 4512db1eef304e840bdeb8377d12b1b7, type: 3}
-  - mapTypeName: Mirage Country
-    sprite: {fileID: 21300000, guid: f467baf101c353f4daa102c4a1b9e0da, type: 3}
-  - mapTypeName: Mirage Heights
-    sprite: {fileID: 21300000, guid: 9c7ba61fb534d7241bc22807ccb79f59, type: 3}
-  - mapTypeName: Mirage Great Range
-    sprite: {fileID: 21300000, guid: 8c34a82bfd5dc7e4aa489b9c32029f40, type: 3}
-  - mapTypeName: Mirage Rivers
-    sprite: {fileID: 21300000, guid: 986686443f520034bba18507ab6904a6, type: 3}
-  - mapTypeName: Mirage Summit
-    sprite: {fileID: 21300000, guid: 08a6b97a0cd5f274aaaa540668d0186e, type: 3}
-  - mapTypeName: Mirage Valley
-    sprite: {fileID: 21300000, guid: 7c253de5ca677ef4eb1bba636280407f, type: 3}
-  - mapTypeName: Mirage Highlands
-    sprite: {fileID: 21300000, guid: 05793523854ecef43b2796440eb828c5, type: 3}
-  - mapTypeName: Misty Crags
-    sprite: {fileID: 21300000, guid: 2b3885657e6e83a40bd0cb32e80aa4f7, type: 3}
-  - mapTypeName: Misty Crest
-    sprite: {fileID: 21300000, guid: 4564b6e4ae52fa645ae5b290317c4a88, type: 3}
-  - mapTypeName: Misty Flats
-    sprite: {fileID: 21300000, guid: 06b0cdd563fab0e4296fecdf801b4a4b, type: 3}
-  - mapTypeName: Misty Lakes
-    sprite: {fileID: 21300000, guid: 5c53fb1997861874590f1c9e5e82721a, type: 3}
-  - mapTypeName: Misty Seas
-    sprite: {fileID: 21300000, guid: d4090da92d165a840b4869be686f8405, type: 3}
-  - mapTypeName: Misty Steppes
-    sprite: {fileID: 21300000, guid: 3d4e7c144a2522548a50a27652716ee8, type: 3}
-  - mapTypeName: Misty Uplands
-    sprite: {fileID: 21300000, guid: 274e1a34353a75c41b3e83cc825bff14, type: 3}
-  - mapTypeName: Monsoon Alps
-    sprite: {fileID: 21300000, guid: 6019a9fac54a3ec4abf23dca567e10f7, type: 3}
-  - mapTypeName: Monsoon Chain
-    sprite: {fileID: 21300000, guid: 246d434e171e1c249b5950b6ba81ce43, type: 3}
-  - mapTypeName: Monsoon Cliffs
-    sprite: {fileID: 21300000, guid: 6898ef4a6d31a5b4e86c78a99acd622f, type: 3}
-  - mapTypeName: Monsoon Coasts
-    sprite: {fileID: 21300000, guid: 67f76f6f9c1e466499c25746e11f21fc, type: 3}
-  - mapTypeName: Monsoon Coastal Plain
-    sprite: {fileID: 21300000, guid: 3abe6f577df6e2a4c99b00246e760b95, type: 3}
-  - mapTypeName: Monsoon Coves
-    sprite: {fileID: 21300000, guid: e722721638359d84087cb3f81ca07cde, type: 3}
-  - mapTypeName: Monsoon Summits
-    sprite: {fileID: 21300000, guid: 24e0e1ae5c94fd6498166e545c3187fd, type: 3}
-  - mapTypeName: Monsoon Shield
-    sprite: {fileID: 21300000, guid: 22f757568fb679349bd20b9e739ad373, type: 3}
-  - mapTypeName: Northern Basin
-    sprite: {fileID: 21300000, guid: 180d95270773c47449b770cd6d393a9a, type: 3}
-  - mapTypeName: Northern Hills
-    sprite: {fileID: 21300000, guid: fb3e39828ef128549a4ba0f286c1959a, type: 3}
-  - mapTypeName: Northern Massif
-    sprite: {fileID: 21300000, guid: 96679cc2e50937f4c8e2ff4643f50031, type: 3}
-  - mapTypeName: Northern Peaks
-    sprite: {fileID: 21300000, guid: e90b0dcee8147cb438a5ade9c5717b82, type: 3}
-  - mapTypeName: Northern Ponds
-    sprite: {fileID: 21300000, guid: e8d240d2ee647a14f83d847194fbbd17, type: 3}
-  - mapTypeName: Northern Plateaus
-    sprite: {fileID: 21300000, guid: a2631db4d12efb84a8ce578770ccc2a2, type: 3}
-  - mapTypeName: Northern Shards
-    sprite: {fileID: 21300000, guid: 6ab1d5699ea846740bd472db2b3557d1, type: 3}
-  - mapTypeName: Northern Tablelands
-    sprite: {fileID: 21300000, guid: 5f47b57360e018742b9d49ff9eb5d5d0, type: 3}
-  - mapTypeName: Oasis Archipelago
-    sprite: {fileID: 21300000, guid: 776205111bbf9284da2c4fb4718a00c7, type: 3}
-  - mapTypeName: Oasis Country
-    sprite: {fileID: 21300000, guid: f8dbb470c779c2a4ca6d2a56c2ca99be, type: 3}
-  - mapTypeName: Oasis Great Range
-    sprite: {fileID: 21300000, guid: 9538429914c959a4e909029dfbc81d6e, type: 3}
-  - mapTypeName: Oasis Heights
-    sprite: {fileID: 21300000, guid: 7fefdb5f1e7ca3243804df28cd566152, type: 3}
-  - mapTypeName: Oasis Highlands
-    sprite: {fileID: 21300000, guid: 19d52f8eefe63c5408bca93aeb73cebb, type: 3}
-  - mapTypeName: Oasis Summit
-    sprite: {fileID: 21300000, guid: d2933e6838ec5aa458893723d36a84e0, type: 3}
-  - mapTypeName: Oasis Valley
-    sprite: {fileID: 21300000, guid: c8b589eb2ac49c44f9940094797cacb4, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 082a63b15cb479448b60e4edc6badc00, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: d2de786b3f5d2124095d8a2a3715f48c, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 8d4741169c26b054bba295ef696b3092, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 567021c104e14984cb17fac3f19b0d56, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 21222a04d53cc2048a671bbae5cd1f03, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 6e3c2a84a5687ed4c86f26fe1b8387dd, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: c5b652c3ff9ff254486bf544130a0b89, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: d14d84c76d9b11f409b1a3f6ebf89227, type: 3}
-  - mapTypeName: Polar Basin
-    sprite: {fileID: 21300000, guid: 1873f7855252c2749a373d58f0fd594a, type: 3}
-  - mapTypeName: Polar Hills
-    sprite: {fileID: 21300000, guid: 5d40ed3a80f7bf7458bb2a22cbed092f, type: 3}
-  - mapTypeName: Polar Massif
-    sprite: {fileID: 21300000, guid: 104dc478116df164984f7a23d183fd1f, type: 3}
-  - mapTypeName: Polar Peaks
-    sprite: {fileID: 21300000, guid: 04cea48e631a8f14291950ff2c522229, type: 3}
-  - mapTypeName: Polar Plateaus
-    sprite: {fileID: 21300000, guid: 28a502d5e0160e6418c49eeba3db45ce, type: 3}
-  - mapTypeName: Polar Shards
-    sprite: {fileID: 21300000, guid: 81f5afc36cec0cb4986383cf310d474b, type: 3}
-  - mapTypeName: Polar Tablelands
-    sprite: {fileID: 21300000, guid: 0a6afa061bc9f4546b2463c7d8d3286c, type: 3}
-  - mapTypeName: Polar Ponds
-    sprite: {fileID: 21300000, guid: 46107685fa899cd48b2f6e20c7825a5e, type: 3}
-  - mapTypeName: Polar Plateaus
-    sprite: {fileID: 21300000, guid: 0a6afa061bc9f4546b2463c7d8d3286c, type: 3}
-  - mapTypeName: Rainforest Continental Rise
-    sprite: {fileID: 21300000, guid: 91e90d99a24c64b43bd410c749405ee8, type: 3}
-  - mapTypeName: Rainforest Crags
-    sprite: {fileID: 21300000, guid: ef61e09bd7a71754f921c9a9df1e60ea, type: 3}
-  - mapTypeName: Rainforest Crest
-    sprite: {fileID: 21300000, guid: bb70332b4d212b84bb9bcaf7a085144a, type: 3}
-  - mapTypeName: Rainforest Flats
-    sprite: {fileID: 21300000, guid: d15535ba16b92fc459f32b9a1adebadd, type: 3}
-  - mapTypeName: Rainforest Lakes
-    sprite: {fileID: 21300000, guid: bee14af2df96e8049a3bbc2b5ee5392c, type: 3}
-  - mapTypeName: Rainforest Seas
-    sprite: {fileID: 21300000, guid: 227a8e239a31d2e41af5dbe6c21761cc, type: 3}
-  - mapTypeName: Rainforest Steppes
-    sprite: {fileID: 21300000, guid: 9a48f169f689c664ba7dcd046f57c1fd, type: 3}
-  - mapTypeName: Rainforest Uplands
-    sprite: {fileID: 21300000, guid: e2a892cc812a0714fb6b1aa6bf43239f, type: 3}
-  - mapTypeName: Rolling Dry Expanse
-    sprite: {fileID: 21300000, guid: ccf083a67ba526b44872fab015263057, type: 3}
-  - mapTypeName: Rolling Desert Expanse
-    sprite: {fileID: 21300000, guid: da84c1d65713c2c4ca31674d8c32295f, type: 3}
-  - mapTypeName: Rolling Northern Expanse
-    sprite: {fileID: 21300000, guid: 3629c24f3604c6149aab6f53ed749416, type: 3}
-  - mapTypeName: Rolling Polar Expanse
-    sprite: {fileID: 21300000, guid: f34d8d57c2b0eef4db00176ed70f24d2, type: 3}
-  - mapTypeName: Rolling Savanna Expanse
-    sprite: {fileID: 21300000, guid: 15b6ee3cb74b56f45bd968a9d1351145, type: 3}
-  - mapTypeName: Rolling Scorched Expanse
-    sprite: {fileID: 21300000, guid: 1815256ea21bccc4aa0225275f4e54ce, type: 3}
-  - mapTypeName: Rugged Arctic Vastness
-    sprite: {fileID: 21300000, guid: bd298c4295982b0409143f9bcb908518, type: 3}
-  - mapTypeName: Rugged Arid Vastness
-    sprite: {fileID: 21300000, guid: ce44c986370ec6742b49190273d2b2b7, type: 3}
-  - mapTypeName: Rugged Barren Vastness
-    sprite: {fileID: 21300000, guid: 7079884507237294081f16c3a24f8820, type: 3}
-  - mapTypeName: Rugged Boreal Vastness
-    sprite: {fileID: 21300000, guid: 87c9f9b9fe6ab3a40a6dd6e18239ec7b, type: 3}
-  - mapTypeName: Rugged Grassy Vastness
-    sprite: {fileID: 21300000, guid: a8a8ce9afddb7a648a35c5b450e350bc, type: 3}
-  - mapTypeName: Rugged Sunlit Vastness
-    sprite: {fileID: 21300000, guid: 696eb3af702cfde4db0c2115a22a7a00, type: 3}
-  - mapTypeName: Savanna Basin
-    sprite: {fileID: 21300000, guid: c580b44113a8e9242a3a82cb2a8c4a65, type: 3}
-  - mapTypeName: Savanna Hills
-    sprite: {fileID: 21300000, guid: 9869bd33559698343934b74e1e096ec8, type: 3}
-  - mapTypeName: Savanna Massif
-    sprite: {fileID: 21300000, guid: 403145af5c127df47ae54580059a6e73, type: 3}
-  - mapTypeName: Savanna Peaks
-    sprite: {fileID: 21300000, guid: 5a4579d078853684294b84687ce4438c, type: 3}
-  - mapTypeName: Savanna Plateaus
-    sprite: {fileID: 21300000, guid: 03f4ab82938c29a4195765b5c2b673ed, type: 3}
-  - mapTypeName: Savanna Ponds
-    sprite: {fileID: 21300000, guid: 5bb9efea787597e4fb38216be9219ad0, type: 3}
-  - mapTypeName: Savanna Shards
-    sprite: {fileID: 21300000, guid: 526fbe92d2e5f284a8aace874c9ae5c7, type: 3}
-  - mapTypeName: Savanna Tablelands
-    sprite: {fileID: 21300000, guid: af937b87ef878ba44a2c5550e9f50fb5, type: 3}
-  - mapTypeName: Scorched Basin
-    sprite: {fileID: 21300000, guid: 866d0cb2983d3344bada0244b0642419, type: 3}
-  - mapTypeName: Scorched Hills
-    sprite: {fileID: 21300000, guid: a5696acfd39352443a22d98b438e51c4, type: 3}
-  - mapTypeName: Scorched Peaks
-    sprite: {fileID: 21300000, guid: 32704289ab4f50c4a9dd6a3ce7a247fd, type: 3}
-  - mapTypeName: Scorched Shards
-    sprite: {fileID: 21300000, guid: 29bd4eadc4b0afb40bc5b8026eb1d017, type: 3}
-  - mapTypeName: Scorched Tablelands
-    sprite: {fileID: 21300000, guid: 4b7a8c5b6b869d941b97064850fd1ca3, type: 3}
-  - mapTypeName: Scorched Massif
-    sprite: {fileID: 21300000, guid: 27b9ecdcaf9bcf647b0158367f0de7b1, type: 3}
-  - mapTypeName: Scorched Plateaus
-    sprite: {fileID: 21300000, guid: 49640e717f10b0e4ea96eb0111df663e, type: 3}
-  - mapTypeName: Scorched Ponds
-    sprite: {fileID: 21300000, guid: 79232d038b4fbcc46947182d1f636ded, type: 3}
-  - mapTypeName: Sheer Emerald Heartland
-    sprite: {fileID: 21300000, guid: ae6a2dbc5810f7f4787e6e0640f0e17a, type: 3}
-  - mapTypeName: Sheer Demonic Heartland
-    sprite: {fileID: 21300000, guid: f6942dd7e6dc97d4a83f8962e340ea84, type: 3}
-  - mapTypeName: Sheer Frost Heartland
-    sprite: {fileID: 21300000, guid: a2257dbacaf25a74abaf21a36fecec5b, type: 3}
-  - mapTypeName: Sheer Monsoon Heartland
-    sprite: {fileID: 21300000, guid: 316022cbbd934184caf0d7e2f2f007b9, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: bbad464838799ca43a0e9522c4bb1004, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: f61b95a203c799a4d91805cf8db89f7d, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 41823a24c59f965429432005ab2a70e9, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 2c97249aeca8bdb4d9cb745f9bcfe9ec, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 1d65f90bfb596114a9fde5edde90ae9b, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 83e0dcbf4f1d67448a2d059aac040fa8, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 8adb56b14e1e25b428b50e72ea42c2ad, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: a8bd6ece9a387f543b4998949f3f1488, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 2755e74f226aa724e873118c9324ffce, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 5c88071b78d4356428d053b626773ad2, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 3b22c010b05cd5e438ec147f3aabd585, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 10a1eb37b6b9d014492f6155dd8f4453, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: e8713dec476c54b4bb698ce880b5abcf, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: a3cd157933dcde149ac821724f1dbea5, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 214517954cfb519499293fbbce03dbdd, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: b4ccc6461dcf9084aaaf81d3cbe23aee, type: 3}
-  - mapTypeName: Stony Ice Dominion
-    sprite: {fileID: 21300000, guid: 9e1a87d6e197e5f40907d27b795ac7a7, type: 3}
-  - mapTypeName: Stony Infernal Dominion
-    sprite: {fileID: 21300000, guid: 4e19949957713ce499c7cda6f3b131d2, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 57dabf8ed1c063744a0d3785915319dd, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: bfd284a9e7e12e74fbd19d5bbe7b3cb5, type: 3}
-  - mapTypeName: Stony Rainforest Dominion
-    sprite: {fileID: 21300000, guid: 1ea51d3bf68b1754ca66dfd52a4c3214, type: 3}
-  - mapTypeName: Stony Misty Dominion
-    sprite: {fileID: 21300000, guid: 0caa5d6538c377841b2f103bdd841ff2, type: 3}
-  - mapTypeName: Sunlit Atoll
-    sprite: {fileID: 21300000, guid: 81e50af53e4c6374aab69c62e050d32d, type: 3}
-  - mapTypeName: Sunlit Highlands
-    sprite: {fileID: 21300000, guid: a611f33f5568c504d83a90673334d353, type: 3}
-  - mapTypeName: Sunlit Peaks
-    sprite: {fileID: 21300000, guid: 160e1ed301cf3b44592ff1ec947175c1, type: 3}
-  - mapTypeName: Sunlit Plains
-    sprite: {fileID: 21300000, guid: 6418ed0675812a24eab418a43713a07f, type: 3}
-  - mapTypeName: Sunlit Uplands
-    sprite: {fileID: 21300000, guid: 65830e6229f63014b9a4c2a9341e2b78, type: 3}
-  - mapTypeName: Sunlit Waters
-    sprite: {fileID: 21300000, guid: 754f23d61b7d09d42bedf44a83705e49, type: 3}
-  - mapTypeName: Sweeping Ice Dominion
-    sprite: {fileID: 21300000, guid: ee4364f283d5dc541b1cc7dfe2dffe48, type: 3}
-  - mapTypeName: Sweeping Infernal Dominion
-    sprite: {fileID: 21300000, guid: 476d6fdf987de8d4a90b46f2c7f2fe9a, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: b57ef60d88831374a80dfe03f4ea1bfb, type: 3}
-  - mapTypeName: Sweeping Misty Dominion
-    sprite: {fileID: 21300000, guid: 819ec9a44531c744a89cbd0df0ce5197, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 87bc551e18d92af4cabc4b26a73c86e7, type: 3}
-  - mapTypeName: Sweeping Rainforest Dominion
-    sprite: {fileID: 21300000, guid: 746b0788590bcd24e9c98bc6a4835d58, type: 3}
-  - mapTypeName: Sweltering Continental Divide
-    sprite: {fileID: 21300000, guid: c6e2248604908744c98a7a6802afca9f, type: 3}
-  - mapTypeName: Sweltering Escarpments
-    sprite: {fileID: 21300000, guid: ec4ef974c886c8540b662ff02d521a46, type: 3}
-  - mapTypeName: Sweltering Isles
-    sprite: {fileID: 21300000, guid: b9c014612357b274188cfdb719bd98a4, type: 3}
-  - mapTypeName: Sweltering Lagoons
-    sprite: {fileID: 21300000, guid: a08b37a17bce3f74d88f99942a633fb8, type: 3}
-  - mapTypeName: Sweltering Low Plateaus
-    sprite: {fileID: 21300000, guid: 526d404fe28a16546a40969890bf0e61, type: 3}
-  - mapTypeName: Sweltering Lowlands
-    sprite: {fileID: 21300000, guid: 8e8c428f6a6577143b499283887dc0e6, type: 3}
-  - mapTypeName: Sweltering Mountains
-    sprite: {fileID: 21300000, guid: 324f89d2cfd117842b2a18322c62ef65, type: 3}
-  - mapTypeName: Sweltering Ridges
-    sprite: {fileID: 21300000, guid: 037a0b2c031e05243b9b4c9867599e3a, type: 3}
-  - mapTypeName: Taiga Continental Divide
-    sprite: {fileID: 21300000, guid: 7f7edb983803a214abeec4c5d8a35fb2, type: 3}
-  - mapTypeName: Taiga Escarpments
-    sprite: {fileID: 21300000, guid: 3a6dd138ace079541a8b7339f1cc88b1, type: 3}
-  - mapTypeName: Taiga Isles
-    sprite: {fileID: 21300000, guid: 482d763c5fd18344caa1f7b44121c06c, type: 3}
-  - mapTypeName: Taiga Lagoons
-    sprite: {fileID: 21300000, guid: c5b7fc65bbd73cc4db87da83ede01c32, type: 3}
-  - mapTypeName: Taiga Low Plateaus
-    sprite: {fileID: 21300000, guid: bf79c5dfc6ab2df4888fdca70b6026a9, type: 3}
-  - mapTypeName: Taiga Lowlands
-    sprite: {fileID: 21300000, guid: e79326ef21c0bcc499c9233c93838f51, type: 3}
-  - mapTypeName: Taiga Mountains
-    sprite: {fileID: 21300000, guid: 387afe4a714950c4a833cb1d425ce753, type: 3}
-  - mapTypeName: Taiga Ridges
-    sprite: {fileID: 21300000, guid: 27b3a376c42ca114086398fd10cc7d10, type: 3}
-  - mapTypeName: Temperate Continental Divide
-    sprite: {fileID: 21300000, guid: 14bdbbd6e6f3c81489044e69ebcad249, type: 3}
-  - mapTypeName: Temperate Escarpments
-    sprite: {fileID: 21300000, guid: 55f6ec5abf3b72a4daefd92ec12ea9bd, type: 3}
-  - mapTypeName: Temperate Isles
-    sprite: {fileID: 21300000, guid: ca38896bc54559349b7ea411655c7879, type: 3}
-  - mapTypeName: Temperate Lagoons
-    sprite: {fileID: 21300000, guid: bd0d558373e330144a1795b921d747ea, type: 3}
-  - mapTypeName: Temperate Low Plateaus
-    sprite: {fileID: 21300000, guid: 064431f9a106fbb4ab8290cf2b85378a, type: 3}
-  - mapTypeName: Temperate Lowlands
-    sprite: {fileID: 21300000, guid: 9b63bfb191ca8e8448c93c3f6a4ee522, type: 3}
-  - mapTypeName: Temperate Mountains
-    sprite: {fileID: 21300000, guid: 7f1b3f7cdf6557d41a128423c95ba1b9, type: 3}
-  - mapTypeName: Temperate Ridges
-    sprite: {fileID: 21300000, guid: d92782a882e36424bbeb43e96f6aeb13, type: 3}
-  - mapTypeName: Towering Desert Expanse
-    sprite: {fileID: 21300000, guid: 619978e11957fb64abca4b54e687bcf0, type: 3}
-  - mapTypeName: Towering Dry Expanse
-    sprite: {fileID: 21300000, guid: 96af6867891c53d4bb5914d4e7fd6e08, type: 3}
-  - mapTypeName: Towering Northern Expanse
-    sprite: {fileID: 21300000, guid: e401b7c9118c33f4399ebf2bc439b6d4, type: 3}
-  - mapTypeName: Towering Polar Expanse
-    sprite: {fileID: 21300000, guid: 0f5ef4740038c10459db39e1b12d176c, type: 3}
-  - mapTypeName: Towering Savanna Expanse
-    sprite: {fileID: 21300000, guid: d706c7dbee59b054ea4ebee599c40a0f, type: 3}
-  - mapTypeName: Towering Scorched Expanse
-    sprite: {fileID: 21300000, guid: 4a64e738396581742b459772e8f80410, type: 3}
-  - mapTypeName: Tropical Continental Divide
-    sprite: {fileID: 21300000, guid: 5c137fed4fe4c574f89db59483b9d9bf, type: 3}
-  - mapTypeName: Tropical Escarpments
-    sprite: {fileID: 21300000, guid: 8cf50b6ab638e904494f63d22a393c6d, type: 3}
-  - mapTypeName: Tropical Isles
-    sprite: {fileID: 21300000, guid: bb26fca30eee6614d9a20d7063003c21, type: 3}
-  - mapTypeName: Tropical Lagoons
-    sprite: {fileID: 21300000, guid: a4f85973dcaeccd419252f4e67c950e4, type: 3}
-  - mapTypeName: Tropical Low Plateaus
-    sprite: {fileID: 21300000, guid: 0f8af0e918c2df3479f52d8d818f2ee6, type: 3}
-  - mapTypeName: Tropical Lowlands
-    sprite: {fileID: 21300000, guid: a1ac6a631037edf43a2598fd1e013b12, type: 3}
-  - mapTypeName: Tropical Mountains
-    sprite: {fileID: 21300000, guid: a022103048bbd7547b61b505f640218e, type: 3}
-  - mapTypeName: Tropical Ridges
-    sprite: {fileID: 21300000, guid: b0de59d4c4cf3fe45a897cd895a81c1d, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 6664bc5c24646424580ba69acc913a97, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: f89a01f6e8290ab4b863075e855e175c, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 6e1c41142ca7c954491821e7f800af4f, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 77d0df298327f0f4fbf5a41286d6230e, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 1d2465bbd03ebfb4ca31ba0327028541, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 6f4a28808c6acbb488324aef799211d5, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 26f0d01e77770fe419593278994552bf, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: a7fc9968c87dd26429925a0a13b9db51, type: 3}
-  - mapTypeName: Vast Frozen Frontier
-    sprite: {fileID: 21300000, guid: 9f1eab26f6d1a854680ba5deb8a59013, type: 3}
-  - mapTypeName: Vast Burning Frontier
-    sprite: {fileID: 21300000, guid: 27f3919c136a2ec4d83b4a8ea943753d, type: 3}
-  - mapTypeName: Vast Sweltering Frontier
-    sprite: {fileID: 21300000, guid: d193f2831d9915b409b5f07bb4622fbf, type: 3}
-  - mapTypeName: Vast Taiga Frontier
-    sprite: {fileID: 21300000, guid: 77b111fbc1c177141a0df446784b020f, type: 3}
-  - mapTypeName: Vast Temperate Frontier
-    sprite: {fileID: 21300000, guid: 1a04530f37bdf194aa7cfd181c4e57e3, type: 3}
-  - mapTypeName: Vast Tropical Frontier
-    sprite: {fileID: 21300000, guid: 458dcc7e8e5f44f4ca2ba7f9154a8357, type: 3}
-  - mapTypeName: Lush Archipelago
-    sprite: {fileID: 21300000, guid: e82e7d2a27be60440bd1785af7372816, type: 3}
-  - mapTypeName: Lush Country
-    sprite: {fileID: 21300000, guid: a837bf3d9dee3ef41bd0b568dfe63f4d, type: 3}
-  - mapTypeName: Lush Great Range
-    sprite: {fileID: 21300000, guid: ec0f878d72c63034aaa65d89628a18ee, type: 3}
-  - mapTypeName: Lush Heights
-    sprite: {fileID: 21300000, guid: ff568f022acca77488ff8a898181bc48, type: 3}
-  - mapTypeName: Lush Highlands
-    sprite: {fileID: 21300000, guid: 337a1e531640d104094df0384f268b81, type: 3}
-  - mapTypeName: Lush Rivers
-    sprite: {fileID: 21300000, guid: d4a79cdcc981bd048bd0d1008e205492, type: 3}
-  - mapTypeName: Lush Summit
-    sprite: {fileID: 21300000, guid: c224d0559cc30834dbd5f6666703ba17, type: 3}
-  - mapTypeName: Lush Valley
-    sprite: {fileID: 21300000, guid: 562b5addfeee66d4582f83b5be8f4341, type: 3}
-  - mapTypeName: Wild Demonic Heartland
-    sprite: {fileID: 21300000, guid: d00922b5a569212428decc37ac05f936, type: 3}
-  - mapTypeName: Wild Emerald Heartland
-    sprite: {fileID: 21300000, guid: c578b5ca480ace7458694d2deee29061, type: 3}
-  - mapTypeName: Wild Frost Heartland
-    sprite: {fileID: 21300000, guid: 30ff5ab853943134387a3b6347b9b37f, type: 3}
-  - mapTypeName: Wild Monsoon Heartland
-    sprite: {fileID: 21300000, guid: b2c856970cc9d2f448824f39efec190b, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 3e90ae8327bd45e43a1529244ceed267, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 084770342d63b774da7a51790fcd083e, type: 3}
-  - mapTypeName: Windswept Mirage Wilderness
-    sprite: {fileID: 21300000, guid: 62b9c4123fdbbb4409254c97244c361e, type: 3}
-  - mapTypeName: Windswept Fertile Wilderness
-    sprite: {fileID: 21300000, guid: 89c1cf59c4acad641b619a02db18ba41, type: 3}
-  - mapTypeName: Windswept Glacial Wilderness
-    sprite: {fileID: 21300000, guid: 720fe527d6910f44abc2968a0451cf6d, type: 3}
-  - mapTypeName: Windswept Oasis Wilderness
-    sprite: {fileID: 21300000, guid: c68f74fce4feabf4ea1889417e493c17, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 0564fd5e3bbc9dc46b72bcc0cd58a16a, type: 3}
-  - mapTypeName: Windswept Lush Wilderness
-    sprite: {fileID: 21300000, guid: 680ddef646bbd8842b76a5dab0007ba5, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: 9d284aa9ccff62547910f4a1de91f309, type: 3}
-  - mapTypeName: Ancient Demonic Heartland
-    sprite: {fileID: 21300000, guid: cf084823d99ff894d947020338775ee7, type: 3}
-  climateFallbackIcons:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  landTypeFallbackIcons:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  animalPrevalenceDropdown: {fileID: 2695774132578646061}
-  menuMusicVolumeSlider: {fileID: 0}
-  menuMusicVolumeText: {fileID: 0}
-  menuMusicEnabledToggle: {fileID: 0}
-  optionsBackButton: {fileID: 0}
-  autosaveEnabledToggle: {fileID: 0}
-  autosaveIntervalSlider: {fileID: 0}
-  autosaveIntervalText: {fileID: 0}
 --- !u!1 &7758156044344325746
 GameObject:
   m_ObjectHideFlags: 0
@@ -22191,6 +21345,7 @@ GameObject:
   - component: {fileID: 4801706218566665746}
   - component: {fileID: 7414987691796297650}
   - component: {fileID: 3288339095746123404}
+  - component: {fileID: 3464161262442599705}
   m_Layer: 5
   m_Name: Game Startup
   m_TagString: Untagged
@@ -22284,6 +21439,148 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &3464161262442599705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7907796543800728512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa3a4ca041737254d8c561d5ea6fe40a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainMenuPanel: {fileID: 7665446675435556154}
+  civSelectionPanel: {fileID: 1891758490138450254}
+  leaderSelectionPanel: {fileID: 9214452239970396316}
+  gameSetupPanel: {fileID: 6904693074768424747}
+  optionsPanel: {fileID: 0}
+  civButtonContainer: {fileID: 0}
+  civButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
+  selectedCivIcon: {fileID: 4455260892027446425}
+  selectedCivName: {fileID: 7938257582225529031}
+  selectedCivDescription: {fileID: 8242020593247106046}
+  selectedCivBonuses: {fileID: 3435283900644910846}
+  selectCivButton: {fileID: 2976428671851259230}
+  backFromCivButton: {fileID: 5970420862294223929}
+  civSelectionEntries:
+  - civData: {fileID: 11400000, guid: 301a6892b8ad50c4e90e5244e555991b, type: 2}
+    civButton: {fileID: 3394272478668659532}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: fd40c750163cf0b40965f2a2cb5e7b94, type: 2}
+    civButton: {fileID: 1852651188772660575}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: e07c9ddbee3f7da498fe718a19dcb22c, type: 2}
+    civButton: {fileID: 7886252840096991535}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: b89280a654ebe92459449d6a66fe50ab, type: 2}
+    civButton: {fileID: 55938960718229776}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: e1dc68799771f004ba736d9c23ecca7a, type: 2}
+    civButton: {fileID: 2523682036305409769}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 46b9be47a06809e4baf66e0dca03588b, type: 2}
+    civButton: {fileID: 6499128370589339790}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: f26bd0858db1b4649942db951f2293bc, type: 2}
+    civButton: {fileID: 4389594758314351659}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 39129248f5e9fdc4d954bad65646a4b9, type: 2}
+    civButton: {fileID: 9212107544006287215}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 92e2060b45e33304793fe94ddc5bdc8e, type: 2}
+    civButton: {fileID: 6826616162765306496}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
+    civButton: {fileID: 4277622249009804843}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 4097346a033d8bd469056a6fcfef8ac5, type: 2}
+    civButton: {fileID: 4727213681896931099}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 92376482cce3093429fb6878de9eae19, type: 2}
+    civButton: {fileID: 3558653828976748541}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 616044bb37c77984cb61b75e569f6c1d, type: 2}
+    civButton: {fileID: 1609159235876868858}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: 3bbd49bd0f67c124ba85fee23e0ba118, type: 2}
+    civButton: {fileID: 1438534251728978553}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  - civData: {fileID: 11400000, guid: d1a7bd9d5509edd4e99ce59ea636b262, type: 2}
+    civButton: {fileID: 984259264531703761}
+    backgroundTargetImage: {fileID: 4039292325368744934}
+    backgroundSprite: {fileID: 0}
+  enableCivEntryBackgroundOverrides: 0
+  leaderButtonContainer: {fileID: 8094600615348097157}
+  leaderButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
+  selectedLeaderIcon: {fileID: 7900067413204209939}
+  selectedLeaderName: {fileID: 952924866777195135}
+  selectedLeaderDescription: {fileID: 8113938142183424717}
+  selectLeaderButton: {fileID: 2250839886836066489}
+  backFromLeaderButton: {fileID: 3201546602749412978}
+  newGameButton: {fileID: 3794759851740996759}
+  loadGameButton: {fileID: 5516998952986199058}
+  optionsButton: {fileID: 1554255541612576903}
+  quitGameButton: {fileID: 4473424201126436966}
+  aiCountDropdown: {fileID: 2386387368977409810}
+  cityStateCountDropdown: {fileID: 7674976222161941374}
+  tribeCountDropdown: {fileID: 1040131399643772318}
+  mapSizeDropdown: {fileID: 428578345526273556}
+  landPresetDropdown: {fileID: 5357012293280673972}
+  climatePresetDropdown: {fileID: 6611323019968183941}
+  moisturePresetDropdown: {fileID: 27948694622289514}
+  mapTypeName: {fileID: 7566517935838265213}
+  mapTypeIcon: {fileID: 0}
+  mapTypeDescription: {fileID: 286975469015206770}
+  planetPreview: {fileID: 0}
+  placeholderCivIcon: {fileID: 21300000, guid: 0f7de6fb76c45d1419e5e641dd1f672c, type: 3}
+  placeholderLeaderIcon: {fileID: 21300000, guid: 9bf5a5fc4f006af4699ea15f98a1f31d, type: 3}
+  backToMenuButton: {fileID: 2888859437634740172}
+  startGameButton: {fileID: 2115395561125161101}
+  terrainRoughnessDropdown: {fileID: 3106324314298798636}
+  enableNewWorldToggle: {fileID: 418347241197857715}
+  newWorldContinentCountInput: {fileID: 5214119737855447608}
+  newWorldBufferInput: {fileID: 8985920279090335287}
+  enableSecondNewWorldToggle: {fileID: 8043855424272210969}
+  secondNewWorldBufferInput: {fileID: 2653908404194243450}
+  carveNewWorldOnTerrestrialToggle: {fileID: 9206644424973933415}
+  mapTypeSpriteEntries: []
+  climateFallbackIcons:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  landTypeFallbackIcons:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  animalPrevalenceDropdown: {fileID: 2695774132578646061}
+  menuMusicVolumeSlider: {fileID: 0}
+  menuMusicVolumeText: {fileID: 0}
+  menuMusicEnabledToggle: {fileID: 0}
+  optionsBackButton: {fileID: 0}
+  autosaveEnabledToggle: {fileID: 0}
+  autosaveIntervalSlider: {fileID: 0}
+  autosaveIntervalText: {fileID: 0}
 --- !u!1 &7953321320803058006
 GameObject:
   m_ObjectHideFlags: 0
@@ -24578,7 +23875,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &3835366126759720053
 RectTransform:
   m_ObjectHideFlags: 0
@@ -25114,7 +24411,7 @@ GameObject:
   - component: {fileID: 6020088561048300626}
   - component: {fileID: 7886252840096991535}
   m_Layer: 5
-  m_Name: Aztec Civ Selection Button
+  m_Name: Aztecs Civ Selection Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
