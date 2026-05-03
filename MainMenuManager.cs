@@ -42,10 +42,18 @@ public class MainMenuManager : MonoBehaviour
     {
         public CivData civData;
         public Button civButton;
+        [Tooltip("Optional panel/image target whose Source Image will be replaced for this civ entry when enabled.")]
+        public Image backgroundTargetImage;
+        [Tooltip("Optional background sprite to apply to the target image for this civ entry.")]
+        public Sprite backgroundSprite;
     }
 
     [Header("Manual Civilization Button Entries")]
     public List<CivilizationSelectionEntry> civSelectionEntries = new List<CivilizationSelectionEntry>();
+
+    [Header("Civ Entry Background Overrides")]
+    [Tooltip("Optional feature toggle. When enabled, each civ entry can apply its own background sprite to an assigned Image.")]
+    public bool enableCivEntryBackgroundOverrides = false;
 
     [Header("Leader Selection")]
     public Transform leaderButtonContainer;
@@ -817,6 +825,24 @@ public class MainMenuManager : MonoBehaviour
         }
     }
     
+    private void ApplyCivEntryBackground(CivData civData)
+    {
+        if (!enableCivEntryBackgroundOverrides || civData == null || civSelectionEntries == null)
+            return;
+
+        for (int i = 0; i < civSelectionEntries.Count; i++)
+        {
+            var entry = civSelectionEntries[i];
+            if (entry.civData != civData) continue;
+
+            if (entry.backgroundTargetImage != null && entry.backgroundSprite != null)
+            {
+                entry.backgroundTargetImage.sprite = entry.backgroundSprite;
+            }
+            return;
+        }
+    }
+
     // Called when a civilization button is clicked
     void OnCivButtonClicked(Button clickedButton, CivData civData)
     {
@@ -841,6 +867,8 @@ public class MainMenuManager : MonoBehaviour
         
         // Store the selected civilization
         selectedCivilization = civData;
+
+        ApplyCivEntryBackground(civData);
         
         // Show the civilization name
         if (selectedCivName != null)
