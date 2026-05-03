@@ -87,22 +87,6 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         popupRect.pivot = new Vector2(0.5f, 1f);
         popupRect.anchoredPosition = localPoint + offset;
 
-        ClampToParentBounds(popupRect, parentRect);
-    }
-
-    private static void ClampToParentBounds(RectTransform popupRect, RectTransform parentRect)
-    {
-        var size = popupRect.rect.size;
-        float minX = parentRect.rect.xMin + size.x * popupRect.pivot.x;
-        float maxX = parentRect.rect.xMax - size.x * (1f - popupRect.pivot.x);
-        float minY = parentRect.rect.yMin + size.y * (1f - popupRect.pivot.y);
-        float maxY = parentRect.rect.yMax - size.y * popupRect.pivot.y;
-
-        var pos = popupRect.anchoredPosition;
-        popupRect.anchoredPosition = new Vector2(
-            Mathf.Clamp(pos.x, minX, maxX),
-            Mathf.Clamp(pos.y, minY, maxY)
-        );
     }
 
     private void PopulateBreakdown(string yieldName, object breakdownData)
