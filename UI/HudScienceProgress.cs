@@ -110,18 +110,20 @@ public class HudScienceProgress : MonoBehaviour
 
             if (researchTech.scienceCost <= 0)
             {
-                SetProgressValue(0f);
+                if (progressBar != null) progressBar.fillAmount = 0f;
                 if (progressText != null) progressText.text = "0/0";
             }
             else
             {
                 float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
-                SetProgressValue(progressPct);
+                if (progressBar != null)
+                    progressBar.fillAmount = Mathf.Clamp01(progressPct);
 
                 if (progressText != null)
                     progressText.text = $"{Mathf.FloorToInt(civ.currentTechProgress)}/{researchTech.scienceCost}";
             }
 
+            Debug.Log($"[HudScienceProgress] Bind civ={civ.civData?.civName} tech={researchTech.techName} progress={civ.currentTechProgress} cost={researchTech.scienceCost} fill={(progressBar != null ? progressBar.fillAmount : -1f)}");
         }
         else
         {

@@ -119,11 +119,13 @@ public class HudCultureProgress : MonoBehaviour
         if (adoptingCulture != null && adoptingCulture.cultureCost > 0)
         {
             float progressPct = civ.currentCultureProgress / (float)adoptingCulture.cultureCost;
-            SetProgressValue(progressPct);
+            if (progressBar != null)
+                progressBar.fillAmount = Mathf.Clamp01(progressPct);
 
             if (progressText != null)
                 progressText.text = $"{Mathf.FloorToInt(civ.currentCultureProgress)}/{adoptingCulture.cultureCost}";
 
+            Debug.Log($"[HudCultureProgress] Bind civ={civ.civData?.civName} culture={adoptingCulture.cultureName} progress={civ.currentCultureProgress} cost={adoptingCulture.cultureCost} fill={(progressBar != null ? progressBar.fillAmount : -1f)}");
         }
         else
         {
