@@ -34,6 +34,7 @@ public class MainMenuManager : MonoBehaviour
     public Image selectedCivIcon;          // Image to display selected civ's icon
     public TextMeshProUGUI selectedCivName; // Text to display selected civ's name
     public TextMeshProUGUI selectedCivDescription; // Text to display selected civ's description
+    public TextMeshProUGUI selectedCivBonuses; // Text to display selected civ's bonuses
     public Button selectCivButton;         // Confirm civ selection
     public Button backFromCivButton;       // Back button to return to main menu
 
@@ -42,6 +43,8 @@ public class MainMenuManager : MonoBehaviour
     {
         public CivData civData;
         public Button civButton;
+        [Tooltip("Optional icon image on the civ button entry.")]
+        public Image buttonIconImage;
         [Tooltip("Optional panel/image target whose Source Image will be replaced for this civ entry when enabled.")]
         public Image backgroundTargetImage;
         [Tooltip("Optional background sprite to apply to the target image for this civ entry.")]
@@ -61,8 +64,29 @@ public class MainMenuManager : MonoBehaviour
     public Image selectedLeaderIcon;
     public TextMeshProUGUI selectedLeaderName;
     public TextMeshProUGUI selectedLeaderDescription;
+    public TextMeshProUGUI selectedLeaderBonuses;
     public Button selectLeaderButton;
     public Button backFromLeaderButton;
+
+    [System.Serializable]
+    public struct LeaderSelectionEntry
+    {
+        public LeaderData leaderData;
+        public Button leaderButton;
+        [Tooltip("Optional icon image on the leader button entry.")]
+        public Image buttonIconImage;
+        [Tooltip("Optional panel/image target whose Source Image will be replaced for this leader entry when enabled.")]
+        public Image backgroundTargetImage;
+        [Tooltip("Optional background sprite to apply to the target image for this leader entry.")]
+        public Sprite backgroundSprite;
+    }
+
+    [Header("Manual Leader Button Entries")]
+    public List<LeaderSelectionEntry> leaderSelectionEntries = new List<LeaderSelectionEntry>();
+
+    [Header("Leader Entry Background Overrides")]
+    [Tooltip("Optional feature toggle. When enabled, each leader entry can apply its own background sprite to an assigned Image.")]
+    public bool enableLeaderEntryBackgroundOverrides = false;
 
     [Header("Main Menu")]
     public Button newGameButton;           // On main menu
@@ -343,6 +367,11 @@ public class MainMenuManager : MonoBehaviour
         if (selectedCivDescription != null)
         {
             selectedCivDescription.text = "";
+        }
+
+        if (selectedCivBonuses != null)
+        {
+            selectedCivBonuses.text = "";
         }
         
         // Initialize selected leader icon with placeholder
@@ -749,6 +778,11 @@ public class MainMenuManager : MonoBehaviour
         {
             selectedCivDescription.text = "";
         }
+
+        if (selectedCivBonuses != null)
+        {
+            selectedCivBonuses.text = "";
+        }
         
         if (selectCivButton != null)
             selectCivButton.interactable = false;
@@ -777,6 +811,8 @@ public class MainMenuManager : MonoBehaviour
                 var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
                 if (buttonText != null)
                     buttonText.text = civData.civName;
+                if (entry.buttonIconImage != null)
+                    entry.buttonIconImage.sprite = civData.icon != null ? civData.icon : placeholderCivIcon;
 
                 button.gameObject.SetActive(true);
                 civButtons.Add(button);
@@ -883,37 +919,67 @@ public class MainMenuManager : MonoBehaviour
             selectedCivIcon.gameObject.SetActive(true);
         }
         
-        // Show civilization description
+        // Show civilization description only
         if (selectedCivDescription != null)
         {
-            // Show CivData.description, then bonuses
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
             if (!string.IsNullOrWhiteSpace(civData.description))
             {
-                sb.AppendLine(civData.description.Trim());
+                selectedCivDescription.text = civData.description.Trim();
             }
             else
             {
-                sb.AppendLine($"The {civData.civName} are a notable civilization.");
+                selectedCivDescription.text = $"The {civData.civName} are a notable civilization.";
             }
+        }
 
-            // List bonuses
-            var bonuses = new List<string>();
-            if (civData.productionModifier > 0) bonuses.Add($"+{civData.productionModifier:P0} Production");
-            if (civData.goldModifier > 0) bonuses.Add($"+{civData.goldModifier:P0} Gold");
-            if (civData.scienceModifier > 0) bonuses.Add($"+{civData.scienceModifier:P0} Science");
-            if (civData.cultureModifier > 0) bonuses.Add($"+{civData.cultureModifier:P0} Culture");
-            if (civData.faithModifier > 0) bonuses.Add($"+{civData.faithModifier:P0} Faith");
-            if (bonuses.Count > 0)
+        // Show civilization bonuses + unique access
+        if (selectedCivBonuses != null)
+        {
+            var civBonuses = new List<string>();
+            if (civData.foodModifier != 0f) civBonuses.Add($"{(civData.foodModifier > 0 ? "+" : "")}{civData.foodModifier:P0} Food");
+            if (civData.productionModifier != 0f) civBonuses.Add($"{(civData.productionModifier > 0 ? "+" : "")}{civData.productionModifier:P0} Production");
+            if (civData.goldModifier != 0f) civBonuses.Add($"{(civData.goldModifier > 0 ? "+" : "")}{civData.goldModifier:P0} Gold");
+            if (civData.scienceModifier != 0f) civBonuses.Add($"{(civData.scienceModifier > 0 ? "+" : "")}{civData.scienceModifier:P0} Science");
+            if (civData.cultureModifier != 0f) civBonuses.Add($"{(civData.cultureModifier > 0 ? "+" : "")}{civData.cultureModifier:P0} Culture");
+            if (civData.faithModifier != 0f) civBonuses.Add($"{(civData.faithModifier > 0 ? "+" : "")}{civData.faithModifier:P0} Faith");
+            if (civData.attackBonus != 0f) civBonuses.Add($"{(civData.attackBonus > 0 ? "+" : "")}{civData.attackBonus:P0} Attack");
+            if (civData.defenseBonus != 0f) civBonuses.Add($"{(civData.defenseBonus > 0 ? "+" : "")}{civData.defenseBonus:P0} Defense");
+            if (civData.movementBonus != 0f) civBonuses.Add($"{(civData.movementBonus > 0 ? "+" : "")}{civData.movementBonus:P0} Movement");
+
+            var uniqueAccess = new List<string>();
+            if (civData.uniqueUnits != null)
             {
-                sb.AppendLine();
-                sb.AppendLine("<b>Bonuses:</b>");
-                foreach (var bonus in bonuses)
+                foreach (var unit in civData.uniqueUnits)
                 {
-                    sb.AppendLine("+ " + bonus);
+                    if (unit != null && !string.IsNullOrWhiteSpace(unit.unitName))
+                    {
+                        uniqueAccess.Add($"Unique Unit: {unit.unitName}");
+                    }
                 }
             }
-            selectedCivDescription.text = sb.ToString().Trim();
+            if (civData.uniqueBuildings != null)
+            {
+                foreach (var building in civData.uniqueBuildings)
+                {
+                    if (building != null && !string.IsNullOrWhiteSpace(building.buildingName))
+                    {
+                        uniqueAccess.Add($"Unique Building: {building.buildingName}");
+                    }
+                }
+            }
+
+            var allEntries = new List<string>();
+            allEntries.AddRange(civBonuses);
+            allEntries.AddRange(uniqueAccess);
+
+            if (allEntries.Count > 0)
+            {
+                selectedCivBonuses.text = string.Join("\n", allEntries);
+            }
+            else
+            {
+                selectedCivBonuses.text = "No civilization bonuses.";
+            }
         }
         
         // Enable the select button
@@ -1099,12 +1165,46 @@ public class MainMenuManager : MonoBehaviour
         }
         if (selectedLeaderName != null) selectedLeaderName.text = "Select a Leader";
         if (selectedLeaderDescription != null) selectedLeaderDescription.text = "";
+        if (selectedLeaderBonuses != null) selectedLeaderBonuses.text = "";
         if (selectLeaderButton != null) selectLeaderButton.interactable = false;
         selectedLeader = null;
 
         if (selectedCivilization == null || selectedCivilization.availableLeaders == null || selectedCivilization.availableLeaders.Count == 0)
         {
             Debug.LogError($"Civilization '{selectedCivilization?.civName}' has no available leaders assigned!");
+            return;
+        }
+
+        bool hasManualEntries = leaderSelectionEntries != null && leaderSelectionEntries.Count > 0;
+        if (hasManualEntries)
+        {
+            for (int i = 0; i < leaderSelectionEntries.Count; i++)
+            {
+                var entry = leaderSelectionEntries[i];
+                if (entry.leaderData == null || entry.leaderButton == null)
+                    continue;
+
+                if (!selectedCivilization.availableLeaders.Contains(entry.leaderData))
+                {
+                    entry.leaderButton.gameObject.SetActive(false);
+                    continue;
+                }
+
+                var button = entry.leaderButton;
+                var leaderData = entry.leaderData;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnLeaderButtonClicked(button, leaderData));
+
+                var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                    buttonText.text = leaderData.leaderName;
+                if (entry.buttonIconImage != null)
+                    entry.buttonIconImage.sprite = leaderData.portrait != null ? leaderData.portrait : placeholderLeaderIcon;
+
+                button.gameObject.SetActive(true);
+                leaderButtons.Add(button);
+            }
+
             return;
         }
 
@@ -1118,6 +1218,24 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
+    private void ApplyLeaderEntryBackground(LeaderData leaderData)
+    {
+        if (!enableLeaderEntryBackgroundOverrides || leaderData == null || leaderSelectionEntries == null)
+            return;
+
+        for (int i = 0; i < leaderSelectionEntries.Count; i++)
+        {
+            var entry = leaderSelectionEntries[i];
+            if (entry.leaderData != leaderData) continue;
+
+            if (entry.backgroundTargetImage != null && entry.backgroundSprite != null)
+            {
+                entry.backgroundTargetImage.sprite = entry.backgroundSprite;
+            }
+            return;
+        }
+    }
+
     void OnLeaderButtonClicked(Button clickedButton, LeaderData leaderData)
     {
         // Highlight selected button
@@ -1128,6 +1246,7 @@ public class MainMenuManager : MonoBehaviour
         
         selectedLeader = leaderData;
         if (selectLeaderButton != null) selectLeaderButton.interactable = true;
+        ApplyLeaderEntryBackground(leaderData);
 
         // Update display (use placeholder if none assigned)
         if (selectedLeaderIcon != null)
@@ -1141,7 +1260,7 @@ public class MainMenuManager : MonoBehaviour
         }
         if (selectedLeaderDescription != null)
         {
-            // Build a description string: biography, bonuses, then ability
+            // Build a description string: biography and ability
             var sb = new System.Text.StringBuilder();
             // 1. Biography/Description
             if (!string.IsNullOrWhiteSpace(leaderData.biography))
@@ -1149,26 +1268,7 @@ public class MainMenuManager : MonoBehaviour
             else
                 sb.AppendLine($"{leaderData.leaderName} is a notable leader.");
 
-            // 2. Bonuses
-            var bonuses = new List<string>();
-            if (leaderData.goldModifier != 0) bonuses.Add($"{(leaderData.goldModifier > 0 ? "+" : "")}{leaderData.goldModifier:P0} Gold");
-            if (leaderData.scienceModifier != 0) bonuses.Add($"{(leaderData.scienceModifier > 0 ? "+" : "")}{leaderData.scienceModifier:P0} Science");
-            if (leaderData.productionModifier != 0) bonuses.Add($"{(leaderData.productionModifier > 0 ? "+" : "")}{leaderData.productionModifier:P0} Production");
-            if (leaderData.foodModifier != 0) bonuses.Add($"{(leaderData.foodModifier > 0 ? "+" : "")}{leaderData.foodModifier:P0} Food");
-            if (leaderData.cultureModifier != 0) bonuses.Add($"{(leaderData.cultureModifier > 0 ? "+" : "")}{leaderData.cultureModifier:P0} Culture");
-            if (leaderData.faithModifier != 0) bonuses.Add($"{(leaderData.faithModifier > 0 ? "+" : "")}{leaderData.faithModifier:P0} Faith");
-            if (leaderData.militaryStrengthModifier != 0) bonuses.Add($"{(leaderData.militaryStrengthModifier > 0 ? "+" : "")}{leaderData.militaryStrengthModifier:P0} Military Strength");
-            if (bonuses.Count > 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("<b>Bonuses:</b>");
-                foreach (var bonus in bonuses)
-                {
-                    sb.AppendLine("+ " + bonus);
-                }
-            }
-
-            // 3. Ability
+            // 2. Ability
             if (!string.IsNullOrWhiteSpace(leaderData.abilityName) || !string.IsNullOrWhiteSpace(leaderData.abilityDescription))
             {
                 sb.AppendLine();
@@ -1178,6 +1278,27 @@ public class MainMenuManager : MonoBehaviour
                     sb.AppendLine(leaderData.abilityDescription);
             }
             selectedLeaderDescription.text = sb.ToString().Trim();
+        }
+
+        if (selectedLeaderBonuses != null)
+        {
+            var bonuses = new List<string>();
+            if (leaderData.goldModifier != 0) bonuses.Add($"{(leaderData.goldModifier > 0 ? "+" : "")}{leaderData.goldModifier:P0} Gold");
+            if (leaderData.scienceModifier != 0) bonuses.Add($"{(leaderData.scienceModifier > 0 ? "+" : "")}{leaderData.scienceModifier:P0} Science");
+            if (leaderData.productionModifier != 0) bonuses.Add($"{(leaderData.productionModifier > 0 ? "+" : "")}{leaderData.productionModifier:P0} Production");
+            if (leaderData.foodModifier != 0) bonuses.Add($"{(leaderData.foodModifier > 0 ? "+" : "")}{leaderData.foodModifier:P0} Food");
+            if (leaderData.cultureModifier != 0) bonuses.Add($"{(leaderData.cultureModifier > 0 ? "+" : "")}{leaderData.cultureModifier:P0} Culture");
+            if (leaderData.faithModifier != 0) bonuses.Add($"{(leaderData.faithModifier > 0 ? "+" : "")}{leaderData.faithModifier:P0} Faith");
+            if (leaderData.militaryStrengthModifier != 0) bonuses.Add($"{(leaderData.militaryStrengthModifier > 0 ? "+" : "")}{leaderData.militaryStrengthModifier:P0} Military Strength");
+
+            if (bonuses.Count > 0)
+            {
+                selectedLeaderBonuses.text = string.Join("\n", bonuses);
+            }
+            else
+            {
+                selectedLeaderBonuses.text = "No leader bonuses.";
+            }
         }
     }
 
