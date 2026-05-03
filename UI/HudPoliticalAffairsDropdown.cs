@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
@@ -218,7 +219,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
     {
         if (currentCiv == null)
         {
-            currentCiv = CivilizationManager.Instance?.GetAllCivs()?.Find(c => c != null && c.isPlayerControlled);
+            currentCiv = CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
             if (currentCiv == null)
             {
                 Debug.LogWarning("[HudPoliticalAffairsDropdown] Cannot open Political Affairs panel because currentCiv is null.");
