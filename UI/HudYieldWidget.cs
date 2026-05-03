@@ -23,6 +23,7 @@ public class HudYieldWidget : MonoBehaviour
     [Header("Hover Popover")]
     [SerializeField] private GameObject breakdownPopoverPrefab;
     [SerializeField] private GameObject breakdownItemPrefab;
+    [SerializeField] private Vector2 popoverOffset = new Vector2(0f, -24f);
     private HudBreakdownPopover popoverInstance;
     private EventTrigger hoverEventTrigger;
 

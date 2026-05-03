@@ -13,6 +13,7 @@ public class HudScienceProgress : MonoBehaviour
 {
     [Header("Progress Display")]
     [SerializeField] private Image progressBar;
+    [SerializeField] private Slider progressSlider;
     [SerializeField] private Image techIcon; // Icon of the currently researched tech
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private TextMeshProUGUI progressText;
@@ -130,8 +131,7 @@ public class HudScienceProgress : MonoBehaviour
                 techNameText.text = "No Research";
             if (techIcon != null)
                 techIcon.sprite = placeholderTechIcon;
-            if (progressBar != null)
-                progressBar.fillAmount = 0;
+            SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
         }
@@ -170,7 +170,16 @@ public class HudScienceProgress : MonoBehaviour
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.ShowAtSource("Science", null, transform as RectTransform, new Vector2(0f, -12f));
+            popoverInstance.ShowAtSource("Science", null, transform as RectTransform, new Vector2(0f, -24f));
+    }
+
+    private void SetProgressValue(float progress)
+    {
+        float clamped = Mathf.Clamp01(progress);
+        if (progressSlider != null)
+            progressSlider.value = clamped;
+        else if (progressBar != null)
+            progressBar.fillAmount = clamped;
     }
 
     private void HideBreakdownPopover()

@@ -13,6 +13,7 @@ public class HudCultureProgress : MonoBehaviour
 {
     [Header("Progress Display")]
     [SerializeField] private Image progressBar;
+    [SerializeField] private Slider progressSlider;
     [SerializeField] private Image cultureIcon; // Icon of the currently adopted culture
     [SerializeField] private TextMeshProUGUI cultureNameText;
     [SerializeField] private TextMeshProUGUI progressText;
@@ -128,8 +129,7 @@ public class HudCultureProgress : MonoBehaviour
         }
         else
         {
-            if (progressBar != null)
-                progressBar.fillAmount = 0;
+            SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
         }
@@ -168,7 +168,16 @@ public class HudCultureProgress : MonoBehaviour
         popoverInstance = popoverGO.GetComponent<HudBreakdownPopover>();
         
         if (popoverInstance != null)
-            popoverInstance.ShowAtSource("Culture", null, transform as RectTransform, new Vector2(0f, -12f));
+            popoverInstance.ShowAtSource("Culture", null, transform as RectTransform, new Vector2(0f, -24f));
+    }
+
+    private void SetProgressValue(float progress)
+    {
+        float clamped = Mathf.Clamp01(progress);
+        if (progressSlider != null)
+            progressSlider.value = clamped;
+        else if (progressBar != null)
+            progressBar.fillAmount = clamped;
     }
 
     private void HideBreakdownPopover()
