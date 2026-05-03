@@ -17,6 +17,7 @@ public class HudScienceProgress : MonoBehaviour
     [SerializeField] private Image techIcon; // Icon of the currently researched tech
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private TextMeshProUGUI progressText;
+    [SerializeField] private TextMeshProUGUI turnsRemainingText;
 
     [Header("Yield Display")]
     [SerializeField] private Image yieldIcon;
@@ -110,20 +111,28 @@ public class HudScienceProgress : MonoBehaviour
 
             if (researchTech.scienceCost <= 0)
             {
-                if (progressBar != null) progressBar.fillAmount = 0f;
+                SetProgressValue(0f);
                 if (progressText != null) progressText.text = "0/0";
+                if (turnsRemainingText != null) turnsRemainingText.text = "Turns: 0";
             }
             else
             {
                 float progressPct = civ.currentTechProgress / (float)researchTech.scienceCost;
-                if (progressBar != null)
-                    progressBar.fillAmount = Mathf.Clamp01(progressPct);
+                SetProgressValue(progressPct);
 
                 if (progressText != null)
                     progressText.text = $"{Mathf.FloorToInt(civ.currentTechProgress)}/{researchTech.scienceCost}";
+
+                if (turnsRemainingText != null)
+                {
+                    float remaining = Mathf.Max(0f, researchTech.scienceCost - civ.currentTechProgress);
+                    int sciencePerTurn = Mathf.Max(0, civ.cachedSciencePerTurn);
+                    turnsRemainingText.text = sciencePerTurn > 0
+                        ? $"Turns: {Mathf.CeilToInt(remaining / sciencePerTurn)}"
+                        : "Turns: —";
+                }
             }
 
-            Debug.Log($"[HudScienceProgress] Bind civ={civ.civData?.civName} tech={researchTech.techName} progress={civ.currentTechProgress} cost={researchTech.scienceCost} fill={(progressBar != null ? progressBar.fillAmount : -1f)}");
         }
         else
         {
@@ -134,6 +143,8 @@ public class HudScienceProgress : MonoBehaviour
             SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
+            if (turnsRemainingText != null)
+                turnsRemainingText.text = "Turns: —";
         }
 
         UpdateYieldDisplay(civ);
