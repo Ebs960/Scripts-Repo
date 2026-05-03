@@ -124,6 +124,44 @@ public class HudYieldWidget : MonoBehaviour
         popoverInstance = null;
     }
 
+    private void PositionPopoverNearWidget(RectTransform popoverRect)
+    {
+        if (popoverRect == null) return;
+        var widgetRect = transform as RectTransform;
+        if (widgetRect == null) return;
+
+        Canvas widgetCanvas = GetComponentInParent<Canvas>();
+        if (widgetCanvas == null) return;
+
+        Canvas rootCanvas = widgetCanvas.rootCanvas != null ? widgetCanvas.rootCanvas : widgetCanvas;
+        RectTransform canvasRect = rootCanvas.transform as RectTransform;
+        if (canvasRect == null) return;
+
+        Camera uiCamera = rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : rootCanvas.worldCamera;
+        Vector2 widgetScreenPos = RectTransformUtility.WorldToScreenPoint(uiCamera, widgetRect.position);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, widgetScreenPos, uiCamera, out Vector2 canvasLocalPos))
+            return;
+
+        popoverRect.anchorMin = Vector2.zero;
+        popoverRect.anchorMax = Vector2.zero;
+        popoverRect.pivot = new Vector2(0.5f, 1f);
+        popoverRect.anchoredPosition = canvasLocalPos + new Vector2(0f, -90f);
+        popoverRect.localScale = Vector3.one;
+
+        // Clamp to canvas bounds so it doesn't run off screen
+        var size = popoverRect.sizeDelta;
+        float halfWidth = size.x * 0.5f;
+        float minX = -canvasRect.sizeDelta.x * 0.5f + halfWidth;
+        float maxX = canvasRect.sizeDelta.x * 0.5f - halfWidth;
+        float minY = -canvasRect.sizeDelta.y;
+        float maxY = canvasRect.sizeDelta.y * 0.5f;
+
+        popoverRect.anchoredPosition = new Vector2(
+            Mathf.Clamp(popoverRect.anchoredPosition.x, minX, maxX),
+            Mathf.Clamp(popoverRect.anchoredPosition.y, -canvasRect.sizeDelta.y, maxY)
+        );
+    }
+
     /// <summary>
     /// Get breakdown data for this yield (called by popover).
     /// Override or extend as needed per yield type.

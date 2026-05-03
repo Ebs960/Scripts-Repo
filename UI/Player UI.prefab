@@ -10444,6 +10444,14 @@ PrefabInstance:
       propertyPath: placeholderCultureIcon
       value: 
       objectReference: {fileID: 21300000, guid: 6e9bb07c532b92241b1ef4474f59e494, type: 3}
+    - target: {fileID: 8287349281405863549, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: m_Type
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8287349281405863549, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: m_FillMethod
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -10559,6 +10567,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6926995986968324753, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7733852620478344001, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: m_Type
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7733852620478344001, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: m_FillMethod
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

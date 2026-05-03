@@ -27,7 +27,6 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
     private void OnEnable()
     {
         EnsureDropdownReference();
-        Debug.Log($"[HudPoliticalAffairsDropdown] OnEnable on '{name}' dropdownButton={(dropdownButton != null ? dropdownButton.name : "null")}");
 
         if (dropdownButton != null)
             dropdownButton.SetMainClick(OpenPoliticalAffairsPanel);
