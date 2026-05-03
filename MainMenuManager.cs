@@ -43,6 +43,8 @@ public class MainMenuManager : MonoBehaviour
     {
         public CivData civData;
         public Button civButton;
+        [Tooltip("Optional icon image on the civ button entry.")]
+        public Image buttonIconImage;
         [Tooltip("Optional panel/image target whose Source Image will be replaced for this civ entry when enabled.")]
         public Image backgroundTargetImage;
         [Tooltip("Optional background sprite to apply to the target image for this civ entry.")]
@@ -62,8 +64,29 @@ public class MainMenuManager : MonoBehaviour
     public Image selectedLeaderIcon;
     public TextMeshProUGUI selectedLeaderName;
     public TextMeshProUGUI selectedLeaderDescription;
+    public TextMeshProUGUI selectedLeaderBonuses;
     public Button selectLeaderButton;
     public Button backFromLeaderButton;
+
+    [System.Serializable]
+    public struct LeaderSelectionEntry
+    {
+        public LeaderData leaderData;
+        public Button leaderButton;
+        [Tooltip("Optional icon image on the leader button entry.")]
+        public Image buttonIconImage;
+        [Tooltip("Optional panel/image target whose Source Image will be replaced for this leader entry when enabled.")]
+        public Image backgroundTargetImage;
+        [Tooltip("Optional background sprite to apply to the target image for this leader entry.")]
+        public Sprite backgroundSprite;
+    }
+
+    [Header("Manual Leader Button Entries")]
+    public List<LeaderSelectionEntry> leaderSelectionEntries = new List<LeaderSelectionEntry>();
+
+    [Header("Leader Entry Background Overrides")]
+    [Tooltip("Optional feature toggle. When enabled, each leader entry can apply its own background sprite to an assigned Image.")]
+    public bool enableLeaderEntryBackgroundOverrides = false;
 
     [Header("Main Menu")]
     public Button newGameButton;           // On main menu
@@ -788,6 +811,8 @@ public class MainMenuManager : MonoBehaviour
                 var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
                 if (buttonText != null)
                     buttonText.text = civData.civName;
+                if (entry.buttonIconImage != null)
+                    entry.buttonIconImage.sprite = civData.icon != null ? civData.icon : placeholderCivIcon;
 
                 button.gameObject.SetActive(true);
                 civButtons.Add(button);
@@ -1140,12 +1165,46 @@ public class MainMenuManager : MonoBehaviour
         }
         if (selectedLeaderName != null) selectedLeaderName.text = "Select a Leader";
         if (selectedLeaderDescription != null) selectedLeaderDescription.text = "";
+        if (selectedLeaderBonuses != null) selectedLeaderBonuses.text = "";
         if (selectLeaderButton != null) selectLeaderButton.interactable = false;
         selectedLeader = null;
 
         if (selectedCivilization == null || selectedCivilization.availableLeaders == null || selectedCivilization.availableLeaders.Count == 0)
         {
             Debug.LogError($"Civilization '{selectedCivilization?.civName}' has no available leaders assigned!");
+            return;
+        }
+
+        bool hasManualEntries = leaderSelectionEntries != null && leaderSelectionEntries.Count > 0;
+        if (hasManualEntries)
+        {
+            for (int i = 0; i < leaderSelectionEntries.Count; i++)
+            {
+                var entry = leaderSelectionEntries[i];
+                if (entry.leaderData == null || entry.leaderButton == null)
+                    continue;
+
+                if (!selectedCivilization.availableLeaders.Contains(entry.leaderData))
+                {
+                    entry.leaderButton.gameObject.SetActive(false);
+                    continue;
+                }
+
+                var button = entry.leaderButton;
+                var leaderData = entry.leaderData;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnLeaderButtonClicked(button, leaderData));
+
+                var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                    buttonText.text = leaderData.leaderName;
+                if (entry.buttonIconImage != null)
+                    entry.buttonIconImage.sprite = leaderData.portrait != null ? leaderData.portrait : placeholderLeaderIcon;
+
+                button.gameObject.SetActive(true);
+                leaderButtons.Add(button);
+            }
+
             return;
         }
 
@@ -1159,6 +1218,24 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
+    private void ApplyLeaderEntryBackground(LeaderData leaderData)
+    {
+        if (!enableLeaderEntryBackgroundOverrides || leaderData == null || leaderSelectionEntries == null)
+            return;
+
+        for (int i = 0; i < leaderSelectionEntries.Count; i++)
+        {
+            var entry = leaderSelectionEntries[i];
+            if (entry.leaderData != leaderData) continue;
+
+            if (entry.backgroundTargetImage != null && entry.backgroundSprite != null)
+            {
+                entry.backgroundTargetImage.sprite = entry.backgroundSprite;
+            }
+            return;
+        }
+    }
+
     void OnLeaderButtonClicked(Button clickedButton, LeaderData leaderData)
     {
         // Highlight selected button
@@ -1169,6 +1246,7 @@ public class MainMenuManager : MonoBehaviour
         
         selectedLeader = leaderData;
         if (selectLeaderButton != null) selectLeaderButton.interactable = true;
+        ApplyLeaderEntryBackground(leaderData);
 
         // Update display (use placeholder if none assigned)
         if (selectedLeaderIcon != null)
@@ -1182,7 +1260,7 @@ public class MainMenuManager : MonoBehaviour
         }
         if (selectedLeaderDescription != null)
         {
-            // Build a description string: biography, bonuses, then ability
+            // Build a description string: biography and ability
             var sb = new System.Text.StringBuilder();
             // 1. Biography/Description
             if (!string.IsNullOrWhiteSpace(leaderData.biography))
@@ -1190,26 +1268,7 @@ public class MainMenuManager : MonoBehaviour
             else
                 sb.AppendLine($"{leaderData.leaderName} is a notable leader.");
 
-            // 2. Bonuses
-            var bonuses = new List<string>();
-            if (leaderData.goldModifier != 0) bonuses.Add($"{(leaderData.goldModifier > 0 ? "+" : "")}{leaderData.goldModifier:P0} Gold");
-            if (leaderData.scienceModifier != 0) bonuses.Add($"{(leaderData.scienceModifier > 0 ? "+" : "")}{leaderData.scienceModifier:P0} Science");
-            if (leaderData.productionModifier != 0) bonuses.Add($"{(leaderData.productionModifier > 0 ? "+" : "")}{leaderData.productionModifier:P0} Production");
-            if (leaderData.foodModifier != 0) bonuses.Add($"{(leaderData.foodModifier > 0 ? "+" : "")}{leaderData.foodModifier:P0} Food");
-            if (leaderData.cultureModifier != 0) bonuses.Add($"{(leaderData.cultureModifier > 0 ? "+" : "")}{leaderData.cultureModifier:P0} Culture");
-            if (leaderData.faithModifier != 0) bonuses.Add($"{(leaderData.faithModifier > 0 ? "+" : "")}{leaderData.faithModifier:P0} Faith");
-            if (leaderData.militaryStrengthModifier != 0) bonuses.Add($"{(leaderData.militaryStrengthModifier > 0 ? "+" : "")}{leaderData.militaryStrengthModifier:P0} Military Strength");
-            if (bonuses.Count > 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("<b>Bonuses:</b>");
-                foreach (var bonus in bonuses)
-                {
-                    sb.AppendLine("+ " + bonus);
-                }
-            }
-
-            // 3. Ability
+            // 2. Ability
             if (!string.IsNullOrWhiteSpace(leaderData.abilityName) || !string.IsNullOrWhiteSpace(leaderData.abilityDescription))
             {
                 sb.AppendLine();
@@ -1219,6 +1278,27 @@ public class MainMenuManager : MonoBehaviour
                     sb.AppendLine(leaderData.abilityDescription);
             }
             selectedLeaderDescription.text = sb.ToString().Trim();
+        }
+
+        if (selectedLeaderBonuses != null)
+        {
+            var bonuses = new List<string>();
+            if (leaderData.goldModifier != 0) bonuses.Add($"{(leaderData.goldModifier > 0 ? "+" : "")}{leaderData.goldModifier:P0} Gold");
+            if (leaderData.scienceModifier != 0) bonuses.Add($"{(leaderData.scienceModifier > 0 ? "+" : "")}{leaderData.scienceModifier:P0} Science");
+            if (leaderData.productionModifier != 0) bonuses.Add($"{(leaderData.productionModifier > 0 ? "+" : "")}{leaderData.productionModifier:P0} Production");
+            if (leaderData.foodModifier != 0) bonuses.Add($"{(leaderData.foodModifier > 0 ? "+" : "")}{leaderData.foodModifier:P0} Food");
+            if (leaderData.cultureModifier != 0) bonuses.Add($"{(leaderData.cultureModifier > 0 ? "+" : "")}{leaderData.cultureModifier:P0} Culture");
+            if (leaderData.faithModifier != 0) bonuses.Add($"{(leaderData.faithModifier > 0 ? "+" : "")}{leaderData.faithModifier:P0} Faith");
+            if (leaderData.militaryStrengthModifier != 0) bonuses.Add($"{(leaderData.militaryStrengthModifier > 0 ? "+" : "")}{leaderData.militaryStrengthModifier:P0} Military Strength");
+
+            if (bonuses.Count > 0)
+            {
+                selectedLeaderBonuses.text = string.Join("\n", bonuses);
+            }
+            else
+            {
+                selectedLeaderBonuses.text = "No leader bonuses.";
+            }
         }
     }
 
