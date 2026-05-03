@@ -17,6 +17,7 @@ public class HudCultureProgress : MonoBehaviour
     [SerializeField] private Image cultureIcon; // Icon of the currently adopted culture
     [SerializeField] private TextMeshProUGUI cultureNameText;
     [SerializeField] private TextMeshProUGUI progressText;
+    [SerializeField] private TextMeshProUGUI turnsRemainingText;
 
     [Header("Yield Display")]
     [SerializeField] private Image yieldIcon;
@@ -119,19 +120,28 @@ public class HudCultureProgress : MonoBehaviour
         if (adoptingCulture != null && adoptingCulture.cultureCost > 0)
         {
             float progressPct = civ.currentCultureProgress / (float)adoptingCulture.cultureCost;
-            if (progressBar != null)
-                progressBar.fillAmount = Mathf.Clamp01(progressPct);
+            SetProgressValue(progressPct);
 
             if (progressText != null)
                 progressText.text = $"{Mathf.FloorToInt(civ.currentCultureProgress)}/{adoptingCulture.cultureCost}";
 
-            Debug.Log($"[HudCultureProgress] Bind civ={civ.civData?.civName} culture={adoptingCulture.cultureName} progress={civ.currentCultureProgress} cost={adoptingCulture.cultureCost} fill={(progressBar != null ? progressBar.fillAmount : -1f)}");
+            if (turnsRemainingText != null)
+            {
+                float remaining = Mathf.Max(0f, adoptingCulture.cultureCost - civ.currentCultureProgress);
+                int culturePerTurn = Mathf.Max(0, civ.cachedCulturePerTurn);
+                turnsRemainingText.text = culturePerTurn > 0
+                    ? $"Turns: {Mathf.CeilToInt(remaining / culturePerTurn)}"
+                    : "Turns: —";
+            }
+
         }
         else
         {
             SetProgressValue(0f);
             if (progressText != null)
                 progressText.text = "0/0";
+            if (turnsRemainingText != null)
+                turnsRemainingText.text = "Turns: —";
         }
 
         UpdateYieldDisplay(civ);
