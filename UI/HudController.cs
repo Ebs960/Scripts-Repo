@@ -81,6 +81,7 @@ public class HudController : MonoBehaviour
             currentCiv = ResolvePlayerCivilization();
         SubscribeToCivEvents(currentCiv);
 
+
         RefreshAll();
     }
 

@@ -30,6 +30,35 @@ public class HudResourceCategoryPopover : MonoBehaviour
         PopulateResources(resources, itemPrefab);
     }
 
+    public void ShowAtSource(string categoryName, Dictionary<ResourceData, int> resources, GameObject itemPrefab, RectTransform sourceRect, Vector2 offset)
+    {
+        Show(categoryName, resources, itemPrefab);
+        PositionRelativeToSource(sourceRect, offset);
+    }
+
+    private void PositionRelativeToSource(RectTransform sourceRect, Vector2 offset)
+    {
+        if (sourceRect == null) return;
+
+        var popupRect = rectTransform != null ? rectTransform : transform as RectTransform;
+        var parentRect = popupRect != null ? popupRect.parent as RectTransform : null;
+        if (popupRect == null || parentRect == null) return;
+
+        var corners = new Vector3[4];
+        sourceRect.GetWorldCorners(corners);
+        Vector3 bottomCenterWorld = (corners[0] + corners[3]) * 0.5f;
+
+        var rootCanvas = GetComponentInParent<Canvas>()?.rootCanvas;
+        Camera uiCamera = rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? rootCanvas.worldCamera : null;
+
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(uiCamera, bottomCenterWorld);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, uiCamera, out Vector2 localPoint))
+            return;
+
+        popupRect.pivot = new Vector2(0.5f, 1f);
+        popupRect.anchoredPosition = localPoint + offset;
+    }
+
     private void PopulateResources(Dictionary<ResourceData, int> resources, GameObject itemPrefab)
     {
         if (contentRoot == null) return;
