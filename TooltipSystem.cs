@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
+using System.Collections;
 using System.Text;
 
 /// <summary>
@@ -25,6 +27,8 @@ public class TooltipSystem : MonoBehaviour
 
     private RectTransform tooltipRect;
     private Canvas tooltipCanvas;
+    private bool isPointerOverTooltip;
+    private Coroutine pendingHideCoroutine;
 
     void Awake()
     {
@@ -46,6 +50,7 @@ public class TooltipSystem : MonoBehaviour
         {
             tooltipRect = tooltipPanel.GetComponent<RectTransform>();
             tooltipCanvas = GetComponentInParent<Canvas>();
+            EnsureTooltipHoverRelay();
             HideTooltip();
         }
     }
@@ -56,6 +61,47 @@ public class TooltipSystem : MonoBehaviour
         {
             UpdateTooltipPosition();
         }
+    }
+
+
+    void EnsureTooltipHoverRelay()
+    {
+        if (tooltipPanel == null) return;
+        var relay = tooltipPanel.GetComponent<TooltipHoverRelay>();
+        if (relay == null) relay = tooltipPanel.AddComponent<TooltipHoverRelay>();
+        relay.Bind(this);
+    }
+
+    public void NotifyTooltipPointerEnter()
+    {
+        isPointerOverTooltip = true;
+        if (pendingHideCoroutine != null)
+        {
+            StopCoroutine(pendingHideCoroutine);
+            pendingHideCoroutine = null;
+        }
+    }
+
+    public void NotifyTooltipPointerExit()
+    {
+        isPointerOverTooltip = false;
+        HideTooltip();
+    }
+
+    public void RequestHideTooltip()
+    {
+        if (pendingHideCoroutine != null)
+            StopCoroutine(pendingHideCoroutine);
+
+        pendingHideCoroutine = StartCoroutine(HideTooltipIfNotHoveredNextFrame());
+    }
+
+    private IEnumerator HideTooltipIfNotHoveredNextFrame()
+    {
+        yield return null;
+        pendingHideCoroutine = null;
+        if (!isPointerOverTooltip)
+            HideTooltip();
     }
 
     public void ShowTechTooltip(TechData tech, Civilization civ)
@@ -158,6 +204,7 @@ public class TooltipSystem : MonoBehaviour
         if (tooltipPanel != null)
         {
             tooltipPanel.SetActive(true);
+            isPointerOverTooltip = false;
             UpdateTooltipPosition();
         }
     }
@@ -167,6 +214,7 @@ public class TooltipSystem : MonoBehaviour
         if (tooltipPanel != null)
         {
             tooltipPanel.SetActive(false);
+            isPointerOverTooltip = false;
         }
     }
 
@@ -201,5 +249,26 @@ public class TooltipSystem : MonoBehaviour
             canvasPosition.y = 0;
 
         tooltipRect.localPosition = canvasPosition;
+    }
+}
+
+
+public class TooltipHoverRelay : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+{
+    private TooltipSystem tooltipSystem;
+
+    public void Bind(TooltipSystem system)
+    {
+        tooltipSystem = system;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        tooltipSystem?.NotifyTooltipPointerEnter();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        tooltipSystem?.NotifyTooltipPointerExit();
     }
 }

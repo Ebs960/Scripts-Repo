@@ -21,7 +21,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
         public void OnPointerExit(PointerEventData eventData)
         {
             if (TooltipSystem.Instance != null)
-                TooltipSystem.Instance.HideTooltip();
+                TooltipSystem.Instance.RequestHideTooltip();
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -89,7 +89,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
     {
         Unsubscribe();
         if (TooltipSystem.Instance != null)
-            TooltipSystem.Instance.HideTooltip();
+            TooltipSystem.Instance.RequestHideTooltip();
     }
 
     private void Update()

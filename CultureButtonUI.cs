@@ -166,6 +166,6 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        TooltipSystem.Instance?.HideTooltip();
+        TooltipSystem.Instance?.RequestHideTooltip();
     }
 } 
