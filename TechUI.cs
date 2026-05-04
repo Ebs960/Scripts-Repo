@@ -465,14 +465,20 @@ public class TechUI : MonoBehaviour
     {
         currentlySelectedTech = tech;
         UpdateInfoPanel(tech);
-if (playerCiv != null && playerCiv.CanResearch(tech))
+        if (playerCiv != null)
         {
-playerCiv.StartResearch(tech);
+            bool queueRequested = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (queueRequested)
+            {
+                if (!playerCiv.QueueResearch(tech))
+                    playerCiv.StartResearchWithDependencies(tech, true);
+            }
+            else if (!playerCiv.StartResearchWithDependencies(tech, false))
+            {
+                playerCiv.StartResearch(tech);
+            }
             RefreshUI();
         }
-        else
-        {
-}
 
         foreach (var btnUI in techButtons)
         {
@@ -878,6 +884,8 @@ if (playerCiv == null) return;
         foreach (var btnUI in techButtons)
         {
             UpdateTechButtonState(btnUI, btnUI.RepresentedTech);
+            int queueIndex = playerCiv != null ? playerCiv.queuedTechs.IndexOf(btnUI.RepresentedTech) : -1;
+            btnUI.SetQueueOrder(queueIndex >= 0 ? queueIndex + 1 : 0);
         }
     }
     
