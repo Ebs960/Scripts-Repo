@@ -167,7 +167,7 @@ public class UnitInfoPanel : MonoBehaviour
         trig.triggers.Add(entryEnter);
 
         var entryExit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-        entryExit.callback.AddListener((data) => { TooltipSystem.Instance.HideTooltip(); });
+        entryExit.callback.AddListener((data) => { TooltipSystem.Instance.RequestHideTooltip(); });
         trig.triggers.Add(entryExit);
     }
 

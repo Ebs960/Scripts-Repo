@@ -160,7 +160,7 @@ public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler
         }
 
         if (TooltipSystem.Instance != null)
-            TooltipSystem.Instance.HideTooltip();
+            TooltipSystem.Instance.RequestHideTooltip();
     }
 
     public void SetPosition(Vector2 position)

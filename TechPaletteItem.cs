@@ -206,6 +206,6 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (!isDragging && !isSelected)
             UpdateVisualState();
         if (TooltipSystem.Instance != null)
-            TooltipSystem.Instance.HideTooltip();
+            TooltipSystem.Instance.RequestHideTooltip();
     }
 }
