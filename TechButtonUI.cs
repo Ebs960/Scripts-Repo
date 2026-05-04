@@ -17,6 +17,8 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private Image backgroundImage;
     [SerializeField] private Image iconImage; // <-- Add this line for the icon
+    [SerializeField] private GameObject queueOrderContainer;
+    [SerializeField] private TextMeshProUGUI queueOrderText;
 
     [Header("Colors")]
     [SerializeField] private Color researchedColor = Color.green;
@@ -99,6 +101,13 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         isSelected = selected;
         RefreshButtonColorBlock();
         RefreshColor();
+    }
+
+    public void SetQueueOrder(int order)
+    {
+        bool show = order > 0;
+        if (queueOrderContainer != null) queueOrderContainer.SetActive(show);
+        if (queueOrderText != null) queueOrderText.text = show ? order.ToString() : string.Empty;
     }
 
     private void RefreshColor()

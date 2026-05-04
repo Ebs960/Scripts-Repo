@@ -306,6 +306,8 @@ public class Civilization : MonoBehaviour
     public List<TechData> researchedTechs    = new List<TechData>();
     public TechData      currentTech;
     public float         currentTechProgress;
+    public List<TechData> queuedTechs = new List<TechData>();
+    private readonly Dictionary<TechData, float> techProgressByProject = new Dictionary<TechData, float>();
     public float scienceModifier = 0f; // Civilization-wide percentage bonus, starts at 0%
     // When true the civ started this research during the current turn and should
     // not receive science progress until the next turn (ensures minimum 1-turn duration)
@@ -331,6 +333,8 @@ public class Civilization : MonoBehaviour
     public List<CultureData> researchedCultures    = new List<CultureData>();
     public CultureData       currentCulture;
     public float             currentCultureProgress;
+    public List<CultureData> queuedCultures = new List<CultureData>();
+    private readonly Dictionary<CultureData, float> cultureProgressByProject = new Dictionary<CultureData, float>();
     public float cultureModifier = 0f; // Civilization-wide percentage bonus, starts at 0%
 
     [Header("Policy & Government")]
@@ -2740,6 +2744,7 @@ public class Civilization : MonoBehaviour
         if (currentTechProgress >= currentTech.scienceCost)
         {
             TechData completedTech = currentTech;
+            techProgressByProject.Remove(completedTech);
             currentTech = null; // Stop further progress on this tech immediately
             currentTechProgress = 0;
 
@@ -2755,6 +2760,8 @@ public class Civilization : MonoBehaviour
                 if (!researchedTechs.Contains(completedTech)) researchedTechs.Add(completedTech);
                 ApplyTechBonuses(completedTech); 
             }
+
+            StartNextQueuedTech();
         }
     }
 
@@ -2835,6 +2842,7 @@ public class Civilization : MonoBehaviour
         if (currentCultureProgress >= currentCulture.cultureCost)
         {
             CultureData completedCulture = currentCulture;
+            cultureProgressByProject.Remove(completedCulture);
             // Stop further progress on this culture immediately, GameManager will null it after calling OnCultureAdopted.
             // currentCulture = null; 
             // currentCultureProgress = 0;
@@ -2852,6 +2860,8 @@ public class Civilization : MonoBehaviour
                 currentCulture = null; // Still need to clear it here for fallback
                 currentCultureProgress = 0;
             }
+
+            StartNextQueuedCulture();
         }
     }
 
@@ -2891,7 +2901,6 @@ public class Civilization : MonoBehaviour
     public bool CanResearch(TechData tech)
     {
         if (tech == null) return false;
-        if (currentTech != null) return false;
         if (researchedTechs.Contains(tech)) return false;
         // if (science <= 0) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Science output is <= 0."); return false; } // Usually, we allow selection even with 0 science, it just won't progress.
 
@@ -2911,15 +2920,88 @@ public class Civilization : MonoBehaviour
     public void StartResearch(TechData tech)
     {
         if (!CanResearch(tech)) return;
+        if (currentTech == tech) return;
+
+        if (currentTech != null)
+        {
+            techProgressByProject[currentTech] = currentTechProgress;
+        }
+
         currentTech = tech;
-        currentTechProgress = 0;
-OnTechStarted?.Invoke(tech); // Fire event for UI
+        currentTechProgress = techProgressByProject.TryGetValue(tech, out float savedProgress)
+            ? savedProgress
+            : 0f;
+        queuedTechs.Remove(tech);
+        OnTechStarted?.Invoke(tech); // Fire event for UI
+    }
+
+    public bool CanQueueResearch(TechData tech)
+    {
+        return CanResearch(tech) && currentTech != tech && !queuedTechs.Contains(tech);
+    }
+
+    public bool QueueResearch(TechData tech)
+    {
+        if (!CanQueueResearch(tech)) return false;
+        queuedTechs.Add(tech);
+        return true;
+    }
+
+    public bool StartResearchWithDependencies(TechData targetTech, bool queueTargetIfBlocked = true)
+    {
+        if (targetTech == null || researchedTechs.Contains(targetTech))
+            return false;
+
+        var chain = new List<TechData>();
+        BuildMissingTechDependencies(targetTech, chain, new HashSet<TechData>());
+        bool changed = false;
+
+        foreach (var tech in chain)
+        {
+            if (tech == null || researchedTechs.Contains(tech)) continue;
+
+            if (currentTech == null && CanResearch(tech))
+            {
+                StartResearch(tech);
+                changed = true;
+                continue;
+            }
+
+            if ((queueTargetIfBlocked || tech != targetTech) && CanQueueResearch(tech))
+            {
+                QueueResearch(tech);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private void BuildMissingTechDependencies(TechData tech, List<TechData> chain, HashSet<TechData> visited)
+    {
+        if (tech == null || !visited.Add(tech)) return;
+        if (tech.requiredTechnologies != null)
+            foreach (var req in tech.requiredTechnologies)
+                if (req != null && !researchedTechs.Contains(req))
+                    BuildMissingTechDependencies(req, chain, visited);
+        chain.Add(tech);
+    }
+
+    private void StartNextQueuedTech()
+    {
+        for (int i = 0; i < queuedTechs.Count; i++)
+        {
+            var candidate = queuedTechs[i];
+            if (!CanResearch(candidate)) continue;
+            queuedTechs.RemoveAt(i);
+            StartResearch(candidate);
+            break;
+        }
     }
 
     public bool CanCultivate(CultureData cult)
     {
         if (cult == null) return false;
-        if (currentCulture != null) return false;
         if (researchedCultures.Contains(cult)) return false;
         // Cannot adopt a culture that belongs to an age we haven't unlocked via tech research
         if (cult.cultureAge > GetCurrentAge()) return false;
@@ -2949,11 +3031,43 @@ OnTechStarted?.Invoke(tech); // Fire event for UI
     public void StartCulture(CultureData cult)
     {
         if (!CanCultivate(cult)) return;
+        if (currentCulture == cult) return;
+
+        if (currentCulture != null)
+            cultureProgressByProject[currentCulture] = currentCultureProgress;
+
         currentCulture = cult;
-        currentCultureProgress = 0;
+        currentCultureProgress = cultureProgressByProject.TryGetValue(cult, out float savedProgress)
+            ? savedProgress
+            : 0f;
+        queuedCultures.Remove(cult);
         // Ensure first culture progress tick is deferred until next turn
         MarkCultureStartedThisTurn();
-OnCultureStarted?.Invoke(cult); // Fire event for UI
+        OnCultureStarted?.Invoke(cult); // Fire event for UI
+    }
+
+    public bool CanQueueCulture(CultureData cult)
+    {
+        return CanCultivate(cult) && currentCulture != cult && !queuedCultures.Contains(cult);
+    }
+
+    public bool QueueCulture(CultureData cult)
+    {
+        if (!CanQueueCulture(cult)) return false;
+        queuedCultures.Add(cult);
+        return true;
+    }
+
+    private void StartNextQueuedCulture()
+    {
+        for (int i = 0; i < queuedCultures.Count; i++)
+        {
+            var candidate = queuedCultures[i];
+            if (!CanCultivate(candidate)) continue;
+            queuedCultures.RemoveAt(i);
+            StartCulture(candidate);
+            break;
+        }
     }
 
     // --- Policy & Government API ---
@@ -5580,4 +5694,3 @@ return true;
         try { relations?.Clear(); } catch { }
     }
 }
-

@@ -411,9 +411,17 @@ public class CultureUI : MonoBehaviour
         currentlySelectedCulture = culture;
         UpdateInfoPanel(culture);
 
-        if (playerCiv != null && playerCiv.CanCultivate(culture))
+        if (playerCiv != null)
         {
-            playerCiv.StartCulture(culture);
+            bool queueRequested = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (queueRequested)
+            {
+                playerCiv.QueueCulture(culture);
+            }
+            else
+            {
+                playerCiv.StartCulture(culture);
+            }
             RefreshUI();
         }
 
@@ -806,7 +814,11 @@ public class CultureUI : MonoBehaviour
     public void RefreshCultureButtonStates()
     {
         foreach (var btnUI in cultureButtons)
+        {
             UpdateCultureButtonState(btnUI, btnUI.RepresentedCulture);
+            int queueIndex = playerCiv != null ? playerCiv.queuedCultures.IndexOf(btnUI.RepresentedCulture) : -1;
+            btnUI.SetQueueOrder(queueIndex >= 0 ? queueIndex + 1 : 0);
+        }
     }
 
     /// <summary>
