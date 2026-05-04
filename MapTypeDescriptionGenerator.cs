@@ -262,130 +262,156 @@ public static class MapTypeDescriptionGenerator
     // Main method with animalPrevalence
     public static string GetDescription(int climate, int moisture, int landType, int elevation, int aiCivCount, int cityStateCount, int tribeCount, int animalPrevalence)
     {
-        // Ensure indices are within bounds
         climate = Mathf.Clamp(climate, 0, climateDescriptions.Length - 1);
         moisture = Mathf.Clamp(moisture, 0, moistureDescriptions.Length - 1);
         landType = Mathf.Clamp(landType, 0, landTypeDescriptions.Length - 1);
         elevation = Mathf.Clamp(elevation, 0, elevationDescriptions.Length - 1);
         animalPrevalence = Mathf.Clamp(animalPrevalence, 0, 5);
 
-        System.Text.StringBuilder desc = new System.Text.StringBuilder();
-
-        // Start with the specialized climate+moisture description
-        desc.Append(climateMoistureDescriptions[climate, moisture]);
-        desc.Append("\n\n");
-
-        // Add land type description
-        desc.Append(landTypeDescriptions[landType]);
-        desc.Append("\n\n");
-
-        // Add elevation description (use continent-specific for large landmasses)
-        string elevationDesc = (landType >= 3) ? elevationDescriptionsContinents[elevation] : elevationDescriptions[elevation];
-        desc.Append(elevationDesc);
-        desc.Append("\n\n");
-
-        // Add wildlife description
-        if (wildlifeDescriptions[climate] != null && animalPrevalence < wildlifeDescriptions[climate].Length)
-        {
-            desc.Append(wildlifeDescriptions[climate][animalPrevalence]);
-            desc.Append("\n\n");
-        }
-
-        // Add geopolitical description
-        string geopoliticalDesc = GenerateGeopoliticalDescription(aiCivCount + 1, cityStateCount, tribeCount, climate, moisture, landType, elevation);
-        desc.Append(geopoliticalDesc);
-
-        // Check for special map types and add flavor
+        int peopleCount = aiCivCount + 1;
         string mapTypeName = MapTypeNameGenerator.GetMapTypeName(climate, moisture, landType, elevation);
-        if (!string.IsNullOrEmpty(mapTypeName))
+
+        string landMood = GetLandMoodSentence(climate, moisture);
+        string terrain = GetTerrainSentence(landType, elevation);
+        string wildlife = GetWildlifePhrase(climate, animalPrevalence);
+        string special = GetSpecialWorldModifier(mapTypeName);
+        string human = GetHumanPresenceSentence(peopleCount, cityStateCount, tribeCount);
+
+        System.Text.StringBuilder desc = new System.Text.StringBuilder();
+        desc.Append(landMood);
+        desc.Append(" ");
+        desc.Append(terrain);
+        if (!string.IsNullOrEmpty(special))
         {
-            // Rivers map type - doubled river generation
-            if (mapTypeName.IndexOf("Rivers", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nGreat rivers snake across this land, their waters the lifeblood of civilizations. Where rivers meet, cities rise; where they flood, empires are humbled.");
-            }
-            
-            // Rainforest map type - unique Rainforest biome
-            if (mapTypeName.IndexOf("Rainforest", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nThe world itself breathes with life—towering canopies hide secrets in their green depths, and the very air hums with the chorus of a million creatures. Here, the rainforest claims dominion, its fertile embrace nurturing civilizations that learn to thrive within its verdant embrace.");
-            }
-            
-            // Demonic map type - Hellscape and other hellish biomes
-            if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. The land itself rebels—hellscapes burn with infernal fire, and the very ground cracks to reveal the abyss beneath. Those who would survive must be prepared to face horrors beyond mortal comprehension, where charred forests stand as monuments to forgotten battles.");
-            }
-            
-            // Infernal map type - Volcanic, Steamlands, CharredForest biomes
-            if (mapTypeName.IndexOf("Infernal", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nThe earth's inner fire breaks through the surface in a symphony of destruction and renewal. Volcanic peaks belch smoke and ash, scalding Steamlands vents carve paths through the rock, and forests stand charred yet defiant—testaments to life's persistence even in the face of infernal heat. Here, the planet's molten heart beats close to the surface, reshaping the land with each eruption.");
-            }
-            
-            // Scorched map type - Scorched, Ashlands, CharredForest biomes
-            if (mapTypeName.IndexOf("Scorched", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nThe sun's fury has baked this world into submission. Vast scorched wastes stretch beneath an unforgiving sky, while ash drifts like grey snow across lands where fire has claimed all. Charred forests stand as skeletal reminders of what once was, and Steamlands vents hiss warnings to those who dare the deepest reaches. Survival here is an art taught by the harsh sun itself.");
-            }
-            
-            // Ice World map type - CryoForest and IcicleField biomes
-            if (mapTypeName.IndexOf("Ice", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
-                mapTypeName.IndexOf("Icicle", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                mapTypeName.IndexOf("Cryo", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nEternal winter reigns supreme, crafting a world of crystalline beauty and deadly cold. Frozen forests of impossible forms pierce the perpetual twilight, while fields of icicles catch the aurora's light like nature's own cathedral. Life has learned to flourish in the ice, creating biomes unlike any found in warmer worlds—cryoforests where trees of frost grow, and icicle fields where silence itself seems to freeze solid.");
-            }
+            desc.Append(" ");
+            desc.Append(special);
+        }
+        desc.Append(" ");
+        desc.Append(wildlife);
+        desc.Append(" ");
+        desc.Append(human);
+
+        return desc.ToString().Replace("\n", " ").Trim();
+    }
+
+    private static string GetLandMoodSentence(int climate, int moisture)
+    {
+        string climateBase = climate switch
+        {
+            0 => "A pale wilderness of ice, stone, and cutting wind lies beneath a hard sky.",
+            1 => "Dark forests, cold rivers, and long winters shape this northern wilderness.",
+            2 => "Seasonal forests, meadows, and river valleys spread across a living temperate land.",
+            3 => "Warm grasslands, open woods, and sunlit waterholes stretch beneath wide skies.",
+            4 => "Dry heat, scrub, and hard earth define a land where water draws every living thing.",
+            _ => "Ash, heat, and broken stone mark a violent land where the ground itself feels restless."
+        };
+
+        string moistureMod = moisture switch
+        {
+            0 => "Dry valleys and exposed stone leave water scarce.",
+            1 => "Dusty winds and thin streams keep every spring precious.",
+            2 => "Balanced rain feeds clear streams and open meadows.",
+            3 => "Frequent rain, moss, and soft marsh edges darken the ground.",
+            4 => "Flooded woods and wet marshes hold standing water through every season.",
+            _ => "Fog, storm winds, and shifting shores blur the line between land and sea."
+        };
+
+        return climateBase + " " + moistureMod;
+    }
+
+    private static string GetTerrainSentence(int landType, int elevation)
+    {
+        string terrainBase = landType switch
+        {
+            0 => "Broken islands and open seas divide the horizon, leaving each shore exposed to wind and tide.",
+            1 => "Large islands and lesser isles rise from dangerous water, their interiors shaped by hidden paths and sheltered coves.",
+            2 => "Forests, plains, rivers, and high ground break the land into natural regions.",
+            3 => "Broad landmasses stretch far inland, where rivers and distant ridges fade into haze.",
+            4 => "One vast landmass spreads without a true far shore, carrying forests, plains, and mountains across an immense horizon.",
+            _ => "Land overwhelms the sea here, with enormous interiors broken by rare coasts, inland waters, and long overland paths."
+        };
+
+        string elevationMod = elevation switch
+        {
+            0 => "Open ground leaves every movement visible beneath the wide sky.",
+            1 => "Ridges and hill paths offer shelter, lookout points, and hidden crossings.",
+            _ => "High peaks and narrow passes divide the wilderness into hard, isolated places."
+        };
+
+        return terrainBase + " " + elevationMod;
+    }
+
+    private static string GetWildlifePhrase(int climate, int animalPrevalence)
+    {
+        return animalPrevalence switch
+        {
+            0 => "The wild places are strangely quiet, shaped more by weather than by animal movement.",
+            1 or 2 => "Only scattered tracks mark the passage of wary animals.",
+            3 => "Deer, birds, predators, and smaller creatures move through the land in steady numbers.",
+            4 => "Animal trails are common, and the land stirs with herds, birds, and hunters.",
+            _ => "The wilderness is crowded with life, from great herds to predators that follow them through the dark."
+        };
+    }
+
+    private static string GetHumanPresenceSentence(int peopleCount, int gatheringPlaceCount, int tribeCount)
+    {
+        string basePresence = peopleCount <= 2
+            ? "Only a few scattered peoples move through this wide land, leaving most places to beasts, weather, and silence."
+            : peopleCount <= 5
+                ? "Several peoples already follow rivers, valleys, and open ground, their fires appearing wherever shelter is found."
+                : "Many peoples share this land from the beginning, their trails, camps, and hunting grounds already crossing in the wild places.";
+
+        string extra = "";
+        if (tribeCount >= 4)
+        {
+            extra = "Tribal bands are common here, their camps and remembered paths woven deeply into the wilderness.";
+        }
+        else if (tribeCount >= 1)
+        {
+            extra = "A few wandering tribes keep to the margins, following older paths through forest, hill, and marsh.";
+        }
+        else if (gatheringPlaceCount >= 4)
+        {
+            extra = "Many independent gathering places mark the easier ground, drawing travelers, stories, and smoke from the surrounding wilds.";
+        }
+        else if (gatheringPlaceCount >= 1)
+        {
+            extra = "A few independent gathering places stand near water and stone, small lights in a much larger wilderness.";
         }
 
-        return desc.ToString().Trim();
+        return string.IsNullOrEmpty(extra) ? basePresence : basePresence + " " + extra;
     }
-    
-    // Generate complex geopolitical descriptions
+
+    private static string GetSpecialWorldModifier(string mapTypeName)
+    {
+        if (string.IsNullOrEmpty(mapTypeName))
+            return string.Empty;
+
+        if (mapTypeName.IndexOf("Rivers", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Great rivers carry life through the land, cutting paths that animals and people follow.";
+        if (mapTypeName.IndexOf("Rainforest", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "The canopy closes overhead, turning every sound into a warning.";
+        if (mapTypeName.IndexOf("Infernal", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Smoke, vents, and hot stone make the land feel alive beneath the feet.";
+        if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "The wilderness feels wrong here, as if shadow and fire have taken root in the soil.";
+        if (mapTypeName.IndexOf("Scorched", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Ash drifts across the open ground, and the sun leaves little untouched.";
+        if (mapTypeName.IndexOf("Ice", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+            mapTypeName.IndexOf("Icicle", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+            mapTypeName.IndexOf("Cryo", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Crystal forests and hard blue ice give the cold a strange, beautiful shape.";
+
+        return string.Empty;
+    }
+
+    // Compatibility wrapper with prehistoric tone
     private static string GenerateGeopoliticalDescription(int civCount, int cityStateCount, int tribeCount, int climate, int moisture, int landType, int elevation)
     {
-        System.Text.StringBuilder desc = new System.Text.StringBuilder();
-        
-        // City-state dynamics
-        if (cityStateCount > 0)
-        {
-            desc.Append(" ");
-            if (cityStateCount <= 2)
-        {
-                desc.Append("A few independent cities stand like islands of autonomy in the great currents of power. Their positions make them prizes coveted by many, yet they maintain their freedom through the careful art of balance—tipping the scales without toppling them.");
-        }
-            else if (cityStateCount <= 4)
-        {
-                desc.Append("Scattered city-states dot the landscape like bright coins in a dark stream. Their merchants ply routes between empires, their mercenaries fight others' wars, their influence far exceeding their size. To control them is to control the invisible threads that bind the world.");
-        }
-        else
-        {
-                desc.Append("A constellation of independent cities fragments the political sky, each a small sun around which fortunes orbit. They play the great powers like instruments, each note calculated, each harmony temporary. In their independence lies opportunity—and danger.");
-        }
-        }
-        
-        // Tribal dynamics
-        if (tribeCount > 0)
-        {
-            desc.Append(" ");
-            if (tribeCount <= 2)
-        {
-                desc.Append("Wild tribes haunt the margins, their warriors fierce as the lands they call home. They move through territory that breaks empires—places where maps dissolve and only the land itself knows the paths. To ignore them is to invite their memory; to confront them is to learn the price of hubris.");
-        }
-            else if (tribeCount <= 4)
-            {
-                desc.Append("Tribal confederations hold the wild places, their strength flowing like water through terrain that breaks armies. They strike where least expected and fade where pursuit cannot follow. Civilized powers treat with them not from generosity but necessity—their raids are weather, their treaties are seasons.");
-            }
-            else
-            {
-                desc.Append("The wilderness itself seems to bear tribes, their numbers rivaling the so-called civilized nations. They understand the land in ways that books cannot teach, moving through it with a knowledge written in blood and memory. To dismiss them is folly; to understand them is power.");
-            }
-        }
-        
-        return desc.ToString();
+        return GetHumanPresenceSentence(civCount, cityStateCount, tribeCount);
     }
-    
-    // Helper method to convert numbers to words
+
+// Helper method to convert numbers to words
     private static string GetNumberWord(int number)
     {
         switch (number)
