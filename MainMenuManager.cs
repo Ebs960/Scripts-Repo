@@ -63,7 +63,6 @@ public class MainMenuManager : MonoBehaviour
     public Button leaderButtonPrefab;
     [Tooltip("Panel background image for the whole leader selection panel.")]
     public Image leaderSelectionBackgroundImage;
-    public Image selectedLeaderIcon;
     public TextMeshProUGUI selectedLeaderName;
     public TextMeshProUGUI selectedLeaderDescription;
     public TextMeshProUGUI selectedLeaderBonuses;
@@ -127,8 +126,6 @@ public class MainMenuManager : MonoBehaviour
     [Header("Placeholder Icons")]
     [Tooltip("Placeholder icon used when a civilization has no icon assigned.")]
     public Sprite placeholderCivIcon;
-    [Tooltip("Placeholder icon used when a leader has no portrait assigned.")]
-    public Sprite placeholderLeaderIcon;
 
     [Header("Navigation Buttons")]
     public Button backToMenuButton;           // Back button on setup
@@ -371,13 +368,6 @@ public class MainMenuManager : MonoBehaviour
             selectedCivBonuses.text = "";
         }
         
-        // Initialize selected leader icon with placeholder
-        if (selectedLeaderIcon != null)
-        {
-            selectedLeaderIcon.sprite = placeholderLeaderIcon;
-            selectedLeaderIcon.gameObject.SetActive(true);
-        }
-
         if (animalPrevalenceDropdown != null)
         {
             animalPrevalenceDropdown.ClearOptions();
@@ -1154,12 +1144,7 @@ public class MainMenuManager : MonoBehaviour
         }
         leaderButtons.Clear();
 
-        // Reset display and show placeholder leader icon until one is chosen
-        if (selectedLeaderIcon != null)
-        {
-            selectedLeaderIcon.sprite = placeholderLeaderIcon;
-            selectedLeaderIcon.gameObject.SetActive(true);
-        }
+        // Reset display until one is chosen
         if (selectedLeaderName != null) selectedLeaderName.text = "Select a Leader";
         if (selectedLeaderDescription != null) selectedLeaderDescription.text = "";
         if (selectedLeaderBonuses != null) selectedLeaderBonuses.text = "";
@@ -1214,12 +1199,7 @@ public class MainMenuManager : MonoBehaviour
         if (selectLeaderButton != null) selectLeaderButton.interactable = true;
         ApplyLeaderEntryBackground(leaderData);
 
-        // Update display (use placeholder if none assigned)
-        if (selectedLeaderIcon != null)
-        {
-            selectedLeaderIcon.sprite = leaderData.portrait != null ? leaderData.portrait : placeholderLeaderIcon;
-            selectedLeaderIcon.gameObject.SetActive(true);
-        }
+        // Update display
         if (selectedLeaderName != null)
         {
             selectedLeaderName.text = leaderData.leaderName;
