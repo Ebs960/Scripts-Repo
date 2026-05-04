@@ -61,6 +61,8 @@ public class MainMenuManager : MonoBehaviour
     [Header("Leader Selection")]
     public Transform leaderButtonContainer;
     public Button leaderButtonPrefab;
+    [Tooltip("Panel background image for the whole leader selection panel.")]
+    public Image leaderSelectionBackgroundImage;
     public Image selectedLeaderIcon;
     public TextMeshProUGUI selectedLeaderName;
     public TextMeshProUGUI selectedLeaderDescription;
@@ -72,20 +74,15 @@ public class MainMenuManager : MonoBehaviour
     public struct LeaderSelectionEntry
     {
         public LeaderData leaderData;
-        public Button leaderButton;
-        [Tooltip("Optional icon image on the leader button entry.")]
-        public Image buttonIconImage;
-        [Tooltip("Optional panel/image target whose Source Image will be replaced for this leader entry when enabled.")]
-        public Image backgroundTargetImage;
-        [Tooltip("Optional background sprite to apply to the target image for this leader entry.")]
+        [Tooltip("Optional background sprite to apply to the whole leader selection panel when this leader is selected.")]
         public Sprite backgroundSprite;
     }
 
-    [Header("Manual Leader Button Entries")]
+    [Header("Leader Data Entries")]
     public List<LeaderSelectionEntry> leaderSelectionEntries = new List<LeaderSelectionEntry>();
 
-    [Header("Leader Entry Background Overrides")]
-    [Tooltip("Optional feature toggle. When enabled, each leader entry can apply its own background sprite to an assigned Image.")]
+    [Header("Leader Panel Background Overrides")]
+    [Tooltip("Optional feature toggle. When enabled, each leader entry can override the whole leader selection panel background.")]
     public bool enableLeaderEntryBackgroundOverrides = false;
 
     [Header("Main Menu")]
@@ -1175,44 +1172,13 @@ public class MainMenuManager : MonoBehaviour
             return;
         }
 
-        bool hasManualEntries = leaderSelectionEntries != null && leaderSelectionEntries.Count > 0;
-        if (hasManualEntries)
-        {
-            for (int i = 0; i < leaderSelectionEntries.Count; i++)
-            {
-                var entry = leaderSelectionEntries[i];
-                if (entry.leaderData == null || entry.leaderButton == null)
-                    continue;
-
-                if (!selectedCivilization.availableLeaders.Contains(entry.leaderData))
-                {
-                    entry.leaderButton.gameObject.SetActive(false);
-                    continue;
-                }
-
-                var button = entry.leaderButton;
-                var leaderData = entry.leaderData;
-                button.onClick.RemoveAllListeners();
-                button.onClick.AddListener(() => OnLeaderButtonClicked(button, leaderData));
-
-                var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
-                if (buttonText != null)
-                    buttonText.text = leaderData.leaderName;
-                if (entry.buttonIconImage != null)
-                    entry.buttonIconImage.sprite = leaderData.portrait != null ? leaderData.portrait : placeholderLeaderIcon;
-
-                button.gameObject.SetActive(true);
-                leaderButtons.Add(button);
-            }
-
-            return;
-        }
-
         // Create buttons for each leader
         foreach (var leaderData in selectedCivilization.availableLeaders)
         {
             Button button = Instantiate(leaderButtonPrefab, leaderButtonContainer);
-            button.GetComponentInChildren<TextMeshProUGUI>().text = leaderData.leaderName;
+            var buttonLabel = button.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonLabel != null)
+                buttonLabel.text = leaderData.leaderName;
             button.onClick.AddListener(() => OnLeaderButtonClicked(button, leaderData));
             leaderButtons.Add(button);
         }
@@ -1228,9 +1194,9 @@ public class MainMenuManager : MonoBehaviour
             var entry = leaderSelectionEntries[i];
             if (entry.leaderData != leaderData) continue;
 
-            if (entry.backgroundTargetImage != null && entry.backgroundSprite != null)
+            if (leaderSelectionBackgroundImage != null && entry.backgroundSprite != null)
             {
-                entry.backgroundTargetImage.sprite = entry.backgroundSprite;
+                leaderSelectionBackgroundImage.sprite = entry.backgroundSprite;
             }
             return;
         }
