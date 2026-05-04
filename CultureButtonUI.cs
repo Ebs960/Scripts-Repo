@@ -16,6 +16,8 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [SerializeField] private TextMeshProUGUI cultureNameText;
     [SerializeField] private Image backgroundImage;
     [SerializeField] private Image iconImage;
+    [SerializeField] private GameObject queueOrderContainer;
+    [SerializeField] private TextMeshProUGUI queueOrderText;
 
     [Header("Colors")]
     [SerializeField] private Color researchedColor = Color.green;
@@ -89,6 +91,13 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
         isSelected = selected;
         RefreshButtonColorBlock();
         RefreshColor();
+    }
+
+    public void SetQueueOrder(int order)
+    {
+        bool show = order > 0;
+        if (queueOrderContainer != null) queueOrderContainer.SetActive(show);
+        if (queueOrderText != null) queueOrderText.text = show ? order.ToString() : string.Empty;
     }
 
     private void RefreshColor()
