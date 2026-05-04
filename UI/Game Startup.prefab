@@ -21619,18 +21619,55 @@ MonoBehaviour:
   enableCivEntryBackgroundOverrides: 1
   leaderButtonContainer: {fileID: 8094600615348097157}
   leaderButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
-  selectedLeaderIcon: {fileID: 0}
+  leaderSelectionBackgroundImage: {fileID: 5874725390082273771}
   selectedLeaderName: {fileID: 952924866777195135}
   selectedLeaderDescription: {fileID: 8113938142183424717}
-  selectedLeaderBonuses: {fileID: 0}
+  selectedLeaderBonuses: {fileID: 3724297555558546042}
   selectLeaderButton: {fileID: 2250839886836066489}
   backFromLeaderButton: {fileID: 3201546602749412978}
   leaderSelectionEntries:
+  - leaderData: {fileID: 11400000, guid: 87aaf74be5956394597b7914028b7dc0, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 1c0d852bac544604db3a3d3a8d363d51, type: 3}
+  - leaderData: {fileID: 11400000, guid: 07d588cc890c82b4ba62aaa3a25425de, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: c3eeac66dab5adb498953444b1a1e592, type: 3}
+  - leaderData: {fileID: 11400000, guid: dc3a8818a91544645a55444c54ca1c7f, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 6ee95a993c58ec84383a6904bf2f0b98, type: 3}
+  - leaderData: {fileID: 11400000, guid: 021b3d04bc464a94884c4b3dc01fd97e, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 7d044b13a50d3b34d8d3112e077f3fe1, type: 3}
+  - leaderData: {fileID: 11400000, guid: 510e963779829434cb14f0d16aa6e1c6, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: f7430d4c368332141a2faaf374e900d0, type: 3}
+  - leaderData: {fileID: 11400000, guid: caaba88b1624e204f9f39b0aa8fd806d, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 0f7d93376b11c0248843907659ddf3d3, type: 3}
+  - leaderData: {fileID: 11400000, guid: dc4cb2a7cd971d64d9da2b8d25c72e60, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 51252c01f6b16f54eae521b55e5abf67, type: 3}
+  - leaderData: {fileID: 11400000, guid: 2e0541514bd2b8444967489b7b56c542, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: b54ec57a7e5bf54478596dc3618b811b, type: 3}
+  - leaderData: {fileID: 11400000, guid: e7fb8d24be69d3e46a75ef2913c8f3e4, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 8bbd2bc136991774bb438a333e086811, type: 3}
+  - leaderData: {fileID: 11400000, guid: 18a9aee08bf003745829a6bec5350d27, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: d74a2e036f8dc2f448c5667caf9d03bb, type: 3}
+  - leaderData: {fileID: 11400000, guid: 25c8049437cd5a246aeee67d2d92dc61, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 510433d0e0374a64f8b42c8d19e41284, type: 3}
+  - leaderData: {fileID: 11400000, guid: 8733f293cf2f7c143885ef88b97bf47e, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 5fd7fc09403a8aa46997da43f5a55e70, type: 3}
+  - leaderData: {fileID: 11400000, guid: e538a0d3b75df654fb0663be3a510c2d, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: d07a067a2f6140a41b4767f072efa103, type: 3}
+  - leaderData: {fileID: 11400000, guid: ec349cea732fe184aa3ecaf48e3b1143, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 841d8252ef38c2648bc4b7b6b41301b5, type: 3}
+  - leaderData: {fileID: 11400000, guid: fd6f6a835eb312548bd0511a31edce58, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: d1888ab05303a834c8e66d692f8d4a63, type: 3}
   - leaderData: {fileID: 11400000, guid: 94b09ab2381784c458b260bd64dedc58, type: 2}
-    leaderButton: {fileID: 0}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 5874725390082273771}
     backgroundSprite: {fileID: 21300000, guid: 5a8fbce6a843ecb4e85aad52abf4762d, type: 3}
+  - leaderData: {fileID: 11400000, guid: c23fbb17349e6594fa70f442ecc9ec59, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: c3b55419a77510e45a75e7906f8dfb77, type: 3}
+  - leaderData: {fileID: 11400000, guid: 8986ef88dd372de49812184882161303, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: c0271db904b0fa44b998b885de7d5493, type: 3}
+  - leaderData: {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: d4a95cd219296174ca45596d188adb1e, type: 3}
+  - leaderData: {fileID: 11400000, guid: 1714416d521229a4bbc9c12bd083f7e7, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 4b0702ff9ab35e64a9cbf0290013e855, type: 3}
+  - leaderData: {fileID: 11400000, guid: 6d2746dd20c4a7a4ea2cc258e6d46298, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: bb60cc6b999780d458e7068bcc53a7f0, type: 3}
   enableLeaderEntryBackgroundOverrides: 1
   newGameButton: {fileID: 3794759851740996759}
   loadGameButton: {fileID: 5516998952986199058}
@@ -21648,7 +21685,6 @@ MonoBehaviour:
   mapTypeDescription: {fileID: 286975469015206770}
   planetPreview: {fileID: 0}
   placeholderCivIcon: {fileID: 21300000, guid: 0f7de6fb76c45d1419e5e641dd1f672c, type: 3}
-  placeholderLeaderIcon: {fileID: 21300000, guid: 9bf5a5fc4f006af4699ea15f98a1f31d, type: 3}
   backToMenuButton: {fileID: 2888859437634740172}
   startGameButton: {fileID: 2115395561125161101}
   terrainRoughnessDropdown: {fileID: 3106324314298798636}
