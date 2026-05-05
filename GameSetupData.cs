@@ -22,6 +22,11 @@ public static class GameSetupData
     public static int selectedMoisturePreset;    // 0=Desert, 1=Arid, 2=Standard, etc.
     public static int selectedLandPreset;        // 0=Archipelago, 1=Islands, 2=Standard, etc.
     public static int selectedTerrainPreset;     // 0=Smooth, 1=Rolling, 2=Rocky, etc.
+    public static int selectedWaterwaysPreset;   // 0=Sparse, 1=Standard, 2=Abundant
+    public static int selectedResourcesPreset;   // 0=Scarce, 1=Standard, 2=Rich, 3=Legendary
+    public static int selectedStartingSpread;    // 0=Close, 1=Balanced, 2=Distant
+    public static bool useRandomWorldSeed = true;
+    public static int worldSeed = 839201;
     
     // Special World Types
     public static string mapTypeName;            // Full name of the map type (e.g., "Infernal Highlands")
@@ -56,6 +61,7 @@ public static class GameSetupData
     // Moisture Settings
     public static float moistureBias;
     public static float temperatureBias = 0f;
+    public static float resourceSpawnMultiplier = 1f;
     
     // Tile-based continent size ranges for Small/Standard/Large
     public static int minContinentWidthTilesSmall;
@@ -131,6 +137,11 @@ public static class GameSetupData
         selectedMoisturePreset = 2; // Standard
         selectedLandPreset = 2; // Standard
         selectedTerrainPreset = 2; // Rocky
+        selectedWaterwaysPreset = 1; // Standard
+        selectedResourcesPreset = 1; // Standard
+        selectedStartingSpread = 1; // Balanced
+        useRandomWorldSeed = true;
+        worldSeed = 839201;
         
         // Set default map type
         mapTypeName = "Temperate Plains";
@@ -161,6 +172,7 @@ public static class GameSetupData
         // Set default moisture settings
         moistureBias = 0f;
         temperatureBias = 0f;
+        resourceSpawnMultiplier = 1f;
         
         // Tile-based continent sizing defaults
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;

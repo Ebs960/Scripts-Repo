@@ -262,6 +262,11 @@ public static class MapTypeDescriptionGenerator
     // Main method with animalPrevalence
     public static string GetDescription(int climate, int moisture, int landType, int elevation, int aiCivCount, int cityStateCount, int tribeCount, int animalPrevalence)
     {
+        return GetDescription(climate, moisture, landType, elevation, aiCivCount, cityStateCount, tribeCount, animalPrevalence, 1);
+    }
+
+    public static string GetDescription(int climate, int moisture, int landType, int elevation, int aiCivCount, int cityStateCount, int tribeCount, int animalPrevalence, int waterwaysPreset)
+    {
         climate = Mathf.Clamp(climate, 0, climateDescriptions.Length - 1);
         moisture = Mathf.Clamp(moisture, 0, moistureDescriptions.Length - 1);
         landType = Mathf.Clamp(landType, 0, landTypeDescriptions.Length - 1);
@@ -276,6 +281,7 @@ public static class MapTypeDescriptionGenerator
         string wildlife = GetWildlifePhrase(climate, animalPrevalence);
         string special = GetSpecialWorldModifier(mapTypeName);
         string human = GetHumanPresenceSentence(peopleCount, cityStateCount, tribeCount);
+        string waterways = GetWaterwaysSentence(waterwaysPreset);
 
         System.Text.StringBuilder desc = new System.Text.StringBuilder();
         desc.Append(landMood);
@@ -289,9 +295,20 @@ public static class MapTypeDescriptionGenerator
         desc.Append(" ");
         desc.Append(wildlife);
         desc.Append(" ");
+        desc.Append(waterways);
+        desc.Append(" ");
         desc.Append(human);
 
         return desc.ToString().Replace("\n", " ").Trim();
+    }
+    private static string GetWaterwaysSentence(int waterwaysPreset)
+    {
+        return Mathf.Clamp(waterwaysPreset, 0, 2) switch
+        {
+            0 => "Waterways are sparse, with fewer rivers and lakes to guide travel and settlement.",
+            2 => "Abundant rivers and lakes carve many routes through the land, shaping camps and migrations.",
+            _ => "Rivers and lakes are present in steady measure, offering familiar paths for peoples and game."
+        };
     }
 
     private static string GetLandMoodSentence(int climate, int moisture)

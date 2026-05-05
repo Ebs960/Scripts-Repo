@@ -963,6 +963,9 @@ public class GameManager : MonoBehaviour
             // Configure planet generator with GameSetupData settings
             planetGenerator.SetMapTypeName(GameSetupData.mapTypeName);
             planetGenerator.ApplyTerrainPreset(GameSetupData.selectedTerrainPreset);
+            planetGenerator.randomSeed = GameSetupData.useRandomWorldSeed;
+            if (!GameSetupData.useRandomWorldSeed)
+                planetGenerator.seed = GameSetupData.worldSeed;
 
             ApplyStampSettingsForMapSize(GameSetupData.mapSize);
 

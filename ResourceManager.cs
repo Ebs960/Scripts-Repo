@@ -304,7 +304,8 @@ public class ResourceManager : MonoBehaviour
                 }
                 if (!biomeAllowed) continue;
 
-                if (Random.value <= rd.spawnChance)
+                float spawnChance = rd.spawnChance * Mathf.Max(0f, GameSetupData.resourceSpawnMultiplier);
+                if (Random.value <= Mathf.Clamp01(spawnChance))
                 {
                     SpawnResourceInstance(rd, idx, planetIndex);
                 }
