@@ -211,6 +211,11 @@ public class MenuPlanetPreview : MonoBehaviour
     private GameObject cloudShellGO;
     private GameObject atmosphereShellGO;
     private Volume bloomVolume;
+    private int waterwaysPreset = 1;
+    private int previewFidelity = 2;
+    [SerializeField] private float basePlanetScale = 1f;
+    private Vector3 baseSurfaceLocalScale = Vector3.one;
+    private Vector3 baseAtmosphereLocalScale = Vector3.one;
 
 
     // Cached shader property IDs — planet
@@ -299,6 +304,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Build atmosphere shell (clouds removed)
         SetupAtmosphereShell();
+        CacheBaseScales();
 
         // Enable bloom on the preview camera
         SetupBloomVolume();
@@ -571,6 +577,54 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null) { materialInstance.SetFloat(ID_BiomeBlend, biomeBlend); }
     }
 
+    public void SetWorldSeed(int worldSeed, bool randomSeed)
+    {
+        randomizeSeed = randomSeed;
+        seed = randomSeed ? Random.Range(0f, 10000f) : Mathf.Abs(worldSeed % 100000);
+        if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
+        UpdateBiomeVisuals();
+    }
+
+    public void SetWaterwaysPreset(int preset)
+    {
+        waterwaysPreset = Mathf.Clamp(preset, 0, 2);
+        UpdateBiomeVisuals();
+        PushCloudParameters();
+    }
+
+    public void SetPreviewFidelity(int fidelityLevel)
+    {
+        previewFidelity = Mathf.Clamp(fidelityLevel, 0, 2);
+        // 0=balanced, 1=high, 2=ultra (default)
+        detailScale = previewFidelity == 2 ? 28f : (previewFidelity == 1 ? 22f : 18f);
+        detailStrength = previewFidelity == 2 ? 0.32f : (previewFidelity == 1 ? 0.26f : 0.2f);
+        biomeNoiseScale = previewFidelity == 2 ? 6.2f : (previewFidelity == 1 ? 4.8f : 3.8f);
+        biomeNoiseStrength = previewFidelity == 2 ? 0.135f : (previewFidelity == 1 ? 0.1f : 0.08f);
+        displacementScale = previewFidelity == 2 ? 0.065f : (previewFidelity == 1 ? 0.05f : 0.04f);
+        UpdateBiomeVisuals();
+    }
+
+    public void SetPlanetScaleMultiplier(float scaleMultiplier)
+    {
+        float s = Mathf.Clamp(scaleMultiplier, 0.75f, 1.35f);
+        float finalScale = basePlanetScale * s;
+
+        if (previewRenderer != null)
+            previewRenderer.transform.localScale = baseSurfaceLocalScale * finalScale;
+        if (atmosphereShellGO != null)
+            atmosphereShellGO.transform.localScale = baseAtmosphereLocalScale * finalScale;
+        if (cloudShellGO != null)
+            cloudShellGO.transform.localScale = baseSurfaceLocalScale * finalScale;
+    }
+
+    private void CacheBaseScales()
+    {
+        if (previewRenderer != null)
+            baseSurfaceLocalScale = previewRenderer.transform.localScale;
+        if (atmosphereShellGO != null)
+            baseAtmosphereLocalScale = atmosphereShellGO.transform.localScale;
+    }
+
     // -----------------------------------------------------------------
     //  Biome tinting and derived visual parameters
     // -----------------------------------------------------------------
@@ -597,6 +651,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Snow factor is primarily temperature-driven but reinforced by elevation
         float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.8f);
+        float waterwayWetness = waterwaysPreset == 2 ? 0.10f : (waterwaysPreset == 0 ? -0.08f : 0f);
 
         materialInstance.SetFloat(ID_DesertFactor, desertFactor);
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
@@ -613,10 +668,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_OceanColor, oceanColor);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
-        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
-        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
-        materialInstance.SetFloat(ID_ColorVibrancy, colorVibrancy);
+        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale * (waterwaysPreset == 2 ? 1.15f : 1f));
+        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength * (waterwaysPreset == 0 ? 0.9f : 1.05f));
+        materialInstance.SetFloat(ID_ColorVibrancy, Mathf.Clamp(colorVibrancy, 0.5f, 2f));
         materialInstance.SetFloat(ID_Seed, seed);
+        materialInstance.SetFloat(ID_Moisture, Mathf.Clamp01(moisture + waterwayWetness));
         
         // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);
@@ -667,6 +723,8 @@ public class MenuPlanetPreview : MonoBehaviour
         cloudMaterialInstance.SetFloat(ID_CloudAltitude, cloudAltitude);
         cloudMaterialInstance.SetFloat(ID_Temperature, temperature);
         cloudMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
+        float waterwayCloud = waterwaysPreset == 2 ? 0.07f : (waterwaysPreset == 0 ? -0.07f : 0f);
+        cloudMaterialInstance.SetFloat(ID_CloudDensity, Mathf.Clamp01(cloudDensity + waterwayCloud));
     }
 
     // -----------------------------------------------------------------
