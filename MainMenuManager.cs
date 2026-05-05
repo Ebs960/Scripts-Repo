@@ -704,8 +704,6 @@ public class MainMenuManager : MonoBehaviour
             mapStyleVal = 1f;   // Demonic: darkest, most intense
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
-        var visualPreset = planetPreview.GetPresetForConditions(mapStyleVal >= 0.99f, Mathf.Abs(mapStyleVal - 0.5f) < 0.01f, temp, moist);
-        planetPreview.ApplyVisualPreset(visualPreset);
         planetPreview.SetMapStyle(mapStyleVal);
         planetPreview.SetPreviewFidelity(2);
         float sizeScale = GameSetupData.mapSize == GameManager.MapSize.Small ? 0.86f :

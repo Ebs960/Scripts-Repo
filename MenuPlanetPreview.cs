@@ -41,12 +41,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Light previewLight;
     [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
     [SerializeField] private Camera previewCamera;
-    [SerializeField] private MenuPlanetVisualPreset defaultPreset;
-    [SerializeField] private MenuPlanetVisualPreset icePreset;
-    [SerializeField] private MenuPlanetVisualPreset desertPreset;
-    [SerializeField] private MenuPlanetVisualPreset tropicalPreset;
-    [SerializeField] private MenuPlanetVisualPreset infernalPreset;
-    [SerializeField] private MenuPlanetVisualPreset demonicPreset;
 
     // -----------------------------------------------------------------
     //  Rotation
@@ -1065,46 +1059,5 @@ public class MenuPlanetPreview : MonoBehaviour
         PushCloudParameters();
         PushAtmosphereParameters();
     }
-
-    public void ApplyVisualPreset(MenuPlanetVisualPreset preset)
-    {
-        if (preset == null) return;
-        SetOceanColor(preset.oceanDeepColor);
-        SetEquatorialColor(preset.equatorialColor);
-        SetDesertSand(preset.desertSand);
-        SetSubtropicalColor(preset.subtropicalColor);
-        SetTemperateZoneColor(preset.temperateColor);
-        SetBorealColor(preset.borealColor);
-        SetTundraColor(preset.tundraColor);
-        SetPolarColor(preset.polarColor);
-        mountainColor = preset.mountainColor;
-        atmosphereColor = preset.atmosphereColor;
-        brightness = preset.brightness;
-        colorVibrancy = preset.colorVibrancy;
-        cloudDensity = preset.cloudDensity;
-        atmosphereIntensity = preset.atmosphereIntensity;
-        smoothness = preset.landSmoothness;
-        landDetailTexture = preset.landDetailTexture;
-        mountainDetailTexture = preset.mountainDetailTexture;
-        iceDetailTexture = preset.iceDetailTexture;
-        oceanDetailTexture = preset.oceanDetailTexture;
-        oceanNormalTexture = preset.oceanNormalTexture;
-        landDetailStrength = preset.landDetailStrength;
-        oceanNormalStrength = preset.oceanNormalStrength;
-        ApplyAllParameters();
-        PushCloudParameters();
-        PushAtmosphereParameters();
-    }
-
-    public MenuPlanetVisualPreset GetPresetForConditions(bool isDemonic, bool isInfernal, float tempValue, float moistureValue)
-    {
-        if (isDemonic) return demonicPreset != null ? demonicPreset : defaultPreset;
-        if (isInfernal) return infernalPreset != null ? infernalPreset : defaultPreset;
-        if (tempValue <= 0.2f) return icePreset != null ? icePreset : defaultPreset;
-        if (tempValue >= 0.8f && moistureValue <= 0.35f) return desertPreset != null ? desertPreset : defaultPreset;
-        if (tempValue >= 0.6f && moistureValue >= 0.6f) return tropicalPreset != null ? tropicalPreset : defaultPreset;
-        return defaultPreset;
-    }
-
 
 }
