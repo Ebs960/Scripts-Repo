@@ -113,6 +113,11 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Moisture Settings")]
     public TMP_Dropdown moisturePresetDropdown;
+    public Toggle randomWorldSeedToggle;
+    public TMP_InputField worldSeedInput;
+    public TMP_Dropdown waterwaysDropdown;
+    public TMP_Dropdown resourcesDropdown;
+    public TMP_Dropdown startingSpreadDropdown;
 
     [Header("Map Type")]
     public TextMeshProUGUI mapTypeName;
@@ -193,6 +198,9 @@ public class MainMenuManager : MonoBehaviour
     
     // Animal settings
     private int selectedAnimalPrevalence = 3; // Default to normal
+    private int selectedWaterwaysPreset = 1; // Standard
+    private int selectedResourcesPreset = 1; // Standard
+    private int selectedStartingSpread = 1; // Balanced
     
     // Climate preset values - each entry contains (polarThreshold, subPolarThreshold, equatorThreshold)
     private readonly (float polar, float subPolar, float equator)[] climatePresets = new[] {
@@ -328,6 +336,38 @@ public class MainMenuManager : MonoBehaviour
             moisturePresetDropdown.AddOptions(new List<string> { "Very Low", "Low", "Standard", "High", "Very High", "Extreme" });
             moisturePresetDropdown.value = selectedMoisturePreset;
             moisturePresetDropdown.onValueChanged.AddListener(OnMoisturePresetChanged);
+        }
+        if (waterwaysDropdown != null)
+        {
+            waterwaysDropdown.ClearOptions();
+            waterwaysDropdown.AddOptions(new List<string> { "Sparse", "Standard", "Abundant" });
+            waterwaysDropdown.value = selectedWaterwaysPreset;
+            waterwaysDropdown.onValueChanged.AddListener(OnWaterwaysChanged);
+        }
+        if (resourcesDropdown != null)
+        {
+            resourcesDropdown.ClearOptions();
+            resourcesDropdown.AddOptions(new List<string> { "Scarce", "Standard", "Rich", "Legendary" });
+            resourcesDropdown.value = selectedResourcesPreset;
+            resourcesDropdown.onValueChanged.AddListener(OnResourcesPresetChanged);
+        }
+        if (startingSpreadDropdown != null)
+        {
+            startingSpreadDropdown.ClearOptions();
+            startingSpreadDropdown.AddOptions(new List<string> { "Close", "Balanced", "Distant" });
+            startingSpreadDropdown.value = selectedStartingSpread;
+            startingSpreadDropdown.onValueChanged.AddListener(OnStartingSpreadChanged);
+        }
+        if (randomWorldSeedToggle != null)
+        {
+            randomWorldSeedToggle.isOn = true;
+            randomWorldSeedToggle.onValueChanged.AddListener(OnRandomSeedToggleChanged);
+        }
+        if (worldSeedInput != null)
+        {
+            worldSeedInput.text = "839201";
+            worldSeedInput.interactable = randomWorldSeedToggle == null || !randomWorldSeedToggle.isOn;
+            worldSeedInput.onEndEdit.AddListener(OnWorldSeedEdited);
         }
         
         // Initialize terrain roughness dropdown if available
@@ -471,6 +511,7 @@ public class MainMenuManager : MonoBehaviour
         GameManager.MapSize selectedSize = (GameManager.MapSize)value;
         GameSetupData.mapSize = selectedSize;
         UpdatePlanetSizeText();
+        UpdatePlanetPreview();
     }
     
     private void UpdatePlanetSizeText()
@@ -520,17 +561,34 @@ public class MainMenuManager : MonoBehaviour
     private void OnMoisturePresetChanged(int value)
     {
         selectedMoisturePreset = value;
-        
-        // Update river count based on moisture (wetter = more rivers)
-        // moisturePresets: 0=Desert, 1=Arid, 2=Standard, 3=Moist, 4=Wet, 5=Oceanic
-        int[] riverCounts = { 0, 1, 4, 6, 8, 10 };  // Desert=none, Oceanic=many (halved)
-        riverCount = riverCounts[Mathf.Clamp(value, 0, 5)];
-        enableRivers = riverCount > 0;
-        // River UI removed; value kept internally for generation logic
-        
+
         // Update icons and map type when moisture changes
         UpdatePresetIcons();
         UpdateMapTypeName();
+    }
+    private void OnWaterwaysChanged(int value)
+    {
+        selectedWaterwaysPreset = Mathf.Clamp(value, 0, 2);
+        UpdatePlanetPreview();
+        UpdateMapTypeName();
+    }
+    private void OnResourcesPresetChanged(int value)
+    {
+        selectedResourcesPreset = Mathf.Clamp(value, 0, 3);
+        UpdatePlanetPreview();
+    }
+    private void OnStartingSpreadChanged(int value) => selectedStartingSpread = Mathf.Clamp(value, 0, 2);
+    private void OnRandomSeedToggleChanged(bool isRandom)
+    {
+        if (worldSeedInput != null) worldSeedInput.interactable = !isRandom;
+        UpdatePlanetPreview();
+    }
+    private void OnWorldSeedEdited(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (!int.TryParse(text.Trim(), out _))
+            worldSeedInput.text = "839201";
+        UpdatePlanetPreview();
     }
     
     private (float frequency, float bias) GetCurrentMoistureSettings()
@@ -570,7 +628,7 @@ public class MainMenuManager : MonoBehaviour
         // Update the map type description
         if (mapTypeDescription != null)
         {
-            string description = MapTypeDescriptionGenerator.GetDescription(climateIndex, moistureIndex, landIndex, elevationCategory, aiCount, cityStateCount, tribeCount, selectedAnimalPrevalence);
+            string description = MapTypeDescriptionGenerator.GetDescription(climateIndex, moistureIndex, landIndex, elevationCategory, aiCount, cityStateCount, tribeCount, selectedAnimalPrevalence, selectedWaterwaysPreset);
             mapTypeDescription.text = description;
         }
 
@@ -622,6 +680,7 @@ public class MainMenuManager : MonoBehaviour
         // 0=Very Low→0, 5=Extreme→1
         float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);
         planetPreview.SetMoisture(moist);
+        planetPreview.SetWaterwaysPreset(selectedWaterwaysPreset);
 
         // Elevation: map GetElevationCategory() (0=Low, 1=Hilly, 2=Mountainous, 3=Alpine) to 0–1
         int elevCat = GetElevationCategory();
@@ -646,6 +705,14 @@ public class MainMenuManager : MonoBehaviour
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
         planetPreview.SetMapStyle(mapStyleVal);
+        planetPreview.SetPreviewFidelity(2);
+        float sizeScale = GameSetupData.mapSize == GameManager.MapSize.Small ? 0.86f :
+                          (GameSetupData.mapSize == GameManager.MapSize.Large ? 1.18f : 1.0f);
+        planetPreview.SetPlanetScaleMultiplier(sizeScale);
+        bool randomSeed = randomWorldSeedToggle == null || randomWorldSeedToggle.isOn;
+        int parsedSeed = 839201;
+        if (worldSeedInput != null && int.TryParse(worldSeedInput.text, out int seedVal)) parsedSeed = seedVal;
+        planetPreview.SetWorldSeed(parsedSeed, randomSeed);
     }
 
     #endregion
@@ -1017,6 +1084,13 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.selectedMoisturePreset = selectedMoisturePreset;
         GameSetupData.selectedLandPreset = selectedLandPreset;
         GameSetupData.selectedTerrainPreset = selectedTerrainPreset;
+        GameSetupData.selectedWaterwaysPreset = selectedWaterwaysPreset;
+        GameSetupData.selectedResourcesPreset = selectedResourcesPreset;
+        GameSetupData.selectedStartingSpread = selectedStartingSpread;
+        GameSetupData.useRandomWorldSeed = randomWorldSeedToggle == null || randomWorldSeedToggle.isOn;
+        int parsedSeed = 839201;
+        if (worldSeedInput != null && int.TryParse(worldSeedInput.text, out int seedVal)) parsedSeed = seedVal;
+        GameSetupData.worldSeed = parsedSeed;
         
         // Get the map type name and check for special world types
         string mapTypeNameStr = MapTypeNameGenerator.GetMapTypeName(
@@ -1038,36 +1112,19 @@ public class MainMenuManager : MonoBehaviour
         // --- New: Ice World flag
         GameSetupData.isIceWorld = mapTypeLower.Contains("ice world") || mapTypeLower.Contains("icicle") || mapTypeLower.Contains("cryo");
         // River settings
-        GameSetupData.enableRivers = enableRivers;
-        GameSetupData.riverCount = riverCount;
+        GameSetupData.enableRivers = true;
+        int[] waterwayRivers = { 2, 6, 10 };
+        int[] waterwayLakes = { 3, 8, 14 };
+        int[] lakeMin = { 1, 1, 2 };
+        int[] lakeMax = { 1, 2, 3 };
+        GameSetupData.riverCount = waterwayRivers[Mathf.Clamp(selectedWaterwaysPreset, 0, 2)];
+        GameSetupData.numberOfLakes = waterwayLakes[Mathf.Clamp(selectedWaterwaysPreset, 0, 2)];
+        GameSetupData.lakeMinRadiusTiles = lakeMin[Mathf.Clamp(selectedWaterwaysPreset, 0, 2)];
+        GameSetupData.lakeMaxRadiusTiles = lakeMax[Mathf.Clamp(selectedWaterwaysPreset, 0, 2)];
+        float[] resourceMult = { 0.7f, 1f, 1.35f, 1.8f };
+        GameSetupData.resourceSpawnMultiplier = resourceMult[Mathf.Clamp(selectedResourcesPreset, 0, 3)];
         
-        // Lake settings - influenced by moisture AND land type
-        // Lakes need inland area, so islands/archipelagos get fewer/no lakes
-        // moisturePresets: 0=Desert, 1=Arid, 2=Standard, 3=Moist, 4=Wet, 5=Oceanic
-        // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea, 5=Terrestrial
-        
-        // Base lake counts by moisture (halved)
-        int[] baseLakeCounts = { 1, 2, 3, 7, 8, 9 };      // Desert=none, Oceanic=moderate
-        int[] minLakeSizes = { 1, 1, 1, 1, 2, 3 };       
-        int[] maxLakeSizes = { 1, 1, 2, 2, 4, 5 };        
-        
-        // Land type multipliers for lake count (islands have less inland area)
-        // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=1.8, Terrestrial=2.3
-        float[] landTypeMultipliers = { 0f, 0.25f, 1.0f, 1.5f, 1.8f, 2.3f };
-        
-        int moistIdx = Mathf.Clamp(selectedMoisturePreset, 0, 5);
-        int landIdx = Mathf.Clamp(selectedLandPreset, 0, landTypeMultipliers.Length - 1);
-        
-        float landMultiplier = landTypeMultipliers[landIdx];
-        int adjustedLakeCount = Mathf.RoundToInt(baseLakeCounts[moistIdx] * landMultiplier);
-        
-        // Disable lakes entirely for archipelago or desert
-        GameSetupData.enableLakes = (moistIdx > 0 && landIdx > 0);
-        GameSetupData.numberOfLakes = adjustedLakeCount;
-        GameSetupData.lakeMinRadiusTiles = minLakeSizes[moistIdx];
-        GameSetupData.lakeMaxRadiusTiles = maxLakeSizes[moistIdx];
-        // lakeElevationThreshold and connectRiversToLakes were removed from GameSetupData;
-        // keep lake count and radius-only configuration here.
+        GameSetupData.enableLakes = true;
         
         // Get current climate thresholds from presets
         var climateThresholds = climatePresets[selectedClimatePreset];
