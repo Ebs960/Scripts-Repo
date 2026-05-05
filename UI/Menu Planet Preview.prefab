@@ -400,13 +400,29 @@ MonoBehaviour:
   detailStrength: 0.019
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.05
+  enableCloudShell: 1
   cloudAltitude: 0.0297
   cloudDensity: 0.069
   cloudScale: 3
   cloudSpeed: 0.08
+  cloudRotationMultiplier: 1.25
+  enableAtmosphereShell: 1
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
   atmosphereIntensity: 0.56
+  atmosphereRotationMultiplier: 0
+  landDetailTexture: {fileID: 2800000, guid: eb7d0d76bff04bf498953bd946515768, type: 3}
+  mountainDetailTexture: {fileID: 2800000, guid: 1d6d912c23d941141963ac1cc3b30b91, type: 3}
+  iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
+  oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
+  oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
+  roughnessDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
+  landDetailStrength: 0.18
+  mountainDetailStrength: 0.22
+  iceDetailStrength: 0.12
+  oceanDetailStrength: 0.15
+  oceanNormalStrength: 0.35
+  textureDetailScale: 8
   enableBloom: 1
   bloomThreshold: 0.5
   bloomIntensity: 0.373
@@ -438,6 +454,7 @@ MonoBehaviour:
   brightness: 1.92
   seed: 0
   randomizeSeed: 1
+  basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
 --- !u!1 &6832828193519875274
