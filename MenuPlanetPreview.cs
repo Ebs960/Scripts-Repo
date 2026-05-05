@@ -214,6 +214,8 @@ public class MenuPlanetPreview : MonoBehaviour
     private int waterwaysPreset = 1;
     private int previewFidelity = 2;
     [SerializeField] private float basePlanetScale = 1f;
+    private Vector3 baseSurfaceLocalScale = Vector3.one;
+    private Vector3 baseAtmosphereLocalScale = Vector3.one;
 
 
     // Cached shader property IDs — planet
@@ -302,6 +304,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Build atmosphere shell (clouds removed)
         SetupAtmosphereShell();
+        CacheBaseScales();
 
         // Enable bloom on the preview camera
         SetupBloomVolume();
@@ -604,7 +607,22 @@ public class MenuPlanetPreview : MonoBehaviour
     public void SetPlanetScaleMultiplier(float scaleMultiplier)
     {
         float s = Mathf.Clamp(scaleMultiplier, 0.75f, 1.35f);
-        transform.localScale = Vector3.one * (basePlanetScale * s);
+        float finalScale = basePlanetScale * s;
+
+        if (previewRenderer != null)
+            previewRenderer.transform.localScale = baseSurfaceLocalScale * finalScale;
+        if (atmosphereShellGO != null)
+            atmosphereShellGO.transform.localScale = baseAtmosphereLocalScale * finalScale;
+        if (cloudShellGO != null)
+            cloudShellGO.transform.localScale = baseSurfaceLocalScale * finalScale;
+    }
+
+    private void CacheBaseScales()
+    {
+        if (previewRenderer != null)
+            baseSurfaceLocalScale = previewRenderer.transform.localScale;
+        if (atmosphereShellGO != null)
+            baseAtmosphereLocalScale = atmosphereShellGO.transform.localScale;
     }
 
     // -----------------------------------------------------------------
