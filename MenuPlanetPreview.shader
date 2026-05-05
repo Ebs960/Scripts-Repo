@@ -48,6 +48,19 @@ Shader "Custom/MenuPlanetPreview"
             _AmbientOcclusion("Ambient Occlusion", Range(0, 1)) = 1.0
             _AmbientStrength("Ambient Strength", Range(0, 1)) = 0.12
             _Brightness("Brightness", Range(0.5, 3.0)) = 1.4
+            _LandDetailTex("Land Detail", 2D) = "gray" {}
+            _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
+            _IceDetailTex("Ice Detail", 2D) = "gray" {}
+            _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
+            _OceanNormalTex("Ocean Normal", 2D) = "bump" {}
+            _RoughnessDetailTex("Roughness Detail", 2D) = "gray" {}
+            _LandDetailStrength("Land Detail Strength", Range(0,1)) = 0.18
+            _MountainDetailStrength("Mountain Detail Strength", Range(0,1)) = 0.22
+            _IceDetailStrength("Ice Detail Strength", Range(0,1)) = 0.12
+            _OceanDetailStrength("Ocean Detail Strength", Range(0,1)) = 0.15
+            _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.35
+            _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
+            _UseDetailTextures("Use Detail Textures", Float) = 0
     }
 
     SubShader
@@ -120,7 +133,34 @@ Shader "Custom/MenuPlanetPreview"
                 float _AmbientOcclusion;
                 float _AmbientStrength;
                 float _Brightness;
+                float _LandDetailStrength;
+                float _MountainDetailStrength;
+                float _IceDetailStrength;
+                float _OceanDetailStrength;
+                float _OceanNormalStrength;
+                float _TextureDetailScale;
+                float _UseDetailTextures;
             CBUFFER_END
+            TEXTURE2D(_LandDetailTex); SAMPLER(sampler_LandDetailTex);
+            TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
+            TEXTURE2D(_IceDetailTex); SAMPLER(sampler_IceDetailTex);
+            TEXTURE2D(_OceanDetailTex); SAMPLER(sampler_OceanDetailTex);
+            TEXTURE2D(_OceanNormalTex); SAMPLER(sampler_OceanNormalTex);
+            TEXTURE2D(_RoughnessDetailTex); SAMPLER(sampler_RoughnessDetailTex);
+
+            float3 SampleTriplanar(TEXTURE2D_PARAM(tex, samp), float3 positionOS, float3 objNorm)
+            {
+                float3 n = abs(normalize(objNorm));
+                n = pow(n, 4.0);
+                n /= (n.x + n.y + n.z + 1e-5);
+                float2 uvX = positionOS.yz * _TextureDetailScale;
+                float2 uvY = positionOS.xz * _TextureDetailScale;
+                float2 uvZ = positionOS.xy * _TextureDetailScale;
+                float3 sx = SAMPLE_TEXTURE2D(tex, samp, uvX).rgb;
+                float3 sy = SAMPLE_TEXTURE2D(tex, samp, uvY).rgb;
+                float3 sz = SAMPLE_TEXTURE2D(tex, samp, uvZ).rgb;
+                return sx * n.x + sy * n.y + sz * n.z;
+            }
 
             // -----------------------------------------------------------------
             //  Structs
@@ -505,6 +545,19 @@ Shader "Custom/MenuPlanetPreview"
                 elevatedLand *= lerp(0.95, 1.05, microNoise);
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
+                if (_UseDetailTextures > 0.5)
+                {
+                    float3 landDetail = SampleTriplanar(TEXTURE2D_ARGS(_LandDetailTex, sampler_LandDetailTex), input.positionOS, objNorm);
+                    float3 mtnDetail = SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
+                    float3 ocnDetail = SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_OceanDetailTex), input.positionOS, objNorm);
+                    float landFactor = (dot(landDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
+                    float mtnFactor = (dot(mtnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
+                    float ocnFactor = (dot(ocnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
+                    elevatedLand *= (1.0 + landFactor * _LandDetailStrength * edge);
+                    elevatedLand *= (1.0 + mtnFactor * _MountainDetailStrength * mtnBlend * edge);
+                    oceanColor *= (1.0 + ocnFactor * _OceanDetailStrength * (1.0 - edge));
+                    normalAlbedo = lerp(oceanColor, elevatedLand, edge);
+                }
 
                 // Normal rivers (moisture-gated, not on mountains)
                 float normalRiverMask = riverMask * saturate((localMoist - 0.20) * 2.0)
@@ -541,6 +594,12 @@ Shader "Custom/MenuPlanetPreview"
                 iceColor = lerp(iceColor * 0.88, iceColor, edge);
 
                 normalAlbedo = lerp(normalAlbedo, iceColor, saturate(capMask));
+                if (_UseDetailTextures > 0.5)
+                {
+                    float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_IceDetailTex), input.positionOS, objNorm);
+                    float iceFactor = (dot(iceDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
+                    normalAlbedo = lerp(normalAlbedo, normalAlbedo * (1.0 + iceFactor * _IceDetailStrength), saturate(capMask));
+                }
 
                 // ==============================================================
                 //  INFERNAL WORLD colors (style ≈ 0.5)

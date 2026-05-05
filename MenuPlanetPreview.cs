@@ -41,6 +41,12 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Light previewLight;
     [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
     [SerializeField] private Camera previewCamera;
+    [SerializeField] private MenuPlanetVisualPreset defaultPreset;
+    [SerializeField] private MenuPlanetVisualPreset icePreset;
+    [SerializeField] private MenuPlanetVisualPreset desertPreset;
+    [SerializeField] private MenuPlanetVisualPreset tropicalPreset;
+    [SerializeField] private MenuPlanetVisualPreset infernalPreset;
+    [SerializeField] private MenuPlanetVisualPreset demonicPreset;
 
     // -----------------------------------------------------------------
     //  Rotation
@@ -63,6 +69,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.035f;
 
     [Header("Clouds")]
+    [SerializeField] private bool enableCloudShell = true;
     [Tooltip("Cloud altitude above planet surface.")]
     [Range(0f, 0.1f)] [SerializeField] private float cloudAltitude = 0.018f;
     [Tooltip("Cloud coverage density.")]
@@ -71,14 +78,33 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private float cloudScale = 3.0f;
     [Tooltip("Cloud animation speed.")]
     [SerializeField] private float cloudSpeed = 0.08f;
+    [SerializeField] private float cloudRotationMultiplier = 1.25f;
 
     [Header("Atmosphere Shell")]
+    [SerializeField] private bool enableAtmosphereShell = true;
     [Tooltip("Scale multiplier for the atmosphere shell mesh.")]
     [Range(1.01f, 1.15f)] [SerializeField] private float atmosphereShellScale = 1.06f;
     [Tooltip("Fresnel falloff exponent for atmospheric rim glow.")]
     [Range(1f, 8f)] [SerializeField] private float atmosphereFalloff = 3.5f;
     [Tooltip("Brightness multiplier for the atmosphere glow.")]
     [Range(0f, 3f)] [SerializeField] private float atmosphereIntensity = 1.2f;
+    [SerializeField] private float atmosphereRotationMultiplier = 0f;
+
+    [Header("Surface Detail Textures")]
+    [SerializeField] private Texture2D landDetailTexture;
+    [SerializeField] private Texture2D mountainDetailTexture;
+    [SerializeField] private Texture2D iceDetailTexture;
+    [SerializeField] private Texture2D oceanDetailTexture;
+    [SerializeField] private Texture2D oceanNormalTexture;
+    [SerializeField] private Texture2D roughnessDetailTexture;
+
+    [Header("Texture Detail Strengths")]
+    [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.18f;
+    [SerializeField, Range(0f, 1f)] private float mountainDetailStrength = 0.22f;
+    [SerializeField, Range(0f, 1f)] private float iceDetailStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float oceanDetailStrength = 0.15f;
+    [SerializeField, Range(0f, 1f)] private float oceanNormalStrength = 0.35f;
+    [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
 
     [Header("HDRP Post-Processing")]
     [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
@@ -216,6 +242,8 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private float basePlanetScale = 1f;
     private Vector3 baseSurfaceLocalScale = Vector3.one;
     private Vector3 baseAtmosphereLocalScale = Vector3.one;
+    private bool hasWarnedMissingCloudShader;
+    private bool hasWarnedMissingAtmosphereShader;
 
 
     // Cached shader property IDs — planet
@@ -253,6 +281,19 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_AmbientOcclusion = Shader.PropertyToID("_AmbientOcclusion");
     private static readonly int ID_AmbientStrength = Shader.PropertyToID("_AmbientStrength");
     private static readonly int ID_Brightness = Shader.PropertyToID("_Brightness");
+    private static readonly int ID_LandDetailTex = Shader.PropertyToID("_LandDetailTex");
+    private static readonly int ID_MountainDetailTex = Shader.PropertyToID("_MountainDetailTex");
+    private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
+    private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
+    private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
+    private static readonly int ID_RoughnessDetailTex = Shader.PropertyToID("_RoughnessDetailTex");
+    private static readonly int ID_LandDetailStrength = Shader.PropertyToID("_LandDetailStrength");
+    private static readonly int ID_MountainDetailStrength = Shader.PropertyToID("_MountainDetailStrength");
+    private static readonly int ID_IceDetailStrength = Shader.PropertyToID("_IceDetailStrength");
+    private static readonly int ID_OceanDetailStrength = Shader.PropertyToID("_OceanDetailStrength");
+    private static readonly int ID_OceanNormalStrength = Shader.PropertyToID("_OceanNormalStrength");
+    private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
+    private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
 
 
 
@@ -302,7 +343,7 @@ public class MenuPlanetPreview : MonoBehaviour
         // Upgrade the preview mesh for better shading/detail
         TryReplacePreviewMesh();
 
-        // Build atmosphere shell (clouds removed)
+        SetupCloudShell();
         SetupAtmosphereShell();
         CacheBaseScales();
 
@@ -316,6 +357,14 @@ public class MenuPlanetPreview : MonoBehaviour
         if (previewRenderer != null)
         {
             previewRenderer.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
+        }
+        if (cloudShellGO != null)
+        {
+            cloudShellGO.transform.Rotate(Vector3.up, rotationSpeed * cloudRotationMultiplier * Time.deltaTime, Space.Self);
+        }
+        if (atmosphereShellGO != null && !Mathf.Approximately(atmosphereRotationMultiplier, 0f))
+        {
+            atmosphereShellGO.transform.Rotate(Vector3.up, rotationSpeed * atmosphereRotationMultiplier * Time.deltaTime, Space.Self);
         }
 
         // Sun lighting now read directly from HDRP's directional light buffer in the shaders
@@ -425,6 +474,28 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_AmbientOcclusion, ambientOcclusion);
         materialInstance.SetFloat(ID_AmbientStrength, ambientStrength);
         materialInstance.SetFloat(ID_Brightness, brightness);
+        PushDetailTextureParameters();
+    }
+
+    private void PushDetailTextureParameters()
+    {
+        if (materialInstance == null) return;
+
+        materialInstance.SetTexture(ID_LandDetailTex, landDetailTexture);
+        materialInstance.SetTexture(ID_MountainDetailTex, mountainDetailTexture);
+        materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
+        materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
+        materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
+        materialInstance.SetTexture(ID_RoughnessDetailTex, roughnessDetailTexture);
+        materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
+        materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
+        materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
+        materialInstance.SetFloat(ID_OceanDetailStrength, oceanDetailStrength);
+        materialInstance.SetFloat(ID_OceanNormalStrength, oceanNormalStrength);
+        materialInstance.SetFloat(ID_TextureDetailScale, textureDetailScale);
+        bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
+                          oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null;
+        materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
 
     // -----------------------------------------------------------------
@@ -684,13 +755,17 @@ public class MenuPlanetPreview : MonoBehaviour
     // -----------------------------------------------------------------
     private void SetupCloudShell()
     {
-        if (previewRenderer == null) return;
+        if (!enableCloudShell || previewRenderer == null) return;
 
         if (cloudShader == null)
             cloudShader = Shader.Find("Custom/MenuPlanetClouds");
         if (cloudShader == null)
         {
-            Debug.LogWarning("[MenuPlanetPreview] Cloud shader 'Custom/MenuPlanetClouds' not found.");
+            if (!hasWarnedMissingCloudShader)
+            {
+                Debug.LogWarning("[MenuPlanetPreview] Cloud shader 'Custom/MenuPlanetClouds' not found.");
+                hasWarnedMissingCloudShader = true;
+            }
             return;
         }
 
@@ -732,13 +807,17 @@ public class MenuPlanetPreview : MonoBehaviour
     // -----------------------------------------------------------------
     private void SetupAtmosphereShell()
     {
-        if (previewRenderer == null) return;
+        if (!enableAtmosphereShell || previewRenderer == null) return;
 
         if (atmosphereShader == null)
             atmosphereShader = Shader.Find("Custom/MenuPlanetAtmosphere");
         if (atmosphereShader == null)
         {
-            Debug.LogWarning("[MenuPlanetPreview] Atmosphere shader 'Custom/MenuPlanetAtmosphere' not found.");
+            if (!hasWarnedMissingAtmosphereShader)
+            {
+                Debug.LogWarning("[MenuPlanetPreview] Atmosphere shader 'Custom/MenuPlanetAtmosphere' not found.");
+                hasWarnedMissingAtmosphereShader = true;
+            }
             return;
         }
 
@@ -985,6 +1064,46 @@ public class MenuPlanetPreview : MonoBehaviour
         }
         PushCloudParameters();
         PushAtmosphereParameters();
+    }
+
+    public void ApplyVisualPreset(MenuPlanetVisualPreset preset)
+    {
+        if (preset == null) return;
+        SetOceanColor(preset.oceanDeepColor);
+        SetEquatorialColor(preset.equatorialColor);
+        SetDesertSand(preset.desertSand);
+        SetSubtropicalColor(preset.subtropicalColor);
+        SetTemperateZoneColor(preset.temperateColor);
+        SetBorealColor(preset.borealColor);
+        SetTundraColor(preset.tundraColor);
+        SetPolarColor(preset.polarColor);
+        mountainColor = preset.mountainColor;
+        atmosphereColor = preset.atmosphereColor;
+        brightness = preset.brightness;
+        colorVibrancy = preset.colorVibrancy;
+        cloudDensity = preset.cloudDensity;
+        atmosphereIntensity = preset.atmosphereIntensity;
+        smoothness = preset.landSmoothness;
+        landDetailTexture = preset.landDetailTexture;
+        mountainDetailTexture = preset.mountainDetailTexture;
+        iceDetailTexture = preset.iceDetailTexture;
+        oceanDetailTexture = preset.oceanDetailTexture;
+        oceanNormalTexture = preset.oceanNormalTexture;
+        landDetailStrength = preset.landDetailStrength;
+        oceanNormalStrength = preset.oceanNormalStrength;
+        ApplyAllParameters();
+        PushCloudParameters();
+        PushAtmosphereParameters();
+    }
+
+    public MenuPlanetVisualPreset GetPresetForConditions(bool isDemonic, bool isInfernal, float tempValue, float moistureValue)
+    {
+        if (isDemonic) return demonicPreset != null ? demonicPreset : defaultPreset;
+        if (isInfernal) return infernalPreset != null ? infernalPreset : defaultPreset;
+        if (tempValue <= 0.2f) return icePreset != null ? icePreset : defaultPreset;
+        if (tempValue >= 0.8f && moistureValue <= 0.35f) return desertPreset != null ? desertPreset : defaultPreset;
+        if (tempValue >= 0.6f && moistureValue >= 0.6f) return tropicalPreset != null ? tropicalPreset : defaultPreset;
+        return defaultPreset;
     }
 
 
