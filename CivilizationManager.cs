@@ -2635,8 +2635,33 @@ break; // Only propose one alliance per turn
             return -1;
         }
 
-        int result = candidates[UnityEngine.Random.Range(0, candidates.Count)];
-return result;
+        int spread = Mathf.Clamp(GameSetupData.selectedStartingSpread, 0, 2);
+        if (spread == 1 || occupied.Count == 0)
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+
+        int sampleCount = Mathf.Min(candidates.Count, spread == 2 ? 40 : 16);
+        int bestTile = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        int bestScore = spread == 2 ? int.MinValue : int.MaxValue;
+        for (int s = 0; s < sampleCount; s++)
+        {
+            int tileCandidate = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            int nearest = int.MaxValue;
+            foreach (int occ in occupied)
+            {
+                int d = ts != null ? ts.GetTileDistance(tileCandidate, occ) : 0;
+                if (d < nearest) nearest = d;
+            }
+
+            if (spread == 2)
+            {
+                if (nearest > bestScore) { bestScore = nearest; bestTile = tileCandidate; }
+            }
+            else
+            {
+                if (nearest < bestScore) { bestScore = nearest; bestTile = tileCandidate; }
+            }
+        }
+        return bestTile;
     }
 
     /// <summary>
