@@ -255,6 +255,7 @@ GameObject:
   - component: {fileID: 253166927051021250}
   - component: {fileID: 5478185167803027325}
   - component: {fileID: 3801824977754855485}
+  - component: {fileID: 4451390273943961709}
   m_Layer: 10
   m_Name: Planet Model
   m_TagString: Untagged
@@ -338,6 +339,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &4451390273943961709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3422204533714289333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8159b575ee3b3c44490b4df2e0593f83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewRenderTexture
+  previewCamera: {fileID: 5433544173430284001}
+  targetRawImage: {fileID: 0}
+  textureWidth: 2048
+  textureHeight: 2048
+  antiAliasing: 4
+  useHDR: 1
+  filterMode: 2
+  useMipMap: 1
+  cameraBackgroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
+  clearFlags: 1
 --- !u!1 &3523082564983676708
 GameObject:
   m_ObjectHideFlags: 0
@@ -408,8 +431,8 @@ MonoBehaviour:
   cloudRotationMultiplier: 1.25
   enableAtmosphereShell: 1
   atmosphereShellScale: 1.0416
-  atmosphereFalloff: 1
-  atmosphereIntensity: 0.56
+  atmosphereFalloff: 4
+  atmosphereIntensity: 1.21
   atmosphereRotationMultiplier: 0
   landDetailTexture: {fileID: 2800000, guid: eb7d0d76bff04bf498953bd946515768, type: 3}
   mountainDetailTexture: {fileID: 2800000, guid: 1d6d912c23d941141963ac1cc3b30b91, type: 3}
@@ -417,6 +440,16 @@ MonoBehaviour:
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
   roughnessDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
+  cloudNoiseTexture: {fileID: 2800000, guid: 35f7d9e7ec3c29446adb33629118b00b, type: 3}
+  volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
+  lavaCrackTexture: {fileID: 2800000, guid: 9cdf319a8ad3e9b4f8fc3579eb41b52d, type: 3}
+  lavaEmissiveTexture: {fileID: 2800000, guid: cb2e61627a3a2724d82ffd5f7fbd68bb, type: 3}
+  ashDetailTexture: {fileID: 2800000, guid: f98b640d71a1d0a41962a7aacdc5ae7a, type: 3}
+  volcanicRockStrength: 0.35
+  lavaCrackStrength: 0.65
+  lavaEmissionStrength: 2.2
+  lavaTextureScale: 10
+  ashDetailStrength: 0.25
   landDetailStrength: 0.18
   mountainDetailStrength: 0.22
   iceDetailStrength: 0.12
@@ -426,7 +459,7 @@ MonoBehaviour:
   enableBloom: 1
   bloomThreshold: 0.5
   bloomIntensity: 0.373
-  icosphereSubdivisions: 20
+  icosphereSubdivisions: 16
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
@@ -454,6 +487,13 @@ MonoBehaviour:
   brightness: 1.92
   seed: 0
   randomizeSeed: 1
+  autoConfigurePreviewRig: 1
+  cameraDistance: 4
+  cameraFov: 28
+  cameraLocalEuler: {x: 8, y: 0, z: 0}
+  keyLightEuler: {x: 25, y: -35, z: 0}
+  keyLightIntensity: 3
+  keyLightColor: {r: 1, g: 0.95, b: 0.88, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
@@ -504,7 +544,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 1
   m_FOVAxisMode: 0
@@ -535,7 +575,7 @@ Camera:
     serializedVersion: 2
     m_Bits: 1024
   m_RenderingPath: -1
-  m_TargetTexture: {fileID: 8400000, guid: 68355356938ed14468a3a412e4cb3efe, type: 2}
+  m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
   m_HDR: 0
