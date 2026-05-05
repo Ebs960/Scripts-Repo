@@ -11,6 +11,11 @@ Shader "Custom/MenuPlanetClouds"
         _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
         _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
         _SunIntensity("Sun Intensity", Float) = 1.0
+        _CloudNoiseTex("Cloud Noise", 2D) = "white" {}
+        _CloudColor("Cloud Color", Color) = (1,1,1,1)
+        _CloudSoftness("Cloud Softness", Range(0,1)) = 0.45
+        _CloudShadowStrength("Cloud Shadow Strength", Range(0,1)) = 0.5
+        _Moisture("Moisture", Range(0,1)) = 0.5
     }
 
     SubShader
@@ -42,6 +47,7 @@ Shader "Custom/MenuPlanetClouds"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
+            TEXTURE2D(_CloudNoiseTex); SAMPLER(sampler_CloudNoiseTex);
 
             CBUFFER_START(UnityPerMaterial)
                 float _CloudDensity;
@@ -53,6 +59,10 @@ Shader "Custom/MenuPlanetClouds"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
+                float4 _CloudColor;
+                float _CloudSoftness;
+                float _CloudShadowStrength;
+                float _Moisture;
             CBUFFER_END
 
             struct Attributes
@@ -174,7 +184,8 @@ Shader "Custom/MenuPlanetClouds"
 
                 // ---- Color by planet type ----
                 // Normal: white clouds
-                float3 cloudColor = float3(1.0, 1.0, 1.0) * lerp(0.45, 1.0, sunSide);
+                float texNoise = SAMPLE_TEXTURE2D(_CloudNoiseTex, sampler_CloudNoiseTex, objNorm.xy * _CloudScale + _Time.y * 0.01).r;
+                float3 cloudColor = _CloudColor.rgb * lerp(0.45, 1.0, sunSide) * lerp(0.9,1.1,texNoise);
 
                 // Frozen: icy blue tint, thinner
                 float3 frozenCloud = float3(0.85, 0.92, 1.0) * lerp(0.35, 0.9, sunSide);

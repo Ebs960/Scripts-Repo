@@ -5,38 +5,48 @@ public class MenuPlanetPreviewRenderTexture : MonoBehaviour
 {
     [SerializeField] private Camera previewCamera;
     [SerializeField] private RawImage targetRawImage;
-    [SerializeField] private int textureWidth = 1024;
-    [SerializeField] private int textureHeight = 1024;
+    [SerializeField] private int textureWidth = 2048;
+    [SerializeField] private int textureHeight = 2048;
     [SerializeField] private int antiAliasing = 4;
     [SerializeField] private bool useHDR = true;
+    [SerializeField] private FilterMode filterMode = FilterMode.Bilinear;
+    [SerializeField] private bool useMipMap = false;
+    [SerializeField] private Color cameraBackgroundColor = new Color(0.005f, 0.008f, 0.018f, 1f);
+    [SerializeField] private CameraClearFlags clearFlags = CameraClearFlags.SolidColor;
 
     private RenderTexture previewTexture;
+    private void Awake() => RebuildRenderTexture();
 
-    private void Awake()
+    private void OnEnable() => RebuildRenderTexture();
+
+    private void OnValidate()
     {
-        SetupRenderTexture();
+        if (!isActiveAndEnabled) return;
+        RebuildRenderTexture();
     }
 
-    private void SetupRenderTexture()
+    public void RebuildRenderTexture()
     {
         if (previewCamera == null || targetRawImage == null) return;
 
-        if (previewTexture == null)
+        var format = useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.ARGB32;
+        previewTexture = new RenderTexture(textureWidth, textureHeight, 24, format)
         {
-            var format = useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.ARGB32;
-            previewTexture = new RenderTexture(textureWidth, textureHeight, 24, format)
-            {
-                name = "MenuPlanetPreview_RT",
-                antiAliasing = Mathf.Max(1, antiAliasing)
-            };
-            previewTexture.Create();
-        }
+            name = "MenuPlanetPreview_RT",
+            antiAliasing = Mathf.Clamp(antiAliasing, 1, 8),
+            filterMode = filterMode,
+            useMipMap = useMipMap,
+            autoGenerateMips = useMipMap
+        };
+        previewTexture.Create();
 
+        previewCamera.clearFlags = clearFlags;
+        previewCamera.backgroundColor = cameraBackgroundColor;
         previewCamera.targetTexture = previewTexture;
         targetRawImage.texture = previewTexture;
     }
 
-    private void OnDestroy()
+    private void ReleaseTexture()
     {
         if (previewCamera != null && previewCamera.targetTexture == previewTexture)
             previewCamera.targetTexture = null;
@@ -48,4 +58,6 @@ public class MenuPlanetPreviewRenderTexture : MonoBehaviour
             previewTexture = null;
         }
     }
+
+    private void OnDestroy() => ReleaseTexture();
 }

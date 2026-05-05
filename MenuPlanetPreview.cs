@@ -91,6 +91,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D oceanDetailTexture;
     [SerializeField] private Texture2D oceanNormalTexture;
     [SerializeField] private Texture2D roughnessDetailTexture;
+    [SerializeField] private Texture2D cloudNoiseTexture;
 
     [Header("Texture Detail Strengths")]
     [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.18f;
@@ -221,6 +222,15 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Randomize the planet seed on every Awake.")]
     [SerializeField] private bool randomizeSeed = true;
+    [SerializeField] private bool autoConfigurePreviewRig = true;
+    [SerializeField] private float cameraDistance = 4.0f;
+    [SerializeField] private float cameraFov = 28f;
+    [SerializeField] private Vector3 cameraLocalEuler = new Vector3(8f, 0f, 0f);
+    [SerializeField] private Vector3 keyLightEuler = new Vector3(25f, -35f, 0f);
+    [SerializeField] private float keyLightIntensity = 3.0f;
+    [SerializeField] private Color keyLightColor = new Color(1.0f, 0.95f, 0.88f, 1f);
+    private bool hasStoredRandomSeed;
+
 
     // -----------------------------------------------------------------
     //  Private state
@@ -288,6 +298,25 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_OceanNormalStrength = Shader.PropertyToID("_OceanNormalStrength");
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
     private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
+
+     private static readonly int ID_OceanShallowColor = Shader.PropertyToID("_OceanShallowColor");
+    private static readonly int ID_LandSmoothness = Shader.PropertyToID("_LandSmoothness");
+    private static readonly int ID_OceanSmoothness = Shader.PropertyToID("_OceanSmoothness");
+    private static readonly int ID_OceanSpecularStrength = Shader.PropertyToID("_OceanSpecularStrength");
+    private static readonly int ID_OceanFresnelStrength = Shader.PropertyToID("_OceanFresnelStrength");
+    private static readonly int ID_OceanFresnelColor = Shader.PropertyToID("_OceanFresnelColor");
+    private static readonly int ID_TerminatorSoftness = Shader.PropertyToID("_TerminatorSoftness");
+    private static readonly int ID_KeyLightDirectionWS = Shader.PropertyToID("_KeyLightDirectionWS");
+    private static readonly int ID_KeyLightColor = Shader.PropertyToID("_KeyLightColor");
+    private static readonly int ID_KeyLightIntensity = Shader.PropertyToID("_KeyLightIntensity");
+    private static readonly int ID_FillLightColor = Shader.PropertyToID("_FillLightColor");
+    private static readonly int ID_FillLightIntensity = Shader.PropertyToID("_FillLightIntensity");
+    private static readonly int ID_RimLightColor = Shader.PropertyToID("_RimLightColor");
+    private static readonly int ID_RimLightIntensity = Shader.PropertyToID("_RimLightIntensity");
+    private static readonly int ID_CloudColor = Shader.PropertyToID("_CloudColor");
+    private static readonly int ID_CloudNoiseTex = Shader.PropertyToID("_CloudNoiseTex");
+    private static readonly int ID_CloudSoftness = Shader.PropertyToID("_CloudSoftness");
+    private static readonly int ID_CloudShadowStrength = Shader.PropertyToID("_CloudShadowStrength");
 
 
 
@@ -453,7 +482,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ColorVibrancy, colorVibrancy);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
-        UpdateBiomeVisuals();
+        RecalculateDerivedVisuals();
 
         // Push detail params (old atmosphere props no longer pushed — handled by shell)
         materialInstance.SetFloat(ID_DetailScale, detailScale);
@@ -510,7 +539,7 @@ public class MenuPlanetPreview : MonoBehaviour
         {
             materialInstance.SetFloat(ID_LandScale,     landScale);
             materialInstance.SetFloat(ID_LandThreshold, landThreshold);
-            UpdateBiomeVisuals();
+            RecalculateDerivedVisuals();
         }
     }
 
@@ -525,7 +554,7 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null)
         {
             materialInstance.SetFloat(ID_Temperature, temperature);
-            UpdateBiomeVisuals();
+             RecalculateDerivedVisuals();
         }
         PushCloudParameters();
         PushAtmosphereParameters();
@@ -542,7 +571,7 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null)
         {
             materialInstance.SetFloat(ID_Moisture, moisture);
-            UpdateBiomeVisuals();
+            RecalculateDerivedVisuals();
         }
     }
 
@@ -558,8 +587,8 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null)
         {
             materialInstance.SetFloat(ID_Elevation, elevation);
-            UpdateBiomeVisuals();
-        }
+                RecalculateDerivedVisuals();
+            }
     }
 
     /// <summary>
@@ -642,18 +671,29 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null) { materialInstance.SetFloat(ID_BiomeBlend, biomeBlend); }
     }
 
-    public void SetWorldSeed(int worldSeed, bool randomSeed)
+public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = false)
     {
         randomizeSeed = randomSeed;
-        seed = randomSeed ? Random.Range(0f, 10000f) : Mathf.Abs(worldSeed % 100000);
+         if (!randomSeed)
+        {
+            seed = Mathf.Abs(worldSeed % 100000);
+            hasStoredRandomSeed = false;
+        }
+        else if (!hasStoredRandomSeed || forceReroll)
+        {
+            seed = Random.Range(0f, 10000f);
+            hasStoredRandomSeed = true;
+        }
         if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
-        UpdateBiomeVisuals();
+        RecalculateDerivedVisuals();
     }
+
+        public void RandomizePreviewSeed() => SetWorldSeed(Mathf.RoundToInt(seed), true, true);
 
     public void SetWaterwaysPreset(int preset)
     {
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
-        UpdateBiomeVisuals();
+        RecalculateDerivedVisuals();
         PushCloudParameters();
     }
 
@@ -666,7 +706,7 @@ public class MenuPlanetPreview : MonoBehaviour
         biomeNoiseScale = previewFidelity == 2 ? 6.2f : (previewFidelity == 1 ? 4.8f : 3.8f);
         biomeNoiseStrength = previewFidelity == 2 ? 0.135f : (previewFidelity == 1 ? 0.1f : 0.08f);
         displacementScale = previewFidelity == 2 ? 0.065f : (previewFidelity == 1 ? 0.05f : 0.04f);
-        UpdateBiomeVisuals();
+        RecalculateDerivedVisuals();
     }
 
     public void SetPlanetScaleMultiplier(float scaleMultiplier)
@@ -693,7 +733,7 @@ public class MenuPlanetPreview : MonoBehaviour
     // -----------------------------------------------------------------
     //  Biome tinting and derived visual parameters
     // -----------------------------------------------------------------
-    private void UpdateBiomeVisuals()
+    private void RecalculateDerivedVisuals()
     {
         if (materialInstance == null) return;
 
@@ -742,6 +782,31 @@ public class MenuPlanetPreview : MonoBehaviour
         // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);
         materialInstance.SetFloat(ID_DetailStrength, detailStrength);
+        Color oceanShallow = Color.Lerp(oceanColor, new Color(0.24f, 0.52f, 0.62f, 1f), Mathf.Clamp01(moisture * 0.7f + (1f - temperature) * 0.25f));
+        float infernal = Mathf.Clamp01((mapStyle - 0.35f) / 0.35f);
+        float demonic = Mathf.Clamp01((mapStyle - 0.75f) / 0.25f);
+        if (infernal > 0f) oceanShallow = Color.Lerp(oceanShallow, new Color(0.62f, 0.22f, 0.06f, 1f), infernal);
+        materialInstance.SetColor(ID_OceanShallowColor, oceanShallow);
+        materialInstance.SetFloat(ID_LandSmoothness, Mathf.Lerp(0.16f, 0.34f, moisture));
+        materialInstance.SetFloat(ID_OceanSmoothness, Mathf.Lerp(0.55f, 0.88f, 1f - infernal));
+        materialInstance.SetFloat(ID_OceanSpecularStrength, Mathf.Lerp(1.15f, 0.7f, infernal));
+        materialInstance.SetFloat(ID_OceanFresnelStrength, 0.6f);
+        materialInstance.SetColor(ID_OceanFresnelColor, Color.Lerp(new Color(0.5f,0.7f,0.9f,1f), new Color(1f,0.35f,0.2f,1f), infernal));
+        materialInstance.SetFloat(ID_TerminatorSoftness, 0.2f);
+        Vector3 ld = previewLight != null ? -previewLight.transform.forward : new Vector3(-0.5f,-0.7f,0.3f);
+        materialInstance.SetVector(ID_KeyLightDirectionWS, ld.normalized);
+        materialInstance.SetColor(ID_KeyLightColor, keyLightColor);
+        materialInstance.SetFloat(ID_KeyLightIntensity, keyLightIntensity);
+        materialInstance.SetColor(ID_FillLightColor, new Color(0.3f,0.36f,0.48f,1f));
+        materialInstance.SetFloat(ID_FillLightIntensity, 0.33f);
+        materialInstance.SetColor(ID_RimLightColor, Color.Lerp(new Color(0.32f,0.45f,0.64f,1f), new Color(0.85f,0.28f,0.22f,1f), infernal));
+        materialInstance.SetFloat(ID_RimLightIntensity, Mathf.Lerp(0.35f, 0.72f, demonic));
+        cloudDensity = Mathf.Clamp(0.25f + moisture * 0.3f + (waterwaysPreset==2?0.07f:waterwaysPreset==0?-0.08f:0f) + (temperature>0.8f&&moisture<0.3f?-0.12f:0f) - infernal*0.12f - demonic*0.2f,0f,0.65f);
+        atmosphereColor = Color.Lerp(new Color(0.56f,0.74f,0.95f,1f), new Color(0.9f,0.26f,0.12f,1f), infernal);
+        atmosphereColor = Color.Lerp(atmosphereColor, new Color(0.58f,0.12f,0.25f,1f), demonic);
+        atmosphereIntensity = Mathf.Clamp(Mathf.Lerp(0.9f,1.5f,moisture) + infernal*0.3f + demonic*0.35f,0.6f,1.9f);
+        PushCloudParameters();
+        PushAtmosphereParameters();
     }
 
     // -----------------------------------------------------------------
@@ -794,6 +859,10 @@ public class MenuPlanetPreview : MonoBehaviour
         cloudMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
         float waterwayCloud = waterwaysPreset == 2 ? 0.07f : (waterwaysPreset == 0 ? -0.07f : 0f);
         cloudMaterialInstance.SetFloat(ID_CloudDensity, Mathf.Clamp01(cloudDensity + waterwayCloud));
+                cloudMaterialInstance.SetTexture(ID_CloudNoiseTex, cloudNoiseTexture);
+        cloudMaterialInstance.SetColor(ID_CloudColor, temperature < 0.2f ? new Color(0.86f,0.92f,0.96f,1f) : (mapStyle > 0.75f ? new Color(0.32f,0.18f,0.18f,1f) : (mapStyle > 0.35f ? new Color(0.44f,0.36f,0.32f,1f) : new Color(0.9f,0.93f,0.96f,1f))));
+        cloudMaterialInstance.SetFloat(ID_CloudSoftness, 0.45f);
+        cloudMaterialInstance.SetFloat(ID_CloudShadowStrength, 0.5f);
     }
 
     // -----------------------------------------------------------------
@@ -1039,6 +1108,26 @@ public class MenuPlanetPreview : MonoBehaviour
         if (cam != null)
         {
             backgroundQuad.transform.rotation = Quaternion.LookRotation(cam.transform.position - backgroundQuad.transform.position);
+        }
+    }
+
+    private void ConfigurePreviewRig()
+    {
+        if (!autoConfigurePreviewRig) return;
+        if (previewCamera != null)
+        {
+            previewCamera.fieldOfView = cameraFov;
+            previewCamera.transform.localRotation = Quaternion.Euler(cameraLocalEuler);
+            previewCamera.transform.localPosition = -previewCamera.transform.forward * cameraDistance;
+            if (previewRenderer != null)
+                previewCamera.transform.LookAt(previewRenderer.bounds.center);
+        }
+        if (previewLight != null)
+        {
+            previewLight.type = LightType.Directional;
+            previewLight.transform.rotation = Quaternion.Euler(keyLightEuler);
+            previewLight.intensity = keyLightIntensity;
+            previewLight.color = keyLightColor;
         }
     }
 
