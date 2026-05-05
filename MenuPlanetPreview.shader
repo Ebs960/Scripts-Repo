@@ -54,6 +54,10 @@ Shader "Custom/MenuPlanetPreview"
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _OceanNormalTex("Ocean Normal", 2D) = "bump" {}
             _RoughnessDetailTex("Roughness Detail", 2D) = "gray" {}
+            _VolcanicRockTex("Volcanic Rock", 2D) = "gray" {}
+            _LavaCrackTex("Lava Crack", 2D) = "gray" {}
+            _LavaEmissiveTex("Lava Emissive", 2D) = "white" {}
+            _AshDetailTex("Ash Detail", 2D) = "gray" {}
             _LandDetailStrength("Land Detail Strength", Range(0,1)) = 0.18
             _MountainDetailStrength("Mountain Detail Strength", Range(0,1)) = 0.22
             _IceDetailStrength("Ice Detail Strength", Range(0,1)) = 0.12
@@ -61,6 +65,11 @@ Shader "Custom/MenuPlanetPreview"
             _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.35
             _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
             _UseDetailTextures("Use Detail Textures", Float) = 0
+            _VolcanicRockStrength("Volcanic Rock Strength", Range(0,1)) = 0.35
+            _LavaCrackStrength("Lava Crack Strength", Range(0,1)) = 0.65
+            _LavaEmissionStrength("Lava Emission Strength", Range(0,5)) = 2.2
+            _LavaTextureScale("Lava Texture Scale", Range(0.1,30)) = 10
+            _AshDetailStrength("Ash Detail Strength", Range(0,1)) = 0.25
     }
 
     SubShader
@@ -140,6 +149,11 @@ Shader "Custom/MenuPlanetPreview"
                 float _OceanNormalStrength;
                 float _TextureDetailScale;
                 float _UseDetailTextures;
+                float _VolcanicRockStrength;
+                float _LavaCrackStrength;
+                float _LavaEmissionStrength;
+                float _LavaTextureScale;
+                float _AshDetailStrength;
             CBUFFER_END
             TEXTURE2D(_LandDetailTex); SAMPLER(sampler_LandDetailTex);
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
@@ -147,6 +161,10 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_OceanDetailTex); SAMPLER(sampler_OceanDetailTex);
             TEXTURE2D(_OceanNormalTex); SAMPLER(sampler_OceanNormalTex);
             TEXTURE2D(_RoughnessDetailTex); SAMPLER(sampler_RoughnessDetailTex);
+            TEXTURE2D(_VolcanicRockTex); SAMPLER(sampler_VolcanicRockTex);
+            TEXTURE2D(_LavaCrackTex); SAMPLER(sampler_LavaCrackTex);
+            TEXTURE2D(_LavaEmissiveTex); SAMPLER(sampler_LavaEmissiveTex);
+            TEXTURE2D(_AshDetailTex); SAMPLER(sampler_AshDetailTex);
 
             float3 SampleTriplanar(TEXTURE2D_PARAM(tex, samp), float3 positionOS, float3 objNorm)
             {
@@ -156,6 +174,20 @@ Shader "Custom/MenuPlanetPreview"
                 float2 uvX = positionOS.yz * _TextureDetailScale;
                 float2 uvY = positionOS.xz * _TextureDetailScale;
                 float2 uvZ = positionOS.xy * _TextureDetailScale;
+                float3 sx = SAMPLE_TEXTURE2D(tex, samp, uvX).rgb;
+                float3 sy = SAMPLE_TEXTURE2D(tex, samp, uvY).rgb;
+                float3 sz = SAMPLE_TEXTURE2D(tex, samp, uvZ).rgb;
+                return sx * n.x + sy * n.y + sz * n.z;
+            }
+
+                        float3 SampleTriplanarScaled(TEXTURE2D_PARAM(tex, samp), float3 positionOS, float3 objNorm, float scale)
+            {
+                float3 n = abs(normalize(objNorm));
+                n = pow(n, 4.0);
+                n /= (n.x + n.y + n.z + 1e-5);
+                float2 uvX = positionOS.yz * scale;
+                float2 uvY = positionOS.xz * scale;
+                float2 uvZ = positionOS.xy * scale;
                 float3 sx = SAMPLE_TEXTURE2D(tex, samp, uvX).rgb;
                 float3 sy = SAMPLE_TEXTURE2D(tex, samp, uvY).rgb;
                 float3 sz = SAMPLE_TEXTURE2D(tex, samp, uvZ).rgb;
@@ -427,10 +459,8 @@ Shader "Custom/MenuPlanetPreview"
 
                 // _MapStyle: 0 = normal, 0.5 = infernal, 1.0 = demonic
                 float style = saturate(_MapStyle);
-                // infernal blend: ramps 0→1 over style 0.0→0.5
-                float infernal = saturate(style * 2.0);
-                // demonic blend: ramps 0→1 over style 0.5→1.0 (on top of infernal)
-                float demonic = saturate((style - 0.5) * 2.0);
+                float infernal = saturate((style -0.35)/0.35);
+                float demonic = saturate((style - 0.75)/0.25);
                 float timeVal = _Time.y;
 
                 // Sample noise at object-space position (seamless on sphere surface)
@@ -697,6 +727,33 @@ Shader "Custom/MenuPlanetPreview"
                 float3 albedo = lerp(normalAlbedo, hellAlbedo, infernal);
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
+                            float3 volcanicSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicRockTex, sampler_VolcanicRockTex), input.positionOS, objNorm, _LavaTextureScale);
+                float lavaMaskSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaCrackTex, sampler_LavaCrackTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float lavaEmissiveSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaEmissiveTex, sampler_LavaEmissiveTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float ashSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_AshDetailTex, sampler_AshDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float fallbackCrack = smoothstep(0.46, 0.50, noise3D(samplePos * 7.0 + float3(66.6, 13.1, 99.9) + seedOff));
+                float lavaMask = max(lavaMaskSample, fallbackCrack * 0.75);
+                float lavaEmissionMask = max(lavaEmissiveSample, lavaMask);
+                float volcanic = dot(volcanicSample, float3(0.333, 0.333, 0.333));
+                float landMask = saturate(edge * (1.0 - capMask * 0.35));
+                float crack = smoothstep(0.55, 0.9, lavaMask) * landMask * infernal * _LavaCrackStrength;
+                float emissiveCrack = crack * lavaEmissionMask;
+                float volcanicDarken = lerp(0.25, 0.55, volcanic);
+                float3 volcanicColor = lerp(albedo, albedo * volcanicDarken, _VolcanicRockStrength * infernal);
+                albedo = lerp(albedo, volcanicColor, infernal);
+                float ashMask = ashSample * _AshDetailStrength * infernal * saturate(0.4 + landMask + capMask * 0.4);
+                float ashGray = dot(albedo, float3(0.299, 0.587, 0.114));
+                albedo = lerp(albedo, float3(ashGray, ashGray, ashGray), ashMask * 0.35);
+
+                float roughMask = SampleTriplanar(TEXTURE2D_ARGS(_RoughnessDetailTex, sampler_RoughnessDetailTex), input.positionOS, objNorm).r;
+                float landSmooth = lerp(_Smoothness * 0.75, _Smoothness * 1.15, roughMask);
+                float oceanSmooth = lerp(0.85, 1.05, roughMask) * saturate(_Smoothness + 0.35);
+                float iceSmooth = lerp(0.35, 0.65, roughMask);
+                float mountainSmooth = landSmooth * 0.7;
+                float smoothnessMask = lerp(oceanSmooth, landSmooth, edge);
+                smoothnessMask = lerp(smoothnessMask, mountainSmooth, mtnBlend * edge);
+                smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
+
                 // ==============================================================
                 //  Unlit — output albedo directly, no directional lighting
                 //  Heightmap-driven shading: valleys darker, ridges brighter
@@ -708,6 +765,8 @@ Shader "Custom/MenuPlanetPreview"
                 // Combine: land gets height+slope shading, ocean stays uniform
                 float terrainShading = lerp(1.0, heightShade * slopeShade, edge);
                 float3 finalColor = albedo * terrainShading * _Brightness;
+                                float highlightBreakup = lerp(0.98, 1.04, smoothnessMask);
+                finalColor *= highlightBreakup;
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
 
                 // ==============================================================
@@ -728,6 +787,9 @@ Shader "Custom/MenuPlanetPreview"
                 finalColor += demonRiverColor * saturate(demonRiverMask) * demonic * 0.5;
                 finalColor += demonVentColor * demonVentMask * demonic * 0.7;
                 finalColor += demonLavaLake * hellLakeMask * demonic * 0.4;
+                float3 lavaColor = lerp(float3(1.0, 0.28, 0.05), float3(0.9, 0.02, 0.18), demonic);
+                float3 lavaTextureEmission = lavaColor * emissiveCrack * _LavaEmissionStrength;
+                finalColor += lavaTextureEmission;
 
                 // ==============================================================
                 //  Atmosphere rim glow

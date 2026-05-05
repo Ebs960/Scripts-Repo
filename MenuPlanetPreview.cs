@@ -93,6 +93,19 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D roughnessDetailTexture;
     [SerializeField] private Texture2D cloudNoiseTexture;
 
+        [Header("Infernal / Lava Textures")]
+    [SerializeField] private Texture2D volcanicRockTexture;
+    [SerializeField] private Texture2D lavaCrackTexture;
+    [SerializeField] private Texture2D lavaEmissiveTexture;
+    [SerializeField] private Texture2D ashDetailTexture;
+
+    [Header("Infernal / Lava Tuning")]
+    [SerializeField, Range(0f, 1f)] private float volcanicRockStrength = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float lavaCrackStrength = 0.65f;
+    [SerializeField, Range(0f, 5f)] private float lavaEmissionStrength = 2.2f;
+    [SerializeField, Range(0.1f, 30f)] private float lavaTextureScale = 10f;
+    [SerializeField, Range(0f, 1f)] private float ashDetailStrength = 0.25f;
+
     [Header("Texture Detail Strengths")]
     [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.18f;
     [SerializeField, Range(0f, 1f)] private float mountainDetailStrength = 0.22f;
@@ -299,6 +312,15 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
     private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
 
+    private static readonly int ID_VolcanicRockTex = Shader.PropertyToID("_VolcanicRockTex");
+    private static readonly int ID_LavaCrackTex = Shader.PropertyToID("_LavaCrackTex");
+    private static readonly int ID_LavaEmissiveTex = Shader.PropertyToID("_LavaEmissiveTex");
+    private static readonly int ID_AshDetailTex = Shader.PropertyToID("_AshDetailTex");
+    private static readonly int ID_VolcanicRockStrength = Shader.PropertyToID("_VolcanicRockStrength");
+    private static readonly int ID_LavaCrackStrength = Shader.PropertyToID("_LavaCrackStrength");
+    private static readonly int ID_LavaEmissionStrength = Shader.PropertyToID("_LavaEmissionStrength");
+    private static readonly int ID_LavaTextureScale = Shader.PropertyToID("_LavaTextureScale");
+    private static readonly int ID_AshDetailStrength = Shader.PropertyToID("_AshDetailStrength");
      private static readonly int ID_OceanShallowColor = Shader.PropertyToID("_OceanShallowColor");
     private static readonly int ID_LandSmoothness = Shader.PropertyToID("_LandSmoothness");
     private static readonly int ID_OceanSmoothness = Shader.PropertyToID("_OceanSmoothness");
@@ -410,6 +432,7 @@ public class MenuPlanetPreview : MonoBehaviour
             ApplyAllParameters();
             PushCloudParameters();
             PushAtmosphereParameters();
+            PushInfernalTextureParameters();
 
             // Update atmosphere shell scale at runtime
             if (atmosphereShellGO != null && previewRenderer != null)
@@ -498,6 +521,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_AmbientStrength, ambientStrength);
         materialInstance.SetFloat(ID_Brightness, brightness);
         PushDetailTextureParameters();
+        PushInfernalTextureParameters();
     }
 
     private void PushDetailTextureParameters()
@@ -521,6 +545,20 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
 
+    private void PushInfernalTextureParameters()
+    {
+        if (materialInstance == null) return;
+
+        materialInstance.SetTexture(ID_VolcanicRockTex, volcanicRockTexture);
+        materialInstance.SetTexture(ID_LavaCrackTex, lavaCrackTexture);
+        materialInstance.SetTexture(ID_LavaEmissiveTex, lavaEmissiveTexture);
+        materialInstance.SetTexture(ID_AshDetailTex, ashDetailTexture);
+        materialInstance.SetFloat(ID_VolcanicRockStrength, volcanicRockStrength);
+        materialInstance.SetFloat(ID_LavaCrackStrength, lavaCrackStrength);
+        materialInstance.SetFloat(ID_LavaEmissionStrength, lavaEmissionStrength);
+        materialInstance.SetFloat(ID_LavaTextureScale, lavaTextureScale);
+        materialInstance.SetFloat(ID_AshDetailStrength, ashDetailStrength);
+    }
     // -----------------------------------------------------------------
     //  Public API — called by UI sliders / MainMenuManager
     // -----------------------------------------------------------------
@@ -778,6 +816,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetFloat(ID_ColorVibrancy, Mathf.Clamp(colorVibrancy, 0.5f, 2f));
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, Mathf.Clamp01(moisture + waterwayWetness));
+        PushInfernalTextureParameters();
         
         // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);
