@@ -353,12 +353,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewRenderTexture
   previewCamera: {fileID: 5433544173430284001}
   targetRawImage: {fileID: 0}
-  textureWidth: 2048
-  textureHeight: 2048
+  textureWidth: 4096
+  textureHeight: 4096
   antiAliasing: 4
   useHDR: 1
-  filterMode: 2
-  useMipMap: 1
+  filterMode: 1
+  useMipMap: 0
   cameraBackgroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
   clearFlags: 1
 --- !u!1 &3523082564983676708
@@ -418,9 +418,9 @@ MonoBehaviour:
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 9
-  detailScale: 10000
-  detailStrength: 0.019
+  rotationSpeed: 14
+  detailScale: 28
+  detailStrength: 0.08
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.05
   enableCloudShell: 1
@@ -434,11 +434,14 @@ MonoBehaviour:
   atmosphereFalloff: 4
   atmosphereIntensity: 1.21
   atmosphereRotationMultiplier: 0
-  landDetailTexture: {fileID: 2800000, guid: eb7d0d76bff04bf498953bd946515768, type: 3}
+  landDetailTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
   mountainDetailTexture: {fileID: 2800000, guid: 1d6d912c23d941141963ac1cc3b30b91, type: 3}
   iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
+  landNormalTexture: {fileID: 2800000, guid: 7f9dbb35b6a417044bde86476b626336, type: 3}
+  mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
+  iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   roughnessDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   cloudNoiseTexture: {fileID: 2800000, guid: 35f7d9e7ec3c29446adb33629118b00b, type: 3}
   volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
@@ -450,15 +453,22 @@ MonoBehaviour:
   lavaEmissionStrength: 2.2
   lavaTextureScale: 10
   ashDetailStrength: 0.25
-  landDetailStrength: 0.18
+  landDetailStrength: 0.1
   mountainDetailStrength: 0.22
   iceDetailStrength: 0.12
-  oceanDetailStrength: 0.15
-  oceanNormalStrength: 0.35
+  oceanDetailStrength: 0.05
+  oceanNormalStrength: 0.1
+  landNormalStrength: 0.28
+  mountainNormalStrength: 0.12
+  iceNormalStrength: 0.22
   textureDetailScale: 8
+  showLandMaskOnly: 0
+  showDetailTexturesOnly: 0
+  showNormalsOnly: 0
+  disableCloudsForDebug: 0
   enableBloom: 1
-  bloomThreshold: 0.5
-  bloomIntensity: 0.373
+  bloomThreshold: 1.4
+  bloomIntensity: 0.18
   icosphereSubdivisions: 16
   landScale: 2
   landThreshold: 0.4
@@ -476,7 +486,7 @@ MonoBehaviour:
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 0.70980394}
   iceCapSize: 0.5
-  biomeBlend: 0.21
+  biomeBlend: 0.045
   biomeNoiseScale: 4
   biomeNoiseStrength: 0.2
   colorVibrancy: 1.5
@@ -484,7 +494,7 @@ MonoBehaviour:
   metallic: 0
   ambientOcclusion: 1
   ambientStrength: 0.269
-  brightness: 1.92
+  brightness: 1.12
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
@@ -492,7 +502,7 @@ MonoBehaviour:
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
-  keyLightIntensity: 3
+  keyLightIntensity: 2
   keyLightColor: {r: 1, g: 0.95, b: 0.88, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
