@@ -110,19 +110,43 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float ashDetailStrength = 0.25f;
 
     [Header("Texture Detail Strengths")]
-    [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.18f;
-    [SerializeField, Range(0f, 1f)] private float mountainDetailStrength = 0.22f;
+    [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.1f;
+    [SerializeField, Range(0f, 1f)] private float mountainDetailStrength = 0.14f;
     [SerializeField, Range(0f, 1f)] private float iceDetailStrength = 0.12f;
     [SerializeField, Range(0f, 1f)] private float oceanDetailStrength = 0.15f;
-    [SerializeField, Range(0f, 1f)] private float oceanNormalStrength = 0.35f;
-    [SerializeField, Range(0f, 1f)] private float landNormalStrength = 0.28f;
-    [SerializeField, Range(0f, 1f)] private float mountainNormalStrength = 0.36f;
+    [SerializeField, Range(0f, 1f)] private float oceanNormalStrength = 0.1f;
+    [SerializeField, Range(0f, 1f)] private float landNormalStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float mountainNormalStrength = 0.18f;
     [SerializeField, Range(0f, 1f)] private float iceNormalStrength = 0.22f;
     [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
+    [Header("Texture-Driven Biomes")]
+    [SerializeField] private bool useTextureDrivenBiomes = true;
+    [SerializeField] private Texture2D equatorialAlbedoTexture;
+    [SerializeField] private Texture2D subtropicalAlbedoTexture;
+    [SerializeField] private Texture2D temperateAlbedoTexture;
+    [SerializeField] private Texture2D borealAlbedoTexture;
+    [SerializeField] private Texture2D tundraAlbedoTexture;
+    [SerializeField] private Texture2D polarAlbedoTexture;
+    [SerializeField] private Texture2D equatorialNormalTexture;
+    [SerializeField] private Texture2D subtropicalNormalTexture;
+    [SerializeField] private Texture2D temperateNormalTexture;
+    [SerializeField] private Texture2D borealNormalTexture;
+    [SerializeField] private Texture2D tundraNormalTexture;
+    [SerializeField] private Texture2D polarNormalTexture;
+    [Header("Texture-Driven Biome Tuning")]
+    [SerializeField, Range(0f, 1f)] private float biomeTextureStrength = 0.75f;
+    [SerializeField, Range(0f, 1f)] private float biomeTintStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float biomeNormalStrength = 0.18f;
+    [SerializeField, Range(0.1f, 30f)] private float biomeTextureScale = 6.0f;
+    [SerializeField, Range(0f, 1f)] private float biomeTextureContrast = 0.18f;
     [Header("Debug")]
     [SerializeField] private bool showLandMaskOnly = false;
     [SerializeField] private bool showDetailTexturesOnly = false;
     [SerializeField] private bool showNormalsOnly = false;
+    [SerializeField] private bool showBiomeWeightsOnly = false;
+    [SerializeField] private bool showBiomeTextureOnly = false;
+    [SerializeField] private bool showBiomeTintOnly = false;
+    [SerializeField] private bool showSmoothnessOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
 
     [Header("HDRP Post-Processing")]
@@ -217,7 +241,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Range(0.5f, 2f)]
     [Tooltip("Color vibrancy boost. 1 = natural, >1 = more saturated.")]
-    [SerializeField] private float colorVibrancy = 1.3f;
+    [SerializeField] private float colorVibrancy = 1.1f;
 
     [Header("Surface Properties")]
     [Range(0f, 1f)]
@@ -238,7 +262,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Range(0.5f, 3f)]
     [Tooltip("Overall brightness multiplier for the planet surface. 1 = natural, higher = brighter.")]
-    [SerializeField] private float brightness = 1.4f;
+    [SerializeField] private float brightness = 1.12f;
 
     [Header("Seed")]
     [Tooltip("Planet noise seed. Randomized each play if randomizeSeed is true.")]
@@ -328,9 +352,31 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_IceNormalStrength = Shader.PropertyToID("_IceNormalStrength");
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
     private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
+    private static readonly int ID_UseTextureDrivenBiomes = Shader.PropertyToID("_UseTextureDrivenBiomes");
+    private static readonly int ID_EquatorialAlbedoTex = Shader.PropertyToID("_EquatorialAlbedoTex");
+    private static readonly int ID_SubtropicalAlbedoTex = Shader.PropertyToID("_SubtropicalAlbedoTex");
+    private static readonly int ID_TemperateAlbedoTex = Shader.PropertyToID("_TemperateAlbedoTex");
+    private static readonly int ID_BorealAlbedoTex = Shader.PropertyToID("_BorealAlbedoTex");
+    private static readonly int ID_TundraAlbedoTex = Shader.PropertyToID("_TundraAlbedoTex");
+    private static readonly int ID_PolarAlbedoTex = Shader.PropertyToID("_PolarAlbedoTex");
+    private static readonly int ID_EquatorialNormalTex = Shader.PropertyToID("_EquatorialNormalTex");
+    private static readonly int ID_SubtropicalNormalTex = Shader.PropertyToID("_SubtropicalNormalTex");
+    private static readonly int ID_TemperateNormalTex = Shader.PropertyToID("_TemperateNormalTex");
+    private static readonly int ID_BorealNormalTex = Shader.PropertyToID("_BorealNormalTex");
+    private static readonly int ID_TundraNormalTex = Shader.PropertyToID("_TundraNormalTex");
+    private static readonly int ID_PolarNormalTex = Shader.PropertyToID("_PolarNormalTex");
+    private static readonly int ID_BiomeTextureStrength = Shader.PropertyToID("_BiomeTextureStrength");
+    private static readonly int ID_BiomeTintStrength = Shader.PropertyToID("_BiomeTintStrength");
+    private static readonly int ID_BiomeNormalStrength = Shader.PropertyToID("_BiomeNormalStrength");
+    private static readonly int ID_BiomeTextureScale = Shader.PropertyToID("_BiomeTextureScale");
+    private static readonly int ID_BiomeTextureContrast = Shader.PropertyToID("_BiomeTextureContrast");
     private static readonly int ID_ShowLandMaskOnly = Shader.PropertyToID("_ShowLandMaskOnly");
     private static readonly int ID_ShowDetailTexturesOnly = Shader.PropertyToID("_ShowDetailTexturesOnly");
     private static readonly int ID_ShowNormalsOnly = Shader.PropertyToID("_ShowNormalsOnly");
+    private static readonly int ID_ShowBiomeWeightsOnly = Shader.PropertyToID("_ShowBiomeWeightsOnly");
+    private static readonly int ID_ShowBiomeTextureOnly = Shader.PropertyToID("_ShowBiomeTextureOnly");
+    private static readonly int ID_ShowBiomeTintOnly = Shader.PropertyToID("_ShowBiomeTintOnly");
+    private static readonly int ID_ShowSmoothnessOnly = Shader.PropertyToID("_ShowSmoothnessOnly");
 
     private static readonly int ID_VolcanicRockTex = Shader.PropertyToID("_VolcanicRockTex");
     private static readonly int ID_LavaCrackTex = Shader.PropertyToID("_LavaCrackTex");
@@ -557,6 +603,18 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
         materialInstance.SetTexture(ID_RoughnessDetailTex, roughnessDetailTexture);
+        materialInstance.SetTexture(ID_EquatorialAlbedoTex, equatorialAlbedoTexture);
+        materialInstance.SetTexture(ID_SubtropicalAlbedoTex, subtropicalAlbedoTexture);
+        materialInstance.SetTexture(ID_TemperateAlbedoTex, temperateAlbedoTexture);
+        materialInstance.SetTexture(ID_BorealAlbedoTex, borealAlbedoTexture);
+        materialInstance.SetTexture(ID_TundraAlbedoTex, tundraAlbedoTexture);
+        materialInstance.SetTexture(ID_PolarAlbedoTex, polarAlbedoTexture);
+        materialInstance.SetTexture(ID_EquatorialNormalTex, equatorialNormalTexture);
+        materialInstance.SetTexture(ID_SubtropicalNormalTex, subtropicalNormalTexture);
+        materialInstance.SetTexture(ID_TemperateNormalTex, temperateNormalTexture);
+        materialInstance.SetTexture(ID_BorealNormalTex, borealNormalTexture);
+        materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
+        materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
         materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
         materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
         materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
@@ -566,12 +624,26 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_MountainNormalStrength, mountainNormalStrength);
         materialInstance.SetFloat(ID_IceNormalStrength, iceNormalStrength);
         materialInstance.SetFloat(ID_TextureDetailScale, textureDetailScale);
+        materialInstance.SetFloat(ID_UseTextureDrivenBiomes, useTextureDrivenBiomes ? 1f : 0f);
+        materialInstance.SetFloat(ID_BiomeTextureStrength, biomeTextureStrength);
+        materialInstance.SetFloat(ID_BiomeTintStrength, biomeTintStrength);
+        materialInstance.SetFloat(ID_BiomeNormalStrength, biomeNormalStrength);
+        materialInstance.SetFloat(ID_BiomeTextureScale, biomeTextureScale);
+        materialInstance.SetFloat(ID_BiomeTextureContrast, biomeTextureContrast);
         materialInstance.SetFloat(ID_ShowLandMaskOnly, showLandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDetailTexturesOnly, showDetailTexturesOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowNormalsOnly, showNormalsOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowBiomeWeightsOnly, showBiomeWeightsOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowBiomeTextureOnly, showBiomeTextureOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowBiomeTintOnly, showBiomeTintOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowSmoothnessOnly, showSmoothnessOnly ? 1f : 0f);
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null ||
-                          landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null;
+                          landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
+                          equatorialAlbedoTexture != null || subtropicalAlbedoTexture != null || temperateAlbedoTexture != null ||
+                          borealAlbedoTexture != null || tundraAlbedoTexture != null || polarAlbedoTexture != null ||
+                          equatorialNormalTexture != null || subtropicalNormalTexture != null || temperateNormalTexture != null ||
+                          borealNormalTexture != null || tundraNormalTexture != null || polarNormalTexture != null;
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
 
