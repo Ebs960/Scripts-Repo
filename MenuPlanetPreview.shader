@@ -28,7 +28,7 @@ Shader "Custom/MenuPlanetPreview"
             _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
             _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
             _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
-            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.15
+            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.1
         [Header(Seed)]
             _Seed("Planet Seed", Float) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
@@ -47,7 +47,7 @@ Shader "Custom/MenuPlanetPreview"
             _Metallic("Metallic", Range(0, 1)) = 0.0
             _AmbientOcclusion("Ambient Occlusion", Range(0, 1)) = 1.0
             _AmbientStrength("Ambient Strength", Range(0, 1)) = 0.12
-            _Brightness("Brightness", Range(0.5, 3.0)) = 1.4
+            _Brightness("Brightness", Range(0.5, 3.0)) = 1.12
             _LandDetailTex("Land Detail", 2D) = "gray" {}
             _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
@@ -61,16 +61,38 @@ Shader "Custom/MenuPlanetPreview"
             _LavaCrackTex("Lava Crack", 2D) = "gray" {}
             _LavaEmissiveTex("Lava Emissive", 2D) = "white" {}
             _AshDetailTex("Ash Detail", 2D) = "gray" {}
-            _LandDetailStrength("Land Detail Strength", Range(0,1)) = 0.18
-            _MountainDetailStrength("Mountain Detail Strength", Range(0,1)) = 0.22
+            _LandDetailStrength("Land Detail Strength", Range(0,1)) = 0.1
+            _MountainDetailStrength("Mountain Detail Strength", Range(0,1)) = 0.14
             _IceDetailStrength("Ice Detail Strength", Range(0,1)) = 0.12
             _OceanDetailStrength("Ocean Detail Strength", Range(0,1)) = 0.15
-            _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.35
-            _LandNormalStrength("Land Normal Strength", Range(0,1)) = 0.28
-            _MountainNormalStrength("Mountain Normal Strength", Range(0,1)) = 0.36
+            _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.1
+            _LandNormalStrength("Land Normal Strength", Range(0,1)) = 0.12
+            _MountainNormalStrength("Mountain Normal Strength", Range(0,1)) = 0.18
             _IceNormalStrength("Ice Normal Strength", Range(0,1)) = 0.22
             _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
             _UseDetailTextures("Use Detail Textures", Float) = 0
+            _UseTextureDrivenBiomes("Use Texture Driven Biomes", Float) = 1
+            _EquatorialAlbedoTex("Equatorial Albedo", 2D) = "gray" {}
+            _SubtropicalAlbedoTex("Subtropical Albedo", 2D) = "gray" {}
+            _TemperateAlbedoTex("Temperate Albedo", 2D) = "gray" {}
+            _BorealAlbedoTex("Boreal Albedo", 2D) = "gray" {}
+            _TundraAlbedoTex("Tundra Albedo", 2D) = "gray" {}
+            _PolarAlbedoTex("Polar Albedo", 2D) = "gray" {}
+            _EquatorialNormalTex("Equatorial Normal", 2D) = "bump" {}
+            _SubtropicalNormalTex("Subtropical Normal", 2D) = "bump" {}
+            _TemperateNormalTex("Temperate Normal", 2D) = "bump" {}
+            _BorealNormalTex("Boreal Normal", 2D) = "bump" {}
+            _TundraNormalTex("Tundra Normal", 2D) = "bump" {}
+            _PolarNormalTex("Polar Normal", 2D) = "bump" {}
+            _BiomeTextureStrength("Biome Texture Strength", Range(0,1)) = 0.75
+            _BiomeTintStrength("Biome Tint Strength", Range(0,1)) = 0.12
+            _BiomeNormalStrength("Biome Normal Strength", Range(0,1)) = 0.18
+            _BiomeTextureScale("Biome Texture Scale", Range(0.1,30)) = 6
+            _BiomeTextureContrast("Biome Texture Contrast", Range(0,1)) = 0.18
+            _ShowBiomeWeightsOnly("Show Biome Weights Only", Float) = 0
+            _ShowBiomeTextureOnly("Show Biome Texture Only", Float) = 0
+            _ShowBiomeTintOnly("Show Biome Tint Only", Float) = 0
+            _ShowSmoothnessOnly("Show Smoothness Only", Float) = 0
             _TerminatorSoftness("Terminator Softness", Range(0.05,1)) = 0.45
             _ShowLandMaskOnly("Show Land Mask Only", Float) = 0
             _ShowDetailTexturesOnly("Show Detail Textures Only", Float) = 0
@@ -162,6 +184,16 @@ Shader "Custom/MenuPlanetPreview"
                 float _IceNormalStrength;
                 float _TextureDetailScale;
                 float _UseDetailTextures;
+                float _UseTextureDrivenBiomes;
+                float _BiomeTextureStrength;
+                float _BiomeTintStrength;
+                float _BiomeNormalStrength;
+                float _BiomeTextureScale;
+                float _BiomeTextureContrast;
+                float _ShowBiomeWeightsOnly;
+                float _ShowBiomeTextureOnly;
+                float _ShowBiomeTintOnly;
+                float _ShowSmoothnessOnly;
                 float _TerminatorSoftness;
                 float _ShowLandMaskOnly;
                 float _ShowDetailTexturesOnly;
@@ -181,6 +213,18 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_MountainNormalTex); SAMPLER(sampler_MountainNormalTex);
             TEXTURE2D(_IceNormalTex); SAMPLER(sampler_IceNormalTex);
             TEXTURE2D(_RoughnessDetailTex); SAMPLER(sampler_RoughnessDetailTex);
+            TEXTURE2D(_EquatorialAlbedoTex); SAMPLER(sampler_EquatorialAlbedoTex);
+            TEXTURE2D(_SubtropicalAlbedoTex); SAMPLER(sampler_SubtropicalAlbedoTex);
+            TEXTURE2D(_TemperateAlbedoTex); SAMPLER(sampler_TemperateAlbedoTex);
+            TEXTURE2D(_BorealAlbedoTex); SAMPLER(sampler_BorealAlbedoTex);
+            TEXTURE2D(_TundraAlbedoTex); SAMPLER(sampler_TundraAlbedoTex);
+            TEXTURE2D(_PolarAlbedoTex); SAMPLER(sampler_PolarAlbedoTex);
+            TEXTURE2D(_EquatorialNormalTex); SAMPLER(sampler_EquatorialNormalTex);
+            TEXTURE2D(_SubtropicalNormalTex); SAMPLER(sampler_SubtropicalNormalTex);
+            TEXTURE2D(_TemperateNormalTex); SAMPLER(sampler_TemperateNormalTex);
+            TEXTURE2D(_BorealNormalTex); SAMPLER(sampler_BorealNormalTex);
+            TEXTURE2D(_TundraNormalTex); SAMPLER(sampler_TundraNormalTex);
+            TEXTURE2D(_PolarNormalTex); SAMPLER(sampler_PolarNormalTex);
             TEXTURE2D(_VolcanicRockTex); SAMPLER(sampler_VolcanicRockTex);
             TEXTURE2D(_LavaCrackTex); SAMPLER(sampler_LavaCrackTex);
             TEXTURE2D(_LavaEmissiveTex); SAMPLER(sampler_LavaEmissiveTex);
@@ -373,7 +417,7 @@ Shader "Custom/MenuPlanetPreview"
 
                 // Boost vibrancy: push colors away from gray toward their hue
                 float gray = dot(result, float3(0.299, 0.587, 0.114));
-                result = lerp(float3(gray, gray, gray), result, _ColorVibrancy);
+                result = lerp(float3(gray, gray, gray), result, lerp(1.0, _ColorVibrancy, 0.35));
 
                 return result;
             }
@@ -381,6 +425,40 @@ Shader "Custom/MenuPlanetPreview"
             float3 GetOceanColor(float temp)
             {
                 return _OceanColor.rgb;
+            }
+            struct BiomeWeights { float equatorial; float subtropical; float temperate; float boreal; float tundra; float polar; };
+            BiomeWeights GetBiomeWeights(float lat, float tempShift, float localMoist, float3 objNorm)
+            {
+                BiomeWeights w = (BiomeWeights)0;
+                float shift = clamp(tempShift * 0.6, -0.25, 0.25);
+                float3 seedOffset = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float latNoise = (fbm(objNorm * _BiomeNoiseScale + seedOffset + float3(55.5, 22.2, 88.8)) - 0.5) * _BiomeNoiseStrength * 2.0;
+                float sLat = lat - shift + latNoise;
+                float globalDry = pow(saturate(1.0 - _Moisture), 0.65);
+                float bandPush = globalDry * 0.42;
+                float e0 = 0.12 + bandPush; float e1 = 0.24 + bandPush * 0.78; float e2 = 0.42 + bandPush * 0.55; float e3 = 0.60 + bandPush * 0.28; float e4 = 0.80 + bandPush * 0.10;
+                float b = max(0.001, _BiomeBlend);
+                w.equatorial = 1.0 - smoothstep(e0 - b, e0 + b, sLat);
+                w.subtropical = smoothstep(e0 - b, e0 + b, sLat) * (1.0 - smoothstep(e1 - b, e1 + b, sLat));
+                w.temperate = smoothstep(e1 - b, e1 + b, sLat) * (1.0 - smoothstep(e2 - b, e2 + b, sLat));
+                w.boreal = smoothstep(e2 - b, e2 + b, sLat) * (1.0 - smoothstep(e3 - b, e3 + b, sLat));
+                w.tundra = smoothstep(e3 - b, e3 + b, sLat) * (1.0 - smoothstep(e4 - b, e4 + b, sLat));
+                w.polar = smoothstep(e4 - b, e4 + b, sLat);
+                return w;
+            }
+            float3 GetTextureBiomeAlbedo(BiomeWeights w, float3 colorBiome, float3 positionOS, float3 objNorm)
+            {
+                float3 eq = SampleTriplanarScaled(TEXTURE2D_ARGS(_EquatorialAlbedoTex, sampler_EquatorialAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 st = SampleTriplanarScaled(TEXTURE2D_ARGS(_SubtropicalAlbedoTex, sampler_SubtropicalAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 te = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateAlbedoTex, sampler_TemperateAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 bo = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealAlbedoTex, sampler_BorealAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_TundraAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_PolarAlbedoTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 texBiome = eq*w.equatorial + st*w.subtropical + te*w.temperate + bo*w.boreal + tu*w.tundra + po*w.polar;
+                float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
+                texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
+                float3 tintedTexture = lerp(texBiome, texBiome * colorBiome, _BiomeTintStrength);
+                return lerp(colorBiome, tintedTexture, _BiomeTextureStrength);
             }
 
             // -----------------------------------------------------------------
@@ -567,6 +645,9 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 // Biome color selected strictly by latitude, shifted by temperature
                 float3 landColor  = GetLandColor(latitude, tempShift, localMoist, objNorm);
+                BiomeWeights biomeWeights = GetBiomeWeights(latitude, tempShift, localMoist, objNorm);
+                float3 textureBiomeColor = GetTextureBiomeAlbedo(biomeWeights, landColor, input.positionOS, objNorm);
+                landColor = (_UseTextureDrivenBiomes > 0.5) ? textureBiomeColor : landColor;
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
                 float3 oceanColor = _OceanColor.rgb;
@@ -798,8 +879,16 @@ Shader "Custom/MenuPlanetPreview"
                 float3 landN = SampleTriplanar(TEXTURE2D_ARGS(_LandNormalTex, sampler_LandNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
                 float3 mtnN = SampleTriplanar(TEXTURE2D_ARGS(_MountainNormalTex, sampler_MountainNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
                 float3 iceN = SampleTriplanar(TEXTURE2D_ARGS(_IceNormalTex, sampler_IceNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 eqN = SampleTriplanarScaled(TEXTURE2D_ARGS(_EquatorialNormalTex, sampler_EquatorialNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 stN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SubtropicalNormalTex, sampler_SubtropicalNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 teN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateNormalTex, sampler_TemperateNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 boN = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealNormalTex, sampler_BorealNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_TundraNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_PolarNormalTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 biomeN = normalize(eqN*biomeWeights.equatorial + stN*biomeWeights.subtropical + teN*biomeWeights.temperate + boN*biomeWeights.boreal + tuN*biomeWeights.tundra + poN*biomeWeights.polar);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + landN), edge * _LandNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + mtnN), edge * mtnBlend * _MountainNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), capMask * _IceNormalStrength));
@@ -827,6 +916,10 @@ Shader "Custom/MenuPlanetPreview"
                     return float4(saturate(d), 1.0);
                 }
                 if (_ShowNormalsOnly > 0.5) return float4(surfN * 0.5 + 0.5, 1.0);
+                if (_ShowBiomeWeightsOnly > 0.5) return float4(saturate(float3(biomeWeights.equatorial + biomeWeights.polar * 0.5, biomeWeights.temperate + biomeWeights.subtropical * 0.5, biomeWeights.boreal + biomeWeights.tundra)), 1.0);
+                if (_ShowBiomeTextureOnly > 0.5) return float4(saturate(textureBiomeColor), 1.0);
+                if (_ShowBiomeTintOnly > 0.5) return float4(saturate(GetLandColor(latitude, tempShift, localMoist, objNorm)), 1.0);
+                if (_ShowSmoothnessOnly > 0.5) return float4(smoothnessMask.xxx, 1.0);
 
 // ==============================================================
                 //  Emissive additions (infernal + demonic)
