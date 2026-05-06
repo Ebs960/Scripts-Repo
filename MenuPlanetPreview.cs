@@ -90,6 +90,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D iceDetailTexture;
     [SerializeField] private Texture2D oceanDetailTexture;
     [SerializeField] private Texture2D oceanNormalTexture;
+    [SerializeField] private Texture2D landNormalTexture;
+    [SerializeField] private Texture2D mountainNormalTexture;
+    [SerializeField] private Texture2D iceNormalTexture;
     [SerializeField] private Texture2D roughnessDetailTexture;
     [SerializeField] private Texture2D cloudNoiseTexture;
 
@@ -112,7 +115,15 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float iceDetailStrength = 0.12f;
     [SerializeField, Range(0f, 1f)] private float oceanDetailStrength = 0.15f;
     [SerializeField, Range(0f, 1f)] private float oceanNormalStrength = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float landNormalStrength = 0.28f;
+    [SerializeField, Range(0f, 1f)] private float mountainNormalStrength = 0.36f;
+    [SerializeField, Range(0f, 1f)] private float iceNormalStrength = 0.22f;
     [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
+    [Header("Debug")]
+    [SerializeField] private bool showLandMaskOnly = false;
+    [SerializeField] private bool showDetailTexturesOnly = false;
+    [SerializeField] private bool showNormalsOnly = false;
+    [SerializeField] private bool disableCloudsForDebug = false;
 
     [Header("HDRP Post-Processing")]
     [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
@@ -303,14 +314,23 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
+    private static readonly int ID_LandNormalTex = Shader.PropertyToID("_LandNormalTex");
+    private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
+    private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
     private static readonly int ID_RoughnessDetailTex = Shader.PropertyToID("_RoughnessDetailTex");
     private static readonly int ID_LandDetailStrength = Shader.PropertyToID("_LandDetailStrength");
     private static readonly int ID_MountainDetailStrength = Shader.PropertyToID("_MountainDetailStrength");
     private static readonly int ID_IceDetailStrength = Shader.PropertyToID("_IceDetailStrength");
     private static readonly int ID_OceanDetailStrength = Shader.PropertyToID("_OceanDetailStrength");
     private static readonly int ID_OceanNormalStrength = Shader.PropertyToID("_OceanNormalStrength");
+    private static readonly int ID_LandNormalStrength = Shader.PropertyToID("_LandNormalStrength");
+    private static readonly int ID_MountainNormalStrength = Shader.PropertyToID("_MountainNormalStrength");
+    private static readonly int ID_IceNormalStrength = Shader.PropertyToID("_IceNormalStrength");
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
     private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
+    private static readonly int ID_ShowLandMaskOnly = Shader.PropertyToID("_ShowLandMaskOnly");
+    private static readonly int ID_ShowDetailTexturesOnly = Shader.PropertyToID("_ShowDetailTexturesOnly");
+    private static readonly int ID_ShowNormalsOnly = Shader.PropertyToID("_ShowNormalsOnly");
 
     private static readonly int ID_VolcanicRockTex = Shader.PropertyToID("_VolcanicRockTex");
     private static readonly int ID_LavaCrackTex = Shader.PropertyToID("_LavaCrackTex");
@@ -533,15 +553,25 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
+        materialInstance.SetTexture(ID_LandNormalTex, landNormalTexture);
+        materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
+        materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
         materialInstance.SetTexture(ID_RoughnessDetailTex, roughnessDetailTexture);
         materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
         materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
         materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
         materialInstance.SetFloat(ID_OceanDetailStrength, oceanDetailStrength);
         materialInstance.SetFloat(ID_OceanNormalStrength, oceanNormalStrength);
+        materialInstance.SetFloat(ID_LandNormalStrength, landNormalStrength);
+        materialInstance.SetFloat(ID_MountainNormalStrength, mountainNormalStrength);
+        materialInstance.SetFloat(ID_IceNormalStrength, iceNormalStrength);
         materialInstance.SetFloat(ID_TextureDetailScale, textureDetailScale);
+        materialInstance.SetFloat(ID_ShowLandMaskOnly, showLandMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowDetailTexturesOnly, showDetailTexturesOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowNormalsOnly, showNormalsOnly ? 1f : 0f);
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
-                          oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null;
+                          oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null ||
+                          landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null;
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
 
@@ -890,6 +920,11 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     private void PushCloudParameters()
     {
         if (cloudMaterialInstance == null) return;
+        if (disableCloudsForDebug)
+        {
+            cloudMaterialInstance.SetFloat(ID_CloudDensity, 0f);
+            return;
+        }
         cloudMaterialInstance.SetFloat(ID_CloudDensity, cloudDensity);
         cloudMaterialInstance.SetFloat(ID_CloudScale, cloudScale);
         cloudMaterialInstance.SetFloat(ID_CloudSpeed, cloudSpeed);
