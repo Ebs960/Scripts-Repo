@@ -53,6 +53,9 @@ Shader "Custom/MenuPlanetPreview"
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _OceanNormalTex("Ocean Normal", 2D) = "bump" {}
+            _LandNormalTex("Land Normal", 2D) = "bump" {}
+            _MountainNormalTex("Mountain Normal", 2D) = "bump" {}
+            _IceNormalTex("Ice Normal", 2D) = "bump" {}
             _RoughnessDetailTex("Roughness Detail", 2D) = "gray" {}
             _VolcanicRockTex("Volcanic Rock", 2D) = "gray" {}
             _LavaCrackTex("Lava Crack", 2D) = "gray" {}
@@ -63,8 +66,15 @@ Shader "Custom/MenuPlanetPreview"
             _IceDetailStrength("Ice Detail Strength", Range(0,1)) = 0.12
             _OceanDetailStrength("Ocean Detail Strength", Range(0,1)) = 0.15
             _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.35
+            _LandNormalStrength("Land Normal Strength", Range(0,1)) = 0.28
+            _MountainNormalStrength("Mountain Normal Strength", Range(0,1)) = 0.36
+            _IceNormalStrength("Ice Normal Strength", Range(0,1)) = 0.22
             _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
             _UseDetailTextures("Use Detail Textures", Float) = 0
+            _TerminatorSoftness("Terminator Softness", Range(0.05,1)) = 0.45
+            _ShowLandMaskOnly("Show Land Mask Only", Float) = 0
+            _ShowDetailTexturesOnly("Show Detail Textures Only", Float) = 0
+            _ShowNormalsOnly("Show Normals Only", Float) = 0
             _VolcanicRockStrength("Volcanic Rock Strength", Range(0,1)) = 0.35
             _LavaCrackStrength("Lava Crack Strength", Range(0,1)) = 0.65
             _LavaEmissionStrength("Lava Emission Strength", Range(0,5)) = 2.2
@@ -147,8 +157,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _IceDetailStrength;
                 float _OceanDetailStrength;
                 float _OceanNormalStrength;
+                float _LandNormalStrength;
+                float _MountainNormalStrength;
+                float _IceNormalStrength;
                 float _TextureDetailScale;
                 float _UseDetailTextures;
+                float _TerminatorSoftness;
+                float _ShowLandMaskOnly;
+                float _ShowDetailTexturesOnly;
+                float _ShowNormalsOnly;
                 float _VolcanicRockStrength;
                 float _LavaCrackStrength;
                 float _LavaEmissionStrength;
@@ -160,6 +177,9 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_IceDetailTex); SAMPLER(sampler_IceDetailTex);
             TEXTURE2D(_OceanDetailTex); SAMPLER(sampler_OceanDetailTex);
             TEXTURE2D(_OceanNormalTex); SAMPLER(sampler_OceanNormalTex);
+            TEXTURE2D(_LandNormalTex); SAMPLER(sampler_LandNormalTex);
+            TEXTURE2D(_MountainNormalTex); SAMPLER(sampler_MountainNormalTex);
+            TEXTURE2D(_IceNormalTex); SAMPLER(sampler_IceNormalTex);
             TEXTURE2D(_RoughnessDetailTex); SAMPLER(sampler_RoughnessDetailTex);
             TEXTURE2D(_VolcanicRockTex); SAMPLER(sampler_VolcanicRockTex);
             TEXTURE2D(_LavaCrackTex); SAMPLER(sampler_LavaCrackTex);
@@ -258,6 +278,23 @@ Shader "Custom/MenuPlanetPreview"
                     amp   *= 0.5;
                 }
                 return value;
+            }
+
+            float GetWarpedLandValue(float3 objNorm, float3 seedOff)
+            {
+                float3 broadP = objNorm * _LandScale;
+                float3 warpP = objNorm * max(0.4, _LandScale * 0.55);
+                float3 warp = float3(
+                    fbm(warpP + seedOff + float3(15.1, 42.2, 73.3)),
+                    fbm(warpP + seedOff + float3(66.4, 24.8, 11.5)),
+                    fbm(warpP + seedOff + float3(93.7, 57.9, 31.2))
+                ) - 0.5;
+                float3 warped = broadP + warp * lerp(0.25, 0.55, saturate(_LandScale / 5.0));
+                float baseLand = fbm(warped + float3(42.3, 17.1, 83.7) + seedOff);
+                float coastNoise = fbm(warped * 3.75 + float3(9.4, 51.8, 27.6) + seedOff) - 0.5;
+                float coastBand = 1.0 - smoothstep(0.03, 0.16, abs(baseLand - _LandThreshold));
+                float coastPerturb = coastNoise * coastBand * 0.22;
+                return baseLand + coastPerturb;
             }
 
             // -----------------------------------------------------------------
@@ -390,7 +427,7 @@ Shader "Custom/MenuPlanetPreview"
             {
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 samplePos = objNorm * _LandScale;
-                float n = fbm(samplePos + float3(42.3, 17.1, 83.7) + seedOff);
+                float n = GetWarpedLandValue(objNorm, seedOff);
 
                 // Wide transition (0.12 each side) so coastlines are gentle slopes, not cliffs
                 float edge = smoothstep(_LandThreshold - 0.12, _LandThreshold + 0.12, n);
@@ -467,7 +504,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 objNorm = normalize(input.positionOS);
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 samplePos = objNorm * _LandScale;
-                float n = fbm(samplePos + float3(42.3, 17.1, 83.7) + seedOff);
+                float n = GetWarpedLandValue(objNorm, seedOff);
 
                 // Soft edge between land and ocean
                 float edge = smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
@@ -755,21 +792,43 @@ Shader "Custom/MenuPlanetPreview"
                 smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
 
                 // ==============================================================
-                //  Unlit — output albedo directly, no directional lighting
-                //  Heightmap-driven shading: valleys darker, ridges brighter
+                //  Custom lighting using blended triplanar normals
                 // ==============================================================
-                // Height-based brightness: low terrain dims, peaks brighten
-                float heightShade = lerp(0.72, 1.0, saturate(terrainHeight * 2.5));
-                // Slope darkening: steep faces are shadowed crevices
-                float slopeShade = lerp(0.65, 1.0, slopeDot);
-                // Combine: land gets height+slope shading, ocean stays uniform
-                float terrainShading = lerp(1.0, heightShade * slopeShade, edge);
-                float3 finalColor = albedo * terrainShading * _Brightness;
-                                float highlightBreakup = lerp(0.98, 1.04, smoothnessMask);
-                finalColor *= highlightBreakup;
-                float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
+                float3 oceanN = SampleTriplanar(TEXTURE2D_ARGS(_OceanNormalTex, sampler_OceanNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 landN = SampleTriplanar(TEXTURE2D_ARGS(_LandNormalTex, sampler_LandNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 mtnN = SampleTriplanar(TEXTURE2D_ARGS(_MountainNormalTex, sampler_MountainNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 iceN = SampleTriplanar(TEXTURE2D_ARGS(_IceNormalTex, sampler_IceNormalTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 surfN = normal;
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + landN), edge * _LandNormalStrength));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + mtnN), edge * mtnBlend * _MountainNormalStrength));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), capMask * _IceNormalStrength));
 
-                // ==============================================================
+                float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
+                float3 L = normalize(float3(0.45,0.65,0.55));
+                float3 fillL = normalize(float3(-0.35,0.25,-0.9));
+                float ndl = saturate(dot(surfN, L));
+                ndl = smoothstep(0.0, max(0.01,_TerminatorSoftness), ndl);
+                float fill = saturate(dot(surfN, fillL)) * 0.35;
+                float3 lit = albedo * (ndl + fill + _AmbientStrength);
+                float3 H = normalize(L + viewDir);
+                float specN = saturate(dot(surfN, H));
+                float oceanSpec = pow(specN, lerp(24,120,saturate(smoothnessMask))) * (1.0-edge) * 0.9;
+                float iceSpec = pow(specN, 36) * capMask * 0.25;
+                lit += oceanSpec + iceSpec;
+                float3 finalColor = lit * _Brightness;
+
+                if (_ShowLandMaskOnly > 0.5) return float4(edge.xxx, 1.0);
+                if (_ShowDetailTexturesOnly > 0.5)
+                {
+                    float3 d = float3(0,0,0);
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_LandDetailTex, sampler_LandDetailTex), input.positionOS, objNorm) * edge;
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_OceanDetailTex), input.positionOS, objNorm) * (1.0-edge);
+                    return float4(saturate(d), 1.0);
+                }
+                if (_ShowNormalsOnly > 0.5) return float4(surfN * 0.5 + 0.5, 1.0);
+
+// ==============================================================
                 //  Emissive additions (infernal + demonic)
                 // ==============================================================
                 float3 lavaEmit = GetLavaOceanColor(samplePos, timeVal);
