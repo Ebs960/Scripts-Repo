@@ -119,24 +119,42 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float mountainNormalStrength = 0.18f;
     [SerializeField, Range(0f, 1f)] private float iceNormalStrength = 0.22f;
     [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
-    [Header("Texture-Driven Biomes")]
+    [Header("Texture-Driven Surface Biomes")]
     [SerializeField] private bool useTextureDrivenBiomes = true;
-    [SerializeField] private Texture2D equatorialAlbedoTexture;
-    [SerializeField] private Texture2D subtropicalAlbedoTexture;
-    [SerializeField] private Texture2D temperateAlbedoTexture;
-    [SerializeField] private Texture2D borealAlbedoTexture;
+    [Header("Biome Albedo Textures")]
+    [SerializeField] private Texture2D jungleAlbedoTexture;
+    [SerializeField] private Texture2D desertAlbedoTexture;
+    [SerializeField] private Texture2D savannaAlbedoTexture;
+    [SerializeField] private Texture2D temperateGrassAlbedoTexture;
+    [SerializeField] private Texture2D temperateForestAlbedoTexture;
+    [SerializeField] private Texture2D borealForestAlbedoTexture;
     [SerializeField] private Texture2D tundraAlbedoTexture;
     [SerializeField] private Texture2D polarAlbedoTexture;
-    [SerializeField] private Texture2D equatorialNormalTexture;
-    [SerializeField] private Texture2D subtropicalNormalTexture;
-    [SerializeField] private Texture2D temperateNormalTexture;
-    [SerializeField] private Texture2D borealNormalTexture;
+    [SerializeField] private Texture2D marshAlbedoTexture;
+    [Header("Biome Normal Textures")]
+    [SerializeField] private Texture2D jungleNormalTexture;
+    [SerializeField] private Texture2D desertNormalTexture;
+    [SerializeField] private Texture2D savannaNormalTexture;
+    [SerializeField] private Texture2D temperateGrassNormalTexture;
+    [SerializeField] private Texture2D temperateForestNormalTexture;
+    [SerializeField] private Texture2D borealForestNormalTexture;
     [SerializeField] private Texture2D tundraNormalTexture;
     [SerializeField] private Texture2D polarNormalTexture;
+    [SerializeField] private Texture2D marshNormalTexture;
+    [Header("Biome Roughness / Data Textures")]
+    [SerializeField] private Texture2D jungleRoughnessTexture;
+    [SerializeField] private Texture2D desertRoughnessTexture;
+    [SerializeField] private Texture2D savannaRoughnessTexture;
+    [SerializeField] private Texture2D temperateGrassRoughnessTexture;
+    [SerializeField] private Texture2D temperateForestRoughnessTexture;
+    [SerializeField] private Texture2D borealForestRoughnessTexture;
+    [SerializeField] private Texture2D tundraRoughnessTexture;
+    [SerializeField] private Texture2D polarRoughnessTexture;
+    [SerializeField] private Texture2D marshRoughnessTexture;
     [Header("Texture-Driven Biome Tuning")]
-    [SerializeField, Range(0f, 1f)] private float biomeTextureStrength = 0.75f;
-    [SerializeField, Range(0f, 1f)] private float biomeTintStrength = 0.12f;
-    [SerializeField, Range(0f, 1f)] private float biomeNormalStrength = 0.18f;
+    [SerializeField, Range(0f, 1f)] private float biomeTextureStrength = 0.8f;
+    [SerializeField, Range(0f, 1f)] private float biomeTintStrength = 0.1f;
+    [SerializeField, Range(0f, 1f)] private float biomeNormalStrength = 0.15f;
     [SerializeField, Range(0.1f, 30f)] private float biomeTextureScale = 6.0f;
     [SerializeField, Range(0f, 1f)] private float biomeTextureContrast = 0.18f;
     [Header("Debug")]
@@ -357,18 +375,33 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
     private static readonly int ID_UseDetailTextures = Shader.PropertyToID("_UseDetailTextures");
     private static readonly int ID_UseTextureDrivenBiomes = Shader.PropertyToID("_UseTextureDrivenBiomes");
-    private static readonly int ID_EquatorialAlbedoTex = Shader.PropertyToID("_EquatorialAlbedoTex");
-    private static readonly int ID_SubtropicalAlbedoTex = Shader.PropertyToID("_SubtropicalAlbedoTex");
-    private static readonly int ID_TemperateAlbedoTex = Shader.PropertyToID("_TemperateAlbedoTex");
-    private static readonly int ID_BorealAlbedoTex = Shader.PropertyToID("_BorealAlbedoTex");
+    private static readonly int ID_JungleAlbedoTex = Shader.PropertyToID("_JungleAlbedoTex");
+    private static readonly int ID_DesertAlbedoTex = Shader.PropertyToID("_DesertAlbedoTex");
+    private static readonly int ID_SavannaAlbedoTex = Shader.PropertyToID("_SavannaAlbedoTex");
+    private static readonly int ID_TemperateGrassAlbedoTex = Shader.PropertyToID("_TemperateGrassAlbedoTex");
+    private static readonly int ID_TemperateForestAlbedoTex = Shader.PropertyToID("_TemperateForestAlbedoTex");
+    private static readonly int ID_BorealForestAlbedoTex = Shader.PropertyToID("_BorealForestAlbedoTex");
     private static readonly int ID_TundraAlbedoTex = Shader.PropertyToID("_TundraAlbedoTex");
     private static readonly int ID_PolarAlbedoTex = Shader.PropertyToID("_PolarAlbedoTex");
-    private static readonly int ID_EquatorialNormalTex = Shader.PropertyToID("_EquatorialNormalTex");
-    private static readonly int ID_SubtropicalNormalTex = Shader.PropertyToID("_SubtropicalNormalTex");
-    private static readonly int ID_TemperateNormalTex = Shader.PropertyToID("_TemperateNormalTex");
-    private static readonly int ID_BorealNormalTex = Shader.PropertyToID("_BorealNormalTex");
+    private static readonly int ID_MarshAlbedoTex = Shader.PropertyToID("_MarshAlbedoTex");
+    private static readonly int ID_JungleNormalTex = Shader.PropertyToID("_JungleNormalTex");
+    private static readonly int ID_DesertNormalTex = Shader.PropertyToID("_DesertNormalTex");
+    private static readonly int ID_SavannaNormalTex = Shader.PropertyToID("_SavannaNormalTex");
+    private static readonly int ID_TemperateGrassNormalTex = Shader.PropertyToID("_TemperateGrassNormalTex");
+    private static readonly int ID_TemperateForestNormalTex = Shader.PropertyToID("_TemperateForestNormalTex");
+    private static readonly int ID_BorealForestNormalTex = Shader.PropertyToID("_BorealForestNormalTex");
     private static readonly int ID_TundraNormalTex = Shader.PropertyToID("_TundraNormalTex");
     private static readonly int ID_PolarNormalTex = Shader.PropertyToID("_PolarNormalTex");
+    private static readonly int ID_MarshNormalTex = Shader.PropertyToID("_MarshNormalTex");
+    private static readonly int ID_JungleRoughnessTex = Shader.PropertyToID("_JungleRoughnessTex");
+    private static readonly int ID_DesertRoughnessTex = Shader.PropertyToID("_DesertRoughnessTex");
+    private static readonly int ID_SavannaRoughnessTex = Shader.PropertyToID("_SavannaRoughnessTex");
+    private static readonly int ID_TemperateGrassRoughnessTex = Shader.PropertyToID("_TemperateGrassRoughnessTex");
+    private static readonly int ID_TemperateForestRoughnessTex = Shader.PropertyToID("_TemperateForestRoughnessTex");
+    private static readonly int ID_BorealForestRoughnessTex = Shader.PropertyToID("_BorealForestRoughnessTex");
+    private static readonly int ID_TundraRoughnessTex = Shader.PropertyToID("_TundraRoughnessTex");
+    private static readonly int ID_PolarRoughnessTex = Shader.PropertyToID("_PolarRoughnessTex");
+    private static readonly int ID_MarshRoughnessTex = Shader.PropertyToID("_MarshRoughnessTex");
     private static readonly int ID_BiomeTextureStrength = Shader.PropertyToID("_BiomeTextureStrength");
     private static readonly int ID_BiomeTintStrength = Shader.PropertyToID("_BiomeTintStrength");
     private static readonly int ID_BiomeNormalStrength = Shader.PropertyToID("_BiomeNormalStrength");
@@ -541,6 +574,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.name = "MenuPlanetPreview_Instance";
         materialInstance.renderQueue = (int)RenderQueue.Geometry;
         previewRenderer.material = materialInstance;
+        PushBiomeTextureParameters();
     }
 
     private void ApplyAllParameters()
@@ -594,6 +628,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_AmbientStrength, ambientStrength);
         materialInstance.SetFloat(ID_Brightness, brightness);
         PushDetailTextureParameters();
+        PushBiomeTextureParameters();
         PushInfernalTextureParameters();
     }
 
@@ -610,18 +645,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
         materialInstance.SetTexture(ID_RoughnessDetailTex, roughnessDetailTexture);
-        materialInstance.SetTexture(ID_EquatorialAlbedoTex, equatorialAlbedoTexture);
-        materialInstance.SetTexture(ID_SubtropicalAlbedoTex, subtropicalAlbedoTexture);
-        materialInstance.SetTexture(ID_TemperateAlbedoTex, temperateAlbedoTexture);
-        materialInstance.SetTexture(ID_BorealAlbedoTex, borealAlbedoTexture);
-        materialInstance.SetTexture(ID_TundraAlbedoTex, tundraAlbedoTexture);
-        materialInstance.SetTexture(ID_PolarAlbedoTex, polarAlbedoTexture);
-        materialInstance.SetTexture(ID_EquatorialNormalTex, equatorialNormalTexture);
-        materialInstance.SetTexture(ID_SubtropicalNormalTex, subtropicalNormalTexture);
-        materialInstance.SetTexture(ID_TemperateNormalTex, temperateNormalTexture);
-        materialInstance.SetTexture(ID_BorealNormalTex, borealNormalTexture);
-        materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
-        materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
         materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
         materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
         materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
@@ -632,10 +655,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_IceNormalStrength, iceNormalStrength);
         materialInstance.SetFloat(ID_TextureDetailScale, textureDetailScale);
         materialInstance.SetFloat(ID_UseTextureDrivenBiomes, useTextureDrivenBiomes ? 1f : 0f);
-        materialInstance.SetFloat(ID_BiomeTextureStrength, biomeTextureStrength);
-        materialInstance.SetFloat(ID_BiomeTintStrength, biomeTintStrength);
-        materialInstance.SetFloat(ID_BiomeNormalStrength, biomeNormalStrength);
-        materialInstance.SetFloat(ID_BiomeTextureScale, biomeTextureScale);
         materialInstance.SetFloat(ID_BiomeTextureContrast, biomeTextureContrast);
         materialInstance.SetFloat(ID_ShowLandMaskOnly, showLandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDetailTexturesOnly, showDetailTexturesOnly ? 1f : 0f);
@@ -650,11 +669,49 @@ public class MenuPlanetPreview : MonoBehaviour
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null ||
                           landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
-                          equatorialAlbedoTexture != null || subtropicalAlbedoTexture != null || temperateAlbedoTexture != null ||
-                          borealAlbedoTexture != null || tundraAlbedoTexture != null || polarAlbedoTexture != null ||
-                          equatorialNormalTexture != null || subtropicalNormalTexture != null || temperateNormalTexture != null ||
-                          borealNormalTexture != null || tundraNormalTexture != null || polarNormalTexture != null;
+                          jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
+                          temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null || borealForestAlbedoTexture != null ||
+                          tundraAlbedoTexture != null || polarAlbedoTexture != null || marshAlbedoTexture != null ||
+                          jungleNormalTexture != null || desertNormalTexture != null || savannaNormalTexture != null ||
+                          temperateGrassNormalTexture != null || temperateForestNormalTexture != null || borealForestNormalTexture != null ||
+                          tundraNormalTexture != null || polarNormalTexture != null || marshNormalTexture != null;
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
+    }
+
+    private void PushBiomeTextureParameters()
+    {
+        if (materialInstance == null) return;
+        materialInstance.SetTexture(ID_JungleAlbedoTex, jungleAlbedoTexture);
+        materialInstance.SetTexture(ID_DesertAlbedoTex, desertAlbedoTexture);
+        materialInstance.SetTexture(ID_SavannaAlbedoTex, savannaAlbedoTexture);
+        materialInstance.SetTexture(ID_TemperateGrassAlbedoTex, temperateGrassAlbedoTexture);
+        materialInstance.SetTexture(ID_TemperateForestAlbedoTex, temperateForestAlbedoTexture);
+        materialInstance.SetTexture(ID_BorealForestAlbedoTex, borealForestAlbedoTexture);
+        materialInstance.SetTexture(ID_TundraAlbedoTex, tundraAlbedoTexture);
+        materialInstance.SetTexture(ID_PolarAlbedoTex, polarAlbedoTexture);
+        materialInstance.SetTexture(ID_MarshAlbedoTex, marshAlbedoTexture);
+        materialInstance.SetTexture(ID_JungleNormalTex, jungleNormalTexture);
+        materialInstance.SetTexture(ID_DesertNormalTex, desertNormalTexture);
+        materialInstance.SetTexture(ID_SavannaNormalTex, savannaNormalTexture);
+        materialInstance.SetTexture(ID_TemperateGrassNormalTex, temperateGrassNormalTexture);
+        materialInstance.SetTexture(ID_TemperateForestNormalTex, temperateForestNormalTexture);
+        materialInstance.SetTexture(ID_BorealForestNormalTex, borealForestNormalTexture);
+        materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
+        materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
+        materialInstance.SetTexture(ID_MarshNormalTex, marshNormalTexture);
+        materialInstance.SetTexture(ID_JungleRoughnessTex, jungleRoughnessTexture);
+        materialInstance.SetTexture(ID_DesertRoughnessTex, desertRoughnessTexture);
+        materialInstance.SetTexture(ID_SavannaRoughnessTex, savannaRoughnessTexture);
+        materialInstance.SetTexture(ID_TemperateGrassRoughnessTex, temperateGrassRoughnessTexture);
+        materialInstance.SetTexture(ID_TemperateForestRoughnessTex, temperateForestRoughnessTexture);
+        materialInstance.SetTexture(ID_BorealForestRoughnessTex, borealForestRoughnessTexture);
+        materialInstance.SetTexture(ID_TundraRoughnessTex, tundraRoughnessTexture);
+        materialInstance.SetTexture(ID_PolarRoughnessTex, polarRoughnessTexture);
+        materialInstance.SetTexture(ID_MarshRoughnessTex, marshRoughnessTexture);
+        materialInstance.SetFloat(ID_BiomeTextureStrength, biomeTextureStrength);
+        materialInstance.SetFloat(ID_BiomeTintStrength, biomeTintStrength);
+        materialInstance.SetFloat(ID_BiomeNormalStrength, biomeNormalStrength);
+        materialInstance.SetFloat(ID_BiomeTextureScale, biomeTextureScale);
     }
 
     private void PushInfernalTextureParameters()
