@@ -57,7 +57,12 @@ Shader "Custom/MenuPlanetPreview"
             _LandNormalTex("Land Normal", 2D) = "bump" {}
             _MountainNormalTex("Mountain Normal", 2D) = "bump" {}
             _IceNormalTex("Ice Normal", 2D) = "bump" {}
-            _RoughnessDetailTex("Roughness Detail", 2D) = "gray" {}
+            _SmoothnessDetailTex("Smoothness Detail", 2D) = "gray" {}
+            _OceanSmoothnessTex("Ocean Smoothness", 2D) = "gray" {}
+            _LandSmoothnessTex("Land Smoothness", 2D) = "gray" {}
+            _IceSmoothnessTex("Ice Smoothness", 2D) = "gray" {}
+            _MarshSmoothnessTex("Marsh/Wetland Smoothness", 2D) = "gray" {}
+            _VolcanicSmoothnessTex("Volcanic/Lava Smoothness", 2D) = "gray" {}
             _VolcanicRockTex("Volcanic Rock", 2D) = "gray" {}
             _LavaCrackTex("Lava Crack", 2D) = "gray" {}
             _LavaEmissiveTex("Lava Emissive", 2D) = "white" {}
@@ -226,7 +231,12 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_LandNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
-            TEXTURE2D(_RoughnessDetailTex);
+            TEXTURE2D(_SmoothnessDetailTex);
+            TEXTURE2D(_OceanSmoothnessTex);
+            TEXTURE2D(_LandSmoothnessTex);
+            TEXTURE2D(_IceSmoothnessTex);
+            TEXTURE2D(_MarshSmoothnessTex);
+            TEXTURE2D(_VolcanicSmoothnessTex);
             TEXTURE2D(_JungleAlbedoTex);
             TEXTURE2D(_DesertAlbedoTex);
             TEXTURE2D(_SavannaAlbedoTex);
@@ -896,14 +906,28 @@ Shader "Custom/MenuPlanetPreview"
                 float ashGray = dot(albedo, float3(0.299, 0.587, 0.114));
                 albedo = lerp(albedo, float3(ashGray, ashGray, ashGray), ashMask * 0.35);
 
-                float roughMask = SampleTriplanar(TEXTURE2D_ARGS(_RoughnessDetailTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
-                float landSmooth = lerp(_Smoothness * 0.75, _Smoothness * 1.15, roughMask);
-                float oceanSmooth = lerp(0.85, 1.05, roughMask) * saturate(_Smoothness + 0.35);
-                float iceSmooth = lerp(0.35, 0.65, roughMask);
-                float mountainSmooth = landSmooth * 0.7;
+                float globalSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_SmoothnessDetailTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
+                float oceanSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_OceanSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
+                float landSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_LandSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
+                float iceSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_IceSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
+                float marshSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
+                float volcanicSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float landBlendMask = saturate(lerp(globalSmoothMask, landSmoothMask, 0.75));
+                float oceanBlendMask = saturate(lerp(globalSmoothMask, oceanSmoothMask, 0.75));
+                float iceBlendMask = saturate(lerp(globalSmoothMask, iceSmoothMask, 0.75));
+                float marshWeight = saturate(biomeWeights.marsh);
+                float infernalWeight = saturate(infernal + demonic);
+                float landSmooth = lerp(_Smoothness * 0.70, _Smoothness * 0.95, landBlendMask);
+                float oceanSmooth = lerp(_Smoothness * 0.52, _Smoothness * 0.72, oceanBlendMask) * saturate(_Smoothness + 0.20);
+                float iceSmooth = lerp(_Smoothness * 0.38, _Smoothness * 0.58, iceBlendMask);
+                float marshSmooth = lerp(_Smoothness * 0.62, _Smoothness * 0.82, marshSmoothMask);
+                float volcanicSmooth = lerp(_Smoothness * 0.18, _Smoothness * 0.38, volcanicSmoothMask);
+                float mountainSmooth = landSmooth * 0.68;
                 float smoothnessMask = lerp(oceanSmooth, landSmooth, edge);
+                smoothnessMask = lerp(smoothnessMask, marshSmooth, marshWeight * edge);
                 smoothnessMask = lerp(smoothnessMask, mountainSmooth, mtnBlend * edge);
                 smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
+                smoothnessMask = lerp(smoothnessMask, volcanicSmooth, infernalWeight * edge);
 
                 // ==============================================================
                 //  Custom lighting using blended triplanar normals

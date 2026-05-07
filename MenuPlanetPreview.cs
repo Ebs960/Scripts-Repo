@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Visual-only planet preview for the Main Menu / Game Setup UI.
@@ -93,7 +94,13 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D landNormalTexture;
     [SerializeField] private Texture2D mountainNormalTexture;
     [SerializeField] private Texture2D iceNormalTexture;
-    [SerializeField] private Texture2D roughnessDetailTexture;
+    [FormerlySerializedAs("roughnessDetailTexture")]
+    [SerializeField] private Texture2D smoothnessDetailTexture;
+    [SerializeField] private Texture2D oceanSmoothnessTexture;
+    [SerializeField] private Texture2D landSmoothnessTexture;
+    [SerializeField] private Texture2D iceSmoothnessTexture;
+    [SerializeField] private Texture2D marshSurfaceSmoothnessTexture;
+    [SerializeField] private Texture2D volcanicSurfaceSmoothnessTexture;
     [SerializeField] private Texture2D cloudNoiseTexture;
 
         [Header("Infernal / Lava Textures")]
@@ -141,16 +148,16 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D tundraNormalTexture;
     [SerializeField] private Texture2D polarNormalTexture;
     [SerializeField] private Texture2D marshNormalTexture;
-    [Header("Biome Roughness / Data Textures")]
-    [SerializeField] private Texture2D jungleRoughnessTexture;
-    [SerializeField] private Texture2D desertRoughnessTexture;
-    [SerializeField] private Texture2D savannaRoughnessTexture;
-    [SerializeField] private Texture2D temperateGrassRoughnessTexture;
-    [SerializeField] private Texture2D temperateForestRoughnessTexture;
-    [SerializeField] private Texture2D borealForestRoughnessTexture;
-    [SerializeField] private Texture2D tundraRoughnessTexture;
-    [SerializeField] private Texture2D polarRoughnessTexture;
-    [SerializeField] private Texture2D marshRoughnessTexture;
+    [Header("Biome Smoothness / Data Textures")]
+    [SerializeField] private Texture2D jungleSmoothnessTexture;
+    [SerializeField] private Texture2D desertSmoothnessTexture;
+    [SerializeField] private Texture2D savannaSmoothnessTexture;
+    [SerializeField] private Texture2D temperateGrassSmoothnessTexture;
+    [SerializeField] private Texture2D temperateForestSmoothnessTexture;
+    [SerializeField] private Texture2D borealForestSmoothnessTexture;
+    [SerializeField] private Texture2D tundraSmoothnessTexture;
+    [SerializeField] private Texture2D polarSmoothnessTexture;
+    [SerializeField] private Texture2D marshSmoothnessTexture;
     [Header("Texture-Driven Biome Tuning")]
     [SerializeField, Range(0f, 1f)] private float biomeTextureStrength = 0.8f;
     [SerializeField, Range(0f, 1f)] private float biomeTintStrength = 0.1f;
@@ -363,7 +370,12 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_LandNormalTex = Shader.PropertyToID("_LandNormalTex");
     private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
     private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
-    private static readonly int ID_RoughnessDetailTex = Shader.PropertyToID("_RoughnessDetailTex");
+    private static readonly int ID_SmoothnessDetailTex = Shader.PropertyToID("_SmoothnessDetailTex");
+    private static readonly int ID_OceanSmoothnessTex = Shader.PropertyToID("_OceanSmoothnessTex");
+    private static readonly int ID_LandSmoothnessTex = Shader.PropertyToID("_LandSmoothnessTex");
+    private static readonly int ID_IceSmoothnessTex = Shader.PropertyToID("_IceSmoothnessTex");
+    private static readonly int ID_MarshSurfaceSmoothnessTex = Shader.PropertyToID("_MarshSmoothnessTex");
+    private static readonly int ID_VolcanicSurfaceSmoothnessTex = Shader.PropertyToID("_VolcanicSmoothnessTex");
     private static readonly int ID_LandDetailStrength = Shader.PropertyToID("_LandDetailStrength");
     private static readonly int ID_MountainDetailStrength = Shader.PropertyToID("_MountainDetailStrength");
     private static readonly int ID_IceDetailStrength = Shader.PropertyToID("_IceDetailStrength");
@@ -393,15 +405,15 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TundraNormalTex = Shader.PropertyToID("_TundraNormalTex");
     private static readonly int ID_PolarNormalTex = Shader.PropertyToID("_PolarNormalTex");
     private static readonly int ID_MarshNormalTex = Shader.PropertyToID("_MarshNormalTex");
-    private static readonly int ID_JungleRoughnessTex = Shader.PropertyToID("_JungleRoughnessTex");
-    private static readonly int ID_DesertRoughnessTex = Shader.PropertyToID("_DesertRoughnessTex");
-    private static readonly int ID_SavannaRoughnessTex = Shader.PropertyToID("_SavannaRoughnessTex");
-    private static readonly int ID_TemperateGrassRoughnessTex = Shader.PropertyToID("_TemperateGrassRoughnessTex");
-    private static readonly int ID_TemperateForestRoughnessTex = Shader.PropertyToID("_TemperateForestRoughnessTex");
-    private static readonly int ID_BorealForestRoughnessTex = Shader.PropertyToID("_BorealForestRoughnessTex");
-    private static readonly int ID_TundraRoughnessTex = Shader.PropertyToID("_TundraRoughnessTex");
-    private static readonly int ID_PolarRoughnessTex = Shader.PropertyToID("_PolarRoughnessTex");
-    private static readonly int ID_MarshRoughnessTex = Shader.PropertyToID("_MarshRoughnessTex");
+    private static readonly int ID_JungleSmoothnessTex = Shader.PropertyToID("_JungleSmoothnessTex");
+    private static readonly int ID_DesertSmoothnessTex = Shader.PropertyToID("_DesertSmoothnessTex");
+    private static readonly int ID_SavannaSmoothnessTex = Shader.PropertyToID("_SavannaSmoothnessTex");
+    private static readonly int ID_TemperateGrassSmoothnessTex = Shader.PropertyToID("_TemperateGrassSmoothnessTex");
+    private static readonly int ID_TemperateForestSmoothnessTex = Shader.PropertyToID("_TemperateForestSmoothnessTex");
+    private static readonly int ID_BorealForestSmoothnessTex = Shader.PropertyToID("_BorealForestSmoothnessTex");
+    private static readonly int ID_TundraSmoothnessTex = Shader.PropertyToID("_TundraSmoothnessTex");
+    private static readonly int ID_PolarSmoothnessTex = Shader.PropertyToID("_PolarSmoothnessTex");
+    private static readonly int ID_MarshSmoothnessTex = Shader.PropertyToID("_MarshSmoothnessTex");
     private static readonly int ID_BiomeTextureStrength = Shader.PropertyToID("_BiomeTextureStrength");
     private static readonly int ID_BiomeTintStrength = Shader.PropertyToID("_BiomeTintStrength");
     private static readonly int ID_BiomeNormalStrength = Shader.PropertyToID("_BiomeNormalStrength");
@@ -644,7 +656,12 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_LandNormalTex, landNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
-        materialInstance.SetTexture(ID_RoughnessDetailTex, roughnessDetailTexture);
+        materialInstance.SetTexture(ID_SmoothnessDetailTex, smoothnessDetailTexture);
+        materialInstance.SetTexture(ID_OceanSmoothnessTex, oceanSmoothnessTexture);
+        materialInstance.SetTexture(ID_LandSmoothnessTex, landSmoothnessTexture);
+        materialInstance.SetTexture(ID_IceSmoothnessTex, iceSmoothnessTexture);
+        materialInstance.SetTexture(ID_MarshSurfaceSmoothnessTex, marshSurfaceSmoothnessTexture);
+        materialInstance.SetTexture(ID_VolcanicSurfaceSmoothnessTex, volcanicSurfaceSmoothnessTexture);
         materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
         materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
         materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
@@ -667,7 +684,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
-                          oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null ||
+                          oceanDetailTexture != null || oceanNormalTexture != null || smoothnessDetailTexture != null ||
                           landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
                           jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
                           temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null || borealForestAlbedoTexture != null ||
@@ -699,15 +716,15 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
         materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
         materialInstance.SetTexture(ID_MarshNormalTex, marshNormalTexture);
-        materialInstance.SetTexture(ID_JungleRoughnessTex, jungleRoughnessTexture);
-        materialInstance.SetTexture(ID_DesertRoughnessTex, desertRoughnessTexture);
-        materialInstance.SetTexture(ID_SavannaRoughnessTex, savannaRoughnessTexture);
-        materialInstance.SetTexture(ID_TemperateGrassRoughnessTex, temperateGrassRoughnessTexture);
-        materialInstance.SetTexture(ID_TemperateForestRoughnessTex, temperateForestRoughnessTexture);
-        materialInstance.SetTexture(ID_BorealForestRoughnessTex, borealForestRoughnessTexture);
-        materialInstance.SetTexture(ID_TundraRoughnessTex, tundraRoughnessTexture);
-        materialInstance.SetTexture(ID_PolarRoughnessTex, polarRoughnessTexture);
-        materialInstance.SetTexture(ID_MarshRoughnessTex, marshRoughnessTexture);
+        materialInstance.SetTexture(ID_JungleSmoothnessTex, jungleSmoothnessTexture);
+        materialInstance.SetTexture(ID_DesertSmoothnessTex, desertSmoothnessTexture);
+        materialInstance.SetTexture(ID_SavannaSmoothnessTex, savannaSmoothnessTexture);
+        materialInstance.SetTexture(ID_TemperateGrassSmoothnessTex, temperateGrassSmoothnessTexture);
+        materialInstance.SetTexture(ID_TemperateForestSmoothnessTex, temperateForestSmoothnessTexture);
+        materialInstance.SetTexture(ID_BorealForestSmoothnessTex, borealForestSmoothnessTexture);
+        materialInstance.SetTexture(ID_TundraSmoothnessTex, tundraSmoothnessTexture);
+        materialInstance.SetTexture(ID_PolarSmoothnessTex, polarSmoothnessTexture);
+        materialInstance.SetTexture(ID_MarshSmoothnessTex, marshSmoothnessTexture);
         materialInstance.SetFloat(ID_BiomeTextureStrength, biomeTextureStrength);
         materialInstance.SetFloat(ID_BiomeTintStrength, biomeTintStrength);
         materialInstance.SetFloat(ID_BiomeNormalStrength, biomeNormalStrength);

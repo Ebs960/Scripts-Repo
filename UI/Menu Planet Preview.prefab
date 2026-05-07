@@ -442,7 +442,7 @@ MonoBehaviour:
   landNormalTexture: {fileID: 2800000, guid: 7f9dbb35b6a417044bde86476b626336, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
-  roughnessDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
+  smoothnessDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   cloudNoiseTexture: {fileID: 2800000, guid: 35f7d9e7ec3c29446adb33629118b00b, type: 3}
   volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
   lavaCrackTexture: {fileID: 2800000, guid: 9cdf319a8ad3e9b4f8fc3579eb41b52d, type: 3}
