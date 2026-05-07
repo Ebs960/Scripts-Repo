@@ -73,18 +73,24 @@ Shader "Custom/MenuPlanetPreview"
             _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
             _UseDetailTextures("Use Detail Textures", Float) = 0
             _UseTextureDrivenBiomes("Use Texture Driven Biomes", Float) = 1
-            _EquatorialAlbedoTex("Equatorial Albedo", 2D) = "gray" {}
-            _SubtropicalAlbedoTex("Subtropical Albedo", 2D) = "gray" {}
-            _TemperateAlbedoTex("Temperate Albedo", 2D) = "gray" {}
-            _BorealAlbedoTex("Boreal Albedo", 2D) = "gray" {}
+            _JungleAlbedoTex("Jungle Albedo", 2D) = "gray" {}
+            _DesertAlbedoTex("Desert Albedo", 2D) = "gray" {}
+            _SavannaAlbedoTex("Savanna Albedo", 2D) = "gray" {}
+            _TemperateGrassAlbedoTex("Temperate Grass Albedo", 2D) = "gray" {}
+            _TemperateForestAlbedoTex("Temperate Forest Albedo", 2D) = "gray" {}
+            _BorealForestAlbedoTex("Boreal Forest Albedo", 2D) = "gray" {}
             _TundraAlbedoTex("Tundra Albedo", 2D) = "gray" {}
             _PolarAlbedoTex("Polar Albedo", 2D) = "gray" {}
-            _EquatorialNormalTex("Equatorial Normal", 2D) = "bump" {}
-            _SubtropicalNormalTex("Subtropical Normal", 2D) = "bump" {}
-            _TemperateNormalTex("Temperate Normal", 2D) = "bump" {}
-            _BorealNormalTex("Boreal Normal", 2D) = "bump" {}
+            _MarshAlbedoTex("Marsh Albedo", 2D) = "gray" {}
+            _JungleNormalTex("Jungle Normal", 2D) = "bump" {}
+            _DesertNormalTex("Desert Normal", 2D) = "bump" {}
+            _SavannaNormalTex("Savanna Normal", 2D) = "bump" {}
+            _TemperateGrassNormalTex("Temperate Grass Normal", 2D) = "bump" {}
+            _TemperateForestNormalTex("Temperate Forest Normal", 2D) = "bump" {}
+            _BorealForestNormalTex("Boreal Forest Normal", 2D) = "bump" {}
             _TundraNormalTex("Tundra Normal", 2D) = "bump" {}
             _PolarNormalTex("Polar Normal", 2D) = "bump" {}
+            _MarshNormalTex("Marsh Normal", 2D) = "bump" {}
             _BiomeTextureStrength("Biome Texture Strength", Range(0,1)) = 0.75
             _BiomeTintStrength("Biome Tint Strength", Range(0,1)) = 0.12
             _BiomeNormalStrength("Biome Normal Strength", Range(0,1)) = 0.18
@@ -221,18 +227,24 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
             TEXTURE2D(_RoughnessDetailTex);
-            TEXTURE2D(_EquatorialAlbedoTex);
-            TEXTURE2D(_SubtropicalAlbedoTex);
-            TEXTURE2D(_TemperateAlbedoTex);
-            TEXTURE2D(_BorealAlbedoTex);
+            TEXTURE2D(_JungleAlbedoTex);
+            TEXTURE2D(_DesertAlbedoTex);
+            TEXTURE2D(_SavannaAlbedoTex);
+            TEXTURE2D(_TemperateGrassAlbedoTex);
+            TEXTURE2D(_TemperateForestAlbedoTex);
+            TEXTURE2D(_BorealForestAlbedoTex);
             TEXTURE2D(_TundraAlbedoTex);
             TEXTURE2D(_PolarAlbedoTex);
-            TEXTURE2D(_EquatorialNormalTex);
-            TEXTURE2D(_SubtropicalNormalTex);
-            TEXTURE2D(_TemperateNormalTex);
-            TEXTURE2D(_BorealNormalTex);
+            TEXTURE2D(_MarshAlbedoTex);
+            TEXTURE2D(_JungleNormalTex);
+            TEXTURE2D(_DesertNormalTex);
+            TEXTURE2D(_SavannaNormalTex);
+            TEXTURE2D(_TemperateGrassNormalTex);
+            TEXTURE2D(_TemperateForestNormalTex);
+            TEXTURE2D(_BorealForestNormalTex);
             TEXTURE2D(_TundraNormalTex);
             TEXTURE2D(_PolarNormalTex);
+            TEXTURE2D(_MarshNormalTex);
             TEXTURE2D(_VolcanicRockTex);
             TEXTURE2D(_LavaCrackTex);
             TEXTURE2D(_LavaEmissiveTex);
@@ -466,13 +478,16 @@ Shader "Custom/MenuPlanetPreview"
             }
             float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 colorBiome, float3 positionOS, float3 objNorm)
             {
-                float3 eq = SampleTriplanarScaled(TEXTURE2D_ARGS(_EquatorialAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 st = SampleTriplanarScaled(TEXTURE2D_ARGS(_SubtropicalAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 te = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 bo = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 ju = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 de = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 sa = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tg = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tf = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 bf = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealForestAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 texBiome = eq*(w.jungle + w.savanna*0.35) + st*(w.savanna + w.desert*0.25) + te*(w.temperateGrass + w.temperateForest*0.3) + bo*w.borealForest + tu*w.tundra + po*w.polar;
+                float3 ma = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + bf*w.borealForest + tu*w.tundra + po*w.polar + ma*w.marsh;
                 float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
                 texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
                 float3 tintedTexture = lerp(texBiome, texBiome * colorBiome, _BiomeTintStrength);
@@ -897,13 +912,16 @@ Shader "Custom/MenuPlanetPreview"
                 float3 landN = SampleTriplanar(TEXTURE2D_ARGS(_LandNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
                 float3 mtnN = SampleTriplanar(TEXTURE2D_ARGS(_MountainNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
                 float3 iceN = SampleTriplanar(TEXTURE2D_ARGS(_IceNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
-                float3 eqN = SampleTriplanarScaled(TEXTURE2D_ARGS(_EquatorialNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 stN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SubtropicalNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 teN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 boN = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 juN = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 deN = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 saN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tgN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 bfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealForestNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 biomeN = normalize(eqN*(biomeWeights.jungle + biomeWeights.savanna*0.35) + stN*(biomeWeights.savanna + biomeWeights.desert*0.25) + teN*(biomeWeights.temperateGrass + biomeWeights.temperateForest*0.3) + boN*biomeWeights.borealForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar);
+                float3 maN = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + bfN*biomeWeights.borealForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
