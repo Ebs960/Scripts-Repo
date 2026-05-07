@@ -903,7 +903,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 boN = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 biomeN = normalize(eqN*biomeWeights.equatorial + stN*biomeWeights.subtropical + teN*biomeWeights.temperate + boN*biomeWeights.boreal + tuN*biomeWeights.tundra + poN*biomeWeights.polar);
+                float3 biomeN = normalize(eqN*(biomeWeights.jungle + biomeWeights.savanna*0.35) + stN*(biomeWeights.savanna + biomeWeights.desert*0.25) + teN*(biomeWeights.temperateGrass + biomeWeights.temperateForest*0.3) + boN*biomeWeights.borealForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
