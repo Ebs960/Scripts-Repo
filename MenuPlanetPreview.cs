@@ -147,6 +147,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showBiomeTextureOnly = false;
     [SerializeField] private bool showBiomeTintOnly = false;
     [SerializeField] private bool showSmoothnessOnly = false;
+    [SerializeField] private bool showLocalMoistureOnly = false;
+    [SerializeField] private bool showWaterwaysOnly = false;
+    [SerializeField] private bool showWaterwayAmountOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
 
     [Header("HDRP Post-Processing")]
@@ -303,6 +306,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_LandThreshold = Shader.PropertyToID("_LandThreshold");
     private static readonly int ID_Temperature   = Shader.PropertyToID("_Temperature");
     private static readonly int ID_Moisture      = Shader.PropertyToID("_Moisture");
+    private static readonly int ID_WaterwayAmount = Shader.PropertyToID("_WaterwayAmount");
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
     private static readonly int ID_EquatorialColor = Shader.PropertyToID("_EquatorialColor");
@@ -377,6 +381,9 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowBiomeTextureOnly = Shader.PropertyToID("_ShowBiomeTextureOnly");
     private static readonly int ID_ShowBiomeTintOnly = Shader.PropertyToID("_ShowBiomeTintOnly");
     private static readonly int ID_ShowSmoothnessOnly = Shader.PropertyToID("_ShowSmoothnessOnly");
+    private static readonly int ID_ShowLocalMoistureOnly = Shader.PropertyToID("_ShowLocalMoistureOnly");
+    private static readonly int ID_ShowWaterwaysOnly = Shader.PropertyToID("_ShowWaterwaysOnly");
+    private static readonly int ID_ShowWaterwayAmountOnly = Shader.PropertyToID("_ShowWaterwayAmountOnly");
 
     private static readonly int ID_VolcanicRockTex = Shader.PropertyToID("_VolcanicRockTex");
     private static readonly int ID_LavaCrackTex = Shader.PropertyToID("_LavaCrackTex");
@@ -637,6 +644,9 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowBiomeTextureOnly, showBiomeTextureOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowBiomeTintOnly, showBiomeTintOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowSmoothnessOnly, showSmoothnessOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowLocalMoistureOnly, showLocalMoistureOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || oceanNormalTexture != null || roughnessDetailTexture != null ||
                           landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
@@ -702,7 +712,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     /// <summary>
     /// Set moisture (0 = dry / deserts,  1 = wet / lush).
-    /// Affects land saturation and optional lake speckles at high values.
+    /// Affects biome wetness/climate and cloudiness. Does not directly control visible river/lake count.
     /// </summary>
     public void SetMoisture(float value)
     {
@@ -896,7 +906,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
 
         // Snow factor is primarily temperature-driven but reinforced by elevation
         float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.8f);
-        float waterwayWetness = waterwaysPreset == 2 ? 0.10f : (waterwaysPreset == 0 ? -0.08f : 0f);
 
         materialInstance.SetFloat(ID_DesertFactor, desertFactor);
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
@@ -913,11 +922,13 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetColor(ID_OceanColor, oceanColor);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
-        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale * (waterwaysPreset == 2 ? 1.15f : 1f));
-        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength * (waterwaysPreset == 0 ? 0.9f : 1.05f));
+        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
+        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
         materialInstance.SetFloat(ID_ColorVibrancy, Mathf.Clamp(colorVibrancy, 0.5f, 2f));
         materialInstance.SetFloat(ID_Seed, seed);
-        materialInstance.SetFloat(ID_Moisture, Mathf.Clamp01(moisture + waterwayWetness));
+        materialInstance.SetFloat(ID_Moisture, moisture);
+        float waterwayAmount = waterwaysPreset == 0 ? 0.15f : (waterwaysPreset == 1 ? 0.55f : 1.0f);
+        materialInstance.SetFloat(ID_WaterwayAmount, waterwayAmount);
         PushInfernalTextureParameters();
         
         // Mirror detail props to shader so inspector updates apply immediately
@@ -942,7 +953,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetFloat(ID_FillLightIntensity, 0.33f);
         materialInstance.SetColor(ID_RimLightColor, Color.Lerp(new Color(0.32f,0.45f,0.64f,1f), new Color(0.85f,0.28f,0.22f,1f), infernal));
         materialInstance.SetFloat(ID_RimLightIntensity, Mathf.Lerp(0.35f, 0.72f, demonic));
-        cloudDensity = Mathf.Clamp(0.25f + moisture * 0.3f + (waterwaysPreset==2?0.07f:waterwaysPreset==0?-0.08f:0f) + (temperature>0.8f&&moisture<0.3f?-0.12f:0f) - infernal*0.12f - demonic*0.2f,0f,0.65f);
+        cloudDensity = Mathf.Clamp(0.25f + moisture * 0.3f + (waterwaysPreset==2?0.04f:waterwaysPreset==0?-0.03f:0f) + (temperature>0.8f&&moisture<0.3f?-0.12f:0f) - infernal*0.12f - demonic*0.2f,0f,0.65f);
         atmosphereColor = Color.Lerp(new Color(0.56f,0.74f,0.95f,1f), new Color(0.9f,0.26f,0.12f,1f), infernal);
         atmosphereColor = Color.Lerp(atmosphereColor, new Color(0.58f,0.12f,0.25f,1f), demonic);
         atmosphereIntensity = Mathf.Clamp(Mathf.Lerp(0.9f,1.5f,moisture) + infernal*0.3f + demonic*0.35f,0.6f,1.9f);
