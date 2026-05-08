@@ -120,12 +120,10 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float ashDetailStrength = 0.25f;
 
     [Header("Texture Detail Strengths")]
-    [SerializeField, Range(0f, 1f)] private float landDetailStrength = 0.1f;
     [SerializeField, Range(0f, 1f)] private float mountainDetailStrength = 0.14f;
     [SerializeField, Range(0f, 1f)] private float iceDetailStrength = 0.12f;
     [SerializeField, Range(0f, 1f)] private float oceanDetailStrength = 0.15f;
     [SerializeField, Range(0f, 1f)] private float oceanNormalStrength = 0.1f;
-    [SerializeField, Range(0f, 1f)] private float landNormalStrength = 0.12f;
     [SerializeField, Range(0f, 1f)] private float mountainNormalStrength = 0.18f;
     [SerializeField, Range(0f, 1f)] private float iceNormalStrength = 0.22f;
     [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
@@ -307,21 +305,13 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_WaterwayAmount = Shader.PropertyToID("_WaterwayAmount");
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
-    private static readonly int ID_EquatorialColor = Shader.PropertyToID("_EquatorialColor");
-    private static readonly int ID_DesertSand    = Shader.PropertyToID("_DesertSand");
-    private static readonly int ID_SubtropicalColor = Shader.PropertyToID("_SubtropicalColor");
-    private static readonly int ID_TemperateColor = Shader.PropertyToID("_TemperateColor");
-    private static readonly int ID_TundraColor   = Shader.PropertyToID("_TundraColor");
-    private static readonly int ID_PolarColor    = Shader.PropertyToID("_PolarColor");
     private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
     private static readonly int ID_MountainColor = Shader.PropertyToID("_MountainColor");
     private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
     private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
     private static readonly int ID_BiomeNoiseScale = Shader.PropertyToID("_BiomeNoiseScale");
     private static readonly int ID_BiomeNoiseStrength = Shader.PropertyToID("_BiomeNoiseStrength");
-    private static readonly int ID_ColorVibrancy = Shader.PropertyToID("_ColorVibrancy");
     private static readonly int ID_Seed          = Shader.PropertyToID("_Seed");
-    private static readonly int ID_BiomeTint     = Shader.PropertyToID("_BiomeTint");
     private static readonly int ID_DesertFactor  = Shader.PropertyToID("_DesertFactor");
     private static readonly int ID_TropicalFactor = Shader.PropertyToID("_TropicalFactor");
     private static readonly int ID_SnowFactor    = Shader.PropertyToID("_SnowFactor");
@@ -386,7 +376,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowNormalsOnly = Shader.PropertyToID("_ShowNormalsOnly");
     private static readonly int ID_ShowBiomeWeightsOnly = Shader.PropertyToID("_ShowBiomeWeightsOnly");
     private static readonly int ID_ShowBiomeTextureOnly = Shader.PropertyToID("_ShowBiomeTextureOnly");
-    private static readonly int ID_ShowBiomeTintOnly = Shader.PropertyToID("_ShowBiomeTintOnly");
     private static readonly int ID_ShowSmoothnessOnly = Shader.PropertyToID("_ShowSmoothnessOnly");
     private static readonly int ID_ShowLocalMoistureOnly = Shader.PropertyToID("_ShowLocalMoistureOnly");
     private static readonly int ID_ShowWaterwaysOnly = Shader.PropertyToID("_ShowWaterwaysOnly");
@@ -467,6 +456,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Upgrade the preview mesh for better shading/detail
         TryReplacePreviewMesh();
+        ConfigurePreviewRig();
 
         SetupCloudShell();
         SetupAtmosphereShell();
@@ -873,19 +863,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     private void RecalculateDerivedVisuals()
     {
         if (materialInstance == null) return;
-
-        // Compute a base land tint color from temperature and moisture.
-        // Colder -> bluish/gray, Temperate -> green, Hot -> tan.
-        Color coldColor = new Color(0.75f, 0.85f, 0.95f); // icy blue/gray
-        Color temperateColor = new Color(0.33f, 0.6f, 0.26f); // green
-        Color hotDryColor = new Color(0.76f, 0.66f, 0.45f); // sandy/tan
-
-        // Interpolate temperature first (0=cold, 1=hot)
-        Color tempLerp = Color.Lerp(coldColor, hotDryColor, temperature);
-        // Blend in moisture (wet -> greener)
-        Color finalTint = Color.Lerp(tempLerp, temperateColor, moisture * 0.9f);
-
-        materialInstance.SetColor(ID_BiomeTint, finalTint);
 
         // Desert and tropical amounts should drop as things get colder.
         float desertFactor = Mathf.Clamp01(temperature * (1f - moisture) * 1.5f);
