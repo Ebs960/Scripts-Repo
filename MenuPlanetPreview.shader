@@ -17,7 +17,6 @@ Shader "Custom/MenuPlanetPreview"
             _DesertSand("Desert Sand", Color) = (0.96, 0.89, 0.65, 1)
             _SubtropicalColor("Subtropical (Savanna/Monsoon)", Color) = (0.82, 0.70, 0.25, 1)
             _TemperateColor("Temperate (Grassland/Forest)", Color) = (0.14, 0.68, 0.12, 1)
-            _BorealColor("Boreal (Conifers)", Color) = (0.06, 0.25, 0.10, 1)
             _TundraColor("Tundra", Color) = (0.58, 0.50, 0.38, 1)
             _PolarColor("Polar Ice/Snow", Color) = (0.93, 0.95, 0.97, 1)
         [Header(Ocean Color)]
@@ -83,7 +82,6 @@ Shader "Custom/MenuPlanetPreview"
             _SavannaAlbedoTex("Savanna Albedo", 2D) = "gray" {}
             _TemperateGrassAlbedoTex("Temperate Grass Albedo", 2D) = "gray" {}
             _TemperateForestAlbedoTex("Temperate Forest Albedo", 2D) = "gray" {}
-            _BorealForestAlbedoTex("Boreal Forest Albedo", 2D) = "gray" {}
             _TundraAlbedoTex("Tundra Albedo", 2D) = "gray" {}
             _PolarAlbedoTex("Polar Albedo", 2D) = "gray" {}
             _MarshAlbedoTex("Marsh Albedo", 2D) = "gray" {}
@@ -92,7 +90,6 @@ Shader "Custom/MenuPlanetPreview"
             _SavannaNormalTex("Savanna Normal", 2D) = "bump" {}
             _TemperateGrassNormalTex("Temperate Grass Normal", 2D) = "bump" {}
             _TemperateForestNormalTex("Temperate Forest Normal", 2D) = "bump" {}
-            _BorealForestNormalTex("Boreal Forest Normal", 2D) = "bump" {}
             _TundraNormalTex("Tundra Normal", 2D) = "bump" {}
             _PolarNormalTex("Polar Normal", 2D) = "bump" {}
             _MarshNormalTex("Marsh Normal", 2D) = "bump" {}
@@ -167,7 +164,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _DesertSand;
                 float4 _SubtropicalColor;
                 float4 _TemperateColor;
-                float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;
@@ -242,7 +238,6 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_SavannaAlbedoTex);
             TEXTURE2D(_TemperateGrassAlbedoTex);
             TEXTURE2D(_TemperateForestAlbedoTex);
-            TEXTURE2D(_BorealForestAlbedoTex);
             TEXTURE2D(_TundraAlbedoTex);
             TEXTURE2D(_PolarAlbedoTex);
             TEXTURE2D(_MarshAlbedoTex);
@@ -251,7 +246,6 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_SavannaNormalTex);
             TEXTURE2D(_TemperateGrassNormalTex);
             TEXTURE2D(_TemperateForestNormalTex);
-            TEXTURE2D(_BorealForestNormalTex);
             TEXTURE2D(_TundraNormalTex);
             TEXTURE2D(_PolarNormalTex);
             TEXTURE2D(_MarshNormalTex);
@@ -385,7 +379,6 @@ Shader "Custom/MenuPlanetPreview"
                 //   lat 0.00-0.15 : EQUATORIAL (desert <-> jungle)
                 //   lat 0.15-0.30 : SUBTROPICAL (savanna <-> monsoon)
                 //   lat 0.30-0.50 : TEMPERATE (grassland <-> forest)
-                //   lat 0.50-0.65 : BOREAL (dark conifers)
                 //   lat 0.65-0.80 : TUNDRA (barren gray-brown)
                 //   lat 0.80-1.00 : POLAR ICE
 
@@ -397,8 +390,6 @@ Shader "Custom/MenuPlanetPreview"
                 float3 jungleLush   = jungleDeep * 1.3;
                 float3 tempBase     = _TemperateColor.rgb;
                 float3 tempDry      = tempBase * 0.7 + float3(0.10, 0.08, 0.02); // drier variant
-                float3 borealBase   = _BorealColor.rgb;
-                float3 borealLight  = borealBase * 1.5;
                 float3 tundraBase   = _TundraColor.rgb;
                 float3 tundraGray   = tundraBase * 0.85 + float3(0.0, 0.0, 0.04);
                 float3 snowWhite    = _PolarColor.rgb;
@@ -416,7 +407,6 @@ Shader "Custom/MenuPlanetPreview"
                 float3 equatC  = lerp(lerp(desertSand, desertRed, 0.4), jungleDeep, moist);
                 float3 subtrC  = lerp(savannaBase, jungleLush, moist);
                 float3 tempC   = lerp(tempDry, tempBase, moist);
-                float3 borealC = lerp(borealBase, borealLight, moist);
                 float3 tundraC = lerp(tundraBase, tundraGray, moist);
 
                 // --- Moisture-driven band expansion: global dryness should dominate the whole planet ---
@@ -438,9 +428,8 @@ Shader "Custom/MenuPlanetPreview"
                 else if (sLat < e1 - b) result = subtrC;
                 else if (sLat < e1 + b) result = lerp(subtrC, tempC, smoothstep(e1 - b, e1 + b, sLat));
                 else if (sLat < e2 - b) result = tempC;
-                else if (sLat < e2 + b) result = lerp(tempC, borealC, smoothstep(e2 - b, e2 + b, sLat));
-                else if (sLat < e3 - b) result = borealC;
-                else if (sLat < e3 + b) result = lerp(borealC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
+                else if (sLat < e3 - b) result = tempC;
+                else if (sLat < e3 + b) result = lerp(tempC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
                 else if (sLat < e4 - b) result = tundraC;
                 else if (sLat < e4 + b) result = lerp(tundraC, snowWhite, smoothstep(e4 - b, e4 + b, sLat));
                 else result = snowWhite;
@@ -456,7 +445,7 @@ Shader "Custom/MenuPlanetPreview"
             {
                 return _OceanColor.rgb;
             }
-            struct SurfaceBiomeWeights { float jungle; float desert; float savanna; float temperateGrass; float temperateForest; float borealForest; float tundra; float polar; float marsh; };
+            struct SurfaceBiomeWeights { float jungle; float desert; float savanna; float temperateGrass; float temperateForest; float tundra; float polar; float marsh; };
             SurfaceBiomeWeights GetSurfaceBiomeWeights(float latitude, float temperatureLocal, float globalMoisture, float localMoisture, float terrainHeight, float capMask, float3 objNorm, float seed)
             {
                 SurfaceBiomeWeights w = (SurfaceBiomeWeights)0;
@@ -471,7 +460,6 @@ Shader "Custom/MenuPlanetPreview"
                 w.savanna = hotness * smoothstep(0.25, 0.65, wetness) * smoothstep(0.25, 0.65, dryness);
                 w.temperateForest = temperateSuitability * smoothstep(0.48, 0.82, wetness);
                 w.temperateGrass = temperateSuitability * smoothstep(0.30, 0.75, dryness);
-                w.borealForest = coldness * smoothstep(0.35, 0.75, wetness) * (1.0 - polarSuitability);
                 w.tundra = coldness * smoothstep(0.40, 0.85, dryness) * (1.0 - polarSuitability);
                 w.polar = polarSuitability;
                 w.marsh = smoothstep(0.82, 0.96, wetness) * smoothstep(0.0, 0.35, terrainHeight) * (1.0 - polarSuitability);
@@ -482,8 +470,8 @@ Shader "Custom/MenuPlanetPreview"
                 w.jungle *= lerp(0.65, 1.35, junglePatch);
                 w.desert *= lerp(0.70, 1.30, desertPatch);
                 w.temperateForest *= lerp(0.75, 1.25, forestPatch);
-                float total = w.jungle + w.desert + w.savanna + w.temperateForest + w.temperateGrass + w.borealForest + w.tundra + w.polar + w.marsh + 0.0001;
-                w.jungle /= total; w.desert /= total; w.savanna /= total; w.temperateGrass /= total; w.temperateForest /= total; w.borealForest /= total; w.tundra /= total; w.polar /= total; w.marsh /= total;
+                float total = w.jungle + w.desert + w.savanna + w.temperateForest + w.temperateGrass + w.tundra + w.polar + w.marsh + 0.0001;
+                w.jungle /= total; w.desert /= total; w.savanna /= total; w.temperateGrass /= total; w.temperateForest /= total; w.tundra /= total; w.polar /= total; w.marsh /= total;
                 return w;
             }
             float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 colorBiome, float3 positionOS, float3 objNorm)
@@ -493,11 +481,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 sa = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 tg = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 tf = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 bf = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealForestAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 ma = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + bf*w.borealForest + tu*w.tundra + po*w.polar + ma*w.marsh;
+                float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + tu*w.tundra + po*w.polar + ma*w.marsh;
                 float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
                 texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
                 float3 tintedTexture = lerp(texBiome, texBiome * colorBiome, _BiomeTintStrength);
@@ -941,11 +928,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 saN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tgN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 bfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_BorealForestNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 maN = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + bfN*biomeWeights.borealForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
+                float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
@@ -976,7 +962,7 @@ Shader "Custom/MenuPlanetPreview"
                     return float4(saturate(d), 1.0);
                 }
                 if (_ShowNormalsOnly > 0.5) return float4(surfN * 0.5 + 0.5, 1.0);
-                if (_ShowBiomeWeightsOnly > 0.5) return float4(saturate(biomeWeights.jungle*float3(0.05,0.35,0.08)+biomeWeights.desert*float3(0.85,0.74,0.45)+biomeWeights.savanna*float3(0.58,0.52,0.2)+biomeWeights.temperateGrass*float3(0.2,0.6,0.22)+biomeWeights.temperateForest*float3(0.08,0.32,0.1)+biomeWeights.borealForest*float3(0.15,0.35,0.32)+biomeWeights.tundra*float3(0.5,0.45,0.4)+biomeWeights.polar*float3(0.85,0.92,1.0)+biomeWeights.marsh*float3(0.2,0.55,0.5)),1.0);
+                if (_ShowBiomeWeightsOnly > 0.5) return float4(saturate(biomeWeights.jungle*float3(0.05,0.35,0.08)+biomeWeights.desert*float3(0.85,0.74,0.45)+biomeWeights.savanna*float3(0.58,0.52,0.2)+biomeWeights.temperateGrass*float3(0.2,0.6,0.22)+biomeWeights.temperateForest*float3(0.08,0.32,0.1)+biomeWeights.tundra*float3(0.5,0.45,0.4)+biomeWeights.polar*float3(0.85,0.92,1.0)+biomeWeights.marsh*float3(0.2,0.55,0.5)),1.0);
                 if (_ShowBiomeTextureOnly > 0.5) return float4(saturate(textureBiomeColor), 1.0);
                 if (_ShowBiomeTintOnly > 0.5) return float4(saturate(GetLandColor(latitude, tempShift, localMoist, objNorm)), 1.0);
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1.0);
@@ -1084,7 +1070,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _DesertSand;
                 float4 _SubtropicalColor;
                 float4 _TemperateColor;
-                float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;
@@ -1217,7 +1202,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _DesertSand;
                 float4 _SubtropicalColor;
                 float4 _TemperateColor;
-                float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;

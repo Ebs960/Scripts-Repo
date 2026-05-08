@@ -134,7 +134,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D savannaAlbedoTexture;
     [SerializeField] private Texture2D temperateGrassAlbedoTexture;
     [SerializeField] private Texture2D temperateForestAlbedoTexture;
-    [SerializeField] private Texture2D borealForestAlbedoTexture;
     [SerializeField] private Texture2D tundraAlbedoTexture;
     [SerializeField] private Texture2D polarAlbedoTexture;
     [SerializeField] private Texture2D marshAlbedoTexture;
@@ -144,7 +143,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D savannaNormalTexture;
     [SerializeField] private Texture2D temperateGrassNormalTexture;
     [SerializeField] private Texture2D temperateForestNormalTexture;
-    [SerializeField] private Texture2D borealForestNormalTexture;
     [SerializeField] private Texture2D tundraNormalTexture;
     [SerializeField] private Texture2D polarNormalTexture;
     [SerializeField] private Texture2D marshNormalTexture;
@@ -154,7 +152,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D savannaSmoothnessTexture;
     [SerializeField] private Texture2D temperateGrassSmoothnessTexture;
     [SerializeField] private Texture2D temperateForestSmoothnessTexture;
-    [SerializeField] private Texture2D borealForestSmoothnessTexture;
     [SerializeField] private Texture2D tundraSmoothnessTexture;
     [SerializeField] private Texture2D polarSmoothnessTexture;
     [SerializeField] private Texture2D marshSmoothnessTexture;
@@ -232,9 +229,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Temperate grassland/forest color.")]
     [SerializeField] private Color temperateZoneColor = new Color(0.14f, 0.68f, 0.12f, 1f);
-
-    [Tooltip("Boreal dark conifer color.")]
-    [SerializeField] private Color borealColor = new Color(0.06f, 0.25f, 0.10f, 1f);
 
     [Tooltip("Tundra barren gray-brown color.")]
     [SerializeField] private Color tundraColor = new Color(0.58f, 0.50f, 0.38f, 1f);
@@ -338,7 +332,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DesertSand    = Shader.PropertyToID("_DesertSand");
     private static readonly int ID_SubtropicalColor = Shader.PropertyToID("_SubtropicalColor");
     private static readonly int ID_TemperateColor = Shader.PropertyToID("_TemperateColor");
-    private static readonly int ID_BorealColor   = Shader.PropertyToID("_BorealColor");
     private static readonly int ID_TundraColor   = Shader.PropertyToID("_TundraColor");
     private static readonly int ID_PolarColor    = Shader.PropertyToID("_PolarColor");
     private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
@@ -392,7 +385,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_SavannaAlbedoTex = Shader.PropertyToID("_SavannaAlbedoTex");
     private static readonly int ID_TemperateGrassAlbedoTex = Shader.PropertyToID("_TemperateGrassAlbedoTex");
     private static readonly int ID_TemperateForestAlbedoTex = Shader.PropertyToID("_TemperateForestAlbedoTex");
-    private static readonly int ID_BorealForestAlbedoTex = Shader.PropertyToID("_BorealForestAlbedoTex");
     private static readonly int ID_TundraAlbedoTex = Shader.PropertyToID("_TundraAlbedoTex");
     private static readonly int ID_PolarAlbedoTex = Shader.PropertyToID("_PolarAlbedoTex");
     private static readonly int ID_MarshAlbedoTex = Shader.PropertyToID("_MarshAlbedoTex");
@@ -401,7 +393,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_SavannaNormalTex = Shader.PropertyToID("_SavannaNormalTex");
     private static readonly int ID_TemperateGrassNormalTex = Shader.PropertyToID("_TemperateGrassNormalTex");
     private static readonly int ID_TemperateForestNormalTex = Shader.PropertyToID("_TemperateForestNormalTex");
-    private static readonly int ID_BorealForestNormalTex = Shader.PropertyToID("_BorealForestNormalTex");
     private static readonly int ID_TundraNormalTex = Shader.PropertyToID("_TundraNormalTex");
     private static readonly int ID_PolarNormalTex = Shader.PropertyToID("_PolarNormalTex");
     private static readonly int ID_MarshNormalTex = Shader.PropertyToID("_MarshNormalTex");
@@ -410,7 +401,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_SavannaSmoothnessTex = Shader.PropertyToID("_SavannaSmoothnessTex");
     private static readonly int ID_TemperateGrassSmoothnessTex = Shader.PropertyToID("_TemperateGrassSmoothnessTex");
     private static readonly int ID_TemperateForestSmoothnessTex = Shader.PropertyToID("_TemperateForestSmoothnessTex");
-    private static readonly int ID_BorealForestSmoothnessTex = Shader.PropertyToID("_BorealForestSmoothnessTex");
     private static readonly int ID_TundraSmoothnessTex = Shader.PropertyToID("_TundraSmoothnessTex");
     private static readonly int ID_PolarSmoothnessTex = Shader.PropertyToID("_PolarSmoothnessTex");
     private static readonly int ID_MarshSmoothnessTex = Shader.PropertyToID("_MarshSmoothnessTex");
@@ -606,7 +596,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_DesertSand,    desertSand);
         materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
         materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
-        materialInstance.SetColor(ID_BorealColor,   borealColor);
         materialInstance.SetColor(ID_TundraColor,   tundraColor);
         materialInstance.SetColor(ID_PolarColor,    polarColor);
 
@@ -687,10 +676,10 @@ public class MenuPlanetPreview : MonoBehaviour
                           oceanDetailTexture != null || oceanNormalTexture != null || smoothnessDetailTexture != null ||
                           landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
                           jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
-                          temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null || borealForestAlbedoTexture != null ||
+                          temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null ||
                           tundraAlbedoTexture != null || polarAlbedoTexture != null || marshAlbedoTexture != null ||
                           jungleNormalTexture != null || desertNormalTexture != null || savannaNormalTexture != null ||
-                          temperateGrassNormalTexture != null || temperateForestNormalTexture != null || borealForestNormalTexture != null ||
+                          temperateGrassNormalTexture != null || temperateForestNormalTexture != null ||
                           tundraNormalTexture != null || polarNormalTexture != null || marshNormalTexture != null;
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
@@ -703,7 +692,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_SavannaAlbedoTex, savannaAlbedoTexture);
         materialInstance.SetTexture(ID_TemperateGrassAlbedoTex, temperateGrassAlbedoTexture);
         materialInstance.SetTexture(ID_TemperateForestAlbedoTex, temperateForestAlbedoTexture);
-        materialInstance.SetTexture(ID_BorealForestAlbedoTex, borealForestAlbedoTexture);
         materialInstance.SetTexture(ID_TundraAlbedoTex, tundraAlbedoTexture);
         materialInstance.SetTexture(ID_PolarAlbedoTex, polarAlbedoTexture);
         materialInstance.SetTexture(ID_MarshAlbedoTex, marshAlbedoTexture);
@@ -712,7 +700,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_SavannaNormalTex, savannaNormalTexture);
         materialInstance.SetTexture(ID_TemperateGrassNormalTex, temperateGrassNormalTexture);
         materialInstance.SetTexture(ID_TemperateForestNormalTex, temperateForestNormalTexture);
-        materialInstance.SetTexture(ID_BorealForestNormalTex, borealForestNormalTexture);
         materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
         materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
         materialInstance.SetTexture(ID_MarshNormalTex, marshNormalTexture);
@@ -721,7 +708,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_SavannaSmoothnessTex, savannaSmoothnessTexture);
         materialInstance.SetTexture(ID_TemperateGrassSmoothnessTex, temperateGrassSmoothnessTexture);
         materialInstance.SetTexture(ID_TemperateForestSmoothnessTex, temperateForestSmoothnessTexture);
-        materialInstance.SetTexture(ID_BorealForestSmoothnessTex, borealForestSmoothnessTexture);
         materialInstance.SetTexture(ID_TundraSmoothnessTex, tundraSmoothnessTexture);
         materialInstance.SetTexture(ID_PolarSmoothnessTex, polarSmoothnessTexture);
         materialInstance.SetTexture(ID_MarshSmoothnessTex, marshSmoothnessTexture);
@@ -851,13 +837,6 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         temperateZoneColor = value;
         if (materialInstance != null) { materialInstance.SetColor(ID_TemperateColor, temperateZoneColor); }
-    }
-
-    /// <summary>Set the boreal conifer color.</summary>
-    public void SetBorealColor(Color value)
-    {
-        borealColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_BorealColor, borealColor); }
     }
 
     /// <summary>Set the tundra barren color.</summary>
@@ -990,7 +969,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetColor(ID_DesertSand, desertSand);
         materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
         materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
-        materialInstance.SetColor(ID_BorealColor, borealColor);
         materialInstance.SetColor(ID_TundraColor, tundraColor);
         materialInstance.SetColor(ID_PolarColor, polarColor);
         materialInstance.SetColor(ID_OceanColor, oceanColor);
