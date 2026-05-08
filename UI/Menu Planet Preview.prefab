@@ -353,8 +353,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewRenderTexture
   previewCamera: {fileID: 5433544173430284001}
   targetRawImage: {fileID: 0}
-  textureWidth: 4096
-  textureHeight: 4096
+  textureWidth: 2048
+  textureHeight: 2048
   antiAliasing: 4
   useHDR: 1
   filterMode: 1
@@ -434,7 +434,7 @@ MonoBehaviour:
   atmosphereFalloff: 4
   atmosphereIntensity: 1.21
   atmosphereRotationMultiplier: 0
-  mountainDetailTexture: {fileID: 2800000, guid: 1d6d912c23d941141963ac1cc3b30b91, type: 3}
+  mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
   iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
