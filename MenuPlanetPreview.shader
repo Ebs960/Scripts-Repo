@@ -206,7 +206,7 @@ Shader "Custom/MenuPlanetPreview"
                 float _LavaTextureScale;
                 float _AshDetailStrength;
             CBUFFER_END
-            TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_LandDetailTex);
+            TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_OceanNormalTex);
@@ -459,14 +459,14 @@ Shader "Custom/MenuPlanetPreview"
             }
             float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 colorBiome, float3 positionOS, float3 objNorm)
             {
-                float3 ju = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 de = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 sa = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tg = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tf = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 ma = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_LandDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 ju = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 de = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 sa = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tg = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tf = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
+                float3 ma = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + tu*w.tundra + po*w.polar + ma*w.marsh;
                 float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
                 texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
@@ -710,8 +710,8 @@ Shader "Custom/MenuPlanetPreview"
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
                 if (_UseDetailTextures > 0.5)
                 {
-                    float3 mtnDetail = SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_LandDetailTex), input.positionOS, objNorm);
-                    float3 ocnDetail = SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_LandDetailTex), input.positionOS, objNorm);
+                    float3 mtnDetail = SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
+                    float3 ocnDetail = SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float mtnFactor = (dot(mtnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
                     float ocnFactor = (dot(ocnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
                     elevatedLand *= (1.0 + mtnFactor * _MountainDetailStrength * mtnBlend * edge);
@@ -753,7 +753,7 @@ Shader "Custom/MenuPlanetPreview"
                 normalAlbedo = lerp(normalAlbedo, iceColor, saturate(capMask));
                 if (_UseDetailTextures > 0.5)
                 {
-                    float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_LandDetailTex), input.positionOS, objNorm);
+                    float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float iceFactor = (dot(iceDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
                     normalAlbedo = lerp(normalAlbedo, normalAlbedo * (1.0 + iceFactor * _IceDetailStrength), saturate(capMask));
                 }
@@ -854,10 +854,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 albedo = lerp(normalAlbedo, hellAlbedo, infernal);
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
-                            float3 volcanicSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicRockTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale);
-                float lavaMaskSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaCrackTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
-                float lavaEmissiveSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaEmissiveTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
-                float ashSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_AshDetailTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                            float3 volcanicSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicRockTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale);
+                float lavaMaskSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaCrackTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float lavaEmissiveSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_LavaEmissiveTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float ashSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_AshDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
                 float fallbackCrack = smoothstep(0.46, 0.50, noise3D(samplePos * 7.0 + float3(66.6, 13.1, 99.9) + seedOff));
                 float lavaMask = max(lavaMaskSample, fallbackCrack * 0.75);
                 float lavaEmissionMask = max(lavaEmissiveSample, lavaMask);
@@ -872,10 +872,10 @@ Shader "Custom/MenuPlanetPreview"
                 float ashGray = dot(albedo, float3(0.299, 0.587, 0.114));
                 albedo = lerp(albedo, float3(ashGray, ashGray, ashGray), ashMask * 0.35);
 
-                float oceanSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_OceanSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
-                float iceSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_IceSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm).r;
-                float marshSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
-                float volcanicSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicSmoothnessTex, sampler_LandDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
+                float oceanSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_OceanSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm).r;
+                float iceSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_IceSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm).r;
+                float marshSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
+                float volcanicSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
                 float landBlendMask = 0.75;
                 float oceanBlendMask = oceanSmoothMask;
                 float iceBlendMask = iceSmoothMask;
@@ -896,17 +896,17 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  Custom lighting using blended triplanar normals
                 // ==============================================================
-                float3 oceanN = SampleTriplanar(TEXTURE2D_ARGS(_OceanNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
-                float3 mtnN = SampleTriplanar(TEXTURE2D_ARGS(_MountainNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
-                float3 iceN = SampleTriplanar(TEXTURE2D_ARGS(_IceNormalTex, sampler_LandDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
-                float3 juN = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 deN = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 saN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 tgN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 tfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 maN = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshNormalTex, sampler_LandDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 oceanN = SampleTriplanar(TEXTURE2D_ARGS(_OceanNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 mtnN = SampleTriplanar(TEXTURE2D_ARGS(_MountainNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 iceN = SampleTriplanar(TEXTURE2D_ARGS(_IceNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm) * 2.0 - 1.0;
+                float3 juN = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 deN = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 saN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tgN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 maN = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
@@ -932,9 +932,9 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowDetailTexturesOnly > 0.5)
                 {
                     float3 d = float3(0,0,0);
-                    d += SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_LandDetailTex), input.positionOS, objNorm) * (mtnBlend * edge);
-                    d += SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_LandDetailTex), input.positionOS, objNorm) * capMask;
-                    d += SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_LandDetailTex), input.positionOS, objNorm) * (1.0-edge);
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * (mtnBlend * edge);
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * capMask;
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * (1.0-edge);
                     return float4(saturate(d), 1.0);
                 }
                 if (_ShowNormalsOnly > 0.5) return float4(surfN * 0.5 + 0.5, 1.0);
