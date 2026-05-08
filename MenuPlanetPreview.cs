@@ -85,29 +85,32 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 3f)] [SerializeField] private float atmosphereIntensity = 1.2f;
     [SerializeField] private float atmosphereRotationMultiplier = 0f;
 
-    [Header("Surface Detail Textures")]
-    [SerializeField] private Texture2D landDetailTexture;
+    [Header("Shared Surface Overlays")]
+    [Header("Mountain Overlay")]
     [SerializeField] private Texture2D mountainDetailTexture;
+    [SerializeField] private Texture2D mountainNormalTexture;
+
+    [Header("Ice / Snow Overlay")]
     [SerializeField] private Texture2D iceDetailTexture;
+    [SerializeField] private Texture2D iceNormalTexture;
+    [SerializeField] private Texture2D iceSmoothnessTexture;
+
+    [Header("Ocean Material")]
     [SerializeField] private Texture2D oceanDetailTexture;
     [SerializeField] private Texture2D oceanNormalTexture;
-    [SerializeField] private Texture2D landNormalTexture;
-    [SerializeField] private Texture2D mountainNormalTexture;
-    [SerializeField] private Texture2D iceNormalTexture;
-    [FormerlySerializedAs("roughnessDetailTexture")]
-    [SerializeField] private Texture2D smoothnessDetailTexture;
     [SerializeField] private Texture2D oceanSmoothnessTexture;
-    [SerializeField] private Texture2D landSmoothnessTexture;
-    [SerializeField] private Texture2D iceSmoothnessTexture;
-    [SerializeField] private Texture2D marshSurfaceSmoothnessTexture;
+
+    [Header("Infernal / Lava")]
     [SerializeField] private Texture2D volcanicSurfaceSmoothnessTexture;
-    [SerializeField] private Texture2D cloudNoiseTexture;
 
         [Header("Infernal / Lava Textures")]
     [SerializeField] private Texture2D volcanicRockTexture;
     [SerializeField] private Texture2D lavaCrackTexture;
     [SerializeField] private Texture2D lavaEmissiveTexture;
     [SerializeField] private Texture2D ashDetailTexture;
+
+    [Header("Clouds")]
+    [SerializeField] private Texture2D cloudNoiseTexture;
 
     [Header("Infernal / Lava Tuning")]
     [SerializeField, Range(0f, 1f)] private float volcanicRockStrength = 0.35f;
@@ -331,26 +334,19 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_AmbientOcclusion = Shader.PropertyToID("_AmbientOcclusion");
     private static readonly int ID_AmbientStrength = Shader.PropertyToID("_AmbientStrength");
     private static readonly int ID_Brightness = Shader.PropertyToID("_Brightness");
-    private static readonly int ID_LandDetailTex = Shader.PropertyToID("_LandDetailTex");
     private static readonly int ID_MountainDetailTex = Shader.PropertyToID("_MountainDetailTex");
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
-    private static readonly int ID_LandNormalTex = Shader.PropertyToID("_LandNormalTex");
     private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
     private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
-    private static readonly int ID_SmoothnessDetailTex = Shader.PropertyToID("_SmoothnessDetailTex");
     private static readonly int ID_OceanSmoothnessTex = Shader.PropertyToID("_OceanSmoothnessTex");
-    private static readonly int ID_LandSmoothnessTex = Shader.PropertyToID("_LandSmoothnessTex");
     private static readonly int ID_IceSmoothnessTex = Shader.PropertyToID("_IceSmoothnessTex");
-    private static readonly int ID_MarshSurfaceSmoothnessTex = Shader.PropertyToID("_MarshSmoothnessTex");
     private static readonly int ID_VolcanicSurfaceSmoothnessTex = Shader.PropertyToID("_VolcanicSmoothnessTex");
-    private static readonly int ID_LandDetailStrength = Shader.PropertyToID("_LandDetailStrength");
     private static readonly int ID_MountainDetailStrength = Shader.PropertyToID("_MountainDetailStrength");
     private static readonly int ID_IceDetailStrength = Shader.PropertyToID("_IceDetailStrength");
     private static readonly int ID_OceanDetailStrength = Shader.PropertyToID("_OceanDetailStrength");
     private static readonly int ID_OceanNormalStrength = Shader.PropertyToID("_OceanNormalStrength");
-    private static readonly int ID_LandNormalStrength = Shader.PropertyToID("_LandNormalStrength");
     private static readonly int ID_MountainNormalStrength = Shader.PropertyToID("_MountainNormalStrength");
     private static readonly int ID_IceNormalStrength = Shader.PropertyToID("_IceNormalStrength");
     private static readonly int ID_TextureDetailScale = Shader.PropertyToID("_TextureDetailScale");
@@ -629,9 +625,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowLocalMoistureOnly, showLocalMoistureOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
-        bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
+        bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
+                          oceanSmoothnessTexture != null || iceSmoothnessTexture != null ||
+                          volcanicSurfaceSmoothnessTexture != null ||
                           jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
                           temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null ||
                           tundraAlbedoTexture != null || polarAlbedoTexture != null || marshAlbedoTexture != null ||
