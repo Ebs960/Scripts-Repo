@@ -127,7 +127,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float iceNormalStrength = 0.22f;
     [SerializeField, Range(0.1f, 30f)] private float textureDetailScale = 8f;
     [Header("Texture-Driven Surface Biomes")]
-    [SerializeField] private bool useTextureDrivenBiomes = true;
     [Header("Biome Albedo Textures")]
     [SerializeField] private Texture2D jungleAlbedoTexture;
     [SerializeField] private Texture2D desertAlbedoTexture;
@@ -157,7 +156,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D marshSmoothnessTexture;
     [Header("Texture-Driven Biome Tuning")]
     [SerializeField, Range(0f, 1f)] private float biomeTextureStrength = 0.8f;
-    [SerializeField, Range(0f, 1f)] private float biomeTintStrength = 0.1f;
+    [SerializeField, Range(0f, 0.2f)] private float climateGradeStrength = 0.06f;
     [SerializeField, Range(0f, 1f)] private float biomeNormalStrength = 0.15f;
     [SerializeField, Range(0.1f, 30f)] private float biomeTextureScale = 6.0f;
     [SerializeField, Range(0f, 1f)] private float biomeTextureContrast = 0.18f;
@@ -167,7 +166,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showNormalsOnly = false;
     [SerializeField] private bool showBiomeWeightsOnly = false;
     [SerializeField] private bool showBiomeTextureOnly = false;
-    [SerializeField] private bool showBiomeTintOnly = false;
     [SerializeField] private bool showSmoothnessOnly = false;
     [SerializeField] private bool showLocalMoistureOnly = false;
     [SerializeField] private bool showWaterwaysOnly = false;
@@ -217,25 +215,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("0 = normal world,  1 = infernal/demonic (lava oceans, charred land, volcanic glow, hellish rim).")]
     [SerializeField] private float mapStyle = 0f;
 
-    [Header("Biome Zone Colors")]
-    [Tooltip("Equatorial jungle/rainforest color.")]
-    [SerializeField] private Color equatorialColor = new Color(0.01f, 0.30f, 0.04f, 1f);
-
-    [Tooltip("Sandy desert color used for dry equatorial regions.")]
-    [SerializeField] private Color desertSand = new Color(0.96f, 0.89f, 0.65f, 1f);
-
-    [Tooltip("Subtropical savanna/golden grass color.")]
-    [SerializeField] private Color subtropicalColor = new Color(0.82f, 0.70f, 0.25f, 1f);
-
-    [Tooltip("Temperate grassland/forest color.")]
-    [SerializeField] private Color temperateZoneColor = new Color(0.14f, 0.68f, 0.12f, 1f);
-
-    [Tooltip("Tundra barren gray-brown color.")]
-    [SerializeField] private Color tundraColor = new Color(0.58f, 0.50f, 0.38f, 1f);
-
-    [Tooltip("Polar ice/snow color.")]
-    [SerializeField] private Color polarColor = new Color(0.93f, 0.95f, 0.97f, 1f);
-
     [Header("Ocean Color")]
     [Tooltip("Ocean color.")]
     [SerializeField] private Color oceanColor = new Color(0.06f, 0.22f, 0.45f, 1f);
@@ -261,9 +240,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Strength of noise perturbation on biome bands. 0 = straight lines.")]
     [SerializeField] private float biomeNoiseStrength = 0.08f;
 
-    [Range(0.5f, 2f)]
-    [Tooltip("Color vibrancy boost. 1 = natural, >1 = more saturated.")]
-    [SerializeField] private float colorVibrancy = 1.1f;
 
     [Header("Surface Properties")]
     [Range(0f, 1f)]
@@ -591,14 +567,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_Seed,         seed);
 
-        // Push all biome zone colors
-        materialInstance.SetColor(ID_EquatorialColor, equatorialColor);
-        materialInstance.SetColor(ID_DesertSand,    desertSand);
-        materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
-        materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
-        materialInstance.SetColor(ID_TundraColor,   tundraColor);
-        materialInstance.SetColor(ID_PolarColor,    polarColor);
-
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
 
@@ -610,7 +578,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_BiomeBlend,    biomeBlend);
         materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
         materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
-        materialInstance.SetFloat(ID_ColorVibrancy, colorVibrancy);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         RecalculateDerivedVisuals();
@@ -637,44 +604,34 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         if (materialInstance == null) return;
 
-        materialInstance.SetTexture(ID_LandDetailTex, landDetailTexture);
         materialInstance.SetTexture(ID_MountainDetailTex, mountainDetailTexture);
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
-        materialInstance.SetTexture(ID_LandNormalTex, landNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
-        materialInstance.SetTexture(ID_SmoothnessDetailTex, smoothnessDetailTexture);
         materialInstance.SetTexture(ID_OceanSmoothnessTex, oceanSmoothnessTexture);
-        materialInstance.SetTexture(ID_LandSmoothnessTex, landSmoothnessTexture);
         materialInstance.SetTexture(ID_IceSmoothnessTex, iceSmoothnessTexture);
-        materialInstance.SetTexture(ID_MarshSurfaceSmoothnessTex, marshSurfaceSmoothnessTexture);
         materialInstance.SetTexture(ID_VolcanicSurfaceSmoothnessTex, volcanicSurfaceSmoothnessTexture);
-        materialInstance.SetFloat(ID_LandDetailStrength, landDetailStrength);
         materialInstance.SetFloat(ID_MountainDetailStrength, mountainDetailStrength);
         materialInstance.SetFloat(ID_IceDetailStrength, iceDetailStrength);
         materialInstance.SetFloat(ID_OceanDetailStrength, oceanDetailStrength);
         materialInstance.SetFloat(ID_OceanNormalStrength, oceanNormalStrength);
-        materialInstance.SetFloat(ID_LandNormalStrength, landNormalStrength);
         materialInstance.SetFloat(ID_MountainNormalStrength, mountainNormalStrength);
         materialInstance.SetFloat(ID_IceNormalStrength, iceNormalStrength);
         materialInstance.SetFloat(ID_TextureDetailScale, textureDetailScale);
-        materialInstance.SetFloat(ID_UseTextureDrivenBiomes, useTextureDrivenBiomes ? 1f : 0f);
-        materialInstance.SetFloat(ID_BiomeTextureContrast, biomeTextureContrast);
         materialInstance.SetFloat(ID_ShowLandMaskOnly, showLandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDetailTexturesOnly, showDetailTexturesOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowNormalsOnly, showNormalsOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowBiomeWeightsOnly, showBiomeWeightsOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowBiomeTextureOnly, showBiomeTextureOnly ? 1f : 0f);
-        materialInstance.SetFloat(ID_ShowBiomeTintOnly, showBiomeTintOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowSmoothnessOnly, showSmoothnessOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowLocalMoistureOnly, showLocalMoistureOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         bool useDetails = landDetailTexture != null || mountainDetailTexture != null || iceDetailTexture != null ||
-                          oceanDetailTexture != null || oceanNormalTexture != null || smoothnessDetailTexture != null ||
-                          landNormalTexture != null || mountainNormalTexture != null || iceNormalTexture != null ||
+                          oceanDetailTexture != null || oceanNormalTexture != null ||
+                          mountainNormalTexture != null || iceNormalTexture != null ||
                           jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
                           temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null ||
                           tundraAlbedoTexture != null || polarAlbedoTexture != null || marshAlbedoTexture != null ||
@@ -712,9 +669,12 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_PolarSmoothnessTex, polarSmoothnessTexture);
         materialInstance.SetTexture(ID_MarshSmoothnessTex, marshSmoothnessTexture);
         materialInstance.SetFloat(ID_BiomeTextureStrength, biomeTextureStrength);
-        materialInstance.SetFloat(ID_BiomeTintStrength, biomeTintStrength);
+        materialInstance.SetFloat(ID_BiomeTintStrength, climateGradeStrength);
         materialInstance.SetFloat(ID_BiomeNormalStrength, biomeNormalStrength);
         materialInstance.SetFloat(ID_BiomeTextureScale, biomeTextureScale);
+        materialInstance.SetFloat(ID_BiomeTextureContrast, biomeTextureContrast);
+        materialInstance.SetFloat(ID_ShowBiomeWeightsOnly, showBiomeWeightsOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowBiomeTextureOnly, showBiomeTextureOnly ? 1f : 0f);
     }
 
     private void PushInfernalTextureParameters()
@@ -811,47 +771,23 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
     }
 
-    /// <summary>Set the equatorial/tropical color used in jungle and monsoon bands.</summary>
-    public void SetEquatorialColor(Color value)
-    {
-        equatorialColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_EquatorialColor, equatorialColor); }
-    }
+    [System.Obsolete("Legacy color-driven biome setters are no-ops. Texture-driven biomes are authoritative.")]
+    public void SetEquatorialColor(Color value) { }
 
     /// <summary>Set the desert sand color used for dry equatorial regions.</summary>
-    public void SetDesertSand(Color value)
-    {
-        desertSand = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_DesertSand, desertSand); }
-    }
+    public void SetDesertSand(Color value) { }
 
     /// <summary>Set the subtropical savanna color.</summary>
-    public void SetSubtropicalColor(Color value)
-    {
-        subtropicalColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor); }
-    }
+    public void SetSubtropicalColor(Color value) { }
 
     /// <summary>Set the temperate grassland/forest color.</summary>
-    public void SetTemperateZoneColor(Color value)
-    {
-        temperateZoneColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_TemperateColor, temperateZoneColor); }
-    }
+    public void SetTemperateZoneColor(Color value) { }
 
     /// <summary>Set the tundra barren color.</summary>
-    public void SetTundraColor(Color value)
-    {
-        tundraColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_TundraColor, tundraColor); }
-    }
+    public void SetTundraColor(Color value) { }
 
     /// <summary>Set the polar ice/snow color.</summary>
-    public void SetPolarColor(Color value)
-    {
-        polarColor = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_PolarColor, polarColor); }
-    }
+    public void SetPolarColor(Color value) { }
 
     /// <summary>Set the ocean color.</summary>
     public void SetOceanColor(Color value)
@@ -964,19 +900,11 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
-        // Push all inspector-driven biome zone colors to shader
-        materialInstance.SetColor(ID_EquatorialColor, equatorialColor);
-        materialInstance.SetColor(ID_DesertSand, desertSand);
-        materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
-        materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
-        materialInstance.SetColor(ID_TundraColor, tundraColor);
-        materialInstance.SetColor(ID_PolarColor, polarColor);
         materialInstance.SetColor(ID_OceanColor, oceanColor);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
         materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
         materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
-        materialInstance.SetFloat(ID_ColorVibrancy, Mathf.Clamp(colorVibrancy, 0.5f, 2f));
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
         float waterwayAmount = waterwaysPreset == 0 ? 0.15f : (waterwaysPreset == 1 ? 0.55f : 1.0f);

@@ -27,6 +27,7 @@ public class MenuPlanetPreviewRenderTexture : MonoBehaviour
 
     public void RebuildRenderTexture()
     {
+        ReleaseTexture();
         if (previewCamera == null || targetRawImage == null) return;
 
         var format = useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.ARGB32;
