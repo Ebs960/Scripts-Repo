@@ -8,7 +8,6 @@ Shader "Custom/MenuPlanetPreview"
         _Moisture("Moisture", Range(0, 1)) = 0.5
         _WaterwayAmount("Waterway Amount", Range(0,1)) = 0.55
         _Elevation("Elevation", Range(0, 1)) = 0.3
-            _BiomeTint("Biome Tint", Color) = (0.33,0.6,0.26,1)
             _DesertFactor("Desert Factor", Range(0,1)) = 0.0
             _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
@@ -21,7 +20,6 @@ Shader "Custom/MenuPlanetPreview"
             _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
             _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
             _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
-            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.1
         [Header(Seed)]
             _Seed("Planet Seed", Float) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
@@ -144,23 +142,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _Moisture;
                 float _WaterwayAmount;
                 float _Elevation;
-                float4 _BiomeTint;
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
-                float4 _EquatorialColor;
-                float4 _DesertSand;
-                float4 _SubtropicalColor;
-                float4 _TemperateColor;
-                float4 _TundraColor;
-                float4 _PolarColor;
                 float4 _OceanColor;
                 float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
                 float _BiomeNoiseStrength;
-                float _ColorVibrancy;
                 float _Seed;
                 float _MapStyle;
                     float _DetailScale;
@@ -351,77 +341,19 @@ Shader "Custom/MenuPlanetPreview"
             // -----------------------------------------------------------------
             //  Color helpers
             // -----------------------------------------------------------------
-            float3 GetLandColor(float lat, float tempShift, float moist, float3 objNorm)
+            float3 GetClimateGrade(float latitude, float localMoist, float style)
             {
-                // Latitude-based biome bands with noise-perturbed edges.
-                // lat = 0.0 at equator, 1.0 at poles.
-                // tempShift shifts band edges; moist controls within-band palette.
-                // objNorm is used for 3D noise to break up straight latitude lines.
-                //
-                // Band layout (at neutral tempShift=0):
-                //   lat 0.00-0.15 : EQUATORIAL (desert <-> jungle)
-                //   lat 0.15-0.30 : SUBTROPICAL (savanna <-> monsoon)
-                //   lat 0.30-0.50 : TEMPERATE (grassland <-> forest)
-                //   lat 0.65-0.80 : TUNDRA (barren gray-brown)
-                //   lat 0.80-1.00 : POLAR ICE
-
-                // ---- ALL colors from inspector ----
-                float3 desertSand   = _DesertSand.rgb;
-                float3 desertRed    = desertSand * float3(0.92, 0.58, 0.34); // derived arid variant
-                float3 jungleDeep   = _EquatorialColor.rgb;
-                float3 savannaBase  = _SubtropicalColor.rgb;
-                float3 jungleLush   = jungleDeep * 1.3;
-                float3 tempBase     = _TemperateColor.rgb;
-                float3 tempDry      = tempBase * 0.7 + float3(0.10, 0.08, 0.02); // drier variant
-                float3 tundraBase   = _TundraColor.rgb;
-                float3 tundraGray   = tundraBase * 0.85 + float3(0.0, 0.0, 0.04);
-                float3 snowWhite    = _PolarColor.rgb;
-
-                // Clamp temperature shift so bands never fully vanish off the sphere.
-                float shift = clamp(tempShift * 0.6, -0.25, 0.25);
-
-                // --- Noise perturbation of latitude for organic, wavy band edges ---
-                float3 seedOffset = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
-                float latNoise = (fbm(objNorm * _BiomeNoiseScale + seedOffset + float3(55.5, 22.2, 88.8)) - 0.5)
-                               * _BiomeNoiseStrength * 2.0;
-                float sLat = lat - shift + latNoise;
-
-                // --- Moisture-driven color within each band ---
-                float3 equatC  = lerp(lerp(desertSand, desertRed, 0.4), jungleDeep, moist);
-                float3 subtrC  = lerp(savannaBase, jungleLush, moist);
-                float3 tempC   = lerp(tempDry, tempBase, moist);
-                float3 tundraC = lerp(tundraBase, tundraGray, moist);
-
-                // --- Moisture-driven band expansion: global dryness should dominate the whole planet ---
-                float globalDry = pow(saturate(1.0 - _Moisture), 0.65);
-                float bandPush = globalDry * 0.42;
-
-                // On very dry worlds, push arid/subtropical bands far toward the poles.
-                float e0 = 0.12 + bandPush;
-                float e1 = 0.24 + bandPush * 0.78;
-                float e2 = 0.42 + bandPush * 0.55;
-                float e3 = 0.60 + bandPush * 0.28;
-                float e4 = 0.80 + bandPush * 0.10;
-                float b = max(0.001, _BiomeBlend); // blend half-width
-
-                // Blend between adjacent bands using configurable transition width
-                float3 result;
-                if (sLat < e0 - b) result = equatC;
-                else if (sLat < e0 + b) result = lerp(equatC, subtrC, smoothstep(e0 - b, e0 + b, sLat));
-                else if (sLat < e1 - b) result = subtrC;
-                else if (sLat < e1 + b) result = lerp(subtrC, tempC, smoothstep(e1 - b, e1 + b, sLat));
-                else if (sLat < e2 - b) result = tempC;
-                else if (sLat < e3 - b) result = tempC;
-                else if (sLat < e3 + b) result = lerp(tempC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
-                else if (sLat < e4 - b) result = tundraC;
-                else if (sLat < e4 + b) result = lerp(tundraC, snowWhite, smoothstep(e4 - b, e4 + b, sLat));
-                else result = snowWhite;
-
-                // Boost vibrancy: push colors away from gray toward their hue
-                float gray = dot(result, float3(0.299, 0.587, 0.114));
-                result = lerp(float3(gray, gray, gray), result, lerp(1.0, _ColorVibrancy, 0.35));
-
-                return result;
+                float3 cold = float3(0.92, 0.95, 1.0);
+                float3 warm = float3(1.04, 0.98, 0.92);
+                float3 humid = float3(0.97, 1.02, 0.97);
+                float polar = smoothstep(0.58, 0.95, latitude);
+                float arid = saturate((1.0 - localMoist) * 0.75);
+                float infernal = saturate((style - 0.35) / 0.35);
+                float3 grade = lerp(1.0.xxx, cold, polar * 0.35);
+                grade = lerp(grade, warm, arid * 0.25);
+                grade = lerp(grade, humid, localMoist * 0.2);
+                grade = lerp(grade, float3(1.06, 0.95, 0.9), infernal * 0.4);
+                return grade;
             }
 
             float3 GetOceanColor(float temp)
@@ -457,7 +389,7 @@ Shader "Custom/MenuPlanetPreview"
                 w.jungle /= total; w.desert /= total; w.savanna /= total; w.temperateGrass /= total; w.temperateForest /= total; w.tundra /= total; w.polar /= total; w.marsh /= total;
                 return w;
             }
-            float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 colorBiome, float3 positionOS, float3 objNorm)
+            float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 climateGrade, float3 positionOS, float3 objNorm)
             {
                 float3 ju = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
                 float3 de = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
@@ -470,8 +402,8 @@ Shader "Custom/MenuPlanetPreview"
                 float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + tu*w.tundra + po*w.polar + ma*w.marsh;
                 float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
                 texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
-                float3 tintedTexture = lerp(texBiome, texBiome * colorBiome, _BiomeTintStrength);
-                return lerp(colorBiome, tintedTexture, _BiomeTextureStrength);
+                float3 gradedTexture = texBiome * climateGrade;
+                return lerp(texBiome, gradedTexture, _BiomeTintStrength * _BiomeTextureStrength);
             }
 
             // -----------------------------------------------------------------
@@ -656,19 +588,17 @@ Shader "Custom/MenuPlanetPreview"
                 //  NORMAL WORLD colors
                 // ==============================================================
                 // Biome color selected strictly by latitude, shifted by temperature
-                float3 fallbackBiomeColor = GetLandColor(latitude, tempShift, localMoist, objNorm);
+                float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float capStart = lerp(1.10, 0.15, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
                 float temperatureLocal = saturate((1.0 - latitude) * 0.7 + _Temperature * 0.3 + tempShift * 0.2);
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(latitude, temperatureLocal, _Moisture, localMoist, terrainHeight, capMask, objNorm, _Seed);
-                float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, fallbackBiomeColor, input.positionOS, objNorm);
+                float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm);
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
                 float3 oceanColor = _OceanColor.rgb;
 
-                // GetLandColor already handles all biome band coloring —
-                // no additional desert/tropical tint overlays needed.
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
@@ -680,8 +610,6 @@ Shader "Custom/MenuPlanetPreview"
                 float3 grad = normalize(float3(dx - d0, dy - d0, dz - d0));
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
-                // Subtle climate grade only; texture identity remains dominant.
-                biomeTextureAlbedo = lerp(biomeTextureAlbedo, _BiomeTint.rgb, _BiomeTintStrength);
 
                 // Mountains use their own inspector color (cartographic style)
                 float3 mountainColor = _MountainColor.rgb;
@@ -738,7 +666,7 @@ Shader "Custom/MenuPlanetPreview"
                 // capMask computed earlier for biome + ice logic.
 
                 // Ice/snow color — white at center, icy blue at outer fringe
-                float3 snowWhite = _PolarColor.rgb;
+                float3 snowWhite = float3(0.95, 0.97, 1.0);
                 float3 icyBlue   = float3(0.72, 0.85, 0.95); // pale icy blue
                 float iceVariation = noise3D(objNorm * 10.0 + float3(77.7, 88.8, 99.9) + seedOff);
 
@@ -1037,23 +965,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _Moisture;
                 float _WaterwayAmount;
                 float _Elevation;
-                float4 _BiomeTint;
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
-                float4 _EquatorialColor;
-                float4 _DesertSand;
-                float4 _SubtropicalColor;
-                float4 _TemperateColor;
-                float4 _TundraColor;
-                float4 _PolarColor;
                 float4 _OceanColor;
                 float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
                 float _BiomeNoiseStrength;
-                float _ColorVibrancy;
                 float _Seed;
                 float _MapStyle;
                 float _DetailScale;
@@ -1169,23 +1089,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _Moisture;
                 float _WaterwayAmount;
                 float _Elevation;
-                float4 _BiomeTint;
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
-                float4 _EquatorialColor;
-                float4 _DesertSand;
-                float4 _SubtropicalColor;
-                float4 _TemperateColor;
-                float4 _TundraColor;
-                float4 _PolarColor;
                 float4 _OceanColor;
                 float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
                 float _BiomeNoiseStrength;
-                float _ColorVibrancy;
                 float _Seed;
                 float _MapStyle;
                 float _DetailScale;
