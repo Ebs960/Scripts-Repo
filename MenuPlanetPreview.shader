@@ -673,14 +673,13 @@ Shader "Custom/MenuPlanetPreview"
                 //  NORMAL WORLD colors
                 // ==============================================================
                 // Biome color selected strictly by latitude, shifted by temperature
-                float3 landColor  = GetLandColor(latitude, tempShift, localMoist, objNorm);
+                float3 fallbackBiomeColor = GetLandColor(latitude, tempShift, localMoist, objNorm);
                 float capStart = lerp(1.10, 0.15, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
                 float temperatureLocal = saturate((1.0 - latitude) * 0.7 + _Temperature * 0.3 + tempShift * 0.2);
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(latitude, temperatureLocal, _Moisture, localMoist, terrainHeight, capMask, objNorm, _Seed);
-                float3 textureBiomeColor = GetTextureBiomeAlbedo(biomeWeights, landColor, input.positionOS, objNorm);
-                landColor = (_UseTextureDrivenBiomes > 0.5) ? textureBiomeColor : landColor;
+                float3 landColor = GetTextureBiomeAlbedo(biomeWeights, fallbackBiomeColor, input.positionOS, objNorm);
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
                 float3 oceanColor = _OceanColor.rgb;
@@ -698,8 +697,8 @@ Shader "Custom/MenuPlanetPreview"
                 float3 grad = normalize(float3(dx - d0, dy - d0, dz - d0));
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
-                // _BiomeTint used only as a very subtle hint — per-pixel latitude colors dominate
-                landColor = lerp(landColor, _BiomeTint.rgb, 0.05);
+                // Subtle climate grade only; texture identity remains dominant.
+                landColor = lerp(landColor, _BiomeTint.rgb, _BiomeTintStrength);
 
                 // Mountains use their own inspector color (cartographic style)
                 float3 mountainColor = _MountainColor.rgb;
