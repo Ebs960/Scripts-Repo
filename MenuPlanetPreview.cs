@@ -234,10 +234,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Ocean color.")]
     [SerializeField] private Color oceanColor = new Color(0.06f, 0.22f, 0.45f, 1f);
 
-    [Header("Mountain Color")]
-    [Tooltip("Distinct mountain color shown at high elevations (cartographic style).")]
-    [SerializeField] private Color mountainColor = new Color(0.72f, 0.58f, 0.38f, 1f);
-
     [Header("Biome Tuning")]
     [Range(0f, 1f)]
     [Tooltip("Ice cap coverage size. 0 = no ice caps, 1 = massive polar ice.")]
@@ -320,7 +316,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
     private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
-    private static readonly int ID_MountainColor = Shader.PropertyToID("_MountainColor");
     private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
     private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
     private static readonly int ID_BiomeNoiseScale = Shader.PropertyToID("_BiomeNoiseScale");
@@ -579,9 +574,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
-
-        // Mountain color
-        materialInstance.SetColor(ID_MountainColor, mountainColor);
 
         // Biome tuning
         materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);

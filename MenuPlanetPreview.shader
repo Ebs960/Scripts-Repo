@@ -13,8 +13,6 @@ Shader "Custom/MenuPlanetPreview"
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
         [Header(Ocean Color)]
             _OceanColor("Ocean Color", Color) = (0.06, 0.22, 0.45, 1)
-        [Header(Mountain Color)]
-            _MountainColor("Mountain Color", Color) = (0.72, 0.58, 0.38, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
             _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
@@ -155,7 +153,6 @@ Shader "Custom/MenuPlanetPreview"
                 float _TropicalFactor;
                 float _SnowFactor;
                 float4 _OceanColor;
-                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -682,14 +679,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
 
-                // Mountains use their own inspector color (cartographic style)
-                float3 mountainColor = _MountainColor.rgb;
                 float3 snowPeakColor = float3(0.92, 0.93, 0.96);
 
                 float3 elevatedLand = biomeTextureAlbedo;
-                // Mountains blend in at high elevation — distinct color like a map
                 float mtnBlend = mountainMask * smoothstep(0.35, 0.60, terrainHeight);
-                elevatedLand = lerp(elevatedLand, mountainColor, mtnBlend);
                 // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
                 float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
                 float snowAmount = snowBand * saturate(latSnowFactor + _SnowFactor * 0.5);
@@ -1040,7 +1033,6 @@ Shader "Custom/MenuPlanetPreview"
                 float _TropicalFactor;
                 float _SnowFactor;
                 float4 _OceanColor;
-                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -1173,7 +1165,6 @@ Shader "Custom/MenuPlanetPreview"
                 float _TropicalFactor;
                 float _SnowFactor;
                 float4 _OceanColor;
-                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
