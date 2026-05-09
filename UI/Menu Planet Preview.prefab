@@ -429,7 +429,7 @@ MonoBehaviour:
   cloudScale: 3
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
-  enableAtmosphereShell: 1
+  enableAtmosphereShell: 0
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 4
   atmosphereIntensity: 1.21
@@ -453,12 +453,10 @@ MonoBehaviour:
   lavaEmissionStrength: 2.2
   lavaTextureScale: 10
   ashDetailStrength: 0.25
-  landDetailStrength: 0.1
   mountainDetailStrength: 0.22
   iceDetailStrength: 0.12
   oceanDetailStrength: 0.05
   oceanNormalStrength: 0.1
-  landNormalStrength: 0.28
   mountainNormalStrength: 0.12
   iceNormalStrength: 0.22
   textureDetailScale: 8
@@ -486,11 +484,20 @@ MonoBehaviour:
   tundraSmoothnessTexture: {fileID: 2800000, guid: a724993669b0ede40b21a105448e82ea, type: 3}
   polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   marshSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
-  biomeTextureStrength: 0.8
+  biomeTextureStrength: 1
   climateGradeStrength: 0.06
-  biomeNormalStrength: 0.15
+  biomeNormalStrength: 0.763
   biomeTextureScale: 6
   biomeTextureContrast: 0.18
+  landUpliftStrength: 0.12
+  hillDisplacementStrength: 0.25
+  mountainDisplacementStrength: 0.65
+  iceDisplacementStrength: 0.15
+  volcanicDisplacementStrength: 0.45
+  oceanDepthStrength: 0.03
+  showElevationOnly: 0
+  showMountainMaskOnly: 0
+  showDisplacementHeightOnly: 0
   showLandMaskOnly: 0
   showDetailTexturesOnly: 0
   showNormalsOnly: 0
@@ -504,7 +511,7 @@ MonoBehaviour:
   enableBloom: 1
   bloomThreshold: 1.4
   bloomIntensity: 0.18
-  icosphereSubdivisions: 16
+  icosphereSubdivisions: 6
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
@@ -512,7 +519,6 @@ MonoBehaviour:
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
-  mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 0.70980394}
   iceCapSize: 0.5
   biomeBlend: 0.045
   biomeNoiseScale: 4
@@ -520,17 +526,17 @@ MonoBehaviour:
   smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1
-  ambientStrength: 0.269
+  ambientStrength: 0.894
   brightness: 1.12
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 4
+  cameraDistance: 9
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
-  keyLightIntensity: 2
-  keyLightColor: {r: 1, g: 0.95, b: 0.88, a: 1}
+  keyLightIntensity: 1
+  keyLightColor: {r: 0.98490566, g: 0.75813156, b: 0.4441367, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
