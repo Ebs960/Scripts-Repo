@@ -33,6 +33,15 @@ Shader "Custom/MenuPlanetPreview"
             _MapStyle("Map Style", Range(0, 1)) = 0.0
         [Header(Displacement)]
             _DisplacementScale("Displacement Scale", Range(0, 0.15)) = 0.035
+            _LandUpliftStrength("Land Uplift Strength", Range(0,1)) = 0.12
+            _HillDisplacementStrength("Hill Displacement Strength", Range(0,1)) = 0.25
+            _MountainDisplacementStrength("Mountain Displacement Strength", Range(0,1)) = 0.65
+            _IceDisplacementStrength("Ice Displacement Strength", Range(0,1)) = 0.15
+            _VolcanicDisplacementStrength("Volcanic Displacement Strength", Range(0,1)) = 0.45
+            _OceanDepthStrength("Ocean Depth Strength", Range(0,1)) = 0.03
+            _ShowElevationOnly("Show Elevation Only", Float) = 0
+            _ShowMountainMaskOnly("Show Mountain Mask Only", Float) = 0
+            _ShowDisplacementHeightOnly("Show Displacement Height Only", Float) = 0
         [Header(Surface)]
             _Smoothness("Smoothness", Range(0, 1)) = 0.3
             _Metallic("Metallic", Range(0, 1)) = 0.0
@@ -159,6 +168,15 @@ Shader "Custom/MenuPlanetPreview"
                     float _AtmospherePower;
                     float _AtmosphereRadius;
                 float _DisplacementScale;
+                float _LandUpliftStrength;
+                float _HillDisplacementStrength;
+                float _MountainDisplacementStrength;
+                float _IceDisplacementStrength;
+                float _VolcanicDisplacementStrength;
+                float _OceanDepthStrength;
+                float _ShowElevationOnly;
+                float _ShowMountainMaskOnly;
+                float _ShowDisplacementHeightOnly;
                 float _Smoothness;
                 float _Metallic;
                 float _AmbientOcclusion;
@@ -444,6 +462,46 @@ Shader "Custom/MenuPlanetPreview"
             }
 
             // -----------------------------------------------------------------
+            //  Vertex displacement helpers
+            // -----------------------------------------------------------------
+            float GetLandMask(float3 objNorm, float3 seedOff)
+            {
+                float n = GetWarpedLandValue(objNorm, seedOff);
+                return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
+            }
+
+            float GetCapMask(float3 objNorm, float3 seedOff)
+            {
+                float latitude = abs(objNorm.y);
+                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
+                float capStart = lerp(1.10, 0.15, _IceCapSize);
+                return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
+            }
+
+            float GetMountainMask(float3 objNorm, float landMask)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float broadElevationNoise = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1));
+                float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0);
+                ridge = pow(saturate(ridge), 2.5);
+                float mountainMask = smoothstep(0.58, 0.85, ridge + broadElevationNoise * 0.35);
+                mountainMask *= landMask;
+                mountainMask *= smoothstep(0.35, 1.0, _Elevation);
+                return mountainMask;
+            }
+
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7));
+                float mountainMask = GetMountainMask(objNorm, landMask);
+                float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8));
+                float waterMask = 1.0 - landMask;
+                float finalHeight = landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength;
+                return finalHeight;
+            }
+
+// -----------------------------------------------------------------
             //  Vertex displacement helper
             // -----------------------------------------------------------------
             float GetDisplacement(float3 objNorm)
@@ -483,7 +541,10 @@ Shader "Custom/MenuPlanetPreview"
                 float baseRadius = max(1e-5, length(input.positionOS.xyz));
                 float3 objNorm = input.positionOS.xyz / baseRadius;
 
-                float disp = GetDisplacement(objNorm);
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float landMask = GetLandMask(objNorm, seedOff);
+                float capMask = GetCapMask(objNorm, seedOff);
+                float disp = GetTerrainHeightValue(objNorm, landMask, capMask) * _DisplacementScale;
                 float3 displacedOS = objNorm * (baseRadius * (1.0 + disp));
 
                 // Compute displaced normal from displaced positions (more stable than
@@ -494,8 +555,12 @@ Shader "Custom/MenuPlanetPreview"
 
                 float3 nU = normalize(objNorm + tangent1 * eps);
                 float3 nV = normalize(objNorm + tangent2 * eps);
-                float dispU = GetDisplacement(nU);
-                float dispV = GetDisplacement(nV);
+                float landU = GetLandMask(nU, seedOff);
+                float capU = GetCapMask(nU, seedOff);
+                float landV = GetLandMask(nV, seedOff);
+                float capV = GetCapMask(nV, seedOff);
+                float dispU = GetTerrainHeightValue(nU, landU, capU) * _DisplacementScale;
+                float dispV = GetTerrainHeightValue(nV, landV, capV) * _DisplacementScale;
                 float3 p  = displacedOS;
                 float3 pU = nU * (baseRadius * (1.0 + dispU));
                 float3 pV = nV * (baseRadius * (1.0 + dispV));
@@ -535,6 +600,13 @@ Shader "Custom/MenuPlanetPreview"
                 // ---- Elevation noise ----
                 float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 float terrainHeight = elevNoise * _Elevation;
+                float landMask = edge;
+                float capMask = GetCapMask(objNorm, seedOff);
+                float mountainMask = GetMountainMask(objNorm, landMask);
+                float finalHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+                if (_ShowElevationOnly > 0.5) return float4(terrainHeight.xxx, 1);
+                if (_ShowMountainMaskOnly > 0.5) return float4(mountainMask.xxx, 1);
+                if (_ShowDisplacementHeightOnly > 0.5) return float4(saturate(finalHeight).xxx, 1);
 
                 float highBand = smoothstep(0.30, 0.50, terrainHeight);
                 float mtnBand  = smoothstep(0.50, 0.65, terrainHeight);
@@ -591,7 +663,6 @@ Shader "Custom/MenuPlanetPreview"
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float capStart = lerp(1.10, 0.15, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
-                float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
                 float temperatureLocal = saturate((1.0 - latitude) * 0.7 + _Temperature * 0.3 + tempShift * 0.2);
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(latitude, temperatureLocal, _Moisture, localMoist, terrainHeight, capMask, objNorm, _Seed);
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm);
@@ -617,7 +688,7 @@ Shader "Custom/MenuPlanetPreview"
 
                 float3 elevatedLand = biomeTextureAlbedo;
                 // Mountains blend in at high elevation — distinct color like a map
-                float mtnBlend = smoothstep(0.35, 0.60, terrainHeight);
+                float mtnBlend = mountainMask * smoothstep(0.35, 0.60, terrainHeight);
                 elevatedLand = lerp(elevatedLand, mountainColor, mtnBlend);
                 // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
                 float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
@@ -982,6 +1053,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _AtmospherePower;
                 float _AtmosphereRadius;
                 float _DisplacementScale;
+                float _LandUpliftStrength;
+                float _HillDisplacementStrength;
+                float _MountainDisplacementStrength;
+                float _IceDisplacementStrength;
+                float _VolcanicDisplacementStrength;
+                float _OceanDepthStrength;
+                float _ShowElevationOnly;
+                float _ShowMountainMaskOnly;
+                float _ShowDisplacementHeightOnly;
                 float _Smoothness;
                 float _Metallic;
                 float _AmbientOcclusion;
@@ -1106,6 +1186,15 @@ Shader "Custom/MenuPlanetPreview"
                 float _AtmospherePower;
                 float _AtmosphereRadius;
                 float _DisplacementScale;
+                float _LandUpliftStrength;
+                float _HillDisplacementStrength;
+                float _MountainDisplacementStrength;
+                float _IceDisplacementStrength;
+                float _VolcanicDisplacementStrength;
+                float _OceanDepthStrength;
+                float _ShowElevationOnly;
+                float _ShowMountainMaskOnly;
+                float _ShowDisplacementHeightOnly;
                 float _Smoothness;
                 float _Metallic;
                 float _AmbientOcclusion;

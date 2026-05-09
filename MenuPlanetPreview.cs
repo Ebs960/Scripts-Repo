@@ -161,6 +161,20 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float biomeNormalStrength = 0.15f;
     [SerializeField, Range(0.1f, 30f)] private float biomeTextureScale = 6.0f;
     [SerializeField, Range(0f, 1f)] private float biomeTextureContrast = 0.18f;
+    
+    [Header("Elevation Displacement")]
+    [SerializeField, Range(0f, 1f)] private float landUpliftStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float hillDisplacementStrength = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float mountainDisplacementStrength = 0.65f;
+    [SerializeField, Range(0f, 1f)] private float iceDisplacementStrength = 0.15f;
+    [SerializeField, Range(0f, 1f)] private float volcanicDisplacementStrength = 0.45f;
+    [SerializeField, Range(0f, 1f)] private float oceanDepthStrength = 0.03f;
+
+    [Header("Elevation Debug")]
+    [SerializeField] private bool showElevationOnly;
+    [SerializeField] private bool showMountainMaskOnly;
+    [SerializeField] private bool showDisplacementHeightOnly;
+
     [Header("Debug")]
     [SerializeField] private bool showLandMaskOnly = false;
     [SerializeField] private bool showDetailTexturesOnly = false;
@@ -183,7 +197,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere. Higher = smoother displacement. 0-6 (6 ≈ 40k tris).")]
-    [Range(0,20)] [SerializeField] private int icosphereSubdivisions = 5;
+    [Range(0,6)] [SerializeField] private int icosphereSubdivisions = 5;
 
     // -----------------------------------------------------------------
     //  Preview Parameters (exposed in inspector for quick iteration)
@@ -319,6 +333,16 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
     private static readonly int ID_AtmosColor    = Shader.PropertyToID("_AtmosphereColor");
     private static readonly int ID_DisplacementScale = Shader.PropertyToID("_DisplacementScale");
+    private static readonly int ID_LandUpliftStrength = Shader.PropertyToID("_LandUpliftStrength");
+    private static readonly int ID_HillDisplacementStrength = Shader.PropertyToID("_HillDisplacementStrength");
+    private static readonly int ID_MountainDisplacementStrength = Shader.PropertyToID("_MountainDisplacementStrength");
+    private static readonly int ID_IceDisplacementStrength = Shader.PropertyToID("_IceDisplacementStrength");
+    private static readonly int ID_VolcanicDisplacementStrength = Shader.PropertyToID("_VolcanicDisplacementStrength");
+    private static readonly int ID_OceanDepthStrength = Shader.PropertyToID("_OceanDepthStrength");
+    private static readonly int ID_ShowElevationOnly = Shader.PropertyToID("_ShowElevationOnly");
+    private static readonly int ID_ShowMountainMaskOnly = Shader.PropertyToID("_ShowMountainMaskOnly");
+    private static readonly int ID_ShowDisplacementHeightOnly = Shader.PropertyToID("_ShowDisplacementHeightOnly");
+
     private static readonly int ID_Smoothness    = Shader.PropertyToID("_Smoothness");
     private static readonly int ID_Metallic      = Shader.PropertyToID("_Metallic");
     private static readonly int ID_AmbientOcclusion = Shader.PropertyToID("_AmbientOcclusion");
@@ -574,6 +598,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Displacement
         materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
+        PushDisplacementParameters();
 
         // Surface properties
         materialInstance.SetFloat(ID_Smoothness, smoothness);
@@ -584,6 +609,20 @@ public class MenuPlanetPreview : MonoBehaviour
         PushDetailTextureParameters();
         PushBiomeTextureParameters();
         PushInfernalTextureParameters();
+    }
+
+    private void PushDisplacementParameters()
+    {
+        if (materialInstance == null) return;
+        materialInstance.SetFloat(ID_LandUpliftStrength, landUpliftStrength);
+        materialInstance.SetFloat(ID_HillDisplacementStrength, hillDisplacementStrength);
+        materialInstance.SetFloat(ID_MountainDisplacementStrength, mountainDisplacementStrength);
+        materialInstance.SetFloat(ID_IceDisplacementStrength, iceDisplacementStrength);
+        materialInstance.SetFloat(ID_VolcanicDisplacementStrength, volcanicDisplacementStrength);
+        materialInstance.SetFloat(ID_OceanDepthStrength, oceanDepthStrength);
+        materialInstance.SetFloat(ID_ShowElevationOnly, showElevationOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowMountainMaskOnly, showMountainMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowDisplacementHeightOnly, showDisplacementHeightOnly ? 1f : 0f);
     }
 
     private void PushDetailTextureParameters()
@@ -745,7 +784,8 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null)
         {
             materialInstance.SetFloat(ID_Elevation, elevation);
-                RecalculateDerivedVisuals();
+            PushDisplacementParameters();
+            RecalculateDerivedVisuals();
             }
     }
 
@@ -757,6 +797,7 @@ public class MenuPlanetPreview : MonoBehaviour
         displacementScale = Mathf.Clamp(value, 0f, 0.15f);
         if (materialInstance != null)
             materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
+        PushDisplacementParameters();
     }
 
     [System.Obsolete("Legacy color-driven biome setters are no-ops. Texture-driven biomes are authoritative.")]
@@ -942,7 +983,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         cloudShellGO.layer = previewRenderer.gameObject.layer;
 
         var mf = cloudShellGO.AddComponent<MeshFilter>();
-        mf.sharedMesh = IcoSphereGenerator.Create(Mathf.Min(icosphereSubdivisions, 4), 1f);
+        mf.sharedMesh = IcoSphereGenerator.Create(icosphereSubdivisions, 1f);
 
         var mr = cloudShellGO.AddComponent<MeshRenderer>();
         cloudMaterialInstance = new Material(cloudShader);
@@ -1139,6 +1180,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
             mesh.SetTriangles(faces, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 3f);
             return mesh;
         }
 
