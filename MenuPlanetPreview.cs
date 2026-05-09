@@ -62,6 +62,8 @@ public class MenuPlanetPreview : MonoBehaviour
     [Header("Displacement")]
     [Tooltip("How far land vertices protrude outward (fraction of radius). 0 = flat sphere.")]
     [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.004f;
+    [Tooltip("Uses displaced geometry-derived normals. Disable to force stable sphere normals.")]
+    [SerializeField] private bool useDisplacedNormals = false;
 
     [Header("Clouds")]
     [SerializeField] private bool enableCloudShell = true;
@@ -337,6 +339,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowElevationOnly = Shader.PropertyToID("_ShowElevationOnly");
     private static readonly int ID_ShowMountainMaskOnly = Shader.PropertyToID("_ShowMountainMaskOnly");
     private static readonly int ID_ShowDisplacementHeightOnly = Shader.PropertyToID("_ShowDisplacementHeightOnly");
+    private static readonly int ID_UseDisplacedNormals = Shader.PropertyToID("_UseDisplacedNormals");
 
     private static readonly int ID_Smoothness    = Shader.PropertyToID("_Smoothness");
     private static readonly int ID_Metallic      = Shader.PropertyToID("_Metallic");
@@ -615,6 +618,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowElevationOnly, showElevationOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowMountainMaskOnly, showMountainMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDisplacementHeightOnly, showDisplacementHeightOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_UseDisplacedNormals, useDisplacedNormals ? 1f : 0f);
     }
 
     private void PushDetailTextureParameters()

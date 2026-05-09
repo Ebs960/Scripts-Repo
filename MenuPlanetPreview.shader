@@ -40,6 +40,7 @@ Shader "Custom/MenuPlanetPreview"
             _ShowElevationOnly("Show Elevation Only", Float) = 0
             _ShowMountainMaskOnly("Show Mountain Mask Only", Float) = 0
             _ShowDisplacementHeightOnly("Show Displacement Height Only", Float) = 0
+            _UseDisplacedNormals("Use Displaced Normals", Float) = 0
         [Header(Surface)]
             _Smoothness("Smoothness", Range(0, 1)) = 0.3
             _Metallic("Metallic", Range(0, 1)) = 0.0
@@ -172,6 +173,7 @@ Shader "Custom/MenuPlanetPreview"
                 float _ShowElevationOnly;
                 float _ShowMountainMaskOnly;
                 float _ShowDisplacementHeightOnly;
+                float _UseDisplacedNormals;
                 float _Smoothness;
                 float _Metallic;
                 float _AmbientOcclusion;
@@ -534,12 +536,23 @@ Shader "Custom/MenuPlanetPreview"
                 float3 p  = displacedOS;
                 float3 pU = nU * (baseRadius * (1.0 + dispU));
                 float3 pV = nV * (baseRadius * (1.0 + dispV));
-                float3 dispNormalOS = normalize(cross(pV - p, pU - p));
+                float3 dispNormalOS = normalize(cross(pU - p, pV - p));
+                if (dot(dispNormalOS, objNorm) < 0.0)
+                {
+                    dispNormalOS = -dispNormalOS;
+                }
 
                 float3 worldPos = TransformObjectToWorld(displacedOS);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 output.positionWS = worldPos;
-                output.normalWS   = TransformObjectToWorldNormal(dispNormalOS);
+                if (_UseDisplacedNormals > 0.5)
+                {
+                    output.normalWS = TransformObjectToWorldNormal(dispNormalOS);
+                }
+                else
+                {
+                    output.normalWS = TransformObjectToWorldNormal(objNorm);
+                }
                 output.positionOS = input.positionOS.xyz; // undisplaced for fragment noise sampling
 
                 return output;
