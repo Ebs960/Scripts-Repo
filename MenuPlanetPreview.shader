@@ -12,7 +12,7 @@ Shader "Custom/MenuPlanetPreview"
             _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
         [Header(Ocean Color)]
-            _OceanColor("Ocean Color", Color) = (0.06, 0.22, 0.45, 1)
+            _OceanColor("Ocean Base Color", Color) = (0.06, 0.22, 0.45, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
             _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
@@ -30,13 +30,13 @@ Shader "Custom/MenuPlanetPreview"
             [HideInInspector] _AtmosphereRadius("Atmosphere Radius", Float) = 1.0
             _MapStyle("Map Style", Range(0, 1)) = 0.0
         [Header(Displacement)]
-            _DisplacementScale("Displacement Scale", Range(0, 0.15)) = 0.035
-            _LandUpliftStrength("Land Uplift Strength", Range(0,1)) = 0.12
-            _HillDisplacementStrength("Hill Displacement Strength", Range(0,1)) = 0.25
-            _MountainDisplacementStrength("Mountain Displacement Strength", Range(0,1)) = 0.65
-            _IceDisplacementStrength("Ice Displacement Strength", Range(0,1)) = 0.15
-            _VolcanicDisplacementStrength("Volcanic Displacement Strength", Range(0,1)) = 0.45
-            _OceanDepthStrength("Ocean Depth Strength", Range(0,1)) = 0.03
+            _DisplacementScale("Displacement Scale", Range(0, 0.15)) = 0.004
+            _LandUpliftStrength("Land Uplift Strength", Range(0,1)) = 0.06
+            _HillDisplacementStrength("Hill Displacement Strength", Range(0,1)) = 0.08
+            _MountainDisplacementStrength("Mountain Displacement Strength", Range(0,1)) = 0.18
+            _IceDisplacementStrength("Ice Displacement Strength", Range(0,1)) = 0.04
+            _VolcanicDisplacementStrength("Volcanic Displacement Strength", Range(0,1)) = 0.12
+            _OceanDepthStrength("Ocean Depth Strength", Range(0,1)) = 0.01
             _ShowElevationOnly("Show Elevation Only", Float) = 0
             _ShowMountainMaskOnly("Show Mountain Mask Only", Float) = 0
             _ShowDisplacementHeightOnly("Show Displacement Height Only", Float) = 0
@@ -60,12 +60,10 @@ Shader "Custom/MenuPlanetPreview"
             _LavaCrackTex("Lava Crack", 2D) = "gray" {}
             _LavaEmissiveTex("Lava Emissive", 2D) = "white" {}
             _AshDetailTex("Ash Detail", 2D) = "gray" {}
-            _LandDetailStrength("Land Detail Strength", Range(0,1)) = 0.1
             _MountainDetailStrength("Mountain Detail Strength", Range(0,1)) = 0.14
             _IceDetailStrength("Ice Detail Strength", Range(0,1)) = 0.12
             _OceanDetailStrength("Ocean Detail Strength", Range(0,1)) = 0.15
             _OceanNormalStrength("Ocean Normal Strength", Range(0,1)) = 0.1
-            _LandNormalStrength("Land Normal Strength", Range(0,1)) = 0.12
             _MountainNormalStrength("Mountain Normal Strength", Range(0,1)) = 0.18
             _IceNormalStrength("Ice Normal Strength", Range(0,1)) = 0.22
             _TextureDetailScale("Texture Detail Scale", Range(0.1,30)) = 8
@@ -179,12 +177,10 @@ Shader "Custom/MenuPlanetPreview"
                 float _AmbientOcclusion;
                 float _AmbientStrength;
                 float _Brightness;
-                float _LandDetailStrength;
                 float _MountainDetailStrength;
                 float _IceDetailStrength;
                 float _OceanDetailStrength;
                 float _OceanNormalStrength;
-                float _LandNormalStrength;
                 float _MountainNormalStrength;
                 float _IceNormalStrength;
                 float _TextureDetailScale;
@@ -491,6 +487,7 @@ Shader "Custom/MenuPlanetPreview"
             {
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7));
+                hills *= landMask;
                 float mountainMask = GetMountainMask(objNorm, landMask);
                 float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8));
                 float waterMask = 1.0 - landMask;
@@ -498,31 +495,13 @@ Shader "Custom/MenuPlanetPreview"
                 return finalHeight;
             }
 
-// -----------------------------------------------------------------
-            //  Vertex displacement helper
-            // -----------------------------------------------------------------
-            float GetDisplacement(float3 objNorm)
+            float GetPreviewDisplacementHeight(float3 objNorm)
             {
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
-                float3 samplePos = objNorm * _LandScale;
-                float n = GetWarpedLandValue(objNorm, seedOff);
-
-                // Wide transition (0.12 each side) so coastlines are gentle slopes, not cliffs
-                float edge = smoothstep(_LandThreshold - 0.12, _LandThreshold + 0.12, n);
-
-                // --- Ice cap mask (match fragment logic) ---
-                // Compute latitude and an ice-edge noise to allow jagged ice boundaries
-                float latitude = abs(objNorm.y);
-                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
-                float capStart = lerp(1.10, 0.15, _IceCapSize);
-                float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
-
-                // Combine land edge and ice cap mask so ice caps also receive displacement
-                float combinedEdge = max(edge, capMask);
-
-                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
-                // Displace land and ice outward; oceans stay at base radius
-                return combinedEdge * elevNoise * _DisplacementScale;
+                float landMask = GetLandMask(objNorm, seedOff);
+                float capMask = GetCapMask(objNorm, seedOff);
+                float rawHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+                return rawHeight * _DisplacementScale;
             }
 
             // -----------------------------------------------------------------
@@ -539,9 +518,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 objNorm = input.positionOS.xyz / baseRadius;
 
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
-                float landMask = GetLandMask(objNorm, seedOff);
-                float capMask = GetCapMask(objNorm, seedOff);
-                float disp = GetTerrainHeightValue(objNorm, landMask, capMask) * _DisplacementScale;
+                float disp = GetPreviewDisplacementHeight(objNorm);
                 float3 displacedOS = objNorm * (baseRadius * (1.0 + disp));
 
                 // Compute displaced normal from displaced positions (more stable than
@@ -552,12 +529,8 @@ Shader "Custom/MenuPlanetPreview"
 
                 float3 nU = normalize(objNorm + tangent1 * eps);
                 float3 nV = normalize(objNorm + tangent2 * eps);
-                float landU = GetLandMask(nU, seedOff);
-                float capU = GetCapMask(nU, seedOff);
-                float landV = GetLandMask(nV, seedOff);
-                float capV = GetCapMask(nV, seedOff);
-                float dispU = GetTerrainHeightValue(nU, landU, capU) * _DisplacementScale;
-                float dispV = GetTerrainHeightValue(nV, landV, capV) * _DisplacementScale;
+                float dispU = GetPreviewDisplacementHeight(nU);
+                float dispV = GetPreviewDisplacementHeight(nV);
                 float3 p  = displacedOS;
                 float3 pU = nU * (baseRadius * (1.0 + dispU));
                 float3 pV = nV * (baseRadius * (1.0 + dispV));
@@ -1061,38 +1034,79 @@ Shader "Custom/MenuPlanetPreview"
                 float _Brightness;
             CBUFFER_END
 
-            // Inline noise for displacement (same as main pass)
-            float hash31_d(float3 p)
+            float hash31(float3 p)
             {
                 p = frac(p * float3(0.1031, 0.1030, 0.0973));
                 p += dot(p, p.yxz + 33.33);
                 return frac((p.x + p.y) * p.z);
             }
-            float noise3D_d(float3 p)
+            float noise3D(float3 p)
             {
                 float3 i = floor(p); float3 f = frac(p);
                 f = f * f * (3.0 - 2.0 * f);
-                float n000 = hash31_d(i); float n100 = hash31_d(i + float3(1,0,0));
-                float n010 = hash31_d(i + float3(0,1,0)); float n110 = hash31_d(i + float3(1,1,0));
-                float n001 = hash31_d(i + float3(0,0,1)); float n101 = hash31_d(i + float3(1,0,1));
-                float n011 = hash31_d(i + float3(0,1,1)); float n111 = hash31_d(i + float3(1,1,1));
+                float n000 = hash31(i); float n100 = hash31(i + float3(1,0,0));
+                float n010 = hash31(i + float3(0,1,0)); float n110 = hash31(i + float3(1,1,0));
+                float n001 = hash31(i + float3(0,0,1)); float n101 = hash31(i + float3(1,0,1));
+                float n011 = hash31(i + float3(0,1,1)); float n111 = hash31(i + float3(1,1,1));
                 return lerp(lerp(lerp(n000,n100,f.x),lerp(n010,n110,f.x),f.y),
                             lerp(lerp(n001,n101,f.x),lerp(n011,n111,f.x),f.y),f.z);
             }
-            float fbm_d(float3 p)
+            float fbm(float3 p)
             {
                 float v=0; float a=0.5; float fr=1;
-                for(int i=0;i<4;i++){v+=a*noise3D_d(p*fr);fr*=2;a*=0.5;}
+                for(int i=0;i<5;i++){v+=a*noise3D(p*fr);fr*=2;a*=0.5;}
                 return v;
             }
-            float GetDisp(float3 objNorm)
+            float GetWarpedLandValue(float3 objNorm, float3 seedOff)
+            {
+                float3 samplePos = objNorm * _LandScale;
+                float3 warp;
+                warp.x = fbm(samplePos * 0.9 + float3(31.2, 11.7, 73.4) + seedOff);
+                warp.y = fbm(samplePos * 0.9 + float3(8.4, 97.1, 45.6) + seedOff);
+                warp.z = fbm(samplePos * 0.9 + float3(56.3, 24.9, 12.8) + seedOff);
+                float3 warpedPos = samplePos + (warp - 0.5) * (_BiomeNoiseStrength * 8.0);
+                return fbm(warpedPos + float3(42.3, 17.1, 83.7) + seedOff);
+            }
+            float GetLandMask(float3 objNorm, float3 seedOff)
+            {
+                float n = GetWarpedLandValue(objNorm, seedOff);
+                return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
+            }
+            float GetCapMask(float3 objNorm, float3 seedOff)
+            {
+                float latitude = abs(objNorm.y);
+                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
+                float capStart = lerp(1.10, 0.15, _IceCapSize);
+                return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
+            }
+            float GetMountainMask(float3 objNorm, float landMask)
             {
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
-                float3 sp = objNorm * _LandScale;
-                float n = fbm_d(sp + float3(42.3,17.1,83.7) + seedOff);
-                float edge = smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,n);
-                float elev = fbm_d(sp*1.5+float3(99.1,55.3,12.7) + seedOff);
-                return edge*elev*_DisplacementScale;
+                float broadElevationNoise = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1));
+                float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0);
+                ridge = pow(saturate(ridge), 2.5);
+                float mountainMask = smoothstep(0.58, 0.85, ridge + broadElevationNoise * 0.35);
+                mountainMask *= landMask;
+                mountainMask *= smoothstep(0.35, 1.0, _Elevation);
+                return mountainMask;
+            }
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7));
+                hills *= landMask;
+                float mountainMask = GetMountainMask(objNorm, landMask);
+                float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8));
+                float waterMask = 1.0 - landMask;
+                return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength;
+            }
+            float GetPreviewDisplacementHeight(float3 objNorm)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float landMask = GetLandMask(objNorm, seedOff);
+                float capMask = GetCapMask(objNorm, seedOff);
+                float rawHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+                return rawHeight * _DisplacementScale;
             }
 
             Varyings vertDepth(Attributes input)
@@ -1102,8 +1116,8 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 float r = max(1e-5, length(input.positionOS.xyz));
                 float3 n = input.positionOS.xyz / r;
-                float d = GetDisp(n);
-                float3 displaced = n * (r * (1.0 + d));
+                float disp = GetPreviewDisplacementHeight(n);
+                float3 displaced = n * (r * (1.0 + disp));
                 float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;
@@ -1193,13 +1207,81 @@ Shader "Custom/MenuPlanetPreview"
                 float _Brightness;
             CBUFFER_END
 
-            float hash31_s(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973));p+=dot(p,p.yxz+33.33);return frac((p.x+p.y)*p.z);}
-            float noise3D_s(float3 p){float3 i=floor(p);float3 f=frac(p);f=f*f*(3.0-2.0*f);
-                return lerp(lerp(lerp(hash31_s(i),hash31_s(i+float3(1,0,0)),f.x),lerp(hash31_s(i+float3(0,1,0)),hash31_s(i+float3(1,1,0)),f.x),f.y),
-                            lerp(lerp(hash31_s(i+float3(0,0,1)),hash31_s(i+float3(1,0,1)),f.x),lerp(hash31_s(i+float3(0,1,1)),hash31_s(i+float3(1,1,1)),f.x),f.y),f.z);}
-            float fbm_s(float3 p){float v=0;float a=0.5;float fr=1;for(int i=0;i<4;i++){v+=a*noise3D_s(p*fr);fr*=2;a*=0.5;}return v;}
-            float GetDispS(float3 n){float3 seedOff=float3(_Seed,_Seed*0.7,_Seed*1.3);float3 sp=n*_LandScale;float e=smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,fbm_s(sp+float3(42.3,17.1,83.7)+seedOff));
-                return e*fbm_s(sp*1.5+float3(99.1,55.3,12.7)+seedOff)*_DisplacementScale;}
+            float hash31(float3 p)
+            {
+                p = frac(p * float3(0.1031, 0.1030, 0.0973));
+                p += dot(p, p.yxz + 33.33);
+                return frac((p.x + p.y) * p.z);
+            }
+            float noise3D(float3 p)
+            {
+                float3 i = floor(p); float3 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float n000 = hash31(i); float n100 = hash31(i + float3(1,0,0));
+                float n010 = hash31(i + float3(0,1,0)); float n110 = hash31(i + float3(1,1,0));
+                float n001 = hash31(i + float3(0,0,1)); float n101 = hash31(i + float3(1,0,1));
+                float n011 = hash31(i + float3(0,1,1)); float n111 = hash31(i + float3(1,1,1));
+                return lerp(lerp(lerp(n000,n100,f.x),lerp(n010,n110,f.x),f.y),
+                            lerp(lerp(n001,n101,f.x),lerp(n011,n111,f.x),f.y),f.z);
+            }
+            float fbm(float3 p)
+            {
+                float v=0; float a=0.5; float fr=1;
+                for(int i=0;i<5;i++){v+=a*noise3D(p*fr);fr*=2;a*=0.5;}
+                return v;
+            }
+            float GetWarpedLandValue(float3 objNorm, float3 seedOff)
+            {
+                float3 samplePos = objNorm * _LandScale;
+                float3 warp;
+                warp.x = fbm(samplePos * 0.9 + float3(31.2, 11.7, 73.4) + seedOff);
+                warp.y = fbm(samplePos * 0.9 + float3(8.4, 97.1, 45.6) + seedOff);
+                warp.z = fbm(samplePos * 0.9 + float3(56.3, 24.9, 12.8) + seedOff);
+                float3 warpedPos = samplePos + (warp - 0.5) * (_BiomeNoiseStrength * 8.0);
+                return fbm(warpedPos + float3(42.3, 17.1, 83.7) + seedOff);
+            }
+            float GetLandMask(float3 objNorm, float3 seedOff)
+            {
+                float n = GetWarpedLandValue(objNorm, seedOff);
+                return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
+            }
+            float GetCapMask(float3 objNorm, float3 seedOff)
+            {
+                float latitude = abs(objNorm.y);
+                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
+                float capStart = lerp(1.10, 0.15, _IceCapSize);
+                return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
+            }
+            float GetMountainMask(float3 objNorm, float landMask)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float broadElevationNoise = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1));
+                float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0);
+                ridge = pow(saturate(ridge), 2.5);
+                float mountainMask = smoothstep(0.58, 0.85, ridge + broadElevationNoise * 0.35);
+                mountainMask *= landMask;
+                mountainMask *= smoothstep(0.35, 1.0, _Elevation);
+                return mountainMask;
+            }
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7));
+                hills *= landMask;
+                float mountainMask = GetMountainMask(objNorm, landMask);
+                float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8));
+                float waterMask = 1.0 - landMask;
+                return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength;
+            }
+            float GetPreviewDisplacementHeight(float3 objNorm)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float landMask = GetLandMask(objNorm, seedOff);
+                float capMask = GetCapMask(objNorm, seedOff);
+                float rawHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+                return rawHeight * _DisplacementScale;
+            }
+
 
             Varyings vertShadow(Attributes input)
             {
@@ -1208,7 +1290,8 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 float r = max(1e-5, length(input.positionOS.xyz));
                 float3 n = input.positionOS.xyz / r;
-                float3 displaced = n * (r * (1.0 + GetDispS(n)));
+                float disp = GetPreviewDisplacementHeight(n);
+                float3 displaced = n * (r * (1.0 + disp));
                 float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;
