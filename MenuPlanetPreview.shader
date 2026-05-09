@@ -854,13 +854,13 @@ Shader "Custom/MenuPlanetPreview"
                 float lavaMask = max(lavaMaskSample, fallbackCrack * 0.75);
                 float lavaEmissionMask = max(lavaEmissiveSample, lavaMask);
                 float volcanic = dot(volcanicSample, float3(0.333, 0.333, 0.333));
-                float landMask = saturate(edge * (1.0 - capMask * 0.35));
-                float crack = smoothstep(0.55, 0.9, lavaMask) * landMask * infernal * _LavaCrackStrength;
+                float volcanicLandMask = saturate(edge * (1.0 - capMask * 0.35));
+                float crack = smoothstep(0.55, 0.9, lavaMask) * volcanicLandMask * infernal * _LavaCrackStrength;
                 float emissiveCrack = crack * lavaEmissionMask;
                 float volcanicDarken = lerp(0.25, 0.55, volcanic);
                 float3 volcanicColor = lerp(albedo, albedo * volcanicDarken, _VolcanicRockStrength * infernal);
                 albedo = lerp(albedo, volcanicColor, infernal);
-                float ashMask = ashSample * _AshDetailStrength * infernal * saturate(0.4 + landMask + capMask * 0.4);
+                float ashMask = ashSample * _AshDetailStrength * infernal * saturate(0.4 + volcanicLandMask + capMask * 0.4);
                 float ashGray = dot(albedo, float3(0.299, 0.587, 0.114));
                 albedo = lerp(albedo, float3(ashGray, ashGray, ashGray), ashMask * 0.35);
 
