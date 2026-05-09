@@ -61,7 +61,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Displacement")]
     [Tooltip("How far land vertices protrude outward (fraction of radius). 0 = flat sphere.")]
-    [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.035f;
+    [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.004f;
 
     [Header("Clouds")]
     [SerializeField] private bool enableCloudShell = true;
@@ -163,12 +163,12 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float biomeTextureContrast = 0.18f;
     
     [Header("Elevation Displacement")]
-    [SerializeField, Range(0f, 1f)] private float landUpliftStrength = 0.12f;
-    [SerializeField, Range(0f, 1f)] private float hillDisplacementStrength = 0.25f;
-    [SerializeField, Range(0f, 1f)] private float mountainDisplacementStrength = 0.65f;
-    [SerializeField, Range(0f, 1f)] private float iceDisplacementStrength = 0.15f;
-    [SerializeField, Range(0f, 1f)] private float volcanicDisplacementStrength = 0.45f;
-    [SerializeField, Range(0f, 1f)] private float oceanDepthStrength = 0.03f;
+    [SerializeField, Range(0f, 1f)] private float landUpliftStrength = 0.06f;
+    [SerializeField, Range(0f, 1f)] private float hillDisplacementStrength = 0.08f;
+    [SerializeField, Range(0f, 1f)] private float mountainDisplacementStrength = 0.18f;
+    [SerializeField, Range(0f, 1f)] private float iceDisplacementStrength = 0.04f;
+    [SerializeField, Range(0f, 1f)] private float volcanicDisplacementStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float oceanDepthStrength = 0.01f;
 
     [Header("Elevation Debug")]
     [SerializeField] private bool showElevationOnly;
@@ -865,7 +865,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         detailStrength = previewFidelity == 2 ? 0.32f : (previewFidelity == 1 ? 0.26f : 0.2f);
         biomeNoiseScale = previewFidelity == 2 ? 6.2f : (previewFidelity == 1 ? 4.8f : 3.8f);
         biomeNoiseStrength = previewFidelity == 2 ? 0.135f : (previewFidelity == 1 ? 0.1f : 0.08f);
-        displacementScale = previewFidelity == 2 ? 0.065f : (previewFidelity == 1 ? 0.05f : 0.04f);
+        displacementScale = previewFidelity == 2 ? 0.008f : (previewFidelity == 1 ? 0.006f : 0.004f);
         RecalculateDerivedVisuals();
     }
 
