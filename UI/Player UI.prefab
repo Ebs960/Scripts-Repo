@@ -92,8 +92,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -466,7 +466,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 2677582614469151796}
   yieldText: {fileID: 113442121530052025}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -744,8 +744,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2002,8 +2002,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2777,8 +2777,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2914,8 +2914,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -3432,8 +3432,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5539,8 +5539,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5618,7 +5618,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 50}
+  m_AnchoredPosition: {x: 0, y: 43}
   m_SizeDelta: {x: 500, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1310659919990933970
@@ -5676,13 +5676,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20
-  m_fontSizeBase: 20
+  m_fontSize: 14.5
+  m_fontSizeBase: 14.5
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 1
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -6047,8 +6047,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -7073,8 +7073,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 469}
-  m_SizeDelta: {x: 1920, y: 150}
+  m_AnchoredPosition: {x: 0, y: 475}
+  m_SizeDelta: {x: 1920, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8943375433239908763
 CanvasRenderer:
@@ -7149,7 +7149,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -19}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7083557074608760185
 CanvasRenderer:
@@ -7356,8 +7356,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -7456,7 +7456,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 4314737348066171151}
   yieldText: {fileID: 4843538496250974147}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -7958,7 +7958,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 1449691731876347449}
   yieldText: {fileID: 5335433787711309643}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -9193,8 +9193,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 11
-  m_fontSizeBase: 11
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -9293,7 +9293,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 4448219471030115944}
   yieldText: {fileID: 6002089874636817243}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -10005,7 +10005,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 492488165568859177}
   yieldText: {fileID: 4826269334909129704}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -10064,7 +10064,7 @@ MonoBehaviour:
   categoryNameText: {fileID: 0}
   countText: {fileID: 6866295324186321287}
   yieldText: {fileID: 3902990696459899082}
-  positiveYieldColor: {r: 0, g: 1, b: 0, a: 1}
+  positiveYieldColor: {r: 0, g: 0, b: 0, a: 1}
   negativeYieldColor: {r: 1, g: 0, b: 0, a: 1}
   breakdownPopoverPrefab: {fileID: 6255721056059070020, guid: 3abc46f59b1bb714eb5462ede174834a, type: 3}
   breakdownItemPrefab: {fileID: 2648525335854316186, guid: 4cb33a6e172b4254a974e603a31a623b, type: 3}
@@ -10378,6 +10378,18 @@ PrefabInstance:
       propertyPath: turnsRemainingText
       value: 
       objectReference: {fileID: 3524411443705983456}
+    - target: {fileID: 7749009181651580018, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: positiveDeltaColor.b
+      value: 0.7372549
+      objectReference: {fileID: 0}
+    - target: {fileID: 7749009181651580018, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: positiveDeltaColor.g
+      value: 0.34117648
+      objectReference: {fileID: 0}
+    - target: {fileID: 7749009181651580018, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
+      propertyPath: positiveDeltaColor.r
+      value: 0.6627451
+      objectReference: {fileID: 0}
     - target: {fileID: 8082535188746020054, guid: 55d34953ed0132b46b5c28c806a01c3e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -10537,6 +10549,18 @@ PrefabInstance:
     - target: {fileID: 6926995986968324753, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7528921240477439872, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: positiveDeltaColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7528921240477439872, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: positiveDeltaColor.g
+      value: 0.8012821
+      objectReference: {fileID: 0}
+    - target: {fileID: 7528921240477439872, guid: ccae0f26e16fc3444bcebba6866d9c6d, type: 3}
+      propertyPath: positiveDeltaColor.r
+      value: 0.13396227
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -423,6 +423,7 @@ MonoBehaviour:
   detailStrength: 0.08
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.05
+  useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
   cloudDensity: 0.069
@@ -468,9 +469,9 @@ MonoBehaviour:
   tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
   polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   marshAlbedoTexture: {fileID: 2800000, guid: 2b80de7f6e5fc0544a3a39f35e955252, type: 3}
-  jungleNormalTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
+  jungleNormalTexture: {fileID: 2800000, guid: 1c9961e69d0c1ce499ddb6b843f1ce2d, type: 3}
   desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
-  savannaNormalTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
+  savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
   temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   temperateForestNormalTexture: {fileID: 2800000, guid: fa3fac320ca6b4145a31b98a8201cb79, type: 3}
   tundraNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
@@ -531,7 +532,7 @@ MonoBehaviour:
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 9
+  cameraDistance: 6
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
