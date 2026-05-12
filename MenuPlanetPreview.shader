@@ -571,8 +571,6 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  NORMAL WORLD colors
                 // ==============================================================
-                // Biome color selected strictly by latitude, shifted by temperature
-                float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float capStart = lerp(1.10, 0.15, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 // Local temperature: latitude-first, then elevation lapse-rate cooling,
@@ -584,6 +582,8 @@ Shader "Custom/MenuPlanetPreview"
                 float seasonality = saturate((seasonalityNoise * 0.55 + continentality * 0.25 + subtropicalBias * 0.20) * _SeasonalityStrength + (1.0 - _SeasonalityStrength) * 0.5);
                 float localMoist = saturate(moistureBase + temperatureHumidityBias + broadClimateNoise + regionalClimateNoise + coastWetness + windwardWetness + riparianWetness - continentalDryness - rainShadowDryness);
                 float temperatureLocal = saturate((1.0 - latitude) * 0.66 + _Temperature * 0.34 + tempShift * 0.12 - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
+                // Biome color selected strictly by latitude, shifted by temperature
+                float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1);
