@@ -662,7 +662,7 @@ public class MainMenuManager : MonoBehaviour
         // Land shape: map selectedLandPreset to scale/threshold.
         //  
         float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.82f, 0.65f };
-        float[] landThresholds = { 0.70f, 0.69f, 0.585f, 0.55f, 0.45f, 0.34f };
+        float[] landThresholds = { 0.64f, 0.62f, 0.53f, 0.49f, 0.40f, 0.29f };
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
         planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx]);
 
