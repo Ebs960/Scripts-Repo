@@ -99,6 +99,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Ocean Material")]
     [SerializeField] private Texture2D oceanDetailTexture;
+    [SerializeField] private Texture2D waterwayDetailTexture;
     [SerializeField] private Texture2D oceanNormalTexture;
     [SerializeField] private Texture2D oceanSmoothnessTexture;
 
@@ -379,6 +380,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_MountainDetailTex = Shader.PropertyToID("_MountainDetailTex");
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
+    private static readonly int ID_WaterwayDetailTex = Shader.PropertyToID("_WaterwayDetailTex");
     private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
     private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
     private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
@@ -684,6 +686,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_MountainDetailTex, mountainDetailTexture);
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
+        materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
@@ -713,7 +716,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
-                          oceanDetailTexture != null || oceanNormalTexture != null ||
+                          oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
                           oceanSmoothnessTexture != null || iceSmoothnessTexture != null ||
                           volcanicSurfaceSmoothnessTexture != null ||

@@ -63,6 +63,7 @@ Shader "Custom/MenuPlanetPreview"
             _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
+            _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
             _OceanNormalTex("Ocean Normal", 2D) = "bump" {}
             _MountainNormalTex("Mountain Normal", 2D) = "bump" {}
             _IceNormalTex("Ice Normal", 2D) = "bump" {}
@@ -219,6 +220,7 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
             TEXTURE2D(_OceanDetailTex);
+            TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
@@ -656,17 +658,20 @@ Shader "Custom/MenuPlanetPreview"
                 // - reduced on immediate coasts (estuaries are narrow in this stylized pass)
                 // - suppressed in very arid or very cold regions
                 float inlandMask = smoothstep(_LandThreshold + 0.03, _LandThreshold + 0.16, n);
-                float aridityGate = smoothstep(0.18, 0.72, localMoist);
                 float freezeGate = smoothstep(0.10, 0.28, temperatureLocal);
-                float moistureRiverBoost = lerp(0.65, 1.08, localMoist);
                 float normalRiverMask = riverNetworkMask
                                       * inlandMask
                                       * saturate(1.0 - mtnBand * 0.8)
-                                      * aridityGate
                                       * freezeGate
-                                      * moistureRiverBoost
                                       * lerp(0.55, 1.2, waterwayDensity);
-                normalAlbedo = lerp(normalAlbedo, float3(0.10, 0.25, 0.45), saturate(normalRiverMask));
+                float3 waterwayBaseColor = float3(0.10, 0.25, 0.45);
+                if (_UseDetailTextures > 0.5)
+                {
+                    float3 waterwayDetail = SampleTriplanar(TEXTURE2D_ARGS(_WaterwayDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
+                    float waterwayFactor = (dot(waterwayDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
+                    waterwayBaseColor *= (1.0 + waterwayFactor * max(_OceanDetailStrength, 0.2));
+                }
+                normalAlbedo = lerp(normalAlbedo, saturate(waterwayBaseColor * 1.12), saturate(normalRiverMask));
 
                 // Lakes (normal)
                 float lakeNoise = noise3D(samplePos * 12.0 + float3(7.7, 3.3, 9.9) + seedOff);
@@ -676,9 +681,8 @@ Shader "Custom/MenuPlanetPreview"
                 float lakeEdgeHigh = lakeEdgeLow + lerp(0.06, 0.11, waterwayDensity);
                 float lakeMask  = smoothstep(lakeEdgeLow, lakeEdgeHigh, lakeCombined)
                                 * inlandMask
-                                * smoothstep(0.35, 0.92, localMoist)
                                 * saturate(1.0 - mtnBand * 0.5);
-                normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
+                normalAlbedo = lerp(normalAlbedo, saturate(waterwayBaseColor * 1.2), saturate(lakeMask));
                 float waterInfluence = max(normalRiverMask, lakeMask);
                 riparianWetness = max(riparianWetness, waterInfluence * _RiparianWetnessStrength);
 
