@@ -106,6 +106,13 @@ Shader "Custom/MenuPlanetPreview"
             _LavaEmissionStrength("Lava Emission Strength", Range(0,5)) = 2.2
             _LavaTextureScale("Lava Texture Scale", Range(0.1,30)) = 10
             _AshDetailStrength("Ash Detail Strength", Range(0,1)) = 0.25
+            [HideInInspector] _KeyLightDirectionWS("Key Light Direction WS", Vector) = (0.45,0.65,0.55,0)
+            [HideInInspector] _KeyLightColor("Key Light Color", Color) = (1,1,1,1)
+            [HideInInspector] _KeyLightIntensity("Key Light Intensity", Float) = 1
+            [HideInInspector] _FillLightColor("Fill Light Color", Color) = (1,1,1,1)
+            [HideInInspector] _FillLightIntensity("Fill Light Intensity", Float) = 0.35
+            [HideInInspector] _RimLightColor("Rim Light Color", Color) = (1,1,1,1)
+            [HideInInspector] _RimLightIntensity("Rim Light Intensity", Float) = 0
     }
 
     SubShader
@@ -135,6 +142,9 @@ Shader "Custom/MenuPlanetPreview"
                 float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly;
                 float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly;
                 float _VolcanicRockStrength; float _LavaCrackStrength; float _LavaEmissionStrength; float _LavaTextureScale; float _AshDetailStrength;
+                float4 _KeyLightDirectionWS; float4 _KeyLightColor; float _KeyLightIntensity;
+                float4 _FillLightColor; float _FillLightIntensity;
+                float4 _RimLightColor; float _RimLightIntensity;
             CBUFFER_END
 
             float hash31(float3 p) { p = frac(p * float3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return frac((p.x + p.y) * p.z); }
@@ -806,17 +816,21 @@ Shader "Custom/MenuPlanetPreview"
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), capMask * _IceNormalStrength));
 
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
-                float3 L = normalize(float3(0.45,0.65,0.55));
-                float3 fillL = normalize(float3(-0.35,0.25,-0.9));
+                float3 L = normalize(_KeyLightDirectionWS.xyz);
+                float3 fillL = normalize(float3(-L.x, saturate(L.y * 0.5 + 0.1), -L.z));
                 float ndl = saturate(dot(surfN, L));
                 ndl = smoothstep(0.0, max(0.01,_TerminatorSoftness), ndl);
-                float fill = saturate(dot(surfN, fillL)) * 0.35;
-                float3 lit = albedo * (ndl + fill + _AmbientStrength);
+                float fill = saturate(dot(surfN, fillL));
+                float3 keyContrib = ndl * _KeyLightColor.rgb * _KeyLightIntensity;
+                float3 fillContrib = fill * _FillLightColor.rgb * _FillLightIntensity;
+                float3 lit = albedo * (keyContrib + fillContrib + _AmbientStrength);
                 float3 H = normalize(L + viewDir);
                 float specN = saturate(dot(surfN, H));
                 float oceanSpec = pow(specN, lerp(24,120,saturate(smoothnessMask))) * (1.0-edge) * 0.9;
                 float iceSpec = pow(specN, 36) * capMask * 0.25;
-                lit += oceanSpec + iceSpec;
+                lit += (oceanSpec + iceSpec) * _KeyLightColor.rgb * _KeyLightIntensity;
+                float rim = pow(saturate(1.0 - dot(surfN, viewDir)), 2.5) * _RimLightIntensity;
+                lit += rim * _RimLightColor.rgb * lerp(0.2, 1.0, edge);
                 float3 finalColor = lit * _Brightness;
 
                 if (_ShowLandMaskOnly > 0.5) return float4(edge.xxx, 1.0);
