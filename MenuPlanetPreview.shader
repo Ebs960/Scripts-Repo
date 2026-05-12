@@ -567,6 +567,7 @@ Shader "Custom/MenuPlanetPreview"
                 float river2 = 1.0 - smoothstep(0.0, 0.028, abs(riverNoise2 - 0.5));
                 float riverMask = max(river1 * 1.0, river2 * 0.4);
                 riverMask *= edge; // on land only
+                float riparianWetness = riverMask * _RiparianWetnessStrength;
 
                 // ==============================================================
                 //  NORMAL WORLD colors
@@ -688,7 +689,7 @@ Shader "Custom/MenuPlanetPreview"
                                 * saturate(1.0 - mtnBand * 0.5);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
                 float waterInfluence = max(normalRiverMask, lakeMask);
-                float riparianWetness = waterInfluence * _RiparianWetnessStrength;
+                riparianWetness = max(riparianWetness, waterInfluence * _RiparianWetnessStrength);
 
                 // ---- Ice caps ----
                 // Driven entirely by _IceCapSize (set by the climate preset in MainMenuManager).
