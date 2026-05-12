@@ -20,6 +20,19 @@ Shader "Custom/MenuPlanetPreview"
             _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
         [Header(Seed)]
             _Seed("Planet Seed", Float) = 0.0
+            _MoistureResponseScale("Moisture Response Scale", Range(0.5,1.2)) = 0.85
+            _TemperatureHumidityInfluence("Temperature Humidity Influence", Range(0,0.2)) = 0.06
+            _ClimateNoiseStrength("Climate Noise Strength", Range(0,0.3)) = 0.12
+            _CoastWetnessStrength("Coast Wetness Strength", Range(0,0.3)) = 0.08
+            _ContinentalDrynessStrength("Continental Dryness Strength", Range(0,0.3)) = 0.08
+            _ContinentalTemperatureStrength("Continental Temperature Strength", Range(0,0.3)) = 0.06
+            _RainShadowStrength("Rain Shadow Strength", Range(0,0.3)) = 0.16
+            _OrographicWetnessStrength("Orographic Wetness Strength", Range(0,0.3)) = 0.08
+            _OrographicSampleOffset("Orographic Sample Offset", Range(0.01,0.2)) = 0.08
+            _RiparianWetnessStrength("Riparian Wetness Strength", Range(0,0.3)) = 0.12
+            _SeasonalityStrength("Seasonality Strength", Range(0,1)) = 0.35
+            _BiomeProvinceStrength("Biome Province Strength", Range(0,0.5)) = 0.2
+            _BiomeCompetitionSharpness("Biome Competition Sharpness", Range(0.5,1.25)) = 0.85
             _DetailScale("Detail Scale", Float) = 18.0
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
             // _AtmosphereColor, _AtmospherePower, _AtmosphereRadius kept in CBUFFER
@@ -95,6 +108,12 @@ Shader "Custom/MenuPlanetPreview"
             _ShowBiomeTextureOnly("Show Biome Texture Only", Float) = 0
             _ShowSmoothnessOnly("Show Smoothness Only", Float) = 0
             _ShowLocalMoistureOnly("Show Local Moisture Only", Float) = 0
+            _ShowLocalTemperatureOnly("Show Local Temperature Only", Float) = 0
+            _ShowContinentalityOnly("Show Continentality Only", Float) = 0
+            _ShowSeasonalityOnly("Show Seasonality Only", Float) = 0
+            _ShowRainShadowOnly("Show Rain Shadow Only", Float) = 0
+            _ShowRiparianWetnessOnly("Show Riparian Wetness Only", Float) = 0
+            _ShowDominantBiomeOnly("Show Dominant Biome Only", Float) = 0
             _ShowWaterwaysOnly("Show Waterways Only", Float) = 0
             _ShowWaterwayAmountOnly("Show Waterway Amount Only", Float) = 0
             _TerminatorSoftness("Terminator Softness", Range(0.05,1)) = 0.45
@@ -139,7 +158,8 @@ Shader "Custom/MenuPlanetPreview"
                 float _Smoothness; float _Metallic; float _AmbientOcclusion; float _AmbientStrength; float _Brightness;
                 float _MountainDetailStrength; float _IceDetailStrength; float _OceanDetailStrength; float _OceanNormalStrength; float _MountainNormalStrength; float _IceNormalStrength;
                 float _TextureDetailScale; float _UseDetailTextures; float _UseTextureDrivenBiomes; float _BiomeTextureStrength; float _BiomeTintStrength; float _BiomeNormalStrength; float _BiomeTextureScale; float _BiomeTextureContrast;
-                float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly;
+                float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly;
+                float _MoistureResponseScale; float _TemperatureHumidityInfluence; float _ClimateNoiseStrength; float _CoastWetnessStrength; float _ContinentalDrynessStrength; float _ContinentalTemperatureStrength; float _RainShadowStrength; float _OrographicWetnessStrength; float _OrographicSampleOffset; float _RiparianWetnessStrength; float _SeasonalityStrength; float _BiomeProvinceStrength; float _BiomeCompetitionSharpness;
                 float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly;
                 float _VolcanicRockStrength; float _LavaCrackStrength; float _LavaEmissionStrength; float _LavaTextureScale; float _AshDetailStrength;
                 float4 _KeyLightDirectionWS; float4 _KeyLightColor; float _KeyLightIntensity;
@@ -291,52 +311,51 @@ Shader "Custom/MenuPlanetPreview"
             {
                 return _OceanColor.rgb;
             }
-            struct SurfaceBiomeWeights { float jungle; float desert; float savanna; float temperateGrass; float temperateForest; float tundra; float polar; float marsh; };
-            SurfaceBiomeWeights GetSurfaceBiomeWeights(float latitude, float temperatureLocal, float globalMoisture, float localMoisture, float terrainHeight, float capMask, float3 objNorm, float seed)
+            struct SurfaceBiomeWeights { float jungle; float desert; float savanna; float temperateGrass; float temperateForest; float steppe; float shrubland; float taiga; float tundra; float polar; float marsh; };
+            struct PreviewClimateFields { float temperature; float moisture; float continentality; float seasonality; float rainShadow; float windwardWetness; float riparianWetness; };
+            float BellFit(float v,float c,float w){ return exp(-pow((v-c)/max(w,0.001),2.0)); }
+            float RangeFit(float v,float low,float il,float ih,float high){ return saturate((v-low)/max(il-low,0.001))*saturate((high-v)/max(high-ih,0.001)); }
+            SurfaceBiomeWeights GetSurfaceBiomeWeights(PreviewClimateFields c, float terrainHeight, float capMask, float latitude, float3 objNorm, float seed)
             {
-                SurfaceBiomeWeights w = (SurfaceBiomeWeights)0;
-                float hotness = saturate((temperatureLocal - 0.45) / 0.35);
-                float temperateSuitability = saturate(1.0 - abs(temperatureLocal - 0.50) / 0.30);
-                float coldness = saturate((0.45 - temperatureLocal) / 0.35);
-                float polarSuitability = saturate(capMask);
-                float wetness = localMoisture;
-                float dryness = 1.0 - localMoisture;
-                w.jungle = hotness * smoothstep(0.55, 0.85, wetness);
-                w.desert = hotness * smoothstep(0.45, 0.80, dryness);
-                w.savanna = hotness * smoothstep(0.25, 0.65, wetness) * smoothstep(0.25, 0.65, dryness);
-                w.temperateForest = temperateSuitability * smoothstep(0.48, 0.82, wetness);
-                w.temperateGrass = temperateSuitability * smoothstep(0.30, 0.75, dryness);
-                w.tundra = coldness * smoothstep(0.40, 0.85, dryness) * (1.0 - polarSuitability);
-                w.polar = polarSuitability;
-                w.marsh = smoothstep(0.82, 0.96, wetness) * smoothstep(0.0, 0.35, terrainHeight) * (1.0 - polarSuitability);
-                float3 seedOff = float3(seed, seed * 0.7, seed * 1.3);
-                float junglePatch = fbm(objNorm * 7.0 + seedOff * 2.1);
-                float desertPatch = fbm(objNorm * 6.0 + seedOff * 3.2);
-                float forestPatch = fbm(objNorm * 8.0 + seedOff * 4.3);
-                w.jungle *= lerp(0.65, 1.35, junglePatch);
-                w.desert *= lerp(0.70, 1.30, desertPatch);
-                w.temperateForest *= lerp(0.75, 1.25, forestPatch);
-                float total = w.jungle + w.desert + w.savanna + w.temperateForest + w.temperateGrass + w.tundra + w.polar + w.marsh + 0.0001;
-                w.jungle /= total; w.desert /= total; w.savanna /= total; w.temperateGrass /= total; w.temperateForest /= total; w.tundra /= total; w.polar /= total; w.marsh /= total;
+                SurfaceBiomeWeights w=(SurfaceBiomeWeights)0;
+                float forestP=fbm(objNorm*1.35+seed*1.1); float grassP=fbm(objNorm*1.3+seed*2.1); float aridP=fbm(objNorm*1.25+seed*3.1); float wetP=fbm(objNorm*1.2+seed*4.1); float coldP=fbm(objNorm*1.15+seed*5.1);
+                float ps=_BiomeProvinceStrength; float polarMask=saturate(capMask);
+                float tHot=BellFit(c.temperature,0.86,0.20), tWarm=BellFit(c.temperature,0.70,0.24), tTemp=BellFit(c.temperature,0.52,0.22), tCool=BellFit(c.temperature,0.30,0.18), tCold=BellFit(c.temperature,0.18,0.14);
+                float mDry=BellFit(c.moisture,0.16,0.18), mSemiDry=BellFit(c.moisture,0.34,0.20), mMid=BellFit(c.moisture,0.52,0.24), mMoist=BellFit(c.moisture,0.68,0.22), mWet=BellFit(c.moisture,0.84,0.16);
+                float lowElev=smoothstep(0.45,0.05,terrainHeight);
+                w.jungle=tHot*mWet*(1-c.seasonality*0.55)*(1-polarMask)*lerp(1-ps,1+ps,forestP*0.7+wetP*0.3);
+                w.savanna=tWarm*mMid*lerp(0.8,1.25,c.seasonality)*(1-polarMask)*lerp(1-ps,1+ps,grassP);
+                w.desert=max(tHot,tWarm)*mDry*lerp(1,1.25,c.continentality)*lerp(1,1.35,c.rainShadow)*(1-polarMask)*lerp(1-ps,1+ps,aridP);
+                w.steppe=RangeFit(c.temperature,0.30,0.42,0.72,0.86)*RangeFit(c.moisture,0.10,0.22,0.52,0.66)*lerp(1,1.25,c.continentality)*lerp(1-ps,1+ps,(grassP+aridP)*0.5);
+                w.shrubland=RangeFit(c.temperature,0.38,0.50,0.72,0.84)*RangeFit(c.moisture,0.16,0.28,0.50,0.64)*lerp(0.85,1.25,c.seasonality)*lerp(1-ps,1+ps,aridP*0.6+grassP*0.4);
+                w.temperateGrass=tTemp*RangeFit(c.moisture,0.18,0.34,0.66,0.82)*(1-polarMask)*lerp(1-ps,1+ps,grassP);
+                w.temperateForest=tTemp*mMoist*(1-polarMask)*lerp(1-ps,1+ps,forestP);
+                w.taiga=tCool*RangeFit(c.moisture,0.30,0.45,0.78,0.92)*(1-polarMask)*lerp(1-ps,1+ps,forestP*0.6+coldP*0.4);
+                w.tundra=tCold*RangeFit(c.moisture,0.10,0.20,0.52,0.70)*(1-polarMask)*lerp(1-ps,1+ps,coldP);
+                w.polar=polarMask;
+                w.marsh=lowElev*mWet*lerp(1,1.5,c.riparianWetness)*(1-polarMask)*lerp(1-ps,1+ps,wetP);
+                #define SOFT(x) pow(max(x,0.0001),_BiomeCompetitionSharpness)
+                w.jungle=SOFT(w.jungle);w.desert=SOFT(w.desert);w.savanna=SOFT(w.savanna);w.temperateGrass=SOFT(w.temperateGrass);w.temperateForest=SOFT(w.temperateForest);w.steppe=SOFT(w.steppe);w.shrubland=SOFT(w.shrubland);w.taiga=SOFT(w.taiga);w.tundra=SOFT(w.tundra);w.polar=SOFT(w.polar);w.marsh=SOFT(w.marsh);
+                float total=w.jungle+w.desert+w.savanna+w.temperateGrass+w.temperateForest+w.steppe+w.shrubland+w.taiga+w.tundra+w.polar+w.marsh+1e-4;
+                w.jungle/=total;w.desert/=total;w.savanna/=total;w.temperateGrass/=total;w.temperateForest/=total;w.steppe/=total;w.shrubland/=total;w.taiga/=total;w.tundra/=total;w.polar/=total;w.marsh/=total;
                 return w;
             }
-            float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 climateGrade, float3 positionOS, float3 objNorm)
+            float3 GetTextureBiomeAlbedo(SurfaceBiomeWeights w, float3 climateGrade, float3 positionOS, float3 objNorm, float localTemperature)
             {
-                float3 ju = SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 de = SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 sa = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tg = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tf = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 tu = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 po = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 ma = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_MountainDetailTex), positionOS, objNorm, _BiomeTextureScale);
-                float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + tu*w.tundra + po*w.polar + ma*w.marsh;
-                float texLuma = dot(texBiome, float3(0.299,0.587,0.114));
-                texBiome = lerp(texBiome, texBiome * (1.0 + (texLuma - 0.5) * _BiomeTextureContrast), _BiomeTextureContrast);
-                float3 gradedTexture = texBiome * climateGrade;
-                return lerp(texBiome, gradedTexture, _BiomeTintStrength * _BiomeTextureStrength);
+                float3 ju=SampleTriplanarScaled(TEXTURE2D_ARGS(_JungleAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 de=SampleTriplanarScaled(TEXTURE2D_ARGS(_DesertAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 sa=SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 tg=SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 tf=SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 tu=SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 po=SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 ma=SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 step=lerp(tg,de,0.38)+sa*0.12*saturate((localTemperature-0.55)*2.0);
+                float3 shrub=lerp(sa,de,0.45)*0.6+tg*0.4;
+                float3 ta=lerp(tf,tu,0.45);
+                float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + step*w.steppe + shrub*w.shrubland + ta*w.taiga + tu*w.tundra + po*w.polar + ma*w.marsh;
+                return lerp(texBiome, texBiome*climateGrade, _BiomeTintStrength*_BiomeTextureStrength);
             }
-
             // -----------------------------------------------------------------
             //  Infernal / Demonic color helpers
             // -----------------------------------------------------------------
@@ -486,13 +505,22 @@ Shader "Custom/MenuPlanetPreview"
                 float interiorness = saturate((edge - 0.45) / 0.50); // 0 near coast/ocean, 1 inland
                 float rainShadow = saturate(mtnBand * interiorness * 1.15);
                 float tempHumidityLimit = saturate(1.0 - abs(_Temperature - 0.55) * 1.05);
-                float localMoist = saturate(
-                    _Moisture * lerp(0.82, 1.12, tempHumidityLimit)
-                    + climateNoiseA * 0.18
-                    + (climateNoiseB - 0.5) * 0.14
-                    + coastProximity * 0.10
-                    - rainShadow * 0.20
-                );
+                float moistureBase = saturate(0.5 + (_Moisture - 0.5) * _MoistureResponseScale);
+                float temperatureHumidityBias = (tempHumidityLimit - 0.5) * _TemperatureHumidityInfluence;
+                float broadClimateNoise = (climateNoiseA - 0.5) * _ClimateNoiseStrength;
+                float regionalClimateNoise = (climateNoiseB - 0.5) * (_ClimateNoiseStrength * 0.75);
+                float coastWetness = coastProximity * _CoastWetnessStrength;
+                float lowFrequencyInteriorNoise = fbm(objNorm * 1.1 + seedOff * 2.7);
+                float continentality = saturate(interiorness * 0.85 + lowFrequencyInteriorNoise * 0.15);
+                float continentalDryness = continentality * _ContinentalDrynessStrength;
+                float3 windDir = normalize(float3(0.46, 0.15, 0.87) + float3(seedOff.x * 0.001, 0.0, seedOff.z * 0.001));
+                float3 windTangent = normalize(windDir - objNorm * dot(windDir, objNorm) + 1e-4);
+                float3 upwindNorm = normalize(objNorm - windTangent * _OrographicSampleOffset);
+                float3 downwindNorm = normalize(objNorm + windTangent * _OrographicSampleOffset);
+                float upwindMountain = GetMountainMask(upwindNorm, GetLandMask(upwindNorm, seedOff));
+                float downwindMountain = GetMountainMask(downwindNorm, GetLandMask(downwindNorm, seedOff));
+                float rainShadowDryness = saturate(upwindMountain * interiorness * _RainShadowStrength);
+                float windwardWetness = saturate(downwindMountain * _OrographicWetnessStrength);
 
                 // ==============================================================
                 //  Rivers (shared noise — used by normal, infernal, and demonic)
@@ -533,9 +561,20 @@ Shader "Custom/MenuPlanetPreview"
                 // then small noise to avoid strict banding.
                 float tempNoise = (noise3D(objNorm * 4.5 + float3(14.2, 36.1, 6.5) + seedOff) - 0.5) * 0.09;
                 float elevationCooling = terrainHeight * lerp(0.10, 0.28, saturate(_Elevation + mtnBand * 0.8));
-                float temperatureLocal = saturate((1.0 - latitude) * 0.66 + _Temperature * 0.34 + tempShift * 0.12 - elevationCooling + tempNoise);
-                SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(latitude, temperatureLocal, _Moisture, localMoist, terrainHeight, capMask, objNorm, _Seed);
-                float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm);
+                float seasonalityNoise = fbm(objNorm * 2.2 + seedOff * 5.1);
+                float subtropicalBias = smoothstep(0.15, 0.70, latitude) * (1.0 - smoothstep(0.60, 0.95, latitude));
+                float seasonality = saturate((seasonalityNoise * 0.55 + continentality * 0.25 + subtropicalBias * 0.20) * _SeasonalityStrength + (1.0 - _SeasonalityStrength) * 0.5);
+                float localMoist = saturate(moistureBase + temperatureHumidityBias + broadClimateNoise + regionalClimateNoise + coastWetness + windwardWetness + riparianWetness - continentalDryness - rainShadowDryness);
+                float temperatureLocal = saturate((1.0 - latitude) * 0.66 + _Temperature * 0.34 + tempShift * 0.12 - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
+                PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
+                SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
+                if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1);
+                if (_ShowLocalTemperatureOnly > 0.5) return float4(temperatureLocal.xxx,1);
+                if (_ShowContinentalityOnly > 0.5) return float4(continentality.xxx,1);
+                if (_ShowSeasonalityOnly > 0.5) return float4(seasonality.xxx,1);
+                if (_ShowRainShadowOnly > 0.5) return float4(rainShadowDryness.xxx,1);
+                if (_ShowRiparianWetnessOnly > 0.5) return float4(riparianWetness.xxx,1);
+                float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm, temperatureLocal);
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
                 float3 oceanColor = _OceanColor.rgb;
@@ -630,6 +669,8 @@ Shader "Custom/MenuPlanetPreview"
                                 * smoothstep(0.35, 0.92, localMoist)
                                 * saturate(1.0 - mtnBand * 0.5);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
+                float waterInfluence = max(normalRiverMask, lakeMask);
+                float riparianWetness = waterInfluence * _RiparianWetnessStrength;
 
                 // ---- Ice caps ----
                 // Driven entirely by _IceCapSize (set by the climate preset in MainMenuManager).
@@ -843,8 +884,13 @@ Shader "Custom/MenuPlanetPreview"
                     return float4(saturate(d), 1.0);
                 }
                 if (_ShowNormalsOnly > 0.5) return float4(surfN * 0.5 + 0.5, 1.0);
-                if (_ShowBiomeWeightsOnly > 0.5) return float4(saturate(biomeWeights.jungle*float3(0.05,0.35,0.08)+biomeWeights.desert*float3(0.85,0.74,0.45)+biomeWeights.savanna*float3(0.58,0.52,0.2)+biomeWeights.temperateGrass*float3(0.2,0.6,0.22)+biomeWeights.temperateForest*float3(0.08,0.32,0.1)+biomeWeights.tundra*float3(0.5,0.45,0.4)+biomeWeights.polar*float3(0.85,0.92,1.0)+biomeWeights.marsh*float3(0.2,0.55,0.5)),1.0);
+                if (_ShowBiomeWeightsOnly > 0.5) return float4(saturate(biomeWeights.jungle*float3(0.05,0.35,0.08)+biomeWeights.desert*float3(0.85,0.74,0.45)+biomeWeights.savanna*float3(0.58,0.52,0.2)+biomeWeights.temperateGrass*float3(0.2,0.6,0.22)+biomeWeights.temperateForest*float3(0.08,0.32,0.1)+biomeWeights.steppe*float3(0.62,0.58,0.28)+biomeWeights.shrubland*float3(0.52,0.47,0.25)+biomeWeights.taiga*float3(0.22,0.38,0.24)+biomeWeights.tundra*float3(0.5,0.45,0.4)+biomeWeights.polar*float3(0.85,0.92,1.0)+biomeWeights.marsh*float3(0.2,0.55,0.5)),1.0);
                 if (_ShowBiomeTextureOnly > 0.5) return float4(saturate(biomeTextureAlbedo), 1.0);
+                if (_ShowDominantBiomeOnly > 0.5) {
+                    float best=biomeWeights.jungle; float3 c=float3(0.05,0.35,0.08);
+                    if (biomeWeights.desert>best){best=biomeWeights.desert;c=float3(0.85,0.74,0.45);} if (biomeWeights.savanna>best){best=biomeWeights.savanna;c=float3(0.58,0.52,0.2);} if (biomeWeights.temperateGrass>best){best=biomeWeights.temperateGrass;c=float3(0.2,0.6,0.22);} if (biomeWeights.temperateForest>best){best=biomeWeights.temperateForest;c=float3(0.08,0.32,0.1);} if (biomeWeights.steppe>best){best=biomeWeights.steppe;c=float3(0.62,0.58,0.28);} if (biomeWeights.shrubland>best){best=biomeWeights.shrubland;c=float3(0.52,0.47,0.25);} if (biomeWeights.taiga>best){best=biomeWeights.taiga;c=float3(0.22,0.38,0.24);} if (biomeWeights.tundra>best){best=biomeWeights.tundra;c=float3(0.5,0.45,0.4);} if (biomeWeights.polar>best){best=biomeWeights.polar;c=float3(0.85,0.92,1.0);} if (biomeWeights.marsh>best){c=float3(0.2,0.55,0.5);} return float4(c,1);
+                }
+
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1.0);
                 if (_ShowWaterwaysOnly > 0.5) return float4(0.1*normalRiverMask,0.3*normalRiverMask,0.8*max(normalRiverMask,lakeMask),1.0);
                 if (_ShowWaterwayAmountOnly > 0.5) return float4(_WaterwayAmount.xxx,1.0);

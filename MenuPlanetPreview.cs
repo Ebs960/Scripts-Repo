@@ -185,6 +185,12 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showBiomeTextureOnly = false;
     [SerializeField] private bool showSmoothnessOnly = false;
     [SerializeField] private bool showLocalMoistureOnly = false;
+    [SerializeField] private bool showLocalTemperatureOnly = false;
+    [SerializeField] private bool showContinentalityOnly = false;
+    [SerializeField] private bool showSeasonalityOnly = false;
+    [SerializeField] private bool showRainShadowOnly = false;
+    [SerializeField] private bool showRiparianWetnessOnly = false;
+    [SerializeField] private bool showDominantBiomeOnly = false;
     [SerializeField] private bool showWaterwaysOnly = false;
     [SerializeField] private bool showWaterwayAmountOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
@@ -221,6 +227,24 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 1f)]
     [Tooltip("0 = dry / brown,  1 = wet / lush green.")]
     [SerializeField] private float moisture = 0.5f;
+
+    
+    [Header("Advanced Climate Tuning")]
+    [SerializeField, Range(0.5f, 1.2f)] private float moistureResponseScale = 0.85f;
+    [SerializeField, Range(0f, 0.2f)] private float temperatureHumidityInfluence = 0.06f;
+    [SerializeField, Range(0f, 0.3f)] private float climateNoiseStrength = 0.12f;
+    [SerializeField, Range(0f, 0.3f)] private float coastWetnessStrength = 0.08f;
+    [SerializeField, Range(0f, 0.3f)] private float continentalDrynessStrength = 0.08f;
+    [SerializeField, Range(0f, 0.3f)] private float continentalTemperatureStrength = 0.06f;
+    [SerializeField, Range(0f, 0.3f)] private float rainShadowStrength = 0.16f;
+    [SerializeField, Range(0f, 0.3f)] private float orographicWetnessStrength = 0.08f;
+    [SerializeField, Range(0.01f, 0.2f)] private float orographicSampleOffset = 0.08f;
+    [SerializeField, Range(0f, 0.3f)] private float riparianWetnessStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float seasonalityStrength = 0.35f;
+
+    [Header("Advanced Biome Tuning")]
+    [SerializeField, Range(0f, 0.5f)] private float biomeProvinceStrength = 0.20f;
+    [SerializeField, Range(0.5f, 1.25f)] private float biomeCompetitionSharpness = 0.85f;
 
     [Header("Terrain")]
     [Range(0f, 1f)]
@@ -402,6 +426,25 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowLocalMoistureOnly = Shader.PropertyToID("_ShowLocalMoistureOnly");
     private static readonly int ID_ShowWaterwaysOnly = Shader.PropertyToID("_ShowWaterwaysOnly");
     private static readonly int ID_ShowWaterwayAmountOnly = Shader.PropertyToID("_ShowWaterwayAmountOnly");
+    private static readonly int ID_ShowLocalTemperatureOnly = Shader.PropertyToID("_ShowLocalTemperatureOnly");
+    private static readonly int ID_ShowContinentalityOnly = Shader.PropertyToID("_ShowContinentalityOnly");
+    private static readonly int ID_ShowSeasonalityOnly = Shader.PropertyToID("_ShowSeasonalityOnly");
+    private static readonly int ID_ShowRainShadowOnly = Shader.PropertyToID("_ShowRainShadowOnly");
+    private static readonly int ID_ShowRiparianWetnessOnly = Shader.PropertyToID("_ShowRiparianWetnessOnly");
+    private static readonly int ID_ShowDominantBiomeOnly = Shader.PropertyToID("_ShowDominantBiomeOnly");
+    private static readonly int ID_MoistureResponseScale = Shader.PropertyToID("_MoistureResponseScale");
+    private static readonly int ID_TemperatureHumidityInfluence = Shader.PropertyToID("_TemperatureHumidityInfluence");
+    private static readonly int ID_ClimateNoiseStrength = Shader.PropertyToID("_ClimateNoiseStrength");
+    private static readonly int ID_CoastWetnessStrength = Shader.PropertyToID("_CoastWetnessStrength");
+    private static readonly int ID_ContinentalDrynessStrength = Shader.PropertyToID("_ContinentalDrynessStrength");
+    private static readonly int ID_ContinentalTemperatureStrength = Shader.PropertyToID("_ContinentalTemperatureStrength");
+    private static readonly int ID_RainShadowStrength = Shader.PropertyToID("_RainShadowStrength");
+    private static readonly int ID_OrographicWetnessStrength = Shader.PropertyToID("_OrographicWetnessStrength");
+    private static readonly int ID_OrographicSampleOffset = Shader.PropertyToID("_OrographicSampleOffset");
+    private static readonly int ID_RiparianWetnessStrength = Shader.PropertyToID("_RiparianWetnessStrength");
+    private static readonly int ID_SeasonalityStrength = Shader.PropertyToID("_SeasonalityStrength");
+    private static readonly int ID_BiomeProvinceStrength = Shader.PropertyToID("_BiomeProvinceStrength");
+    private static readonly int ID_BiomeCompetitionSharpness = Shader.PropertyToID("_BiomeCompetitionSharpness");
 
     private static readonly int ID_VolcanicRockTex = Shader.PropertyToID("_VolcanicRockTex");
     private static readonly int ID_LavaCrackTex = Shader.PropertyToID("_LavaCrackTex");
@@ -604,6 +647,7 @@ public class MenuPlanetPreview : MonoBehaviour
         PushDetailTextureParameters();
         PushBiomeTextureParameters();
         PushInfernalTextureParameters();
+        PushAdvancedClimateParameters();
     }
 
     private void PushDisplacementParameters()
@@ -648,6 +692,12 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowBiomeTextureOnly, showBiomeTextureOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowSmoothnessOnly, showSmoothnessOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowLocalMoistureOnly, showLocalMoistureOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowLocalTemperatureOnly, showLocalTemperatureOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowContinentalityOnly, showContinentalityOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowSeasonalityOnly, showSeasonalityOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowRainShadowOnly, showRainShadowOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowRiparianWetnessOnly, showRiparianWetnessOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowDominantBiomeOnly, showDominantBiomeOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
@@ -714,6 +764,24 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_LavaTextureScale, lavaTextureScale);
         materialInstance.SetFloat(ID_AshDetailStrength, ashDetailStrength);
     }
+    private void PushAdvancedClimateParameters()
+    {
+        if (materialInstance == null) return;
+        materialInstance.SetFloat(ID_MoistureResponseScale, moistureResponseScale);
+        materialInstance.SetFloat(ID_TemperatureHumidityInfluence, temperatureHumidityInfluence);
+        materialInstance.SetFloat(ID_ClimateNoiseStrength, climateNoiseStrength);
+        materialInstance.SetFloat(ID_CoastWetnessStrength, coastWetnessStrength);
+        materialInstance.SetFloat(ID_ContinentalDrynessStrength, continentalDrynessStrength);
+        materialInstance.SetFloat(ID_ContinentalTemperatureStrength, continentalTemperatureStrength);
+        materialInstance.SetFloat(ID_RainShadowStrength, rainShadowStrength);
+        materialInstance.SetFloat(ID_OrographicWetnessStrength, orographicWetnessStrength);
+        materialInstance.SetFloat(ID_OrographicSampleOffset, orographicSampleOffset);
+        materialInstance.SetFloat(ID_RiparianWetnessStrength, riparianWetnessStrength);
+        materialInstance.SetFloat(ID_SeasonalityStrength, seasonalityStrength);
+        materialInstance.SetFloat(ID_BiomeProvinceStrength, biomeProvinceStrength);
+        materialInstance.SetFloat(ID_BiomeCompetitionSharpness, biomeCompetitionSharpness);
+    }
+
     // -----------------------------------------------------------------
     //  Public API — called by UI sliders / MainMenuManager
     // -----------------------------------------------------------------
