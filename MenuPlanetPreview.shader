@@ -698,14 +698,34 @@ Shader "Custom/MenuPlanetPreview"
                 }
 
                 // Normal rivers (moisture-gated, not on mountains)
+                // IMPORTANT: waterwayAmount now changes network density/shape,
+                // not just brightness. Higher values widen channels, add tributaries,
+                // and lower lake thresholds to create more actual water features.
                 float waterwayAmount = _WaterwayAmount;
-                float normalRiverMask = riverMask * waterwayAmount * saturate(1.0 - mtnBand * 0.8);
+                float waterwayDensity = saturate(waterwayAmount);
+                float riverWidthA = lerp(0.022, 0.055, waterwayDensity);
+                float riverWidthB = lerp(0.016, 0.040, waterwayDensity);
+                float mainRiverA = 1.0 - smoothstep(0.0, riverWidthA, abs(riverNoise1 - 0.5));
+                float mainRiverB = 1.0 - smoothstep(0.0, riverWidthB, abs(riverNoise2 - 0.5));
+
+                // Tributary layer appears primarily at medium/high settings.
+                float tributaryNoise = noise3D((riverSample + warp2 * 0.6) * 6.4 + float3(19.4, 41.8, 12.6) + seedOff);
+                float tributaryWidth = lerp(0.0, 0.026, smoothstep(0.35, 1.0, waterwayDensity));
+                float tributaryMask = tributaryWidth > 0.0 ? (1.0 - smoothstep(0.0, tributaryWidth, abs(tributaryNoise - 0.5))) : 0.0;
+
+                float riverNetworkMask = max(mainRiverA, mainRiverB * 0.8);
+                riverNetworkMask = max(riverNetworkMask, tributaryMask * 0.7);
+                float normalRiverMask = riverNetworkMask * saturate(1.0 - mtnBand * 0.8) * lerp(0.35, 1.0, waterwayDensity);
                 normalAlbedo = lerp(normalAlbedo, float3(0.10, 0.25, 0.45), saturate(normalRiverMask));
 
                 // Lakes (normal)
                 float lakeNoise = noise3D(samplePos * 12.0 + float3(7.7, 3.3, 9.9) + seedOff);
-                float lakeMask  = smoothstep(0.72, 0.78, lakeNoise)
-                                * waterwayAmount * step(0.5, edge) * saturate(1.0 - mtnBand * 0.5);
+                float lakeShapeNoise = noise3D(samplePos * lerp(8.0, 15.5, waterwayDensity) + float3(27.2, 5.1, 13.7) + seedOff);
+                float lakeCombined = lakeNoise * 0.68 + lakeShapeNoise * 0.32;
+                float lakeEdgeLow = lerp(0.82, 0.63, waterwayDensity);
+                float lakeEdgeHigh = lakeEdgeLow + lerp(0.06, 0.11, waterwayDensity);
+                float lakeMask  = smoothstep(lakeEdgeLow, lakeEdgeHigh, lakeCombined)
+                                * step(0.5, edge) * saturate(1.0 - mtnBand * 0.5);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
 
                 // ---- Ice caps ----
