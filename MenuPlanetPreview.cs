@@ -137,7 +137,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D temperateGrassAlbedoTexture;
     [SerializeField] private Texture2D temperateForestAlbedoTexture;
     [SerializeField] private Texture2D steppeAlbedoTexture;
-    [SerializeField] private Texture2D shrublandAlbedoTexture;
     [SerializeField] private Texture2D taigaAlbedoTexture;
     [SerializeField] private Texture2D tundraAlbedoTexture;
     [SerializeField] private Texture2D polarAlbedoTexture;
@@ -149,7 +148,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D temperateGrassNormalTexture;
     [SerializeField] private Texture2D temperateForestNormalTexture;
     [SerializeField] private Texture2D steppeNormalTexture;
-    [SerializeField] private Texture2D shrublandNormalTexture;
     [SerializeField] private Texture2D taigaNormalTexture;
     [SerializeField] private Texture2D tundraNormalTexture;
     [SerializeField] private Texture2D polarNormalTexture;
@@ -161,7 +159,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D temperateGrassSmoothnessTexture;
     [SerializeField] private Texture2D temperateForestSmoothnessTexture;
     [SerializeField] private Texture2D steppeSmoothnessTexture;
-    [SerializeField] private Texture2D shrublandSmoothnessTexture;
     [SerializeField] private Texture2D taigaSmoothnessTexture;
     [SerializeField] private Texture2D tundraSmoothnessTexture;
     [SerializeField] private Texture2D polarSmoothnessTexture;
@@ -403,7 +400,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TemperateGrassAlbedoTex = Shader.PropertyToID("_TemperateGrassAlbedoTex");
     private static readonly int ID_TemperateForestAlbedoTex = Shader.PropertyToID("_TemperateForestAlbedoTex");
     private static readonly int ID_SteppeAlbedoTex = Shader.PropertyToID("_SteppeAlbedoTex");
-    private static readonly int ID_ShrublandAlbedoTex = Shader.PropertyToID("_ShrublandAlbedoTex");
     private static readonly int ID_TaigaAlbedoTex = Shader.PropertyToID("_TaigaAlbedoTex");
     private static readonly int ID_TundraAlbedoTex = Shader.PropertyToID("_TundraAlbedoTex");
     private static readonly int ID_PolarAlbedoTex = Shader.PropertyToID("_PolarAlbedoTex");
@@ -414,7 +410,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TemperateGrassNormalTex = Shader.PropertyToID("_TemperateGrassNormalTex");
     private static readonly int ID_TemperateForestNormalTex = Shader.PropertyToID("_TemperateForestNormalTex");
     private static readonly int ID_SteppeNormalTex = Shader.PropertyToID("_SteppeNormalTex");
-    private static readonly int ID_ShrublandNormalTex = Shader.PropertyToID("_ShrublandNormalTex");
     private static readonly int ID_TaigaNormalTex = Shader.PropertyToID("_TaigaNormalTex");
     private static readonly int ID_TundraNormalTex = Shader.PropertyToID("_TundraNormalTex");
     private static readonly int ID_PolarNormalTex = Shader.PropertyToID("_PolarNormalTex");
@@ -425,7 +420,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TemperateGrassSmoothnessTex = Shader.PropertyToID("_TemperateGrassSmoothnessTex");
     private static readonly int ID_TemperateForestSmoothnessTex = Shader.PropertyToID("_TemperateForestSmoothnessTex");
     private static readonly int ID_SteppeSmoothnessTex = Shader.PropertyToID("_SteppeSmoothnessTex");
-    private static readonly int ID_ShrublandSmoothnessTex = Shader.PropertyToID("_ShrublandSmoothnessTex");
     private static readonly int ID_TaigaSmoothnessTex = Shader.PropertyToID("_TaigaSmoothnessTex");
     private static readonly int ID_TundraSmoothnessTex = Shader.PropertyToID("_TundraSmoothnessTex");
     private static readonly int ID_PolarSmoothnessTex = Shader.PropertyToID("_PolarSmoothnessTex");
@@ -725,11 +719,11 @@ public class MenuPlanetPreview : MonoBehaviour
                           volcanicSurfaceSmoothnessTexture != null ||
                           jungleAlbedoTexture != null || desertAlbedoTexture != null || savannaAlbedoTexture != null ||
                           temperateGrassAlbedoTexture != null || temperateForestAlbedoTexture != null ||
-                          steppeAlbedoTexture != null || shrublandAlbedoTexture != null || taigaAlbedoTexture != null ||
+                          steppeAlbedoTexture != null || taigaAlbedoTexture != null ||
                           tundraAlbedoTexture != null || polarAlbedoTexture != null || marshAlbedoTexture != null ||
                           jungleNormalTexture != null || desertNormalTexture != null || savannaNormalTexture != null ||
                           temperateGrassNormalTexture != null || temperateForestNormalTexture != null ||
-                          steppeNormalTexture != null || shrublandNormalTexture != null || taigaNormalTexture != null ||
+                          steppeNormalTexture != null || taigaNormalTexture != null ||
                           tundraNormalTexture != null || polarNormalTexture != null || marshNormalTexture != null;
         materialInstance.SetFloat(ID_UseDetailTextures, useDetails ? 1f : 0f);
     }
@@ -743,7 +737,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TemperateGrassAlbedoTex, temperateGrassAlbedoTexture);
         materialInstance.SetTexture(ID_TemperateForestAlbedoTex, temperateForestAlbedoTexture);
         materialInstance.SetTexture(ID_SteppeAlbedoTex, steppeAlbedoTexture);
-        materialInstance.SetTexture(ID_ShrublandAlbedoTex, shrublandAlbedoTexture);
         materialInstance.SetTexture(ID_TaigaAlbedoTex, taigaAlbedoTexture);
         materialInstance.SetTexture(ID_TundraAlbedoTex, tundraAlbedoTexture);
         materialInstance.SetTexture(ID_PolarAlbedoTex, polarAlbedoTexture);
@@ -754,7 +747,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TemperateGrassNormalTex, temperateGrassNormalTexture);
         materialInstance.SetTexture(ID_TemperateForestNormalTex, temperateForestNormalTexture);
         materialInstance.SetTexture(ID_SteppeNormalTex, steppeNormalTexture);
-        materialInstance.SetTexture(ID_ShrublandNormalTex, shrublandNormalTexture);
         materialInstance.SetTexture(ID_TaigaNormalTex, taigaNormalTexture);
         materialInstance.SetTexture(ID_TundraNormalTex, tundraNormalTexture);
         materialInstance.SetTexture(ID_PolarNormalTex, polarNormalTexture);
@@ -765,7 +757,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TemperateGrassSmoothnessTex, temperateGrassSmoothnessTexture);
         materialInstance.SetTexture(ID_TemperateForestSmoothnessTex, temperateForestSmoothnessTexture);
         materialInstance.SetTexture(ID_SteppeSmoothnessTex, steppeSmoothnessTexture);
-        materialInstance.SetTexture(ID_ShrublandSmoothnessTex, shrublandSmoothnessTexture);
         materialInstance.SetTexture(ID_TaigaSmoothnessTex, taigaSmoothnessTexture);
         materialInstance.SetTexture(ID_TundraSmoothnessTex, tundraSmoothnessTexture);
         materialInstance.SetTexture(ID_PolarSmoothnessTex, polarSmoothnessTexture);
