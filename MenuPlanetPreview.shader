@@ -88,6 +88,9 @@ Shader "Custom/MenuPlanetPreview"
             _SavannaAlbedoTex("Savanna Albedo", 2D) = "gray" {}
             _TemperateGrassAlbedoTex("Temperate Grass Albedo", 2D) = "gray" {}
             _TemperateForestAlbedoTex("Temperate Forest Albedo", 2D) = "gray" {}
+            _SteppeAlbedoTex("Steppe Albedo", 2D) = "gray" {}
+            _ShrublandAlbedoTex("Shrubland Albedo", 2D) = "gray" {}
+            _TaigaAlbedoTex("Taiga Albedo", 2D) = "gray" {}
             _TundraAlbedoTex("Tundra Albedo", 2D) = "gray" {}
             _PolarAlbedoTex("Polar Albedo", 2D) = "gray" {}
             _MarshAlbedoTex("Marsh Albedo", 2D) = "gray" {}
@@ -96,9 +99,15 @@ Shader "Custom/MenuPlanetPreview"
             _SavannaNormalTex("Savanna Normal", 2D) = "bump" {}
             _TemperateGrassNormalTex("Temperate Grass Normal", 2D) = "bump" {}
             _TemperateForestNormalTex("Temperate Forest Normal", 2D) = "bump" {}
+            _SteppeNormalTex("Steppe Normal", 2D) = "bump" {}
+            _ShrublandNormalTex("Shrubland Normal", 2D) = "bump" {}
+            _TaigaNormalTex("Taiga Normal", 2D) = "bump" {}
             _TundraNormalTex("Tundra Normal", 2D) = "bump" {}
             _PolarNormalTex("Polar Normal", 2D) = "bump" {}
             _MarshNormalTex("Marsh Normal", 2D) = "bump" {}
+            _SteppeSmoothnessTex("Steppe Smoothness", 2D) = "gray" {}
+            _ShrublandSmoothnessTex("Shrubland Smoothness", 2D) = "gray" {}
+            _TaigaSmoothnessTex("Taiga Smoothness", 2D) = "gray" {}
             _BiomeTextureStrength("Biome Texture Strength", Range(0,1)) = 0.75
             _BiomeTintStrength("Biome Tint Strength", Range(0,1)) = 0.12
             _BiomeNormalStrength("Biome Normal Strength", Range(0,1)) = 0.18
@@ -226,6 +235,9 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_SavannaAlbedoTex);
             TEXTURE2D(_TemperateGrassAlbedoTex);
             TEXTURE2D(_TemperateForestAlbedoTex);
+            TEXTURE2D(_SteppeAlbedoTex);
+            TEXTURE2D(_ShrublandAlbedoTex);
+            TEXTURE2D(_TaigaAlbedoTex);
             TEXTURE2D(_TundraAlbedoTex);
             TEXTURE2D(_PolarAlbedoTex);
             TEXTURE2D(_MarshAlbedoTex);
@@ -234,9 +246,15 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_SavannaNormalTex);
             TEXTURE2D(_TemperateGrassNormalTex);
             TEXTURE2D(_TemperateForestNormalTex);
+            TEXTURE2D(_SteppeNormalTex);
+            TEXTURE2D(_ShrublandNormalTex);
+            TEXTURE2D(_TaigaNormalTex);
             TEXTURE2D(_TundraNormalTex);
             TEXTURE2D(_PolarNormalTex);
             TEXTURE2D(_MarshNormalTex);
+            TEXTURE2D(_SteppeSmoothnessTex);
+            TEXTURE2D(_ShrublandSmoothnessTex);
+            TEXTURE2D(_TaigaSmoothnessTex);
             TEXTURE2D(_VolcanicRockTex);
             TEXTURE2D(_LavaCrackTex);
             TEXTURE2D(_LavaEmissiveTex);
@@ -347,12 +365,12 @@ Shader "Custom/MenuPlanetPreview"
                 float3 sa=SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
                 float3 tg=SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
                 float3 tf=SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 step=SampleTriplanarScaled(TEXTURE2D_ARGS(_SteppeAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 shrub=SampleTriplanarScaled(TEXTURE2D_ARGS(_ShrublandAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
+                float3 ta=SampleTriplanarScaled(TEXTURE2D_ARGS(_TaigaAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
                 float3 tu=SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
                 float3 po=SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
                 float3 ma=SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshAlbedoTex, sampler_MountainDetailTex), positionOS,objNorm,_BiomeTextureScale);
-                float3 step=lerp(tg,de,0.38)+sa*0.12*saturate((localTemperature-0.55)*2.0);
-                float3 shrub=lerp(sa,de,0.45)*0.6+tg*0.4;
-                float3 ta=lerp(tf,tu,0.45);
                 float3 texBiome = ju*w.jungle + de*w.desert + sa*w.savanna + tg*w.temperateGrass + tf*w.temperateForest + step*w.steppe + shrub*w.shrubland + ta*w.taiga + tu*w.tundra + po*w.polar + ma*w.marsh;
                 return lerp(texBiome, texBiome*climateGrade, _BiomeTintStrength*_BiomeTextureStrength);
             }
@@ -817,20 +835,32 @@ Shader "Custom/MenuPlanetPreview"
                 float oceanSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_OceanSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm).r;
                 float iceSmoothMask = SampleTriplanar(TEXTURE2D_ARGS(_IceSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm).r;
                 float marshSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
+                float steppeSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_SteppeSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
+                float shrublandSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_ShrublandSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
+                float taigaSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_TaigaSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale).r;
                 float volcanicSmoothMask = SampleTriplanarScaled(TEXTURE2D_ARGS(_VolcanicSmoothnessTex, sampler_MountainDetailTex), input.positionOS, objNorm, _LavaTextureScale).r;
                 float landBlendMask = 0.75;
                 float oceanBlendMask = oceanSmoothMask;
                 float iceBlendMask = iceSmoothMask;
                 float marshWeight = saturate(biomeWeights.marsh);
+                float steppeWeight = saturate(biomeWeights.steppe);
+                float shrublandWeight = saturate(biomeWeights.shrubland);
+                float taigaWeight = saturate(biomeWeights.taiga);
                 float infernalWeight = saturate(infernal + demonic);
                 float landSmooth = lerp(_Smoothness * 0.70, _Smoothness * 0.95, landBlendMask);
                 float oceanSmooth = lerp(_Smoothness * 0.52, _Smoothness * 0.72, oceanBlendMask) * saturate(_Smoothness + 0.20);
                 float iceSmooth = lerp(_Smoothness * 0.38, _Smoothness * 0.58, iceBlendMask);
                 float marshSmooth = lerp(_Smoothness * 0.62, _Smoothness * 0.82, marshSmoothMask);
+                float steppeSmooth = lerp(_Smoothness * 0.56, _Smoothness * 0.76, steppeSmoothMask);
+                float shrublandSmooth = lerp(_Smoothness * 0.54, _Smoothness * 0.74, shrublandSmoothMask);
+                float taigaSmooth = lerp(_Smoothness * 0.50, _Smoothness * 0.70, taigaSmoothMask);
                 float volcanicSmooth = lerp(_Smoothness * 0.18, _Smoothness * 0.38, volcanicSmoothMask);
                 float mountainSmooth = landSmooth * 0.68;
                 float smoothnessMask = lerp(oceanSmooth, landSmooth, edge);
                 smoothnessMask = lerp(smoothnessMask, marshSmooth, marshWeight * edge);
+                smoothnessMask = lerp(smoothnessMask, steppeSmooth, steppeWeight * edge);
+                smoothnessMask = lerp(smoothnessMask, shrublandSmooth, shrublandWeight * edge);
+                smoothnessMask = lerp(smoothnessMask, taigaSmooth, taigaWeight * edge);
                 smoothnessMask = lerp(smoothnessMask, mountainSmooth, mtnBlend * edge);
                 smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
                 smoothnessMask = lerp(smoothnessMask, volcanicSmooth, infernalWeight * edge);
@@ -846,10 +876,13 @@ Shader "Custom/MenuPlanetPreview"
                 float3 saN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SavannaNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tgN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateGrassNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tfN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TemperateForestNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 stepN = SampleTriplanarScaled(TEXTURE2D_ARGS(_SteppeNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 shrubN = SampleTriplanarScaled(TEXTURE2D_ARGS(_ShrublandNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
+                float3 taigaN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TaigaNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 tuN = SampleTriplanarScaled(TEXTURE2D_ARGS(_TundraNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 poN = SampleTriplanarScaled(TEXTURE2D_ARGS(_PolarNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
                 float3 maN = SampleTriplanarScaled(TEXTURE2D_ARGS(_MarshNormalTex, sampler_MountainDetailTex), input.positionOS, objNorm, _BiomeTextureScale) * 2.0 - 1.0;
-                float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
+                float3 biomeN = normalize(juN*biomeWeights.jungle + deN*biomeWeights.desert + saN*biomeWeights.savanna + tgN*biomeWeights.temperateGrass + tfN*biomeWeights.temperateForest + stepN*biomeWeights.steppe + shrubN*biomeWeights.shrubland + taigaN*biomeWeights.taiga + tuN*biomeWeights.tundra + poN*biomeWeights.polar + maN*biomeWeights.marsh);
                 float3 surfN = normal;
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
