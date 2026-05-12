@@ -609,7 +609,22 @@ Shader "Custom/MenuPlanetPreview"
                 // they should not overpower the slider.
                 float climateNoiseA = fbm(objNorm * 2.0 + seedOff);
                 float climateNoiseB = fbm(objNorm * 5.0 + seedOff * 1.37);
-                float localMoist = saturate(_Moisture * 0.75 + climateNoiseA * 0.25 + (climateNoiseB - 0.5) * 0.18);
+                // Moisture should be globally driven by slider, but terrain/latitude should
+                // still shape realistic wet/dry pockets:
+                // - wet coasts
+                // - dry rain-shadow interiors
+                // - temperature-limited humidity at extremes
+                float coastProximity = 1.0 - abs(edge * 2.0 - 1.0); // high near shoreline transition
+                float interiorness = saturate((edge - 0.45) / 0.50); // 0 near coast/ocean, 1 inland
+                float rainShadow = saturate(mtnBand * interiorness * 1.15);
+                float tempHumidityLimit = saturate(1.0 - abs(_Temperature - 0.55) * 1.05);
+                float localMoist = saturate(
+                    _Moisture * lerp(0.82, 1.12, tempHumidityLimit)
+                    + climateNoiseA * 0.18
+                    + (climateNoiseB - 0.5) * 0.14
+                    + coastProximity * 0.10
+                    - rainShadow * 0.20
+                );
 
                 // ==============================================================
                 //  Rivers (shared noise — used by normal, infernal, and demonic)
@@ -646,7 +661,11 @@ Shader "Custom/MenuPlanetPreview"
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float capStart = lerp(1.10, 0.15, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
-                float temperatureLocal = saturate((1.0 - latitude) * 0.7 + _Temperature * 0.3 + tempShift * 0.2);
+                // Local temperature: latitude-first, then elevation lapse-rate cooling,
+                // then small noise to avoid strict banding.
+                float tempNoise = (noise3D(objNorm * 4.5 + float3(14.2, 36.1, 6.5) + seedOff) - 0.5) * 0.09;
+                float elevationCooling = terrainHeight * lerp(0.10, 0.28, saturate(_Elevation + mtnBand * 0.8));
+                float temperatureLocal = saturate((1.0 - latitude) * 0.66 + _Temperature * 0.34 + tempShift * 0.12 - elevationCooling + tempNoise);
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(latitude, temperatureLocal, _Moisture, localMoist, terrainHeight, capMask, objNorm, _Seed);
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm);
 
@@ -715,7 +734,21 @@ Shader "Custom/MenuPlanetPreview"
 
                 float riverNetworkMask = max(mainRiverA, mainRiverB * 0.8);
                 riverNetworkMask = max(riverNetworkMask, tributaryMask * 0.7);
-                float normalRiverMask = riverNetworkMask * saturate(1.0 - mtnBand * 0.8) * lerp(0.35, 1.0, waterwayDensity);
+                // Hard constraints to keep waterways geologically plausible:
+                // - never in ocean
+                // - reduced on immediate coasts (estuaries are narrow in this stylized pass)
+                // - suppressed in very arid or very cold regions
+                float inlandMask = smoothstep(_LandThreshold + 0.03, _LandThreshold + 0.16, n);
+                float aridityGate = smoothstep(0.18, 0.72, localMoist);
+                float freezeGate = smoothstep(0.10, 0.28, temperatureLocal);
+                float moistureRiverBoost = lerp(0.65, 1.08, localMoist);
+                float normalRiverMask = riverNetworkMask
+                                      * inlandMask
+                                      * saturate(1.0 - mtnBand * 0.8)
+                                      * aridityGate
+                                      * freezeGate
+                                      * moistureRiverBoost
+                                      * lerp(0.35, 1.0, waterwayDensity);
                 normalAlbedo = lerp(normalAlbedo, float3(0.10, 0.25, 0.45), saturate(normalRiverMask));
 
                 // Lakes (normal)
@@ -725,7 +758,9 @@ Shader "Custom/MenuPlanetPreview"
                 float lakeEdgeLow = lerp(0.82, 0.63, waterwayDensity);
                 float lakeEdgeHigh = lakeEdgeLow + lerp(0.06, 0.11, waterwayDensity);
                 float lakeMask  = smoothstep(lakeEdgeLow, lakeEdgeHigh, lakeCombined)
-                                * step(0.5, edge) * saturate(1.0 - mtnBand * 0.5);
+                                * inlandMask
+                                * smoothstep(0.35, 0.92, localMoist)
+                                * saturate(1.0 - mtnBand * 0.5);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
 
                 // ---- Ice caps ----
