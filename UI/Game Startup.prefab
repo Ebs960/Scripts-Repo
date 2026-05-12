@@ -8527,7 +8527,7 @@ GameObject:
   - component: {fileID: 8094600615348097157}
   - component: {fileID: 1809026290714113805}
   - component: {fileID: 3864020960947875130}
-  - component: {fileID: 4317789533371908350}
+  - component: {fileID: 6312290108833261655}
   m_Layer: 5
   m_Name: Content
   m_TagString: Untagged
@@ -8569,8 +8569,8 @@ MonoBehaviour:
   m_IgnoreLayout: 0
   m_MinWidth: -1
   m_MinHeight: -1
-  m_PreferredWidth: 150
-  m_PreferredHeight: 170
+  m_PreferredWidth: 450
+  m_PreferredHeight: 200
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -8588,7 +8588,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
---- !u!114 &4317789533371908350
+--- !u!114 &6312290108833261655
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8597,21 +8597,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 2973988216437221700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GridLayoutGroup
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
   m_Padding:
     m_Left: 0
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
   m_ChildAlignment: 0
-  m_StartCorner: 0
-  m_StartAxis: 0
-  m_CellSize: {x: 100, y: 100}
-  m_Spacing: {x: 0, y: 0}
-  m_Constraint: 0
-  m_ConstraintCount: 2
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 1
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &2974258446173132225
 GameObject:
   m_ObjectHideFlags: 0
@@ -25760,6 +25762,8 @@ MonoBehaviour:
     backgroundSprite: {fileID: 21300000, guid: 4b0702ff9ab35e64a9cbf0290013e855, type: 3}
   - leaderData: {fileID: 11400000, guid: 6d2746dd20c4a7a4ea2cc258e6d46298, type: 2}
     backgroundSprite: {fileID: 21300000, guid: bb60cc6b999780d458e7068bcc53a7f0, type: 3}
+  - leaderData: {fileID: 11400000, guid: 7a76036a90a2556459993a5b67c15dbc, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 0239d61a1c353034aa9b2864797049de, type: 3}
   enableLeaderEntryBackgroundOverrides: 1
   newGameButton: {fileID: 3794759851740996759}
   loadGameButton: {fileID: 5516998952986199058}
