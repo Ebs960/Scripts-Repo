@@ -419,10 +419,10 @@ MonoBehaviour:
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
-  detailScale: 28
+  detailScale: 280
   detailStrength: 0.08
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.05
+  displacementScale: 0.02
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
@@ -441,7 +441,7 @@ MonoBehaviour:
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
+  oceanNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
   volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
@@ -455,7 +455,7 @@ MonoBehaviour:
   lavaTextureScale: 10
   ashDetailStrength: 0.25
   mountainDetailStrength: 0.22
-  iceDetailStrength: 0.12
+  iceDetailStrength: 0.13
   oceanDetailStrength: 0.05
   oceanNormalStrength: 0.1
   mountainNormalStrength: 0.12
@@ -465,7 +465,10 @@ MonoBehaviour:
   desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
   savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
   temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
-  temperateForestAlbedoTexture: {fileID: 2800000, guid: 579f9f9d8098bb145bfb2fa17fc84b9a, type: 3}
+  temperateForestAlbedoTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
+  steppeAlbedoTexture: {fileID: 2800000, guid: 5d3384b986dcbde41b5711d3b30bc480, type: 3}
+  shrublandAlbedoTexture: {fileID: 2800000, guid: 7f08ee6a4e2a0f4408664880aecff782, type: 3}
+  taigaAlbedoTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
   polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   marshAlbedoTexture: {fileID: 2800000, guid: 2b80de7f6e5fc0544a3a39f35e955252, type: 3}
@@ -474,6 +477,9 @@ MonoBehaviour:
   savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
   temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   temperateForestNormalTexture: {fileID: 2800000, guid: fa3fac320ca6b4145a31b98a8201cb79, type: 3}
+  steppeNormalTexture: {fileID: 2800000, guid: 5df5e175225c162439e1f1df13da2f2f, type: 3}
+  shrublandNormalTexture: {fileID: 2800000, guid: 43a2174fbe4ea0745b72df6e95a4e3bb, type: 3}
+  taigaNormalTexture: {fileID: 2800000, guid: 58e71acd37ef7d847a1f9d84db10f7ab, type: 3}
   tundraNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   polarNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   marshNormalTexture: {fileID: 2800000, guid: 48898860d2920444ea901b97f8677b2b, type: 3}
@@ -482,6 +488,9 @@ MonoBehaviour:
   savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
   temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: b5476c4812cf9da4585cc982ba3d2604, type: 3}
+  steppeSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
+  shrublandSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
+  taigaSmoothnessTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraSmoothnessTexture: {fileID: 2800000, guid: a724993669b0ede40b21a105448e82ea, type: 3}
   polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   marshSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
@@ -493,7 +502,7 @@ MonoBehaviour:
   landUpliftStrength: 0.12
   hillDisplacementStrength: 0.25
   mountainDisplacementStrength: 0.65
-  iceDisplacementStrength: 0.15
+  iceDisplacementStrength: 0
   volcanicDisplacementStrength: 0.45
   oceanDepthStrength: 0.03
   showElevationOnly: 0
@@ -506,6 +515,12 @@ MonoBehaviour:
   showBiomeTextureOnly: 0
   showSmoothnessOnly: 0
   showLocalMoistureOnly: 0
+  showLocalTemperatureOnly: 0
+  showContinentalityOnly: 0
+  showSeasonalityOnly: 0
+  showRainShadowOnly: 0
+  showRiparianWetnessOnly: 0
+  showDominantBiomeOnly: 0
   showWaterwaysOnly: 0
   showWaterwayAmountOnly: 0
   disableCloudsForDebug: 0
@@ -517,6 +532,19 @@ MonoBehaviour:
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
+  moistureResponseScale: 0.85
+  temperatureHumidityInfluence: 0.06
+  climateNoiseStrength: 0.12
+  coastWetnessStrength: 0.08
+  continentalDrynessStrength: 0.08
+  continentalTemperatureStrength: 0.06
+  rainShadowStrength: 0.16
+  orographicWetnessStrength: 0.08
+  orographicSampleOffset: 0.08
+  riparianWetnessStrength: 0.12
+  seasonalityStrength: 0.35
+  biomeProvinceStrength: 0.2
+  biomeCompetitionSharpness: 0.85
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
