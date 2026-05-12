@@ -331,7 +331,7 @@ Shader "Custom/MenuPlanetPreview"
             }
             struct SurfaceBiomeWeights { float jungle; float desert; float savanna; float temperateGrass; float temperateForest; float steppe; float shrubland; float taiga; float tundra; float polar; float marsh; };
             struct PreviewClimateFields { float temperature; float moisture; float continentality; float seasonality; float rainShadow; float windwardWetness; float riparianWetness; };
-            float BellFit(float v,float c,float w){ return exp(-pow((v-c)/max(w,0.001),2.0)); }
+            float BellFit(float v,float c,float w){ float d = (v - c) / max(w, 0.001); return exp(-(d * d)); }
             float RangeFit(float v,float low,float il,float ih,float high){ return saturate((v-low)/max(il-low,0.001))*saturate((high-v)/max(high-ih,0.001)); }
             SurfaceBiomeWeights GetSurfaceBiomeWeights(PreviewClimateFields c, float terrainHeight, float capMask, float latitude, float3 objNorm, float seed)
             {
