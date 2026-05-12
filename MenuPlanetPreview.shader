@@ -218,7 +218,6 @@ Shader "Custom/MenuPlanetPreview"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
-            #pragma multi_compile _ UNITY_DOTS_INSTANCING_ENABLED
 
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
@@ -996,7 +995,6 @@ Shader "Custom/MenuPlanetPreview"
             #pragma vertex vertDepth
             #pragma fragment fragDepth
             #pragma multi_compile_instancing
-            #pragma multi_compile _ UNITY_DOTS_INSTANCING_ENABLED
 
             struct Attributes
             {
@@ -1050,7 +1048,6 @@ Shader "Custom/MenuPlanetPreview"
             #pragma vertex vertShadow
             #pragma fragment fragShadow
             #pragma multi_compile_instancing
-            #pragma multi_compile _ UNITY_DOTS_INSTANCING_ENABLED
 
             struct Attributes
             {
