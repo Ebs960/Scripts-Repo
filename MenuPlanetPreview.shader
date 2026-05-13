@@ -198,6 +198,10 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _RimLightColor; float _RimLightIntensity;
             CBUFFER_END
 
+            TEXTURE2D(_TectonicSurfaceTex); SAMPLER(sampler_TectonicSurfaceTex);
+            TEXTURE2D(_TectonicBoundaryTex); SAMPLER(sampler_TectonicBoundaryTex);
+            TEXTURE2D(_TectonicCrustTex); SAMPLER(sampler_TectonicCrustTex);
+
             float hash31(float3 p) { p = frac(p * float3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return frac((p.x + p.y) * p.z); }
             float noise3D(float3 p)
             {
@@ -258,9 +262,6 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_WaterwayMaskTex); SAMPLER(sampler_WaterwayMaskTex);
-            TEXTURE2D(_TectonicSurfaceTex); SAMPLER(sampler_TectonicSurfaceTex);
-            TEXTURE2D(_TectonicBoundaryTex); SAMPLER(sampler_TectonicBoundaryTex);
-            TEXTURE2D(_TectonicCrustTex); SAMPLER(sampler_TectonicCrustTex);
             TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);

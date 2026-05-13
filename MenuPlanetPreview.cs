@@ -350,7 +350,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private GameObject atmosphereShellGO;
     private Volume bloomVolume;
     private int waterwaysPreset = 1;
-    private int previewFidelity = 2;
     [SerializeField] private float basePlanetScale = 1f;
     private Vector3 baseSurfaceLocalScale = Vector3.one;
     private Vector3 baseAtmosphereLocalScale = Vector3.one;
@@ -614,7 +613,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private void RequestTectonicRegeneration(bool immediate = false)
     {
         if (materialInstance == null || tectonicGenerator == null) return;
-        tectonicGenerator.SetInputs(seed, landScale, landThreshold, elevation, previewFidelity);
+        tectonicGenerator.SetInputs(seed, landScale, landThreshold, elevation, 0);
         if (immediate) tectonicGenerator.GenerateNow(); else tectonicGenerator.ScheduleRegeneration();
         if (tectonicGenerator.SurfaceStructureTexture != null) materialInstance.SetTexture(ID_TectonicSurfaceTex, tectonicGenerator.SurfaceStructureTexture);
         if (tectonicGenerator.PlateBoundaryTexture != null) materialInstance.SetTexture(ID_TectonicBoundaryTex, tectonicGenerator.PlateBoundaryTexture);
@@ -1068,18 +1067,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         RequestHydrologyRegeneration();
         RequestTectonicRegeneration();
         PushCloudParameters();
-    }
-
-    public void SetPreviewFidelity(int fidelityLevel)
-    {
-        previewFidelity = Mathf.Clamp(fidelityLevel, 0, 2);
-        // 0=balanced, 1=high, 2=ultra (default)
-        detailScale = previewFidelity == 2 ? 28f : (previewFidelity == 1 ? 22f : 18f);
-        detailStrength = previewFidelity == 2 ? 0.32f : (previewFidelity == 1 ? 0.26f : 0.2f);
-        biomeNoiseScale = previewFidelity == 2 ? 6.2f : (previewFidelity == 1 ? 4.8f : 3.8f);
-        biomeNoiseStrength = previewFidelity == 2 ? 0.135f : (previewFidelity == 1 ? 0.1f : 0.08f);
-        displacementScale = previewFidelity == 2 ? 0.008f : (previewFidelity == 1 ? 0.006f : 0.004f);
-        RecalculateDerivedVisuals();
     }
 
     public void SetPlanetScaleMultiplier(float scaleMultiplier)
