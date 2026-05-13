@@ -13,6 +13,7 @@ Shader "Custom/MenuPlanetPreview"
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
         [Header(Ocean Color)]
             _OceanColor("Ocean Base Color", Color) = (0.06, 0.22, 0.45, 1)
+            _OceanShallowColor("Ocean Shallow Color", Color) = (0.12, 0.36, 0.62, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
             _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
@@ -166,7 +167,7 @@ Shader "Custom/MenuPlanetPreview"
 
             CBUFFER_START(UnityPerMaterial)
                 float _LandScale; float _LandThreshold; float _Temperature; float _Moisture; float _WaterwayAmount; float _Elevation;
-                float _DesertFactor; float _TropicalFactor; float _SnowFactor; float4 _OceanColor;
+                float _DesertFactor; float _TropicalFactor; float _SnowFactor; float4 _OceanColor; float4 _OceanShallowColor;
                 float _IceCapSize; float _BiomeBlend; float _BiomeNoiseScale; float _BiomeNoiseStrength;
                 float _Seed; float _MapStyle; float _DetailScale; float _DetailStrength; float4 _AtmosphereColor; float _AtmospherePower; float _AtmosphereRadius;
                 float _DisplacementScale; float _LandUpliftStrength; float _HillDisplacementStrength; float _MountainDisplacementStrength; float _IceDisplacementStrength; float _VolcanicDisplacementStrength; float _OceanDepthStrength;
