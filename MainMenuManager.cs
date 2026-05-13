@@ -701,7 +701,6 @@ public class MainMenuManager : MonoBehaviour
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
         planetPreview.SetMapStyle(mapStyleVal);
-        planetPreview.SetPreviewFidelity(2);
         float sizeScale = GameSetupData.mapSize == GameManager.MapSize.Small ? 0.86f :
                           (GameSetupData.mapSize == GameManager.MapSize.Large ? 1.18f : 1.0f);
         planetPreview.SetPlanetScaleMultiplier(sizeScale);
