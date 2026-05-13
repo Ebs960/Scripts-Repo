@@ -358,11 +358,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         return atlas;
     }
 
-    // Convert a Color32[] atlas into a GPU Texture2D (1-row) for the compute shader
+    // Convert a Color32[] atlas into a GPU Texture2D for the compute shader.
+    // Packs the atlas into 2D to avoid exceeding max texture width for large planets.
     private Texture2D BuildAtlasTextureForGPU(Color32[] atlas, string cacheKey)
     {
         if (atlas == null || atlas.Length == 0) return null;
-        int w = atlas.Length;
+        int maxSupported = Mathf.Max(1, SystemInfo.maxTextureSize);
+        int atlasWidth = Mathf.Min(maxSupported, 8192);
+        int atlasHeight = Mathf.CeilToInt(atlas.Length / (float)atlasWidth);
         if (_gpuAtlasTextureCache.TryGetValue(cacheKey, out var existing))
         {
             // Guard against destroyed Unity objects surviving in the static cache
@@ -371,7 +374,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             {
                 _gpuAtlasTextureCache.Remove(cacheKey);
             }
-            else if (existing.width == w)
+            else if (existing.width == atlasWidth && existing.height == atlasHeight)
             {
                 return existing;
             }
@@ -381,15 +384,17 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 _gpuAtlasTextureCache.Remove(cacheKey);
             }
         }
-        var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
+        var tex = new Texture2D(atlasWidth, atlasHeight, TextureFormat.RGBA32, false)
         {
             wrapMode = TextureWrapMode.Clamp,
             filterMode = FilterMode.Point
         };
-    // Safe upload: 1-row atlas; SetPixels32 cost negligible vs. crash risk.
-    // (Previous BlockCopy on Color32[] triggered ArgumentException on some runtimes.)
-    tex.SetPixels32(atlas);
-    tex.Apply(false, false);
+        // Safe upload: pad final row so SetPixels32 receives width*height pixels.
+        int pixelCount = atlasWidth * atlasHeight;
+        var padded = new Color32[pixelCount];
+        System.Array.Copy(atlas, padded, atlas.Length);
+        tex.SetPixels32(padded);
+        tex.Apply(false, false);
         _gpuAtlasTextureCache[cacheKey] = tex;
         return tex;
     }
@@ -448,6 +453,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         minimapComputeShader.SetInt("_Width", width);
         minimapComputeShader.SetInt("_Height", height);
         minimapComputeShader.SetInt("_TileCount", atlas.Length);
+        minimapComputeShader.SetInt("_TileAtlasWidth", atlasTex.width);
 
         // Gridlines (tile borders) overlay.
         minimapComputeShader.SetInt("_DrawGridLines", 1);

@@ -6,7 +6,7 @@
 // Input: LUT mapping pixel index to tile index (-1 = no tile)
 StructuredBuffer<int> _LUT;
 
-// Input: 1D texture containing one color per tile (width = tile count)
+// Input: packed 2D texture containing one color per tile
 Texture2D<float4> _TileAtlas;
 
 // Output: The generated minimap texture
@@ -16,6 +16,7 @@ RWTexture2D<float4> _Result;
 int _Width;
 int _Height;
 int _TileCount;
+int _TileAtlasWidth;
 
 // Grid line overlay (tile borders derived from LUT neighbor differences)
 int _DrawGridLines;          // 0/1
@@ -42,8 +43,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     // If valid tile, sample from atlas
     if (tileIndex >= 0 && tileIndex < _TileCount)
     {
-        // Atlas is a 1D texture where x = tileIndex
-        color = _TileAtlas.Load(int3(tileIndex, 0, 0));
+        int atlasX = tileIndex % _TileAtlasWidth;
+        int atlasY = tileIndex / _TileAtlasWidth;
+        color = _TileAtlas.Load(int3(atlasX, atlasY, 0));
     }
 
     // Optional gridlines: detect tile borders by comparing LUT neighbor tile indices.
