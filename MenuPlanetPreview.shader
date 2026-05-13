@@ -330,61 +330,63 @@ Shader "Custom/MenuPlanetPreview"
             {
                 SurfaceBiomeWeights w=(SurfaceBiomeWeights)0;
 
-                // Geology + circulation driven signals
-                float forestP = fbm(objNorm*1.35+seed*1.1);
-                float grassP = fbm(objNorm*1.3+seed*2.1);
-                float aridP = fbm(objNorm*1.25+seed*3.1);
-                float wetP = fbm(objNorm*1.2+seed*4.1);
-                float coldP = fbm(objNorm*1.15+seed*5.1);
+                // Province-scale variation masks
+                float forestP=fbm(objNorm*1.35+seed*1.1);
+                float grassP=fbm(objNorm*1.3+seed*2.1);
+                float aridP=fbm(objNorm*1.25+seed*3.1);
+                float wetP=fbm(objNorm*1.2+seed*4.1);
+                float coldP=fbm(objNorm*1.15+seed*5.1);
 
-                float ps = _BiomeProvinceStrength;
-                float polarMask = saturate(capMask);
+                float ps=_BiomeProvinceStrength;
+                float polarMask=saturate(capMask);
 
-                float lowElev = smoothstep(0.45,0.05,terrainHeight);
-                float highElev = smoothstep(0.52,0.92,terrainHeight);
+                // Climate niches: primarily temperature + moisture driven.
+                float tHot=BellFit(c.temperature,0.86,0.19);
+                float tWarm=BellFit(c.temperature,0.70,0.23);
+                float tTemp=BellFit(c.temperature,0.52,0.22);
+                float tCool=BellFit(c.temperature,0.33,0.18);
+                float tCold=BellFit(c.temperature,0.19,0.14);
 
-                // Approximate large-scale climate controls.
-                float thermalEquator = saturate(1.0 - latitude * 1.18);
-                float subtropicDryBelt = exp(-pow((latitude - 0.30) / 0.12, 2.0));
-                float midLatitude = exp(-pow((latitude - 0.52) / 0.16, 2.0));
-                float borealBelt = exp(-pow((latitude - 0.68) / 0.11, 2.0));
+                float mDry=BellFit(c.moisture,0.14,0.17);
+                float mSemiDry=BellFit(c.moisture,0.34,0.19);
+                float mMid=BellFit(c.moisture,0.52,0.22);
+                float mMoist=BellFit(c.moisture,0.69,0.20);
+                float mWet=BellFit(c.moisture,0.84,0.15);
 
-                float continentalDry = saturate(c.continentality * 0.65 + c.rainShadow * 0.55);
-                float coastalWet = saturate((1.0 - c.continentality) * 0.55 + c.windwardWetness * 0.65 + c.riparianWetness * 0.35);
-                float seasonalSwing = saturate(c.seasonality);
+                float continentalDry=saturate(c.continentality*0.62 + c.rainShadow*0.58);
+                float windwardWet=saturate(c.windwardWetness*0.70 + (1.0-c.continentality)*0.25);
+                float riparianBoost=saturate(c.riparianWetness);
+                float seasonal=saturate(c.seasonality);
 
-                float moistBoost = lerp(1.0 - ps, 1.0 + ps, wetP);
-                float aridBoost = lerp(1.0 - ps, 1.0 + ps, aridP);
-                float grassBoost = lerp(1.0 - ps, 1.0 + ps, grassP);
-                float forestBoost = lerp(1.0 - ps, 1.0 + ps, forestP);
-                float coldBoost = lerp(1.0 - ps, 1.0 + ps, coldP);
+                float lowElev=smoothstep(0.45,0.05,terrainHeight);
+                float highElev=smoothstep(0.55,0.92,terrainHeight);
 
-                // Tropical humid belt.
-                w.jungle = thermalEquator * saturate(c.moisture * 1.15 + coastalWet * 0.45) * (1.0 - seasonalSwing * 0.45) * (1.0 - polarMask) * moistBoost;
+                // Hot + wet, reduced by high seasonality and caps.
+                w.jungle=tHot*mWet*(1.0-seasonal*0.50)*(1.0-polarMask)*lerp(1-ps,1+ps,forestP*0.72+wetP*0.28)*lerp(0.9,1.15,windwardWet);
 
-                // Subtropical arid zones and continental rain shadows.
-                w.desert = saturate(subtropicDryBelt * (0.55 + thermalEquator * 0.35) * (continentalDry * 0.95 + (1.0 - c.moisture) * 0.75)) * (1.0 - polarMask) * aridBoost;
+                // Hot/warm + very dry, strengthened by continental/rain-shadow effects.
+                w.desert=max(tHot,tWarm)*mDry*(1.0-polarMask)*lerp(1.0,1.35,continentalDry)*lerp(1-ps,1+ps,aridP);
 
-                // Tropical-to-subtropical seasonal grasslands.
-                w.savanna = saturate((thermalEquator * 0.72 + subtropicDryBelt * 0.38) * c.moisture * (0.55 + seasonalSwing * 0.65) * (1.0 - continentalDry * 0.35)) * (1.0 - polarMask) * grassBoost;
+                // Warm seasonal grassland, between dry and moist.
+                w.savanna=tWarm*mMid*lerp(0.82,1.28,seasonal)*(1.0-polarMask)*lerp(1-ps,1+ps,grassP)*lerp(0.9,1.1,1.0-continentalDry);
 
-                // Temperate grasslands capturing dry continental mid-latitude belts.
-                float temperateDryness = saturate((1.0 - c.moisture) * 0.65 + continentalDry * 0.55);
-                w.temperateGrass = saturate(midLatitude * (0.35 + c.temperature * 0.95) * temperateDryness * (1.0 - polarMask * 0.75)) * grassBoost;
+                // Temperate semi-dry to moderate moisture continental grasslands.
+                float temperateDryBand=RangeFit(c.moisture,0.12,0.24,0.58,0.72);
+                w.temperateGrass=tTemp*temperateDryBand*(1.0-polarMask*0.8)*lerp(1.0,1.24,continentalDry)*lerp(1-ps,1+ps,grassP*0.7+aridP*0.3);
 
-                // Temperate forests along wetter mid-latitude coasts and interiors with sufficient moisture.
-                w.temperateForest = saturate(midLatitude * (c.moisture * 0.85 + coastalWet * 0.45) * (1.0 - continentalDry * 0.35) * (1.0 - highElev * 0.25)) * (1.0 - polarMask) * forestBoost;
+                // Temperate forests in moderate-to-moist climates, favored by windward wetness.
+                w.temperateForest=tTemp*mMoist*(1.0-polarMask)*lerp(1.0,1.22,windwardWet)*lerp(1-ps,1+ps,forestP)*lerp(1.0,0.82,continentalDry);
 
-                // Boreal forest / taiga in cool, moist to semi-moist high latitudes.
-                w.taiga = saturate((borealBelt * 0.9 + (1.0 - latitude) * 0.2) * (0.45 + c.moisture * 0.55) * (1.0 - thermalEquator * 0.55) * (1.0 - polarMask * 0.6)) * coldBoost;
+                // Cool, moist to semi-moist forest biome; avoid strong direct latitude forcing.
+                w.taiga=tCool*RangeFit(c.moisture,0.28,0.42,0.80,0.94)*(1.0-polarMask*0.65)*lerp(1-ps,1+ps,forestP*0.58+coldP*0.42)*lerp(1.0,1.12,seasonal);
 
-                // Cold, drier high latitude land.
-                w.tundra = saturate((1.0 - c.temperature) * (latitude * 1.05) * (0.45 + (1.0 - c.moisture) * 0.55) * (1.0 - polarMask * 0.35)) * coldBoost;
+                // Cold, generally drier biome with some moisture tolerance.
+                w.tundra=tCold*RangeFit(c.moisture,0.08,0.20,0.58,0.76)*(1.0-polarMask*0.35)*lerp(1-ps,1+ps,coldP)*lerp(1.0,1.1,highElev);
 
-                w.polar = polarMask;
+                w.polar=polarMask;
 
-                // Wet lowlands / floodplains.
-                w.marsh = saturate(lowElev * (c.moisture * 0.72 + c.riparianWetness * 0.85 + coastalWet * 0.35) * (1.0 - polarMask) * (1.0 - highElev * 0.85)) * moistBoost;
+                // Wet low-elevation and riparian zones.
+                w.marsh=lowElev*mWet*(1.0-polarMask)*lerp(1.0,1.55,riparianBoost)*lerp(1.0,1.2,windwardWet)*lerp(1-ps,1+ps,wetP);
 
                 #define SOFT(x) pow(max(x,0.0001),_BiomeCompetitionSharpness)
                 w.jungle=SOFT(w.jungle);w.desert=SOFT(w.desert);w.savanna=SOFT(w.savanna);w.temperateGrass=SOFT(w.temperateGrass);w.temperateForest=SOFT(w.temperateForest);w.taiga=SOFT(w.taiga);w.tundra=SOFT(w.tundra);w.polar=SOFT(w.polar);w.marsh=SOFT(w.marsh);
