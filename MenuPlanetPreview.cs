@@ -350,6 +350,15 @@ public class MenuPlanetPreview : MonoBehaviour
     private GameObject atmosphereShellGO;
     private Volume bloomVolume;
     private int waterwaysPreset = 1;
+
+    private bool validateCacheInitialized;
+    private float lastValidatedSeed;
+    private float lastValidatedLandScale;
+    private float lastValidatedLandThreshold;
+    private float lastValidatedElevation;
+    private float lastValidatedMoisture;
+    private float lastValidatedTemperature;
+    private int lastValidatedWaterwaysPreset;
     [SerializeField] private float basePlanetScale = 1f;
     private Vector3 baseSurfaceLocalScale = Vector3.one;
     private Vector3 baseAtmosphereLocalScale = Vector3.one;
@@ -574,6 +583,12 @@ public class MenuPlanetPreview : MonoBehaviour
         }
 
         ApplyAllParameters();
+
+        // Build generated preview textures once at startup.
+        RequestTectonicRegeneration(true);
+        RequestHydrologyRegeneration(true);
+        CacheValidatedGeneratorInputs();
+
         SetupSpaceBackgroundIfNeeded();
 
         // Upgrade the preview mesh for better shading/detail
@@ -653,17 +668,27 @@ public class MenuPlanetPreview : MonoBehaviour
     /// </summary>
     private void OnValidate()
     {
-        if (Application.isPlaying && materialInstance != null)
-        {
-            ApplyAllParameters();
-            PushCloudParameters();
-            PushAtmosphereParameters();
-            PushInfernalTextureParameters();
+        if (!Application.isPlaying || materialInstance == null)
+            return;
 
-            // Update atmosphere shell scale at runtime
-            if (atmosphereShellGO != null && previewRenderer != null)
-                atmosphereShellGO.transform.localScale = previewRenderer.transform.localScale * atmosphereShellScale;
-        }
+        bool tectonicChanged = TectonicInputsChanged();
+        bool hydrologyChanged = HydrologyInputsChanged();
+
+        ApplyAllParameters();
+        PushCloudParameters();
+        PushAtmosphereParameters();
+        PushInfernalTextureParameters();
+
+        if (atmosphereShellGO != null && previewRenderer != null)
+            atmosphereShellGO.transform.localScale = previewRenderer.transform.localScale * atmosphereShellScale;
+
+        if (tectonicChanged)
+            RequestTectonicRegeneration(false);
+
+        if (hydrologyChanged)
+            RequestHydrologyRegeneration(false);
+
+        CacheValidatedGeneratorInputs();
     }
 
     // -----------------------------------------------------------------
@@ -740,8 +765,6 @@ public class MenuPlanetPreview : MonoBehaviour
         PushInfernalTextureParameters();
         PushAdvancedClimateParameters();
         PushSurfaceCloudShadowParameters();
-        RequestHydrologyRegeneration(true);
-        RequestTectonicRegeneration(true);
     }
 
     private void PushDisplacementParameters()
@@ -899,6 +922,44 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_BiomeCompetitionSharpness, biomeCompetitionSharpness);
     }
 
+
+    private void CacheValidatedGeneratorInputs()
+    {
+        lastValidatedSeed = seed;
+        lastValidatedLandScale = landScale;
+        lastValidatedLandThreshold = landThreshold;
+        lastValidatedElevation = elevation;
+        lastValidatedMoisture = moisture;
+        lastValidatedTemperature = temperature;
+        lastValidatedWaterwaysPreset = waterwaysPreset;
+        validateCacheInitialized = true;
+    }
+
+    private bool TectonicInputsChanged()
+    {
+        if (!validateCacheInitialized) return true;
+
+        return
+            !Mathf.Approximately(seed, lastValidatedSeed) ||
+            !Mathf.Approximately(landScale, lastValidatedLandScale) ||
+            !Mathf.Approximately(landThreshold, lastValidatedLandThreshold) ||
+            !Mathf.Approximately(elevation, lastValidatedElevation);
+    }
+
+    private bool HydrologyInputsChanged()
+    {
+        if (!validateCacheInitialized) return true;
+
+        return
+            !Mathf.Approximately(seed, lastValidatedSeed) ||
+            !Mathf.Approximately(landScale, lastValidatedLandScale) ||
+            !Mathf.Approximately(landThreshold, lastValidatedLandThreshold) ||
+            !Mathf.Approximately(elevation, lastValidatedElevation) ||
+            !Mathf.Approximately(moisture, lastValidatedMoisture) ||
+            !Mathf.Approximately(temperature, lastValidatedTemperature) ||
+            waterwaysPreset != lastValidatedWaterwaysPreset;
+    }
+
     // -----------------------------------------------------------------
     //  Public API — called by UI sliders / MainMenuManager
     // -----------------------------------------------------------------
@@ -937,7 +998,6 @@ public class MenuPlanetPreview : MonoBehaviour
              RecalculateDerivedVisuals();
         }
         RequestHydrologyRegeneration();
-        RequestTectonicRegeneration();
         PushCloudParameters();
         PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
@@ -967,7 +1027,6 @@ public class MenuPlanetPreview : MonoBehaviour
             RecalculateDerivedVisuals();
         }
         RequestHydrologyRegeneration();
-        RequestTectonicRegeneration();
     }
 
     /// <summary>
@@ -1065,7 +1124,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
         RecalculateDerivedVisuals();
         RequestHydrologyRegeneration();
-        RequestTectonicRegeneration();
         PushCloudParameters();
     }
 
