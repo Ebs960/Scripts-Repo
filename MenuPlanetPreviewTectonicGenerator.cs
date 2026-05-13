@@ -27,6 +27,12 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float maximumSeaLevel = 0.78f;
     [SerializeField] private bool logLandCoverageDiagnostics = false;
 
+    [Header("Continental Shape")]
+    [SerializeField, Range(0.25f, 8f)] private float continentalDetailScale = 1.65f;
+    [SerializeField, Range(0f, 1f)] private float continentalDetailStrength = 0.22f;
+    [SerializeField, Range(0f, 1f)] private float continentSeedStrength = 0.82f;
+    [SerializeField, Range(0f, 0.5f)] private float plateContinentalInfluence = 0.16f;
+
     [Header("Elevation")]
     [SerializeField, Range(0f, 1f)] private float continentalElevationStrength = 0.42f;
     [SerializeField, Range(0f, 1f)] private float oceanBasinDepthStrength = 0.58f;
@@ -48,6 +54,16 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         public float age;
     }
 
+
+
+    private struct PreviewContinentSeedNative
+    {
+        public float3 centerDir;
+        public float radius;
+        public float strength;
+        public float elongation;
+        public float3 stretchAxis;
+    }
     [BurstCompile]
     private struct GenerateTectonicPreviewJob : IJobParallelFor
     {
@@ -71,8 +87,15 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         public float terrainDetailNoiseStrength;
         public float continentalShelfStrength;
         public float continentalShelfWidth;
+        public float continentalDetailScale;
+        public float continentalDetailStrength;
+        public float continentSeedStrength;
+        public float plateContinentalInfluence;
+        public float presetSeaLevelBias;
+        public float islandFragmentStrength;
 
         [ReadOnly] public NativeArray<PreviewTectonicPlateNative> plates;
+        [ReadOnly] public NativeArray<PreviewContinentSeedNative> continentSeeds;
         [NativeDisableParallelForRestriction] public NativeArray<byte> surfacePixels;
         [NativeDisableParallelForRestriction] public NativeArray<byte> boundaryPixels;
         [NativeDisableParallelForRestriction] public NativeArray<byte> crustPixels;
@@ -105,9 +128,25 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float divergent = math.saturate(along * 0.9f) * boundaryIntensity;
             float transform = math.saturate(1f - math.abs(along) * 1.3f) * boundaryIntensity;
 
-            float interior = math.saturate((best0 - 0.25f) / 0.75f);
-            float plateNoise = Fbm(d * (landScale * 1.25f) + new float3(seed + p0 * 3.1f, seed * 0.71f, seed * 1.31f));
-            float continental = math.saturate(A.continentalBias * 0.72f + plateNoise * 0.28f + interior * 0.14f - divergent * 0.25f + convergent * 0.12f);
+            float plateBlend = math.saturate((best0 - best1) / math.max(0.0001f, plateBoundaryWidth * 2f));
+            float plateContinentalBias = math.lerp(B.continentalBias, A.continentalBias, plateBlend);
+            float continentalDetailNoise = Fbm(d * continentalDetailScale + new float3(seed + 3.1f, seed * 0.71f, seed * 1.31f));
+            float continentSeedField = 0f;
+            for (int i = 0; i < continentSeeds.Length; i++)
+            {
+                PreviewContinentSeedNative c = continentSeeds[i];
+                float similarity = math.dot(d, c.centerDir);
+                float axisAlign = math.dot(d, c.stretchAxis);
+                float stretch = math.lerp(1f, 1f + c.elongation * math.abs(axisAlign), 0.5f);
+                float distanceLike = (1f - similarity) / math.max(0.1f, stretch);
+                float rawInfluence = 1f - math.saturate(distanceLike / math.max(0.0001f, c.radius));
+                float influence = rawInfluence * rawInfluence * (3f - 2f * rawInfluence);
+                continentSeedField = math.max(continentSeedField, influence * c.strength);
+            }
+            float continentalPotential = continentSeedField * continentSeedStrength + (continentalDetailNoise - 0.5f) * (continentalDetailStrength + islandFragmentStrength) + (plateContinentalBias - 0.5f) * plateContinentalInfluence;
+            continentalPotential += convergent * 0.03f;
+            continentalPotential -= divergent * 0.04f;
+            float continental = math.saturate(continentalPotential);
             float oceanic = 1f - continental;
             float shelfProximity = math.saturate((continental - oceanic + continentalShelfWidth * 2f) / math.max(0.01f, continentalShelfWidth * 3f));
             float basinDepth = oceanic * (0.45f + 0.55f * Fbm(d * (landScale * 2.1f) + new float3(seed + 44.1f, seed + 12.2f, seed + 8.3f))) * oceanBasinDepthStrength;
@@ -115,7 +154,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float baseElevation = continental * continentalElevationStrength - basinDepth + divergent * divergentRidgeStrength * oceanic + mountainBelt * convergentMountainStrength;
             baseElevation += (Fbm(d * (landScale * 3.6f) + new float3(seed + 96.2f, seed + 51.8f, seed + 14.4f)) - 0.5f) * terrainDetailNoiseStrength;
             baseElevation += (elevation - 0.5f) * 0.28f;
-            float seaLevel = math.lerp(minimumSeaLevel, maximumSeaLevel, landThreshold);
+            float seaLevel = math.saturate(math.lerp(minimumSeaLevel, maximumSeaLevel, landThreshold) + presetSeaLevelBias);
             float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
             float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * math.saturate(1f - basinDepth * 1.35f);
             float elevationHeight = math.saturate(baseElevation * 0.8f + 0.5f);
@@ -134,7 +173,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             crustPixels[o + 0] = ToByte(continental);
             crustPixels[o + 1] = ToByte(oceanic);
             crustPixels[o + 2] = ToByte(math.saturate(basinDepth));
-            crustPixels[o + 3] = ToByte(transform);
+            crustPixels[o + 3] = ToByte(math.saturate(continentalPotential));
         }
 
         private static float3 TexelToDir(int x, int y, int width, int height)
@@ -177,6 +216,10 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     private bool uploadPending;
     private bool regenerationRequestedWhileBusy;
     private NativeArray<PreviewTectonicPlateNative> nativePlates;
+    private NativeArray<PreviewContinentSeedNative> nativeContinentSeeds;
+    private float pendingSeaLevel;
+    private int pendingContinentSeedCount;
+    private float pendingPresetSeaLevelBias;
     private NativeArray<byte> surfacePixelBytes;
     private NativeArray<byte> boundaryPixelBytes;
     private NativeArray<byte> crustPixelBytes;
@@ -259,8 +302,13 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         EnsureTextures();
         DisposeNativeBuffers();
         var managedPlates = BuildPlates();
+        GetLandPresetShapeParameters(landPreset, out int seedCount, out float minSeedRadius, out float maxSeedRadius, out float baseSeedStrength, out float seaLevelBias, out float islandFragment);
+        var managedContinentSeeds = BuildContinentSeeds(seedCount, minSeedRadius, maxSeedRadius, baseSeedStrength);
         pendingPlateCount = managedPlates.Length;
-        AllocateNativeBuffers(managedPlates);
+        pendingContinentSeedCount = managedContinentSeeds.Length;
+        pendingPresetSeaLevelBias = seaLevelBias;
+        pendingSeaLevel = Mathf.Clamp01(Mathf.Lerp(minimumSeaLevel, maximumSeaLevel, landThreshold) + seaLevelBias);
+        AllocateNativeBuffers(managedPlates, managedContinentSeeds);
 
         var job = new GenerateTectonicPreviewJob
         {
@@ -284,7 +332,14 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             maximumSeaLevel = maximumSeaLevel,
             continentalShelfStrength = continentalShelfStrength,
             continentalShelfWidth = continentalShelfWidth,
+            continentalDetailScale = continentalDetailScale,
+            continentalDetailStrength = continentalDetailStrength,
+            continentSeedStrength = continentSeedStrength,
+            plateContinentalInfluence = plateContinentalInfluence,
+            presetSeaLevelBias = seaLevelBias,
+            islandFragmentStrength = islandFragment,
             plates = nativePlates,
+            continentSeeds = nativeContinentSeeds,
             surfacePixels = surfacePixelBytes,
             boundaryPixels = boundaryPixelBytes,
             crustPixels = crustPixelBytes
@@ -318,8 +373,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float landPct = (float)landCount / (tectonicMapWidth * tectonicMapHeight) * 100f;
             string[] presetNames = { "Archipelago", "Islands", "Standard", "Large Continents", "Pangaea", "Terrestrial" };
             string presetName = landPreset >= 0 && landPreset < presetNames.Length ? presetNames[landPreset] : $"Preset {landPreset}";
-            float seaLevel = Mathf.Lerp(minimumSeaLevel, maximumSeaLevel, landThreshold);
-            UnityEngine.Debug.Log($"[Tectonic Preview] Land coverage: {landPct:F1}% | preset={presetName} | threshold={landThreshold:F2} | seaLevel={seaLevel:F3}");
+            UnityEngine.Debug.Log($"[Tectonic Preview] Preset={presetName} | Seeds={pendingContinentSeedCount} | SeaLevel={pendingSeaLevel:F3} | LandCoverage={landPct:F1}%");
         }
 
         if (logGenerationTiming)
@@ -335,10 +389,12 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
 
     private static float TicksToMs(long ticks) => ticks * 1000f / Stopwatch.Frequency;
 
-    private void AllocateNativeBuffers(PreviewTectonicPlateNative[] managedPlates)
+    private void AllocateNativeBuffers(PreviewTectonicPlateNative[] managedPlates, PreviewContinentSeedNative[] managedContinentSeeds)
     {
         nativePlates = new NativeArray<PreviewTectonicPlateNative>(managedPlates.Length, Allocator.Persistent);
         for (int i = 0; i < managedPlates.Length; i++) nativePlates[i] = managedPlates[i];
+        nativeContinentSeeds = new NativeArray<PreviewContinentSeedNative>(managedContinentSeeds.Length, Allocator.Persistent);
+        for (int i = 0; i < managedContinentSeeds.Length; i++) nativeContinentSeeds[i] = managedContinentSeeds[i];
         int pixelBytes = tectonicMapWidth * tectonicMapHeight * 4;
         surfacePixelBytes = new NativeArray<byte>(pixelBytes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         boundaryPixelBytes = new NativeArray<byte>(pixelBytes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -348,6 +404,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     private void DisposeNativeBuffers()
     {
         if (nativePlates.IsCreated) nativePlates.Dispose();
+        if (nativeContinentSeeds.IsCreated) nativeContinentSeeds.Dispose();
         if (surfacePixelBytes.IsCreated) surfacePixelBytes.Dispose();
         if (boundaryPixelBytes.IsCreated) boundaryPixelBytes.Dispose();
         if (crustPixelBytes.IsCreated) crustPixelBytes.Dispose();
@@ -395,6 +452,40 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         return p;
     }
 
+
+
+    private void GetLandPresetShapeParameters(int preset, out int continentSeedCount, out float minSeedRadius, out float maxSeedRadius, out float baseSeedStrength, out float seaLevelBias, out float islandFragmentStrength)
+    {
+        switch (preset)
+        {
+            case 0: continentSeedCount = 14; minSeedRadius = 0.08f; maxSeedRadius = 0.16f; baseSeedStrength = 0.62f; seaLevelBias = 0.10f; islandFragmentStrength = 0.10f; break;
+            case 1: continentSeedCount = 8; minSeedRadius = 0.14f; maxSeedRadius = 0.24f; baseSeedStrength = 0.68f; seaLevelBias = 0.06f; islandFragmentStrength = 0.06f; break;
+            case 3: continentSeedCount = 4; minSeedRadius = 0.24f; maxSeedRadius = 0.34f; baseSeedStrength = 0.82f; seaLevelBias = -0.04f; islandFragmentStrength = 0.02f; break;
+            case 4: continentSeedCount = 3; minSeedRadius = 0.28f; maxSeedRadius = 0.5f; baseSeedStrength = 0.9f; seaLevelBias = -0.08f; islandFragmentStrength = 0.01f; break;
+            case 5: continentSeedCount = 6; minSeedRadius = 0.26f; maxSeedRadius = 0.40f; baseSeedStrength = 0.92f; seaLevelBias = -0.14f; islandFragmentStrength = 0.0f; break;
+            default: continentSeedCount = 5; minSeedRadius = 0.18f; maxSeedRadius = 0.30f; baseSeedStrength = 0.76f; seaLevelBias = 0f; islandFragmentStrength = 0.04f; break;
+        }
+    }
+
+    private PreviewContinentSeedNative[] BuildContinentSeeds(int count, float minRadius, float maxRadius, float baseStrength)
+    {
+        var seeds = new PreviewContinentSeedNative[Mathf.Max(1, count)];
+        for (int i = 0; i < seeds.Length; i++)
+        {
+            Vector3 c = RandomOnSphere(i * 131 + 29);
+            Vector3 axis = Vector3.Cross(c, RandomOnSphere(i * 53 + 17)).normalized;
+            if (axis.sqrMagnitude < 0.001f) axis = Vector3.Cross(c, Vector3.up).normalized;
+            seeds[i] = new PreviewContinentSeedNative
+            {
+                centerDir = c,
+                radius = Mathf.Lerp(minRadius, maxRadius, Hash01(i, 203)),
+                strength = Mathf.Lerp(baseStrength * 0.75f, Mathf.Min(1f, baseStrength * 1.1f), Hash01(i, 211)),
+                elongation = Mathf.Lerp(0.05f, 0.55f, Hash01(i, 223)),
+                stretchAxis = axis
+            };
+        }
+        return seeds;
+    }
     private Vector3 RandomOnSphere(int salt)
     {
         float u = Hash01(salt, 1);

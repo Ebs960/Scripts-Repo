@@ -219,6 +219,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showMountainUpliftOnly = false;
     [SerializeField] private bool showContinentalShelfOnly = false;
     [SerializeField] private bool showCrustTypeOnly = false;
+    [SerializeField] private bool showContinentalPotentialOnly = false;
 
     [Header("HDRP Post-Processing")]
     [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
@@ -550,6 +551,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowMountainUpliftOnly = Shader.PropertyToID("_ShowMountainUpliftOnly");
     private static readonly int ID_ShowContinentalShelfOnly = Shader.PropertyToID("_ShowContinentalShelfOnly");
     private static readonly int ID_ShowCrustTypeOnly = Shader.PropertyToID("_ShowCrustTypeOnly");
+    private static readonly int ID_ShowContinentalPotentialOnly = Shader.PropertyToID("_ShowContinentalPotentialOnly");
 
     private int currentLandPresetIndex = 2;
     private bool pendingHydrologyAfterTectonics;
@@ -861,6 +863,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowMountainUpliftOnly, showMountainUpliftOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowContinentalShelfOnly, showContinentalShelfOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowCrustTypeOnly, showCrustTypeOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowContinentalPotentialOnly, showContinentalPotentialOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
