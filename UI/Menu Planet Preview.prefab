@@ -420,6 +420,7 @@ MonoBehaviour:
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   hydrologyMaskGenerator: {fileID: 6013045082289988684}
   tectonicGenerator: {fileID: 339058185792977936}
+  climateBiomeGenerator: {fileID: 0}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
