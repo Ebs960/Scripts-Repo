@@ -660,7 +660,7 @@ public class MainMenuManager : MonoBehaviour
         float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.82f, 0.65f };
         float[] landThresholds = { 0.64f, 0.62f, 0.53f, 0.49f, 0.40f, 0.29f };
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
-        planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx]);
+        planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx], landIdx);
 
         // Temperature: map selectedClimatePreset (0-5) to 0–1
         // 0=Frozen→0, 5=Scorching→1
