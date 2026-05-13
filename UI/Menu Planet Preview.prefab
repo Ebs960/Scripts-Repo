@@ -423,11 +423,11 @@ MonoBehaviour:
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
-  detailScale: 280
-  detailStrength: 0.08
+  detailScale: 22
+  detailStrength: 0.12
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.0000001
-  useDisplacedNormals: 1
+  displacementScale: 0.004
+  useDisplacedNormals: 0
   enableCloudShell: 1
   cloudAltitude: 0.0297
   cloudDensity: 0.069
@@ -573,7 +573,7 @@ MonoBehaviour:
   smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1
-  ambientStrength: 0.894
+  ambientStrength: 0.18
   brightness: 1.12
   seed: 0
   randomizeSeed: 1
@@ -618,7 +618,7 @@ MonoBehaviour:
   tectonicMapHeight: 512
   regenerationDelay: 0.15
   logGenerationTiming: 0
-  plateCount: 11
+  plateCount: 18
   plateBoundaryWidth: 0.06
   continentalPlateFraction: 0.55
   plateShapeNoiseStrength: 0.28
