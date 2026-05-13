@@ -358,7 +358,7 @@ MonoBehaviour:
   antiAliasing: 4
   useHDR: 1
   filterMode: 1
-  useMipMap: 0
+  useMipMap: 1
   cameraBackgroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
   clearFlags: 1
 --- !u!1 &3523082564983676708
@@ -599,9 +599,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de6de8a68f7cd884084a2f775c62bdc3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewHydrologyMaskGenerator
-  hydrologyMaskWidth: 2048
-  hydrologyMaskHeight: 2048
-  regenerationDelay: 0.15
+  hydrologyMaskWidth: 1024
+  hydrologyMaskHeight: 512
+  regenerationDelay: 0.02
 --- !u!114 &339058185792977936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -614,10 +614,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d91af5da87e980d46b8cb9b362f6c001, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewTectonicGenerator
-  tectonicMapWidth: 2048
-  tectonicMapHeight: 2048
+  tectonicMapWidth: 1024
+  tectonicMapHeight: 512
   regenerationDelay: 0.15
-  plateCount: 14
+  logGenerationTiming: 0
+  plateCount: 11
   plateBoundaryWidth: 0.06
   continentalPlateFraction: 0.55
   plateShapeNoiseStrength: 0.28
