@@ -123,6 +123,11 @@ Shader "Custom/MenuPlanetPreview"
             _ShowWaterwayAmountOnly("Show Waterway Amount Only", Float) = 0
             _ShowRiverMaskOnly("Show River Mask Only", Float) = 0
             _ShowLakeMaskOnly("Show Lake Mask Only", Float) = 0
+            _ShowCloudShadowMaskOnly("Show Cloud Shadow Mask Only", Float) = 0
+            _ShowCoastShelfMaskOnly("Show Coast Shelf Mask Only", Float) = 0
+            _ShowShorelineMaskOnly("Show Shoreline Mask Only", Float) = 0
+            _ShowWetlandMaskOnly("Show Wetland Mask Only", Float) = 0
+            _ShowWaterDepthMaskOnly("Show Water Depth Mask Only", Float) = 0
             _TerminatorSoftness("Terminator Softness", Range(0.05,1)) = 0.45
             _ShowLandMaskOnly("Show Land Mask Only", Float) = 0
             _ShowDetailTexturesOnly("Show Detail Textures Only", Float) = 0
@@ -135,6 +140,10 @@ Shader "Custom/MenuPlanetPreview"
             [HideInInspector] _KeyLightDirectionWS("Key Light Direction WS", Vector) = (0.45,0.65,0.55,0)
             [HideInInspector] _KeyLightColor("Key Light Color", Color) = (1,1,1,1)
             [HideInInspector] _KeyLightIntensity("Key Light Intensity", Float) = 1
+            _CloudShadowDensity("Cloud Shadow Density", Float) = 0.55
+            _CloudShadowScale("Cloud Shadow Scale", Float) = 3.0
+            _CloudShadowSpeed("Cloud Shadow Speed", Float) = 0.08
+            _CloudSurfaceShadowStrength("Cloud Surface Shadow Strength", Range(0,0.35)) = 0.12
             [HideInInspector] _FillLightColor("Fill Light Color", Color) = (1,1,1,1)
             [HideInInspector] _FillLightIntensity("Fill Light Intensity", Float) = 0.35
             [HideInInspector] _RimLightColor("Rim Light Color", Color) = (1,1,1,1)
@@ -165,11 +174,11 @@ Shader "Custom/MenuPlanetPreview"
                 float _Smoothness; float _Metallic; float _AmbientOcclusion; float _AmbientStrength; float _Brightness;
                 float _MountainDetailStrength; float _IceDetailStrength; float _OceanDetailStrength; float _OceanNormalStrength; float _MountainNormalStrength; float _IceNormalStrength;
                 float _TextureDetailScale; float _UseDetailTextures; float _UseTextureDrivenBiomes; float _BiomeTextureStrength; float _BiomeTintStrength; float _BiomeNormalStrength; float _BiomeTextureScale; float _BiomeTextureContrast;
-                float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly; float _ShowRiverMaskOnly; float _ShowLakeMaskOnly;
+                float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly; float _ShowRiverMaskOnly; float _ShowLakeMaskOnly; float _ShowCloudShadowMaskOnly; float _ShowCoastShelfMaskOnly; float _ShowShorelineMaskOnly; float _ShowWetlandMaskOnly; float _ShowWaterDepthMaskOnly;
                 float _MoistureResponseScale; float _TemperatureHumidityInfluence; float _ClimateNoiseStrength; float _CoastWetnessStrength; float _ContinentalDrynessStrength; float _ContinentalTemperatureStrength; float _RainShadowStrength; float _OrographicWetnessStrength; float _OrographicSampleOffset; float _RiparianWetnessStrength; float _SeasonalityStrength; float _BiomeProvinceStrength; float _BiomeCompetitionSharpness;
                 float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly;
                 float _VolcanicRockStrength; float _LavaCrackStrength; float _LavaEmissionStrength; float _LavaTextureScale; float _AshDetailStrength;
-                float4 _KeyLightDirectionWS; float4 _KeyLightColor; float _KeyLightIntensity;
+                float4 _KeyLightDirectionWS; float4 _KeyLightColor; float _KeyLightIntensity; float _CloudShadowDensity; float _CloudShadowScale; float _CloudShadowSpeed; float _CloudSurfaceShadowStrength;
                 float4 _FillLightColor; float _FillLightIntensity;
                 float4 _RimLightColor; float _RimLightIntensity;
             CBUFFER_END
@@ -633,7 +642,12 @@ Shader "Custom/MenuPlanetPreview"
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm, temperatureLocal);
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
-                float3 oceanColor = _OceanColor.rgb;
+                float oceanMask = saturate(1.0 - edge);
+                float landMask = saturate(edge);
+                float coastShelfMask = oceanMask * (1.0 - smoothstep(0.0, 0.08, edge));
+                float shorelineMask = oceanMask * smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.03, 0.06, edge));
+                float3 oceanColor = lerp(_OceanColor.rgb, _OceanShallowColor.rgb, coastShelfMask * 0.65);
+                oceanColor = lerp(oceanColor, oceanColor * 1.08, shorelineMask * 0.12);
 
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
@@ -725,9 +739,14 @@ Shader "Custom/MenuPlanetPreview"
                 float waterV = asin(clamp(waterDir.y, -1.0, 1.0)) / PI + 0.5;
                 float2 waterwayUV = float2(frac(waterU), saturate(waterV));
                 float4 generatedWaterwayMask = SAMPLE_TEXTURE2D(_WaterwayMaskTex, sampler_WaterwayMaskTex, waterwayUV);
+                float generatedRiverMask = generatedWaterwayMask.r;
+                float generatedLakeMask = generatedWaterwayMask.g;
+                float wetlandMask = generatedWaterwayMask.b;
+                float waterDepthMask = generatedWaterwayMask.a;
+                float useGeneratedWaterways = step(0.001, dot(generatedWaterwayMask.rgb, 1.0));
 
-                float riverMaskFinal = saturate(lerp(normalRiverMask, generatedWaterwayMask.r, step(0.001, dot(generatedWaterwayMask.rgb, 1.0))));
-                float lakeMaskFinal = saturate(lerp(lakeMask, generatedWaterwayMask.g, step(0.001, dot(generatedWaterwayMask.rgb, 1.0))));
+                float riverMaskFinal = saturate(lerp(normalRiverMask, generatedRiverMask, useGeneratedWaterways));
+                float lakeMaskFinal = saturate(lerp(lakeMask, generatedLakeMask, useGeneratedWaterways));
                 float inlandWaterMask = saturate(max(riverMaskFinal, lakeMaskFinal));
                 float inlandWaterRenderMask = smoothstep(0.18, 0.72, inlandWaterMask);
 
@@ -939,6 +958,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 L = normalize(_KeyLightDirectionWS.xyz);
                 float3 fillL = normalize(float3(-L.x, saturate(L.y * 0.5 + 0.1), -L.z));
                 float ndl = saturate(dot(surfN, L));
+                float3 cloudSampleDir = normalize(input.positionWS + L * 0.06);
+                float cloudNoise = SAMPLE_TEXTURE2D(_CloudNoiseTex, sampler_MountainDetailTex, cloudSampleDir.xz * _CloudShadowScale + float2(_Time.y * _CloudShadowSpeed, _Time.y * _CloudShadowSpeed * 0.7)).r;
+                float cloudCoverage = smoothstep(1.0 - _CloudShadowDensity, 1.0 - _CloudShadowDensity + 0.22, cloudNoise);
+                float cloudShadowMask = cloudCoverage * _CloudSurfaceShadowStrength;
                 ndl = smoothstep(0.0, max(0.01,_TerminatorSoftness), ndl);
                 float fill = saturate(dot(surfN, fillL));
                 float3 keyContrib = ndl * _KeyLightColor.rgb * _KeyLightIntensity;
@@ -975,6 +998,11 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1.0);
                 if (_ShowRiverMaskOnly > 0.5) return float4(riverMaskFinal.xxx, 1.0);
                 if (_ShowLakeMaskOnly > 0.5) return float4(lakeMaskFinal.xxx, 1.0);
+                if (_ShowCloudShadowMaskOnly > 0.5) return float4(cloudShadowMask.xxx, 1.0);
+                if (_ShowCoastShelfMaskOnly > 0.5) return float4(coastShelfMask.xxx, 1.0);
+                if (_ShowShorelineMaskOnly > 0.5) return float4(shorelineMask.xxx, 1.0);
+                if (_ShowWetlandMaskOnly > 0.5) return float4(wetlandMask.xxx, 1.0);
+                if (_ShowWaterDepthMaskOnly > 0.5) return float4(waterDepthMask.xxx, 1.0);
                 if (_ShowWaterwaysOnly > 0.5) return float4(0.1*riverMaskFinal,0.3*riverMaskFinal,0.8*inlandWaterRenderMask,1.0);
                 if (_ShowWaterwayAmountOnly > 0.5) return float4(_WaterwayAmount.xxx,1.0);
                 if (_ShowSmoothnessOnly > 0.5) return float4(smoothnessMask.xxx, 1.0);
