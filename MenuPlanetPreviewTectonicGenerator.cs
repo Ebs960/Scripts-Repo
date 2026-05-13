@@ -103,11 +103,11 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float seaLevel = math.lerp(0.42f, 0.62f, landThreshold);
             float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
             float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * math.saturate(1f - basinDepth * 1.35f);
-            float height = math.saturate(baseElevation * 0.8f + 0.5f);
+            float elevationHeight = math.saturate(baseElevation * 0.8f + 0.5f);
 
             int o = index * 4;
             surfacePixels[o + 0] = ToByte(landMask);
-            surfacePixels[o + 1] = ToByte(height);
+            surfacePixels[o + 1] = ToByte(elevationHeight);
             surfacePixels[o + 2] = ToByte(math.saturate(mountainBelt));
             surfacePixels[o + 3] = ToByte(math.saturate(shelfMask));
 
