@@ -371,6 +371,7 @@ GameObject:
   m_Component:
   - component: {fileID: 295393544057895789}
   - component: {fileID: 7706978070917160381}
+  - component: {fileID: 6013045082289988684}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -416,6 +417,7 @@ MonoBehaviour:
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
+  hydrologyMaskGenerator: {fileID: 6013045082289988684}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
@@ -441,7 +443,7 @@ MonoBehaviour:
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  waterwayDetailTexture: {fileID: 0}
+  waterwayDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   oceanNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
@@ -521,6 +523,8 @@ MonoBehaviour:
   showDominantBiomeOnly: 0
   showWaterwaysOnly: 0
   showWaterwayAmountOnly: 0
+  showRiverMaskOnly: 0
+  showLakeMaskOnly: 0
   disableCloudsForDebug: 0
   enableBloom: 1
   bloomThreshold: 1.4
@@ -533,15 +537,15 @@ MonoBehaviour:
   moistureResponseScale: 0.85
   temperatureHumidityInfluence: 0.06
   climateNoiseStrength: 0.12
-  coastWetnessStrength: 0.08
-  continentalDrynessStrength: 0.08
+  coastWetnessStrength: 0.2
+  continentalDrynessStrength: 0.215
   continentalTemperatureStrength: 0.06
   rainShadowStrength: 0.16
   orographicWetnessStrength: 0.08
   orographicSampleOffset: 0.08
   riparianWetnessStrength: 0.12
   seasonalityStrength: 0.35
-  biomeProvinceStrength: 0.2
+  biomeProvinceStrength: 0.32
   biomeCompetitionSharpness: 0.85
   elevation: 0.3
   mapStyle: 0
@@ -567,6 +571,21 @@ MonoBehaviour:
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
+--- !u!114 &6013045082289988684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3523082564983676708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de6de8a68f7cd884084a2f775c62bdc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewHydrologyMaskGenerator
+  hydrologyMaskWidth: 2048
+  hydrologyMaskHeight: 1024
+  regenerationDelay: 0.15
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
