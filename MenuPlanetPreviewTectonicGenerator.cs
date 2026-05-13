@@ -85,7 +85,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             baseElevation += (Fbm(d * (landScale * 3.6f) + new Vector3(seed + 96.2f, seed + 51.8f, seed + 14.4f)) - 0.5f) * terrainDetailNoiseStrength;
             baseElevation += (elevation - 0.5f) * 0.28f;
             float seaLevel = Mathf.Lerp(0.42f, 0.62f, landThreshold);
-            float landMask = Mathf.SmoothStep(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
+            float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
             float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * Mathf.Clamp01(1f - basinDepth * 1.35f);
 
             float height = Mathf.Clamp01(baseElevation * 0.8f + 0.5f);
@@ -109,6 +109,13 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     }
     private Texture2D EnsureTex(Texture2D t, string n){ if(t!=null && t.width==tectonicMapWidth && t.height==tectonicMapHeight) return t; if(t!=null) Destroy(t); return new Texture2D(tectonicMapWidth,tectonicMapHeight,TextureFormat.RGBA32,false,true){wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,name=n}; }
     private PreviewTectonicPlate[] BuildPlates(){ var p=new PreviewTectonicPlate[Mathf.Clamp(plateCount,4,32)]; int continentalTarget=Mathf.RoundToInt(p.Length*continentalPlateFraction); for(int i=0;i<p.Length;i++){Vector3 c=RandomOnSphere(i*31+7); Vector3 tangent = Vector3.Cross(c, RandomOnSphere(i*17+3)).normalized; if(tangent.sqrMagnitude<0.001f) tangent=Vector3.Cross(c,Vector3.up).normalized; float cont=i<continentalTarget?Mathf.Lerp(0.58f,0.95f,Hash01(i,99)):Mathf.Lerp(0.05f,0.45f,Hash01(i,77)); p[i]=new PreviewTectonicPlate{centerDir=c,motionDir=tangent,continentalBias=cont,baseElevationBias=Mathf.Lerp(-0.15f,0.25f,Hash01(i,41)),ruggedness=Mathf.Lerp(0.35f,1f,Hash01(i,57)),age=Hash01(i,13)};} return p; }
+
+    private static float SmoothThreshold(float edge0, float edge1, float x)
+    {
+        float t = Mathf.InverseLerp(edge0, edge1, x);
+        return t * t * (3f - 2f * t);
+    }
+
     private Vector3 TexelToDir(int x,int y){float u=(x+0.5f)/tectonicMapWidth; float v=(y+0.5f)/tectonicMapHeight; float lon=(u-0.5f)*Mathf.PI*2f; float lat=(v-0.5f)*Mathf.PI; float cl=Mathf.Cos(lat); return new Vector3(Mathf.Cos(lon)*cl,Mathf.Sin(lat),Mathf.Sin(lon)*cl);}    
     private Vector3 RandomOnSphere(int salt){ float u=Hash01(salt,1); float v=Hash01(salt,2); float lon=u*Mathf.PI*2f; float z=2f*v-1f; float r=Mathf.Sqrt(Mathf.Max(0f,1f-z*z)); return new Vector3(r*Mathf.Cos(lon), z, r*Mathf.Sin(lon)); }
     private float Fbm(Vector3 p){float v=0,a=0.5f,f=1f; for(int i=0;i<4;i++){v+=a*Mathf.PerlinNoise(p.x*f+p.y*0.67f,p.z*f+p.y*0.37f); f*=2f; a*=0.5f;} return v;}
