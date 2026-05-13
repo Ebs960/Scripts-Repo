@@ -371,6 +371,7 @@ GameObject:
   m_Component:
   - component: {fileID: 295393544057895789}
   - component: {fileID: 7706978070917160381}
+  - component: {fileID: 6013045082289988684}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -416,6 +417,7 @@ MonoBehaviour:
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
+  hydrologyMaskGenerator: {fileID: 6013045082289988684}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
@@ -441,7 +443,7 @@ MonoBehaviour:
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  waterwayDetailTexture: {fileID: 0}
+  waterwayDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   oceanNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
@@ -467,7 +469,6 @@ MonoBehaviour:
   savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
   temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   temperateForestAlbedoTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
-  steppeAlbedoTexture: {fileID: 2800000, guid: 5d3384b986dcbde41b5711d3b30bc480, type: 3}
   taigaAlbedoTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
   polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
@@ -477,7 +478,6 @@ MonoBehaviour:
   savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
   temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   temperateForestNormalTexture: {fileID: 2800000, guid: fa3fac320ca6b4145a31b98a8201cb79, type: 3}
-  steppeNormalTexture: {fileID: 2800000, guid: 5df5e175225c162439e1f1df13da2f2f, type: 3}
   taigaNormalTexture: {fileID: 2800000, guid: 58e71acd37ef7d847a1f9d84db10f7ab, type: 3}
   tundraNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   polarNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
@@ -487,7 +487,6 @@ MonoBehaviour:
   savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
   temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: b5476c4812cf9da4585cc982ba3d2604, type: 3}
-  steppeSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   taigaSmoothnessTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraSmoothnessTexture: {fileID: 2800000, guid: a724993669b0ede40b21a105448e82ea, type: 3}
   polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
@@ -521,6 +520,8 @@ MonoBehaviour:
   showDominantBiomeOnly: 0
   showWaterwaysOnly: 0
   showWaterwayAmountOnly: 0
+  showRiverMaskOnly: 0
+  showLakeMaskOnly: 0
   disableCloudsForDebug: 0
   enableBloom: 1
   bloomThreshold: 1.4
@@ -530,19 +531,19 @@ MonoBehaviour:
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
-  moistureResponseScale: 0.85
-  temperatureHumidityInfluence: 0.06
-  climateNoiseStrength: 0.12
-  coastWetnessStrength: 0.08
-  continentalDrynessStrength: 0.08
-  continentalTemperatureStrength: 0.06
-  rainShadowStrength: 0.16
-  orographicWetnessStrength: 0.08
-  orographicSampleOffset: 0.08
-  riparianWetnessStrength: 0.12
-  seasonalityStrength: 0.35
-  biomeProvinceStrength: 0.2
-  biomeCompetitionSharpness: 0.85
+  moistureResponseScale: 1
+  temperatureHumidityInfluence: 0
+  climateNoiseStrength: 0.15
+  coastWetnessStrength: 0.1
+  continentalDrynessStrength: 0.02
+  continentalTemperatureStrength: 0.05
+  rainShadowStrength: 0.25
+  orographicWetnessStrength: 0.1
+  orographicSampleOffset: 0.1
+  riparianWetnessStrength: 0.2
+  seasonalityStrength: 0.156
+  biomeProvinceStrength: 0.3
+  biomeCompetitionSharpness: 1
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
@@ -567,6 +568,21 @@ MonoBehaviour:
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
+--- !u!114 &6013045082289988684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3523082564983676708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de6de8a68f7cd884084a2f775c62bdc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewHydrologyMaskGenerator
+  hydrologyMaskWidth: 2048
+  hydrologyMaskHeight: 1024
+  regenerationDelay: 0.15
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
