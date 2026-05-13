@@ -1,3 +1,8 @@
+using System.Diagnostics;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
@@ -5,6 +10,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     [SerializeField] private int tectonicMapWidth = 1024;
     [SerializeField] private int tectonicMapHeight = 512;
     [SerializeField] private float regenerationDelay = 0.15f;
+    [SerializeField] private bool logGenerationTiming = false;
 
     [Header("Tectonic Plate Layout")]
     [SerializeField, Range(4, 32)] private int plateCount = 14;
@@ -23,11 +29,154 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float continentalShelfStrength = 0.75f;
     [SerializeField, Range(0.005f, 0.25f)] private float continentalShelfWidth = 0.08f;
 
-    private struct PreviewTectonicPlate { public Vector3 centerDir, motionDir; public float continentalBias, baseElevationBias, ruggedness, age; }
+    private struct PreviewTectonicPlateNative
+    {
+        public float3 centerDir;
+        public float3 motionDir;
+        public float continentalBias;
+        public float baseElevationBias;
+        public float ruggedness;
+        public float age;
+    }
+
+    [BurstCompile]
+    private struct GenerateTectonicPreviewJob : IJobParallelFor
+    {
+        public int width;
+        public int height;
+        public float seed;
+        public float landScale;
+        public float landThreshold;
+        public float elevation;
+        public int landPreset;
+        public float plateBoundaryWidth;
+        public float plateShapeNoiseStrength;
+        public float continentalElevationStrength;
+        public float oceanBasinDepthStrength;
+        public float convergentMountainStrength;
+        public float divergentRidgeStrength;
+        public float terrainDetailNoiseStrength;
+        public float continentalShelfStrength;
+        public float continentalShelfWidth;
+
+        [ReadOnly] public NativeArray<PreviewTectonicPlateNative> plates;
+        [NativeDisableParallelForRestriction] public NativeArray<byte> surfacePixels;
+        [NativeDisableParallelForRestriction] public NativeArray<byte> boundaryPixels;
+        [NativeDisableParallelForRestriction] public NativeArray<byte> crustPixels;
+
+        public void Execute(int index)
+        {
+            int x = index % width;
+            int y = index / width;
+            float3 d = TexelToDir(x, y, width, height);
+
+            int p0 = -1, p1 = -1;
+            float best0 = -10f, best1 = -10f;
+            for (int p = 0; p < plates.Length; p++)
+            {
+                float n = (Hash01(x + p * 37, y + p * 19, seed, landPreset) - 0.5f) * plateShapeNoiseStrength * 0.35f;
+                float s = math.dot(d, plates[p].centerDir) + n;
+                if (s > best0) { best1 = best0; p1 = p0; best0 = s; p0 = p; }
+                else if (s > best1) { best1 = s; p1 = p; }
+            }
+
+            float delta = best0 - best1;
+            float boundaryIntensity = 1f - math.saturate(delta / math.max(0.0001f, plateBoundaryWidth));
+            PreviewTectonicPlateNative A = plates[p0];
+            PreviewTectonicPlateNative B = plates[math.max(0, p1)];
+            float3 bdir = math.normalizesafe(B.centerDir - A.centerDir, new float3(1, 0, 0));
+            float along = math.dot(A.motionDir - B.motionDir, bdir);
+            float convergent = math.saturate(-along * 0.9f) * boundaryIntensity;
+            float divergent = math.saturate(along * 0.9f) * boundaryIntensity;
+            float transform = math.saturate(1f - math.abs(along) * 1.3f) * boundaryIntensity;
+
+            float interior = math.saturate((best0 - 0.25f) / 0.75f);
+            float plateNoise = Fbm(d * (landScale * 1.25f) + new float3(seed + p0 * 3.1f, seed * 0.71f, seed * 1.31f));
+            float continental = math.saturate(A.continentalBias * 0.72f + plateNoise * 0.28f + interior * 0.14f - divergent * 0.25f + convergent * 0.12f);
+            float oceanic = 1f - continental;
+            float shelfProximity = math.saturate((continental - oceanic + continentalShelfWidth * 2f) / math.max(0.01f, continentalShelfWidth * 3f));
+            float basinDepth = oceanic * (0.45f + 0.55f * Fbm(d * (landScale * 2.1f) + new float3(seed + 44.1f, seed + 12.2f, seed + 8.3f))) * oceanBasinDepthStrength;
+            float mountainBelt = math.saturate(convergent * (0.5f + continental * 0.9f) + transform * 0.08f) * (0.6f + 0.4f * A.ruggedness);
+            float baseElevation = continental * continentalElevationStrength - basinDepth + divergent * divergentRidgeStrength * oceanic + mountainBelt * convergentMountainStrength;
+            baseElevation += (Fbm(d * (landScale * 3.6f) + new float3(seed + 96.2f, seed + 51.8f, seed + 14.4f)) - 0.5f) * terrainDetailNoiseStrength;
+            baseElevation += (elevation - 0.5f) * 0.28f;
+            float seaLevel = math.lerp(0.42f, 0.62f, landThreshold);
+            float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
+            float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * math.saturate(1f - basinDepth * 1.35f);
+            float height = math.saturate(baseElevation * 0.8f + 0.5f);
+
+            int o = index * 4;
+            surfacePixels[o + 0] = ToByte(landMask);
+            surfacePixels[o + 1] = ToByte(height);
+            surfacePixels[o + 2] = ToByte(math.saturate(mountainBelt));
+            surfacePixels[o + 3] = ToByte(math.saturate(shelfMask));
+
+            boundaryPixels[o + 0] = ToByte((float)p0 / math.max(1f, plates.Length - 1f));
+            boundaryPixels[o + 1] = ToByte(boundaryIntensity);
+            boundaryPixels[o + 2] = ToByte(convergent);
+            boundaryPixels[o + 3] = ToByte(divergent);
+
+            crustPixels[o + 0] = ToByte(continental);
+            crustPixels[o + 1] = ToByte(oceanic);
+            crustPixels[o + 2] = ToByte(math.saturate(basinDepth));
+            crustPixels[o + 3] = ToByte(transform);
+        }
+
+        private static float3 TexelToDir(int x, int y, int width, int height)
+        {
+            float u = (x + 0.5f) / width;
+            float v = (y + 0.5f) / height;
+            float lon = (u - 0.5f) * math.PI * 2f;
+            float lat = (v - 0.5f) * math.PI;
+            float cl = math.cos(lat);
+            return new float3(math.cos(lon) * cl, math.sin(lat), math.sin(lon) * cl);
+        }
+
+        private static float SmoothThreshold(float edge0, float edge1, float x)
+        {
+            float t = math.saturate((x - edge0) / math.max(1e-6f, edge1 - edge0));
+            return t * t * (3f - 2f * t);
+        }
+
+        private static float Fbm(float3 p)
+        {
+            float v = 0f, a = 0.5f, f = 1f;
+            for (int i = 0; i < 4; i++)
+            {
+                float n = noise.snoise(new float3(p.x * f + p.y * 0.67f, p.z * f + p.y * 0.37f, p.z * 0.23f + p.x * 0.11f));
+                v += a * (n * 0.5f + 0.5f);
+                f *= 2f;
+                a *= 0.5f;
+            }
+            return v;
+        }
+
+        private static float Hash01(int x, int y, float seed, int landPreset)
+        {
+            uint s = (uint)math.round(seed * 1000f) ^ (uint)(landPreset * 193);
+            uint n = (uint)(x * 73856093) ^ (uint)(y * 19349663) ^ s;
+            n = (n << 13) ^ n;
+            return math.saturate((1f - ((n * (n * n * 15731u + 789221u) + 1376312589u) & 0x7fffffffu) / 1073741824f) * 0.5f + 0.5f);
+        }
+
+        private static byte ToByte(float v) => (byte)math.clamp(math.round(math.saturate(v) * 255f), 0f, 255f);
+    }
 
     private Texture2D surfaceStructureTexture, plateBoundaryTexture, crustBasinTexture;
     private float scheduledAt = -1f, seed, landScale, landThreshold, elevation;
     private int landPreset;
+    private JobHandle activeGenerationHandle;
+    private bool generationInProgress;
+    private bool uploadPending;
+    private bool regenerationRequestedWhileBusy;
+    private NativeArray<PreviewTectonicPlateNative> nativePlates;
+    private NativeArray<byte> surfacePixelBytes;
+    private NativeArray<byte> boundaryPixelBytes;
+    private NativeArray<byte> crustPixelBytes;
+    private long generationStartTicks;
+    private bool pendingWasImmediate;
+    private int pendingPlateCount;
+
     public Texture2D SurfaceStructureTexture => surfaceStructureTexture;
     public Texture2D PlateBoundaryTexture => plateBoundaryTexture;
     public Texture2D CrustBasinTexture => crustBasinTexture;
@@ -35,70 +184,144 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     public void SetInputs(float inSeed, float inLandScale, float inLandThreshold, float inElevation, int landPresetOrEquivalentIfAvailable)
     { seed = inSeed; landScale = inLandScale; landThreshold = inLandThreshold; elevation = inElevation; landPreset = landPresetOrEquivalentIfAvailable; }
 
-    public void ScheduleRegeneration() => scheduledAt = Time.time + regenerationDelay;
-    private void Update(){ if (scheduledAt > 0f && Time.time >= scheduledAt) GenerateNow(); }
-    public void Release(){ if(surfaceStructureTexture!=null) Destroy(surfaceStructureTexture); if(plateBoundaryTexture!=null) Destroy(plateBoundaryTexture); if(crustBasinTexture!=null) Destroy(crustBasinTexture); }
+    public void ScheduleRegeneration()
+    {
+        if (generationInProgress) { regenerationRequestedWhileBusy = true; return; }
+        scheduledAt = Time.time + regenerationDelay;
+    }
+
+    private void Update()
+    {
+        if (generationInProgress && activeGenerationHandle.IsCompleted)
+        {
+            activeGenerationHandle.Complete();
+            generationInProgress = false;
+            if (uploadPending)
+            {
+                UploadGeneratedTextures();
+                uploadPending = false;
+            }
+            DisposeNativeBuffers();
+            if (regenerationRequestedWhileBusy)
+            {
+                regenerationRequestedWhileBusy = false;
+                scheduledAt = Time.time + regenerationDelay;
+            }
+        }
+
+        if (!generationInProgress && scheduledAt > 0f && Time.time >= scheduledAt)
+            StartGenerationAsync(false);
+    }
+
+    public void Release()
+    {
+        if (generationInProgress)
+        {
+            activeGenerationHandle.Complete();
+            generationInProgress = false;
+        }
+
+        DisposeNativeBuffers();
+
+        if (surfaceStructureTexture != null) Destroy(surfaceStructureTexture);
+        if (plateBoundaryTexture != null) Destroy(plateBoundaryTexture);
+        if (crustBasinTexture != null) Destroy(crustBasinTexture);
+        surfaceStructureTexture = null;
+        plateBoundaryTexture = null;
+        crustBasinTexture = null;
+    }
 
     public void GenerateNow()
     {
-        EnsureTextures();
-        int size = tectonicMapWidth * tectonicMapHeight;
-        var plates = BuildPlates();
-        var surface = new Color32[size]; var boundary = new Color32[size]; var crust = new Color32[size];
-        int continentalCount = 0;
-        foreach (var p in plates) if (p.continentalBias > 0.5f) continentalCount++;
-
-        for (int y = 0; y < tectonicMapHeight; y++)
-        for (int x = 0; x < tectonicMapWidth; x++)
+        if (generationInProgress) { regenerationRequestedWhileBusy = true; return; }
+        StartGenerationAsync(true);
+        if (generationInProgress)
         {
-            int i = y * tectonicMapWidth + x;
-            Vector3 d = TexelToDir(x, y);
-            int p0 = -1, p1 = -1; float best0 = -10f, best1 = -10f;
-            for (int p = 0; p < plates.Length; p++)
-            {
-                float n = (Hash01(x + p * 37, y + p * 19) - 0.5f) * plateShapeNoiseStrength * 0.35f;
-                float s = Vector3.Dot(d, plates[p].centerDir) + n;
-                if (s > best0) { best1 = best0; p1 = p0; best0 = s; p0 = p; }
-                else if (s > best1) { best1 = s; p1 = p; }
-            }
-
-            float delta = best0 - best1;
-            float boundaryIntensity = 1f - Mathf.Clamp01(delta / Mathf.Max(0.0001f, plateBoundaryWidth));
-            var A = plates[p0]; var B = plates[Mathf.Max(0,p1)];
-            Vector3 bdir = Vector3.Normalize(B.centerDir - A.centerDir);
-            Vector3 ma = A.motionDir; Vector3 mb = B.motionDir;
-            float along = Vector3.Dot(ma - mb, bdir);
-            float convergent = Mathf.Clamp01(-along * 0.9f) * boundaryIntensity;
-            float divergent = Mathf.Clamp01(along * 0.9f) * boundaryIntensity;
-            float transform = Mathf.Clamp01(1f - Mathf.Abs(along) * 1.3f) * boundaryIntensity;
-
-            float interior = Mathf.Clamp01((best0 - 0.25f) / 0.75f);
-            float plateNoise = Fbm(d * (landScale * 1.25f) + new Vector3(seed + p0 * 3.1f, seed * 0.71f, seed * 1.31f));
-            float continental = Mathf.Clamp01(A.continentalBias * 0.72f + plateNoise * 0.28f + interior * 0.14f - divergent * 0.25f + convergent * 0.12f);
-            float oceanic = 1f - continental;
-
-            float shelfProximity = Mathf.Clamp01((continental - oceanic + continentalShelfWidth * 2f) / Mathf.Max(0.01f, continentalShelfWidth * 3f));
-            float basinDepth = oceanic * (0.45f + 0.55f * Fbm(d * (landScale * 2.1f) + new Vector3(seed + 44.1f, seed + 12.2f, seed + 8.3f))) * oceanBasinDepthStrength;
-            float mountainBelt = Mathf.Clamp01(convergent * (0.5f + continental * 0.9f) + transform * 0.08f) * (0.6f + 0.4f * A.ruggedness);
-
-            float baseElevation = continental * continentalElevationStrength - basinDepth + divergent * divergentRidgeStrength * oceanic + mountainBelt * convergentMountainStrength;
-            baseElevation += (Fbm(d * (landScale * 3.6f) + new Vector3(seed + 96.2f, seed + 51.8f, seed + 14.4f)) - 0.5f) * terrainDetailNoiseStrength;
-            baseElevation += (elevation - 0.5f) * 0.28f;
-            float seaLevel = Mathf.Lerp(0.42f, 0.62f, landThreshold);
-            float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
-            float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * Mathf.Clamp01(1f - basinDepth * 1.35f);
-
-            float height = Mathf.Clamp01(baseElevation * 0.8f + 0.5f);
-            surface[i] = new Color(landMask, height, Mathf.Clamp01(mountainBelt), Mathf.Clamp01(shelfMask));
-            boundary[i] = new Color((float)p0 / Mathf.Max(1f, plates.Length - 1f), boundaryIntensity, convergent, divergent);
-            crust[i] = new Color(continental, oceanic, Mathf.Clamp01(basinDepth), transform);
+            activeGenerationHandle.Complete();
+            generationInProgress = false;
+            if (uploadPending) UploadGeneratedTextures();
+            uploadPending = false;
+            DisposeNativeBuffers();
         }
+    }
 
-        surfaceStructureTexture.SetPixels32(surface); surfaceStructureTexture.Apply(false, false);
-        plateBoundaryTexture.SetPixels32(boundary); plateBoundaryTexture.Apply(false, false);
-        crustBasinTexture.SetPixels32(crust); crustBasinTexture.Apply(false, false);
+    private void StartGenerationAsync(bool immediate)
+    {
+        EnsureTextures();
+        DisposeNativeBuffers();
+        var managedPlates = BuildPlates();
+        pendingPlateCount = managedPlates.Length;
+        AllocateNativeBuffers(managedPlates);
+
+        var job = new GenerateTectonicPreviewJob
+        {
+            width = tectonicMapWidth,
+            height = tectonicMapHeight,
+            seed = seed,
+            landScale = landScale,
+            landThreshold = landThreshold,
+            elevation = elevation,
+            landPreset = landPreset,
+            plateBoundaryWidth = plateBoundaryWidth,
+            plateShapeNoiseStrength = plateShapeNoiseStrength,
+            continentalElevationStrength = continentalElevationStrength,
+            oceanBasinDepthStrength = oceanBasinDepthStrength,
+            convergentMountainStrength = convergentMountainStrength,
+            divergentRidgeStrength = divergentRidgeStrength,
+            terrainDetailNoiseStrength = terrainDetailNoiseStrength,
+            continentalShelfStrength = continentalShelfStrength,
+            continentalShelfWidth = continentalShelfWidth,
+            plates = nativePlates,
+            surfacePixels = surfacePixelBytes,
+            boundaryPixels = boundaryPixelBytes,
+            crustPixels = crustPixelBytes
+        };
+
+        generationStartTicks = Stopwatch.GetTimestamp();
+        pendingWasImmediate = immediate;
+        activeGenerationHandle = job.Schedule(tectonicMapWidth * tectonicMapHeight, 64);
+        generationInProgress = true;
+        uploadPending = true;
         scheduledAt = -1f;
-        Debug.Log($"[Tectonic Preview] Generated {plates.Length} plates | {continentalCount} continental-biased | {plates.Length-continentalCount} oceanic-biased | surface tex {tectonicMapWidth}x{tectonicMapHeight}");
+    }
+
+    private void UploadGeneratedTextures()
+    {
+        long beforeUpload = Stopwatch.GetTimestamp();
+        surfaceStructureTexture.SetPixelData(surfacePixelBytes, 0);
+        surfaceStructureTexture.Apply(false, false);
+        plateBoundaryTexture.SetPixelData(boundaryPixelBytes, 0);
+        plateBoundaryTexture.Apply(false, false);
+        crustBasinTexture.SetPixelData(crustPixelBytes, 0);
+        crustBasinTexture.Apply(false, false);
+
+        if (logGenerationTiming)
+        {
+            float totalMs = TicksToMs(Stopwatch.GetTimestamp() - generationStartTicks);
+            float uploadMs = TicksToMs(Stopwatch.GetTimestamp() - beforeUpload);
+            string mode = pendingWasImmediate ? "immediate" : "scheduled";
+            UnityEngine.Debug.Log($"[Tectonic Preview] Burst generation complete ({mode}) | {tectonicMapWidth}x{tectonicMapHeight} | plates={pendingPlateCount} | total={totalMs:F1}ms | upload={uploadMs:F1}ms");
+        }
+    }
+
+    private static float TicksToMs(long ticks) => ticks * 1000f / Stopwatch.Frequency;
+
+    private void AllocateNativeBuffers(PreviewTectonicPlateNative[] managedPlates)
+    {
+        nativePlates = new NativeArray<PreviewTectonicPlateNative>(managedPlates.Length, Allocator.Persistent);
+        for (int i = 0; i < managedPlates.Length; i++) nativePlates[i] = managedPlates[i];
+        int pixelBytes = tectonicMapWidth * tectonicMapHeight * 4;
+        surfacePixelBytes = new NativeArray<byte>(pixelBytes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        boundaryPixelBytes = new NativeArray<byte>(pixelBytes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        crustPixelBytes = new NativeArray<byte>(pixelBytes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+    }
+
+    private void DisposeNativeBuffers()
+    {
+        if (nativePlates.IsCreated) nativePlates.Dispose();
+        if (surfacePixelBytes.IsCreated) surfacePixelBytes.Dispose();
+        if (boundaryPixelBytes.IsCreated) boundaryPixelBytes.Dispose();
+        if (crustPixelBytes.IsCreated) crustPixelBytes.Dispose();
     }
 
     private void EnsureTextures()
@@ -107,17 +330,57 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         plateBoundaryTexture = EnsureTex(plateBoundaryTexture, "MenuTectonicBoundary");
         crustBasinTexture = EnsureTex(crustBasinTexture, "MenuTectonicCrust");
     }
-    private Texture2D EnsureTex(Texture2D t, string n){ if(t!=null && t.width==tectonicMapWidth && t.height==tectonicMapHeight) return t; if(t!=null) Destroy(t); return new Texture2D(tectonicMapWidth,tectonicMapHeight,TextureFormat.RGBA32,false,true){wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,name=n}; }
-    private PreviewTectonicPlate[] BuildPlates(){ var p=new PreviewTectonicPlate[Mathf.Clamp(plateCount,4,32)]; int continentalTarget=Mathf.RoundToInt(p.Length*continentalPlateFraction); for(int i=0;i<p.Length;i++){Vector3 c=RandomOnSphere(i*31+7); Vector3 tangent = Vector3.Cross(c, RandomOnSphere(i*17+3)).normalized; if(tangent.sqrMagnitude<0.001f) tangent=Vector3.Cross(c,Vector3.up).normalized; float cont=i<continentalTarget?Mathf.Lerp(0.58f,0.95f,Hash01(i,99)):Mathf.Lerp(0.05f,0.45f,Hash01(i,77)); p[i]=new PreviewTectonicPlate{centerDir=c,motionDir=tangent,continentalBias=cont,baseElevationBias=Mathf.Lerp(-0.15f,0.25f,Hash01(i,41)),ruggedness=Mathf.Lerp(0.35f,1f,Hash01(i,57)),age=Hash01(i,13)};} return p; }
 
-    private static float SmoothThreshold(float edge0, float edge1, float x)
+    private Texture2D EnsureTex(Texture2D t, string n)
     {
-        float t = Mathf.InverseLerp(edge0, edge1, x);
-        return t * t * (3f - 2f * t);
+        if (t != null && t.width == tectonicMapWidth && t.height == tectonicMapHeight) return t;
+        if (t != null) Destroy(t);
+        return new Texture2D(tectonicMapWidth, tectonicMapHeight, TextureFormat.RGBA32, false, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = n
+        };
     }
 
-    private Vector3 TexelToDir(int x,int y){float u=(x+0.5f)/tectonicMapWidth; float v=(y+0.5f)/tectonicMapHeight; float lon=(u-0.5f)*Mathf.PI*2f; float lat=(v-0.5f)*Mathf.PI; float cl=Mathf.Cos(lat); return new Vector3(Mathf.Cos(lon)*cl,Mathf.Sin(lat),Mathf.Sin(lon)*cl);}    
-    private Vector3 RandomOnSphere(int salt){ float u=Hash01(salt,1); float v=Hash01(salt,2); float lon=u*Mathf.PI*2f; float z=2f*v-1f; float r=Mathf.Sqrt(Mathf.Max(0f,1f-z*z)); return new Vector3(r*Mathf.Cos(lon), z, r*Mathf.Sin(lon)); }
-    private float Fbm(Vector3 p){float v=0,a=0.5f,f=1f; for(int i=0;i<4;i++){v+=a*Mathf.PerlinNoise(p.x*f+p.y*0.67f,p.z*f+p.y*0.37f); f*=2f; a*=0.5f;} return v;}
-    private float Hash01(int x,int y){uint s=(uint)Mathf.RoundToInt(seed*1000f) ^ (uint)(landPreset*193); uint n=(uint)(x*73856093)^(uint)(y*19349663)^s; n=(n<<13)^n; return Mathf.Clamp01((1f-((n*(n*n*15731u+789221u)+1376312589u)&0x7fffffffu)/1073741824f)*0.5f+0.5f);}   
+    private PreviewTectonicPlateNative[] BuildPlates()
+    {
+        var p = new PreviewTectonicPlateNative[Mathf.Clamp(plateCount, 4, 32)];
+        int continentalTarget = Mathf.RoundToInt(p.Length * continentalPlateFraction);
+        for (int i = 0; i < p.Length; i++)
+        {
+            Vector3 c = RandomOnSphere(i * 31 + 7);
+            Vector3 tangent = Vector3.Cross(c, RandomOnSphere(i * 17 + 3)).normalized;
+            if (tangent.sqrMagnitude < 0.001f) tangent = Vector3.Cross(c, Vector3.up).normalized;
+            float cont = i < continentalTarget ? Mathf.Lerp(0.58f, 0.95f, Hash01(i, 99)) : Mathf.Lerp(0.05f, 0.45f, Hash01(i, 77));
+            p[i] = new PreviewTectonicPlateNative
+            {
+                centerDir = c,
+                motionDir = tangent,
+                continentalBias = cont,
+                baseElevationBias = Mathf.Lerp(-0.15f, 0.25f, Hash01(i, 41)),
+                ruggedness = Mathf.Lerp(0.35f, 1f, Hash01(i, 57)),
+                age = Hash01(i, 13)
+            };
+        }
+        return p;
+    }
+
+    private Vector3 RandomOnSphere(int salt)
+    {
+        float u = Hash01(salt, 1);
+        float v = Hash01(salt, 2);
+        float lon = u * Mathf.PI * 2f;
+        float z = 2f * v - 1f;
+        float r = Mathf.Sqrt(Mathf.Max(0f, 1f - z * z));
+        return new Vector3(r * Mathf.Cos(lon), z, r * Mathf.Sin(lon));
+    }
+
+    private float Hash01(int x, int y)
+    {
+        uint s = (uint)Mathf.RoundToInt(seed * 1000f) ^ (uint)(landPreset * 193);
+        uint n = (uint)(x * 73856093) ^ (uint)(y * 19349663) ^ s;
+        n = (n << 13) ^ n;
+        return Mathf.Clamp01((1f - ((n * (n * n * 15731u + 789221u) + 1376312589u) & 0x7fffffffu) / 1073741824f) * 0.5f + 0.5f);
+    }
 }
