@@ -145,6 +145,7 @@ Shader "Custom/MenuPlanetPreview"
             _CloudShadowScale("Cloud Shadow Scale", Float) = 3.0
             _CloudShadowSpeed("Cloud Shadow Speed", Float) = 0.08
             _CloudSurfaceShadowStrength("Cloud Surface Shadow Strength", Range(0,0.35)) = 0.12
+            _CloudNoiseTex("Cloud Noise Texture", 2D) = "gray" {}
             [HideInInspector] _FillLightColor("Fill Light Color", Color) = (1,1,1,1)
             [HideInInspector] _FillLightIntensity("Fill Light Intensity", Float) = 0.35
             [HideInInspector] _RimLightColor("Rim Light Color", Color) = (1,1,1,1)
@@ -262,6 +263,7 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_LavaCrackTex);
             TEXTURE2D(_LavaEmissiveTex);
             TEXTURE2D(_AshDetailTex);
+            TEXTURE2D(_CloudNoiseTex);
 
             float3 SampleTriplanar(TEXTURE2D_PARAM(tex, samp), float3 positionOS, float3 objNorm)
             {
