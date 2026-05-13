@@ -228,9 +228,9 @@ Shader "Custom/MenuPlanetPreview"
                 float v = asin(dir.y) / PI + 0.5;
                 return float2(u, v);
             }
-            float4 GetTectonicSurface(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicSurfaceTex, sampler_TectonicSurfaceTex, GetTectonicUV(objNorm)); }
-            float4 GetTectonicBoundary(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicBoundaryTex, sampler_TectonicBoundaryTex, GetTectonicUV(objNorm)); }
-            float4 GetTectonicCrust(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicCrustTex, sampler_TectonicCrustTex, GetTectonicUV(objNorm)); }
+            float4 GetTectonicSurface(float3 objNorm){ return SAMPLE_TEXTURE2D_LOD(_TectonicSurfaceTex, sampler_TectonicSurfaceTex, GetTectonicUV(objNorm), 0); }
+            float4 GetTectonicBoundary(float3 objNorm){ return SAMPLE_TEXTURE2D_LOD(_TectonicBoundaryTex, sampler_TectonicBoundaryTex, GetTectonicUV(objNorm), 0); }
+            float4 GetTectonicCrust(float3 objNorm){ return SAMPLE_TEXTURE2D_LOD(_TectonicCrustTex, sampler_TectonicCrustTex, GetTectonicUV(objNorm), 0); }
 
             float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
             float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
