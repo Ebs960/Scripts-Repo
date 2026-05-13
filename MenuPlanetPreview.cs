@@ -77,6 +77,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Cloud animation speed.")]
     [SerializeField] private float cloudSpeed = 0.08f;
     [SerializeField] private float cloudRotationMultiplier = 1.25f;
+    [SerializeField, Range(0f, 0.35f)] private float cloudSurfaceShadowStrength = 0.12f;
 
     [Header("Atmosphere Shell")]
     [SerializeField] private bool enableAtmosphereShell = true;
@@ -87,6 +88,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Brightness multiplier for the atmosphere glow.")]
     [Range(0f, 3f)] [SerializeField] private float atmosphereIntensity = 1.2f;
     [SerializeField] private float atmosphereRotationMultiplier = 0f;
+    [SerializeField, Range(0f, 2f)] private float atmosphereDayRimBoost = 1.15f;
+    [SerializeField, Range(0f, 1f)] private float atmosphereNightRimStrength = 0.42f;
+    [SerializeField, Range(0f, 1f)] private float atmosphereInnerScatterStrength = 0.12f;
 
     [Header("Shared Surface Overlays")]
     [Header("Mountain Overlay")]
@@ -200,6 +204,11 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showWaterwayAmountOnly = false;
     [SerializeField] private bool showRiverMaskOnly = false;
     [SerializeField] private bool showLakeMaskOnly = false;
+    [SerializeField] private bool showCloudShadowMaskOnly = false;
+    [SerializeField] private bool showCoastShelfMaskOnly = false;
+    [SerializeField] private bool showShorelineMaskOnly = false;
+    [SerializeField] private bool showWetlandMaskOnly = false;
+    [SerializeField] private bool showWaterDepthMaskOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
 
     [Header("HDRP Post-Processing")]
@@ -495,10 +504,23 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_CloudScale    = Shader.PropertyToID("_CloudScale");
     private static readonly int ID_CloudSpeed    = Shader.PropertyToID("_CloudSpeed");
     private static readonly int ID_CloudAltitude = Shader.PropertyToID("_CloudAltitude");
+    private static readonly int ID_CloudShadowDensity = Shader.PropertyToID("_CloudShadowDensity");
+    private static readonly int ID_CloudShadowScale = Shader.PropertyToID("_CloudShadowScale");
+    private static readonly int ID_CloudShadowSpeed = Shader.PropertyToID("_CloudShadowSpeed");
+    private static readonly int ID_CloudSurfaceShadowStrength = Shader.PropertyToID("_CloudSurfaceShadowStrength");
 
     // Atmosphere shell-specific
     private static readonly int ID_AtmosFalloff  = Shader.PropertyToID("_AtmosphereFalloff");
     private static readonly int ID_AtmosIntensity = Shader.PropertyToID("_AtmosphereIntensity");
+    private static readonly int ID_ShowCloudShadowMaskOnly = Shader.PropertyToID("_ShowCloudShadowMaskOnly");
+    private static readonly int ID_ShowCoastShelfMaskOnly = Shader.PropertyToID("_ShowCoastShelfMaskOnly");
+    private static readonly int ID_ShowShorelineMaskOnly = Shader.PropertyToID("_ShowShorelineMaskOnly");
+    private static readonly int ID_ShowWetlandMaskOnly = Shader.PropertyToID("_ShowWetlandMaskOnly");
+    private static readonly int ID_ShowWaterDepthMaskOnly = Shader.PropertyToID("_ShowWaterDepthMaskOnly");
+    private static readonly int ID_AtmosLightDirectionWS = Shader.PropertyToID("_AtmosLightDirectionWS");
+    private static readonly int ID_AtmosDayRimBoost = Shader.PropertyToID("_AtmosphereDayRimBoost");
+    private static readonly int ID_AtmosNightRimStrength = Shader.PropertyToID("_AtmosphereNightRimStrength");
+    private static readonly int ID_AtmosInnerScatterStrength = Shader.PropertyToID("_AtmosphereInnerScatterStrength");
 
 
 
@@ -679,6 +701,7 @@ public class MenuPlanetPreview : MonoBehaviour
         PushBiomeTextureParameters();
         PushInfernalTextureParameters();
         PushAdvancedClimateParameters();
+        PushSurfaceCloudShadowParameters();
         RequestHydrologyRegeneration(true);
     }
 
@@ -736,6 +759,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowRiverMaskOnly, showRiverMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowLakeMaskOnly, showLakeMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowCloudShadowMaskOnly, showCloudShadowMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowCoastShelfMaskOnly, showCoastShelfMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowShorelineMaskOnly, showShorelineMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowWetlandMaskOnly, showWetlandMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowWaterDepthMaskOnly, showWaterDepthMaskOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
@@ -861,7 +889,18 @@ public class MenuPlanetPreview : MonoBehaviour
         }
         RequestHydrologyRegeneration();
         PushCloudParameters();
+        PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
+    }
+
+    private void PushSurfaceCloudShadowParameters()
+    {
+        if (materialInstance == null) return;
+        materialInstance.SetFloat(ID_CloudShadowDensity, cloudDensity);
+        materialInstance.SetFloat(ID_CloudShadowScale, cloudScale);
+        materialInstance.SetFloat(ID_CloudShadowSpeed, cloudSpeed);
+        materialInstance.SetFloat(ID_CloudSurfaceShadowStrength, cloudSurfaceShadowStrength);
+        materialInstance.SetTexture(ID_CloudNoiseTex, cloudNoiseTexture);
     }
 
     /// <summary>
@@ -1068,7 +1107,12 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetColor(ID_RimLightColor, Color.Lerp(new Color(0.32f,0.45f,0.64f,1f), new Color(0.85f,0.28f,0.22f,1f), infernal));
         materialInstance.SetFloat(ID_RimLightIntensity, Mathf.Lerp(0.35f, 0.72f, demonic));
         cloudDensity = Mathf.Clamp(0.25f + moisture * 0.3f + (waterwaysPreset==2?0.04f:waterwaysPreset==0?-0.03f:0f) + (temperature>0.8f&&moisture<0.3f?-0.12f:0f) - infernal*0.12f - demonic*0.2f,0f,0.65f);
-        atmosphereColor = Color.Lerp(new Color(0.56f,0.74f,0.95f,1f), new Color(0.9f,0.26f,0.12f,1f), infernal);
+        Color coolAtmos = new Color(0.66f, 0.82f, 0.97f, 1f);
+        Color temperateAtmos = new Color(0.56f, 0.74f, 0.95f, 1f);
+        Color warmAtmos = new Color(0.68f, 0.72f, 0.78f, 1f);
+        atmosphereColor = Color.Lerp(coolAtmos, warmAtmos, Mathf.Clamp01((temperature - 0.25f) / 0.6f));
+        atmosphereColor = Color.Lerp(atmosphereColor, temperateAtmos, Mathf.Clamp01(moisture * 0.5f));
+        atmosphereColor = Color.Lerp(atmosphereColor, new Color(0.9f,0.26f,0.12f,1f), infernal);
         atmosphereColor = Color.Lerp(atmosphereColor, new Color(0.58f,0.12f,0.25f,1f), demonic);
         atmosphereIntensity = Mathf.Clamp(Mathf.Lerp(0.9f,1.5f,moisture) + infernal*0.3f + demonic*0.35f,0.6f,1.9f);
         PushCloudParameters();
@@ -1183,6 +1227,11 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         atmosphereMaterialInstance.SetFloat(ID_AtmosIntensity, atmosphereIntensity);
         atmosphereMaterialInstance.SetFloat(ID_Temperature, temperature);
         atmosphereMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
+        Vector3 ld = previewLight != null ? -previewLight.transform.forward : new Vector3(-0.5f,-0.7f,0.3f);
+        atmosphereMaterialInstance.SetVector(ID_AtmosLightDirectionWS, ld.normalized);
+        atmosphereMaterialInstance.SetFloat(ID_AtmosDayRimBoost, atmosphereDayRimBoost);
+        atmosphereMaterialInstance.SetFloat(ID_AtmosNightRimStrength, atmosphereNightRimStrength);
+        atmosphereMaterialInstance.SetFloat(ID_AtmosInnerScatterStrength, atmosphereInnerScatterStrength);
     }
 
 

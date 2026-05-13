@@ -5,6 +5,10 @@ Shader "Custom/MenuPlanetAtmosphere"
         _AtmosphereColor("Atmosphere Color", Color) = (0.4, 0.65, 1.0, 1)
         _AtmosphereFalloff("Atmosphere Falloff", Range(1, 8)) = 3.5
         _AtmosphereIntensity("Atmosphere Intensity", Range(0, 3)) = 1.2
+        _AtmosphereDayRimBoost("Atmosphere Day Rim Boost", Range(0,2)) = 1.15
+        _AtmosphereNightRimStrength("Atmosphere Night Rim Strength", Range(0,1)) = 0.42
+        _AtmosphereInnerScatterStrength("Atmosphere Inner Scatter Strength", Range(0,1)) = 0.12
+        _AtmosLightDirectionWS("Atmosphere Light Direction WS", Vector) = (0.45,0.65,0.55,0)
         _Temperature("Temperature", Range(0, 1)) = 0.5
         _MapStyle("Map Style", Range(0, 1)) = 0.0
     }
@@ -42,6 +46,10 @@ Shader "Custom/MenuPlanetAtmosphere"
                 float4 _AtmosphereColor;
                 float _AtmosphereFalloff;
                 float _AtmosphereIntensity;
+                float _AtmosphereDayRimBoost;
+                float _AtmosphereNightRimStrength;
+                float _AtmosphereInnerScatterStrength;
+                float4 _AtmosLightDirectionWS;
                 float _Temperature;
                 float _MapStyle;
             CBUFFER_END
@@ -85,8 +93,10 @@ Shader "Custom/MenuPlanetAtmosphere"
                 float fresnel = 1.0 - saturate(dot(viewDir, normal));
                 float rim = pow(fresnel, _AtmosphereFalloff);
 
-                // Uniform glow — no directional light dependency
-                float lightMix = 1.0;
+                float3 lightDir = normalize(_AtmosLightDirectionWS.xyz);
+                float dayFacing = saturate(dot(normal, lightDir) * 0.5 + 0.5);
+                float lightMix = lerp(_AtmosphereNightRimStrength, _AtmosphereDayRimBoost, dayFacing);
+                float innerScatter = pow(saturate(1.0 - fresnel), 3.5) * _AtmosphereInnerScatterStrength * lerp(0.5, 1.0, dayFacing);
 
                 // --- Style-adaptive color ---
                 float style    = saturate(_MapStyle);
@@ -112,7 +122,7 @@ Shader "Custom/MenuPlanetAtmosphere"
 
                 // --- Final ---
                 // Atmosphere intensity modulated by rim
-                float alpha = rim * _AtmosphereIntensity * lightMix;
+                float alpha = (rim * lightMix + innerScatter) * _AtmosphereIntensity;
 
                 // Clamp so it doesn't blow out
                 alpha = min(alpha, 1.5);
