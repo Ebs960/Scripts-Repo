@@ -18,6 +18,15 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float continentalPlateFraction = 0.55f;
     [SerializeField, Range(0f, 1f)] private float plateShapeNoiseStrength = 0.28f;
 
+    [Header("Plate Boundary Shape")]
+    [SerializeField, Range(0.25f, 8f)] private float plateBoundaryWarpScale = 2.2f;
+    [SerializeField, Range(0f, 0.25f)] private float plateBoundaryWarpAmplitude = 0.08f;
+
+    [Header("Land Coverage")]
+    [SerializeField, Range(0f, 1f)] private float minimumSeaLevel = 0.30f;
+    [SerializeField, Range(0f, 1f)] private float maximumSeaLevel = 0.78f;
+    [SerializeField] private bool logLandCoverageDiagnostics = false;
+
     [Header("Elevation")]
     [SerializeField, Range(0f, 1f)] private float continentalElevationStrength = 0.42f;
     [SerializeField, Range(0f, 1f)] private float oceanBasinDepthStrength = 0.58f;
@@ -51,6 +60,10 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         public int landPreset;
         public float plateBoundaryWidth;
         public float plateShapeNoiseStrength;
+        public float plateBoundaryWarpScale;
+        public float plateBoundaryWarpAmplitude;
+        public float minimumSeaLevel;
+        public float maximumSeaLevel;
         public float continentalElevationStrength;
         public float oceanBasinDepthStrength;
         public float convergentMountainStrength;
@@ -74,8 +87,10 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float best0 = -10f, best1 = -10f;
             for (int p = 0; p < plates.Length; p++)
             {
-                float n = (Hash01(x + p * 37, y + p * 19, seed, landPreset) - 0.5f) * plateShapeNoiseStrength * 0.35f;
-                float s = math.dot(d, plates[p].centerDir) + n;
+                float3 plateWarpOffset = new float3(seed * 0.013f + p * 11.71f, seed * 0.021f + p * 7.37f, seed * 0.017f + p * 19.19f);
+                float smoothPlateWarp = Fbm(d * plateBoundaryWarpScale + plateWarpOffset) - 0.5f;
+                float plateWarp = smoothPlateWarp * plateShapeNoiseStrength * plateBoundaryWarpAmplitude;
+                float s = math.dot(d, plates[p].centerDir) + plateWarp;
                 if (s > best0) { best1 = best0; p1 = p0; best0 = s; p0 = p; }
                 else if (s > best1) { best1 = s; p1 = p; }
             }
@@ -100,7 +115,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             float baseElevation = continental * continentalElevationStrength - basinDepth + divergent * divergentRidgeStrength * oceanic + mountainBelt * convergentMountainStrength;
             baseElevation += (Fbm(d * (landScale * 3.6f) + new float3(seed + 96.2f, seed + 51.8f, seed + 14.4f)) - 0.5f) * terrainDetailNoiseStrength;
             baseElevation += (elevation - 0.5f) * 0.28f;
-            float seaLevel = math.lerp(0.42f, 0.62f, landThreshold);
+            float seaLevel = math.lerp(minimumSeaLevel, maximumSeaLevel, landThreshold);
             float landMask = SmoothThreshold(seaLevel - 0.035f, seaLevel + 0.035f, baseElevation + 0.5f);
             float shelfMask = oceanic * (1f - landMask) * shelfProximity * continentalShelfStrength * math.saturate(1f - basinDepth * 1.35f);
             float elevationHeight = math.saturate(baseElevation * 0.8f + 0.5f);
@@ -151,15 +166,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             return v;
         }
 
-        private static float Hash01(int x, int y, float seed, int landPreset)
-        {
-            uint s = (uint)math.round(seed * 1000f) ^ (uint)(landPreset * 193);
-            uint n = (uint)(x * 73856093) ^ (uint)(y * 19349663) ^ s;
-            n = (n << 13) ^ n;
-            return math.saturate((1f - ((n * (n * n * 15731u + 789221u) + 1376312589u) & 0x7fffffffu) / 1073741824f) * 0.5f + 0.5f);
-        }
-
-        private static byte ToByte(float v) => (byte)math.clamp(math.round(math.saturate(v) * 255f), 0f, 255f);
+                private static byte ToByte(float v) => (byte)math.clamp(math.round(math.saturate(v) * 255f), 0f, 255f);
     }
 
     private Texture2D surfaceStructureTexture, plateBoundaryTexture, crustBasinTexture;
@@ -176,6 +183,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
     private long generationStartTicks;
     private bool pendingWasImmediate;
     private int pendingPlateCount;
+    public event System.Action TectonicTexturesReady;
 
     public Texture2D SurfaceStructureTexture => surfaceStructureTexture;
     public Texture2D PlateBoundaryTexture => plateBoundaryTexture;
@@ -243,6 +251,7 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             uploadPending = false;
             DisposeNativeBuffers();
         }
+
     }
 
     private void StartGenerationAsync(bool immediate)
@@ -269,6 +278,10 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             convergentMountainStrength = convergentMountainStrength,
             divergentRidgeStrength = divergentRidgeStrength,
             terrainDetailNoiseStrength = terrainDetailNoiseStrength,
+            plateBoundaryWarpScale = plateBoundaryWarpScale,
+            plateBoundaryWarpAmplitude = plateBoundaryWarpAmplitude,
+            minimumSeaLevel = minimumSeaLevel,
+            maximumSeaLevel = maximumSeaLevel,
             continentalShelfStrength = continentalShelfStrength,
             continentalShelfWidth = continentalShelfWidth,
             plates = nativePlates,
@@ -295,6 +308,20 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
         crustBasinTexture.SetPixelData(crustPixelBytes, 0);
         crustBasinTexture.Apply(false, false);
 
+        if (logLandCoverageDiagnostics)
+        {
+            int landCount = 0;
+            for (int i = 0; i < surfacePixelBytes.Length; i += 4)
+            {
+                if (surfacePixelBytes[i] > 127) landCount++;
+            }
+            float landPct = (float)landCount / (tectonicMapWidth * tectonicMapHeight) * 100f;
+            string[] presetNames = { "Archipelago", "Islands", "Standard", "Large Continents", "Pangaea", "Terrestrial" };
+            string presetName = landPreset >= 0 && landPreset < presetNames.Length ? presetNames[landPreset] : $"Preset {landPreset}";
+            float seaLevel = Mathf.Lerp(minimumSeaLevel, maximumSeaLevel, landThreshold);
+            UnityEngine.Debug.Log($"[Tectonic Preview] Land coverage: {landPct:F1}% | preset={presetName} | threshold={landThreshold:F2} | seaLevel={seaLevel:F3}");
+        }
+
         if (logGenerationTiming)
         {
             float totalMs = TicksToMs(Stopwatch.GetTimestamp() - generationStartTicks);
@@ -302,6 +329,8 @@ public class MenuPlanetPreviewTectonicGenerator : MonoBehaviour
             string mode = pendingWasImmediate ? "immediate" : "scheduled";
             UnityEngine.Debug.Log($"[Tectonic Preview] Burst generation complete ({mode}) | {tectonicMapWidth}x{tectonicMapHeight} | plates={pendingPlateCount} | total={totalMs:F1}ms | upload={uploadMs:F1}ms");
         }
+
+        TectonicTexturesReady?.Invoke();
     }
 
     private static float TicksToMs(long ticks) => ticks * 1000f / Stopwatch.Frequency;
