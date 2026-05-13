@@ -66,6 +66,10 @@ Shader "Custom/MenuPlanetPreview"
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
             _WaterwayMaskTex("Waterway Mask Texture", 2D) = "black" {}
+            _ClimateTex("Generated Climate Texture", 2D) = "black" {}
+            _BiomeWeights0Tex("Generated Biome Weights 0", 2D) = "black" {}
+            _BiomeWeights1Tex("Generated Biome Weights 1", 2D) = "black" {}
+            _BiomeWeights2Tex("Generated Biome Weights 2", 2D) = "black" {}
         _TectonicSurfaceTex("Tectonic Surface Texture", 2D) = "black" {}
         _TectonicBoundaryTex("Tectonic Boundary Texture", 2D) = "black" {}
         _TectonicCrustTex("Tectonic Crust Texture", 2D) = "black" {}
@@ -264,6 +268,10 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_WaterwayMaskTex); SAMPLER(sampler_WaterwayMaskTex);
+            TEXTURE2D(_ClimateTex); SAMPLER(sampler_ClimateTex);
+            TEXTURE2D(_BiomeWeights0Tex); SAMPLER(sampler_BiomeWeights0Tex);
+            TEXTURE2D(_BiomeWeights1Tex); SAMPLER(sampler_BiomeWeights1Tex);
+            TEXTURE2D(_BiomeWeights2Tex); SAMPLER(sampler_BiomeWeights2Tex);
             TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
@@ -565,11 +573,11 @@ Shader "Custom/MenuPlanetPreview"
                 // ---- Elevation noise ----
                 float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 float legacyTerrainHeight = elevNoise * _Elevation;
+                float4 tectonicSurface = GetTectonicSurface(objNorm);
                 float tectonicTerrainHeight = tectonicSurface.g;
                 float terrainHeight = (_UseTectonicPreview > 0.5) ? tectonicTerrainHeight : legacyTerrainHeight;
                 float landMask = edge;
                 float capMask = GetCapMask(objNorm, seedOff);
-                float4 tectonicSurface = GetTectonicSurface(objNorm);
                 float4 tectonicBoundary = GetTectonicBoundary(objNorm);
                 float4 tectonicCrust = GetTectonicCrust(objNorm);
                 float mountainMask = (_UseTectonicPreview > 0.5) ? tectonicSurface.b : GetMountainMask(objNorm, landMask);
