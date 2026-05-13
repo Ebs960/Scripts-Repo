@@ -183,10 +183,6 @@ public class MainMenuManager : MonoBehaviour
     private int cityStateCount = 2;
     private int tribeCount = 2;
     
-    // Advanced settings
-    private bool enableRivers = true;
-    private int riverCount = 10;
-    
     // Climate settings - now with 6 options
     private int selectedClimatePreset = 2; // Default to Temperate
     
