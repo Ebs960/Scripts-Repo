@@ -66,6 +66,19 @@ Shader "Custom/MenuPlanetPreview"
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
             _WaterwayMaskTex("Waterway Mask Texture", 2D) = "black" {}
+        _TectonicSurfaceTex("Tectonic Surface Texture", 2D) = "black" {}
+        _TectonicBoundaryTex("Tectonic Boundary Texture", 2D) = "black" {}
+        _TectonicCrustTex("Tectonic Crust Texture", 2D) = "black" {}
+        _UseTectonicPreview("Use Tectonic Preview", Float) = 1
+        _ShowTectonicLandMaskOnly("Show Tectonic Land Mask Only", Float) = 0
+        _ShowTectonicHeightOnly("Show Tectonic Height Only", Float) = 0
+        _ShowPlateBoundariesOnly("Show Plate Boundaries Only", Float) = 0
+        _ShowConvergentBoundariesOnly("Show Convergent Boundaries Only", Float) = 0
+        _ShowDivergentBoundariesOnly("Show Divergent Boundaries Only", Float) = 0
+        _ShowMountainUpliftOnly("Show Mountain Uplift Only", Float) = 0
+        _ShowContinentalShelfOnly("Show Continental Shelf Only", Float) = 0
+        _ShowCrustTypeOnly("Show Crust Type Only", Float) = 0
+
             _OceanNormalTex("Ocean Normal", 2D) = "bump" {}
             _MountainNormalTex("Mountain Normal", 2D) = "bump" {}
             _IceNormalTex("Ice Normal", 2D) = "bump" {}
@@ -178,7 +191,7 @@ Shader "Custom/MenuPlanetPreview"
                 float _TextureDetailScale; float _UseDetailTextures; float _UseTextureDrivenBiomes; float _BiomeTextureStrength; float _BiomeTintStrength; float _BiomeNormalStrength; float _BiomeTextureScale; float _BiomeTextureContrast;
                 float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly; float _ShowRiverMaskOnly; float _ShowLakeMaskOnly; float _ShowCloudShadowMaskOnly; float _ShowCoastShelfMaskOnly; float _ShowShorelineMaskOnly; float _ShowWetlandMaskOnly; float _ShowWaterDepthMaskOnly;
                 float _MoistureResponseScale; float _TemperatureHumidityInfluence; float _ClimateNoiseStrength; float _CoastWetnessStrength; float _ContinentalDrynessStrength; float _ContinentalTemperatureStrength; float _RainShadowStrength; float _OrographicWetnessStrength; float _OrographicSampleOffset; float _RiparianWetnessStrength; float _SeasonalityStrength; float _BiomeProvinceStrength; float _BiomeCompetitionSharpness;
-                float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly;
+                float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly; float _UseTectonicPreview; float _ShowTectonicLandMaskOnly; float _ShowTectonicHeightOnly; float _ShowPlateBoundariesOnly; float _ShowConvergentBoundariesOnly; float _ShowDivergentBoundariesOnly; float _ShowMountainUpliftOnly; float _ShowContinentalShelfOnly; float _ShowCrustTypeOnly;
                 float _VolcanicRockStrength; float _LavaCrackStrength; float _LavaEmissionStrength; float _LavaTextureScale; float _AshDetailStrength;
                 float4 _KeyLightDirectionWS; float4 _KeyLightColor; float _KeyLightIntensity; float _CloudShadowDensity; float _CloudShadowScale; float _CloudShadowSpeed; float _CloudSurfaceShadowStrength;
                 float4 _FillLightColor; float _FillLightIntensity;
@@ -203,10 +216,22 @@ Shader "Custom/MenuPlanetPreview"
                 float coastNoise = fbm(warped * 3.75 + float3(9.4, 51.8, 27.6) + seedOff) - 0.5;
                 return baseLand + (coastNoise * (1.0 - smoothstep(0.03, 0.16, abs(baseLand - _LandThreshold))) * 0.22);
             }
-            float GetLandMask(float3 objNorm, float3 seedOff) { return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
+            
+            float2 GetTectonicUV(float3 objNorm)
+            {
+                float3 dir = normalize(objNorm);
+                float u = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
+                float v = asin(dir.y) / PI + 0.5;
+                return float2(u, v);
+            }
+            float4 GetTectonicSurface(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicSurfaceTex, sampler_TectonicSurfaceTex, GetTectonicUV(objNorm)); }
+            float4 GetTectonicBoundary(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicBoundaryTex, sampler_TectonicBoundaryTex, GetTectonicUV(objNorm)); }
+            float4 GetTectonicCrust(float3 objNorm){ return SAMPLE_TEXTURE2D(_TectonicCrustTex, sampler_TectonicCrustTex, GetTectonicUV(objNorm)); }
+
+            float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
             float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
-            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { if(_UseTectonicPreview>0.5){ float4 ts=GetTectonicSurface(objNorm); float tH=ts.g; float tM=ts.b; return tH * _LandUpliftStrength + tM * _MountainDisplacementStrength + capMask * _IceDisplacementStrength - (1.0-landMask) * _OceanDepthStrength; } float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
             float GetPreviewDisplacementHeight(float3 objNorm) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); return GetTerrainHeightValue(objNorm, GetLandMask(objNorm, seedOff), GetCapMask(objNorm, seedOff)) * _DisplacementScale; }
         ENDHLSL
 
@@ -233,6 +258,9 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_WaterwayMaskTex); SAMPLER(sampler_WaterwayMaskTex);
+            TEXTURE2D(_TectonicSurfaceTex); SAMPLER(sampler_TectonicSurfaceTex);
+            TEXTURE2D(_TectonicBoundaryTex); SAMPLER(sampler_TectonicBoundaryTex);
+            TEXTURE2D(_TectonicCrustTex); SAMPLER(sampler_TectonicCrustTex);
             TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
@@ -529,15 +557,26 @@ Shader "Custom/MenuPlanetPreview"
                 float n = GetWarpedLandValue(objNorm, seedOff);
 
                 // Soft edge between land and ocean
-                float edge = smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
+                float edge = (_UseTectonicPreview > 0.5) ? GetTectonicSurface(objNorm).r : smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
 
                 // ---- Elevation noise ----
                 float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 float terrainHeight = elevNoise * _Elevation;
                 float landMask = edge;
                 float capMask = GetCapMask(objNorm, seedOff);
-                float mountainMask = GetMountainMask(objNorm, landMask);
+                float4 tectonicSurface = GetTectonicSurface(objNorm);
+                float4 tectonicBoundary = GetTectonicBoundary(objNorm);
+                float4 tectonicCrust = GetTectonicCrust(objNorm);
+                float mountainMask = (_UseTectonicPreview > 0.5) ? tectonicSurface.b : GetMountainMask(objNorm, landMask);
                 float finalHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+                if (_ShowTectonicLandMaskOnly > 0.5) return float4(tectonicSurface.rrr, 1.0);
+                if (_ShowTectonicHeightOnly > 0.5) return float4(tectonicSurface.ggg, 1.0);
+                if (_ShowPlateBoundariesOnly > 0.5) return float4(tectonicBoundary.ggg, 1.0);
+                if (_ShowConvergentBoundariesOnly > 0.5) return float4(tectonicBoundary.bbb, 1.0);
+                if (_ShowDivergentBoundariesOnly > 0.5) return float4(tectonicBoundary.aaa, 1.0);
+                if (_ShowMountainUpliftOnly > 0.5) return float4(tectonicSurface.bbb, 1.0);
+                if (_ShowContinentalShelfOnly > 0.5) return float4(tectonicSurface.aaa, 1.0);
+                if (_ShowCrustTypeOnly > 0.5) return float4(tectonicCrust.r, tectonicCrust.g, 0, 1.0);
                 if (_ShowElevationOnly > 0.5) return float4(terrainHeight.xxx, 1);
                 if (_ShowMountainMaskOnly > 0.5) return float4(mountainMask.xxx, 1);
                 if (_ShowDisplacementHeightOnly > 0.5) return float4(saturate(finalHeight).xxx, 1);

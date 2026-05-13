@@ -38,6 +38,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Atmosphere shell shader. If empty, finds 'Custom/MenuPlanetAtmosphere' at runtime.")]
     [SerializeField] private Shader atmosphereShader;
     [SerializeField] private MenuPlanetPreviewHydrologyMaskGenerator hydrologyMaskGenerator;
+    [SerializeField] private MenuPlanetPreviewTectonicGenerator tectonicGenerator;
 
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
@@ -210,6 +211,14 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showWetlandMaskOnly = false;
     [SerializeField] private bool showWaterDepthMaskOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
+    [SerializeField] private bool showTectonicLandMaskOnly = false;
+    [SerializeField] private bool showTectonicHeightOnly = false;
+    [SerializeField] private bool showPlateBoundariesOnly = false;
+    [SerializeField] private bool showConvergentBoundariesOnly = false;
+    [SerializeField] private bool showDivergentBoundariesOnly = false;
+    [SerializeField] private bool showMountainUpliftOnly = false;
+    [SerializeField] private bool showContinentalShelfOnly = false;
+    [SerializeField] private bool showCrustTypeOnly = false;
 
     [Header("HDRP Post-Processing")]
     [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
@@ -521,7 +530,18 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_AtmosDayRimBoost = Shader.PropertyToID("_AtmosphereDayRimBoost");
     private static readonly int ID_AtmosNightRimStrength = Shader.PropertyToID("_AtmosphereNightRimStrength");
     private static readonly int ID_AtmosInnerScatterStrength = Shader.PropertyToID("_AtmosphereInnerScatterStrength");
-
+    private static readonly int ID_TectonicSurfaceTex = Shader.PropertyToID("_TectonicSurfaceTex");
+    private static readonly int ID_TectonicBoundaryTex = Shader.PropertyToID("_TectonicBoundaryTex");
+    private static readonly int ID_TectonicCrustTex = Shader.PropertyToID("_TectonicCrustTex");
+    private static readonly int ID_UseTectonicPreview = Shader.PropertyToID("_UseTectonicPreview");
+    private static readonly int ID_ShowTectonicLandMaskOnly = Shader.PropertyToID("_ShowTectonicLandMaskOnly");
+    private static readonly int ID_ShowTectonicHeightOnly = Shader.PropertyToID("_ShowTectonicHeightOnly");
+    private static readonly int ID_ShowPlateBoundariesOnly = Shader.PropertyToID("_ShowPlateBoundariesOnly");
+    private static readonly int ID_ShowConvergentBoundariesOnly = Shader.PropertyToID("_ShowConvergentBoundariesOnly");
+    private static readonly int ID_ShowDivergentBoundariesOnly = Shader.PropertyToID("_ShowDivergentBoundariesOnly");
+    private static readonly int ID_ShowMountainUpliftOnly = Shader.PropertyToID("_ShowMountainUpliftOnly");
+    private static readonly int ID_ShowContinentalShelfOnly = Shader.PropertyToID("_ShowContinentalShelfOnly");
+    private static readonly int ID_ShowCrustTypeOnly = Shader.PropertyToID("_ShowCrustTypeOnly");
 
 
     // -----------------------------------------------------------------
@@ -546,6 +566,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         SetupMaterial();
         SetupHydrologyGenerator();
+        SetupTectonicGenerator();
 
         // Randomize seed so each play session gets a unique planet
         if (randomizeSeed)
@@ -583,6 +604,23 @@ public class MenuPlanetPreview : MonoBehaviour
         if (hydrologyMaskGenerator.MaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
     }
 
+    
+    private void SetupTectonicGenerator()
+    {
+        if (tectonicGenerator == null) tectonicGenerator = GetComponent<MenuPlanetPreviewTectonicGenerator>();
+        if (tectonicGenerator == null) tectonicGenerator = gameObject.AddComponent<MenuPlanetPreviewTectonicGenerator>();
+    }
+
+    private void RequestTectonicRegeneration(bool immediate = false)
+    {
+        if (materialInstance == null || tectonicGenerator == null) return;
+        tectonicGenerator.SetInputs(seed, landScale, landThreshold, elevation, previewFidelity);
+        if (immediate) tectonicGenerator.GenerateNow(); else tectonicGenerator.ScheduleRegeneration();
+        if (tectonicGenerator.SurfaceStructureTexture != null) materialInstance.SetTexture(ID_TectonicSurfaceTex, tectonicGenerator.SurfaceStructureTexture);
+        if (tectonicGenerator.PlateBoundaryTexture != null) materialInstance.SetTexture(ID_TectonicBoundaryTex, tectonicGenerator.PlateBoundaryTexture);
+        if (tectonicGenerator.CrustBasinTexture != null) materialInstance.SetTexture(ID_TectonicCrustTex, tectonicGenerator.CrustBasinTexture);
+    }
+
     private void Update()
     {
         // Planet rotation
@@ -606,6 +644,7 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         if (materialInstance != null) { Destroy(materialInstance); materialInstance = null; }
         if (hydrologyMaskGenerator != null) { hydrologyMaskGenerator.Release(); }
+        if (tectonicGenerator != null) { tectonicGenerator.Release(); }
         if (cloudMaterialInstance != null) { Destroy(cloudMaterialInstance); cloudMaterialInstance = null; }
         if (atmosphereMaterialInstance != null) { Destroy(atmosphereMaterialInstance); atmosphereMaterialInstance = null; }
     }
@@ -703,6 +742,7 @@ public class MenuPlanetPreview : MonoBehaviour
         PushAdvancedClimateParameters();
         PushSurfaceCloudShadowParameters();
         RequestHydrologyRegeneration(true);
+        RequestTectonicRegeneration(true);
     }
 
     private void PushDisplacementParameters()
@@ -764,6 +804,15 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowShorelineMaskOnly, showShorelineMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWetlandMaskOnly, showWetlandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterDepthMaskOnly, showWaterDepthMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_UseTectonicPreview, 1f);
+        materialInstance.SetFloat(ID_ShowTectonicLandMaskOnly, showTectonicLandMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowTectonicHeightOnly, showTectonicHeightOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowPlateBoundariesOnly, showPlateBoundariesOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowConvergentBoundariesOnly, showConvergentBoundariesOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowDivergentBoundariesOnly, showDivergentBoundariesOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowMountainUpliftOnly, showMountainUpliftOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowContinentalShelfOnly, showContinentalShelfOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowCrustTypeOnly, showCrustTypeOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
@@ -872,6 +921,7 @@ public class MenuPlanetPreview : MonoBehaviour
             RecalculateDerivedVisuals();
         }
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
     }
 
     /// <summary>
@@ -888,6 +938,7 @@ public class MenuPlanetPreview : MonoBehaviour
              RecalculateDerivedVisuals();
         }
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
         PushCloudParameters();
         PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
@@ -917,6 +968,7 @@ public class MenuPlanetPreview : MonoBehaviour
             RecalculateDerivedVisuals();
         }
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
     }
 
     /// <summary>
@@ -935,6 +987,7 @@ public class MenuPlanetPreview : MonoBehaviour
             RecalculateDerivedVisuals();
             }
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
     }
 
     /// <summary>
@@ -1003,6 +1056,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
         RecalculateDerivedVisuals();
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
     }
 
         public void RandomizePreviewSeed() => SetWorldSeed(Mathf.RoundToInt(seed), true, true);
@@ -1012,6 +1066,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
         RecalculateDerivedVisuals();
         RequestHydrologyRegeneration();
+        RequestTectonicRegeneration();
         PushCloudParameters();
     }
 
