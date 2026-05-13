@@ -681,17 +681,18 @@ Shader "Custom/MenuPlanetPreview"
                 float riverMaskFinal = saturate(normalRiverMask);
                 float lakeMaskFinal = saturate(lakeMask);
                 float inlandWaterMask = saturate(max(riverMaskFinal, lakeMaskFinal));
+                float inlandWaterPresence = step(0.001, inlandWaterMask);
 
-                float3 inlandWaterColor = saturate(lerp(_OceanColor.rgb, _OceanColor.rgb * 1.35, 0.35));
+                float3 inlandWaterColor = oceanColor;
                 if (_UseDetailTextures > 0.5)
                 {
                     float3 waterwayDetail = SampleTriplanar(TEXTURE2D_ARGS(_WaterwayDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float waterwayFactor = (dot(waterwayDetail, float3(0.333, 0.333, 0.333)) - 0.5) * 2.0;
                     inlandWaterColor *= 1.0 + waterwayFactor * max(_OceanDetailStrength, 0.15);
                 }
-                normalAlbedo = lerp(normalAlbedo, saturate(inlandWaterColor), inlandWaterMask);
+                normalAlbedo = lerp(normalAlbedo, saturate(inlandWaterColor), inlandWaterPresence);
 
-                float waterInfluence = inlandWaterMask;
+                float waterInfluence = inlandWaterPresence;
                 riparianWetness = max(riparianWetness, waterInfluence * _RiparianWetnessStrength);
 
                 // ---- Ice caps ----
@@ -863,7 +864,7 @@ Shader "Custom/MenuPlanetPreview"
                 smoothnessMask = lerp(smoothnessMask, taigaSmooth, taigaWeight * edge);
                 smoothnessMask = lerp(smoothnessMask, mountainSmooth, mtnBlend * edge);
                 float inlandWaterSmooth = oceanSmooth;
-                smoothnessMask = lerp(smoothnessMask, inlandWaterSmooth, inlandWaterMask * (1.0 - infernalWeight));
+                smoothnessMask = lerp(smoothnessMask, inlandWaterSmooth, inlandWaterPresence * (1.0 - infernalWeight));
                 smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
                 smoothnessMask = lerp(smoothnessMask, volcanicSmooth, infernalWeight * edge);
 
@@ -888,7 +889,7 @@ Shader "Custom/MenuPlanetPreview"
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), (1.0-edge) * _OceanNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + mtnN), edge * mtnBlend * _MountainNormalStrength));
-                surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), inlandWaterMask * _OceanNormalStrength * (1.0 - infernalWeight)));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), inlandWaterPresence * _OceanNormalStrength * (1.0 - infernalWeight)));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), capMask * _IceNormalStrength));
 
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
@@ -903,7 +904,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 H = normalize(L + viewDir);
                 float specN = saturate(dot(surfN, H));
                 float oceanWaterMask = saturate(1.0 - edge);
-                float waterSpecMask = saturate(oceanWaterMask + inlandWaterMask * 0.85 * (1.0 - infernalWeight));
+                float waterSpecMask = saturate(oceanWaterMask + inlandWaterPresence * 0.85 * (1.0 - infernalWeight));
                 float waterSpec = pow(specN, lerp(24,120,saturate(smoothnessMask))) * waterSpecMask * 0.9;
                 float iceSpec = pow(specN, 36) * capMask * 0.25;
                 lit += (waterSpec + iceSpec) * _KeyLightColor.rgb * _KeyLightIntensity;
@@ -931,7 +932,7 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1.0);
                 if (_ShowRiverMaskOnly > 0.5) return float4(riverMaskFinal.xxx, 1.0);
                 if (_ShowLakeMaskOnly > 0.5) return float4(lakeMaskFinal.xxx, 1.0);
-                if (_ShowWaterwaysOnly > 0.5) return float4(0.1*riverMaskFinal,0.3*riverMaskFinal,0.8*inlandWaterMask,1.0);
+                if (_ShowWaterwaysOnly > 0.5) return float4(0.1*riverMaskFinal,0.3*riverMaskFinal,0.8*inlandWaterPresence,1.0);
                 if (_ShowWaterwayAmountOnly > 0.5) return float4(_WaterwayAmount.xxx,1.0);
                 if (_ShowSmoothnessOnly > 0.5) return float4(smoothnessMask.xxx, 1.0);
 
