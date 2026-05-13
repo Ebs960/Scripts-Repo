@@ -643,7 +643,6 @@ Shader "Custom/MenuPlanetPreview"
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
                 float oceanMask = saturate(1.0 - edge);
-                float landMask = saturate(edge);
                 float coastShelfMask = oceanMask * (1.0 - smoothstep(0.0, 0.08, edge));
                 float shorelineMask = oceanMask * smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.03, 0.06, edge));
                 float3 oceanColor = lerp(_OceanColor.rgb, _OceanShallowColor.rgb, coastShelfMask * 0.65);
