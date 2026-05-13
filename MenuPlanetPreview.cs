@@ -200,6 +200,8 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showDominantBiomeOnly = false;
     [SerializeField] private bool showWaterwaysOnly = false;
     [SerializeField] private bool showWaterwayAmountOnly = false;
+    [SerializeField] private bool showRiverMaskOnly = false;
+    [SerializeField] private bool showLakeMaskOnly = false;
     [SerializeField] private bool disableCloudsForDebug = false;
 
     [Header("HDRP Post-Processing")]
@@ -440,6 +442,8 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowLocalMoistureOnly = Shader.PropertyToID("_ShowLocalMoistureOnly");
     private static readonly int ID_ShowWaterwaysOnly = Shader.PropertyToID("_ShowWaterwaysOnly");
     private static readonly int ID_ShowWaterwayAmountOnly = Shader.PropertyToID("_ShowWaterwayAmountOnly");
+    private static readonly int ID_ShowRiverMaskOnly = Shader.PropertyToID("_ShowRiverMaskOnly");
+    private static readonly int ID_ShowLakeMaskOnly = Shader.PropertyToID("_ShowLakeMaskOnly");
     private static readonly int ID_ShowLocalTemperatureOnly = Shader.PropertyToID("_ShowLocalTemperatureOnly");
     private static readonly int ID_ShowContinentalityOnly = Shader.PropertyToID("_ShowContinentalityOnly");
     private static readonly int ID_ShowSeasonalityOnly = Shader.PropertyToID("_ShowSeasonalityOnly");
@@ -715,6 +719,8 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowDominantBiomeOnly, showDominantBiomeOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwaysOnly, showWaterwaysOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterwayAmountOnly, showWaterwayAmountOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowRiverMaskOnly, showRiverMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowLakeMaskOnly, showLakeMaskOnly ? 1f : 0f);
         bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
                           oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
