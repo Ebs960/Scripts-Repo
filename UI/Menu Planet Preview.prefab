@@ -372,6 +372,7 @@ GameObject:
   - component: {fileID: 295393544057895789}
   - component: {fileID: 7706978070917160381}
   - component: {fileID: 6013045082289988684}
+  - component: {fileID: 339058185792977936}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -418,13 +419,14 @@ MonoBehaviour:
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   hydrologyMaskGenerator: {fileID: 6013045082289988684}
+  tectonicGenerator: {fileID: 339058185792977936}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
   detailScale: 280
   detailStrength: 0.08
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.02
+  displacementScale: 0.0000001
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
@@ -432,11 +434,15 @@ MonoBehaviour:
   cloudScale: 3
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
+  cloudSurfaceShadowStrength: 0.12
   enableAtmosphereShell: 0
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 4
   atmosphereIntensity: 1.21
   atmosphereRotationMultiplier: 0
+  atmosphereDayRimBoost: 1.15
+  atmosphereNightRimStrength: 0.42
+  atmosphereInnerScatterStrength: 0.12
   mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
   iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
@@ -522,7 +528,20 @@ MonoBehaviour:
   showWaterwayAmountOnly: 0
   showRiverMaskOnly: 0
   showLakeMaskOnly: 0
+  showCloudShadowMaskOnly: 0
+  showCoastShelfMaskOnly: 0
+  showShorelineMaskOnly: 0
+  showWetlandMaskOnly: 0
+  showWaterDepthMaskOnly: 0
   disableCloudsForDebug: 0
+  showTectonicLandMaskOnly: 0
+  showTectonicHeightOnly: 0
+  showPlateBoundariesOnly: 0
+  showConvergentBoundariesOnly: 0
+  showDivergentBoundariesOnly: 0
+  showMountainUpliftOnly: 0
+  showContinentalShelfOnly: 0
+  showCrustTypeOnly: 0
   enableBloom: 1
   bloomThreshold: 1.4
   bloomIntensity: 0.18
@@ -581,8 +600,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewHydrologyMaskGenerator
   hydrologyMaskWidth: 2048
-  hydrologyMaskHeight: 1024
+  hydrologyMaskHeight: 2048
   regenerationDelay: 0.15
+--- !u!114 &339058185792977936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3523082564983676708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91af5da87e980d46b8cb9b362f6c001, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewTectonicGenerator
+  tectonicMapWidth: 2048
+  tectonicMapHeight: 2048
+  regenerationDelay: 0.15
+  plateCount: 14
+  plateBoundaryWidth: 0.06
+  continentalPlateFraction: 0.55
+  plateShapeNoiseStrength: 0.28
+  continentalElevationStrength: 0.42
+  oceanBasinDepthStrength: 0.58
+  convergentMountainStrength: 0.72
+  divergentRidgeStrength: 0.18
+  terrainDetailNoiseStrength: 0.14
+  continentalShelfStrength: 0.75
+  continentalShelfWidth: 0.08
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
