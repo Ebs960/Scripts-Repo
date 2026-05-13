@@ -193,7 +193,7 @@ Shader "Custom/MenuPlanetPreview"
                 return baseLand + (coastNoise * (1.0 - smoothstep(0.03, 0.16, abs(baseLand - _LandThreshold))) * 0.22);
             }
             float GetLandMask(float3 objNorm, float3 seedOff) { return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
-            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(1.10, 0.15, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
+            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
             float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
             float GetPreviewDisplacementHeight(float3 objNorm) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); return GetTerrainHeightValue(objNorm, GetLandMask(objNorm, seedOff), GetCapMask(objNorm, seedOff)) * _DisplacementScale; }
@@ -606,7 +606,7 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  NORMAL WORLD colors
                 // ==============================================================
-                float capStart = lerp(1.10, 0.15, _IceCapSize);
+                float capStart = lerp(0.99, 0.34, _IceCapSize);
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 // Local temperature: latitude-first, then elevation lapse-rate cooling,
                 // then small noise to avoid strict banding.
@@ -616,7 +616,10 @@ Shader "Custom/MenuPlanetPreview"
                 float subtropicalBias = smoothstep(0.15, 0.70, latitude) * (1.0 - smoothstep(0.60, 0.95, latitude));
                 float seasonality = saturate((seasonalityNoise * 0.55 + continentality * 0.25 + subtropicalBias * 0.20) * _SeasonalityStrength + (1.0 - _SeasonalityStrength) * 0.5);
                 float localMoist = saturate(moistureBase + temperatureHumidityBias + broadClimateNoise + regionalClimateNoise + coastWetness + windwardWetness + riparianWetness - continentalDryness - rainShadowDryness);
-                float temperatureLocal = saturate((1.0 - latitude) * 0.66 + _Temperature * 0.34 + tempShift * 0.12 - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
+                float latTemperature = saturate((1.0 - latitude) * 0.82 + 0.18);
+                float globalCooling = (0.5 - _Temperature) * 0.55;
+                float globalWarming = (_Temperature - 0.5) * 0.30;
+                float temperatureLocal = saturate(latTemperature - globalCooling + globalWarming - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
                 // Biome color selected strictly by latitude, shifted by temperature
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
