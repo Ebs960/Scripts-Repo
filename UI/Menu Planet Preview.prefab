@@ -441,6 +441,7 @@ MonoBehaviour:
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
+  waterwayDetailTexture: {fileID: 0}
   oceanNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
@@ -467,7 +468,6 @@ MonoBehaviour:
   temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   temperateForestAlbedoTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
   steppeAlbedoTexture: {fileID: 2800000, guid: 5d3384b986dcbde41b5711d3b30bc480, type: 3}
-  shrublandAlbedoTexture: {fileID: 2800000, guid: 7f08ee6a4e2a0f4408664880aecff782, type: 3}
   taigaAlbedoTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
   polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
@@ -478,7 +478,6 @@ MonoBehaviour:
   temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   temperateForestNormalTexture: {fileID: 2800000, guid: fa3fac320ca6b4145a31b98a8201cb79, type: 3}
   steppeNormalTexture: {fileID: 2800000, guid: 5df5e175225c162439e1f1df13da2f2f, type: 3}
-  shrublandNormalTexture: {fileID: 2800000, guid: 43a2174fbe4ea0745b72df6e95a4e3bb, type: 3}
   taigaNormalTexture: {fileID: 2800000, guid: 58e71acd37ef7d847a1f9d84db10f7ab, type: 3}
   tundraNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
   polarNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
@@ -489,7 +488,6 @@ MonoBehaviour:
   temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: b5476c4812cf9da4585cc982ba3d2604, type: 3}
   steppeSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
-  shrublandSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   taigaSmoothnessTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraSmoothnessTexture: {fileID: 2800000, guid: a724993669b0ede40b21a105448e82ea, type: 3}
   polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
@@ -497,7 +495,7 @@ MonoBehaviour:
   biomeTextureStrength: 1
   climateGradeStrength: 0.06
   biomeNormalStrength: 0.763
-  biomeTextureScale: 6
+  biomeTextureScale: 0.6
   biomeTextureContrast: 0.18
   landUpliftStrength: 0.12
   hillDisplacementStrength: 0.25
