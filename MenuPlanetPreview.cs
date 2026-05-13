@@ -37,6 +37,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Atmosphere shell shader. If empty, finds 'Custom/MenuPlanetAtmosphere' at runtime.")]
     [SerializeField] private Shader atmosphereShader;
+    [SerializeField] private MenuPlanetPreviewHydrologyMaskGenerator hydrologyMaskGenerator;
 
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
@@ -383,6 +384,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_WaterwayDetailTex = Shader.PropertyToID("_WaterwayDetailTex");
+    private static readonly int ID_WaterwayMaskTex = Shader.PropertyToID("_WaterwayMaskTex");
     private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
     private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
     private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
@@ -527,6 +529,7 @@ public class MenuPlanetPreview : MonoBehaviour
         }
 
         SetupMaterial();
+        SetupHydrologyGenerator();
 
         // Randomize seed so each play session gets a unique planet
         if (randomizeSeed)
@@ -547,6 +550,21 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Enable bloom on the preview camera
         SetupBloomVolume();
+    }
+
+
+    private void SetupHydrologyGenerator()
+    {
+        if (hydrologyMaskGenerator == null) hydrologyMaskGenerator = GetComponent<MenuPlanetPreviewHydrologyMaskGenerator>();
+        if (hydrologyMaskGenerator == null) hydrologyMaskGenerator = gameObject.AddComponent<MenuPlanetPreviewHydrologyMaskGenerator>();
+    }
+
+    private void RequestHydrologyRegeneration(bool immediate = false)
+    {
+        if (materialInstance == null || hydrologyMaskGenerator == null) return;
+        hydrologyMaskGenerator.SetInputs(seed, landScale, landThreshold, elevation, moisture, temperature, waterwaysPreset);
+        if (immediate) hydrologyMaskGenerator.GenerateNow(); else hydrologyMaskGenerator.ScheduleRegeneration();
+        if (hydrologyMaskGenerator.MaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
     }
 
     private void Update()
@@ -571,6 +589,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private void OnDestroy()
     {
         if (materialInstance != null) { Destroy(materialInstance); materialInstance = null; }
+        if (hydrologyMaskGenerator != null) { hydrologyMaskGenerator.Release(); }
         if (cloudMaterialInstance != null) { Destroy(cloudMaterialInstance); cloudMaterialInstance = null; }
         if (atmosphereMaterialInstance != null) { Destroy(atmosphereMaterialInstance); atmosphereMaterialInstance = null; }
     }
@@ -666,6 +685,7 @@ public class MenuPlanetPreview : MonoBehaviour
         PushBiomeTextureParameters();
         PushInfernalTextureParameters();
         PushAdvancedClimateParameters();
+        RequestHydrologyRegeneration(true);
     }
 
     private void PushDisplacementParameters()
@@ -691,6 +711,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
+        if (hydrologyMaskGenerator != null && hydrologyMaskGenerator.MaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
@@ -831,6 +852,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_LandThreshold, landThreshold);
             RecalculateDerivedVisuals();
         }
+        RequestHydrologyRegeneration();
     }
 
     /// <summary>
@@ -846,6 +868,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Temperature, temperature);
              RecalculateDerivedVisuals();
         }
+        RequestHydrologyRegeneration();
         PushCloudParameters();
         PushAtmosphereParameters();
     }
@@ -863,6 +886,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Moisture, moisture);
             RecalculateDerivedVisuals();
         }
+        RequestHydrologyRegeneration();
     }
 
     /// <summary>
@@ -880,6 +904,7 @@ public class MenuPlanetPreview : MonoBehaviour
             PushDisplacementParameters();
             RecalculateDerivedVisuals();
             }
+        RequestHydrologyRegeneration();
     }
 
     /// <summary>
@@ -947,6 +972,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         }
         if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
         RecalculateDerivedVisuals();
+        RequestHydrologyRegeneration();
     }
 
         public void RandomizePreviewSeed() => SetWorldSeed(Mathf.RoundToInt(seed), true, true);
@@ -955,6 +981,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     {
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
         RecalculateDerivedVisuals();
+        RequestHydrologyRegeneration();
         PushCloudParameters();
     }
 
