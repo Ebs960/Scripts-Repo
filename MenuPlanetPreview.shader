@@ -8,17 +8,12 @@ Shader "Custom/MenuPlanetPreview"
         _Moisture("Moisture", Range(0, 1)) = 0.5
         _WaterwayAmount("Waterway Amount", Range(0,1)) = 0.55
         _Elevation("Elevation", Range(0, 1)) = 0.3
-            _DesertFactor("Desert Factor", Range(0,1)) = 0.0
-            _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
         [Header(Ocean Color)]
             _OceanColor("Ocean Base Color", Color) = (0.06, 0.22, 0.45, 1)
             _OceanShallowColor("Ocean Shallow Color", Color) = (0.12, 0.36, 0.62, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
-            _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
-            _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
-            _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
         [Header(Seed)]
             _Seed("Planet Seed", Float) = 0.0
             _MoistureResponseScale("Moisture Response Scale", Range(0.5,1.2)) = 0.85
@@ -186,8 +181,8 @@ Shader "Custom/MenuPlanetPreview"
 
             CBUFFER_START(UnityPerMaterial)
                 float _LandScale; float _LandThreshold; float _Temperature; float _Moisture; float _WaterwayAmount; float _Elevation;
-                float _DesertFactor; float _TropicalFactor; float _SnowFactor; float4 _OceanColor; float4 _OceanShallowColor;
-                float _IceCapSize; float _BiomeBlend; float _BiomeNoiseScale; float _BiomeNoiseStrength;
+                float _SnowFactor; float4 _OceanColor; float4 _OceanShallowColor;
+                float _IceCapSize;
                 float _Seed; float _MapStyle; float _DetailScale; float _DetailStrength; float4 _AtmosphereColor; float _AtmospherePower; float _AtmosphereRadius;
                 float _DisplacementScale; float _LandUpliftStrength; float _HillDisplacementStrength; float _MountainDisplacementStrength; float _IceDisplacementStrength; float _VolcanicDisplacementStrength; float _OceanDepthStrength;
                 float _ShowElevationOnly; float _ShowMountainMaskOnly; float _ShowDisplacementHeightOnly; float _UseDisplacedNormals;
@@ -578,6 +573,8 @@ Shader "Custom/MenuPlanetPreview"
                 float terrainHeight = (_UseTectonicPreview > 0.5) ? tectonicTerrainHeight : legacyTerrainHeight;
                 float landMask = edge;
                 float capMask = GetCapMask(objNorm, seedOff);
+                float generatedSnowIceMask = 0.0;
+                float generatedAlpineRockMask = 0.0;
                 float4 tectonicBoundary = GetTectonicBoundary(objNorm);
                 float4 tectonicCrust = GetTectonicCrust(objNorm);
                 float mountainMask = (_UseTectonicPreview > 0.5) ? tectonicSurface.b : GetMountainMask(objNorm, landMask);
@@ -686,7 +683,6 @@ Shader "Custom/MenuPlanetPreview"
                 float globalWarming = (_Temperature - 0.5) * 0.30;
                 float temperatureLocal = saturate(latTemperature - globalCooling + globalWarming - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
                 // Biome color selected strictly by latitude, shifted by temperature
-                float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
                 if (_UseTectonicPreview > 0.5){
@@ -699,6 +695,8 @@ Shader "Custom/MenuPlanetPreview"
                     biomeWeights.jungle=bw0.r; biomeWeights.desert=bw0.g; biomeWeights.savanna=bw0.b; biomeWeights.temperateGrass=bw0.a;
                     biomeWeights.temperateForest=bw1.r; biomeWeights.taiga=bw1.g; biomeWeights.tundra=bw1.b; biomeWeights.polar=bw1.a;
                     biomeWeights.marsh=bw2.r;
+                    generatedSnowIceMask = bw2.g;
+                    generatedAlpineRockMask = bw2.b;
                 }
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1);
                 if (_ShowLocalTemperatureOnly > 0.5) return float4(temperatureLocal.xxx,1);
@@ -706,6 +704,8 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowSeasonalityOnly > 0.5) return float4(seasonality.xxx,1);
                 if (_ShowRainShadowOnly > 0.5) return float4(rainShadowDryness.xxx,1);
                 if (_ShowRiparianWetnessOnly > 0.5) return float4(riparianWetness.xxx,1);
+                float activeSnowIceMask = (_UseTectonicPreview > 0.5) ? generatedSnowIceMask : capMask;
+                float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm, temperatureLocal);
 
                 // Uniform ocean color — single inspector-driven color, no depth/latitude variation
@@ -731,10 +731,11 @@ Shader "Custom/MenuPlanetPreview"
                 float3 snowPeakColor = float3(0.92, 0.93, 0.96);
 
                 float3 elevatedLand = biomeTextureAlbedo;
-                float mtnBlend = mountainMask * smoothstep(0.35, 0.60, terrainHeight);
+                float mtnBlendBase = mountainMask * smoothstep(0.35, 0.60, terrainHeight);
+                float mtnBlend = (_UseTectonicPreview > 0.5) ? max(mtnBlendBase, generatedAlpineRockMask) : mtnBlendBase;
                 // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
                 float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
-                float snowAmount = snowBand * saturate(latSnowFactor + _SnowFactor * 0.5);
+                float snowAmount = (_UseTectonicPreview > 0.5) ? activeSnowIceMask : snowBand * saturate(latSnowFactor + _SnowFactor * 0.5);
                 elevatedLand = lerp(elevatedLand, snowPeakColor, snowAmount);
 
                 // Slope shading on mountains: darken steep faces for depth
@@ -847,12 +848,12 @@ Shader "Custom/MenuPlanetPreview"
                 // Frozen ocean gets a slightly darker ice sheet
                 iceColor = lerp(iceColor * 0.88, iceColor, edge);
 
-                normalAlbedo = lerp(normalAlbedo, iceColor, saturate(capMask));
+                normalAlbedo = lerp(normalAlbedo, iceColor, saturate(activeSnowIceMask));
                 if (_UseDetailTextures > 0.5)
                 {
                     float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float iceFactor = (dot(iceDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
-                    normalAlbedo = lerp(normalAlbedo, normalAlbedo * (1.0 + iceFactor * _IceDetailStrength), saturate(capMask));
+                    normalAlbedo = lerp(normalAlbedo, normalAlbedo * (1.0 + iceFactor * _IceDetailStrength), saturate(activeSnowIceMask));
                 }
 
                 // ==============================================================
@@ -993,7 +994,7 @@ Shader "Custom/MenuPlanetPreview"
                 smoothnessMask = lerp(smoothnessMask, mountainSmooth, mtnBlend * edge);
                 float inlandWaterSmooth = oceanSmooth;
                 smoothnessMask = lerp(smoothnessMask, inlandWaterSmooth, inlandWaterRenderMask * (1.0 - infernalWeight));
-                smoothnessMask = lerp(smoothnessMask, iceSmooth, capMask);
+                smoothnessMask = lerp(smoothnessMask, iceSmooth, activeSnowIceMask);
                 smoothnessMask = lerp(smoothnessMask, volcanicSmooth, infernalWeight * edge);
 
                 // ==============================================================
@@ -1017,7 +1018,7 @@ Shader "Custom/MenuPlanetPreview"
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + biomeN), edge * _BiomeNormalStrength * (_UseTextureDrivenBiomes > 0.5 ? 1.0 : 0.0)));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + mtnN), edge * mtnBlend * _MountainNormalStrength));
                 surfN = normalize(lerp(surfN, normalize(input.normalWS + oceanN), inlandWaterRenderMask * _OceanNormalStrength * (1.0 - infernalWeight)));
-                surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), capMask * _IceNormalStrength));
+                surfN = normalize(lerp(surfN, normalize(input.normalWS + iceN), activeSnowIceMask * _IceNormalStrength));
 
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
                 float3 L = normalize(_KeyLightDirectionWS.xyz);
@@ -1037,7 +1038,7 @@ Shader "Custom/MenuPlanetPreview"
                 float oceanWaterMask = saturate(1.0 - edge);
                 float waterSpecMask = saturate(oceanWaterMask + inlandWaterRenderMask * 0.85 * (1.0 - infernalWeight));
                 float waterSpec = pow(specN, lerp(24,120,saturate(smoothnessMask))) * waterSpecMask * 0.9;
-                float iceSpec = pow(specN, 36) * capMask * 0.25;
+                float iceSpec = pow(specN, 36) * activeSnowIceMask * 0.25;
                 lit += (waterSpec + iceSpec) * _KeyLightColor.rgb * _KeyLightIntensity;
                 float rim = pow(saturate(1.0 - dot(surfN, viewDir)), 2.5) * _RimLightIntensity;
                 lit += rim * _RimLightColor.rgb * lerp(0.2, 1.0, edge);
@@ -1048,7 +1049,7 @@ Shader "Custom/MenuPlanetPreview"
                 {
                     float3 d = float3(0,0,0);
                     d += SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * (mtnBlend * edge);
-                    d += SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * capMask;
+                    d += SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * activeSnowIceMask;
                     d += SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm) * (1.0-edge);
                     return float4(saturate(d), 1.0);
                 }

@@ -358,7 +358,20 @@ public class MenuPlanetPreview : MonoBehaviour
     private float lastValidatedElevation;
     private float lastValidatedMoisture;
     private float lastValidatedTemperature;
+    private int lastValidatedLandPresetIndex;
+    private float lastValidatedMoistureResponseScale;
+    private float lastValidatedTemperatureHumidityInfluence;
+    private float lastValidatedClimateNoiseStrength;
+    private float lastValidatedCoastWetnessStrength;
+    private float lastValidatedContinentalDrynessStrength;
+    private float lastValidatedContinentalTemperatureStrength;
+    private float lastValidatedRainShadowStrength;
+    private float lastValidatedOrographicWetnessStrength;
+    private float lastValidatedOrographicSampleOffset;
+    private float lastValidatedSeasonalityStrength;
     private int lastValidatedWaterwaysPreset;
+    private float lastValidatedBiomeProvinceStrength;
+    private float lastValidatedBiomeCompetitionSharpness;
     [SerializeField] private float basePlanetScale = 1f;
     private Vector3 baseSurfaceLocalScale = Vector3.one;
     private Vector3 baseAtmosphereLocalScale = Vector3.one;
@@ -376,12 +389,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
     private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
     private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
-    private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
-    private static readonly int ID_BiomeNoiseScale = Shader.PropertyToID("_BiomeNoiseScale");
-    private static readonly int ID_BiomeNoiseStrength = Shader.PropertyToID("_BiomeNoiseStrength");
     private static readonly int ID_Seed          = Shader.PropertyToID("_Seed");
-    private static readonly int ID_DesertFactor  = Shader.PropertyToID("_DesertFactor");
-    private static readonly int ID_TropicalFactor = Shader.PropertyToID("_TropicalFactor");
     private static readonly int ID_SnowFactor    = Shader.PropertyToID("_SnowFactor");
     private static readonly int ID_DetailScale   = Shader.PropertyToID("_DetailScale");
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
@@ -630,7 +638,7 @@ public class MenuPlanetPreview : MonoBehaviour
             moistureResponseScale = moistureResponseScale, temperatureHumidityInfluence = temperatureHumidityInfluence, climateNoiseStrength = climateNoiseStrength,
             coastWetnessStrength = coastWetnessStrength, continentalDrynessStrength = continentalDrynessStrength, continentalTemperatureStrength = continentalTemperatureStrength,
             rainShadowStrength = rainShadowStrength, orographicWetnessStrength = orographicWetnessStrength, orographicSampleOffset = orographicSampleOffset, seasonalityStrength = seasonalityStrength,
-            biomeProvinceStrength = biomeProvinceStrength, biomeCompetitionSharpness = biomeCompetitionSharpness, iceCapSize = iceCapSize
+            biomeProvinceStrength = biomeProvinceStrength, biomeCompetitionSharpness = biomeCompetitionSharpness
         };
     }
 
@@ -764,9 +772,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Biome tuning
         materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);
-        materialInstance.SetFloat(ID_BiomeBlend,    biomeBlend);
-        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
-        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         RecalculateDerivedVisuals();
@@ -954,10 +959,28 @@ public class MenuPlanetPreview : MonoBehaviour
         lastValidatedSeed = seed;
         lastValidatedLandScale = landScale;
         lastValidatedLandThreshold = landThreshold;
+        lastValidatedLandPresetIndex = currentLandPresetIndex;
         lastValidatedElevation = elevation;
+
         lastValidatedMoisture = moisture;
         lastValidatedTemperature = temperature;
+
+        lastValidatedMoistureResponseScale = moistureResponseScale;
+        lastValidatedTemperatureHumidityInfluence = temperatureHumidityInfluence;
+        lastValidatedClimateNoiseStrength = climateNoiseStrength;
+        lastValidatedCoastWetnessStrength = coastWetnessStrength;
+        lastValidatedContinentalDrynessStrength = continentalDrynessStrength;
+        lastValidatedContinentalTemperatureStrength = continentalTemperatureStrength;
+        lastValidatedRainShadowStrength = rainShadowStrength;
+        lastValidatedOrographicWetnessStrength = orographicWetnessStrength;
+        lastValidatedOrographicSampleOffset = orographicSampleOffset;
+        lastValidatedSeasonalityStrength = seasonalityStrength;
+
         lastValidatedWaterwaysPreset = waterwaysPreset;
+
+        lastValidatedBiomeProvinceStrength = biomeProvinceStrength;
+        lastValidatedBiomeCompetitionSharpness = biomeCompetitionSharpness;
+
         validateCacheInitialized = true;
     }
 
@@ -969,6 +992,7 @@ public class MenuPlanetPreview : MonoBehaviour
             !Mathf.Approximately(seed, lastValidatedSeed) ||
             !Mathf.Approximately(landScale, lastValidatedLandScale) ||
             !Mathf.Approximately(landThreshold, lastValidatedLandThreshold) ||
+            currentLandPresetIndex != lastValidatedLandPresetIndex ||
             !Mathf.Approximately(elevation, lastValidatedElevation);
     }
 
@@ -976,14 +1000,7 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         if (!validateCacheInitialized) return true;
 
-        return
-            !Mathf.Approximately(seed, lastValidatedSeed) ||
-            !Mathf.Approximately(landScale, lastValidatedLandScale) ||
-            !Mathf.Approximately(landThreshold, lastValidatedLandThreshold) ||
-            !Mathf.Approximately(elevation, lastValidatedElevation) ||
-            !Mathf.Approximately(moisture, lastValidatedMoisture) ||
-            !Mathf.Approximately(temperature, lastValidatedTemperature) ||
-            waterwaysPreset != lastValidatedWaterwaysPreset;
+        return waterwaysPreset != lastValidatedWaterwaysPreset;
     }
 
     // -----------------------------------------------------------------
@@ -1029,7 +1046,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Temperature, temperature);
              RecalculateDerivedVisuals();
         }
-        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
+        RequestWorldRebuild(PreviewWorldRebuildScope.Climate);
         PushCloudParameters();
         PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
@@ -1058,7 +1075,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Moisture, moisture);
             RecalculateDerivedVisuals();
         }
-        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
+        RequestWorldRebuild(PreviewWorldRebuildScope.Climate);
     }
 
     /// <summary>
@@ -1115,18 +1132,17 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null) { materialInstance.SetColor(ID_OceanColor, oceanColor); }
     }
 
-    /// <summary>Set ice cap coverage size. 0 = no caps, 1 = massive polar ice.</summary>
+    [System.Obsolete("Ice cap size is no longer used by the Option B generated planet preview. Snow/ice is climate-driven.")]
     public void SetIceCapSize(float value)
     {
         iceCapSize = Mathf.Clamp01(value);
         if (materialInstance != null) { materialInstance.SetFloat(ID_IceCapSize, iceCapSize); }
     }
 
-    /// <summary>Set biome blend width at band edges. 0 = hard cutoff, 0.03+ = subtle transition.</summary>
+    [System.Obsolete("SetBiomeBlend is legacy and no longer affects the Option B generated planet preview.")]
     public void SetBiomeBlend(float value)
     {
         biomeBlend = Mathf.Clamp(value, 0f, 0.1f);
-        if (materialInstance != null) { materialInstance.SetFloat(ID_BiomeBlend, biomeBlend); }
     }
 
 public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = false)
@@ -1185,22 +1201,13 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     {
         if (materialInstance == null) return;
 
-        // Desert and tropical amounts should drop as things get colder.
-        float desertFactor = Mathf.Clamp01(temperature * (1f - moisture) * 1.5f);
-        float tropicalFactor = Mathf.Clamp01(moisture * temperature * 1.6f);
-
         // Snow factor is primarily temperature-driven but reinforced by elevation
         float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.8f);
 
-        materialInstance.SetFloat(ID_DesertFactor, desertFactor);
-        materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
         materialInstance.SetColor(ID_OceanColor, oceanColor);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
-        materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
-        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
-        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
         float baseWaterwayAmount = waterwaysPreset == 0 ? 0.15f : (waterwaysPreset == 1 ? 0.55f : 1.0f);
@@ -1601,7 +1608,32 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     }
 
 
-private bool ClimateInputsChanged() => !validateCacheInitialized || !Mathf.Approximately(lastValidatedTemperature, temperature) || !Mathf.Approximately(lastValidatedMoisture, moisture);
-private bool BiomeOnlyInputsChanged() => true;
+private bool ClimateInputsChanged()
+{
+    if (!validateCacheInitialized) return true;
+
+    return
+        !Mathf.Approximately(temperature, lastValidatedTemperature) ||
+        !Mathf.Approximately(moisture, lastValidatedMoisture) ||
+        !Mathf.Approximately(moistureResponseScale, lastValidatedMoistureResponseScale) ||
+        !Mathf.Approximately(temperatureHumidityInfluence, lastValidatedTemperatureHumidityInfluence) ||
+        !Mathf.Approximately(climateNoiseStrength, lastValidatedClimateNoiseStrength) ||
+        !Mathf.Approximately(coastWetnessStrength, lastValidatedCoastWetnessStrength) ||
+        !Mathf.Approximately(continentalDrynessStrength, lastValidatedContinentalDrynessStrength) ||
+        !Mathf.Approximately(continentalTemperatureStrength, lastValidatedContinentalTemperatureStrength) ||
+        !Mathf.Approximately(rainShadowStrength, lastValidatedRainShadowStrength) ||
+        !Mathf.Approximately(orographicWetnessStrength, lastValidatedOrographicWetnessStrength) ||
+        !Mathf.Approximately(orographicSampleOffset, lastValidatedOrographicSampleOffset) ||
+        !Mathf.Approximately(seasonalityStrength, lastValidatedSeasonalityStrength);
+}
+
+private bool BiomeOnlyInputsChanged()
+{
+    if (!validateCacheInitialized) return true;
+
+    return
+        !Mathf.Approximately(biomeProvinceStrength, lastValidatedBiomeProvinceStrength) ||
+        !Mathf.Approximately(biomeCompetitionSharpness, lastValidatedBiomeCompetitionSharpness);
+}
 
 }
