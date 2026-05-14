@@ -201,6 +201,7 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_TectonicSurfaceTex); SAMPLER(sampler_TectonicSurfaceTex);
             TEXTURE2D(_TectonicBoundaryTex); SAMPLER(sampler_TectonicBoundaryTex);
             TEXTURE2D(_TectonicCrustTex); SAMPLER(sampler_TectonicCrustTex);
+            TEXTURE2D(_BiomeWeights2Tex); SAMPLER(sampler_BiomeWeights2Tex);
 
             float hash31(float3 p) { p = frac(p * float3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return frac((p.x + p.y) * p.z); }
             float noise3D(float3 p)
