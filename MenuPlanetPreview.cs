@@ -294,14 +294,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Blend width at biome band edges. 0 = hard cutoff, 0.03 = subtle transition.")]
     [FormerlySerializedAs("biomeBlend")][SerializeField, HideInInspector] private float legacyBiomeBlend = 0.03f;
 
-    [Range(0f, 10f)]
-    [Tooltip("Scale of noise used to perturb biome latitude bands. Higher = more detail.")]
-    [FormerlySerializedAs("biomeNoiseScale")][SerializeField, HideInInspector] private float legacyBiomeNoiseScale = 3.0f;
-
-    [Range(0f, 0.2f)]
-    [Tooltip("Strength of noise perturbation on biome bands. 0 = straight lines.")]
-    [FormerlySerializedAs("biomeNoiseStrength")][SerializeField, HideInInspector] private float legacyBiomeNoiseStrength = 0.08f;
-
 
     [Header("Surface Properties")]
     [Range(0f, 1f)]
@@ -566,8 +558,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
 
     private int currentLandPresetIndex = 2;
-    private bool isInitialPreviewBuild = true;
-
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -660,7 +650,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_BiomeWeights0Tex, worldGenerator.BiomeWeights0Texture);
         materialInstance.SetTexture(ID_BiomeWeights1Tex, worldGenerator.BiomeWeights1Texture);
         materialInstance.SetTexture(ID_BiomeWeights2Tex, worldGenerator.BiomeWeights2Texture);
-        isInitialPreviewBuild = false;
     }
 
     private void Update()
