@@ -598,9 +598,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c093fd00926437dbf636fa08f18a162, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGenerator
-  mapWidth: 2048
-  mapHeight: 2048
-  regenerationDelay: 0.02
+  mapWidth: 1024
+  mapHeight: 512
+  regenerationDelay: 0.15
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
