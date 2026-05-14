@@ -425,7 +425,7 @@ MonoBehaviour:
   detailStrength: 0.12
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.004
-  useDisplacedNormals: 0
+  useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
   cloudDensity: 0.069
@@ -433,14 +433,14 @@ MonoBehaviour:
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
   cloudSurfaceShadowStrength: 0.12
-  enableAtmosphereShell: 0
+  enableAtmosphereShell: 1
   atmosphereShellScale: 1.0416
-  atmosphereFalloff: 4
-  atmosphereIntensity: 1.21
+  atmosphereFalloff: 1
+  atmosphereIntensity: 0.16
   atmosphereRotationMultiplier: 0
   atmosphereDayRimBoost: 1.15
   atmosphereNightRimStrength: 0.42
-  atmosphereInnerScatterStrength: 0.12
+  atmosphereInnerScatterStrength: 0.56
   mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
   iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
@@ -497,12 +497,12 @@ MonoBehaviour:
   marshSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   biomeTextureStrength: 1
   climateGradeStrength: 0.06
-  biomeNormalStrength: 0.763
+  biomeNormalStrength: 0.155
   biomeTextureScale: 0.6
   biomeTextureContrast: 0.18
   landUpliftStrength: 0.12
   hillDisplacementStrength: 0.25
-  mountainDisplacementStrength: 0.65
+  mountainDisplacementStrength: 0.564
   iceDisplacementStrength: 0
   volcanicDisplacementStrength: 0.45
   oceanDepthStrength: 0.03
@@ -544,7 +544,7 @@ MonoBehaviour:
   enableBloom: 1
   bloomThreshold: 1.4
   bloomIntensity: 0.18
-  icosphereSubdivisions: 6
+  icosphereSubdivisions: 5
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
@@ -568,7 +568,7 @@ MonoBehaviour:
   iceCapSize: 0.5
   biomeBlend: 0.045
   biomeNoiseScale: 4
-  biomeNoiseStrength: 0.2
+  biomeNoiseStrength: 0.0829
   smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1
@@ -577,11 +577,11 @@ MonoBehaviour:
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 6
+  cameraDistance: 4
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
-  keyLightIntensity: 1
+  keyLightIntensity: 2
   keyLightColor: {r: 0.98490566, g: 0.75813156, b: 0.4441367, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
@@ -598,65 +598,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c093fd00926437dbf636fa08f18a162, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGenerator
-  hydrologyMaskWidth: 1024
-  hydrologyMaskHeight: 512
+  mapWidth: 2048
+  mapHeight: 2048
   regenerationDelay: 0.02
-  useTectonicSurfaceInputs: 1
-  logHydrologyDiagnostics: 0
---- !u!114 &339058185792977936
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3523082564983676708}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d91af5da87e980d46b8cb9b362f6c001, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewTectonicGenerator
-  tectonicMapWidth: 1024
-  tectonicMapHeight: 512
-  regenerationDelay: 0.15
-  logGenerationTiming: 0
-  plateCount: 18
-  plateBoundaryWidth: 0.06
-  continentalPlateFraction: 0.55
-  plateShapeNoiseStrength: 0.28
-  plateBoundaryWarpScale: 2.2
-  plateBoundaryWarpAmplitude: 0.08
-  minimumSeaLevel: 0.3
-  maximumSeaLevel: 0.78
-  logLandCoverageDiagnostics: 0
-  continentalDetailScale: 1.65
-  continentalDetailStrength: 0.22
-  continentSeedStrength: 0.82
-  plateContinentalInfluence: 0.16
-  continentalElevationStrength: 0.42
-  oceanBasinDepthStrength: 0.58
-  convergentMountainStrength: 0.72
-  divergentRidgeStrength: 0.18
-  terrainDetailNoiseStrength: 0.14
-  continentalShelfStrength: 0.75
-  continentalShelfWidth: 0.08
---- !u!114 &1165288637332300539
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3523082564983676708}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0e89b111b5d349344a8e1c2ee8de542c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewClimateBiomeGenerator
-  climateMapWidth: 1024
-  climateMapHeight: 512
-  regenerationDelay: 0.15
-  logClimateDiagnostics: 1
-  logBiomeDiagnostics: 1
-  maxContinentalDistancePixels: 96
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
