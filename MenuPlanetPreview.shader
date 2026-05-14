@@ -58,6 +58,7 @@ Shader "Custom/MenuPlanetPreview"
             _Brightness("Brightness", Range(0.5, 3.0)) = 1.12
             _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
+            _OceanAlbedoTex("Ocean Albedo", 2D) = "white" {}
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
             _WaterwayMaskTex("Waterway Mask Texture", 2D) = "black" {}
@@ -262,6 +263,8 @@ Shader "Custom/MenuPlanetPreview"
 
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
+            TEXTURE2D(_OceanAlbedoTex);
+            SAMPLER(sampler_OceanAlbedoTex);
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_WaterwayMaskTex); SAMPLER(sampler_WaterwayMaskTex);
@@ -714,7 +717,10 @@ Shader "Custom/MenuPlanetPreview"
                 float tectonicShelfMask = tectonicSurface.a;
                 float coastShelfMask = (_UseTectonicPreview > 0.5) ? tectonicShelfMask : oceanMask * (1.0 - smoothstep(0.0, 0.08, edge));
                 float shorelineMask = oceanMask * smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.03, 0.06, edge));
-                float3 oceanColor = lerp(_OceanColor.rgb, _OceanShallowColor.rgb, coastShelfMask * 0.65);
+                float3 oceanAlbedoSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_OceanAlbedoTex, sampler_OceanAlbedoTex), input.positionOS, objNorm, _TextureDetailScale);
+                float3 deepOceanBase = oceanAlbedoSample * _OceanColor.rgb;
+                float3 shallowOceanBase = oceanAlbedoSample * _OceanShallowColor.rgb;
+                float3 oceanColor = lerp(deepOceanBase, shallowOceanBase, coastShelfMask);
                 oceanColor = lerp(oceanColor, oceanColor * 1.08, shorelineMask * 0.12);
 
                 // --------------------------------------------------------------
