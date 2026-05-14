@@ -373,6 +373,7 @@ GameObject:
   - component: {fileID: 7706978070917160381}
   - component: {fileID: 6013045082289988684}
   - component: {fileID: 339058185792977936}
+  - component: {fileID: 1165288637332300539}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -420,7 +421,7 @@ MonoBehaviour:
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   hydrologyMaskGenerator: {fileID: 6013045082289988684}
   tectonicGenerator: {fileID: 339058185792977936}
-  climateBiomeGenerator: {fileID: 0}
+  climateBiomeGenerator: {fileID: 1165288637332300539}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
@@ -543,6 +544,7 @@ MonoBehaviour:
   showMountainUpliftOnly: 0
   showContinentalShelfOnly: 0
   showCrustTypeOnly: 0
+  showContinentalPotentialOnly: 0
   enableBloom: 1
   bloomThreshold: 1.4
   bloomIntensity: 0.18
@@ -603,6 +605,8 @@ MonoBehaviour:
   hydrologyMaskWidth: 1024
   hydrologyMaskHeight: 512
   regenerationDelay: 0.02
+  useTectonicSurfaceInputs: 1
+  logHydrologyDiagnostics: 0
 --- !u!114 &339058185792977936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -623,6 +627,15 @@ MonoBehaviour:
   plateBoundaryWidth: 0.06
   continentalPlateFraction: 0.55
   plateShapeNoiseStrength: 0.28
+  plateBoundaryWarpScale: 2.2
+  plateBoundaryWarpAmplitude: 0.08
+  minimumSeaLevel: 0.3
+  maximumSeaLevel: 0.78
+  logLandCoverageDiagnostics: 0
+  continentalDetailScale: 1.65
+  continentalDetailStrength: 0.22
+  continentSeedStrength: 0.82
+  plateContinentalInfluence: 0.16
   continentalElevationStrength: 0.42
   oceanBasinDepthStrength: 0.58
   convergentMountainStrength: 0.72
@@ -630,6 +643,24 @@ MonoBehaviour:
   terrainDetailNoiseStrength: 0.14
   continentalShelfStrength: 0.75
   continentalShelfWidth: 0.08
+--- !u!114 &1165288637332300539
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3523082564983676708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e89b111b5d349344a8e1c2ee8de542c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewClimateBiomeGenerator
+  climateMapWidth: 1024
+  climateMapHeight: 512
+  regenerationDelay: 0.15
+  logClimateDiagnostics: 1
+  logBiomeDiagnostics: 1
+  maxContinentalDistancePixels: 96
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
