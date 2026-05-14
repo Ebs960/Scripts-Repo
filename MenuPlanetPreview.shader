@@ -234,10 +234,11 @@ Shader "Custom/MenuPlanetPreview"
 
             float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
             float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
+            float GetGeneratedSnowIceMask(float3 objNorm){ float2 uv = GetTectonicUV(objNorm); float4 bw2 = SAMPLE_TEXTURE2D_LOD(_BiomeWeights2Tex, sampler_BiomeWeights2Tex, uv, 0); return bw2.g; }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
             float GetActiveMountainMask(float3 objNorm, float landMask){ if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).b; return GetMountainMask(objNorm, landMask); }
-            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { if(_UseTectonicPreview>0.5){ float4 ts=GetTectonicSurface(objNorm); float tH=ts.g; float tM=ts.b; return tH * _LandUpliftStrength + tM * _MountainDisplacementStrength + capMask * _IceDisplacementStrength - (1.0-landMask) * _OceanDepthStrength; } float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
-            float GetPreviewDisplacementHeight(float3 objNorm) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); return GetTerrainHeightValue(objNorm, GetLandMask(objNorm, seedOff), GetCapMask(objNorm, seedOff)) * _DisplacementScale; }
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { if(_UseTectonicPreview>0.5){ float4 ts=GetTectonicSurface(objNorm); float tH=ts.g; float tM=ts.b; return tH * _LandUpliftStrength + tM * _MountainDisplacementStrength + GetGeneratedSnowIceMask(objNorm) * _IceDisplacementStrength - (1.0-landMask) * _OceanDepthStrength; } float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
+            float GetPreviewDisplacementHeight(float3 objNorm) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float capMask = (_UseTectonicPreview > 0.5) ? 0.0 : GetCapMask(objNorm, seedOff); return GetTerrainHeightValue(objNorm, GetLandMask(objNorm, seedOff), capMask) * _DisplacementScale; }
         ENDHLSL
 
         // =====================================================================
@@ -572,7 +573,7 @@ Shader "Custom/MenuPlanetPreview"
                 float tectonicTerrainHeight = tectonicSurface.g;
                 float terrainHeight = (_UseTectonicPreview > 0.5) ? tectonicTerrainHeight : legacyTerrainHeight;
                 float landMask = edge;
-                float capMask = GetCapMask(objNorm, seedOff);
+                float capMask = (_UseTectonicPreview > 0.5) ? 0.0 : GetCapMask(objNorm, seedOff);
                 float generatedSnowIceMask = 0.0;
                 float generatedAlpineRockMask = 0.0;
                 float4 tectonicBoundary = GetTectonicBoundary(objNorm);
@@ -829,11 +830,8 @@ Shader "Custom/MenuPlanetPreview"
                 riparianWetness = max(riparianWetness, waterInfluence * _RiparianWetnessStrength);
 
                 // ---- Ice caps ----
-                // Driven entirely by _IceCapSize (set by the climate preset in MainMenuManager).
-                // 0 = no ice,  1 = massive polar ice extending near equator.
-                // No temperature math — the preset already encodes how icy the planet should be.
-
-                // capMask computed earlier for biome + ice logic.
+                // Legacy fallback path: capMask is driven by _IceCapSize.
+                // Active tectonic preview uses generated climate/biome masks instead.
 
                 // Ice/snow color — white at center, icy blue at outer fringe
                 float3 snowWhite = float3(0.95, 0.97, 1.0);
@@ -960,13 +958,14 @@ Shader "Custom/MenuPlanetPreview"
                 float lavaMask = max(lavaMaskSample, fallbackCrack * 0.75);
                 float lavaEmissionMask = max(lavaEmissiveSample, lavaMask);
                 float volcanic = dot(volcanicSample, float3(0.333, 0.333, 0.333));
-                float volcanicLandMask = saturate(edge * (1.0 - capMask * 0.35));
+                float infernalSnowInfluence = (_UseTectonicPreview > 0.5) ? 0.0 : capMask;
+                float volcanicLandMask = saturate(edge * (1.0 - infernalSnowInfluence * 0.35));
                 float crack = smoothstep(0.55, 0.9, lavaMask) * volcanicLandMask * infernal * _LavaCrackStrength;
                 float emissiveCrack = crack * lavaEmissionMask;
                 float volcanicDarken = lerp(0.25, 0.55, volcanic);
                 float3 volcanicColor = lerp(albedo, albedo * volcanicDarken, _VolcanicRockStrength * infernal);
                 albedo = lerp(albedo, volcanicColor, infernal);
-                float ashMask = ashSample * _AshDetailStrength * infernal * saturate(0.4 + volcanicLandMask + capMask * 0.4);
+                float ashMask = ashSample * _AshDetailStrength * infernal * saturate(0.4 + volcanicLandMask + infernalSnowInfluence * 0.4);
                 float ashGray = dot(albedo, float3(0.299, 0.587, 0.114));
                 albedo = lerp(albedo, float3(ashGray, ashGray, ashGray), ashMask * 0.35);
 
