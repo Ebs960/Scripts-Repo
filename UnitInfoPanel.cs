@@ -527,14 +527,14 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Display unit icon
         if (unitIconImage != null && currentCombatUnit.data.icon != null)
             unitIconImage.sprite = currentCombatUnit.data.icon;
-        levelText.text = $"Level: {currentCombatUnit.level}";
+        levelText.text = $"{currentCombatUnit.level}";
         experienceText.text = $"XP: {currentCombatUnit.experience}/{currentCombatUnit.data.xpToNextLevel[currentCombatUnit.level - 1]}";
         
-        attackText.text = $"Attack: {currentCombatUnit.CurrentAttack}";
-        defenseText.text = $"Defense: {currentCombatUnit.CurrentDefense}";
-        healthText.text = $"Health: {currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
-        if (movePointsText != null) movePointsText.text = $"Move Speed: {currentCombatUnit.moveSpeed:F1}";
-        rangeText.text = $"Range: {currentCombatUnit.CurrentRange}";
+        attackText.text = $"{currentCombatUnit.CurrentAttack}";
+        defenseText.text = $"{currentCombatUnit.CurrentDefense}";
+        healthText.text = $"{currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
+        if (movePointsText != null) movePointsText.text = $"{currentCombatUnit.moveSpeed:F1}";
+        rangeText.text = $"{currentCombatUnit.CurrentRange}";
         if (attackPointsText != null)
         {
             attackPointsText.gameObject.SetActive(true);
@@ -573,10 +573,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (unitIconImage != null)
             unitIconImage.sprite = currentWorkerUnit.data != null ? currentWorkerUnit.data.icon : null;
         
-        healthText.text = $"Health: {currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
-        movePointsText.text = $"Move Points: {currentWorkerUnit.currentMovePoints}";
-        attackText.text = $"Attack: {currentWorkerUnit.CurrentAttack}";
-        defenseText.text = $"Defense: {currentWorkerUnit.CurrentDefense}";
+        healthText.text = $"{currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
+        movePointsText.text = $"{currentWorkerUnit.currentMovePoints}";
+        attackText.text = $"{currentWorkerUnit.CurrentAttack}";
+        defenseText.text = $"{currentWorkerUnit.CurrentDefense}";
         if (levelText != null) levelText.text = $"Level: {currentWorkerUnit.level}";
         if (experienceText != null)
         {
@@ -588,12 +588,12 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (attackPointsText != null)
         {
             attackPointsText.gameObject.SetActive(true);
-            attackPointsText.text = $"AP: {currentWorkerUnit.CurrentAttackPoints}/{currentWorkerUnit.MaxAttackPoints}";
+            attackPointsText.text = $"{currentWorkerUnit.CurrentAttackPoints}/{currentWorkerUnit.MaxAttackPoints}";
         }
 
         if (workPointsText != null)
         {
-            workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.MaxWorkPoints}";
+            workPointsText.text = $"{currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.MaxWorkPoints}";
         }
         LogWorkerBuildDebug(currentWorkerUnit);
         PopulateWorkerBuildUnits(currentWorkerUnit);
