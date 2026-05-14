@@ -690,7 +690,7 @@ Shader "Custom/MenuPlanetPreview"
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
                 if (_UseTectonicPreview > 0.5){
-                    float2 uvGen = DirToEquirectUV(objNorm);
+                    float2 uvGen = GetTectonicUV(objNorm);
                     float4 gClimate = SAMPLE_TEXTURE2D(_ClimateTex, sampler_ClimateTex, uvGen);
                     float4 bw0 = SAMPLE_TEXTURE2D(_BiomeWeights0Tex, sampler_BiomeWeights0Tex, uvGen);
                     float4 bw1 = SAMPLE_TEXTURE2D(_BiomeWeights1Tex, sampler_BiomeWeights1Tex, uvGen);
