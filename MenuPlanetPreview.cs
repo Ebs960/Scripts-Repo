@@ -103,6 +103,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Texture2D iceSmoothnessTexture;
 
     [Header("Ocean Material")]
+    [SerializeField] private Texture2D oceanAlbedoTexture;
     [SerializeField] private Texture2D oceanDetailTexture;
     [SerializeField] private Texture2D waterwayDetailTexture;
     [SerializeField] private Texture2D oceanNormalTexture;
@@ -405,6 +406,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Brightness = Shader.PropertyToID("_Brightness");
     private static readonly int ID_MountainDetailTex = Shader.PropertyToID("_MountainDetailTex");
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
+    private static readonly int ID_OceanAlbedoTex = Shader.PropertyToID("_OceanAlbedoTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_WaterwayDetailTex = Shader.PropertyToID("_WaterwayDetailTex");
     private static readonly int ID_WaterwayMaskTex = Shader.PropertyToID("_WaterwayMaskTex");
@@ -807,6 +809,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         materialInstance.SetTexture(ID_MountainDetailTex, mountainDetailTexture);
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
+        materialInstance.SetTexture(ID_OceanAlbedoTex, oceanAlbedoTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
         if (worldGenerator != null && worldGenerator.HydrologyMaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
