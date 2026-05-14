@@ -372,8 +372,6 @@ GameObject:
   - component: {fileID: 295393544057895789}
   - component: {fileID: 7706978070917160381}
   - component: {fileID: 6013045082289988684}
-  - component: {fileID: 339058185792977936}
-  - component: {fileID: 1165288637332300539}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -419,9 +417,7 @@ MonoBehaviour:
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
-  hydrologyMaskGenerator: {fileID: 6013045082289988684}
-  tectonicGenerator: {fileID: 339058185792977936}
-  climateBiomeGenerator: {fileID: 1165288637332300539}
+  worldGenerator: {fileID: 6013045082289988684}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
@@ -599,9 +595,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 3523082564983676708}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: de6de8a68f7cd884084a2f775c62bdc3, type: 3}
+  m_Script: {fileID: 11500000, guid: 4c093fd00926437dbf636fa08f18a162, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewHydrologyMaskGenerator
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGenerator
   hydrologyMaskWidth: 1024
   hydrologyMaskHeight: 512
   regenerationDelay: 0.02

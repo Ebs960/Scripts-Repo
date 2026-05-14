@@ -37,9 +37,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Atmosphere shell shader. If empty, finds 'Custom/MenuPlanetAtmosphere' at runtime.")]
     [SerializeField] private Shader atmosphereShader;
-    [SerializeField] private MenuPlanetPreviewHydrologyMaskGenerator hydrologyMaskGenerator;
-    [SerializeField] private MenuPlanetPreviewTectonicGenerator tectonicGenerator;
-    [SerializeField] private MenuPlanetPreviewClimateBiomeGenerator climateBiomeGenerator;
+    [SerializeField] private MenuPlanetPreviewWorldGenerator worldGenerator;
 
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
@@ -560,9 +558,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
 
     private int currentLandPresetIndex = 2;
-    private bool pendingHydrologyAfterTectonics;
-    private bool pendingClimateAfterTectonics;
-    private bool pendingBiomeAfterHydrology;
     private bool isInitialPreviewBuild = true;
 
 
@@ -587,9 +582,7 @@ public class MenuPlanetPreview : MonoBehaviour
         }
 
         SetupMaterial();
-        SetupHydrologyGenerator();
-        SetupTectonicGenerator();
-        SetupClimateBiomeGenerator();
+        SetupWorldGenerator();
 
         // Randomize seed so each play session gets a unique planet
         if (randomizeSeed)
@@ -599,11 +592,9 @@ public class MenuPlanetPreview : MonoBehaviour
 
         ApplyAllParameters();
 
-        // Build generated preview textures once at startup (tectonics first, hydrology after event).
-        pendingClimateAfterTectonics = true;
-        pendingHydrologyAfterTectonics = false;
-        pendingBiomeAfterHydrology = false;
-        RequestTectonicRegeneration(true);
+        worldGenerator.WorldTexturesUpdated -= BindGeneratedWorldTextures;
+        worldGenerator.WorldTexturesUpdated += BindGeneratedWorldTextures;
+        RequestWorldRebuild(PreviewWorldRebuildScope.All, true);
         CacheValidatedGeneratorInputs();
 
         SetupSpaceBackgroundIfNeeded();
@@ -621,108 +612,46 @@ public class MenuPlanetPreview : MonoBehaviour
     }
 
 
-    private void SetupHydrologyGenerator()
+    private void SetupWorldGenerator()
     {
-        if (hydrologyMaskGenerator == null) hydrologyMaskGenerator = GetComponent<MenuPlanetPreviewHydrologyMaskGenerator>();
-        if (hydrologyMaskGenerator == null) hydrologyMaskGenerator = gameObject.AddComponent<MenuPlanetPreviewHydrologyMaskGenerator>();
+        if (worldGenerator == null)
+            worldGenerator = GetComponent<MenuPlanetPreviewWorldGenerator>();
+
+        if (worldGenerator == null)
+            worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGenerator>();
     }
 
-
-    private void SetupClimateBiomeGenerator()
+    private MenuPlanetPreviewWorldInputs BuildWorldInputs()
     {
-        if (climateBiomeGenerator == null) climateBiomeGenerator = GetComponent<MenuPlanetPreviewClimateBiomeGenerator>();
-        if (climateBiomeGenerator == null) climateBiomeGenerator = gameObject.AddComponent<MenuPlanetPreviewClimateBiomeGenerator>();
-        climateBiomeGenerator.ClimateTextureReady -= HandleClimateTextureReady;
-        climateBiomeGenerator.ClimateTextureReady += HandleClimateTextureReady;
-        climateBiomeGenerator.BiomeTexturesReady -= HandleBiomeTexturesReady;
-        climateBiomeGenerator.BiomeTexturesReady += HandleBiomeTexturesReady;
-        if (hydrologyMaskGenerator != null) hydrologyMaskGenerator.HydrologyMaskReady += HandleHydrologyMaskReady;
-    }
-
-    private void RequestHydrologyRegeneration(bool immediate = false)
-    {
-        if (materialInstance == null || hydrologyMaskGenerator == null) return;
-        hydrologyMaskGenerator.SetInputs(seed, landScale, landThreshold, elevation, moisture, temperature, waterwaysPreset);
-        hydrologyMaskGenerator.SetTectonicSurfaceTexture(tectonicGenerator != null ? tectonicGenerator.SurfaceStructureTexture : null);
-        hydrologyMaskGenerator.SetClimateTexture(climateBiomeGenerator != null ? climateBiomeGenerator.ClimateTexture : null);
-        if (immediate) hydrologyMaskGenerator.GenerateNow(); else hydrologyMaskGenerator.ScheduleRegeneration();
-        if (hydrologyMaskGenerator.MaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
-    }
-
-    
-    private void SetupTectonicGenerator()
-    {
-        if (tectonicGenerator == null) tectonicGenerator = GetComponent<MenuPlanetPreviewTectonicGenerator>();
-        if (tectonicGenerator == null) tectonicGenerator = gameObject.AddComponent<MenuPlanetPreviewTectonicGenerator>();
-        tectonicGenerator.TectonicTexturesReady -= HandleTectonicTexturesReady;
-        tectonicGenerator.TectonicTexturesReady += HandleTectonicTexturesReady;
-    }
-
-    private void RequestTectonicRegeneration(bool immediate = false)
-    {
-        if (materialInstance == null || tectonicGenerator == null) return;
-        tectonicGenerator.SetInputs(seed, landScale, landThreshold, elevation, currentLandPresetIndex);
-        if (immediate) tectonicGenerator.GenerateNow(); else tectonicGenerator.ScheduleRegeneration();
-        if (tectonicGenerator.SurfaceStructureTexture != null) materialInstance.SetTexture(ID_TectonicSurfaceTex, tectonicGenerator.SurfaceStructureTexture);
-        if (tectonicGenerator.PlateBoundaryTexture != null) materialInstance.SetTexture(ID_TectonicBoundaryTex, tectonicGenerator.PlateBoundaryTexture);
-        if (tectonicGenerator.CrustBasinTexture != null) materialInstance.SetTexture(ID_TectonicCrustTex, tectonicGenerator.CrustBasinTexture);
-    }
-
-
-
-    private void RequestClimateRegeneration(bool immediate=false)
-    {
-        if (climateBiomeGenerator == null || tectonicGenerator == null) return;
-        climateBiomeGenerator.SetTectonicSurfaceTexture(tectonicGenerator.SurfaceStructureTexture);
-        climateBiomeGenerator.SetClimateInputs(seed, temperature, moisture, moistureResponseScale, temperatureHumidityInfluence, climateNoiseStrength, coastWetnessStrength, continentalDrynessStrength, continentalTemperatureStrength, rainShadowStrength, orographicWetnessStrength, orographicSampleOffset, seasonalityStrength);
-        if (immediate) climateBiomeGenerator.GenerateClimateNow(); else climateBiomeGenerator.ScheduleClimateRegeneration();
-    }
-    private void RequestBiomeRegeneration(bool immediate=false)
-    {
-        if (climateBiomeGenerator == null || hydrologyMaskGenerator == null) return;
-        climateBiomeGenerator.SetWaterwayMaskTexture(hydrologyMaskGenerator.MaskTexture);
-        climateBiomeGenerator.SetBiomeInputs(biomeProvinceStrength, biomeCompetitionSharpness, iceCapSize);
-        if (immediate) climateBiomeGenerator.GenerateBiomesNow(); else climateBiomeGenerator.ScheduleBiomeRegeneration();
-    }
-
-    private void HandleTectonicTexturesReady()
-    {
-        if (materialInstance != null && tectonicGenerator != null)
+        return new MenuPlanetPreviewWorldInputs
         {
-            materialInstance.SetTexture(ID_TectonicSurfaceTex, tectonicGenerator.SurfaceStructureTexture);
-            materialInstance.SetTexture(ID_TectonicBoundaryTex, tectonicGenerator.PlateBoundaryTexture);
-            materialInstance.SetTexture(ID_TectonicCrustTex, tectonicGenerator.CrustBasinTexture);
-        }
-
-        if (climateBiomeGenerator != null) climateBiomeGenerator.SetTectonicSurfaceTexture(tectonicGenerator.SurfaceStructureTexture);
-        if (pendingClimateAfterTectonics || isInitialPreviewBuild)
-        {
-            pendingClimateAfterTectonics = false;
-            RequestClimateRegeneration(isInitialPreviewBuild);
-        }
+            seed = seed, landScale = landScale, landThreshold = landThreshold, landPresetIndex = currentLandPresetIndex, elevation = elevation,
+            temperature = temperature, moisture = moisture, waterwaysPreset = waterwaysPreset,
+            moistureResponseScale = moistureResponseScale, temperatureHumidityInfluence = temperatureHumidityInfluence, climateNoiseStrength = climateNoiseStrength,
+            coastWetnessStrength = coastWetnessStrength, continentalDrynessStrength = continentalDrynessStrength, continentalTemperatureStrength = continentalTemperatureStrength,
+            rainShadowStrength = rainShadowStrength, orographicWetnessStrength = orographicWetnessStrength, orographicSampleOffset = orographicSampleOffset, seasonalityStrength = seasonalityStrength,
+            biomeProvinceStrength = biomeProvinceStrength, biomeCompetitionSharpness = biomeCompetitionSharpness, iceCapSize = iceCapSize
+        };
     }
 
-    private void HandleClimateTextureReady()
+    private void RequestWorldRebuild(PreviewWorldRebuildScope scope, bool immediate = false)
     {
-        if (materialInstance != null && climateBiomeGenerator != null) materialInstance.SetTexture(ID_ClimateTex, climateBiomeGenerator.ClimateTexture);
-        pendingHydrologyAfterTectonics = true;
-        RequestHydrologyRegeneration(isInitialPreviewBuild);
+        if (worldGenerator == null) return;
+        worldGenerator.SetInputs(BuildWorldInputs());
+        worldGenerator.RequestRebuild(scope, immediate);
     }
 
-    private void HandleHydrologyMaskReady()
+    private void BindGeneratedWorldTextures()
     {
-        if (materialInstance != null && hydrologyMaskGenerator != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
-        if (climateBiomeGenerator != null) climateBiomeGenerator.SetWaterwayMaskTexture(hydrologyMaskGenerator.MaskTexture);
-        pendingBiomeAfterHydrology = true;
-        RequestBiomeRegeneration(isInitialPreviewBuild);
-    }
-
-    private void HandleBiomeTexturesReady()
-    {
-        if (materialInstance == null || climateBiomeGenerator == null) return;
-        materialInstance.SetTexture(ID_BiomeWeights0Tex, climateBiomeGenerator.BiomeWeights0Texture);
-        materialInstance.SetTexture(ID_BiomeWeights1Tex, climateBiomeGenerator.BiomeWeights1Texture);
-        materialInstance.SetTexture(ID_BiomeWeights2Tex, climateBiomeGenerator.BiomeWeights2Texture);
+        if (materialInstance == null || worldGenerator == null) return;
+        materialInstance.SetTexture(ID_TectonicSurfaceTex, worldGenerator.TectonicSurfaceTexture);
+        materialInstance.SetTexture(ID_TectonicBoundaryTex, worldGenerator.TectonicBoundaryTexture);
+        materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
+        materialInstance.SetTexture(ID_ClimateTex, worldGenerator.ClimateTexture);
+        materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
+        materialInstance.SetTexture(ID_BiomeWeights0Tex, worldGenerator.BiomeWeights0Texture);
+        materialInstance.SetTexture(ID_BiomeWeights1Tex, worldGenerator.BiomeWeights1Texture);
+        materialInstance.SetTexture(ID_BiomeWeights2Tex, worldGenerator.BiomeWeights2Texture);
         isInitialPreviewBuild = false;
     }
 
@@ -747,12 +676,9 @@ public class MenuPlanetPreview : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (tectonicGenerator != null) tectonicGenerator.TectonicTexturesReady -= HandleTectonicTexturesReady;
-        if (climateBiomeGenerator != null) { climateBiomeGenerator.ClimateTextureReady -= HandleClimateTextureReady; climateBiomeGenerator.BiomeTexturesReady -= HandleBiomeTexturesReady; }
-        if (hydrologyMaskGenerator != null) hydrologyMaskGenerator.HydrologyMaskReady -= HandleHydrologyMaskReady;
+        if (worldGenerator != null) worldGenerator.WorldTexturesUpdated -= BindGeneratedWorldTextures;
         if (materialInstance != null) { Destroy(materialInstance); materialInstance = null; }
-        if (hydrologyMaskGenerator != null) { hydrologyMaskGenerator.Release(); }
-        if (tectonicGenerator != null) { tectonicGenerator.Release(); }
+        if (worldGenerator != null) { worldGenerator.Release(); }
         if (cloudMaterialInstance != null) { Destroy(cloudMaterialInstance); cloudMaterialInstance = null; }
         if (atmosphereMaterialInstance != null) { Destroy(atmosphereMaterialInstance); atmosphereMaterialInstance = null; }
     }
@@ -766,7 +692,9 @@ public class MenuPlanetPreview : MonoBehaviour
             return;
 
         bool tectonicChanged = TectonicInputsChanged();
-        bool hydrologyChanged = HydrologyInputsChanged();
+        bool climateChanged = ClimateInputsChanged();
+        bool hydrologyChanged = HydrologyOnlyInputsChanged();
+        bool biomeChanged = BiomeOnlyInputsChanged();
 
         ApplyAllParameters();
         PushCloudParameters();
@@ -777,15 +705,13 @@ public class MenuPlanetPreview : MonoBehaviour
             atmosphereShellGO.transform.localScale = previewRenderer.transform.localScale * atmosphereShellScale;
 
         if (tectonicChanged)
-        {
-            pendingClimateAfterTectonics = true;
-        pendingHydrologyAfterTectonics = false;
-        pendingBiomeAfterHydrology = false;
-            RequestTectonicRegeneration(false);
-        }
-
-        if (hydrologyChanged && !tectonicChanged)
-            RequestHydrologyRegeneration(false);
+            RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics, false);
+        else if (climateChanged)
+            RequestWorldRebuild(PreviewWorldRebuildScope.Climate, false);
+        else if (hydrologyChanged)
+            RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology, false);
+        else if (biomeChanged)
+            RequestWorldRebuild(PreviewWorldRebuildScope.Biomes, false);
 
         CacheValidatedGeneratorInputs();
     }
@@ -889,7 +815,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
-        if (hydrologyMaskGenerator != null && hydrologyMaskGenerator.MaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, hydrologyMaskGenerator.MaskTexture);
+        if (worldGenerator != null && worldGenerator.HydrologyMaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
@@ -1046,7 +972,7 @@ public class MenuPlanetPreview : MonoBehaviour
             !Mathf.Approximately(elevation, lastValidatedElevation);
     }
 
-    private bool HydrologyInputsChanged()
+    private bool HydrologyOnlyInputsChanged()
     {
         if (!validateCacheInitialized) return true;
 
@@ -1085,7 +1011,7 @@ public class MenuPlanetPreview : MonoBehaviour
         pendingClimateAfterTectonics = true;
         pendingHydrologyAfterTectonics = false;
         pendingBiomeAfterHydrology = false;
-        RequestTectonicRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
     public void SetLandPreset(float scale, float threshold)
@@ -1106,7 +1032,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Temperature, temperature);
              RecalculateDerivedVisuals();
         }
-        RequestHydrologyRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
         PushCloudParameters();
         PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
@@ -1135,7 +1061,7 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Moisture, moisture);
             RecalculateDerivedVisuals();
         }
-        RequestHydrologyRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
     }
 
     /// <summary>
@@ -1156,7 +1082,7 @@ public class MenuPlanetPreview : MonoBehaviour
         pendingClimateAfterTectonics = true;
         pendingHydrologyAfterTectonics = false;
         pendingBiomeAfterHydrology = false;
-        RequestTectonicRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
     /// <summary>
@@ -1227,7 +1153,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         pendingClimateAfterTectonics = true;
         pendingHydrologyAfterTectonics = false;
         pendingBiomeAfterHydrology = false;
-        RequestTectonicRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
         public void RandomizePreviewSeed() => SetWorldSeed(Mathf.RoundToInt(seed), true, true);
@@ -1236,7 +1162,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     {
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
         RecalculateDerivedVisuals();
-        RequestHydrologyRegeneration();
+        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
         PushCloudParameters();
     }
 
@@ -1682,5 +1608,9 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         PushCloudParameters();
         PushAtmosphereParameters();
     }
+
+
+private bool ClimateInputsChanged() => validatedTemperature != temperature || validatedMoisture != moisture || validatedMoistureResponseScale != moistureResponseScale || validatedTemperatureHumidityInfluence != temperatureHumidityInfluence || validatedClimateNoiseStrength != climateNoiseStrength || validatedCoastWetnessStrength != coastWetnessStrength || validatedContinentalDrynessStrength != continentalDrynessStrength || validatedContinentalTemperatureStrength != continentalTemperatureStrength || validatedRainShadowStrength != rainShadowStrength || validatedOrographicWetnessStrength != orographicWetnessStrength || validatedOrographicSampleOffset != orographicSampleOffset || validatedSeasonalityStrength != seasonalityStrength;
+private bool BiomeOnlyInputsChanged() => validatedBiomeProvinceStrength != biomeProvinceStrength || validatedBiomeCompetitionSharpness != biomeCompetitionSharpness || validatedIceCapSize != iceCapSize;
 
 }
