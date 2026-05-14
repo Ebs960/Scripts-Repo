@@ -689,6 +689,17 @@ Shader "Custom/MenuPlanetPreview"
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
                 SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
+                if (_UseTectonicPreview > 0.5){
+                    float2 uvGen = DirToEquirectUV(objNorm);
+                    float4 gClimate = SAMPLE_TEXTURE2D(_ClimateTex, sampler_ClimateTex, uvGen);
+                    float4 bw0 = SAMPLE_TEXTURE2D(_BiomeWeights0Tex, sampler_BiomeWeights0Tex, uvGen);
+                    float4 bw1 = SAMPLE_TEXTURE2D(_BiomeWeights1Tex, sampler_BiomeWeights1Tex, uvGen);
+                    float4 bw2 = SAMPLE_TEXTURE2D(_BiomeWeights2Tex, sampler_BiomeWeights2Tex, uvGen);
+                    temperatureLocal = gClimate.r; localMoist = gClimate.g; continentality = gClimate.b; seasonality = gClimate.a;
+                    biomeWeights.jungle=bw0.r; biomeWeights.desert=bw0.g; biomeWeights.savanna=bw0.b; biomeWeights.temperateGrass=bw0.a;
+                    biomeWeights.temperateForest=bw1.r; biomeWeights.taiga=bw1.g; biomeWeights.tundra=bw1.b; biomeWeights.polar=bw1.a;
+                    biomeWeights.marsh=bw2.r;
+                }
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1);
                 if (_ShowLocalTemperatureOnly > 0.5) return float4(temperatureLocal.xxx,1);
                 if (_ShowContinentalityOnly > 0.5) return float4(continentality.xxx,1);
