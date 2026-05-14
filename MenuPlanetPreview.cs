@@ -5,13 +5,13 @@ using System.Collections.Generic;
 using UnityEngine.Serialization;
 
 /// <summary>
-/// Visual-only planet preview for the Main Menu / Game Setup UI.
-/// Displays a slowly rotating sphere with procedural land/ocean blobs
-/// that respond instantly to land type, temperature, and moisture sliders.
+/// Visual-only generated planet preview for the Main Menu / Game Setup UI.
 ///
-/// This system has ZERO coupling to gameplay code — no PlanetGenerator,
-/// no GameManager, no seeds, no tile logic. It only sets material properties
-/// on a custom HDRP shader (Custom/MenuPlanetPreview).
+/// Uses MenuPlanetPreviewWorldGenerator to build a preview-specific
+/// tectonic/climate/hydrology/biome field pipeline, then renders those
+/// generated maps through the Custom/MenuPlanetPreview HDRP shader.
+///
+/// This system has no coupling to gameplay PlanetGenerator or tile logic.
 ///
 /// Hierarchy created at runtime:
 ///   MenuPlanetPreview (this script)
@@ -288,19 +288,19 @@ public class MenuPlanetPreview : MonoBehaviour
     [Header("Biome Tuning")]
     [Range(0f, 1f)]
     [Tooltip("Ice cap coverage size. 0 = no ice caps, 1 = massive polar ice.")]
-    [SerializeField] private float iceCapSize = 0.5f;
+    [FormerlySerializedAs("iceCapSize")][SerializeField, HideInInspector] private float legacyIceCapSize = 0.5f;
 
     [Range(0f, 1.0f)]
     [Tooltip("Blend width at biome band edges. 0 = hard cutoff, 0.03 = subtle transition.")]
-    [SerializeField] private float biomeBlend = 0.03f;
+    [FormerlySerializedAs("biomeBlend")][SerializeField, HideInInspector] private float legacyBiomeBlend = 0.03f;
 
     [Range(0f, 10f)]
     [Tooltip("Scale of noise used to perturb biome latitude bands. Higher = more detail.")]
-    [SerializeField] private float biomeNoiseScale = 3.0f;
+    [FormerlySerializedAs("biomeNoiseScale")][SerializeField, HideInInspector] private float legacyBiomeNoiseScale = 3.0f;
 
     [Range(0f, 0.2f)]
     [Tooltip("Strength of noise perturbation on biome bands. 0 = straight lines.")]
-    [SerializeField] private float biomeNoiseStrength = 0.08f;
+    [FormerlySerializedAs("biomeNoiseStrength")][SerializeField, HideInInspector] private float legacyBiomeNoiseStrength = 0.08f;
 
 
     [Header("Surface Properties")]
@@ -771,7 +771,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
 
         // Biome tuning
-        materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);
+        materialInstance.SetFloat(ID_IceCapSize,    legacyIceCapSize);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         RecalculateDerivedVisuals();
@@ -1132,17 +1132,17 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null) { materialInstance.SetColor(ID_OceanColor, oceanColor); }
     }
 
-    [System.Obsolete("Ice cap size is no longer used by the Option B generated planet preview. Snow/ice is climate-driven.")]
+    [System.Obsolete("Ice Cap Size no longer affects the Option B generated preview. Snow/ice is climate-driven.")]
     public void SetIceCapSize(float value)
     {
-        iceCapSize = Mathf.Clamp01(value);
-        if (materialInstance != null) { materialInstance.SetFloat(ID_IceCapSize, iceCapSize); }
+        legacyIceCapSize = Mathf.Clamp01(value);
+        if (materialInstance != null) { materialInstance.SetFloat(ID_IceCapSize, legacyIceCapSize); }
     }
 
-    [System.Obsolete("SetBiomeBlend is legacy and no longer affects the Option B generated planet preview.")]
+    [System.Obsolete("Biome Blend is a legacy fallback control and no longer affects the Option B generated preview pipeline.")]
     public void SetBiomeBlend(float value)
     {
-        biomeBlend = Mathf.Clamp(value, 0f, 0.1f);
+        legacyBiomeBlend = Mathf.Clamp(value, 0f, 0.1f);
     }
 
 public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = false)
@@ -1207,7 +1207,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
         materialInstance.SetColor(ID_OceanColor, oceanColor);
-        materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
+        materialInstance.SetFloat(ID_IceCapSize, legacyIceCapSize);
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
         float baseWaterwayAmount = waterwaysPreset == 0 ? 0.15f : (waterwaysPreset == 1 ? 0.55f : 1.0f);
