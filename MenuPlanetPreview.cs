@@ -1008,9 +1008,6 @@ public class MenuPlanetPreview : MonoBehaviour
             RecalculateDerivedVisuals();
         }
 
-        pendingClimateAfterTectonics = true;
-        pendingHydrologyAfterTectonics = false;
-        pendingBiomeAfterHydrology = false;
         RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
@@ -1079,9 +1076,6 @@ public class MenuPlanetPreview : MonoBehaviour
             PushDisplacementParameters();
             RecalculateDerivedVisuals();
             }
-        pendingClimateAfterTectonics = true;
-        pendingHydrologyAfterTectonics = false;
-        pendingBiomeAfterHydrology = false;
         RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
@@ -1150,9 +1144,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         }
         if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
         RecalculateDerivedVisuals();
-        pendingClimateAfterTectonics = true;
-        pendingHydrologyAfterTectonics = false;
-        pendingBiomeAfterHydrology = false;
         RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
@@ -1610,7 +1601,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     }
 
 
-private bool ClimateInputsChanged() => validatedTemperature != temperature || validatedMoisture != moisture || validatedMoistureResponseScale != moistureResponseScale || validatedTemperatureHumidityInfluence != temperatureHumidityInfluence || validatedClimateNoiseStrength != climateNoiseStrength || validatedCoastWetnessStrength != coastWetnessStrength || validatedContinentalDrynessStrength != continentalDrynessStrength || validatedContinentalTemperatureStrength != continentalTemperatureStrength || validatedRainShadowStrength != rainShadowStrength || validatedOrographicWetnessStrength != orographicWetnessStrength || validatedOrographicSampleOffset != orographicSampleOffset || validatedSeasonalityStrength != seasonalityStrength;
-private bool BiomeOnlyInputsChanged() => validatedBiomeProvinceStrength != biomeProvinceStrength || validatedBiomeCompetitionSharpness != biomeCompetitionSharpness || validatedIceCapSize != iceCapSize;
+private bool ClimateInputsChanged() => !validateCacheInitialized || !Mathf.Approximately(lastValidatedTemperature, temperature) || !Mathf.Approximately(lastValidatedMoisture, moisture);
+private bool BiomeOnlyInputsChanged() => true;
 
 }
