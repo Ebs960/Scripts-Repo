@@ -15,7 +15,6 @@ public class MenuPlanetPreviewRenderTexture : MonoBehaviour
     [SerializeField] private CameraClearFlags clearFlags = CameraClearFlags.SolidColor;
 
     private RenderTexture previewTexture;
-    private void Awake() => RebuildRenderTexture();
 
     private void OnEnable() => RebuildRenderTexture();
 
