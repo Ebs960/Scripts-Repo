@@ -268,7 +268,6 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_ClimateTex); SAMPLER(sampler_ClimateTex);
             TEXTURE2D(_BiomeWeights0Tex); SAMPLER(sampler_BiomeWeights0Tex);
             TEXTURE2D(_BiomeWeights1Tex); SAMPLER(sampler_BiomeWeights1Tex);
-            TEXTURE2D(_BiomeWeights2Tex); SAMPLER(sampler_BiomeWeights2Tex);
             TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
