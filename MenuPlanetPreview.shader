@@ -717,11 +717,16 @@ Shader "Custom/MenuPlanetPreview"
                 float tectonicShelfMask = tectonicSurface.a;
                 float coastShelfMask = (_UseTectonicPreview > 0.5) ? tectonicShelfMask : oceanMask * (1.0 - smoothstep(0.0, 0.08, edge));
                 float shorelineMask = oceanMask * smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.03, 0.06, edge));
-                float3 oceanAlbedoSample = SampleTriplanarScaled(TEXTURE2D_ARGS(_OceanAlbedoTex, sampler_OceanAlbedoTex), input.positionOS, objNorm, _TextureDetailScale);
-                float3 deepOceanBase = oceanAlbedoSample * _OceanColor.rgb;
-                float3 shallowOceanBase = oceanAlbedoSample * _OceanShallowColor.rgb;
-                float3 oceanColor = lerp(deepOceanBase, shallowOceanBase, coastShelfMask);
-                oceanColor = lerp(oceanColor, oceanColor * 1.08, shorelineMask * 0.12);
+                // Normal-world ocean color:
+                // Use the assigned ocean albedo texture exactly as authored.
+                // No OceanColor tint, no shallow-color tint, no shoreline brightening.
+                float3 oceanColor =
+                    SampleTriplanarScaled(
+                        TEXTURE2D_ARGS(_OceanAlbedoTex, sampler_OceanAlbedoTex),
+                        input.positionOS,
+                        objNorm,
+                        _TextureDetailScale
+                    );
 
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
@@ -760,11 +765,8 @@ Shader "Custom/MenuPlanetPreview"
                 if (_UseDetailTextures > 0.5)
                 {
                     float3 mtnDetail = SampleTriplanar(TEXTURE2D_ARGS(_MountainDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
-                    float3 ocnDetail = SampleTriplanar(TEXTURE2D_ARGS(_OceanDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float mtnFactor = (dot(mtnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
-                    float ocnFactor = (dot(ocnDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
                     elevatedLand *= (1.0 + mtnFactor * _MountainDetailStrength * mtnBlend * edge);
-                    oceanColor *= (1.0 + ocnFactor * _OceanDetailStrength * (1.0 - edge));
                     normalAlbedo = lerp(oceanColor, elevatedLand, edge);
                 }
 
