@@ -1202,14 +1202,17 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         materialInstance.SetFloat(ID_IceCapSize, legacyIceCapSize);
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
-        float baseWaterwayAmount = waterwaysPreset == 0 ? 0.15f : (waterwaysPreset == 1 ? 0.55f : 1.0f);
+        float baseWaterwayAmount = waterwaysPreset == 0 ? 0.22f : (waterwaysPreset == 1 ? 0.70f : 1.0f);
         // Menu preview only: scale visible waterways by plausible climate capacity.
         // Very cold or very arid worlds should show fewer persistent open channels.
         float climateFlowCapacity = Mathf.Clamp01(
             Mathf.Lerp(0.35f, 1.0f, moisture) *
             Mathf.Lerp(0.45f, 1.0f, Mathf.Clamp01(1f - Mathf.Abs(temperature - 0.58f) * 1.1f))
         );
-        float waterwayAmount = Mathf.Clamp01(baseWaterwayAmount * climateFlowCapacity);
+        // Hydrology generation already responds to rainfall.
+        // The shader should only modestly modulate visibility, not nearly erase waterways.
+        float visualClimateScale = Mathf.Lerp(0.78f, 1.0f, climateFlowCapacity);
+        float waterwayAmount = Mathf.Clamp01(baseWaterwayAmount * visualClimateScale);
         materialInstance.SetFloat(ID_WaterwayAmount, waterwayAmount);
         PushInfernalTextureParameters();
         
