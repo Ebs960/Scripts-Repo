@@ -7,8 +7,8 @@ using UnityEngine.Serialization;
 /// <summary>
 /// Visual-only generated planet preview for the Main Menu / Game Setup UI.
 ///
-/// Uses MenuPlanetPreviewWorldGenerator to build a preview-specific
-/// tectonic/climate/hydrology/biome field pipeline, then renders those
+/// Uses MenuPlanetPreviewWorldGeneratorV2 to build a preview-specific
+/// procedural landmass/climate/hydrology/biome field pipeline, then renders those
 /// generated maps through the Custom/MenuPlanetPreview HDRP shader.
 ///
 /// This system has no coupling to gameplay PlanetGenerator or tile logic.
@@ -37,7 +37,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Atmosphere shell shader. If empty, finds 'Custom/MenuPlanetAtmosphere' at runtime.")]
     [SerializeField] private Shader atmosphereShader;
-    [SerializeField] private MenuPlanetPreviewWorldGenerator worldGenerator;
+    [SerializeField] private MenuPlanetPreviewWorldGeneratorV2 worldGenerator;
 
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
@@ -615,10 +615,10 @@ public class MenuPlanetPreview : MonoBehaviour
     private void SetupWorldGenerator()
     {
         if (worldGenerator == null)
-            worldGenerator = GetComponent<MenuPlanetPreviewWorldGenerator>();
+            worldGenerator = GetComponent<MenuPlanetPreviewWorldGeneratorV2>();
 
         if (worldGenerator == null)
-            worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGenerator>();
+            worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGeneratorV2>();
     }
 
     private MenuPlanetPreviewWorldInputs BuildWorldInputs()
