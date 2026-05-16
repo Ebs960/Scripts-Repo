@@ -2,6 +2,39 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Flags]
+public enum PreviewWorldRebuildScope
+{
+    None = 0,
+    Tectonics = 1,
+    Climate = 2,
+    Hydrology = 4,
+    Biomes = 8,
+    All = 15
+}
+
+public struct MenuPlanetPreviewWorldInputs
+{
+    public float seed;
+    public float landScale;
+    public float landThreshold;
+    public float elevation;
+    public float temperature;
+    public float moisture;
+
+    public float climateNoiseStrength;
+    public float coastWetnessStrength;
+    public float continentalDrynessStrength;
+    public float continentalTemperatureStrength;
+    public float riparianWetnessStrength;
+
+    public float biomeProvinceStrength;
+    public float biomeCompetitionSharpness;
+
+    public int landPresetIndex;
+    public int waterwaysPreset;
+}
+
 public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 {
     [SerializeField] private int mapWidth = 1024;
