@@ -280,7 +280,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 400, y: 400}
+  m_SizeDelta: {x: 300, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!33 &5478185167803027325
 MeshFilter:
@@ -358,7 +358,7 @@ MonoBehaviour:
   antiAliasing: 4
   useHDR: 1
   filterMode: 1
-  useMipMap: 1
+  useMipMap: 0
   cameraBackgroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
   clearFlags: 1
 --- !u!1 &3523082564983676708
@@ -371,7 +371,7 @@ GameObject:
   m_Component:
   - component: {fileID: 295393544057895789}
   - component: {fileID: 7706978070917160381}
-  - component: {fileID: 6013045082289988684}
+  - component: {fileID: 7555492816204091449}
   m_Layer: 10
   m_Name: Menu Planet Preview
   m_TagString: Untagged
@@ -417,7 +417,7 @@ MonoBehaviour:
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
-  worldGenerator: {fileID: 6013045082289988684}
+  worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 14
@@ -550,17 +550,11 @@ MonoBehaviour:
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
-  moistureResponseScale: 1
-  temperatureHumidityInfluence: 0
   climateNoiseStrength: 0.15
-  coastWetnessStrength: 0.1
+  coastWetnessStrength: 0.2
   continentalDrynessStrength: 0.02
   continentalTemperatureStrength: 0.05
-  rainShadowStrength: 0.25
-  orographicWetnessStrength: 0.1
-  orographicSampleOffset: 0.1
   riparianWetnessStrength: 0.2
-  seasonalityStrength: 0.156
   biomeProvinceStrength: 0.3
   biomeCompetitionSharpness: 1
   elevation: 0.3
@@ -576,7 +570,7 @@ MonoBehaviour:
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 4
+  cameraDistance: 5.5
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
@@ -585,7 +579,7 @@ MonoBehaviour:
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
---- !u!114 &6013045082289988684
+--- !u!114 &7555492816204091449
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -594,226 +588,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 3523082564983676708}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c093fd00926437dbf636fa08f18a162, type: 3}
+  m_Script: {fileID: 11500000, guid: 05bb3d06a5eb88444bb53bab38a7f5e8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGenerator
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGeneratorV2
   mapWidth: 2048
   mapHeight: 1024
-  regenerationDelay: 0.02
-  plateCount: 16
-  plateBoundaryWidth: 0.045
-  continentalPlateFraction: 0.6
-  plateShapeNoiseStrength: 0.15
-  plateBoundaryWarpScale: 2
-  plateBoundaryWarpAmplitude: 0.035
-  continentalDetailScale: 1.85
-  plateContinentalInfluence: 0.05
-  continentDomainWarpScale: 1
-  continentDomainWarpStrength: 0.1
-  continentalElevationStrength: 0.5
-  oceanBasinDepthStrength: 0.5
-  convergentMountainStrength: 0.4
-  divergentRidgeStrength: 0.05
-  terrainDetailNoiseStrength: 0.05
-  continentalShelfStrength: 1
-  continentalShelfWidth: 0.012
-  coastlineSoftness: 0.025
-  coastlineFractalStrength: 0.1
-  coastlineFractalBandWidth: 0.05
-  coastlineFractalMacroScale: 3.6
-  coastlineFractalMidScale: 10
-  coastlineFractalFineScale: 26
-  coastlineFractalRidgedMix: 0.15
-  logLandCoverageDiagnostics: 1
-  logPresetDiagnostics: 0
-  logContinentSkeletonDiagnostics: 0
-  landPresetProfiles:
-  - name: Archipelago
-    minLandCoverage: 0.12
-    maxLandCoverage: 0.28
-    minContinentGroupCount: 8
-    maxContinentGroupCount: 14
-    minGroupSeparationDegrees: 10
-    minMainChainNodes: 2
-    maxMainChainNodes: 5
-    minNodeRadius: 0.045
-    maxNodeRadius: 0.095
-    minNodeStrength: 0.48
-    maxNodeStrength: 0.74
-    minNodeStepDegrees: 8
-    maxNodeStepDegrees: 16
-    minBranchCountPerGroup: 0
-    maxBranchCountPerGroup: 1
-    minBranchNodes: 1
-    maxBranchNodes: 3
-    branchStepDegreesMin: 7
-    branchStepDegreesMax: 14
-    domainWarpMultiplier: 1.1
-    coastlineNoiseStrength: 0.2
-    islandFragmentStrength: 0.18
-    coastlineFractalMultiplier: 1.3
-    minCoastCarversPerGroup: 0
-    maxCoastCarversPerGroup: 1
-    minCarverRadius: 0.035
-    maxCarverRadius: 0.08
-    minCarverStrength: 0.08
-    maxCarverStrength: 0.18
-    forceSinglePangaeaGroup: 0
-  - name: Islands
-    minLandCoverage: 0.24
-    maxLandCoverage: 0.4
-    minContinentGroupCount: 5
-    maxContinentGroupCount: 8
-    minGroupSeparationDegrees: 14
-    minMainChainNodes: 3
-    maxMainChainNodes: 6
-    minNodeRadius: 0.07
-    maxNodeRadius: 0.135
-    minNodeStrength: 0.56
-    maxNodeStrength: 0.8
-    minNodeStepDegrees: 10
-    maxNodeStepDegrees: 18
-    minBranchCountPerGroup: 0
-    maxBranchCountPerGroup: 1
-    minBranchNodes: 1
-    maxBranchNodes: 3
-    branchStepDegreesMin: 8
-    branchStepDegreesMax: 16
-    domainWarpMultiplier: 1.15
-    coastlineNoiseStrength: 0.18
-    islandFragmentStrength: 0.12
-    coastlineFractalMultiplier: 1.2
-    minCoastCarversPerGroup: 0
-    maxCoastCarversPerGroup: 2
-    minCarverRadius: 0.045
-    maxCarverRadius: 0.1
-    minCarverStrength: 0.08
-    maxCarverStrength: 0.2
-    forceSinglePangaeaGroup: 0
-  - name: Standard
-    minLandCoverage: 0.36
-    maxLandCoverage: 0.54
-    minContinentGroupCount: 3
-    maxContinentGroupCount: 5
-    minGroupSeparationDegrees: 22
-    minMainChainNodes: 5
-    maxMainChainNodes: 9
-    minNodeRadius: 0.105
-    maxNodeRadius: 0.185
-    minNodeStrength: 0.66
-    maxNodeStrength: 0.9
-    minNodeStepDegrees: 10
-    maxNodeStepDegrees: 20
-    minBranchCountPerGroup: 1
-    maxBranchCountPerGroup: 2
-    minBranchNodes: 2
-    maxBranchNodes: 5
-    branchStepDegreesMin: 8
-    branchStepDegreesMax: 16
-    domainWarpMultiplier: 1.2
-    coastlineNoiseStrength: 0.16
-    islandFragmentStrength: 0.07
-    coastlineFractalMultiplier: 1
-    minCoastCarversPerGroup: 1
-    maxCoastCarversPerGroup: 3
-    minCarverRadius: 0.06
-    maxCarverRadius: 0.14
-    minCarverStrength: 0.1
-    maxCarverStrength: 0.24
-    forceSinglePangaeaGroup: 0
-  - name: Large Continents
-    minLandCoverage: 0.5
-    maxLandCoverage: 0.66
-    minContinentGroupCount: 2
-    maxContinentGroupCount: 4
-    minGroupSeparationDegrees: 28
-    minMainChainNodes: 7
-    maxMainChainNodes: 12
-    minNodeRadius: 0.145
-    maxNodeRadius: 0.245
-    minNodeStrength: 0.74
-    maxNodeStrength: 0.96
-    minNodeStepDegrees: 10
-    maxNodeStepDegrees: 18
-    minBranchCountPerGroup: 1
-    maxBranchCountPerGroup: 3
-    minBranchNodes: 2
-    maxBranchNodes: 6
-    branchStepDegreesMin: 8
-    branchStepDegreesMax: 15
-    domainWarpMultiplier: 1.24
-    coastlineNoiseStrength: 0.14
-    islandFragmentStrength: 0.05
-    coastlineFractalMultiplier: 0.95
-    minCoastCarversPerGroup: 2
-    maxCoastCarversPerGroup: 4
-    minCarverRadius: 0.07
-    maxCarverRadius: 0.165
-    minCarverStrength: 0.1
-    maxCarverStrength: 0.26
-    forceSinglePangaeaGroup: 0
-  - name: Pangaea
-    minLandCoverage: 0.44
-    maxLandCoverage: 0.62
-    minContinentGroupCount: 1
-    maxContinentGroupCount: 1
-    minGroupSeparationDegrees: 0
-    minMainChainNodes: 12
-    maxMainChainNodes: 18
-    minNodeRadius: 0.165
-    maxNodeRadius: 0.28
-    minNodeStrength: 0.82
-    maxNodeStrength: 1
-    minNodeStepDegrees: 8
-    maxNodeStepDegrees: 15
-    minBranchCountPerGroup: 3
-    maxBranchCountPerGroup: 5
-    minBranchNodes: 3
-    maxBranchNodes: 7
-    branchStepDegreesMin: 7
-    branchStepDegreesMax: 14
-    domainWarpMultiplier: 1.3
-    coastlineNoiseStrength: 0.14
-    islandFragmentStrength: 0.03
-    coastlineFractalMultiplier: 0.9
-    minCoastCarversPerGroup: 4
-    maxCoastCarversPerGroup: 8
-    minCarverRadius: 0.08
-    maxCarverRadius: 0.19
-    minCarverStrength: 0.1
-    maxCarverStrength: 0.28
-    forceSinglePangaeaGroup: 1
-  - name: Terrestrial
-    minLandCoverage: 0.68
-    maxLandCoverage: 0.84
-    minContinentGroupCount: 2
-    maxContinentGroupCount: 4
-    minGroupSeparationDegrees: 24
-    minMainChainNodes: 8
-    maxMainChainNodes: 14
-    minNodeRadius: 0.18
-    maxNodeRadius: 0.3
-    minNodeStrength: 0.84
-    maxNodeStrength: 1
-    minNodeStepDegrees: 9
-    maxNodeStepDegrees: 17
-    minBranchCountPerGroup: 2
-    maxBranchCountPerGroup: 4
-    minBranchNodes: 3
-    maxBranchNodes: 7
-    branchStepDegreesMin: 7
-    branchStepDegreesMax: 14
-    domainWarpMultiplier: 1.18
-    coastlineNoiseStrength: 0.11
-    islandFragmentStrength: 0.02
-    coastlineFractalMultiplier: 0.85
-    minCoastCarversPerGroup: 2
-    maxCoastCarversPerGroup: 5
-    minCarverRadius: 0.07
-    maxCarverRadius: 0.16
-    minCarverStrength: 0.08
-    maxCarverStrength: 0.2
-    forceSinglePangaeaGroup: 0
+  regenerationDelay: 0.15
+  topologyWidth: 256
+  topologyHeight: 128
+  maxTopologyAttempts: 8
+  coastlineWarpStrength: 0.16
+  coastlineEdgeNoiseStrength: 0.12
+  coastlineSoftness: 0.018
+  logWorldGenerationDiagnostics: 1
+  sparseRiverRange: {x: 12, y: 20}
+  standardRiverRange: {x: 24, y: 40}
+  abundantRiverRange: {x: 45, y: 70}
+  minRiverSourceSpacingPixels: 32
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
