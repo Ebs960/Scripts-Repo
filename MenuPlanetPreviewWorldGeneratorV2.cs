@@ -176,30 +176,45 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
         float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
         int n=mapWidth*mapHeight; land=new float[n]; elev=new float[n]; mtn=new float[n]; shelf=new float[n]; cont=new float[n];
-        using var nTopoLand = new NativeArray<float>(tn, Allocator.TempJob);
-        using var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
-        using var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
-        using var nLand = new NativeArray<float>(n, Allocator.TempJob);
-        using var nInland = new NativeArray<float>(n, Allocator.TempJob);
-        using var nOffshore = new NativeArray<float>(n, Allocator.TempJob);
-        using var nElev = new NativeArray<float>(n, Allocator.TempJob);
-        using var nMtn = new NativeArray<float>(n, Allocator.TempJob);
-        using var nShelf = new NativeArray<float>(n, Allocator.TempJob);
-        using var nCont = new NativeArray<float>(n, Allocator.TempJob);
-        using var nUpland = new NativeArray<float>(n, Allocator.TempJob);
-        using var nRawMtn = new NativeArray<float>(n, Allocator.TempJob);
-        for(int i=0;i<tn;i++){nTopoLand[i]=topoLand[i]?1f:0f; nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i];}
-        var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineWarpStrength=coastlineWarpStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,topoLand=nTopoLand,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore};
-        var jh=landJob.ScheduleParallel(n,64,default);
-        var terrJob=new TerrainPotentialJob{mapWidth=mapWidth,mapHeight=mapHeight,seed=inputs.seed,roughness=math.saturate(inputs.elevation),land=nLand,inlandDistance=nInland,rawMountainPotential=nRawMtn,uplandPotential=nUpland};
-        jh=terrJob.ScheduleParallel(n,64,jh); jh.Complete();
-        float rough=math.saturate(inputs.elevation); float targetMountainCoverage=math.lerp(0f,0.24f,math.pow(rough,1.15f));
-        var vals=new List<float>(); for(int i=0;i<n;i++) if(nLand[i]>0.5f) vals.Add(nRawMtn[i]); vals.Sort();
-        float threshold=vals.Count>0 && targetMountainCoverage>0f ? vals[Mathf.Clamp(Mathf.FloorToInt((1f-targetMountainCoverage)*(vals.Count-1)),0,vals.Count-1)] : 1f;
-        var mfJob=new MountainFinalizeJob{mapHeight=mapHeight,roughness=rough,mountainThreshold=threshold,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,uplandPotential=nUpland,rawMountainPotential=nRawMtn,mountain=nMtn,elevation=nElev,shelf=nShelf,continentality=nCont};
-        mfJob.ScheduleParallel(n,64,default).Complete();
-        float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i]; if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); if(mtn[i]>0.35f)mtnPixels++;}}
-        diag.actualLand=lc/n; diag.avgElevation=landPixels>0?elevSum/landPixels:0; diag.maxElevation=elevMax; diag.mountainCoverage=landPixels>0?mtnPixels/landPixels:0;
+        var nTopoLand = new NativeArray<float>(tn, Allocator.TempJob);
+        var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
+        var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
+        var nLand = new NativeArray<float>(n, Allocator.TempJob);
+        var nInland = new NativeArray<float>(n, Allocator.TempJob);
+        var nOffshore = new NativeArray<float>(n, Allocator.TempJob);
+        var nElev = new NativeArray<float>(n, Allocator.TempJob);
+        var nMtn = new NativeArray<float>(n, Allocator.TempJob);
+        var nShelf = new NativeArray<float>(n, Allocator.TempJob);
+        var nCont = new NativeArray<float>(n, Allocator.TempJob);
+        var nUpland = new NativeArray<float>(n, Allocator.TempJob);
+        var nRawMtn = new NativeArray<float>(n, Allocator.TempJob);
+        try{
+            for(int i=0;i<tn;i++){nTopoLand[i]=topoLand[i]?1f:0f; nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i];}
+            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineWarpStrength=coastlineWarpStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,topoLand=nTopoLand,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore};
+            var jh=landJob.ScheduleParallel(n,64,default);
+            var terrJob=new TerrainPotentialJob{mapWidth=mapWidth,mapHeight=mapHeight,seed=inputs.seed,roughness=math.saturate(inputs.elevation),land=nLand,inlandDistance=nInland,rawMountainPotential=nRawMtn,uplandPotential=nUpland};
+            jh=terrJob.ScheduleParallel(n,64,jh); jh.Complete();
+            float rough=math.saturate(inputs.elevation); float targetMountainCoverage=math.lerp(0f,0.24f,math.pow(rough,1.15f));
+            var vals=new List<float>(); for(int i=0;i<n;i++) if(nLand[i]>0.5f) vals.Add(nRawMtn[i]); vals.Sort();
+            float threshold=vals.Count>0 && targetMountainCoverage>0f ? vals[Mathf.Clamp(Mathf.FloorToInt((1f-targetMountainCoverage)*(vals.Count-1)),0,vals.Count-1)] : 1f;
+            var mfJob=new MountainFinalizeJob{mapHeight=mapHeight,roughness=rough,mountainThreshold=threshold,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,uplandPotential=nUpland,rawMountainPotential=nRawMtn,mountain=nMtn,elevation=nElev,shelf=nShelf,continentality=nCont};
+            mfJob.ScheduleParallel(n,64,default).Complete();
+            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i]; if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); if(mtn[i]>0.35f)mtnPixels++;}}
+            diag.actualLand=lc/n; diag.avgElevation=landPixels>0?elevSum/landPixels:0; diag.maxElevation=elevMax; diag.mountainCoverage=landPixels>0?mtnPixels/landPixels:0;
+        } finally {
+            nRawMtn.Dispose();
+            nUpland.Dispose();
+            nCont.Dispose();
+            nShelf.Dispose();
+            nMtn.Dispose();
+            nElev.Dispose();
+            nOffshore.Dispose();
+            nInland.Dispose();
+            nLand.Dispose();
+            nTopoOceanDist.Dispose();
+            nTopoLandDist.Dispose();
+            nTopoLand.Dispose();
+        }
     }
     private void SmoothBroadPresetTopology(TopologyCell[] topo,int tw,int th,string presetName){
         if(presetName!="Standard" && presetName!="Large Continents" && presetName!="Pangaea" && presetName!="Terrestrial") return;
