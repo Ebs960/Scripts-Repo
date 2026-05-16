@@ -351,6 +351,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private float lastValidatedContinentalDrynessStrength;
     private float lastValidatedContinentalTemperatureStrength;
     private int lastValidatedWaterwaysPreset;
+    private float lastValidatedRiparianWetnessStrength;
     private float lastValidatedBiomeProvinceStrength;
     private float lastValidatedBiomeCompetitionSharpness;
     [SerializeField] private float basePlanetScale = 1f;
@@ -611,6 +612,7 @@ public class MenuPlanetPreview : MonoBehaviour
             temperature = temperature, moisture = moisture, waterwaysPreset = waterwaysPreset,
             climateNoiseStrength = climateNoiseStrength,
             coastWetnessStrength = coastWetnessStrength, continentalDrynessStrength = continentalDrynessStrength, continentalTemperatureStrength = continentalTemperatureStrength,
+            riparianWetnessStrength = riparianWetnessStrength,
 
             biomeProvinceStrength = biomeProvinceStrength, biomeCompetitionSharpness = biomeCompetitionSharpness
         };
@@ -937,6 +939,7 @@ public class MenuPlanetPreview : MonoBehaviour
         lastValidatedCoastWetnessStrength = coastWetnessStrength;
         lastValidatedContinentalDrynessStrength = continentalDrynessStrength;
         lastValidatedContinentalTemperatureStrength = continentalTemperatureStrength;
+        lastValidatedRiparianWetnessStrength = riparianWetnessStrength;
 
         lastValidatedWaterwaysPreset = waterwaysPreset;
 
@@ -1591,6 +1594,7 @@ private bool BiomeOnlyInputsChanged()
     if (!validateCacheInitialized) return true;
 
     return
+        !Mathf.Approximately(riparianWetnessStrength, lastValidatedRiparianWetnessStrength) ||
         !Mathf.Approximately(biomeProvinceStrength, lastValidatedBiomeProvinceStrength) ||
         !Mathf.Approximately(biomeCompetitionSharpness, lastValidatedBiomeCompetitionSharpness);
 }

@@ -7,7 +7,7 @@ using UnityEngine;
 
 [System.Flags]
 public enum PreviewWorldRebuildScope { None = 0, Tectonics = 1, Climate = 2, Hydrology = 4, Biomes = 8, All = 15 }
-public struct MenuPlanetPreviewWorldInputs { public float seed, landScale, landThreshold, elevation, temperature, moisture, moistureResponseScale, temperatureHumidityInfluence, climateNoiseStrength, coastWetnessStrength, continentalDrynessStrength, continentalTemperatureStrength, rainShadowStrength, orographicWetnessStrength, orographicSampleOffset, seasonalityStrength, biomeProvinceStrength, biomeCompetitionSharpness; public int landPresetIndex, waterwaysPreset; }
+public struct MenuPlanetPreviewWorldInputs { public float seed, landScale, landThreshold, elevation, temperature, moisture, moistureResponseScale, temperatureHumidityInfluence, climateNoiseStrength, coastWetnessStrength, continentalDrynessStrength, continentalTemperatureStrength, riparianWetnessStrength, rainShadowStrength, orographicWetnessStrength, orographicSampleOffset, seasonalityStrength, biomeProvinceStrength, biomeCompetitionSharpness; public int landPresetIndex, waterwaysPreset; }
 
 public class MenuPlanetPreviewWorldGenerator : MonoBehaviour {
     [SerializeField] int mapWidth = 1024, mapHeight = 512; [SerializeField] float regenerationDelay = 0.15f;
