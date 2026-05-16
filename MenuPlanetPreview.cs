@@ -577,7 +577,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         worldGenerator.WorldTexturesUpdated -= BindGeneratedWorldTextures;
         worldGenerator.WorldTexturesUpdated += BindGeneratedWorldTextures;
-        RequestWorldRebuild(PreviewWorldRebuildScope.All, true);
+        RequestWorldRebuild(PreviewWorldRebuildScope.All, false);
         CacheValidatedGeneratorInputs();
 
         SetupSpaceBackgroundIfNeeded();
