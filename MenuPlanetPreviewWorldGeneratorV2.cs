@@ -21,17 +21,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private Vector2Int standardRiverRange = new Vector2Int(24, 40);
     [SerializeField] private Vector2Int abundantRiverRange = new Vector2Int(45, 70);
 
-    [Header("V2 Debug")]
-    [SerializeField] private bool showLandMaskOnly;
-    [SerializeField] private bool showElevationOnly;
-    [SerializeField] private bool showMountainMaskOnly;
-    [SerializeField] private bool showClimateTemperatureOnly;
-    [SerializeField] private bool showClimateMoistureOnly;
-    [SerializeField] private bool showContinentalityOnly;
-    [SerializeField] private bool showRiverMaskOnly;
-    [SerializeField] private bool showLakeMaskOnly;
-    [SerializeField] private bool showWetlandMaskOnly;
-    [SerializeField] private bool showDominantBiomeOnly;
+    [SerializeField, Range(4, 64)] private int minRiverSourceSpacingPixels = 18;
 
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture, climateTexture, hydrologyMaskTexture, biomeWeights0Texture, biomeWeights1Texture, biomeWeights2Texture;
     public Texture2D TectonicSurfaceTexture => surfaceDataTexture;
@@ -101,7 +91,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         {
             if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
             if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
-            GenerateBiomes(land, elev, mtn, temp, moisture);
+            ReadHydrology(out var river, out var lake, out var hydroWetness, out _);
+            GenerateBiomes(land, elev, mtn, temp, moisture, river, lake, hydroWetness);
         }
         if (logWorldGenerationDiagnostics && (s & PreviewWorldRebuildScope.Tectonics) != 0)
         {
@@ -174,12 +165,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                     if(best>=0){topo[best].isLand=true; topo[best].groupId=g; placed++; counts[g]++; frontier[g].Add(best);} else frontier[g].Clear();
                 }
             }
+            float landScaleFactor=Mathf.Lerp(0.88f,1.22f,Mathf.InverseLerp(0.5f,5f,inputs.landScale));
             int sat=r.Next(preset.targetSatelliteIslandClustersMin,preset.targetSatelliteIslandClustersMax+1);
+            sat=Mathf.RoundToInt(sat*Mathf.Lerp(0.75f,1.5f,preset.islandFragmentBias)*landScaleFactor);
             for(int s=0;s<sat;s++){int cx=r.Next(tw),cy=r.Next(th),rad=r.Next(1,3); for(int yy=-rad;yy<=rad;yy++)for(int xx=-rad;xx<=rad;xx++){int x=(cx+xx+tw)%tw,y=cy+yy; if(y<0||y>=th)continue; if(xx*xx+yy*yy<=rad*rad&&r.NextDouble()>0.25){int i=y*tw+x; if(!topo[i].isLand){topo[i].isLand=true; topo[i].groupId=r.Next(groups); placed++;}}}}
             int[] comp; int compCount; float largest=LargestLandmassShare(topo,tw,th,out compCount,out comp);
-            bool valid=true;
-            if(preset.requireSingleDominantLandmass && largest<preset.minLargestLandmassShare) valid=false;
-            if((preset.name=="Archipelago"||preset.name=="Islands"||preset.name=="Standard") && largest>0.70f) valid=false;
+            bool valid=IsTopologyValidForPreset(preset, largest, compCount, (float)placed/tn);
             float score=(valid?1f:0f) + (1f-Mathf.Abs(((float)placed/tn)-target)) - Mathf.Abs(largest-(preset.requireSingleDominantLandmass?preset.minLargestLandmassShare:0.35f));
             if(score>bestScore){bestScore=score; bestAttempt=attempt; bestTopo=(TopologyCell[])topo.Clone(); bestGroups=compCount; bestLargest=largest;}
             if(valid){bestAttempt=attempt; bestTopo=(TopologyCell[])topo.Clone(); bestGroups=compCount; bestLargest=largest; break;}
@@ -192,8 +183,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             int x1=(x0+1)%tw, y1=Mathf.Min(y0+1,th-1); float fx=tx-Mathf.Floor(tx), fy=ty-Mathf.Floor(ty);
             float v00=bestTopo[y0*tw+x0].isLand?1f:0f,v10=bestTopo[y0*tw+x1].isLand?1f:0f,v01=bestTopo[y1*tw+x0].isLand?1f:0f,v11=bestTopo[y1*tw+x1].isLand?1f:0f;
             float baseLand=Mathf.Lerp(Mathf.Lerp(v00,v10,fx),Mathf.Lerp(v01,v11,fx),fy);
-            float warp=(Mathf.PerlinNoise((x+inputs.seed)*0.006f,(y-inputs.seed)*0.009f)-0.5f)*coastlineWarpStrength;
-            float edge=(Mathf.PerlinNoise((x-inputs.seed)*0.035f,(y+inputs.seed)*0.033f)-0.5f)*coastlineEdgeNoiseStrength;
+            float ls=Mathf.InverseLerp(0.5f,5f,inputs.landScale);
+            float warp=(Mathf.PerlinNoise((x+inputs.seed)*Mathf.Lerp(0.0045f,0.0085f,ls),(y-inputs.seed)*Mathf.Lerp(0.0065f,0.0125f,ls))-0.5f)*(coastlineWarpStrength*Mathf.Lerp(0.85f,1.2f,ls));
+            float edge=(Mathf.PerlinNoise((x-inputs.seed)*Mathf.Lerp(0.024f,0.048f,ls),(y+inputs.seed)*Mathf.Lerp(0.022f,0.046f,ls))-0.5f)*(coastlineEdgeNoiseStrength*Mathf.Lerp(0.85f,1.25f,ls));
             float smooth=Mathf.SmoothStep(0.5f-coastlineSoftness,0.5f+coastlineSoftness,baseLand+warp+edge);
             land[i]=smooth;
         }
@@ -217,6 +209,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         for(int i=0;i<n;i++) if(topo[i].isLand&&!vis[i]){int size=0; var q=new Queue<int>(); q.Enqueue(i); vis[i]=true; while(q.Count>0){int c=q.Dequeue(); size++; int x=c%w,y=c/w; for(int d=0;d<4;d++){int nx=(x+(d==0?1:d==1?-1:0)+w)%w, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=h) continue; int ni=ny*w+nx; if(!vis[ni]&&topo[ni].isLand){vis[ni]=true;q.Enqueue(ni);}}} sizes.Add(size);} 
         compCount=sizes.Count; componentSizes=sizes.ToArray(); int largest=0; foreach(int s in sizes) if(s>largest) largest=s; return total<=0?0f:(float)largest/total;
     }
+    private bool IsTopologyValidForPreset(PreviewLandPresetProfileV2 preset,float largestShare,int componentCount,float actualCoverage){
+        switch(preset.name){
+            case "Archipelago": return largestShare<=0.28f && componentCount>=8;
+            case "Islands": return largestShare<=0.48f && componentCount>=4;
+            case "Standard": return largestShare<=0.62f && componentCount>=3;
+            case "Large Continents": return largestShare<=0.78f && componentCount>=2;
+            case "Pangaea": return largestShare>=0.94f;
+            case "Terrestrial": return largestShare<=0.92f || actualCoverage<=0.80f;
+            default: return !preset.requireSingleDominantLandmass || largestShare>=preset.minLargestLandmassShare;
+        }
+    }
 
     private float[] DistanceFromBoundary(float[] land,float threshold,bool forLand){
         int n=land.Length; float[] dist=new float[n]; for(int i=0;i<n;i++) dist[i]=99999f; var q=new Queue<int>();
@@ -228,8 +231,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void WriteSurfaceAndStructure(float[] land,float[] elev,float[] mtn,float[] shelf,float[] cont){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){s[i]=new Color32(B(land[i]),B(elev[i]),B(mtn[i]),B(shelf[i]));w[i]=new Color32(B(cont[i]),B(mtn[i]),B(elev[i]),0);a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}    
     private void ReadSurface(out float[] land,out float[] elev,out float[] mtn,out float[] shelf){int n=mapWidth*mapHeight;land=new float[n];elev=new float[n];mtn=new float[n];shelf=new float[n];var p=surfaceDataTexture.GetPixels32();for(int i=0;i<n;i++){land[i]=p[i].r/255f;elev[i]=p[i].g/255f;mtn[i]=p[i].b/255f;shelf[i]=p[i].a/255f;}}
     private void ReadClimate(out float[] temp,out float[] moisture,out float[] cont){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];cont=new float[n];var p=climateTexture.GetPixels32();for(int i=0;i<n;i++){temp[i]=p[i].r/255f;moisture[i]=p[i].g/255f;cont[i]=p[i].b/255f;}}
-    private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float tempLat=1f-lat;float elevCool=elev[i]*0.42f;float t=Mathf.Clamp01(tempLat+(inputs.temperature-0.5f)*0.65f-elevCool);float coastalWet=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float continentalDry=Mathf.Clamp01(contIn[i]);float rainShadow=Mathf.Clamp01(mtn[i]*0.3f*continentalDry);float m=Mathf.Clamp01(inputs.moisture*0.7f+coastalWet*0.5f-continentalDry*0.35f-rainShadow+0.1f*(1f-lat));temp[i]=t;moisture[i]=m;p[i]=new Color32(B(t),B(m),B(contIn[i]),B(inputs.seasonalityStrength));}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}    
-    private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n];
+    private void ReadHydrology(out float[] river, out float[] lake, out float[] wetness, out float[] flowOrDepth){int n=mapWidth*mapHeight;river=new float[n];lake=new float[n];wetness=new float[n];flowOrDepth=new float[n];var p=hydrologyMaskTexture.GetPixels32();for(int i=0;i<n;i++){river[i]=p[i].r/255f;lake[i]=p[i].g/255f;wetness[i]=p[i].b/255f;flowOrDepth[i]=p[i].a/255f;}}
+    private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int x=i%mapWidth;int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float equatorWarmth=1f-lat;float continentality=contIn[i];float tempNoise=(Mathf.PerlinNoise((x+inputs.seed*0.31f)*0.006f,(y-inputs.seed*0.17f)*0.006f)-0.5f)*2f;float localTemperature=equatorWarmth+(inputs.temperature-0.5f)*0.65f-elev[i]*0.42f+continentality*inputs.continentalTemperatureStrength+tempNoise*inputs.climateNoiseStrength*0.35f;float coastProximity=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float moistureNoise=(Mathf.PerlinNoise((x-inputs.seed*0.23f)*0.007f,(y+inputs.seed*0.29f)*0.007f)-0.5f)*2f;float localMoisture=inputs.moisture+coastProximity*inputs.coastWetnessStrength-continentality*inputs.continentalDrynessStrength+moistureNoise*inputs.climateNoiseStrength+0.06f*(1f-lat);localTemperature=Mathf.Clamp01(localTemperature);localMoisture=Mathf.Clamp01(localMoisture);temp[i]=localTemperature;moisture[i]=localMoisture;p[i]=new Color32(B(localTemperature),B(localMoisture),B(continentality),0);}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}
+    private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n],flow=new float[n];
         var sources=new List<int>(); for(int i=0;i<n;i++) if(land[i]>0.5f&&elev[i]>0.45f&&moisture[i]>0.45f) sources.Add(i);
         int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
         var r=new System.Random(hydroSeed*31+17);
@@ -239,21 +243,23 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             abundantRiverRange;
         int targetRivers=Mathf.RoundToInt(Mathf.Lerp(selectedRiverRange.x,selectedRiverRange.y,Mathf.Clamp01(inputs.moisture)));
         targetRivers=Mathf.Clamp(targetRivers, selectedRiverRange.x, selectedRiverRange.y);
-        int rivers=0,lakes=0; int tries=Mathf.Min(sources.Count,targetRivers*5);
+        int rivers=0,lakes=0; int tries=Mathf.Min(sources.Count,targetRivers*8); var acceptedSources=new List<int>();
         for(int t=0;t<tries&&rivers<targetRivers;t++){
             if(sources.Count==0) break; int pick=r.Next(sources.Count); int cur=sources[pick]; sources[pick]=sources[sources.Count-1]; sources.RemoveAt(sources.Count-1);
-            var seen=new HashSet<int>(); int len=0; bool reachedWater=false;
+            bool tooClose=false; foreach(var s in acceptedSources){int sx=s%mapWidth,sy=s/mapWidth,cx=cur%mapWidth,cy=cur/mapWidth;int dx=Mathf.Abs(cx-sx);dx=Mathf.Min(dx,mapWidth-dx);int dy=Mathf.Abs(cy-sy);if(dx*dx+dy*dy<minRiverSourceSpacingPixels*minRiverSourceSpacingPixels){tooClose=true;break;}} if(tooClose) continue; acceptedSources.Add(cur);
+            var seen=new HashSet<int>(); int len=0; bool reachedWater=false; float pathFlow=0.35f + 0.45f*moisture[cur];
             while(len<220 && land[cur]>0.5f && !seen.Contains(cur)){
-                seen.Add(cur); river[cur]=Mathf.Max(river[cur],1f); wet[cur]=Mathf.Max(wet[cur],0.6f); len++;
+                seen.Add(cur); pathFlow=Mathf.Clamp01(pathFlow+0.004f); flow[cur]=Mathf.Clamp01(flow[cur]+pathFlow*0.45f); river[cur]=Mathf.Max(river[cur],Mathf.Clamp01(0.2f+flow[cur])); wet[cur]=Mathf.Max(wet[cur],0.35f+river[cur]*0.45f); len++;
                 int x=cur%mapWidth,y=cur/mapWidth; int next=cur; float best=elev[cur]-moisture[cur]*0.03f;
                 for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue;int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; float e=elev[ni]-moisture[ni]*0.02f; if(e<best){best=e; next=ni;}}
-                if(next==cur){lake[cur]=Mathf.Max(lake[cur],1f); wet[cur]=1f; lakes++; break;}
-                if(land[next]<=0.5f||river[next]>0.6f){reachedWater=true; break;} cur=next;
+                if(next==cur){int rad=Mathf.Clamp(2+Mathf.RoundToInt(inputs.moisture*2f)+(inputs.waterwaysPreset>=2?1:0)+r.Next(0,2),2,6); FillLocalLakePatch(cur,rad,land,elev,lake,wet); lakes++; break;}
+                if(land[next]<=0.5f||river[next]>0.2f){flow[next]=Mathf.Clamp01(flow[next]+pathFlow*0.65f); river[next]=Mathf.Max(river[next],Mathf.Clamp01(0.35f+flow[next])); reachedWater=true; break;} cur=next;
             }
             if(len>18&&reachedWater) rivers++;
         }
         for(int i=0;i<n;i++){if(lake[i]>0.2f){int x=i%mapWidth,y=i/mapWidth; for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight)continue; int ni=ny*mapWidth+nx; if(land[ni]>0.5f) wet[ni]=Mathf.Max(wet[ni],0.75f);}} if(river[i]>0f){river[i]=Mathf.Clamp01(river[i]); wet[i]=Mathf.Max(wet[i],0.4f*moisture[i]);}}
-        var p=new Color32[n]; for(int i=0;i<n;i++) p[i]=new Color32(B(river[i]),B(lake[i]),B(wet[i]),B(Mathf.Max(river[i],lake[i])));
+        var p=new Color32[n]; for(int i=0;i<n;i++) p[i]=new Color32(B(river[i]),B(lake[i]),B(wet[i]),B(Mathf.Max(flow[i],lake[i])));
         hydrologyMaskTexture.SetPixelData(p,0); hydrologyMaskTexture.Apply(false,false); diag.rivers=rivers; diag.lakes=lakes;}    
-    private void GenerateBiomes(float[] land,float[] elev,float[] mtn,float[] temp,float[] moisture){int n=mapWidth*mapHeight;var o0=new Color32[n];var o1=new Color32[n];var o2=new Color32[n];for(int i=0;i<n;i++){if(land[i]<0.5f){o0[i]=o1[i]=o2[i]=new Color32();continue;}float hot=temp[i],wet=moisture[i];float jungle=Mathf.Clamp01((hot-0.6f)*2f*(wet-0.6f)*2f);float desert=Mathf.Clamp01((hot-0.5f)*2f*(0.7f-wet)*2f);float sav=Mathf.Clamp01((hot-0.5f)*2f*(1f-Mathf.Abs(wet-0.5f)*2f));float grass=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(1f-Mathf.Abs(wet-0.45f)*2f));float forest=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(wet-0.45f)*2f);float taiga=Mathf.Clamp01((0.55f-hot)*2f*(wet-0.35f)*2f);float tundra=Mathf.Clamp01((0.45f-hot)*2.5f);float polar=Mathf.Clamp01((0.3f-hot)*3f+elev[i]*0.2f+mtn[i]*0.2f);float marsh=Mathf.Clamp01(wet*0.8f*(0.45f-elev[i])*2f);float sum=jungle+desert+sav+grass+forest+taiga+tundra+polar+marsh+1e-5f;o0[i]=new Color32(B(jungle/sum),B(desert/sum),B(sav/sum),B(grass/sum));o1[i]=new Color32(B(forest/sum),B(taiga/sum),B(tundra/sum),B(polar/sum));o2[i]=new Color32(B(marsh/sum),B(polar),B(mtn[i]),0);}biomeWeights0Texture.SetPixelData(o0,0);biomeWeights0Texture.Apply(false,false);biomeWeights1Texture.SetPixelData(o1,0);biomeWeights1Texture.Apply(false,false);biomeWeights2Texture.SetPixelData(o2,0);biomeWeights2Texture.Apply(false,false);}    
+    private void FillLocalLakePatch(int centerIndex,int radius,float[] land,float[] elev,float[] lake,float[] wet){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth;float baseElev=elev[centerIndex];for(int oy=-radius;oy<=radius;oy++)for(int ox=-radius;ox<=radius;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight)continue;float d=Mathf.Sqrt(ox*ox+oy*oy);if(d>radius)continue;int ni=ny*mapWidth+nx; if(land[ni]<=0.5f)continue; if(elev[ni]>baseElev+0.12f+0.03f*d)continue; float fill=Mathf.Clamp01(1f-d/(radius+0.5f)); lake[ni]=Mathf.Max(lake[ni],fill); wet[ni]=Mathf.Max(wet[ni],0.6f+fill*0.35f);}}
+    private void GenerateBiomes(float[] land,float[] elev,float[] mtn,float[] temp,float[] moisture,float[] river,float[] lake,float[] hydroWetness){int n=mapWidth*mapHeight;var o0=new Color32[n];var o1=new Color32[n];var o2=new Color32[n];float sharpness=Mathf.Lerp(0.75f,2.0f,Mathf.InverseLerp(0.5f,1.25f,inputs.biomeCompetitionSharpness));for(int i=0;i<n;i++){if(land[i]<0.5f){o0[i]=o1[i]=o2[i]=new Color32();continue;}float hot=temp[i],wet=moisture[i];float provinceNoise=(Mathf.PerlinNoise(((i%mapWidth)+inputs.seed*0.41f)*0.004f,((i/mapWidth)-inputs.seed*0.37f)*0.004f)-0.5f)*2f*inputs.biomeProvinceStrength*0.18f;float jungle=Mathf.Clamp01((hot-0.6f)*2f*(wet-0.6f+provinceNoise)*2f);float desert=Mathf.Clamp01((hot-0.5f)*2f*(0.7f-wet-provinceNoise*0.5f)*2f);float sav=Mathf.Clamp01((hot-0.5f)*2f*(1f-Mathf.Abs(wet-0.5f+provinceNoise*0.3f)*2f));float grass=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(1f-Mathf.Abs(wet-0.45f-provinceNoise*0.25f)*2f));float forest=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(wet-0.45f+provinceNoise)*2f);float taiga=Mathf.Clamp01((0.55f-hot)*2f*(wet-0.35f+provinceNoise*0.4f)*2f);float tundra=Mathf.Clamp01((0.45f-hot)*2.5f);float polar=Mathf.Clamp01((0.3f-hot)*3f+elev[i]*0.2f+mtn[i]*0.2f);float lowlandFactor=Mathf.Clamp01((0.55f-elev[i])*2f);float marsh=Mathf.Clamp01(lowlandFactor*(hydroWetness[i]*Mathf.Lerp(0.5f,1.25f,inputs.riparianWetnessStrength)+lake[i]*0.65f+river[i]*0.30f)+wet*0.08f);jungle=Mathf.Pow(jungle,sharpness);desert=Mathf.Pow(desert,sharpness);sav=Mathf.Pow(sav,sharpness);grass=Mathf.Pow(grass,sharpness);forest=Mathf.Pow(forest,sharpness);taiga=Mathf.Pow(taiga,sharpness);tundra=Mathf.Pow(tundra,sharpness);polar=Mathf.Pow(polar,sharpness);marsh=Mathf.Pow(marsh,sharpness);float sum=jungle+desert+sav+grass+forest+taiga+tundra+polar+marsh+1e-5f;o0[i]=new Color32(B(jungle/sum),B(desert/sum),B(sav/sum),B(grass/sum));o1[i]=new Color32(B(forest/sum),B(taiga/sum),B(tundra/sum),B(polar/sum));o2[i]=new Color32(B(marsh/sum),B(polar),B(mtn[i]),0);}biomeWeights0Texture.SetPixelData(o0,0);biomeWeights0Texture.Apply(false,false);biomeWeights1Texture.SetPixelData(o1,0);biomeWeights1Texture.Apply(false,false);biomeWeights2Texture.SetPixelData(o2,0);biomeWeights2Texture.Apply(false,false);}
 }
