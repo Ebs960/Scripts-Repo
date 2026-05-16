@@ -256,17 +256,11 @@ public class MenuPlanetPreview : MonoBehaviour
 
     
     [Header("Advanced Climate Tuning")]
-    [SerializeField, Range(0.5f, 1.2f)] private float moistureResponseScale = 0.85f;
-    [SerializeField, Range(0f, 0.2f)] private float temperatureHumidityInfluence = 0.06f;
     [SerializeField, Range(0f, 0.3f)] private float climateNoiseStrength = 0.12f;
     [SerializeField, Range(0f, 0.3f)] private float coastWetnessStrength = 0.08f;
     [SerializeField, Range(0f, 0.3f)] private float continentalDrynessStrength = 0.08f;
     [SerializeField, Range(0f, 0.3f)] private float continentalTemperatureStrength = 0.06f;
-    [SerializeField, Range(0f, 0.3f)] private float rainShadowStrength = 0.16f;
-    [SerializeField, Range(0f, 0.3f)] private float orographicWetnessStrength = 0.08f;
-    [SerializeField, Range(0.01f, 0.2f)] private float orographicSampleOffset = 0.08f;
     [SerializeField, Range(0f, 0.3f)] private float riparianWetnessStrength = 0.12f;
-    [SerializeField, Range(0f, 1f)] private float seasonalityStrength = 0.35f;
 
     [Header("Advanced Biome Tuning")]
     [SerializeField, Range(0f, 0.5f)] private float biomeProvinceStrength = 0.20f;
@@ -352,16 +346,10 @@ public class MenuPlanetPreview : MonoBehaviour
     private float lastValidatedMoisture;
     private float lastValidatedTemperature;
     private int lastValidatedLandPresetIndex;
-    private float lastValidatedMoistureResponseScale;
-    private float lastValidatedTemperatureHumidityInfluence;
     private float lastValidatedClimateNoiseStrength;
     private float lastValidatedCoastWetnessStrength;
     private float lastValidatedContinentalDrynessStrength;
     private float lastValidatedContinentalTemperatureStrength;
-    private float lastValidatedRainShadowStrength;
-    private float lastValidatedOrographicWetnessStrength;
-    private float lastValidatedOrographicSampleOffset;
-    private float lastValidatedSeasonalityStrength;
     private int lastValidatedWaterwaysPreset;
     private float lastValidatedBiomeProvinceStrength;
     private float lastValidatedBiomeCompetitionSharpness;
@@ -474,17 +462,11 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowRainShadowOnly = Shader.PropertyToID("_ShowRainShadowOnly");
     private static readonly int ID_ShowRiparianWetnessOnly = Shader.PropertyToID("_ShowRiparianWetnessOnly");
     private static readonly int ID_ShowDominantBiomeOnly = Shader.PropertyToID("_ShowDominantBiomeOnly");
-    private static readonly int ID_MoistureResponseScale = Shader.PropertyToID("_MoistureResponseScale");
-    private static readonly int ID_TemperatureHumidityInfluence = Shader.PropertyToID("_TemperatureHumidityInfluence");
     private static readonly int ID_ClimateNoiseStrength = Shader.PropertyToID("_ClimateNoiseStrength");
     private static readonly int ID_CoastWetnessStrength = Shader.PropertyToID("_CoastWetnessStrength");
     private static readonly int ID_ContinentalDrynessStrength = Shader.PropertyToID("_ContinentalDrynessStrength");
     private static readonly int ID_ContinentalTemperatureStrength = Shader.PropertyToID("_ContinentalTemperatureStrength");
-    private static readonly int ID_RainShadowStrength = Shader.PropertyToID("_RainShadowStrength");
-    private static readonly int ID_OrographicWetnessStrength = Shader.PropertyToID("_OrographicWetnessStrength");
-    private static readonly int ID_OrographicSampleOffset = Shader.PropertyToID("_OrographicSampleOffset");
     private static readonly int ID_RiparianWetnessStrength = Shader.PropertyToID("_RiparianWetnessStrength");
-    private static readonly int ID_SeasonalityStrength = Shader.PropertyToID("_SeasonalityStrength");
     private static readonly int ID_BiomeProvinceStrength = Shader.PropertyToID("_BiomeProvinceStrength");
     private static readonly int ID_BiomeCompetitionSharpness = Shader.PropertyToID("_BiomeCompetitionSharpness");
 
@@ -627,9 +609,9 @@ public class MenuPlanetPreview : MonoBehaviour
         {
             seed = seed, landScale = landScale, landThreshold = landThreshold, landPresetIndex = currentLandPresetIndex, elevation = elevation,
             temperature = temperature, moisture = moisture, waterwaysPreset = waterwaysPreset,
-            moistureResponseScale = moistureResponseScale, temperatureHumidityInfluence = temperatureHumidityInfluence, climateNoiseStrength = climateNoiseStrength,
+            climateNoiseStrength = climateNoiseStrength,
             coastWetnessStrength = coastWetnessStrength, continentalDrynessStrength = continentalDrynessStrength, continentalTemperatureStrength = continentalTemperatureStrength,
-            rainShadowStrength = rainShadowStrength, orographicWetnessStrength = orographicWetnessStrength, orographicSampleOffset = orographicSampleOffset, seasonalityStrength = seasonalityStrength,
+
             biomeProvinceStrength = biomeProvinceStrength, biomeCompetitionSharpness = biomeCompetitionSharpness
         };
     }
@@ -930,17 +912,11 @@ public class MenuPlanetPreview : MonoBehaviour
     private void PushAdvancedClimateParameters()
     {
         if (materialInstance == null) return;
-        materialInstance.SetFloat(ID_MoistureResponseScale, moistureResponseScale);
-        materialInstance.SetFloat(ID_TemperatureHumidityInfluence, temperatureHumidityInfluence);
         materialInstance.SetFloat(ID_ClimateNoiseStrength, climateNoiseStrength);
         materialInstance.SetFloat(ID_CoastWetnessStrength, coastWetnessStrength);
         materialInstance.SetFloat(ID_ContinentalDrynessStrength, continentalDrynessStrength);
         materialInstance.SetFloat(ID_ContinentalTemperatureStrength, continentalTemperatureStrength);
-        materialInstance.SetFloat(ID_RainShadowStrength, rainShadowStrength);
-        materialInstance.SetFloat(ID_OrographicWetnessStrength, orographicWetnessStrength);
-        materialInstance.SetFloat(ID_OrographicSampleOffset, orographicSampleOffset);
         materialInstance.SetFloat(ID_RiparianWetnessStrength, riparianWetnessStrength);
-        materialInstance.SetFloat(ID_SeasonalityStrength, seasonalityStrength);
         materialInstance.SetFloat(ID_BiomeProvinceStrength, biomeProvinceStrength);
         materialInstance.SetFloat(ID_BiomeCompetitionSharpness, biomeCompetitionSharpness);
     }
@@ -957,16 +933,10 @@ public class MenuPlanetPreview : MonoBehaviour
         lastValidatedMoisture = moisture;
         lastValidatedTemperature = temperature;
 
-        lastValidatedMoistureResponseScale = moistureResponseScale;
-        lastValidatedTemperatureHumidityInfluence = temperatureHumidityInfluence;
         lastValidatedClimateNoiseStrength = climateNoiseStrength;
         lastValidatedCoastWetnessStrength = coastWetnessStrength;
         lastValidatedContinentalDrynessStrength = continentalDrynessStrength;
         lastValidatedContinentalTemperatureStrength = continentalTemperatureStrength;
-        lastValidatedRainShadowStrength = rainShadowStrength;
-        lastValidatedOrographicWetnessStrength = orographicWetnessStrength;
-        lastValidatedOrographicSampleOffset = orographicSampleOffset;
-        lastValidatedSeasonalityStrength = seasonalityStrength;
 
         lastValidatedWaterwaysPreset = waterwaysPreset;
 
@@ -1610,16 +1580,10 @@ private bool ClimateInputsChanged()
     return
         !Mathf.Approximately(temperature, lastValidatedTemperature) ||
         !Mathf.Approximately(moisture, lastValidatedMoisture) ||
-        !Mathf.Approximately(moistureResponseScale, lastValidatedMoistureResponseScale) ||
-        !Mathf.Approximately(temperatureHumidityInfluence, lastValidatedTemperatureHumidityInfluence) ||
         !Mathf.Approximately(climateNoiseStrength, lastValidatedClimateNoiseStrength) ||
         !Mathf.Approximately(coastWetnessStrength, lastValidatedCoastWetnessStrength) ||
         !Mathf.Approximately(continentalDrynessStrength, lastValidatedContinentalDrynessStrength) ||
-        !Mathf.Approximately(continentalTemperatureStrength, lastValidatedContinentalTemperatureStrength) ||
-        !Mathf.Approximately(rainShadowStrength, lastValidatedRainShadowStrength) ||
-        !Mathf.Approximately(orographicWetnessStrength, lastValidatedOrographicWetnessStrength) ||
-        !Mathf.Approximately(orographicSampleOffset, lastValidatedOrographicSampleOffset) ||
-        !Mathf.Approximately(seasonalityStrength, lastValidatedSeasonalityStrength);
+        !Mathf.Approximately(continentalTemperatureStrength, lastValidatedContinentalTemperatureStrength);
 }
 
 private bool BiomeOnlyInputsChanged()
