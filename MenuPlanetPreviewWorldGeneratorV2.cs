@@ -138,6 +138,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             int targetCells=Mathf.Clamp(Mathf.RoundToInt(target*tn),groups,tn-2);
             var counts=new int[groups]; for(int g=0;g<groups;g++)counts[g]=1;
             var centers=new Vector2[groups]; for(int g=0;g<groups;g++) centers[g]=seeds[g];
+            Vector2[] elongationDirections = new Vector2[groups];
+            for (int g = 0; g < groups; g++)
+            {
+                float angle = (float)(r.NextDouble() * Mathf.PI * 2f);
+                elongationDirections[g] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            }
             var frontier=new List<int>[groups]; for(int g=0;g<groups;g++) frontier[g]=new List<int>{seeds[g].y*tw+seeds[g].x};
             int placed=groups; int guard=tn*40;
             while(placed<targetCells && guard-->0){
@@ -149,13 +155,19 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                         for(int d=0;d<4;d++){
                             int nx=(fx + (d==0?1:d==1?-1:0) + tw)%tw, ny=fy + (d==2?1:d==3?-1:0);
                             if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(topo[ni].isLand) continue;
-                            float compact=-Vector2.Distance(new Vector2(nx,ny), centers[g])/Mathf.Max(tw,th);
                             float irr=(Mathf.PerlinNoise((nx+inputs.seed)*0.17f,(ny-inputs.seed)*0.17f)-0.5f)*2f;
-                            var elong=(nx-seeds[g].x)*(nx-seeds[g].x) > (ny-seeds[g].y)*(ny-seeds[g].y) ? 1f : 0f;
                             int nearbyOther=0, own=0;
                             for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue;int xx=(nx+ox+tw)%tw,yy=ny+oy; if(yy<0||yy>=th)continue; var c=topo[yy*tw+xx]; if(c.isLand){if(c.groupId==g)own++; else nearbyOther++;}}
-                            float tendrilPenalty=own<=1?0.4f:0f;
-                            float growthScore=preset.compactnessBias*compact + preset.irregularityBias*irr + preset.elongationBias*elong - nearbyOther*0.12f - tendrilPenalty;
+                            float neighborSupport=Mathf.Clamp01(own/4f);
+                            float centerRestraint=-Vector2.Distance(new Vector2(nx,ny), centers[g])/Mathf.Max(tw,th);
+                            float dx=nx-seeds[g].x;
+                            if(Mathf.Abs(dx)>tw*0.5f) dx-=Mathf.Sign(dx)*tw;
+                            float dy=ny-seeds[g].y;
+                            Vector2 outward=new Vector2(dx,dy);
+                            float elong=0f;
+                            if(outward.sqrMagnitude>0.0001f){outward.Normalize(); elong=Mathf.Abs(Vector2.Dot(outward, elongationDirections[g]));}
+                            float tendrilPenalty=own==0?0.65f:own==1?0.25f:0f;
+                            float growthScore=preset.compactnessBias*neighborSupport + centerRestraint*0.10f + preset.irregularityBias*irr + preset.elongationBias*elong - nearbyOther*0.12f - tendrilPenalty;
                             if(growthScore>bestLocal){bestLocal=growthScore; best=ni;}
                         }
                     }
@@ -220,7 +232,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n];
         var sources=new List<int>(); for(int i=0;i<n;i++) if(land[i]>0.5f&&elev[i]>0.45f&&moisture[i]>0.45f) sources.Add(i);
         int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
-        var r=new System.Random(hydroSeed*31+17); int targetRivers=Mathf.RoundToInt(Mathf.Lerp(sparseRiverRange.x,abundantRiverRange.y,inputs.moisture)); targetRivers=Mathf.Clamp(targetRivers, sparseRiverRange.x, abundantRiverRange.y);
+        var r=new System.Random(hydroSeed*31+17);
+        Vector2Int selectedRiverRange =
+            inputs.waterwaysPreset <= 0 ? sparseRiverRange :
+            inputs.waterwaysPreset == 1 ? standardRiverRange :
+            abundantRiverRange;
+        int targetRivers=Mathf.RoundToInt(Mathf.Lerp(selectedRiverRange.x,selectedRiverRange.y,Mathf.Clamp01(inputs.moisture)));
+        targetRivers=Mathf.Clamp(targetRivers, selectedRiverRange.x, selectedRiverRange.y);
         int rivers=0,lakes=0; int tries=Mathf.Min(sources.Count,targetRivers*5);
         for(int t=0;t<tries&&rivers<targetRivers;t++){
             if(sources.Count==0) break; int pick=r.Next(sources.Count); int cur=sources[pick]; sources[pick]=sources[sources.Count-1]; sources.RemoveAt(sources.Count-1);
