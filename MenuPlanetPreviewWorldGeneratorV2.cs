@@ -122,16 +122,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         float t=Mathf.Clamp01(inputs.landThreshold); float target=Mathf.Lerp(preset.minLandCoverage,preset.maxLandCoverage,1f-t); diag.targetLand=target;
         TopologyCell[] topo=new TopologyCell[tn];
         int bestAttempt=1; float bestScore=-1f; TopologyCell[] bestTopo=null; int bestGroups=0; float bestLargest=0f;
+        int seedBase = Mathf.RoundToInt(inputs.seed * 1000f);
         for(int attempt=1; attempt<=Mathf.Max(1,maxTopologyAttempts); attempt++){
-            var r=new System.Random(inputs.seed*73856093 ^ attempt*19349663);
+            var r=new System.Random((seedBase*73856093) ^ (attempt*19349663));
             for(int i=0;i<tn;i++){topo[i].isLand=false;topo[i].groupId=-1;}
             int groups=r.Next(preset.minPrimaryLandGroups,preset.maxPrimaryLandGroups+1);
             var seeds=new List<Vector2Int>();
             for(int g=0;g<groups;g++){
                 for(int k=0;k<60;k++){
-                    int sx=r.Next(tw), sy=r.Next(th); var candidate=new Vector2Int(sx,sy); bool ok=true;
+                    int seedX=r.Next(tw), seedY=r.Next(th); var candidate=new Vector2Int(seedX,seedY); bool ok=true;
                     foreach(var s in seeds){float dx=Mathf.Min(Mathf.Abs(candidate.x-s.x), tw-Mathf.Abs(candidate.x-s.x)); float dy=Mathf.Abs(candidate.y-s.y); if(Mathf.Sqrt(dx*dx+dy*dy)<preset.minSeedSeparationDegrees*tw/360f){ok=false;break;}}
-                    if(ok||k==59){seeds.Add(candidate); int idx=sy*tw+sx; topo[idx].isLand=true; topo[idx].groupId=g; break;}
+                    if(ok||k==59){seeds.Add(candidate); int idx=seedY*tw+seedX; topo[idx].isLand=true; topo[idx].groupId=g; break;}
                 }
             }
             int targetCells=Mathf.Clamp(Mathf.RoundToInt(target*tn),groups,tn-2);
@@ -154,8 +155,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                             int nearbyOther=0, own=0;
                             for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue;int xx=(nx+ox+tw)%tw,yy=ny+oy; if(yy<0||yy>=th)continue; var c=topo[yy*tw+xx]; if(c.isLand){if(c.groupId==g)own++; else nearbyOther++;}}
                             float tendrilPenalty=own<=1?0.4f:0f;
-                            float score=preset.compactnessBias*compact + preset.irregularityBias*irr + preset.elongationBias*elong - nearbyOther*0.12f - tendrilPenalty;
-                            if(score>bestLocal){bestLocal=score; best=ni;}
+                            float growthScore=preset.compactnessBias*compact + preset.irregularityBias*irr + preset.elongationBias*elong - nearbyOther*0.12f - tendrilPenalty;
+                            if(growthScore>bestLocal){bestLocal=growthScore; best=ni;}
                         }
                     }
                     if(best>=0){topo[best].isLand=true; topo[best].groupId=g; placed++; counts[g]++; frontier[g].Add(best);} else frontier[g].Clear();
@@ -218,7 +219,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float tempLat=1f-lat;float elevCool=elev[i]*0.42f;float t=Mathf.Clamp01(tempLat+(inputs.temperature-0.5f)*0.65f-elevCool);float coastalWet=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float continentalDry=Mathf.Clamp01(contIn[i]);float rainShadow=Mathf.Clamp01(mtn[i]*0.3f*continentalDry);float m=Mathf.Clamp01(inputs.moisture*0.7f+coastalWet*0.5f-continentalDry*0.35f-rainShadow+0.1f*(1f-lat));temp[i]=t;moisture[i]=m;p[i]=new Color32(B(t),B(m),B(contIn[i]),B(inputs.seasonalityStrength));}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}    
     private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n];
         var sources=new List<int>(); for(int i=0;i<n;i++) if(land[i]>0.5f&&elev[i]>0.45f&&moisture[i]>0.45f) sources.Add(i);
-        var r=new System.Random(inputs.seed*31+17); int targetRivers=Mathf.RoundToInt(Mathf.Lerp(sparseRiverRange.x,abundantRiverRange.y,inputs.moisture)); targetRivers=Mathf.Clamp(targetRivers, sparseRiverRange.x, abundantRiverRange.y);
+        int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
+        var r=new System.Random(hydroSeed*31+17); int targetRivers=Mathf.RoundToInt(Mathf.Lerp(sparseRiverRange.x,abundantRiverRange.y,inputs.moisture)); targetRivers=Mathf.Clamp(targetRivers, sparseRiverRange.x, abundantRiverRange.y);
         int rivers=0,lakes=0; int tries=Mathf.Min(sources.Count,targetRivers*5);
         for(int t=0;t<tries&&rivers<targetRivers;t++){
             if(sources.Count==0) break; int pick=r.Next(sources.Count); int cur=sources[pick]; sources[pick]=sources[sources.Count-1]; sources.RemoveAt(sources.Count-1);
