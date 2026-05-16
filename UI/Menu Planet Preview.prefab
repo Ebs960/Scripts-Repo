@@ -594,8 +594,8 @@ MonoBehaviour:
   mapWidth: 2048
   mapHeight: 1024
   regenerationDelay: 0.15
-  topologyWidth: 256
-  topologyHeight: 128
+  topologyWidth: 512
+  topologyHeight: 256
   maxTopologyAttempts: 8
   coastlineWarpStrength: 0.16
   coastlineEdgeNoiseStrength: 0.12
