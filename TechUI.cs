@@ -3,6 +3,9 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 public class TechUI : MonoBehaviour
 {
@@ -467,7 +470,7 @@ public class TechUI : MonoBehaviour
         UpdateInfoPanel(tech);
         if (playerCiv != null)
         {
-            bool queueRequested = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool queueRequested = IsQueueModifierPressed();
             if (queueRequested)
             {
                 if (!playerCiv.QueueResearch(tech))
@@ -484,6 +487,15 @@ public class TechUI : MonoBehaviour
         {
             btnUI.SetSelected(tech == btnUI.RepresentedTech);
         }
+    }
+
+    private bool IsQueueModifierPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+#else
+        return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+#endif
     }
 
     void UpdateInfoPanel(TechData tech)

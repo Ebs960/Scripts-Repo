@@ -3,6 +3,9 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 public class CultureUI : MonoBehaviour
 {
@@ -413,7 +416,7 @@ public class CultureUI : MonoBehaviour
 
         if (playerCiv != null)
         {
-            bool queueRequested = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool queueRequested = IsQueueModifierPressed();
             if (queueRequested)
             {
                 playerCiv.QueueCulture(culture);
@@ -427,6 +430,15 @@ public class CultureUI : MonoBehaviour
 
         foreach (var btnUI in cultureButtons)
             btnUI.SetSelected(culture == btnUI.RepresentedCulture);
+    }
+
+    private bool IsQueueModifierPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+#else
+        return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+#endif
     }
 
     void UpdateInfoPanel(CultureData culture)
