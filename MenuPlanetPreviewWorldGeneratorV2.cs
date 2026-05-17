@@ -494,24 +494,26 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     }
 
     private List<LandmassPlan> BuildLandmassPlan(PreviewLandPresetProfileV3 preset,int tw,int th,System.Random r,float sizeBias,float shapeBias,out LandmassPlanBuildDiagnostics diagnostics){
-        diagnostics = default;
+        var buildDiagnostics = default(LandmassPlanBuildDiagnostics);
         var plans=new List<LandmassPlan>(); int groupId=1; int tn=tw*th;
         void AddBand(LandmassKind kind, LandmassBand band){
             int count=r.Next(Mathf.Max(0,band.minCount),Mathf.Max(band.minCount,band.maxCount)+1);
-            if(kind==LandmassKind.MajorContinent) diagnostics.requestedMajorCount += count; else if(kind==LandmassKind.LargeIsland) diagnostics.requestedLargeIslandCount += count; else diagnostics.requestedSmallClusterCount += count;
+            if(kind==LandmassKind.MajorContinent) buildDiagnostics.requestedMajorCount += count; else if(kind==LandmassKind.LargeIsland) buildDiagnostics.requestedLargeIslandCount += count; else buildDiagnostics.requestedSmallClusterCount += count;
             for(int i=0;i<count;i++){
                 float areaFrac=Mathf.Lerp(band.minAreaFraction,band.maxAreaFraction,Mathf.Clamp01(sizeBias*0.75f+(float)r.NextDouble()*0.25f));
                 int target=Mathf.Max(1,Mathf.RoundToInt(areaFrac*tn));
                 float radius=Mathf.Sqrt(target/Mathf.PI);
-                if(!TryPlaceLandmassCenter(plans,kind,radius,preset,tw,th,r,out var center)) { diagnostics.failedCenterPlacements++; continue; }
+                if(!TryPlaceLandmassCenter(plans,kind,radius,preset,tw,th,r,out var center)) { buildDiagnostics.failedCenterPlacements++; continue; }
                 float ang=(float)(r.NextDouble()*Math.PI*2); var elong=new Vector2(Mathf.Cos(ang),Mathf.Sin(ang));
                 int lobes=Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(band.minLobes,band.maxLobes,shapeBias)),band.minLobes,band.maxLobes);
                 plans.Add(new LandmassPlan{kind=kind,targetCellCount=target,estimatedRadiusCells=radius,lobeCount=lobes,groupId=groupId++,center=center,elongationDirection=elong,lobeAttractors=BuildLobes(center,lobes,tw,th,r)});
-                if(kind==LandmassKind.MajorContinent) diagnostics.builtMajorCount++; else if(kind==LandmassKind.LargeIsland) diagnostics.builtLargeIslandCount++; else diagnostics.builtSmallClusterCount++;
-                diagnostics.totalPlannedTargetCells += target;
+                if(kind==LandmassKind.MajorContinent) buildDiagnostics.builtMajorCount++; else if(kind==LandmassKind.LargeIsland) buildDiagnostics.builtLargeIslandCount++; else buildDiagnostics.builtSmallClusterCount++;
+                buildDiagnostics.totalPlannedTargetCells += target;
             }
         }
-        AddBand(LandmassKind.MajorContinent,preset.majorLandmasses); AddBand(LandmassKind.LargeIsland,preset.largeIslands); AddBand(LandmassKind.SmallIslandCluster,preset.smallIslandClusters); return plans;
+        AddBand(LandmassKind.MajorContinent,preset.majorLandmasses); AddBand(LandmassKind.LargeIsland,preset.largeIslands); AddBand(LandmassKind.SmallIslandCluster,preset.smallIslandClusters);
+        diagnostics = buildDiagnostics;
+        return plans;
     }
     private bool TryPlaceLandmassCenter(List<LandmassPlan> existingPlans,LandmassKind newKind,float estimatedRadiusCells,PreviewLandPresetProfileV3 preset,int tw,int th,System.Random r,out Vector2Int center){
         for(int a=0;a<96;a++){
