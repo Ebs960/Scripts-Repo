@@ -675,9 +675,6 @@ public class MenuPlanetPreview : MonoBehaviour
             return;
 
         bool tectonicChanged = TectonicInputsChanged();
-        bool climateChanged = ClimateInputsChanged();
-        bool hydrologyChanged = HydrologyOnlyInputsChanged();
-        bool biomeChanged = BiomeOnlyInputsChanged();
 
         ApplyAllParameters();
         PushCloudParameters();
@@ -689,12 +686,6 @@ public class MenuPlanetPreview : MonoBehaviour
 
         if (tectonicChanged)
             RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics, false);
-        else if (climateChanged)
-            RequestWorldRebuild(PreviewWorldRebuildScope.Climate, false);
-        else if (hydrologyChanged)
-            RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology, false);
-        else if (biomeChanged)
-            RequestWorldRebuild(PreviewWorldRebuildScope.Biomes, false);
 
         CacheValidatedGeneratorInputs();
     }
@@ -957,8 +948,7 @@ public class MenuPlanetPreview : MonoBehaviour
             !Mathf.Approximately(seed, lastValidatedSeed) ||
             !Mathf.Approximately(landScale, lastValidatedLandScale) ||
             !Mathf.Approximately(landThreshold, lastValidatedLandThreshold) ||
-            currentLandPresetIndex != lastValidatedLandPresetIndex ||
-            !Mathf.Approximately(elevation, lastValidatedElevation);
+            currentLandPresetIndex != lastValidatedLandPresetIndex;
     }
 
     private bool HydrologyOnlyInputsChanged()
@@ -1011,7 +1001,6 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Temperature, temperature);
              RecalculateDerivedVisuals();
         }
-        RequestWorldRebuild(PreviewWorldRebuildScope.Climate);
         PushCloudParameters();
         PushSurfaceCloudShadowParameters();
         PushAtmosphereParameters();
@@ -1040,7 +1029,6 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Moisture, moisture);
             RecalculateDerivedVisuals();
         }
-        RequestWorldRebuild(PreviewWorldRebuildScope.Climate);
     }
 
     /// <summary>
@@ -1058,7 +1046,6 @@ public class MenuPlanetPreview : MonoBehaviour
             PushDisplacementParameters();
             RecalculateDerivedVisuals();
             }
-        RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
 
     /// <summary>
@@ -1134,7 +1121,6 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     {
         waterwaysPreset = Mathf.Clamp(preset, 0, 2);
         RecalculateDerivedVisuals();
-        RequestWorldRebuild(PreviewWorldRebuildScope.Hydrology);
         PushCloudParameters();
     }
 
