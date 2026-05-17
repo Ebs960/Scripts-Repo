@@ -692,13 +692,14 @@ Shader "Custom/MenuPlanetPreview"
                 if (_UseTectonicPreview > 0.5){
                     float2 uvGen = GetTectonicUV(objNorm);
                     float4 gClimate = SAMPLE_TEXTURE2D(_ClimateTex, sampler_ClimateTex, uvGen);
-                    float4 bw0 = SAMPLE_TEXTURE2D(_BiomeWeights0Tex, sampler_BiomeWeights0Tex, uvGen);
-                    float4 bw1 = SAMPLE_TEXTURE2D(_BiomeWeights1Tex, sampler_BiomeWeights1Tex, uvGen);
                     float4 bw2 = SAMPLE_TEXTURE2D(_BiomeWeights2Tex, sampler_BiomeWeights2Tex, uvGen);
-                    temperatureLocal = gClimate.r; localMoist = gClimate.g; continentality = gClimate.b; seasonality = gClimate.a;
-                    biomeWeights.jungle=bw0.r; biomeWeights.desert=bw0.g; biomeWeights.savanna=bw0.b; biomeWeights.temperateGrass=bw0.a;
-                    biomeWeights.temperateForest=bw1.r; biomeWeights.taiga=bw1.g; biomeWeights.tundra=bw1.b; biomeWeights.polar=bw1.a;
-                    biomeWeights.marsh=bw2.r;
+                    float baseTemperature = gClimate.r;
+                    float baseMoisture = gClimate.g;
+                    continentality = gClimate.b;
+                    temperatureLocal = saturate(baseTemperature + (_Temperature - 0.5) * 0.65);
+                    localMoist = saturate(baseMoisture + (_Moisture - 0.5) * 0.70);
+                    climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
+                    biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
                     generatedSnowIceMask = bw2.g;
                     generatedAlpineRockMask = bw2.b;
                 }
@@ -820,8 +821,12 @@ Shader "Custom/MenuPlanetPreview"
                 float generatedLakeMask = generatedWaterwayMask.g;
                 float wetlandMask = generatedWaterwayMask.b;
                 float waterDepthMask = generatedWaterwayMask.a;
-                float riverMaskFinal = (_UseTectonicPreview > 0.5) ? generatedRiverMask : normalRiverMask;
-                float lakeMaskFinal = (_UseTectonicPreview > 0.5) ? generatedLakeMask : lakeMask;
+                float featurePriority = generatedWaterwayMask.a;
+                float revealThreshold = 1.0 - _WaterwayAmount;
+                float waterwayReveal = smoothstep(revealThreshold - 0.05, revealThreshold + 0.05, featurePriority);
+                float riverMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedRiverMask * waterwayReveal) : normalRiverMask;
+                float lakeMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedLakeMask * waterwayReveal) : lakeMask;
+                wetlandMask *= (_UseTectonicPreview > 0.5) ? waterwayReveal : 1.0;
                 float inlandWaterMask = saturate(max(riverMaskFinal, lakeMaskFinal));
                 float inlandWaterRenderMask = smoothstep(0.18, 0.72, inlandWaterMask);
 
