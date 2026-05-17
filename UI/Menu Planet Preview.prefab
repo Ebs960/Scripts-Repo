@@ -499,14 +499,14 @@ MonoBehaviour:
   biomeTextureStrength: 1
   climateGradeStrength: 0.06
   biomeNormalStrength: 0.155
-  biomeTextureScale: 0.6
+  biomeTextureScale: 4.1
   biomeTextureContrast: 0.18
   landUpliftStrength: 0.12
-  hillDisplacementStrength: 0.25
-  mountainDisplacementStrength: 0.564
+  hillDisplacementStrength: 0.391
+  mountainDisplacementStrength: 0.663
   iceDisplacementStrength: 0
   volcanicDisplacementStrength: 0.45
-  oceanDepthStrength: 0.03
+  oceanDepthStrength: 0.231
   showElevationOnly: 0
   showMountainMaskOnly: 0
   showDisplacementHeightOnly: 0
@@ -545,7 +545,7 @@ MonoBehaviour:
   enableBloom: 1
   bloomThreshold: 1.4
   bloomIntensity: 0.18
-  icosphereSubdivisions: 5
+  icosphereSubdivisions: 6
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
@@ -554,9 +554,9 @@ MonoBehaviour:
   coastWetnessStrength: 0.2
   continentalDrynessStrength: 0.02
   continentalTemperatureStrength: 0.05
-  riparianWetnessStrength: 0.2
-  biomeProvinceStrength: 0.3
-  biomeCompetitionSharpness: 1
+  riparianWetnessStrength: 0.125
+  biomeProvinceStrength: 0.178
+  biomeCompetitionSharpness: 0.848
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
@@ -565,16 +565,16 @@ MonoBehaviour:
   smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1
-  ambientStrength: 0.18
-  brightness: 1.12
+  ambientStrength: 1
+  brightness: 1
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 5.5
+  cameraDistance: 6
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
-  keyLightIntensity: 2
+  keyLightIntensity: 2.25
   keyLightColor: {r: 0.98490566, g: 0.75813156, b: 0.4441367, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
@@ -593,18 +593,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGeneratorV2
   mapWidth: 2048
   mapHeight: 1024
-  regenerationDelay: 0.15
-  topologyWidth: 512
-  topologyHeight: 256
-  maxTopologyAttempts: 8
-  coastlineWarpStrength: 0.16
-  coastlineEdgeNoiseStrength: 0.12
-  coastlineSoftness: 0.018
+  regenerationDelay: 0.01
+  topologyWidth: 2048
+  topologyHeight: 1024
+  maxTopologyAttempts: 4
+  coastlineWarpStrength: 0.174
+  coastlineEdgeNoiseStrength: 0.458
+  coastlineSoftness: 0.0077
   logWorldGenerationDiagnostics: 1
+  useFastNoiseLiteFields: 1
+  noiseFieldWidth: 1024
+  noiseFieldHeight: 512
   sparseRiverRange: {x: 12, y: 20}
-  standardRiverRange: {x: 24, y: 40}
+  standardRiverRange: {x: 50, y: 90}
   abundantRiverRange: {x: 45, y: 70}
   minRiverSourceSpacingPixels: 32
+  riverCandidateStride: 9
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
