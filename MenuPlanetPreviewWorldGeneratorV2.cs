@@ -102,6 +102,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private MenuPlanetPreviewWorldInputs inputs;
     private PreviewWorldRebuildScope pending;
     private float scheduledAt = -1f;
+    private int generationVersion;
+    private int runningGenerationVersion;
+    private Coroutine generationCoroutine;
+    public bool IsGeneratingPreview { get; private set; }
+    private float generationStartedAt;
+    private float generationMaxChunkMs;
 
     private float[] cachedMacroCoastNoise;
     private float[] cachedCoastEdgeNoise;
@@ -118,15 +124,95 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private bool fastNoiseFieldsValid;
 
     public void SetInputs(MenuPlanetPreviewWorldInputs v) => inputs = v;
-    public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) { pending |= ExpandDependencies(scope); if (immediate) Flush(); else scheduledAt = Time.time + regenerationDelay; }
+    public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
+        pending |= ExpandDependencies(scope);
+        generationVersion++;
+        scheduledAt = immediate ? Time.time : Time.time + regenerationDelay;
+    }
     public void Release() { DestroyTex(ref surfaceDataTexture); DestroyTex(ref auxiliaryMaskTexture); DestroyTex(ref worldStructureTexture); DestroyTex(ref climateTexture); DestroyTex(ref hydrologyMaskTexture); DestroyTex(ref biomeWeights0Texture); DestroyTex(ref biomeWeights1Texture); DestroyTex(ref biomeWeights2Texture); }
-    private void Update() { if (scheduledAt > 0f && Time.time >= scheduledAt) Flush(); }
+    private void Update()
+    {
+        if (scheduledAt > 0f && Time.time >= scheduledAt)
+        {
+            scheduledAt = -1f;
+            StartOrRestartGeneration();
+        }
+    }
+    
+
+    private void StartOrRestartGeneration()
+    {
+        if (pending == PreviewWorldRebuildScope.None) return;
+        if (generationCoroutine != null) StopCoroutine(generationCoroutine);
+        generationCoroutine = StartCoroutine(GenerateAsync(generationVersion));
+    }
+
+    private System.Collections.IEnumerator GenerateAsync(int version)
+    {
+        IsGeneratingPreview = true;
+        runningGenerationVersion = version;
+        generationStartedAt = Time.realtimeSinceStartup;
+        generationMaxChunkMs = 0f;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Started generation version={version}");
+        var s = pending; pending = PreviewWorldRebuildScope.None;
+        EnsureAllTextures();
+        float[] land = null, elev = null, mtn = null, shelf = null, cont = null, moisture = null, temp = null;
+        GenDiagnostics diag = default;
+
+        if ((s & PreviewWorldRebuildScope.Tectonics) != 0)
+        {
+            GenerateTerrain(out land, out elev, out mtn, out shelf, out cont, out diag);
+            yield return null;
+            if (version != generationVersion) { if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}"); IsGeneratingPreview = false; yield break; }
+        }
+        if ((s & PreviewWorldRebuildScope.Climate) != 0)
+        {
+            if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
+            GenerateClimate(land, elev, mtn, cont, out temp, out moisture);
+            yield return null;
+        }
+        if ((s & PreviewWorldRebuildScope.Hydrology) != 0)
+        {
+            if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
+            if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
+            GenerateHydrology(land, elev, moisture, ref diag);
+            yield return null;
+        }
+        if ((s & PreviewWorldRebuildScope.Biomes) != 0)
+        {
+            if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
+            if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
+            ReadHydrology(out var river, out var lake, out var hydroWetness, out _);
+            GenerateBiomes(land, elev, mtn, temp, moisture, river, lake, hydroWetness);
+            yield return null;
+        }
+        if (version == generationVersion)
+        {
+            if (logWorldGenerationDiagnostics)
+            {
+                Debug.Log($"[WorldGenV2 Async] Completed generation version={version}");
+                Debug.Log($"[WorldGenV2 Async] Total generation wall time={sw.ElapsedMilliseconds}ms");
+            }
+            WorldTexturesUpdated?.Invoke();
+        }
+        else if (logWorldGenerationDiagnostics)
+        {
+            Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}");
+        }
+        IsGeneratingPreview = false;
+        generationCoroutine = null;
+    }
+
     private PreviewWorldRebuildScope ExpandDependencies(PreviewWorldRebuildScope r) => (r & PreviewWorldRebuildScope.Tectonics) != 0 ? PreviewWorldRebuildScope.All : (r & PreviewWorldRebuildScope.Climate) != 0 ? PreviewWorldRebuildScope.Climate | PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Hydrology) != 0 ? PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Biomes) != 0 ? PreviewWorldRebuildScope.Biomes : 0;
 
     private struct GenDiagnostics { public string preset; public float targetLand; public float actualLand; public float topologyCoverage; public int topologyLandCells; public int targetTopologyLandCells; public int groupCount; public float largestGroupShare; public int attempts; public int rivers; public int lakes; public float avgElevation; public float maxElevation; public float mountainCoverage; }
 
     private void Flush()
     {
+        StartOrRestartGeneration();
+        return;
+
         scheduledAt = -1f;
         var s = pending; pending = PreviewWorldRebuildScope.None; if (s == PreviewWorldRebuildScope.None) return;
         EnsureAllTextures();
