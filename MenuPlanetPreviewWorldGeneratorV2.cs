@@ -100,7 +100,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void Update() { if (scheduledAt > 0f && Time.time >= scheduledAt) Flush(); }
     private PreviewWorldRebuildScope ExpandDependencies(PreviewWorldRebuildScope r) => (r & PreviewWorldRebuildScope.Tectonics) != 0 ? PreviewWorldRebuildScope.All : (r & PreviewWorldRebuildScope.Climate) != 0 ? PreviewWorldRebuildScope.Climate | PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Hydrology) != 0 ? PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Biomes) != 0 ? PreviewWorldRebuildScope.Biomes : 0;
 
-    private struct GenDiagnostics { public string preset; public float targetLand; public float actualLand; public int groupCount; public float largestGroupShare; public int attempts; public int rivers; public int lakes; public float avgElevation; public float maxElevation; public float mountainCoverage; }
+    private struct GenDiagnostics { public string preset; public float targetLand; public float actualLand; public float topologyCoverage; public int topologyLandCells; public int targetTopologyLandCells; public int groupCount; public float largestGroupShare; public int attempts; public int rivers; public int lakes; public float avgElevation; public float maxElevation; public float mountainCoverage; }
 
     private void Flush()
     {
@@ -134,7 +134,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         }
         if (logWorldGenerationDiagnostics && (s & PreviewWorldRebuildScope.Tectonics) != 0)
         {
-            Debug.Log($"[WorldGenV2] preset={diag.preset} targetLand={diag.targetLand:F3} actualLand={diag.actualLand:F3} groups={diag.groupCount} largestShare={diag.largestGroupShare:F3} attempts={diag.attempts} rivers={diag.rivers} lakes={diag.lakes} AvgElevation={diag.avgElevation:F3} MaxElevation={diag.maxElevation:F3} MountainCoverage={diag.mountainCoverage:P1}");
+            Debug.Log($"[WorldGenV2] preset={diag.preset} targetLand={diag.targetLand:F3} topologyCoverage={diag.topologyCoverage:F3} actualLand={diag.actualLand:F3} TopologyCells={diag.topologyLandCells}/{topologyWidth*topologyHeight} TargetTopologyCells={diag.targetTopologyLandCells} groups={diag.groupCount} largestShare={diag.largestGroupShare:F3} attempts={diag.attempts} rivers={diag.rivers} lakes={diag.lakes} AvgElevation={diag.avgElevation:F3} MaxElevation={diag.maxElevation:F3} MountainCoverage={diag.mountainCoverage:P1}");
+            if (Mathf.Abs(diag.actualLand - diag.targetLand) > 0.10f)
+            {
+                Debug.LogWarning($"[WorldGenV2 WARNING] Final land coverage deviated strongly from target. Target={diag.targetLand:F3} TopologyCoverage={diag.topologyCoverage:F3} FinalCoverage={diag.actualLand:F3}");
+            }
         }
         WorldTexturesUpdated?.Invoke();
     }
@@ -165,13 +169,29 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 }
             }
             int targetCells=Mathf.Clamp(Mathf.RoundToInt(target*tn),groups,tn-2);
-            var frontier=new List<int>[groups]; for(int g=0;g<groups;g++) frontier[g]=new List<int>{seeds[g].y*tw+seeds[g].x}; int placed=groups;
-            while(placed<targetCells){ bool any=false; for(int g=0;g<groups&&placed<targetCells;g++){ if(frontier[g].Count==0) continue; int fidx=frontier[g][r.Next(frontier[g].Count)]; int fx=fidx%tw, fy=fidx/tw; for(int d=0;d<4;d++){int nx=(fx + (d==0?1:d==1?-1:0) + tw)%tw, ny=fy + (d==2?1:d==3?-1:0); if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(topo[ni].isLand) continue; topo[ni].isLand=true; topo[ni].groupId=g; frontier[g].Add(ni); placed++; any=true; break;} } if(!any) break; }
-            SmoothBroadPresetTopology(topo, tw, th, preset.name); int[] comp; int compCount; float largest=LargestLandmassShare(topo,tw,th,out compCount,out comp);
-            bool valid=IsTopologyValidForPreset(preset, largest, compCount, (float)placed/tn); float score=(valid?1f:0f) + (1f-Mathf.Abs(((float)placed/tn)-target));
+            GrowTopologyToCoverage(topo, tw, th, groups, seeds, preset, r, targetCells, out int placedCells);
+            if (placedCells < targetCells * 0.92f) continue;
+            AddSatelliteIslandClusters(topo, tw, th, preset, r, targetCells);
+            SmoothBroadPresetTopology(topo, tw, th, preset.name);
+            int finalTopologyLandCells = CountTopologyLandCells(topo);
+            float actualTopologyCoverage = (float)finalTopologyLandCells / tn;
+            int[] comp; int compCount; float largest=LargestLandmassShare(topo,tw,th,out compCount,out comp);
+            bool valid=IsTopologyValidForPreset(preset, largest, compCount, actualTopologyCoverage, target);
+            float coverageError = Mathf.Abs(actualTopologyCoverage - target);
+            float score = (valid ? 100f : 0f) - coverageError * 50f;
             if(score>bestScore){bestScore=score; bestAttempt=attempt; bestTopo=(TopologyCell[])topo.Clone(); bestGroups=compCount; bestLargest=largest;} if(valid) break;
         }
+        if (bestTopo == null)
+        {
+            bestTopo = (TopologyCell[])topo.Clone();
+            int[] fallbackComp;
+            bestLargest = LargestLandmassShare(bestTopo, tw, th, out bestGroups, out fallbackComp);
+            bestAttempt = Mathf.Max(1, maxTopologyAttempts);
+        }
         diag.attempts=bestAttempt; diag.groupCount=bestGroups; diag.largestGroupShare=bestLargest;
+        diag.targetTopologyLandCells = Mathf.Clamp(Mathf.RoundToInt(target * tn), 0, tn);
+        diag.topologyLandCells = CountTopologyLandCells(bestTopo);
+        diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
         bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = bestTopo[i].isLand;
         float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
         float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
@@ -216,6 +236,79 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             nTopoLand.Dispose();
         }
     }
+
+    private int CountTopologyLandCells(TopologyCell[] topo){
+        int c=0; for(int i=0;i<topo.Length;i++) if(topo[i].isLand) c++; return c;
+    }
+
+    private bool GrowTopologyToCoverage(TopologyCell[] topo,int tw,int th,int groups,List<Vector2Int> seeds,PreviewLandPresetProfileV2 preset,System.Random r,int targetCells,out int placedCells){
+        placedCells = groups;
+        var frontierSets = new HashSet<int>[groups];
+        var frontierLists = new List<int>[groups];
+        var elongationDirs = new Vector2[groups];
+        for(int g=0; g<groups; g++){
+            frontierSets[g]=new HashSet<int>(); frontierLists[g]=new List<int>();
+            float ang=(float)(r.NextDouble()*Math.PI*2.0); elongationDirs[g]=new Vector2(Mathf.Cos(ang),Mathf.Sin(ang));
+        }
+        Action<int,int> addFrontier=(idx,g)=>{
+            if(idx<0||idx>=topo.Length||topo[idx].isLand) return;
+            if(frontierSets[g].Add(idx)) frontierLists[g].Add(idx);
+        };
+        for(int g=0; g<groups; g++){
+            int sx=seeds[g].x, sy=seeds[g].y;
+            for(int d=0; d<4; d++){ int nx=(sx+(d==0?1:d==1?-1:0)+tw)%tw, ny=sy+(d==2?1:d==3?-1:0); if(ny>=0&&ny<th) addFrontier(ny*tw+nx,g);}        
+        }
+        while(placedCells<targetCells){
+            bool anyGroupCanExpand=false;
+            for(int g=0; g<groups && placedCells<targetCells; g++){
+                var list=frontierLists[g]; var set=frontierSets[g];
+                while(list.Count>0){ int li=r.Next(list.Count); int idx=list[li]; if(!topo[idx].isLand) break; list[li]=list[list.Count-1]; list.RemoveAt(list.Count-1); set.Remove(idx);}                
+                if(list.Count==0) continue;
+                anyGroupCanExpand=true;
+                int sampleCount=Mathf.Min(list.Count, 18);
+                int bestIdx=-1; float bestScore=float.NegativeInfinity;
+                for(int sidx=0; sidx<sampleCount; sidx++){
+                    int idx=list[r.Next(list.Count)]; if(topo[idx].isLand){set.Remove(idx); continue;}
+                    int x=idx%tw,y=idx/tw,same=0,other=0;
+                    for(int d=0; d<4; d++){ int nx=(x+(d==0?1:d==1?-1:0)+tw)%tw, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(!topo[ni].isLand) continue; if(topo[ni].groupId==g) same++; else other++; }
+                    if(same==0) continue;
+                    float noise = Mathf.Abs(Mathf.Sin((x*12.9898f + y*78.233f + (g+1)*37.719f) * 0.157f));
+                    Vector2 fromSeed = new Vector2(x-seeds[g].x, y-seeds[g].y); if(fromSeed.x>tw*0.5f) fromSeed.x-=tw; if(fromSeed.x<-tw*0.5f) fromSeed.x+=tw;
+                    float elong = fromSeed.sqrMagnitude>0.001f ? Mathf.Clamp01((Vector2.Dot(fromSeed.normalized, elongationDirs[g]) + 1f)*0.5f) : 0.5f;
+                    float centerRestraint = -Mathf.Clamp01(fromSeed.magnitude / Mathf.Max(tw,th));
+                    float neighborSupport=Mathf.Clamp01(same/4f); float otherPenalty=other*0.18f; float tendrilPenalty=same==0?0.70f:same==1?0.28f:0f;
+                    float score = preset.compactnessBias*neighborSupport + preset.irregularityBias*noise + preset.elongationBias*elong + centerRestraint*0.08f - otherPenalty - tendrilPenalty;
+                    if(score>bestScore){bestScore=score; bestIdx=idx;}
+                }
+                if(bestIdx<0) continue;
+                topo[bestIdx].isLand=true; topo[bestIdx].groupId=g; placedCells++;
+                set.Remove(bestIdx);
+                for(int d=0; d<4; d++){ int nx=(bestIdx%tw+(d==0?1:d==1?-1:0)+tw)%tw, ny=(bestIdx/tw)+(d==2?1:d==3?-1:0); if(ny>=0&&ny<th) addFrontier(ny*tw+nx,g);}                
+            }
+            if(!anyGroupCanExpand) break;
+        }
+        return placedCells>=targetCells;
+    }
+
+    private void AddSatelliteIslandClusters(TopologyCell[] topo,int tw,int th,PreviewLandPresetProfileV2 preset,System.Random r,int targetCells){
+        int n=topo.Length; int land=CountTopologyLandCells(topo); int budget=Mathf.Max(0,targetCells-land);
+        int minC=Mathf.Max(0,preset.targetSatelliteIslandClustersMin); int maxC=Mathf.Max(minC,preset.targetSatelliteIslandClustersMax);
+        int clusters=Mathf.RoundToInt(r.Next(minC,maxC+1) * Mathf.Lerp(0.7f,1.35f,preset.islandFragmentBias));
+        for(int c=0;c<clusters && budget>0;c++){
+            int tries=0, seed=-1;
+            while(tries++<30){ int idx=r.Next(n); if(!topo[idx].isLand){ seed=idx; break; } }
+            if(seed<0) break;
+            int clusterSize=Mathf.Min(budget, Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(2f,6f,preset.islandFragmentBias) + (float)r.NextDouble()*2f)));
+            var q=new List<int>{seed};
+            for(int k=0;k<q.Count && clusterSize>0;k++){
+                int idx=q[k]; if(topo[idx].isLand) continue;
+                topo[idx].isLand=true; topo[idx].groupId=-(1000+c); clusterSize--; budget--;
+                int x=idx%tw,y=idx/tw;
+                for(int d=0;d<4;d++){ if(r.NextDouble()>0.78) continue; int nx=(x+(d==0?1:d==1?-1:0)+tw)%tw, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(!topo[ni].isLand && !q.Contains(ni)) q.Add(ni);}                
+            }
+        }
+    }
+
     private void SmoothBroadPresetTopology(TopologyCell[] topo,int tw,int th,string presetName){
         if(presetName!="Standard" && presetName!="Large Continents" && presetName!="Pangaea" && presetName!="Terrestrial") return;
         bool[] next=new bool[topo.Length];
@@ -237,7 +330,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         for(int i=0;i<n;i++) if(topo[i].isLand&&!vis[i]){int size=0; var q=new Queue<int>(); q.Enqueue(i); vis[i]=true; while(q.Count>0){int c=q.Dequeue(); size++; int x=c%w,y=c/w; for(int d=0;d<4;d++){int nx=(x+(d==0?1:d==1?-1:0)+w)%w, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=h) continue; int ni=ny*w+nx; if(!vis[ni]&&topo[ni].isLand){vis[ni]=true;q.Enqueue(ni);}}} sizes.Add(size);} 
         compCount=sizes.Count; componentSizes=sizes.ToArray(); int largest=0; foreach(int s in sizes) if(s>largest) largest=s; return total<=0?0f:(float)largest/total;
     }
-    private bool IsTopologyValidForPreset(PreviewLandPresetProfileV2 preset,float largestShare,int componentCount,float actualCoverage){
+    private bool IsTopologyValidForPreset(PreviewLandPresetProfileV2 preset,float largestShare,int componentCount,float actualCoverage,float targetCoverage){
+        float coverageTolerance = Mathf.Max(0.025f, targetCoverage * 0.08f);
+        bool coverageOk = Mathf.Abs(actualCoverage - targetCoverage) <= coverageTolerance;
+        if (!coverageOk) return false;
         switch(preset.name){
             case "Archipelago": return largestShare<=0.28f && componentCount>=8;
             case "Islands": return largestShare<=0.48f && componentCount>=4;
