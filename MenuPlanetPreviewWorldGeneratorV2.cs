@@ -169,8 +169,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 }
             }
             int targetCells=Mathf.Clamp(Mathf.RoundToInt(target*tn),groups,tn-2);
-            GrowTopologyToCoverage(topo, tw, th, groups, seeds, preset, r, targetCells, out int placedCells);
-            if (placedCells < targetCells * 0.92f) continue;
+            int satelliteBudgetTarget = EstimateSatelliteBudgetTarget(preset, targetCells);
+            int primaryTargetCells = Mathf.Clamp(targetCells - satelliteBudgetTarget, groups, targetCells);
+            GrowTopologyToCoverage(topo, tw, th, groups, seeds, preset, r, primaryTargetCells, out int placedCells);
+            if (placedCells < primaryTargetCells * 0.92f) continue;
             AddSatelliteIslandClusters(topo, tw, th, preset, r, targetCells);
             SmoothBroadPresetTopology(topo, tw, th, preset.name);
             int finalTopologyLandCells = CountTopologyLandCells(topo);
@@ -307,6 +309,18 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 for(int d=0;d<4;d++){ if(r.NextDouble()>0.78) continue; int nx=(x+(d==0?1:d==1?-1:0)+tw)%tw, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(!topo[ni].isLand && !q.Contains(ni)) q.Add(ni);}                
             }
         }
+    }
+
+    private int EstimateSatelliteBudgetTarget(PreviewLandPresetProfileV2 preset, int targetCells){
+        if (targetCells <= 0) return 0;
+        int minC = Mathf.Max(0, preset.targetSatelliteIslandClustersMin);
+        int maxC = Mathf.Max(minC, preset.targetSatelliteIslandClustersMax);
+        float avgClusters = (minC + maxC) * 0.5f;
+        float clusterScale = Mathf.Lerp(0.7f, 1.35f, preset.islandFragmentBias);
+        float avgClusterSize = Mathf.Lerp(2f, 6f, preset.islandFragmentBias) + 1f; // avg of +[0,2)
+        int estimate = Mathf.RoundToInt(avgClusters * clusterScale * avgClusterSize);
+        int cappedByCoverage = Mathf.RoundToInt(targetCells * Mathf.Lerp(0.03f, 0.18f, preset.islandFragmentBias));
+        return Mathf.Clamp(Mathf.Min(estimate, cappedByCoverage), 0, Mathf.Max(0, targetCells - 1));
     }
 
     private void SmoothBroadPresetTopology(TopologyCell[] topo,int tw,int th,string presetName){
