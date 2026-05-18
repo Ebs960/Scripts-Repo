@@ -420,9 +420,9 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 14
+  rotationSpeed: 19
   detailScale: 22
-  detailStrength: 0.12
+  detailStrength: 0.064
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.004
   useDisplacedNormals: 1
@@ -465,7 +465,7 @@ MonoBehaviour:
   mountainDetailStrength: 0.22
   iceDetailStrength: 0.13
   oceanDetailStrength: 0.05
-  oceanNormalStrength: 0.1
+  oceanNormalStrength: 0.225
   mountainNormalStrength: 0.12
   iceNormalStrength: 0.22
   textureDetailScale: 8
@@ -594,13 +594,16 @@ MonoBehaviour:
   mapWidth: 2048
   mapHeight: 1024
   regenerationDelay: 0.01
-  topologyWidth: 2048
-  topologyHeight: 1024
-  maxTopologyAttempts: 4
-  coastlineWarpStrength: 0.174
-  coastlineEdgeNoiseStrength: 0.458
-  coastlineSoftness: 0.0077
+  topologyWidth: 512
+  topologyHeight: 256
+  maxTopologyAttempts: 12
+  coastlineDeformationWidthCells: 24
+  coastlineWarpStrength: 0.93
+  coastlineEdgeNoiseStrength: 0.3
+  coastlineSoftness: 0.03
+  coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
+  logLandmassGenerationDiagnostics: 1
   useFastNoiseLiteFields: 1
   noiseFieldWidth: 1024
   noiseFieldHeight: 512
@@ -608,7 +611,194 @@ MonoBehaviour:
   standardRiverRange: {x: 50, y: 90}
   abundantRiverRange: {x: 45, y: 70}
   minRiverSourceSpacingPixels: 32
-  riverCandidateStride: 9
+  riverCandidateStride: 8
+  presets:
+  - name: Archipelago
+    majorLandmasses:
+      minCount: 0
+      maxCount: 0
+      minAreaFraction: 0
+      maxAreaFraction: 0
+      minLobes: 0
+      maxLobes: 0
+    largeIslands:
+      minCount: 10
+      maxCount: 18
+      minAreaFraction: 0.004
+      maxAreaFraction: 0.018
+      minLobes: 1
+      maxLobes: 3
+    smallIslandClusters:
+      minCount: 12
+      maxCount: 30
+      minAreaFraction: 0.0005
+      maxAreaFraction: 0.004
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 0
+    minMajorOceanGapCells: 1
+    compactnessBias: 0.3
+    irregularityBias: 0.9
+    elongationBias: 0.2
+    allowMajorLandmassMerging: 0
+    requireSingleDominantLandmass: 0
+    softMinWorldLandCoverage: 0.1
+    softMaxWorldLandCoverage: 0.34
+  - name: Islands
+    majorLandmasses:
+      minCount: 0
+      maxCount: 0
+      minAreaFraction: 0
+      maxAreaFraction: 0
+      minLobes: 0
+      maxLobes: 0
+    largeIslands:
+      minCount: 5
+      maxCount: 10
+      minAreaFraction: 0.015
+      maxAreaFraction: 0.045
+      minLobes: 1
+      maxLobes: 3
+    smallIslandClusters:
+      minCount: 8
+      maxCount: 20
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.006
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 0
+    minMajorOceanGapCells: 1
+    compactnessBias: 0.42
+    irregularityBias: 0.74
+    elongationBias: 0.3
+    allowMajorLandmassMerging: 0
+    requireSingleDominantLandmass: 0
+    softMinWorldLandCoverage: 0.18
+    softMaxWorldLandCoverage: 0.46
+  - name: Standard
+    majorLandmasses:
+      minCount: 2
+      maxCount: 4
+      minAreaFraction: 0.1
+      maxAreaFraction: 0.18
+      minLobes: 2
+      maxLobes: 5
+    largeIslands:
+      minCount: 3
+      maxCount: 8
+      minAreaFraction: 0.005
+      maxAreaFraction: 0.02
+      minLobes: 1
+      maxLobes: 3
+    smallIslandClusters:
+      minCount: 4
+      maxCount: 12
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.004
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 22
+    minMajorOceanGapCells: 1.5
+    compactnessBias: 0.58
+    irregularityBias: 0.66
+    elongationBias: 0.34
+    allowMajorLandmassMerging: 0
+    requireSingleDominantLandmass: 0
+    softMinWorldLandCoverage: 0.25
+    softMaxWorldLandCoverage: 0.62
+  - name: Large Continents
+    majorLandmasses:
+      minCount: 2
+      maxCount: 3
+      minAreaFraction: 0.14
+      maxAreaFraction: 0.26
+      minLobes: 3
+      maxLobes: 6
+    largeIslands:
+      minCount: 2
+      maxCount: 6
+      minAreaFraction: 0.006
+      maxAreaFraction: 0.024
+      minLobes: 1
+      maxLobes: 3
+    smallIslandClusters:
+      minCount: 3
+      maxCount: 10
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.004
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 28
+    minMajorOceanGapCells: 2
+    compactnessBias: 0.58
+    irregularityBias: 0.6
+    elongationBias: 0.5
+    allowMajorLandmassMerging: 0
+    requireSingleDominantLandmass: 0
+    softMinWorldLandCoverage: 0.38
+    softMaxWorldLandCoverage: 0.76
+  - name: Pangaea
+    majorLandmasses:
+      minCount: 1
+      maxCount: 1
+      minAreaFraction: 0.4
+      maxAreaFraction: 0.62
+      minLobes: 5
+      maxLobes: 10
+    largeIslands:
+      minCount: 0
+      maxCount: 3
+      minAreaFraction: 0.005
+      maxAreaFraction: 0.02
+      minLobes: 1
+      maxLobes: 2
+    smallIslandClusters:
+      minCount: 0
+      maxCount: 6
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.004
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 0
+    minMajorOceanGapCells: 0
+    compactnessBias: 0.48
+    irregularityBias: 0.72
+    elongationBias: 0.72
+    allowMajorLandmassMerging: 1
+    requireSingleDominantLandmass: 1
+    softMinWorldLandCoverage: 0.4
+    softMaxWorldLandCoverage: 0.68
+  - name: Terrestrial
+    majorLandmasses:
+      minCount: 2
+      maxCount: 4
+      minAreaFraction: 0.16
+      maxAreaFraction: 0.28
+      minLobes: 3
+      maxLobes: 6
+    largeIslands:
+      minCount: 2
+      maxCount: 6
+      minAreaFraction: 0.006
+      maxAreaFraction: 0.026
+      minLobes: 1
+      maxLobes: 3
+    smallIslandClusters:
+      minCount: 2
+      maxCount: 8
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.004
+      minLobes: 1
+      maxLobes: 2
+    minMajorSeedSeparationDegrees: 24
+    minMajorOceanGapCells: 1.5
+    compactnessBias: 0.56
+    irregularityBias: 0.52
+    elongationBias: 0.44
+    allowMajorLandmassMerging: 0
+    requireSingleDominantLandmass: 0
+    softMinWorldLandCoverage: 0.55
+    softMaxWorldLandCoverage: 0.88
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
