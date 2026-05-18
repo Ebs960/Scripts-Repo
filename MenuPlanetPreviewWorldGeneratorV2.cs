@@ -47,8 +47,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     [SerializeField] private int topologyWidth = 256;
     [SerializeField] private int topologyHeight = 128;
-    [SerializeField, Range(1, 12)] private int maxTopologyAttempts = 8;
-    [Header("Coastline Sculpting")]
+        [Header("Coastline Sculpting")]
     [Tooltip("How many topology cells inland/oceanward FastNoiseLite may significantly reshape the coastline. Higher values let noise carve broader bays, peninsulas, and coastal irregularity.")]
     [SerializeField, Range(1f, 24f)] private float coastlineDeformationWidthCells = 10f;
     [Tooltip("Large-scale FastNoiseLite authority over the coastline. Higher values let noise meaningfully push coastlines inland or outward.")]
@@ -79,10 +78,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     [Header("Decorative River Shape")]
     [SerializeField, Range(4f, 80f)] private float decorativeRiverMinSourceCoastDistance = 22f;
-    [SerializeField, Range(0.05f, 1f)] private float decorativeRiverTurnResponsiveness = 0.28f;
-    [SerializeField, Range(0f, 1f)] private float decorativeRiverMeanderStrength = 0.32f;
+    [SerializeField, Range(0f, 1f)] private float decorativeRiverMeanderStrength = 0.55f;
+    [SerializeField, Range(0.02f, 0.40f)] private float decorativeRiverLateralWanderFraction = 0.14f;
+    [SerializeField, Range(3, 10)] private int decorativeRiverControlPointCountMin = 5;
+    [SerializeField, Range(4, 14)] private int decorativeRiverControlPointCountMax = 8;
     [SerializeField, Range(1, 6)] private int decorativeRiverUpperRadius = 2;
     [SerializeField, Range(2, 10)] private int decorativeRiverLowerRadius = 5;
+    [SerializeField, Range(1, 16)] private int decorativeRiverLandSnapRadius = 6;
 
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture, climateTexture, hydrologyMaskTexture, biomeWeights0Texture, biomeWeights1Texture, biomeWeights2Texture;
     public Texture2D TectonicSurfaceTexture => surfaceDataTexture;
@@ -102,20 +104,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         public string name; public LandmassBand majorLandmasses, largeIslands, smallIslandClusters;
         public float minMajorSeedSeparationDegrees, minMajorOceanGapCells;
         public float compactnessBias, irregularityBias, elongationBias;
-        public bool allowMajorLandmassMerging, requireSingleDominantLandmass;
-        public float softMinWorldLandCoverage, softMaxWorldLandCoverage;
+        public bool allowMajorLandmassMerging;
     }
-    private struct LandmassPlan { public LandmassKind kind; public int targetCellCount,lobeCount,groupId; public float estimatedRadiusCells; public Vector2Int center; public Vector2 elongationDirection; public List<Vector2Int> lobeAttractors; }
-    private struct LandmassValidationResult
-    {
-        public bool valid;
-        public float score;
-        public string failureSummary;
-        public int plannedMajorCount, actualMajorCount;
-        public int plannedLargeIslandCount, actualLargeIslandCount;
-        public int plannedSmallClusterCount, actualSmallClusterCount;
-        public List<float> majorComponentFractions;
-    }
+    private struct LandmassLobe { public Vector2 center; public float radiusX; public float radiusY; public float rotationRadians; public float weight; }
+    private struct LandmassPlan { public LandmassKind kind; public int targetCellCount,lobeCount,groupId; public float estimatedRadiusCells; public Vector2Int center; public Vector2 elongationDirection; public List<LandmassLobe> lobes; }
     private struct LandmassPlanBuildDiagnostics
     {
         public int requestedMajorCount;
@@ -127,35 +119,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         public int failedCenterPlacements;
         public int totalPlannedTargetCells;
     }
-    private enum LandmassGrowthStopReason { ReachedTarget, NoFrontierCandidates, NoClaimableFrontierCandidates, GuardBreak, Unknown }
-    private enum LandmassClaimRejectReason { None, AlreadyLand, MajorContinentMergeBlocked, LargeIslandMergeBlocked, Unknown }
-    private struct LandmassGrowthDiagnostics
-    {
-        public int groupId;
-        public LandmassKind kind;
-        public int targetCells;
-        public int placedCellsBeforeSmoothing;
-        public Vector2Int center;
-        public int lobeCount;
-        public int growthIterations;
-        public int finalFrontierCount;
-        public int claimChecks;
-        public int rejectedAlreadyLand;
-        public int rejectedMajorMerge;
-        public int rejectedLargeIslandMerge;
-        public int rejectedUnknown;
-        public float bestScoreAtStop;
-        public LandmassGrowthStopReason stopReason;
-    }
-
+    
     [SerializeField] private PreviewLandPresetProfileV3[] presets = new PreviewLandPresetProfileV3[6]
     {
-        new PreviewLandPresetProfileV3{name="Archipelago",majorLandmasses=new LandmassBand{minCount=0,maxCount=0,minAreaFraction=0,maxAreaFraction=0,minLobes=0,maxLobes=0},largeIslands=new LandmassBand{minCount=10,maxCount=18,minAreaFraction=0.004f,maxAreaFraction=0.018f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=12,maxCount=30,minAreaFraction=0.0005f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=1f,compactnessBias=0.30f,irregularityBias=0.90f,elongationBias=0.20f,allowMajorLandmassMerging=false,requireSingleDominantLandmass=false,softMinWorldLandCoverage=0.10f,softMaxWorldLandCoverage=0.34f},
-        new PreviewLandPresetProfileV3{name="Islands",majorLandmasses=new LandmassBand{minCount=0,maxCount=0,minAreaFraction=0,maxAreaFraction=0,minLobes=0,maxLobes=0},largeIslands=new LandmassBand{minCount=5,maxCount=10,minAreaFraction=0.015f,maxAreaFraction=0.045f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=8,maxCount=20,minAreaFraction=0.001f,maxAreaFraction=0.006f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=1f,compactnessBias=0.42f,irregularityBias=0.74f,elongationBias=0.30f,allowMajorLandmassMerging=false,requireSingleDominantLandmass=false,softMinWorldLandCoverage=0.18f,softMaxWorldLandCoverage=0.46f},
-        new PreviewLandPresetProfileV3{name="Standard",majorLandmasses=new LandmassBand{minCount=3,maxCount=5,minAreaFraction=0.06f,maxAreaFraction=0.12f,minLobes=2,maxLobes=5},largeIslands=new LandmassBand{minCount=3,maxCount=8,minAreaFraction=0.005f,maxAreaFraction=0.020f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=4,maxCount=12,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=22f,minMajorOceanGapCells=1.5f,compactnessBias=0.58f,irregularityBias=0.66f,elongationBias=0.34f,allowMajorLandmassMerging=false,requireSingleDominantLandmass=false,softMinWorldLandCoverage=0.25f,softMaxWorldLandCoverage=0.62f},
-        new PreviewLandPresetProfileV3{name="Large Continents",majorLandmasses=new LandmassBand{minCount=2,maxCount=3,minAreaFraction=0.14f,maxAreaFraction=0.26f,minLobes=3,maxLobes=6},largeIslands=new LandmassBand{minCount=2,maxCount=6,minAreaFraction=0.006f,maxAreaFraction=0.024f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=3,maxCount=10,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=28f,minMajorOceanGapCells=2f,compactnessBias=0.58f,irregularityBias=0.60f,elongationBias=0.50f,allowMajorLandmassMerging=false,requireSingleDominantLandmass=false,softMinWorldLandCoverage=0.38f,softMaxWorldLandCoverage=0.76f},
-        new PreviewLandPresetProfileV3{name="Pangaea",majorLandmasses=new LandmassBand{minCount=1,maxCount=1,minAreaFraction=0.40f,maxAreaFraction=0.62f,minLobes=5,maxLobes=10},largeIslands=new LandmassBand{minCount=0,maxCount=3,minAreaFraction=0.005f,maxAreaFraction=0.020f,minLobes=1,maxLobes=2},smallIslandClusters=new LandmassBand{minCount=0,maxCount=6,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=0f,compactnessBias=0.48f,irregularityBias=0.72f,elongationBias=0.72f,allowMajorLandmassMerging=true,requireSingleDominantLandmass=true,softMinWorldLandCoverage=0.40f,softMaxWorldLandCoverage=0.68f},
-        new PreviewLandPresetProfileV3{name="Terrestrial",majorLandmasses=new LandmassBand{minCount=2,maxCount=4,minAreaFraction=0.16f,maxAreaFraction=0.28f,minLobes=3,maxLobes=6},largeIslands=new LandmassBand{minCount=2,maxCount=6,minAreaFraction=0.006f,maxAreaFraction=0.026f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=2,maxCount=8,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=24f,minMajorOceanGapCells=1.5f,compactnessBias=0.56f,irregularityBias=0.52f,elongationBias=0.44f,allowMajorLandmassMerging=false,requireSingleDominantLandmass=false,softMinWorldLandCoverage=0.55f,softMaxWorldLandCoverage=0.88f}
+        new PreviewLandPresetProfileV3{name="Archipelago",majorLandmasses=new LandmassBand{minCount=0,maxCount=0,minAreaFraction=0,maxAreaFraction=0,minLobes=0,maxLobes=0},largeIslands=new LandmassBand{minCount=10,maxCount=18,minAreaFraction=0.004f,maxAreaFraction=0.018f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=12,maxCount=30,minAreaFraction=0.0005f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=1f,compactnessBias=0.30f,irregularityBias=0.90f,elongationBias=0.20f,allowMajorLandmassMerging=false},
+        new PreviewLandPresetProfileV3{name="Islands",majorLandmasses=new LandmassBand{minCount=0,maxCount=0,minAreaFraction=0,maxAreaFraction=0,minLobes=0,maxLobes=0},largeIslands=new LandmassBand{minCount=5,maxCount=10,minAreaFraction=0.015f,maxAreaFraction=0.045f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=8,maxCount=20,minAreaFraction=0.001f,maxAreaFraction=0.006f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=1f,compactnessBias=0.42f,irregularityBias=0.74f,elongationBias=0.30f,allowMajorLandmassMerging=false},
+        new PreviewLandPresetProfileV3{name="Standard",majorLandmasses=new LandmassBand{minCount=3,maxCount=5,minAreaFraction=0.06f,maxAreaFraction=0.12f,minLobes=2,maxLobes=5},largeIslands=new LandmassBand{minCount=3,maxCount=8,minAreaFraction=0.005f,maxAreaFraction=0.020f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=4,maxCount=12,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=22f,minMajorOceanGapCells=1.5f,compactnessBias=0.58f,irregularityBias=0.66f,elongationBias=0.34f,allowMajorLandmassMerging=false},
+        new PreviewLandPresetProfileV3{name="Large Continents",majorLandmasses=new LandmassBand{minCount=2,maxCount=3,minAreaFraction=0.14f,maxAreaFraction=0.26f,minLobes=3,maxLobes=6},largeIslands=new LandmassBand{minCount=2,maxCount=6,minAreaFraction=0.006f,maxAreaFraction=0.024f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=3,maxCount=10,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=28f,minMajorOceanGapCells=2f,compactnessBias=0.58f,irregularityBias=0.60f,elongationBias=0.50f,allowMajorLandmassMerging=false},
+        new PreviewLandPresetProfileV3{name="Pangaea",majorLandmasses=new LandmassBand{minCount=1,maxCount=1,minAreaFraction=0.40f,maxAreaFraction=0.62f,minLobes=5,maxLobes=10},largeIslands=new LandmassBand{minCount=0,maxCount=3,minAreaFraction=0.005f,maxAreaFraction=0.020f,minLobes=1,maxLobes=2},smallIslandClusters=new LandmassBand{minCount=0,maxCount=6,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=0f,compactnessBias=0.48f,irregularityBias=0.72f,elongationBias=0.72f,allowMajorLandmassMerging=true},
+        new PreviewLandPresetProfileV3{name="Terrestrial",majorLandmasses=new LandmassBand{minCount=2,maxCount=4,minAreaFraction=0.16f,maxAreaFraction=0.28f,minLobes=3,maxLobes=6},largeIslands=new LandmassBand{minCount=2,maxCount=6,minAreaFraction=0.006f,maxAreaFraction=0.026f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=2,maxCount=8,minAreaFraction=0.001f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=24f,minMajorOceanGapCells=1.5f,compactnessBias=0.56f,irregularityBias=0.52f,elongationBias=0.44f,allowMajorLandmassMerging=false}
     };
 
     private MenuPlanetPreviewWorldInputs inputs;
@@ -283,57 +255,42 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int presetIndex=Mathf.Clamp(inputs.landPresetIndex,0,presets.Length-1); var preset=presets[presetIndex]; diag.preset=preset.name;
         float sizeBias=Mathf.Clamp01(1f-inputs.landThreshold); float shapeBias=Mathf.InverseLerp(0.5f,5f,inputs.landScale); diag.targetLand=0f;
         TopologyCell[] topo=new TopologyCell[tn];
-        int bestAttempt=1; float bestScore=-1f; TopologyCell[] bestTopo=null; int bestGroups=0; float bestLargest=0f;
         int seedBase = Mathf.RoundToInt(inputs.seed * 1000f);
         EnsureFastNoiseFields(seedBase, tw, th);
-        for(int attempt=1; attempt<=Mathf.Max(1,maxTopologyAttempts); attempt++){
-            var r=new System.Random((seedBase*73856093) ^ (attempt*19349663));
-            for(int i=0;i<tn;i++){topo[i].isLand=false;topo[i].groupId=-1;}
-            var plans=BuildLandmassPlan(preset,tw,th,r,sizeBias,shapeBias,out var planBuildDiag);
-            if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-                Debug.Log($"[WorldGenV2 Landmass Plan]\nAttempt={attempt}\nPreset={preset.name}\nTopologySize={tw}x{th} ({tn} cells)\nRequestedMajor={planBuildDiag.requestedMajorCount}\nBuiltMajor={planBuildDiag.builtMajorCount}\nRequestedLargeIslands={planBuildDiag.requestedLargeIslandCount}\nBuiltLargeIslands={planBuildDiag.builtLargeIslandCount}\nRequestedSmallClusters={planBuildDiag.requestedSmallClusterCount}\nBuiltSmallClusters={planBuildDiag.builtSmallClusterCount}\nFailedCenterPlacements={planBuildDiag.failedCenterPlacements}\nTotalPlannedTargetCells={planBuildDiag.totalPlannedTargetCells}\nPlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
-            var groupKindById = new Dictionary<int, LandmassKind>();
-            var plannedCellTargetByGroupId = new Dictionary<int, int>();
-            foreach (var plan in plans) { groupKindById[plan.groupId] = plan.kind; plannedCellTargetByGroupId[plan.groupId] = plan.targetCellCount; }
-            var growthDiagnostics = new List<LandmassGrowthDiagnostics>();
-            foreach(var plan in plans)
-            {
-                var growthDiag = GrowPlannedLandmass(topo,tw,th,plan,preset,r,shapeBias,groupKindById);
-                growthDiagnostics.Add(growthDiag);
-            }
-            if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-                foreach (var growthDiag in growthDiagnostics)
-                    Debug.Log($"[WorldGenV2 Landmass Growth]\nAttempt={attempt}\nGroup={growthDiag.groupId}\nKind={growthDiag.kind}\nTargetCells={growthDiag.targetCells}\nPlacedBeforeSmoothing={growthDiag.placedCellsBeforeSmoothing}\nFillRatio={(float)growthDiag.placedCellsBeforeSmoothing / Mathf.Max(1, growthDiag.targetCells):P1}\nStopReason={growthDiag.stopReason}\nIterations={growthDiag.growthIterations}\nFrontierAtStop={growthDiag.finalFrontierCount}\nClaimChecks={growthDiag.claimChecks}\nRejectAlreadyLand={growthDiag.rejectedAlreadyLand}\nRejectMajorMerge={growthDiag.rejectedMajorMerge}\nRejectLargeIslandMerge={growthDiag.rejectedLargeIslandMerge}\nRejectUnknown={growthDiag.rejectedUnknown}");
-            int landCellsBeforeSmoothing = CountTopologyLandCells(topo);
-            SmoothBroadPresetTopology(topo, tw, th, preset, groupKindById);
-            int landCellsAfterSmoothing = CountTopologyLandCells(topo);
-            if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-                Debug.Log($"[WorldGenV2 Landmass Smoothing]\nAttempt={attempt}\nLandCellsBefore={landCellsBeforeSmoothing}\nCoverageBefore={(float)landCellsBeforeSmoothing / tn:F4}\nLandCellsAfter={landCellsAfterSmoothing}\nCoverageAfter={(float)landCellsAfterSmoothing / tn:F4}\nCellsRemoved={landCellsBeforeSmoothing - landCellsAfterSmoothing}");
-            int finalTopologyLandCells = CountTopologyLandCells(topo);
-            float actualTopologyCoverage = (float)finalTopologyLandCells / tn;
-            int[] comp; int compCount; float largest=LargestLandmassShare(topo,tw,th,out compCount,out comp);
-            var validation = ValidateLandmassPlan(preset, plans, topo, tw, th, groupKindById, plannedCellTargetByGroupId, actualTopologyCoverage);
-            bool valid=validation.valid; float score=validation.score;
-            if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-                Debug.Log($"[WorldGenV2 Landmass Validation]\nAttempt={attempt}\nValid={validation.valid}\nScore={validation.score:F2}\nFailureSummary={validation.failureSummary}\nPlannedMajor={validation.plannedMajorCount}\nActualMajor={validation.actualMajorCount}\nPlannedLargeIslands={validation.plannedLargeIslandCount}\nActualLargeIslands={validation.actualLargeIslandCount}\nPlannedSmallClusters={validation.plannedSmallClusterCount}\nActualSmallClusters={validation.actualSmallClusterCount}\nCoverage={actualTopologyCoverage:F4}\nComponentCount={compCount}\nLargestShare={largest:F4}");
-            if(score>bestScore){bestScore=score; bestAttempt=attempt; bestTopo=(TopologyCell[])topo.Clone(); bestGroups=compCount; bestLargest=largest;} if(valid) break;
-        }
-        if (bestTopo == null)
-        {
-            bestTopo = (TopologyCell[])topo.Clone();
-            int[] fallbackComp;
-            bestLargest = LargestLandmassShare(bestTopo, tw, th, out bestGroups, out fallbackComp);
-            bestAttempt = Mathf.Max(1, maxTopologyAttempts);
-        }
-        diag.attempts=bestAttempt; diag.groupCount=bestGroups; diag.largestGroupShare=bestLargest;
-        diag.targetTopologyLandCells = -1;
-        diag.topologyLandCells = CountTopologyLandCells(bestTopo);
-        diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
+        var r=new System.Random((seedBase*73856093) ^ 19349663);
+        var plans=BuildLandmassPlan(preset,tw,th,r,sizeBias,shapeBias,out var planBuildDiag);
         if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmass Best Attempt]\nPreset={preset.name}\nChosenAttempt={bestAttempt}\nFinalTopologyCells={diag.topologyLandCells}\nFinalTopologyCoverage={diag.topologyCoverage:F4}\nFinalComponentCount={diag.groupCount}\nFinalLargestShare={diag.largestGroupShare:F4}");
+            Debug.Log($"[WorldGenV2 Landmass Plan]
+Preset={preset.name}
+TopologySize={tw}x{th} ({tn} cells)
+RequestedMajor={planBuildDiag.requestedMajorCount}
+BuiltMajor={planBuildDiag.builtMajorCount}
+RequestedLargeIslands={planBuildDiag.requestedLargeIslandCount}
+BuiltLargeIslands={planBuildDiag.builtLargeIslandCount}
+RequestedSmallClusters={planBuildDiag.requestedSmallClusterCount}
+BuiltSmallClusters={planBuildDiag.builtSmallClusterCount}
+FailedCenterPlacements={planBuildDiag.failedCenterPlacements}
+TotalPlannedTargetCells={planBuildDiag.totalPlannedTargetCells}
+PlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
+        RasterizeLandmassPlansToTopology(topo,plans,preset,tw,th,shapeBias);
+        diag.attempts=1;
+        diag.targetTopologyLandCells = planBuildDiag.totalPlannedTargetCells;
+        diag.topologyLandCells = CountTopologyLandCells(topo);
+        diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
+        int[] comp; diag.largestGroupShare=LargestLandmassShare(topo,tw,th,out diag.groupCount,out comp);
         if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmasses]\nPreset={preset.name}\nWorldCoverage={diag.topologyCoverage:F2}\nAttempts={bestAttempt}");
-        bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = bestTopo[i].isLand;
+            Debug.Log($"[WorldGenV2 Landmass Field]
+Preset={preset.name}
+PlannedMajor={planBuildDiag.builtMajorCount}
+PlannedLargeIslands={planBuildDiag.builtLargeIslandCount}
+PlannedSmallClusters={planBuildDiag.builtSmallClusterCount}
+PlannedTargetCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}
+RasterizedTopologyCoverage={diag.topologyCoverage:F4}");
+        if (logWorldGenerationDiagnostics)
+            Debug.Log($"[WorldGenV2 Landmasses]
+Preset={preset.name}
+WorldCoverage={diag.topologyCoverage:F2}");
+        bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = topo[i].isLand;
         float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
         float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
         float[] topoSignedCoastDistance = BuildSignedTopologyCoastDistance(topoLand, topoLandDist, topoOceanDist);
@@ -542,7 +499,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 if(!TryPlaceLandmassCenter(plans,kind,radius,preset,tw,th,r,out var center)) { buildDiagnostics.failedCenterPlacements++; continue; }
                 float ang=(float)(r.NextDouble()*Math.PI*2); var elong=new Vector2(Mathf.Cos(ang),Mathf.Sin(ang));
                 int lobes=Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(band.minLobes,band.maxLobes,shapeBias)),band.minLobes,band.maxLobes);
-                plans.Add(new LandmassPlan{kind=kind,targetCellCount=target,estimatedRadiusCells=radius,lobeCount=lobes,groupId=groupId++,center=center,elongationDirection=elong,lobeAttractors=BuildLobes(center,lobes,tw,th,r)});
+                plans.Add(new LandmassPlan{kind=kind,targetCellCount=target,estimatedRadiusCells=radius,lobeCount=lobes,groupId=groupId++,center=center,elongationDirection=elong,lobes=BuildLandmassLobes(kind,center,radius,lobes,elong,tw,th,r)});
                 if(kind==LandmassKind.MajorContinent) buildDiagnostics.builtMajorCount++; else if(kind==LandmassKind.LargeIsland) buildDiagnostics.builtLargeIslandCount++; else buildDiagnostics.builtSmallClusterCount++;
                 buildDiagnostics.totalPlannedTargetCells += target;
             }
@@ -567,240 +524,59 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     }
     private Vector3 TopologyToDirection(Vector2Int c,int tw,int th){float u=(c.x+0.5f)/tw,v=(c.y+0.5f)/th; float lon=(u*Mathf.PI*2f)-Mathf.PI,lat=(0.5f-v)*Mathf.PI; float cl=Mathf.Cos(lat); return new Vector3(cl*Mathf.Cos(lon),Mathf.Sin(lat),cl*Mathf.Sin(lon));}
     private float TopologyCellDistance(Vector2Int a,Vector2Int b,int tw,int th){ float dx=Mathf.Min(Mathf.Abs(a.x-b.x),tw-Mathf.Abs(a.x-b.x)); float dy=Mathf.Abs(a.y-b.y); return Mathf.Sqrt(dx*dx+dy*dy);}    
-    private List<Vector2Int> BuildLobes(Vector2Int center,int lobeCount,int tw,int th,System.Random r){var lobes=new List<Vector2Int>(); for(int i=0;i<lobeCount;i++){float a=(float)(r.NextDouble()*Math.PI*2);float d=Mathf.Lerp(2f,Mathf.Min(tw,th)*0.15f,(float)r.NextDouble()); lobes.Add(new Vector2Int((center.x+Mathf.RoundToInt(Mathf.Cos(a)*d)+tw)%tw,Mathf.Clamp(center.y+Mathf.RoundToInt(Mathf.Sin(a)*d),0,th-1)));} return lobes;}
-    private bool CanClaimCellForLandmass(TopologyCell[] topo,int tw,int th,int idx,LandmassPlan plan,PreviewLandPresetProfileV3 preset,Dictionary<int,LandmassKind> groupKindById,out LandmassClaimRejectReason rejectReason){
-        rejectReason=LandmassClaimRejectReason.None;
-        if(topo[idx].isLand) { rejectReason=LandmassClaimRejectReason.AlreadyLand; return false; } int x=idx%tw,y=idx/tw;
-        for(int oy=-1;oy<=1;oy++) for(int ox=-1;ox<=1;ox++){ if(ox==0&&oy==0) continue; int nx=(x+ox+tw)%tw,ny=y+oy; if(ny<0||ny>=th) continue; var n=topo[ny*tw+nx]; if(!n.isLand||n.groupId==plan.groupId) continue; if(!groupKindById.TryGetValue(n.groupId,out var nk)) continue; if(plan.kind==LandmassKind.MajorContinent && nk==LandmassKind.MajorContinent && !preset.allowMajorLandmassMerging) { rejectReason=LandmassClaimRejectReason.MajorContinentMergeBlocked; return false; } if(plan.kind==LandmassKind.LargeIsland && (nk==LandmassKind.MajorContinent||nk==LandmassKind.LargeIsland)) { rejectReason=LandmassClaimRejectReason.LargeIslandMergeBlocked; return false; } }
-        return true;
-    }
-    private void AddFrontierNeighbors(TopologyCell[] topo,int tw,int th,int landIndex,HashSet<int> frontier){
-        int x=landIndex%tw;
-        int y=landIndex/tw;
-        for(int d=0;d<4;d++){
-            int nx=(x+(d==0?1:d==1?-1:0)+tw)%tw;
-            int ny=y+(d==2?1:d==3?-1:0);
-            if(ny<0||ny>=th) continue;
-            int ni=ny*tw+nx;
-            if(!topo[ni].isLand) frontier.Add(ni);
+    private List<LandmassLobe> BuildLandmassLobes(LandmassKind kind,Vector2Int center,float estimatedRadiusCells,int lobeCount,Vector2 elongationDirection,int tw,int th,System.Random r){
+        var lobes=new List<LandmassLobe>();
+        float baseRadius=Mathf.Max(2f,estimatedRadiusCells);
+        lobes.Add(new LandmassLobe{center=new Vector2(center.x,center.y),radiusX=baseRadius*Mathf.Lerp(0.75f,1.05f,(float)r.NextDouble()),radiusY=baseRadius*Mathf.Lerp(0.65f,1.00f,(float)r.NextDouble()),rotationRadians=(float)(r.NextDouble()*Math.PI*2),weight=1f});
+        int additional=Mathf.Max(0,lobeCount-1);
+        float kindTightness=kind==LandmassKind.MajorContinent?1f:kind==LandmassKind.LargeIsland?0.8f:0.62f;
+        for(int i=0;i<additional;i++){
+            float align=(float)r.NextDouble()*2f-1f;
+            float baseAngle=Mathf.Atan2(elongationDirection.y,elongationDirection.x);
+            float angle=baseAngle+align*Mathf.Lerp(0.35f,1.45f,1f-kindTightness);
+            float dist=baseRadius*Mathf.Lerp(0.35f,0.90f*kindTightness+0.15f,(float)r.NextDouble());
+            Vector2 lobeCenter=new Vector2((center.x+Mathf.Cos(angle)*dist+tw)%tw,Mathf.Clamp(center.y+Mathf.Sin(angle)*dist,0,th-1));
+            lobes.Add(new LandmassLobe{center=lobeCenter,radiusX=baseRadius*Mathf.Lerp(0.35f,0.75f,(float)r.NextDouble()),radiusY=baseRadius*Mathf.Lerp(0.30f,0.70f,(float)r.NextDouble()),rotationRadians=(float)(r.NextDouble()*Math.PI*2),weight=Mathf.Lerp(0.65f,0.95f,(float)r.NextDouble())});
         }
+        return lobes;
     }
-    private bool HasAvailableGrowthNeighbor(TopologyCell[] topo,int tw,int th,int centerIndex,LandmassPlan plan,PreviewLandPresetProfileV3 preset,Dictionary<int,LandmassKind> groupKindById){
-        int cx=centerIndex%tw;
-        int cy=centerIndex/tw;
-        for(int d=0;d<4;d++){
-            int nx=(cx+(d==0?1:d==1?-1:0)+tw)%tw;
-            int ny=cy+(d==2?1:d==3?-1:0);
-            if(ny<0||ny>=th) continue;
-            int ni=ny*tw+nx;
-            if(CanClaimCellForLandmass(topo,tw,th,ni,plan,preset,groupKindById,out _)) return true;
-        }
-        return false;
-    }
-    private bool TryFindReplacementGrowthCenter(TopologyCell[] topo,int tw,int th,LandmassPlan plan,PreviewLandPresetProfileV3 preset,System.Random r,Dictionary<int,LandmassKind> groupKindById,out Vector2Int center){
-        int attempts=Mathf.Max(64,tw*th/6);
-        for(int a=0;a<attempts;a++){
-            int x=r.Next(0,tw);
-            int y=r.Next(0,th);
-            int idx=y*tw+x;
-            if(topo[idx].isLand) continue;
-            if(!HasAvailableGrowthNeighbor(topo,tw,th,idx,plan,preset,groupKindById)) continue;
-            center=new Vector2Int(x,y);
-            return true;
-        }
-        center=default;
-        return false;
-    }
-    private LandmassGrowthDiagnostics GrowPlannedLandmass(TopologyCell[] topo,int tw,int th,LandmassPlan plan,PreviewLandPresetProfileV3 preset,System.Random r,float shapeBias,Dictionary<int,LandmassKind> groupKindById){
-        var diag=new LandmassGrowthDiagnostics{groupId=plan.groupId,kind=plan.kind,targetCells=plan.targetCellCount,center=plan.center,lobeCount=plan.lobeCount,stopReason=LandmassGrowthStopReason.Unknown};
-        Vector2Int growthCenter=plan.center;
-        int start=growthCenter.y*tw+growthCenter.x;
-        if(plan.kind!=LandmassKind.MajorContinent){
-            bool invalidStart=topo[start].isLand || !HasAvailableGrowthNeighbor(topo,tw,th,start,plan,preset,groupKindById);
-            if(invalidStart && TryFindReplacementGrowthCenter(topo,tw,th,plan,preset,r,groupKindById,out var replacementCenter)){
-                growthCenter=replacementCenter;
-                start=growthCenter.y*tw+growthCenter.x;
-                diag.center=growthCenter;
+
+    private void RasterizeLandmassPlansToTopology(TopologyCell[] topo,List<LandmassPlan> plans,PreviewLandPresetProfileV3 preset,int tw,int th,float shapeBias){
+        for(int y=0;y<th;y++) for(int x=0;x<tw;x++){
+            int idx=y*tw+x; float bestField=float.NegativeInfinity; int bestGroup=-1; bool forceOcean=false;
+            float topMajor=float.NegativeInfinity, secondMajor=float.NegativeInfinity;
+            foreach(var plan in plans){
+                float planField=EvaluateLandmassPlanField(new Vector2(x,y),plan,tw,th,shapeBias);
+                if(plan.kind==LandmassKind.MajorContinent){ if(planField>topMajor){secondMajor=topMajor; topMajor=planField;} else if(planField>secondMajor){secondMajor=planField;} }
+                if(planField>bestField){bestField=planField; bestGroup=plan.groupId;}
             }
-            else if(invalidStart){
-                diag.stopReason=LandmassGrowthStopReason.NoFrontierCandidates;
-                diag.placedCellsBeforeSmoothing=0;
-                diag.finalFrontierCount=0;
-                diag.bestScoreAtStop=float.NegativeInfinity;
-                return diag;
-            }
+            if(!preset.allowMajorLandmassMerging && topMajor>0f && secondMajor>0f && Mathf.Abs(topMajor-secondMajor)<0.10f) forceOcean=true;
+            float noise01=cachedTopologyShapeNoise[idx];
+            float noiseStrength=Mathf.Lerp(0.10f,0.36f,shapeBias)*preset.irregularityBias;
+            bestField += noise01*noiseStrength;
+            bool isLand=!forceOcean && bestField>0f;
+            topo[idx].isLand=isLand; topo[idx].groupId=isLand?bestGroup:-1;
         }
-        topo[start].isLand=true;
-        topo[start].groupId=plan.groupId;
-        int placed=1;
-        var frontier=new HashSet<int>();
-        AddFrontierNeighbors(topo,tw,th,start,frontier);
-        float finalBestScore=float.NegativeInfinity;
-
-        while(placed<plan.targetCellCount && frontier.Count>0){
-            diag.growthIterations++;
-            int best=-1;
-            float bestScore=float.NegativeInfinity;
-            List<int> staleFrontier=null;
-
-            foreach(int idx in frontier){
-                if(topo[idx].isLand){
-                    staleFrontier ??= new List<int>();
-                    staleFrontier.Add(idx);
-                    continue;
-                }
-
-                diag.claimChecks++;
-                if(!CanClaimCellForLandmass(topo,tw,th,idx,plan,preset,groupKindById,out var rejectReason)){
-                    if(rejectReason==LandmassClaimRejectReason.AlreadyLand) diag.rejectedAlreadyLand++;
-                    else if(rejectReason==LandmassClaimRejectReason.MajorContinentMergeBlocked) diag.rejectedMajorMerge++;
-                    else if(rejectReason==LandmassClaimRejectReason.LargeIslandMergeBlocked) diag.rejectedLargeIslandMerge++;
-                    else diag.rejectedUnknown++;
-                    continue;
-                }
-
-                int cx=idx%tw,cy=idx/tw;
-                float lobe=ComputeLobeAttraction(new Vector2Int(cx,cy),plan.lobeAttractors,tw,th);
-                float noise=(cachedTopologyShapeNoise[idx]*0.5f)+0.5f;
-                var v=(new Vector2(cx-growthCenter.x,cy-growthCenter.y));
-                float elong=v.sqrMagnitude>0.0001f?Mathf.Clamp01((Vector2.Dot(v.normalized,plan.elongationDirection)+1f)*0.5f):0.5f;
-                int same=0,other=0;
-                for(int d=0;d<4;d++){
-                    int nx=(cx+(d==0?1:d==1?-1:0)+tw)%tw,ny=cy+(d==2?1:d==3?-1:0);
-                    if(ny<0||ny>=th) continue;
-                    var n=topo[ny*tw+nx];
-                    if(!n.isLand) continue;
-                    if(n.groupId==plan.groupId) same++; else other++;
-                }
-                float neighborSupport=Mathf.Clamp01(same/4f);
-                float tendrilPenalty=same<=0?0.70f:same==1?0.22f:0f;
-                float foreignPenalty=other*0.25f;
-                float centerDistancePenalty=(TopologyCellDistance(new Vector2Int(cx,cy),growthCenter,tw,th)/(Mathf.Max(tw,th)))*0.08f;
-                float score=lobe*0.90f+noise*preset.irregularityBias+neighborSupport*preset.compactnessBias+elong*preset.elongationBias-tendrilPenalty-foreignPenalty-centerDistancePenalty;
-                if(score>bestScore){bestScore=score;best=idx;}
-            }
-
-            if(staleFrontier!=null){
-                foreach(int stale in staleFrontier) frontier.Remove(stale);
-            }
-
-            finalBestScore=bestScore;
-            if(best<0) break;
-
-            topo[best].isLand=true;
-            topo[best].groupId=plan.groupId;
-            frontier.Remove(best);
-            AddFrontierNeighbors(topo,tw,th,best,frontier);
-            placed++;
-        }
-
-        if(placed>=plan.targetCellCount) diag.stopReason=LandmassGrowthStopReason.ReachedTarget;
-        else if(frontier.Count==0) diag.stopReason=LandmassGrowthStopReason.NoFrontierCandidates;
-        else if(finalBestScore<0f) diag.stopReason=LandmassGrowthStopReason.NoClaimableFrontierCandidates;
-
-        diag.placedCellsBeforeSmoothing=placed;
-        diag.finalFrontierCount=frontier.Count;
-        diag.bestScoreAtStop=finalBestScore;
-
-        if(logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics && placed<plan.targetCellCount*0.10f){
-            Debug.LogWarning($"[WorldGenV2 WARNING] Landmass growth catastrophically underfilled. Group={plan.groupId} Kind={plan.kind} TargetCells={plan.targetCellCount} Placed={placed} FrontierAtStop={frontier.Count} StopReason={diag.stopReason}");
-        }
-
-        return diag;
-    }
-    private float ComputeLobeAttraction(Vector2Int c,List<Vector2Int> lobes,int tw,int th){ if(lobes==null||lobes.Count==0) return 0.5f; float best=0f; foreach(var l in lobes){ float dx=Mathf.Min(Mathf.Abs(c.x-l.x),tw-Mathf.Abs(c.x-l.x)); float dy=Mathf.Abs(c.y-l.y); float d=Mathf.Sqrt(dx*dx+dy*dy); best=Mathf.Max(best,1f-Mathf.Clamp01(d/(Mathf.Max(2f,Mathf.Min(tw,th)*0.2f)))); } return best; }
-    private void SmoothBroadPresetTopology(TopologyCell[] topo,int tw,int th,PreviewLandPresetProfileV3 preset,Dictionary<int,LandmassKind> groupKindById){ bool[] next=new bool[topo.Length]; int[] nextGroup=new int[topo.Length]; for(int i=0;i<topo.Length;i++){next[i]=topo[i].isLand; nextGroup[i]=topo[i].groupId;} for(int y=0;y<th;y++) for(int x=0;x<tw;x++){ int i=y*tw+x; int landNeighbors=0; var groups=new HashSet<int>(); for(int oy=-1;oy<=1;oy++) for(int ox=-1;ox<=1;ox++){ if(ox==0&&oy==0) continue; int nx=(x+ox+tw)%tw; int ny=y+oy; if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(!topo[ni].isLand) continue; landNeighbors++; if(topo[ni].groupId>0) groups.Add(topo[ni].groupId);} if(!topo[i].isLand && landNeighbors>=5){ if(groups.Count==1 || preset.allowMajorLandmassMerging){ next[i]=true; foreach(var g in groups){nextGroup[i]=g; break;} } } else if(topo[i].isLand && landNeighbors<=1){ next[i]=false; nextGroup[i]=-1; } } for(int i=0;i<topo.Length;i++){ topo[i].isLand=next[i]; topo[i].groupId=next[i]?nextGroup[i]:-1; } }
-    private float LargestLandmassShare(
-        TopologyCell[] topo,
-        int w,
-        int h,
-        out int compCount,
-        out int[] componentSizes)
-    {
-        int n = w * h;
-        bool[] visited = new bool[n];
-        var sizes = new List<int>();
-        int totalLand = 0;
-
-        for (int i = 0; i < n; i++)
-        {
-            if (topo[i].isLand)
-                totalLand++;
-        }
-
-        for (int i = 0; i < n; i++)
-        {
-            if (!topo[i].isLand || visited[i])
-                continue;
-
-            int size = 0;
-            var q = new Queue<int>();
-            q.Enqueue(i);
-            visited[i] = true;
-
-            while (q.Count > 0)
-            {
-                int current = q.Dequeue();
-                size++;
-
-                int x = current % w;
-                int y = current / w;
-
-                for (int d = 0; d < 4; d++)
-                {
-                    int nx =
-                        (x + (d == 0 ? 1 : d == 1 ? -1 : 0) + w) % w;
-
-                    int ny =
-                        y + (d == 2 ? 1 : d == 3 ? -1 : 0);
-
-                    if (ny < 0 || ny >= h)
-                        continue;
-
-                    int ni = ny * w + nx;
-
-                    if (!visited[ni] && topo[ni].isLand)
-                    {
-                        visited[ni] = true;
-                        q.Enqueue(ni);
-                    }
-                }
-            }
-
-            sizes.Add(size);
-        }
-
-        compCount = sizes.Count;
-        componentSizes = sizes.ToArray();
-
-        int largest = 0;
-        foreach (int size in sizes)
-        {
-            if (size > largest)
-                largest = size;
-        }
-
-        return totalLand <= 0
-            ? 0f
-            : (float)largest / totalLand;
     }
 
-    private LandmassValidationResult ValidateLandmassPlan(PreviewLandPresetProfileV3 preset,List<LandmassPlan> plans,TopologyCell[] topo,int tw,int th,Dictionary<int, LandmassKind> groupKindById,Dictionary<int, int> plannedCellTargetByGroupId,float worldCoverage){
-        var result = new LandmassValidationResult{valid=true,score=1000f,failureSummary="",majorComponentFractions=new List<float>()};
-        foreach(var p in plans){ if(p.kind==LandmassKind.MajorContinent) result.plannedMajorCount++; else if(p.kind==LandmassKind.LargeIsland) result.plannedLargeIslandCount++; else result.plannedSmallClusterCount++; }
-        var actualByGroup = new Dictionary<int,int>(); foreach(var c in topo){ if(!c.isLand||c.groupId<0) continue; actualByGroup[c.groupId]=actualByGroup.TryGetValue(c.groupId,out var v)?v+1:1; }
-        foreach(var kv in groupKindById){ int a=actualByGroup.TryGetValue(kv.Key,out var v)?v:0; if(kv.Value==LandmassKind.MajorContinent) result.actualMajorCount += a>0?1:0; else if(kv.Value==LandmassKind.LargeIsland) result.actualLargeIslandCount += a>0?1:0; else result.actualSmallClusterCount += a>0?1:0; int target=plannedCellTargetByGroupId[kv.Key]; float frac=target>0?(float)a/target:1f; if(frac<0.65f || frac>1.45f) { result.score-=35f; if(kv.Value==LandmassKind.MajorContinent) result.valid=false; }}
-        if(result.actualMajorCount!=result.plannedMajorCount){ result.valid=false; result.score-=220f; result.failureSummary+="major-count "; }
-        bool[] vis=new bool[topo.Length];
-        for(int i=0;i<topo.Length;i++){ if(!topo[i].isLand||vis[i]) continue; var groups = new HashSet<int>(); int size=0; var q=new Queue<int>(); q.Enqueue(i); vis[i]=true; while(q.Count>0){ int c=q.Dequeue(); size++; groups.Add(topo[c].groupId); int x=c%tw,y=c/tw; for(int d=0;d<4;d++){int nx=(x+(d==0?1:d==1?-1:0)+tw)%tw,ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=th) continue; int ni=ny*tw+nx; if(!vis[ni]&&topo[ni].isLand){vis[ni]=true;q.Enqueue(ni);}} }
-            int majorGroups=0; foreach(var g in groups) if(groupKindById.TryGetValue(g,out var k)&&k==LandmassKind.MajorContinent) majorGroups++;
-            if(majorGroups>1 && !preset.allowMajorLandmassMerging){result.valid=false; result.score-=400f; result.failureSummary+="major-merge ";}
-            if(majorGroups>0) result.majorComponentFractions.Add((float)size/(tw*th));
+    private float EvaluateLandmassPlanField(Vector2 cell,LandmassPlan plan,int tw,int th,float shapeBias){
+        float field=float.NegativeInfinity;
+        for(int i=0;i<plan.lobes.Count;i++){
+            var lobe=plan.lobes[i];
+            float dx=cell.x-lobe.center.x; if(Mathf.Abs(dx)>tw*0.5f) dx-=Mathf.Sign(dx)*tw;
+            float dy=cell.y-lobe.center.y;
+            float c=Mathf.Cos(-lobe.rotationRadians), s=Mathf.Sin(-lobe.rotationRadians);
+            float rx=dx*c-dy*s, ry=dx*s+dy*c;
+            float nx=rx/Mathf.Max(0.01f,lobe.radiusX), ny=ry/Mathf.Max(0.01f,lobe.radiusY);
+            float d=Mathf.Sqrt(nx*nx+ny*ny);
+            float lobeField=(1f-d)*lobe.weight;
+            field=float.IsNegativeInfinity(field)?lobeField:SmoothMax(field,lobeField,0.20f);
         }
-        if(preset.requireSingleDominantLandmass){ result.valid &= result.majorComponentFractions.Count>0; result.majorComponentFractions.Sort((a,b)=>b.CompareTo(a)); if(result.majorComponentFractions.Count==0 || result.majorComponentFractions[0]<0.25f){ result.valid=false; result.failureSummary+="missing-dominant ";}}
-        if(worldCoverage<preset.softMinWorldLandCoverage*0.75f || worldCoverage>Mathf.Min(1f,preset.softMaxWorldLandCoverage*1.25f)){ result.valid=false; result.score-=100f; result.failureSummary+="coverage "; }
-        return result;
+        return field;
     }
+
+    private float SmoothMax(float a,float b,float k){ float h=Mathf.Clamp01(0.5f+0.5f*(b-a)/Mathf.Max(0.0001f,k)); return Mathf.Lerp(b,a,h)+k*h*(1f-h); }
+
     private float[] DistanceFromBoundary(float[] land,float threshold,bool forLand){
         int n=land.Length; float[] dist=new float[n]; for(int i=0;i<n;i++) dist[i]=99999f; var q=new Queue<int>();
         for(int y=0;y<mapHeight;y++) for(int x=0;x<mapWidth;x++){int i=y*mapWidth+x; bool isLand=land[i]>threshold; if(isLand!=forLand) continue; bool near=false; for(int d=0;d<4;d++){int nx=(x+(d==0?1:d==1?-1:0)+mapWidth)%mapWidth, ny=y+(d==2?1:d==3?-1:0); if(ny<0||ny>=mapHeight){near=true;break;} bool nLand=land[ny*mapWidth+nx]>threshold; if(nLand!=isLand){near=true;break;}} if(near){dist[i]=0f; q.Enqueue(i);}}
@@ -920,7 +696,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             chosenSources.Add(source);
             float t=(ri+1f)/Mathf.Max(1f,riverTarget);
             float riverPriority=t<0.20f?Mathf.Lerp(0.8f,1f,(float)rng.NextDouble()):t<0.65f?Mathf.Lerp(0.55f,0.85f,(float)rng.NextDouble()):Mathf.Lerp(0.35f,0.65f,(float)rng.NextDouble());
-            bool reachedCoast=PaintGuidedMeanderingRiver(source,land,elev,moisture,coastDist,river,wet,priority,rng,riverPriority,out int stamped,out int steps);
+            bool reachedCoast=PaintSplineMeanderingRiver(source,land,elev,moisture,coastDist,river,wet,priority,rng,riverPriority,out int stamped,out int steps);
             if(reachedCoast) riversReachedCoast++;
             if(stamped>=minStampedPixels && steps>=minRiverSteps){ riversPainted++; totalRiverLength+=steps; minRiverLength=Mathf.Min(minRiverLength,steps); maxRiverLength=Mathf.Max(maxRiverLength,steps); }
         }
@@ -959,48 +735,70 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return best;
     }
 
-    private bool PaintGuidedMeanderingRiver(int sourceIndex,float[] land,float[] elevation,float[] moisture,float[] coastDistance,float[] river,float[] wet,float[] priority,System.Random r,float riverPriority,out int stampedPixelCount,out int stepCount){
-        stampedPixelCount=0; stepCount=0; int current=sourceIndex; if(land[current]<=0.5f) return false;
-        int maxSteps=Mathf.Clamp(Mathf.RoundToInt(coastDistance[sourceIndex]*5f),80,700); var visited=new HashSet<int>{current};
-        Vector2 heading=EstimateInitialCoastHeading(current,coastDistance,r);
-        bool reachedCoast=false;
-        for(int step=0;step<maxSteps;step++){
-            float progress01=maxSteps>1?step/(float)(maxSteps-1):0f;
-            float radius=Mathf.Lerp(decorativeRiverUpperRadius,decorativeRiverLowerRadius,Mathf.SmoothStep(0f,1f,progress01));
-            stampedPixelCount+=StampRiverAtIndex(current,radius,riverPriority,land,river,wet,priority,sourceIndex+step*17);
+    private bool PaintSplineMeanderingRiver(int sourceIndex,float[] land,float[] elevation,float[] moisture,float[] coastDistance,float[] river,float[] wet,float[] priority,System.Random r,float riverPriority,out int stampedPixelCount,out int stepCount){
+        stampedPixelCount=0; stepCount=0; if(land[sourceIndex]<=0.5f) return false;
+        int coastTarget=PickRiverCoastTarget(sourceIndex,land,coastDistance,r);
+        if(coastTarget<0) return false;
+        Vector2 source=IndexToXY(sourceIndex); Vector2 target=IndexToXY(coastTarget);
+        var control=BuildRiverControlPoints(source,target,r,sourceIndex);
+        if(control.Count<4) return false;
+        float routeDistance=DeltaWrap(source,target).magnitude;
+        int samples=Mathf.Clamp(Mathf.RoundToInt(routeDistance*1.25f),90,520);
+        bool reachedCoast=false; int consecutiveFail=0;
+        for(int i=0;i<samples;i++){
+            float t=i/(float)Mathf.Max(1,samples-1);
+            Vector2 p=SampleCatmullSpline(control,t);
+            int idx=XYToWrappedIndex(p);
+            if(land[idx]<=0.5f){ int snap=FindNearestLand((int)Mathf.Round(p.x),(int)Mathf.Round(p.y),land,decorativeRiverLandSnapRadius); if(snap>=0) idx=snap; else { consecutiveFail++; if(consecutiveFail>14) break; continue; }}
+            consecutiveFail=0;
+            float widthT=Mathf.SmoothStep(0f,1f,t); float radius=Mathf.Lerp(decorativeRiverUpperRadius,decorativeRiverLowerRadius,widthT);
+            if(t>0.87f) radius+=Mathf.Lerp(0f,1.5f,(t-0.87f)/0.13f);
+            stampedPixelCount+=StampRiverAtIndex(idx,radius,riverPriority,land,river,wet,priority,sourceIndex+i*17);
             stepCount++;
-            if(coastDistance[current]<=1.5f){reachedCoast=true; StampRiverAtIndex(current,decorativeRiverLowerRadius+1.5f,riverPriority,land,river,wet,priority,sourceIndex+999); break;}
-            int next=PickGuidedRiverStep(current,heading,visited,land,elevation,coastDistance,r,sourceIndex);
-            if(next<0) break;
-            Vector2 stepDir=DeltaWrap(IndexToXY(current),IndexToXY(next)).normalized;
-            heading=Vector2.Lerp(heading,stepDir,decorativeRiverTurnResponsiveness).normalized;
-            current=next; visited.Add(current);
+            if(coastDistance[idx]<=2.5f) reachedCoast=true;
         }
         return reachedCoast;
     }
 
-    private Vector2 EstimateInitialCoastHeading(int idx,float[] coastDistance,System.Random r){
-        int cx=idx%mapWidth, cy=idx/mapWidth; float best=float.NegativeInfinity; Vector2 bestDir=Vector2.zero;
-        for(int oy=-1;oy<=1;oy++) for(int ox=-1;ox<=1;ox++){ if(ox==0&&oy==0) continue; int ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int nx=(cx+ox+mapWidth)%mapWidth; int ni=ny*mapWidth+nx; float gain=coastDistance[idx]-coastDistance[ni]; if(gain>best){best=gain; bestDir=new Vector2(ox,oy).normalized;}}
-        if(bestDir.sqrMagnitude<0.0001f){ float a=(float)r.NextDouble()*Mathf.PI*2f; bestDir=new Vector2(Mathf.Cos(a),Mathf.Sin(a)); }
-        return bestDir.normalized;
+    private int PickRiverCoastTarget(int sourceIndex,float[] land,float[] coastDistance,System.Random r){
+        var candidates=new List<(int idx,float dist)>(); Vector2 source=IndexToXY(sourceIndex);
+        for(int i=0;i<land.Length;i+=Mathf.Max(1,riverCandidateStride)){
+            if(land[i]<=0.5f || coastDistance[i]>2.5f) continue;
+            float d=DeltaWrap(source,IndexToXY(i)).magnitude; if(d<decorativeRiverMinSourceCoastDistance*0.45f) continue;
+            candidates.Add((i,d));
+        }
+        if(candidates.Count==0) return -1;
+        candidates.Sort((a,b)=>a.dist.CompareTo(b.dist));
+        int nearCount=Mathf.Max(1,Mathf.Min(candidates.Count,Mathf.CeilToInt(candidates.Count*0.25f)));
+        if(r.NextDouble()<0.70) return candidates[r.Next(nearCount)].idx;
+        int fartherStart=Mathf.Min(candidates.Count-1,nearCount);
+        return candidates[r.Next(fartherStart,candidates.Count)].idx;
     }
 
-    private int PickGuidedRiverStep(int current,Vector2 currentHeading,HashSet<int> visited,float[] land,float[] elevation,float[] coastDistance,System.Random r,int riverSeed){
-        int cx=current%mapWidth,cy=current/mapWidth; int best=-1; float bestScore=float.NegativeInfinity;
-        for(int oy=-1;oy<=1;oy++) for(int ox=-1;ox<=1;ox++){
-            if(ox==0&&oy==0) continue; int ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int nx=(cx+ox+mapWidth)%mapWidth; int ni=ny*mapWidth+nx;
-            if(visited.Contains(ni)) continue;
-            if(land[ni]<=0.5f && coastDistance[current]>1.5f) continue;
-            float coastProgress=coastDistance[current]-coastDistance[ni];
-            Vector2 stepDir=new Vector2(ox,oy).normalized; float headingAlignment=Vector2.Dot(stepDir,currentHeading)*0.5f+0.5f;
-            float meanderNoise=Mathf.PerlinNoise((nx + inputs.seed*0.31f + riverSeed*0.17f)*0.045f,(ny - inputs.seed*0.23f - riverSeed*0.11f)*0.045f);
-            float elevationPreference=1f-Mathf.Clamp01(elevation[ni]);
-            float score=coastProgress*0.55f + headingAlignment*0.28f + meanderNoise*decorativeRiverMeanderStrength*0.45f + elevationPreference*0.03f + ((float)r.NextDouble()-0.5f)*0.04f;
-            if(score>bestScore){bestScore=score; best=ni;}
+    private List<Vector2> BuildRiverControlPoints(Vector2 source,Vector2 target,System.Random r,int riverSeed){
+        int controlCount=Mathf.Clamp(r.Next(decorativeRiverControlPointCountMin,decorativeRiverControlPointCountMax+1),4,32);
+        var pts=new List<Vector2>(controlCount); Vector2 delta=DeltaWrap(source,target); float dist=Mathf.Max(1f,delta.magnitude); Vector2 dir=delta/dist; Vector2 perp=new Vector2(-dir.y,dir.x);
+        for(int k=0;k<controlCount;k++){
+            float t=controlCount<=1?0f:k/(float)(controlCount-1); Vector2 basePoint=source+delta*t; float envelope=Mathf.Sin(Mathf.PI*t);
+            float sign=(k%2==0?1f:-1f) * (((riverSeed+k)&1)==0?1f:-1f);
+            float lateral=dist*decorativeRiverLateralWanderFraction*decorativeRiverMeanderStrength*envelope*sign*Mathf.Lerp(0.65f,1.25f,(float)r.NextDouble());
+            Vector2 cp=basePoint+perp*lateral; cp.x=(cp.x%mapWidth+mapWidth)%mapWidth; cp.y=Mathf.Clamp(cp.y,0,mapHeight-1); pts.Add(cp);
         }
-        return best;
+        return pts;
     }
+
+    private Vector2 SampleCatmullSpline(List<Vector2> pts,float t){
+        int segCount=pts.Count-1; float ft=t*segCount; int i=Mathf.Clamp(Mathf.FloorToInt(ft),0,segCount-1); float lt=ft-i;
+        Vector2 p0=pts[Mathf.Max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Mathf.Min(pts.Count-1,i+2)];
+        return CatmullRom(p0,p1,p2,p3,lt);
+    }
+
+    private Vector2 CatmullRom(Vector2 p0,Vector2 p1,Vector2 p2,Vector2 p3,float t){
+        float t2=t*t,t3=t2*t;
+        return 0.5f*((2f*p1)+(-p0+p2)*t+(2f*p0-5f*p1+4f*p2-p3)*t2+(-p0+3f*p1-3f*p2+p3)*t3);
+    }
+
+    private int XYToWrappedIndex(Vector2 p){ int x=((Mathf.RoundToInt(p.x)%mapWidth)+mapWidth)%mapWidth; int y=Mathf.Clamp(Mathf.RoundToInt(p.y),0,mapHeight-1); return y*mapWidth+x; }
 
     private int StampRiverAtIndex(int centerIndex,float radius,float riverPriority,float[] land,float[] river,float[] wet,float[] priority,int riverId){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth; int ir=Mathf.CeilToInt(radius+1f); int stamped=0; for(int oy=-ir;oy<=ir;oy++)for(int ox=-ir;ox<=ir;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float d=Mathf.Sqrt(ox*ox+oy*oy); float edgeN=(Mathf.PerlinNoise((nx+riverId*13.1f+inputs.seed)*0.19f,(ny-riverId*7.3f-inputs.seed)*0.19f)-0.5f)*0.45f; float allowed=radius+edgeN; if(d>allowed) continue; float core=Mathf.Clamp01(1f-d/Mathf.Max(0.01f,allowed)); float channel=Mathf.Lerp(0.42f,1f,core); river[ni]=Mathf.Max(river[ni],channel); wet[ni]=Mathf.Max(wet[ni],Mathf.Lerp(0.35f,0.9f,core)); priority[ni]=Mathf.Max(priority[ni],riverPriority); stamped++;} return stamped; }
 
