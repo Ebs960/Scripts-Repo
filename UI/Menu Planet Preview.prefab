@@ -562,7 +562,7 @@ MonoBehaviour:
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   legacyIceCapSize: 0.5
   legacyBiomeBlend: 0.045
-  smoothness: 0.096
+  smoothness: 0.5
   metallic: 0
   ambientOcclusion: 1
   ambientStrength: 1
@@ -573,9 +573,9 @@ MonoBehaviour:
   cameraDistance: 6
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
-  keyLightEuler: {x: 25, y: -35, z: 0}
-  keyLightIntensity: 2.25
-  keyLightColor: {r: 0.98490566, g: 0.75813156, b: 0.4441367, a: 1}
+  keyLightEuler: {x: 25, y: -20, z: 0}
+  keyLightIntensity: 1.85
+  keyLightColor: {r: 0.93962264, g: 0.69894874, b: 0.36698464, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
@@ -596,28 +596,30 @@ MonoBehaviour:
   regenerationDelay: 0.01
   topologyWidth: 512
   topologyHeight: 256
-  maxTopologyAttempts: 12
   coastlineDeformationWidthCells: 24
   coastlineWarpStrength: 1.3
   coastlineMidNoiseStrength: 0.65
   coastlineEdgeNoiseStrength: 0.4
-  coastlineSoftness: 0.11
+  coastlineSoftness: 0.05
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
   logLandmassGenerationDiagnostics: 1
   useFastNoiseLiteFields: 1
   noiseFieldWidth: 1024
   noiseFieldHeight: 512
-  sparseRiverRange: {x: 12, y: 20}
-  standardRiverRange: {x: 50, y: 90}
-  abundantRiverRange: {x: 45, y: 70}
+  sparseRiverRange: {x: 12, y: 170}
+  standardRiverRange: {x: 50, y: 170}
+  abundantRiverRange: {x: 45, y: 200}
   minRiverSourceSpacingPixels: 20
   riverCandidateStride: 8
   decorativeRiverMinSourceCoastDistance: 22
-  decorativeRiverTurnResponsiveness: 0.28
-  decorativeRiverMeanderStrength: 0.32
+  decorativeRiverMeanderStrength: 0.75
+  decorativeRiverLateralWanderFraction: 0.14
+  decorativeRiverControlPointCountMin: 5
+  decorativeRiverControlPointCountMax: 8
   decorativeRiverUpperRadius: 2
   decorativeRiverLowerRadius: 5
+  decorativeRiverLandSnapRadius: 6
   presets:
   - name: Archipelago
     majorLandmasses:
@@ -647,9 +649,6 @@ MonoBehaviour:
     irregularityBias: 0.9
     elongationBias: 0.2
     allowMajorLandmassMerging: 0
-    requireSingleDominantLandmass: 0
-    softMinWorldLandCoverage: 0.1
-    softMaxWorldLandCoverage: 0.34
   - name: Islands
     majorLandmasses:
       minCount: 0
@@ -678,9 +677,6 @@ MonoBehaviour:
     irregularityBias: 0.74
     elongationBias: 0.3
     allowMajorLandmassMerging: 0
-    requireSingleDominantLandmass: 0
-    softMinWorldLandCoverage: 0.18
-    softMaxWorldLandCoverage: 0.46
   - name: Standard
     majorLandmasses:
       minCount: 2
@@ -703,15 +699,12 @@ MonoBehaviour:
       maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 2
-    minMajorSeedSeparationDegrees: 22
+    minMajorSeedSeparationDegrees: 26
     minMajorOceanGapCells: 1.5
     compactnessBias: 0.58
     irregularityBias: 0.66
     elongationBias: 0.34
-    allowMajorLandmassMerging: 1
-    requireSingleDominantLandmass: 0
-    softMinWorldLandCoverage: 0.25
-    softMaxWorldLandCoverage: 0.62
+    allowMajorLandmassMerging: 0
   - name: Large Continents
     majorLandmasses:
       minCount: 2
@@ -740,9 +733,6 @@ MonoBehaviour:
     irregularityBias: 0.6
     elongationBias: 0.5
     allowMajorLandmassMerging: 0
-    requireSingleDominantLandmass: 0
-    softMinWorldLandCoverage: 0.38
-    softMaxWorldLandCoverage: 0.76
   - name: Pangaea
     majorLandmasses:
       minCount: 1
@@ -771,9 +761,6 @@ MonoBehaviour:
     irregularityBias: 0.72
     elongationBias: 0.72
     allowMajorLandmassMerging: 1
-    requireSingleDominantLandmass: 1
-    softMinWorldLandCoverage: 0.4
-    softMaxWorldLandCoverage: 0.68
   - name: Terrestrial
     majorLandmasses:
       minCount: 2
@@ -802,9 +789,6 @@ MonoBehaviour:
     irregularityBias: 0.52
     elongationBias: 0.44
     allowMajorLandmassMerging: 0
-    requireSingleDominantLandmass: 0
-    softMinWorldLandCoverage: 0.55
-    softMaxWorldLandCoverage: 0.88
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
