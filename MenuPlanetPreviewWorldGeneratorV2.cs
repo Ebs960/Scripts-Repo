@@ -313,14 +313,21 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             var terrJob=new TerrainPotentialJob{mapWidth=mapWidth,mapHeight=mapHeight,seed=inputs.seed,land=nLand,inlandDistance=nInland,uplandProvinceNoise=nUplandProvinceNoise,mountainProvinceNoise=nMountainProvinceNoise,mountainRangeNoise=nMountainRangeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,rawMountainPotential=nRawMtn,uplandPotential=nUpland};
             jh=terrJob.ScheduleParallel(n,64,jh); jh.Complete();
             float[] mountainRank = BuildMountainRankField(nLand, nRawMtn);
+            float[] hillRank = BuildHillRankField(nLand, nUpland);
             var nMountainRank = new NativeArray<float>(mountainRank, Allocator.TempJob);
+            var nHillRank = new NativeArray<float>(hillRank, Allocator.TempJob);
             var mfJob=new MountainFinalizeJob{mapHeight=mapHeight,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,uplandPotential=nUpland,mountainRank=nMountainRank,rawMountainPotential=nRawMtn,mountain=nMtn,elevation=nElev,shelf=nShelf,continentality=nCont};
             mfJob.ScheduleParallel(n,64,default).Complete();
+            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0,maxHillRelief=0,averageHillReliefOnLand=0,hillPixelsAbove025=0,hillPixelsAbove050=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i];float rankedHill=Mathf.SmoothStep(0.18f,0.88f,nHillRank[i]);float mountainSuppression=1f-Mathf.SmoothStep(0.45f,0.92f,mtn[i]);hill[i]=land[i]*rankedHill*mountainSuppression; if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); maxHillRelief=Mathf.Max(maxHillRelief,hill[i]); averageHillReliefOnLand+=hill[i]; if(hill[i]>0.25f)hillPixelsAbove025++; if(hill[i]>0.50f)hillPixelsAbove050++; if(mtn[i]>0.35f)mtnPixels++;}}
+            nHillRank.Dispose();
             nMountainRank.Dispose();
-            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i];hill[i]=land[i]*Mathf.Clamp01(nUpland[i])*(1f-Mathf.SmoothStep(0.35f,0.85f,mtn[i])); if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); if(mtn[i]>0.35f)mtnPixels++;}}
+            averageHillReliefOnLand=landPixels>0?averageHillReliefOnLand/landPixels:0f;
+            float hillCoverageAbove025=landPixels>0?hillPixelsAbove025/landPixels:0f;
+            float hillCoverageAbove050=landPixels>0?hillPixelsAbove050/landPixels:0f;
             float finalCoastLandCoverage = n > 0 ? lc / n : 0f;
             if (logWorldGenerationDiagnostics)
             {
+                Debug.Log($"[WorldGenV2 Hill Relief]\nMaxHill={maxHillRelief:F4}\nAvgHillOnLand={averageHillReliefOnLand:F4}\nCoverageAbove0.25={hillCoverageAbove025:F4}\nCoverageAbove0.50={hillCoverageAbove050:F4}");
                 Debug.Log($"[WorldGenV2 Coast Sculpt]\nTopologyCoverage={diag.topologyCoverage:F4}\nFinalLandCoverage={finalCoastLandCoverage:F4}\nCoastlineDeformationWidthCells={coastlineDeformationWidthCells:F2}\nCoastlineWarpStrength={coastlineWarpStrength:F3}\nCoastlineMidNoiseStrength={coastlineMidNoiseStrength:F3}\nCoastlineEdgeNoiseStrength={coastlineEdgeNoiseStrength:F3}\nCoastlineThresholdBias={coastlineThresholdBias:F3}");
                 if (Mathf.Abs(finalCoastLandCoverage - diag.topologyCoverage) > 0.18f)
                 {
@@ -708,6 +715,33 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return rank;
     }
 
+    private float[] BuildHillRankField(NativeArray<float> land, NativeArray<float> uplandPotential)
+    {
+        const int bins = 256;
+        int[] hist = new int[bins];
+        int landCount = 0;
+        for (int i = 0; i < land.Length; i++)
+        {
+            if (land[i] <= 0.5f) continue;
+            landCount++;
+            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(uplandPotential[i]) * (bins - 1)), 0, bins - 1);
+            hist[bin]++;
+        }
+        int[] cdf = new int[bins];
+        int run = 0;
+        for (int i = 0; i < bins; i++) { run += hist[i]; cdf[i] = run; }
+        float[] rank = new float[land.Length];
+        for (int i = 0; i < land.Length; i++)
+        {
+            if (land[i] <= 0.5f) { rank[i] = 0f; continue; }
+            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(uplandPotential[i]) * (bins - 1)), 0, bins - 1);
+            rank[i] = landCount > 0
+                ? Mathf.Clamp01((cdf[bin] - hist[bin] * 0.5f) / (float)landCount)
+                : 0f;
+        }
+        return rank;
+    }
+
     private void WriteSurfaceAndStructure(float[] land,float[] elev,float[] mtn,float[] shelf,float[] cont,float[] hill){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){float hillRelief=hill!=null&&i<hill.Length?hill[i]:0f;s[i]=new Color32(B(land[i]),B(elev[i]),B(mtn[i]),B(shelf[i]));w[i]=new Color32(B(cont[i]),B(mtn[i]),B(elev[i]),B(hillRelief));a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}
     private void ReadSurface(out float[] land,out float[] elev,out float[] mtn,out float[] shelf){int n=mapWidth*mapHeight;land=new float[n];elev=new float[n];mtn=new float[n];shelf=new float[n];var p=surfaceDataTexture.GetPixels32();for(int i=0;i<n;i++){land[i]=p[i].r/255f;elev[i]=p[i].g/255f;mtn[i]=p[i].b/255f;shelf[i]=p[i].a/255f;}}
     private void ReadClimate(out float[] temp,out float[] moisture,out float[] cont){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];cont=new float[n];var p=climateTexture.GetPixels32();for(int i=0;i<n;i++){temp[i]=p[i].r/255f;moisture[i]=p[i].g/255f;cont[i]=p[i].b/255f;}}
@@ -879,7 +913,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         public int noiseFieldWidth,noiseFieldHeight;
         [ReadOnly] public NativeArray<float> land,inlandDistance; public int mapWidth,mapHeight; public float seed;
         public NativeArray<float> rawMountainPotential,uplandPotential;
-        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float inland=math.saturate(inlandDistance[i]/(0.24f*mapHeight)); float2 uv=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(uv,uplandProvinceNoise,out var uplandRaw); SampleNoiseBilinear(uv,mountainProvinceNoise,out var mountainProvinceRaw); SampleNoiseBilinear(uv,mountainRangeNoise,out var mountainRangeRaw); float upland01=uplandRaw*0.5f+0.5f; float mountainProvince01=mountainProvinceRaw*0.5f+0.5f; float mountainRange01=mountainRangeRaw*0.5f+0.5f; float upland=math.smoothstep(0.42f,0.76f,upland01)*inland; uplandPotential[i]=upland; float mountainProvince=math.smoothstep(0.45f,0.78f,mountainProvince01); float rangeBelts=math.smoothstep(0.40f,0.82f,mountainRange01); rawMountainPotential[i]=land[i]*inland*(mountainProvince*0.55f+rangeBelts*0.45f);}
+        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float inland=math.saturate(inlandDistance[i]/(0.24f*mapHeight)); float hillInland=math.smoothstep(0.02f,0.30f,inland); float2 uv=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(uv,uplandProvinceNoise,out var uplandRaw); SampleNoiseBilinear(uv,mountainProvinceNoise,out var mountainProvinceRaw); SampleNoiseBilinear(uv,mountainRangeNoise,out var mountainRangeRaw); float upland01=uplandRaw*0.5f+0.5f; float mountainProvince01=mountainProvinceRaw*0.5f+0.5f; float mountainRange01=mountainRangeRaw*0.5f+0.5f; float upland=math.smoothstep(0.36f,0.72f,upland01)*math.lerp(0.35f,1.0f,hillInland); uplandPotential[i]=land[i]*upland; float mountainProvince=math.smoothstep(0.45f,0.78f,mountainProvince01); float rangeBelts=math.smoothstep(0.40f,0.82f,mountainRange01); rawMountainPotential[i]=land[i]*inland*(mountainProvince*0.55f+rangeBelts*0.45f);}
         void SampleNoiseBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%noiseFieldWidth+noiseFieldWidth)%noiseFieldWidth,y0=math.clamp((int)math.floor(uv.y),0,noiseFieldHeight-1); int x1=(x0+1)%noiseFieldWidth,y1=math.min(y0+1,noiseFieldHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*noiseFieldWidth+x0],v10=arr[y0*noiseFieldWidth+x1],v01=arr[y1*noiseFieldWidth+x0],v11=arr[y1*noiseFieldWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
     }
     [BurstCompile] private struct MountainFinalizeJob : IJobFor

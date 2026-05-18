@@ -611,7 +611,7 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowConvergentBoundariesOnly > 0.5) return float4(tectonicBoundary.bbb, 1.0);
                 if (_ShowDivergentBoundariesOnly > 0.5) return float4(tectonicBoundary.aaa, 1.0);
                 if (_ShowMountainUpliftOnly > 0.5) return float4(GetGeneratedPreviewMountainMask(tectonicSurface.b, saturate(_Elevation)).xxx, 1.0);
-                if (_ShowGeneratedHillReliefOnly > 0.5) return float4(GetGeneratedPreviewHillRelief(tectonicSurface.r, tectonicSurface.g, tectonicSurface.b, tectonicCrust.a, saturate(_Elevation)).xxx, 1.0);
+                if (_ShowGeneratedHillReliefOnly > 0.5) { float rawHillMask = tectonicCrust.a; return float4(saturate(rawHillMask * 1.5).xxx, 1.0); }
                 if (_ShowContinentalShelfOnly > 0.5) return float4(tectonicSurface.aaa, 1.0);
                 if (_ShowCrustTypeOnly > 0.5) return float4(tectonicCrust.r, tectonicCrust.g, 0, 1.0);
                 if (_ShowContinentalPotentialOnly > 0.5) return float4(tectonicCrust.aaa, 1.0);
