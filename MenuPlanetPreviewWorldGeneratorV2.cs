@@ -333,7 +333,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int noiseW = Mathf.Max(1, cachedNoiseWidth);
         int noiseH = Mathf.Max(1, cachedNoiseHeight);
         int n=mapWidth*mapHeight; land=new float[n]; elev=new float[n]; mtn=new float[n]; shelf=new float[n]; cont=new float[n];
-        var nTopoLand = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoSignedCoastDistance = new NativeArray<float>(tn, Allocator.TempJob);
@@ -354,7 +353,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         var nMountainProvinceNoise = new NativeArray<float>(nn, Allocator.TempJob);
         var nMountainRangeNoise = new NativeArray<float>(nn, Allocator.TempJob);
         try{
-            for(int i=0;i<tn;i++){nTopoLand[i]=topoLand[i]?1f:0f; nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i]; nTopoSignedCoastDistance[i]=topoSignedCoastDistance[i];}
+            for(int i=0;i<tn;i++){nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i]; nTopoSignedCoastDistance[i]=topoSignedCoastDistance[i];}
             if (fastNoiseFieldsValid && useFastNoiseLiteFields)
             {
                 nMacroCoastNoise.CopyFrom(cachedMacroCoastNoise);
@@ -364,7 +363,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 nMountainProvinceNoise.CopyFrom(cachedMountainProvinceNoise);
                 nMountainRangeNoise.CopyFrom(cachedMountainRangeNoise);
             }
-            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineDeformationWidthCells=coastlineDeformationWidthCells,coastlineWarpStrength=coastlineWarpStrength,coastlineMidNoiseStrength=coastlineMidNoiseStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,coastlineThresholdBias=coastlineThresholdBias,topoLand=nTopoLand,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,topoSignedCoastDistance=nTopoSignedCoastDistance,macroCoastNoise=nMacroCoastNoise,midCoastNoise=nMidCoastNoise,coastEdgeNoise=nCoastEdgeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore};
+            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineDeformationWidthCells=coastlineDeformationWidthCells,coastlineWarpStrength=coastlineWarpStrength,coastlineMidNoiseStrength=coastlineMidNoiseStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,coastlineThresholdBias=coastlineThresholdBias,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,topoSignedCoastDistance=nTopoSignedCoastDistance,macroCoastNoise=nMacroCoastNoise,midCoastNoise=nMidCoastNoise,coastEdgeNoise=nCoastEdgeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore};
             var jh=landJob.ScheduleParallel(n,64,default);
             var terrJob=new TerrainPotentialJob{mapWidth=mapWidth,mapHeight=mapHeight,seed=inputs.seed,land=nLand,inlandDistance=nInland,uplandProvinceNoise=nUplandProvinceNoise,mountainProvinceNoise=nMountainProvinceNoise,mountainRangeNoise=nMountainRangeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,rawMountainPotential=nRawMtn,uplandPotential=nUpland};
             jh=terrJob.ScheduleParallel(n,64,jh); jh.Complete();
@@ -403,7 +402,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             nTopoSignedCoastDistance.Dispose();
             nTopoOceanDist.Dispose();
             nTopoLandDist.Dispose();
-            nTopoLand.Dispose();
         }
     }
 
@@ -580,9 +578,51 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             if(!topo[ni].isLand) frontier.Add(ni);
         }
     }
+    private bool HasAvailableGrowthNeighbor(TopologyCell[] topo,int tw,int th,int centerIndex,LandmassPlan plan,PreviewLandPresetProfileV3 preset,Dictionary<int,LandmassKind> groupKindById){
+        int cx=centerIndex%tw;
+        int cy=centerIndex/tw;
+        for(int d=0;d<4;d++){
+            int nx=(cx+(d==0?1:d==1?-1:0)+tw)%tw;
+            int ny=cy+(d==2?1:d==3?-1:0);
+            if(ny<0||ny>=th) continue;
+            int ni=ny*tw+nx;
+            if(CanClaimCellForLandmass(topo,tw,th,ni,plan,preset,groupKindById,out _)) return true;
+        }
+        return false;
+    }
+    private bool TryFindReplacementGrowthCenter(TopologyCell[] topo,int tw,int th,LandmassPlan plan,PreviewLandPresetProfileV3 preset,System.Random r,Dictionary<int,LandmassKind> groupKindById,out Vector2Int center){
+        int attempts=Mathf.Max(64,tw*th/6);
+        for(int a=0;a<attempts;a++){
+            int x=r.Next(0,tw);
+            int y=r.Next(0,th);
+            int idx=y*tw+x;
+            if(topo[idx].isLand) continue;
+            if(!HasAvailableGrowthNeighbor(topo,tw,th,idx,plan,preset,groupKindById)) continue;
+            center=new Vector2Int(x,y);
+            return true;
+        }
+        center=default;
+        return false;
+    }
     private LandmassGrowthDiagnostics GrowPlannedLandmass(TopologyCell[] topo,int tw,int th,LandmassPlan plan,PreviewLandPresetProfileV3 preset,System.Random r,float shapeBias,Dictionary<int,LandmassKind> groupKindById){
         var diag=new LandmassGrowthDiagnostics{groupId=plan.groupId,kind=plan.kind,targetCells=plan.targetCellCount,center=plan.center,lobeCount=plan.lobeCount,stopReason=LandmassGrowthStopReason.Unknown};
-        int start=plan.center.y*tw+plan.center.x;
+        Vector2Int growthCenter=plan.center;
+        int start=growthCenter.y*tw+growthCenter.x;
+        if(plan.kind!=LandmassKind.MajorContinent){
+            bool invalidStart=topo[start].isLand || !HasAvailableGrowthNeighbor(topo,tw,th,start,plan,preset,groupKindById);
+            if(invalidStart && TryFindReplacementGrowthCenter(topo,tw,th,plan,preset,r,groupKindById,out var replacementCenter)){
+                growthCenter=replacementCenter;
+                start=growthCenter.y*tw+growthCenter.x;
+                diag.center=growthCenter;
+            }
+            else if(invalidStart){
+                diag.stopReason=LandmassGrowthStopReason.NoFrontierCandidates;
+                diag.placedCellsBeforeSmoothing=0;
+                diag.finalFrontierCount=0;
+                diag.bestScoreAtStop=float.NegativeInfinity;
+                return diag;
+            }
+        }
         topo[start].isLand=true;
         topo[start].groupId=plan.groupId;
         int placed=1;
@@ -615,7 +655,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 int cx=idx%tw,cy=idx/tw;
                 float lobe=ComputeLobeAttraction(new Vector2Int(cx,cy),plan.lobeAttractors,tw,th);
                 float noise=(cachedTopologyShapeNoise[idx]*0.5f)+0.5f;
-                var v=(new Vector2(cx-plan.center.x,cy-plan.center.y));
+                var v=(new Vector2(cx-growthCenter.x,cy-growthCenter.y));
                 float elong=v.sqrMagnitude>0.0001f?Mathf.Clamp01((Vector2.Dot(v.normalized,plan.elongationDirection)+1f)*0.5f):0.5f;
                 int same=0,other=0;
                 for(int d=0;d<4;d++){
@@ -628,7 +668,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 float neighborSupport=Mathf.Clamp01(same/4f);
                 float tendrilPenalty=same<=0?0.70f:same==1?0.22f:0f;
                 float foreignPenalty=other*0.25f;
-                float centerDistancePenalty=(TopologyCellDistance(new Vector2Int(cx,cy),plan.center,tw,th)/(Mathf.Max(tw,th)))*0.08f;
+                float centerDistancePenalty=(TopologyCellDistance(new Vector2Int(cx,cy),growthCenter,tw,th)/(Mathf.Max(tw,th)))*0.08f;
                 float score=lobe*0.90f+noise*preset.irregularityBias+neighborSupport*preset.compactnessBias+elong*preset.elongationBias-tendrilPenalty-foreignPenalty-centerDistancePenalty;
                 if(score>bestScore){bestScore=score;best=idx;}
             }
@@ -839,8 +879,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         {
             if (land[i] <= 0.5f) { rank[i] = 0f; continue; }
             int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(rawMountainPotential[i]) * (bins - 1)), 0, bins - 1);
-            float pct = landCount > 0 ? (float)cdf[bin] / landCount : 0f;
-            rank[i] = 1f - pct;
+            rank[i] = landCount > 0
+                ? Mathf.Clamp01((cdf[bin] - hist[bin] * 0.5f) / (float)landCount)
+                : 0f;
         }
         return rank;
     }
@@ -921,7 +962,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 private void FillLocalLakePatch(int centerIndex,int radius,float[] land,float[] elev,float[] lake,float[] wet){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth;float baseElev=elev[centerIndex];float angle=(inputs.seed*0.173f+cx*0.007f+cy*0.011f)*6.283185f;float2 dir=new float2(math.cos(angle),math.sin(angle));float2 perp=new float2(-dir.y,dir.x);float radialScale=Mathf.Max(1f,radius);for(int oy=-radius;oy<=radius;oy++)for(int ox=-radius;ox<=radius;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight)continue;float2 v=new float2(ox,oy);float major=math.dot(v,dir)/(radialScale*Mathf.Lerp(0.85f,1.35f,Mathf.PerlinNoise((cx+inputs.seed*3.1f)*0.03f,(cy-inputs.seed*2.7f)*0.03f)));float minor=math.dot(v,perp)/(radialScale*Mathf.Lerp(0.80f,1.20f,Mathf.PerlinNoise((cx-inputs.seed*1.7f)*0.025f,(cy+inputs.seed*2.9f)*0.025f)));float ell=math.sqrt(major*major+minor*minor);float shorelineNoise=(Mathf.PerlinNoise((nx+inputs.seed*0.83f)*0.09f,(ny-inputs.seed*0.61f)*0.09f)-0.5f)*0.34f;float lakeMask=ell+shorelineNoise; if(lakeMask>1f)continue;int ni=ny*mapWidth+nx; if(land[ni]<=0.5f)continue; float d=lakeMask*radius; if(elev[ni]>baseElev+0.22f+0.04f*d)continue; float fill=Mathf.Clamp01(1f-lakeMask); lake[ni]=Mathf.Max(lake[ni],fill); wet[ni]=Mathf.Max(wet[ni],0.6f+fill*0.35f);}}
     [BurstCompile] private struct LandUpsampleAndDistanceJob : IJobFor
     {
-        [ReadOnly] public NativeArray<float> topoLand, topoLandCoastDistance, topoOceanCoastDistance, topoSignedCoastDistance;
+        [ReadOnly] public NativeArray<float> topoLandCoastDistance, topoOceanCoastDistance, topoSignedCoastDistance;
         [ReadOnly] public NativeArray<float> macroCoastNoise, midCoastNoise, coastEdgeNoise;
         public int noiseFieldWidth, noiseFieldHeight;
         public int mapWidth, mapHeight, topoWidth, topoHeight; public float seed, coastlineDeformationWidthCells, coastlineWarpStrength, coastlineMidNoiseStrength, coastlineEdgeNoiseStrength, coastlineSoftness, coastlineThresholdBias;
