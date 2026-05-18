@@ -260,18 +260,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         var r=new System.Random((seedBase*73856093) ^ 19349663);
         var plans=BuildLandmassPlan(preset,tw,th,r,sizeBias,shapeBias,out var planBuildDiag);
         if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmass Plan]
-Preset={preset.name}
-TopologySize={tw}x{th} ({tn} cells)
-RequestedMajor={planBuildDiag.requestedMajorCount}
-BuiltMajor={planBuildDiag.builtMajorCount}
-RequestedLargeIslands={planBuildDiag.requestedLargeIslandCount}
-BuiltLargeIslands={planBuildDiag.builtLargeIslandCount}
-RequestedSmallClusters={planBuildDiag.requestedSmallClusterCount}
-BuiltSmallClusters={planBuildDiag.builtSmallClusterCount}
-FailedCenterPlacements={planBuildDiag.failedCenterPlacements}
-TotalPlannedTargetCells={planBuildDiag.totalPlannedTargetCells}
-PlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
+            Debug.Log($"[WorldGenV2 Landmass Plan]\nPreset={preset.name}\nTopologySize={tw}x{th} ({tn} cells)\nRequestedMajor={planBuildDiag.requestedMajorCount}\nBuiltMajor={planBuildDiag.builtMajorCount}\nRequestedLargeIslands={planBuildDiag.requestedLargeIslandCount}\nBuiltLargeIslands={planBuildDiag.builtLargeIslandCount}\nRequestedSmallClusters={planBuildDiag.requestedSmallClusterCount}\nBuiltSmallClusters={planBuildDiag.builtSmallClusterCount}\nFailedCenterPlacements={planBuildDiag.failedCenterPlacements}\nTotalPlannedTargetCells={planBuildDiag.totalPlannedTargetCells}\nPlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
         RasterizeLandmassPlansToTopology(topo,plans,preset,tw,th,shapeBias);
         diag.attempts=1;
         diag.targetTopologyLandCells = planBuildDiag.totalPlannedTargetCells;
@@ -279,17 +268,9 @@ PlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
         diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
         int[] comp; diag.largestGroupShare=LargestLandmassShare(topo,tw,th,out diag.groupCount,out comp);
         if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmass Field]
-Preset={preset.name}
-PlannedMajor={planBuildDiag.builtMajorCount}
-PlannedLargeIslands={planBuildDiag.builtLargeIslandCount}
-PlannedSmallClusters={planBuildDiag.builtSmallClusterCount}
-PlannedTargetCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}
-RasterizedTopologyCoverage={diag.topologyCoverage:F4}");
+            Debug.Log($"[WorldGenV2 Landmass Field]\nPreset={preset.name}\nPlannedMajor={planBuildDiag.builtMajorCount}\nPlannedLargeIslands={planBuildDiag.builtLargeIslandCount}\nPlannedSmallClusters={planBuildDiag.builtSmallClusterCount}\nPlannedTargetCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}\nRasterizedTopologyCoverage={diag.topologyCoverage:F4}");
         if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmasses]
-Preset={preset.name}
-WorldCoverage={diag.topologyCoverage:F2}");
+            Debug.Log($"[WorldGenV2 Landmasses]\nPreset={preset.name}\nWorldCoverage={diag.topologyCoverage:F2}");
         bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = topo[i].isLand;
         float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
         float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
