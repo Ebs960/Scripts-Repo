@@ -238,11 +238,11 @@ public class MenuPlanetPreview : MonoBehaviour
     // -----------------------------------------------------------------
     [Header("Land Shape")]
     [Range(0.5f, 5f)]
-    [Tooltip("Controls blob frequency. Low = pangaea, High = archipelago.")]
+    [Tooltip("Generator-side landmass shape complexity. Lower values favor simpler, broader continent structures; higher values allow more lobe-rich, irregular planned landmasses.")]
     [SerializeField] private float landScale = 2f;
 
     [Range(0f, 1f)]
-    [Tooltip("Controls land vs ocean ratio. Low = more land, High = more ocean.")]
+    [Tooltip("Generator-side land amount bias within the chosen land preset. Lower values favor larger landmasses; higher values favor less total land.")]
     [SerializeField] private float landThreshold = 0.4f;
 
     [Header("Climate")]
