@@ -892,78 +892,36 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void ReadHydrology(out float[] river, out float[] lake, out float[] wetness, out float[] flowOrDepth){int n=mapWidth*mapHeight;river=new float[n];lake=new float[n];wetness=new float[n];flowOrDepth=new float[n];var p=hydrologyMaskTexture.GetPixels32();for(int i=0;i<n;i++){river[i]=p[i].r/255f;lake[i]=p[i].g/255f;wetness[i]=p[i].b/255f;flowOrDepth[i]=p[i].a/255f;}}
     private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int x=i%mapWidth;int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float equatorWarmth=1f-lat;float continentality=contIn[i];float tempNoise=(Mathf.PerlinNoise((x+inputs.seed*0.31f)*0.006f,(y-inputs.seed*0.17f)*0.006f)-0.5f)*2f;float localTemperature=equatorWarmth-elev[i]*0.42f+continentality*inputs.continentalTemperatureStrength+tempNoise*inputs.climateNoiseStrength*0.35f;float coastProximity=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float moistureNoise=(Mathf.PerlinNoise((x-inputs.seed*0.23f)*0.007f,(y+inputs.seed*0.29f)*0.007f)-0.5f)*2f;float localMoisture=0.5f+coastProximity*inputs.coastWetnessStrength-continentality*inputs.continentalDrynessStrength+moistureNoise*inputs.climateNoiseStrength+0.06f*(1f-lat);localTemperature=Mathf.Clamp01(localTemperature);localMoisture=Mathf.Clamp01(localMoisture);temp[i]=localTemperature;moisture[i]=localMoisture;p[i]=new Color32(B(localTemperature),B(localMoisture),B(continentality),0);}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}
     private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){
-        int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n],flow=new float[n];
-        bool[] riverCenterline = new bool[n];
+        int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n],priority=new float[n];
         float[] coastDist=DistanceFromBoundary(land,0.5f,true);
         int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
-        var r=new System.Random(hydroSeed*31+17);
-        Vector2Int selectedRiverRange = abundantRiverRange;
-        int targetRivers = r.Next(selectedRiverRange.x, selectedRiverRange.y + 1);
-        var candidates=new List<RiverSourceCandidate>();
-        int stride = Mathf.Max(1, riverCandidateStride);
-        for(int y=0;y<mapHeight;y+=stride) for(int x=0;x<mapWidth;x+=stride){
-            int jitter = ((x * 73856093) ^ (y * 19349663) ^ hydroSeed) & (stride - 1);
-            int sx = (x + jitter) % mapWidth;
-            int i = y*mapWidth+sx;
-            if(land[i]<=0.5f) continue;
-            if(coastDist[i] < 2f) continue;
-            float inlandScore=Mathf.Clamp01(coastDist[i]/(0.18f*mapHeight));
-            float sourceScore=inlandScore*0.45f + elev[i]*0.30f + moisture[i]*0.25f;
-            candidates.Add(new RiverSourceCandidate{index=i,score=sourceScore});
-        }
-        candidates.Sort((a,b)=>b.score.CompareTo(a.score));
-        var acceptedSources=new List<int>();
-        foreach(var candidate in candidates){
-            int cur=candidate.index; int cx=cur%mapWidth, cy=cur/mapWidth; bool tooClose=false;
-            foreach(var src in acceptedSources){int sx=src%mapWidth, sy=src/mapWidth; int dx=Mathf.Abs(cx-sx); dx=Mathf.Min(dx,mapWidth-dx); int dy=Mathf.Abs(cy-sy); if(dx*dx+dy*dy<minRiverSourceSpacingPixels*minRiverSourceSpacingPixels){tooClose=true;break;}}
-            if(tooClose) continue; acceptedSources.Add(cur); if(acceptedSources.Count>=targetRivers) break;
-        }
-        int completedRivers=0, mergedRivers=0, oceanReachedRivers=0, failedRoutes=0;
-        foreach(int source in acceptedSources){
-            int cur=source; int len=0; bool completed=false; var seen=new HashSet<int>();
-            float sourceMoisture=moisture[source]; float pathFlow=0.22f + 0.58f*sourceMoisture;
-            while(len<260 && !seen.Contains(cur) && land[cur]>0.5f){
-                seen.Add(cur);
-                riverCenterline[cur] = true;
-                StampRiverCrossSection(cur,pathFlow,land,river,flow,wet);
-                len++;
-                int x=cur%mapWidth,y=cur/mapWidth; int next=-1; float bestCost=float.MaxValue; float curCoast = coastDist[cur];
-                for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){
-                    if(ox==0&&oy==0)continue; int nx=(x+ox+mapWidth)%mapWidth, ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx;
-                    if(seen.Contains(ni)) continue;
-                    float coastNorm=Mathf.Clamp01(coastDist[ni]/(0.30f*mapHeight));
-                    float meander=(Mathf.PerlinNoise((nx+inputs.seed*0.19f)*0.09f,(ny-inputs.seed*0.23f)*0.09f)-0.5f)*2f;
-                    if (land[ni] <= 0.5f) { completed = true; oceanReachedRivers++; next = ni; break; }
-                    float cost=coastNorm*0.75f + elev[ni]*0.15f + (meander*0.5f+0.5f)*0.10f;
-                    if (coastDist[ni] >= curCoast) cost += 0.05f;
-                    if(cost<bestCost){bestCost=cost; next=ni;}
-                }
-                if(next<0) break;
-                if(riverCenterline[next]){completed=true; mergedRivers++; cur=next; len++; break;}
-                float flowGain=0.002f + 0.003f*Mathf.Clamp01(moisture[next]) + 0.0025f*Mathf.Clamp01(elev[next]); pathFlow=Mathf.Clamp01(pathFlow+flowGain); cur=next;
-            }
-            if(completed && len>=10) completedRivers++; else failedRoutes++;
-        }
-        int lakes=0;
-        Vector2Int lakeRange = new Vector2Int(10,17);
-        int lakeTarget=r.Next(lakeRange.x, lakeRange.y + 1);
-        for(int attempt=0;attempt<n && lakes<lakeTarget;attempt++){
-            int idx=r.Next(n); if(land[idx]<=0.5f) continue; if(coastDist[idx]<5f) continue; if(elev[idx]>0.62f) continue;
-            float inlandNorm=Mathf.Clamp01(coastDist[idx]/(0.22f*mapHeight)); float moistureNorm=Mathf.Clamp01(moisture[idx]); int minRad=Mathf.RoundToInt(Mathf.Lerp(11f,18f,moistureNorm)); int maxRad=Mathf.RoundToInt(Mathf.Lerp(24f,42f,inlandNorm*0.65f+moistureNorm*0.35f)); int rad=r.Next(Mathf.Min(minRad,maxRad),Mathf.Max(minRad+1,maxRad+1));
-            FillLocalLakePatch(idx,rad,land,elev,lake,wet); lakes++;
-        }
-        for(int i=0;i<n;i++) if(river[i]>0f || lake[i]>0f){int x=i%mapWidth,y=i/mapWidth; for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight)continue; int ni=ny*mapWidth+nx; if(land[ni]>0.5f) wet[ni]=Mathf.Max(wet[ni],0.45f + lake[i]*0.2f + river[i]*0.15f);}}
-        var p=new Color32[n]; for(int i=0;i<n;i++){ float priority=Mathf.Clamp01(Mathf.Max(flow[i],lake[i])); p[i]=new Color32(B(river[i]),B(lake[i]),B(wet[i]),B(priority)); }
+        var rng=new System.Random(hydroSeed*31+17);
+        var inlandCandidates=new List<int>(n/4); var coastalCandidates=new List<int>(n/8);
+        for(int i=0;i<n;i++){ if(land[i]<=0.5f) continue; if(coastDist[i]>=6f) inlandCandidates.Add(i); if(coastDist[i]>=1f && coastDist[i]<=8f) coastalCandidates.Add(i); }
+        int riverTarget=Mathf.Clamp(rng.Next(12,23)+(inlandCandidates.Count>n*0.22f?rng.Next(0,5):0),12,28), riversPainted=0;
+        for(int ri=0;ri<riverTarget;ri++){ if(inlandCandidates.Count==0) break; int source=inlandCandidates[rng.Next(inlandCandidates.Count)]; int target=PickRiverTarget(source,coastDist,land,coastalCandidates,rng); float t=(ri+1f)/Mathf.Max(1f,riverTarget); float riverPriority=t<0.20f?Mathf.Lerp(0.8f,1f,(float)rng.NextDouble()):t<0.65f?Mathf.Lerp(0.55f,0.85f,(float)rng.NextDouble()):Mathf.Lerp(0.35f,0.65f,(float)rng.NextDouble()); int stamped=PaintDecorativeRiver(source,target,land,river,wet,priority,riverPriority,rng,ri); if(stamped>=80) riversPainted++; }
+        int lakeRequested=rng.Next(6,11), lakesPainted=0;
+        for(int li=0;li<lakeRequested;li++){ if(inlandCandidates.Count==0) break; int center=inlandCandidates[rng.Next(inlandCandidates.Count)]; int baseRadius=rng.Next(18,41); float m=Mathf.Clamp01(moisture[center]); if(rng.NextDouble()<0.25+0.25*m) baseRadius=rng.Next(40,66); float lakePriority=baseRadius>=50?Mathf.Lerp(0.75f,1f,(float)rng.NextDouble()):baseRadius>=30?Mathf.Lerp(0.55f,0.80f,(float)rng.NextDouble()):Mathf.Lerp(0.40f,0.60f,(float)rng.NextDouble()); if(PaintOrganicLakeBlob(center,baseRadius,land,lake,wet,priority,lakePriority,rng,li)) lakesPainted++; }
+        ApplyHydrologyWetnessHalo(land,river,lake,wet);
+        int riverPixels=0,lakePixels=0,hydroPixels=0; var p=new Color32[n];
+        for(int i=0;i<n;i++){ if(river[i]>0.04f) riverPixels++; if(lake[i]>0.04f) lakePixels++; if(river[i]>0.02f||lake[i]>0.02f) hydroPixels++; p[i]=new Color32(B(river[i]),B(lake[i]),B(wet[i]),B(priority[i])); }
         hydrologyMaskTexture.SetPixelData(p,0); hydrologyMaskTexture.Apply(false,false);
-        diag.rivers=completedRivers; diag.lakes=lakes;
-        if(logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Hydrology] TargetRivers={targetRivers} Candidates={candidates.Count} AcceptedSources={acceptedSources.Count} CompletedRivers={completedRivers} MergedRivers={mergedRivers} OceanReachedRivers={oceanReachedRivers} FailedRoutes={failedRoutes} Lakes={lakes}");
+        diag.rivers=riversPainted; diag.lakes=lakesPainted;
+        if(logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Decorative Hydrology] RiversRequested={riverTarget} RiversPainted={riversPainted} LakesRequested={lakeRequested} LakesPainted={lakesPainted} RiverPixels={riverPixels} LakePixels={lakePixels} HydrologyCoverage={(float)hydroPixels/Mathf.Max(1,n):F3}");
     }
 
 
     private void StampRiverCrossSection(int centerIndex,float pathFlow,float[] land,float[] river,float[] flow,float[] wet){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth;int radius=Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(1f,3.6f,Mathf.Clamp01((pathFlow-0.18f)/0.82f))),1,4);float bankNoise=(Mathf.PerlinNoise((cx+inputs.seed*0.27f)*0.15f,(cy-inputs.seed*0.41f)*0.15f)-0.5f)*0.35f;for(int oy=-radius;oy<=radius;oy++)for(int ox=-radius;ox<=radius;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight)continue;int ni=ny*mapWidth+nx; if(land[ni]<=0.5f)continue;float d=Mathf.Sqrt(ox*ox+oy*oy);float normalized=d/(radius+0.35f+bankNoise);if(normalized>1f)continue;float core=Mathf.Clamp01(1f-normalized);float channel=Mathf.Clamp01(0.18f + pathFlow*0.72f)*Mathf.Lerp(0.45f,1f,core);river[ni]=Mathf.Max(river[ni],channel);flow[ni]=Mathf.Max(flow[ni],Mathf.Clamp01(pathFlow*math.saturate(1f-normalized*0.55f)));wet[ni]=Mathf.Max(wet[ni],0.34f+channel*0.55f+core*0.08f);}}
 
-    private struct RiverSourceCandidate { public int index; public float score; }
-private void FillLocalLakePatch(int centerIndex,int radius,float[] land,float[] elev,float[] lake,float[] wet){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth;float baseElev=elev[centerIndex];float angle=(inputs.seed*0.173f+cx*0.007f+cy*0.011f)*6.283185f;float2 dir=new float2(math.cos(angle),math.sin(angle));float2 perp=new float2(-dir.y,dir.x);float radialScale=Mathf.Max(1f,radius);for(int oy=-radius;oy<=radius;oy++)for(int ox=-radius;ox<=radius;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight)continue;float2 v=new float2(ox,oy);float major=math.dot(v,dir)/(radialScale*Mathf.Lerp(0.85f,1.35f,Mathf.PerlinNoise((cx+inputs.seed*3.1f)*0.03f,(cy-inputs.seed*2.7f)*0.03f)));float minor=math.dot(v,perp)/(radialScale*Mathf.Lerp(0.80f,1.20f,Mathf.PerlinNoise((cx-inputs.seed*1.7f)*0.025f,(cy+inputs.seed*2.9f)*0.025f)));float ell=math.sqrt(major*major+minor*minor);float shorelineNoise=(Mathf.PerlinNoise((nx+inputs.seed*0.83f)*0.09f,(ny-inputs.seed*0.61f)*0.09f)-0.5f)*0.34f;float lakeMask=ell+shorelineNoise; if(lakeMask>1f)continue;int ni=ny*mapWidth+nx; if(land[ni]<=0.5f)continue; float d=lakeMask*radius; if(elev[ni]>baseElev+0.22f+0.04f*d)continue; float fill=Mathf.Clamp01(1f-lakeMask); lake[ni]=Mathf.Max(lake[ni],fill); wet[ni]=Mathf.Max(wet[ni],0.6f+fill*0.35f);}}
+    private int PickRiverTarget(int source,float[] coastDist,float[] land,List<int> coastalCandidates,System.Random rng){ if(coastalCandidates.Count>0 && rng.NextDouble()<0.85) return coastalCandidates[rng.Next(coastalCandidates.Count)]; int best=source; float bestDist=coastDist[source]; for(int i=0;i<20;i++){int idx=rng.Next(land.Length); if(land[idx]<=0.5f) continue; if(coastDist[idx]<bestDist){bestDist=coastDist[idx]; best=idx;}} return best; }
+    private int PaintDecorativeRiver(int source,int target,float[] land,float[] river,float[] wet,float[] priority,float riverPriority,System.Random rng,int riverId){Vector2 p0=IndexToXY(source), p3=IndexToXY(target); Vector2 delta=DeltaWrap(p0,p3); float dist=delta.magnitude; if(dist<24f) return 0; Vector2 dir=delta/Mathf.Max(1f,dist), perp=new Vector2(-dir.y,dir.x); Vector2 p1=p0 + dir*(dist*0.30f) + perp*Mathf.Lerp(-0.26f,0.26f,(float)rng.NextDouble())*dist; Vector2 p2=p0 + dir*(dist*0.65f) - perp*Mathf.Lerp(-0.30f,0.30f,(float)rng.NextDouble())*dist; int samples=Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(80f,220f,Mathf.Clamp01(dist/(mapWidth*0.55f)))),80,220), stamped=0; for(int s=0;s<samples;s++){float t=s/(float)(samples-1); Vector2 p=Bezier(p0,p1,p2,p0+delta,t); float wobble=(Mathf.PerlinNoise((p.x+riverId*17.13f+inputs.seed)*0.06f,(p.y-riverId*11.27f-inputs.seed)*0.06f)-0.5f)*2f; p+=perp*wobble*2.0f; int ix=Mathf.RoundToInt(p.x); int iy=Mathf.RoundToInt(p.y); int landIdx=FindNearestLand(ix,iy,land,3); if(landIdx<0) continue; float widthT=Mathf.Lerp(2f,7f,Mathf.SmoothStep(0f,1f,t)); StampRiverAtIndex(landIdx,widthT,riverPriority,land,river,wet,priority,riverId); stamped++; } return stamped; }
+    private void StampRiverAtIndex(int centerIndex,float radius,float riverPriority,float[] land,float[] river,float[] wet,float[] priority,int riverId){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth; int ir=Mathf.CeilToInt(radius+1f); for(int oy=-ir;oy<=ir;oy++)for(int ox=-ir;ox<=ir;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float d=Mathf.Sqrt(ox*ox+oy*oy); float edgeN=(Mathf.PerlinNoise((nx+riverId*13.1f+inputs.seed)*0.19f,(ny-riverId*7.3f-inputs.seed)*0.19f)-0.5f)*0.7f; float allowed=radius+edgeN; if(d>allowed) continue; float core=Mathf.Clamp01(1f-d/Mathf.Max(0.01f,allowed)); float channel=Mathf.Lerp(0.45f,1f,core); river[ni]=Mathf.Max(river[ni],channel); wet[ni]=Mathf.Max(wet[ni],Mathf.Lerp(0.35f,0.9f,core)); priority[ni]=Mathf.Max(priority[ni],riverPriority);} }
+    private bool PaintOrganicLakeBlob(int centerIndex,int baseRadius,float[] land,float[] lake,float[] wet,float[] priority,float lakePriority,System.Random rng,int lakeId){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth; int lobes=rng.Next(2,6), landStamped=0; float maxReach=baseRadius*1.8f; for(int oy=-Mathf.CeilToInt(maxReach);oy<=Mathf.CeilToInt(maxReach);oy++)for(int ox=-Mathf.CeilToInt(maxReach);ox<=Mathf.CeilToInt(maxReach);ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float union=0f; for(int l=0;l<lobes;l++){float ang=(float)(rng.NextDouble()*Mathf.PI*2f + l*0.9f); float rr=baseRadius*Mathf.Lerp(0.5f,1.15f,(float)rng.NextDouble()); float rx=rr*Mathf.Lerp(0.75f,1.45f,(float)rng.NextDouble()), ry=rr*Mathf.Lerp(0.75f,1.45f,(float)rng.NextDouble()); float oxL=Mathf.Cos(ang)*baseRadius*Mathf.Lerp(0.15f,0.75f,(float)rng.NextDouble()), oyL=Mathf.Sin(ang)*baseRadius*Mathf.Lerp(0.15f,0.75f,(float)rng.NextDouble()); float2 dv=new float2(ox-oxL,oy-oyL); float n=(dv.x*dv.x)/(rx*rx)+(dv.y*dv.y)/(ry*ry); union=Mathf.Max(union,Mathf.Clamp01(1f-n)); } float shoreNoise=(Mathf.PerlinNoise((nx+lakeId*5.7f+inputs.seed)*0.085f,(ny-lakeId*9.3f-inputs.seed)*0.085f)-0.5f)*0.55f; float fill=Mathf.Clamp01(union+shoreNoise*0.35f); if(fill<0.10f) continue; lake[ni]=Mathf.Max(lake[ni],fill); wet[ni]=Mathf.Max(wet[ni],Mathf.Lerp(0.45f,1f,fill)); priority[ni]=Mathf.Max(priority[ni],lakePriority); landStamped++; } return landStamped>220; }
+    private void ApplyHydrologyWetnessHalo(float[] land,float[] river,float[] lake,float[] wet){for(int y=0;y<mapHeight;y++)for(int x=0;x<mapWidth;x++){int i=y*mapWidth+x; if(land[i]<=0.5f) continue; float src=Mathf.Max(river[i],lake[i]); if(src<=0.01f) continue; int r=lake[i]>river[i]?10:7; for(int oy=-r;oy<=r;oy++)for(int ox=-r;ox<=r;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float d=Mathf.Sqrt(ox*ox+oy*oy); if(d>r) continue; float falloff=1f-d/r; float baseV=lake[i]>river[i]?Mathf.Lerp(0.40f,0.75f,falloff):Mathf.Lerp(0.35f,0.70f,falloff); wet[ni]=Mathf.Max(wet[ni],baseV*src); }}}
+    private int FindNearestLand(int x,int y,float[] land,int radius){for(int r=0;r<=radius;r++)for(int oy=-r;oy<=r;oy++)for(int ox=-r;ox<=r;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]>0.5f) return ni;} return -1;}
+    private Vector2 IndexToXY(int index)=>new Vector2(index%mapWidth,index/mapWidth);
+    private Vector2 DeltaWrap(Vector2 from,Vector2 to){float dx=to.x-from.x; if(Mathf.Abs(dx)>mapWidth*0.5f) dx-=Mathf.Sign(dx)*mapWidth; return new Vector2(dx,to.y-from.y);}
+    private Vector2 Bezier(Vector2 p0,Vector2 p1,Vector2 p2,Vector2 p3,float t){float u=1f-t; return u*u*u*p0+3f*u*u*t*p1+3f*u*t*t*p2+t*t*t*p3;}
     [BurstCompile] private struct LandUpsampleAndDistanceJob : IJobFor
     {
         [ReadOnly] public NativeArray<float> topoLandCoastDistance, topoOceanCoastDistance, topoSignedCoastDistance;
