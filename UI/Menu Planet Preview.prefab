@@ -551,7 +551,7 @@ MonoBehaviour:
   temperature: 0.5
   moisture: 0.5
   climateNoiseStrength: 0.15
-  coastWetnessStrength: 0.2
+  coastWetnessStrength: 0.23
   continentalDrynessStrength: 0.02
   continentalTemperatureStrength: 0.05
   riparianWetnessStrength: 0.125
@@ -598,9 +598,10 @@ MonoBehaviour:
   topologyHeight: 256
   maxTopologyAttempts: 12
   coastlineDeformationWidthCells: 24
-  coastlineWarpStrength: 0.93
-  coastlineEdgeNoiseStrength: 0.3
-  coastlineSoftness: 0.03
+  coastlineWarpStrength: 1.3
+  coastlineMidNoiseStrength: 0.65
+  coastlineEdgeNoiseStrength: 0.4
+  coastlineSoftness: 0.11
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
   logLandmassGenerationDiagnostics: 1
@@ -610,8 +611,13 @@ MonoBehaviour:
   sparseRiverRange: {x: 12, y: 20}
   standardRiverRange: {x: 50, y: 90}
   abundantRiverRange: {x: 45, y: 70}
-  minRiverSourceSpacingPixels: 32
+  minRiverSourceSpacingPixels: 20
   riverCandidateStride: 8
+  decorativeRiverMinSourceCoastDistance: 22
+  decorativeRiverTurnResponsiveness: 0.28
+  decorativeRiverMeanderStrength: 0.32
+  decorativeRiverUpperRadius: 2
+  decorativeRiverLowerRadius: 5
   presets:
   - name: Archipelago
     majorLandmasses:
@@ -678,20 +684,20 @@ MonoBehaviour:
   - name: Standard
     majorLandmasses:
       minCount: 2
-      maxCount: 4
+      maxCount: 3
       minAreaFraction: 0.1
-      maxAreaFraction: 0.18
-      minLobes: 2
-      maxLobes: 5
+      maxAreaFraction: 0.12
+      minLobes: 6
+      maxLobes: 8
     largeIslands:
-      minCount: 3
-      maxCount: 8
-      minAreaFraction: 0.005
-      maxAreaFraction: 0.02
-      minLobes: 1
-      maxLobes: 3
-    smallIslandClusters:
       minCount: 4
+      maxCount: 5
+      minAreaFraction: 0.005
+      maxAreaFraction: 0.005
+      minLobes: 1
+      maxLobes: 5
+    smallIslandClusters:
+      minCount: 10
       maxCount: 12
       minAreaFraction: 0.001
       maxAreaFraction: 0.004
@@ -702,7 +708,7 @@ MonoBehaviour:
     compactnessBias: 0.58
     irregularityBias: 0.66
     elongationBias: 0.34
-    allowMajorLandmassMerging: 0
+    allowMajorLandmassMerging: 1
     requireSingleDominantLandmass: 0
     softMinWorldLandCoverage: 0.25
     softMaxWorldLandCoverage: 0.62
