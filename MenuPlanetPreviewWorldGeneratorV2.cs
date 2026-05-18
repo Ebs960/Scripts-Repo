@@ -119,7 +119,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         public int failedCenterPlacements;
         public int totalPlannedTargetCells;
     }
-    
+
     [SerializeField] private PreviewLandPresetProfileV3[] presets = new PreviewLandPresetProfileV3[6]
     {
         new PreviewLandPresetProfileV3{name="Archipelago",majorLandmasses=new LandmassBand{minCount=0,maxCount=0,minAreaFraction=0,maxAreaFraction=0,minLobes=0,maxLobes=0},largeIslands=new LandmassBand{minCount=10,maxCount=18,minAreaFraction=0.004f,maxAreaFraction=0.018f,minLobes=1,maxLobes=3},smallIslandClusters=new LandmassBand{minCount=12,maxCount=30,minAreaFraction=0.0005f,maxAreaFraction=0.004f,minLobes=1,maxLobes=2},minMajorSeedSeparationDegrees=0f,minMajorOceanGapCells=1f,compactnessBias=0.30f,irregularityBias=0.90f,elongationBias=0.20f,allowMajorLandmassMerging=false},
@@ -169,7 +169,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             StartOrRestartGeneration();
         }
     }
-    
+
 
     private void StartOrRestartGeneration()
     {
@@ -187,13 +187,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Started generation version={version}");
         var s = pending; pending = PreviewWorldRebuildScope.None;
         EnsureAllTextures();
-        float[] land = null, elev = null, mtn = null, shelf = null, cont = null, moisture = null, temp = null;
+        float[] land = null, elev = null, mtn = null, shelf = null, cont = null, hill = null, moisture = null, temp = null;
         GenDiagnostics diag = default;
 
         if ((s & PreviewWorldRebuildScope.Tectonics) != 0)
         {
-            GenerateTerrain(out land, out elev, out mtn, out shelf, out cont, out diag);
-            WriteSurfaceAndStructure(land, elev, mtn, shelf, cont);
+            GenerateTerrain(out land, out elev, out mtn, out shelf, out cont, out hill, out diag);
+            WriteSurfaceAndStructure(land, elev, mtn, shelf, cont, hill);
             yield return null;
             if (version != generationVersion) { if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}"); IsGeneratingPreview = false; yield break; }
         }
@@ -250,7 +250,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
 
     // concise but complete implementation
-    private void GenerateTerrain(out float[] land,out float[] elev,out float[] mtn,out float[] shelf,out float[] cont,out GenDiagnostics diag){
+    private void GenerateTerrain(out float[] land,out float[] elev,out float[] mtn,out float[] shelf,out float[] cont,out float[] hill,out GenDiagnostics diag){
         int tw=Mathf.Max(16,topologyWidth),th=Mathf.Max(8,topologyHeight),tn=tw*th; diag=default;
         int presetIndex=Mathf.Clamp(inputs.landPresetIndex,0,presets.Length-1); var preset=presets[presetIndex]; diag.preset=preset.name;
         float sizeBias=Mathf.Clamp01(1f-inputs.landThreshold); float shapeBias=Mathf.InverseLerp(0.5f,5f,inputs.landScale); diag.targetLand=0f;
@@ -277,7 +277,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         float[] topoSignedCoastDistance = BuildSignedTopologyCoastDistance(topoLand, topoLandDist, topoOceanDist);
         int noiseW = Mathf.Max(1, cachedNoiseWidth);
         int noiseH = Mathf.Max(1, cachedNoiseHeight);
-        int n=mapWidth*mapHeight; land=new float[n]; elev=new float[n]; mtn=new float[n]; shelf=new float[n]; cont=new float[n];
+        int n=mapWidth*mapHeight; land=new float[n]; elev=new float[n]; mtn=new float[n]; shelf=new float[n]; cont=new float[n]; hill=new float[n];
         var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoSignedCoastDistance = new NativeArray<float>(tn, Allocator.TempJob);
@@ -317,7 +317,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             var mfJob=new MountainFinalizeJob{mapHeight=mapHeight,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,uplandPotential=nUpland,mountainRank=nMountainRank,rawMountainPotential=nRawMtn,mountain=nMtn,elevation=nElev,shelf=nShelf,continentality=nCont};
             mfJob.ScheduleParallel(n,64,default).Complete();
             nMountainRank.Dispose();
-            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i]; if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); if(mtn[i]>0.35f)mtnPixels++;}}
+            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i];hill[i]=land[i]*Mathf.Clamp01(nUpland[i])*(1f-Mathf.SmoothStep(0.35f,0.85f,mtn[i])); if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); if(mtn[i]>0.35f)mtnPixels++;}}
             float finalCoastLandCoverage = n > 0 ? lc / n : 0f;
             if (logWorldGenerationDiagnostics)
             {
@@ -562,7 +562,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         center=default; return false;
     }
     private Vector3 TopologyToDirection(Vector2Int c,int tw,int th){float u=(c.x+0.5f)/tw,v=(c.y+0.5f)/th; float lon=(u*Mathf.PI*2f)-Mathf.PI,lat=(0.5f-v)*Mathf.PI; float cl=Mathf.Cos(lat); return new Vector3(cl*Mathf.Cos(lon),Mathf.Sin(lat),cl*Mathf.Sin(lon));}
-    private float TopologyCellDistance(Vector2Int a,Vector2Int b,int tw,int th){ float dx=Mathf.Min(Mathf.Abs(a.x-b.x),tw-Mathf.Abs(a.x-b.x)); float dy=Mathf.Abs(a.y-b.y); return Mathf.Sqrt(dx*dx+dy*dy);}    
+    private float TopologyCellDistance(Vector2Int a,Vector2Int b,int tw,int th){ float dx=Mathf.Min(Mathf.Abs(a.x-b.x),tw-Mathf.Abs(a.x-b.x)); float dy=Mathf.Abs(a.y-b.y); return Mathf.Sqrt(dx*dx+dy*dy);}
     private List<LandmassLobe> BuildLandmassLobes(LandmassKind kind,Vector2Int center,float estimatedRadiusCells,int lobeCount,Vector2 elongationDirection,int tw,int th,System.Random r){
         var lobes=new List<LandmassLobe>();
         float baseRadius=Mathf.Max(2f,estimatedRadiusCells);
@@ -708,7 +708,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return rank;
     }
 
-    private void WriteSurfaceAndStructure(float[] land,float[] elev,float[] mtn,float[] shelf,float[] cont){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){s[i]=new Color32(B(land[i]),B(elev[i]),B(mtn[i]),B(shelf[i]));w[i]=new Color32(B(cont[i]),B(mtn[i]),B(elev[i]),0);a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}    
+    private void WriteSurfaceAndStructure(float[] land,float[] elev,float[] mtn,float[] shelf,float[] cont,float[] hill){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){float hillRelief=hill!=null&&i<hill.Length?hill[i]:0f;s[i]=new Color32(B(land[i]),B(elev[i]),B(mtn[i]),B(shelf[i]));w[i]=new Color32(B(cont[i]),B(mtn[i]),B(elev[i]),B(hillRelief));a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}
     private void ReadSurface(out float[] land,out float[] elev,out float[] mtn,out float[] shelf){int n=mapWidth*mapHeight;land=new float[n];elev=new float[n];mtn=new float[n];shelf=new float[n];var p=surfaceDataTexture.GetPixels32();for(int i=0;i<n;i++){land[i]=p[i].r/255f;elev[i]=p[i].g/255f;mtn[i]=p[i].b/255f;shelf[i]=p[i].a/255f;}}
     private void ReadClimate(out float[] temp,out float[] moisture,out float[] cont){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];cont=new float[n];var p=climateTexture.GetPixels32();for(int i=0;i<n;i++){temp[i]=p[i].r/255f;moisture[i]=p[i].g/255f;cont[i]=p[i].b/255f;}}
     private void ReadHydrology(out float[] river, out float[] lake, out float[] wetness, out float[] flowOrDepth){int n=mapWidth*mapHeight;river=new float[n];lake=new float[n];wetness=new float[n];flowOrDepth=new float[n];var p=hydrologyMaskTexture.GetPixels32();for(int i=0;i<n;i++){river[i]=p[i].r/255f;lake[i]=p[i].g/255f;wetness[i]=p[i].b/255f;flowOrDepth[i]=p[i].a/255f;}}
@@ -819,8 +819,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         var pts=new List<Vector2>(controlCount); Vector2 delta=DeltaWrap(source,target); float dist=Mathf.Max(1f,delta.magnitude); Vector2 dir=delta/dist; Vector2 perp=new Vector2(-dir.y,dir.x);
         for(int k=0;k<controlCount;k++){
             float t=controlCount<=1?0f:k/(float)(controlCount-1); Vector2 basePoint=source+delta*t; float envelope=Mathf.Sin(Mathf.PI*t);
-            float sign=(k%2==0?1f:-1f) * (((riverSeed+k)&1)==0?1f:-1f);
-            float lateral=dist*decorativeRiverLateralWanderFraction*decorativeRiverMeanderStrength*envelope*sign*Mathf.Lerp(0.65f,1.25f,(float)r.NextDouble());
+            float initialSide=(riverSeed&1)==0?1f:-1f;
+            float alternatingSide=(k%2==0)?1f:-1f;
+            float sign=initialSide*alternatingSide;
+            float middleBias=Mathf.Lerp(0.82f,1.18f,envelope);
+            float lateral=dist*decorativeRiverLateralWanderFraction*decorativeRiverMeanderStrength*envelope*middleBias*sign*Mathf.Lerp(0.65f,1.25f,(float)r.NextDouble());
             Vector2 cp=basePoint+perp*lateral; cp.x=(cp.x%mapWidth+mapWidth)%mapWidth; cp.y=Mathf.Clamp(cp.y,0,mapHeight-1); pts.Add(cp);
         }
         return pts;

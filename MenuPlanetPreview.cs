@@ -217,6 +217,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showConvergentBoundariesOnly = false;
     [SerializeField] private bool showDivergentBoundariesOnly = false;
     [SerializeField] private bool showMountainUpliftOnly = false;
+    [SerializeField] private bool showGeneratedHillReliefOnly = false;
     [SerializeField] private bool showContinentalShelfOnly = false;
     [SerializeField] private bool showCrustTypeOnly = false;
     [SerializeField] private bool showContinentalPotentialOnly = false;
@@ -533,6 +534,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowConvergentBoundariesOnly = Shader.PropertyToID("_ShowConvergentBoundariesOnly");
     private static readonly int ID_ShowDivergentBoundariesOnly = Shader.PropertyToID("_ShowDivergentBoundariesOnly");
     private static readonly int ID_ShowMountainUpliftOnly = Shader.PropertyToID("_ShowMountainUpliftOnly");
+    private static readonly int ID_ShowGeneratedHillReliefOnly = Shader.PropertyToID("_ShowGeneratedHillReliefOnly");
     private static readonly int ID_ShowContinentalShelfOnly = Shader.PropertyToID("_ShowContinentalShelfOnly");
     private static readonly int ID_ShowCrustTypeOnly = Shader.PropertyToID("_ShowCrustTypeOnly");
     private static readonly int ID_ShowContinentalPotentialOnly = Shader.PropertyToID("_ShowContinentalPotentialOnly");
@@ -830,6 +832,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowConvergentBoundariesOnly, showConvergentBoundariesOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDivergentBoundariesOnly, showDivergentBoundariesOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowMountainUpliftOnly, showMountainUpliftOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowGeneratedHillReliefOnly, showGeneratedHillReliefOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowContinentalShelfOnly, showContinentalShelfOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowCrustTypeOnly, showCrustTypeOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowContinentalPotentialOnly, showContinentalPotentialOnly ? 1f : 0f);
