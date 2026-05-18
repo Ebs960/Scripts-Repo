@@ -467,6 +467,64 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int c=0; for(int i=0;i<topo.Length;i++) if(topo[i].isLand) c++; return c;
     }
 
+    private float LargestLandmassShare(TopologyCell[] topo, int w, int h, out int groupCount, out int[] componentIds)
+    {
+        int n = topo.Length;
+        componentIds = new int[n];
+        if (n == 0 || w <= 0 || h <= 0)
+        {
+            groupCount = 0;
+            return 0f;
+        }
+
+        int landCells = 0;
+        for (int i = 0; i < n; i++) if (topo[i].isLand) landCells++;
+        if (landCells == 0)
+        {
+            groupCount = 0;
+            return 0f;
+        }
+
+        int nextComponentId = 1;
+        int largest = 0;
+        var queue = new Queue<int>();
+        int[] ox = { -1, 0, 1, -1, 1, -1, 0, 1 };
+        int[] oy = { -1, -1, -1, 0, 0, 1, 1, 1 };
+
+        for (int i = 0; i < n; i++)
+        {
+            if (!topo[i].isLand || componentIds[i] != 0) continue;
+
+            componentIds[i] = nextComponentId;
+            queue.Enqueue(i);
+            int componentSize = 0;
+
+            while (queue.Count > 0)
+            {
+                int c = queue.Dequeue();
+                componentSize++;
+                int cx = c % w;
+                int cy = c / w;
+                for (int d = 0; d < 8; d++)
+                {
+                    int ny = cy + oy[d];
+                    if (ny < 0 || ny >= h) continue;
+                    int nx = (cx + ox[d] + w) % w;
+                    int ni = ny * w + nx;
+                    if (!topo[ni].isLand || componentIds[ni] != 0) continue;
+                    componentIds[ni] = nextComponentId;
+                    queue.Enqueue(ni);
+                }
+            }
+
+            if (componentSize > largest) largest = componentSize;
+            nextComponentId++;
+        }
+
+        groupCount = nextComponentId - 1;
+        return landCells > 0 ? (float)largest / landCells : 0f;
+    }
+
     private List<LandmassPlan> BuildLandmassPlan(PreviewLandPresetProfileV3 preset,int tw,int th,System.Random r,float sizeBias,float shapeBias,out LandmassPlanBuildDiagnostics diagnostics){
         var buildDiagnostics = default(LandmassPlanBuildDiagnostics);
         var plans=new List<LandmassPlan>(); int groupId=1; int tn=tw*th;
