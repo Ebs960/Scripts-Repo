@@ -420,9 +420,9 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 19
-  detailScale: 22
-  detailStrength: 0.064
+  rotationSpeed: 20
+  detailScale: 100
+  detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
   displacementScale: 0.004
   useDisplacedNormals: 1
@@ -539,6 +539,7 @@ MonoBehaviour:
   showConvergentBoundariesOnly: 0
   showDivergentBoundariesOnly: 0
   showMountainUpliftOnly: 0
+  showGeneratedHillReliefOnly: 0
   showContinentalShelfOnly: 0
   showCrustTypeOnly: 0
   showContinentalPotentialOnly: 0
@@ -550,13 +551,13 @@ MonoBehaviour:
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
-  climateNoiseStrength: 0.15
-  coastWetnessStrength: 0.23
-  continentalDrynessStrength: 0.02
-  continentalTemperatureStrength: 0.05
-  riparianWetnessStrength: 0.125
-  biomeProvinceStrength: 0.178
-  biomeCompetitionSharpness: 0.848
+  climateNoiseStrength: 0.273
+  coastWetnessStrength: 0.202
+  continentalDrynessStrength: 0.036
+  continentalTemperatureStrength: 0.029
+  riparianWetnessStrength: 0.21
+  biomeProvinceStrength: 0.095
+  biomeCompetitionSharpness: 1.052
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
@@ -591,8 +592,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05bb3d06a5eb88444bb53bab38a7f5e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGeneratorV2
-  mapWidth: 2048
-  mapHeight: 1024
+  mapWidth: 1024
+  mapHeight: 512
   regenerationDelay: 0.01
   topologyWidth: 512
   topologyHeight: 256
@@ -613,8 +614,8 @@ MonoBehaviour:
   minRiverSourceSpacingPixels: 20
   riverCandidateStride: 8
   decorativeRiverMinSourceCoastDistance: 22
-  decorativeRiverMeanderStrength: 0.75
-  decorativeRiverLateralWanderFraction: 0.14
+  decorativeRiverMeanderStrength: 0.482
+  decorativeRiverLateralWanderFraction: 0.232
   decorativeRiverControlPointCountMin: 5
   decorativeRiverControlPointCountMax: 8
   decorativeRiverUpperRadius: 2
@@ -679,8 +680,8 @@ MonoBehaviour:
     allowMajorLandmassMerging: 0
   - name: Standard
     majorLandmasses:
-      minCount: 2
-      maxCount: 3
+      minCount: 3
+      maxCount: 5
       minAreaFraction: 0.1
       maxAreaFraction: 0.12
       minLobes: 6
@@ -735,10 +736,10 @@ MonoBehaviour:
     allowMajorLandmassMerging: 0
   - name: Pangaea
     majorLandmasses:
-      minCount: 1
-      maxCount: 1
-      minAreaFraction: 0.4
-      maxAreaFraction: 0.62
+      minCount: 2
+      maxCount: 2
+      minAreaFraction: 0.55
+      maxAreaFraction: 0.7
       minLobes: 5
       maxLobes: 10
     largeIslands:
@@ -755,8 +756,8 @@ MonoBehaviour:
       maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 2
-    minMajorSeedSeparationDegrees: 0
-    minMajorOceanGapCells: 0
+    minMajorSeedSeparationDegrees: 10
+    minMajorOceanGapCells: 10
     compactnessBias: 0.48
     irregularityBias: 0.72
     elongationBias: 0.72
@@ -764,9 +765,9 @@ MonoBehaviour:
   - name: Terrestrial
     majorLandmasses:
       minCount: 2
-      maxCount: 4
-      minAreaFraction: 0.16
-      maxAreaFraction: 0.28
+      maxCount: 3
+      minAreaFraction: 0.3
+      maxAreaFraction: 0.4
       minLobes: 3
       maxLobes: 6
     largeIslands:
@@ -788,7 +789,7 @@ MonoBehaviour:
     compactnessBias: 0.56
     irregularityBias: 0.52
     elongationBias: 0.44
-    allowMajorLandmassMerging: 0
+    allowMajorLandmassMerging: 1
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
