@@ -149,7 +149,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private Coroutine generationCoroutine;
     public bool IsGeneratingPreview { get; private set; }
     private float generationStartedAt;
-    private float generationMaxChunkMs;
 
     private float[] cachedMacroCoastNoise;
     private float[] cachedCoastEdgeNoise;
@@ -194,7 +193,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         IsGeneratingPreview = true;
         runningGenerationVersion = version;
         generationStartedAt = Time.realtimeSinceStartup;
-        generationMaxChunkMs = 0f;
         var sw = System.Diagnostics.Stopwatch.StartNew();
         if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Started generation version={version}");
         var s = pending; pending = PreviewWorldRebuildScope.None;
@@ -624,7 +622,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         diag.finalFrontierCount=frontier.Count;
         diag.bestScoreAtStop=finalBestScore;
 
-        if(enableLandmassDiagnostics && placed<plan.targetCellCount*0.10f){
+        if(logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics && placed<plan.targetCellCount*0.10f){
             Debug.LogWarning($"[WorldGenV2 WARNING] Landmass growth catastrophically underfilled. Group={plan.groupId} Kind={plan.kind} TargetCells={plan.targetCellCount} Placed={placed} FrontierAtStop={frontier.Count} StopReason={diag.stopReason}");
         }
 
