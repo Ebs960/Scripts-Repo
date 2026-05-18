@@ -893,6 +893,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int x=i%mapWidth;int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float equatorWarmth=1f-lat;float continentality=contIn[i];float tempNoise=(Mathf.PerlinNoise((x+inputs.seed*0.31f)*0.006f,(y-inputs.seed*0.17f)*0.006f)-0.5f)*2f;float localTemperature=equatorWarmth-elev[i]*0.42f+continentality*inputs.continentalTemperatureStrength+tempNoise*inputs.climateNoiseStrength*0.35f;float coastProximity=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float moistureNoise=(Mathf.PerlinNoise((x-inputs.seed*0.23f)*0.007f,(y+inputs.seed*0.29f)*0.007f)-0.5f)*2f;float localMoisture=0.5f+coastProximity*inputs.coastWetnessStrength-continentality*inputs.continentalDrynessStrength+moistureNoise*inputs.climateNoiseStrength+0.06f*(1f-lat);localTemperature=Mathf.Clamp01(localTemperature);localMoisture=Mathf.Clamp01(localMoisture);temp[i]=localTemperature;moisture[i]=localMoisture;p[i]=new Color32(B(localTemperature),B(localMoisture),B(continentality),0);}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}
     private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){
         int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n],flow=new float[n];
+        bool[] riverCenterline = new bool[n];
         float[] coastDist=DistanceFromBoundary(land,0.5f,true);
         int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
         var r=new System.Random(hydroSeed*31+17);
@@ -922,7 +923,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             int cur=source; int len=0; bool completed=false; var seen=new HashSet<int>();
             float sourceMoisture=moisture[source]; float pathFlow=0.22f + 0.58f*sourceMoisture;
             while(len<260 && !seen.Contains(cur) && land[cur]>0.5f){
-                seen.Add(cur); StampRiverCrossSection(cur,pathFlow,land,river,flow,wet); len++;
+                seen.Add(cur);
+                riverCenterline[cur] = true;
+                StampRiverCrossSection(cur,pathFlow,land,river,flow,wet);
+                len++;
                 int x=cur%mapWidth,y=cur/mapWidth; int next=-1; float bestCost=float.MaxValue; float curCoast = coastDist[cur];
                 for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){
                     if(ox==0&&oy==0)continue; int nx=(x+ox+mapWidth)%mapWidth, ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx;
@@ -935,7 +939,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                     if(cost<bestCost){bestCost=cost; next=ni;}
                 }
                 if(next<0) break;
-                if(river[next]>0.1f){completed=true; mergedRivers++; cur=next; len++; break;}
+                if(riverCenterline[next]){completed=true; mergedRivers++; cur=next; len++; break;}
                 float flowGain=0.002f + 0.003f*Mathf.Clamp01(moisture[next]) + 0.0025f*Mathf.Clamp01(elev[next]); pathFlow=Mathf.Clamp01(pathFlow+flowGain); cur=next;
             }
             if(completed && len>=10) completedRivers++; else failedRoutes++;
