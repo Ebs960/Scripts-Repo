@@ -236,6 +236,15 @@ Shader "Custom/MenuPlanetPreview"
 
             float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
             float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
+            float GetGeneratedMinimumPolarCapMask(float3 objNorm, float temperature, float seed)
+            {
+                float latitude = abs(objNorm.y);
+                float coldness = 1.0 - saturate(temperature);
+                float capStart = lerp(0.90, 0.58, coldness);
+                float edgeNoise = noise3D(objNorm * 5.0 + float3(31.7, 12.9, 47.3) + seed * float3(0.37, 0.19, 0.43));
+                float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.08;
+                return smoothstep(capStart - 0.05, capStart + 0.07, distortedLatitude);
+            }
             float GetGeneratedSnowIceMask(float3 objNorm){ float2 uv = GetTectonicUV(objNorm); float4 bw2 = SAMPLE_TEXTURE2D_LOD(_BiomeWeights2Tex, sampler_BiomeWeights2Tex, uv, 0); return bw2.g; }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
             float GetActiveMountainMask(float3 objNorm, float landMask){ if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).b; return GetMountainMask(objNorm, landMask); }
@@ -711,7 +720,9 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowSeasonalityOnly > 0.5) return float4(seasonality.xxx,1);
                 if (_ShowRainShadowOnly > 0.5) return float4(rainShadowDryness.xxx,1);
                 if (_ShowRiparianWetnessOnly > 0.5) return float4(riparianWetness.xxx,1);
-                float activeSnowIceMask = (_UseTectonicPreview > 0.5) ? generatedSnowIceMask : capMask;
+                float forcedPolarCapMask = GetGeneratedMinimumPolarCapMask(objNorm, _Temperature, _Seed);
+                forcedPolarCapMask *= (1.0 - smoothstep(0.4, 0.8, _MapStyle));
+                float activeSnowIceMask = (_UseTectonicPreview > 0.5) ? max(generatedSnowIceMask, forcedPolarCapMask) : capMask;
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm, temperatureLocal);
 
