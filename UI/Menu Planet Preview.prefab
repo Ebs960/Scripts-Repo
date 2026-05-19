@@ -424,7 +424,7 @@ MonoBehaviour:
   detailScale: 100
   detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.004
+  displacementScale: 0.024
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
@@ -462,11 +462,11 @@ MonoBehaviour:
   lavaEmissionStrength: 2.2
   lavaTextureScale: 10
   ashDetailStrength: 0.25
-  mountainDetailStrength: 0.22
+  mountainDetailStrength: 0.432
   iceDetailStrength: 0.13
   oceanDetailStrength: 0.05
   oceanNormalStrength: 0.225
-  mountainNormalStrength: 0.12
+  mountainNormalStrength: 0.378
   iceNormalStrength: 0.22
   textureDetailScale: 8
   jungleAlbedoTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
@@ -680,7 +680,7 @@ MonoBehaviour:
     allowMajorLandmassMerging: 0
   - name: Standard
     majorLandmasses:
-      minCount: 3
+      minCount: 4
       maxCount: 5
       minAreaFraction: 0.1
       maxAreaFraction: 0.12
