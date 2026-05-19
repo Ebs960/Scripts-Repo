@@ -998,9 +998,21 @@ public class MenuPlanetPreview : MonoBehaviour
     /// </summary>
     public void SetLandPreset(float scale, float threshold, int landPresetIndex)
     {
-        landScale = Mathf.Clamp(scale, 0.5f, 5f);
-        landThreshold = Mathf.Clamp01(threshold);
-        currentLandPresetIndex = Mathf.Clamp(landPresetIndex, 0, 5);
+        float nextScale = Mathf.Clamp(scale, 0.5f, 5f);
+        float nextThreshold = Mathf.Clamp01(threshold);
+        int nextPreset = Mathf.Clamp(landPresetIndex, 0, 5);
+
+        bool changed =
+            !Mathf.Approximately(landScale, nextScale) ||
+            !Mathf.Approximately(landThreshold, nextThreshold) ||
+            currentLandPresetIndex != nextPreset;
+
+        if (!changed)
+            return;
+
+        landScale = nextScale;
+        landThreshold = nextThreshold;
+        currentLandPresetIndex = nextPreset;
 
         if (materialInstance != null)
         {
@@ -1023,7 +1035,11 @@ public class MenuPlanetPreview : MonoBehaviour
     /// </summary>
     public void SetTemperature(float value)
     {
-        temperature = Mathf.Clamp01(value);
+        float next = Mathf.Clamp01(value);
+        if (Mathf.Approximately(temperature, next))
+            return;
+
+        temperature = next;
 
         if (materialInstance != null)
         {
@@ -1051,7 +1067,11 @@ public class MenuPlanetPreview : MonoBehaviour
     /// </summary>
     public void SetMoisture(float value)
     {
-        moisture = Mathf.Clamp01(value);
+        float next = Mathf.Clamp01(value);
+        if (Mathf.Approximately(moisture, next))
+            return;
+
+        moisture = next;
 
         if (materialInstance != null)
         {
@@ -1067,7 +1087,11 @@ public class MenuPlanetPreview : MonoBehaviour
     /// </summary>
     public void SetElevation(float value)
     {
-        elevation = Mathf.Clamp01(value);
+        float next = Mathf.Clamp01(value);
+        if (Mathf.Approximately(elevation, next))
+            return;
+
+        elevation = next;
 
         if (materialInstance != null)
         {
@@ -1134,8 +1158,11 @@ public class MenuPlanetPreview : MonoBehaviour
 
 public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = false)
     {
+        bool previousRandomizeSeed = randomizeSeed;
+        float previousSeed = seed;
+
         randomizeSeed = randomSeed;
-         if (!randomSeed)
+        if (!randomSeed)
         {
             seed = Mathf.Abs(worldSeed % 100000);
             hasStoredRandomSeed = false;
@@ -1145,7 +1172,18 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
             seed = Random.Range(0f, 10000f);
             hasStoredRandomSeed = true;
         }
-        if (materialInstance != null) materialInstance.SetFloat(ID_Seed, seed);
+
+        bool changed =
+            previousRandomizeSeed != randomizeSeed ||
+            !Mathf.Approximately(previousSeed, seed) ||
+            forceReroll;
+
+        if (!changed)
+            return;
+
+        if (materialInstance != null)
+            materialInstance.SetFloat(ID_Seed, seed);
+
         RecalculateDerivedVisuals();
         RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics);
     }
