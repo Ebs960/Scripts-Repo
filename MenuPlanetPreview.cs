@@ -178,6 +178,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float landUpliftStrength = 0.06f;
     [SerializeField, Range(0f, 1f)] private float hillDisplacementStrength = 0.08f;
     [SerializeField, Range(0f, 1f)] private float mountainDisplacementStrength = 0.18f;
+    [SerializeField, Range(0f, 2f)] private float terrainElevationDisplacementStrength = 1.0f;
     [SerializeField, Range(0f, 1f)] private float iceDisplacementStrength = 0.04f;
     [SerializeField, Range(0f, 1f)] private float volcanicDisplacementStrength = 0.12f;
     [SerializeField, Range(0f, 1f)] private float oceanDepthStrength = 0.01f;
@@ -379,6 +380,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
     private static readonly int ID_AtmosColor    = Shader.PropertyToID("_AtmosphereColor");
     private static readonly int ID_DisplacementScale = Shader.PropertyToID("_DisplacementScale");
+    private static readonly int ID_TerrainElevationDisplacementStrength = Shader.PropertyToID("_TerrainElevationDisplacementStrength");
     private static readonly int ID_LandUpliftStrength = Shader.PropertyToID("_LandUpliftStrength");
     private static readonly int ID_HillDisplacementStrength = Shader.PropertyToID("_HillDisplacementStrength");
     private static readonly int ID_MountainDisplacementStrength = Shader.PropertyToID("_MountainDisplacementStrength");
@@ -773,6 +775,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_LandUpliftStrength, landUpliftStrength);
         materialInstance.SetFloat(ID_HillDisplacementStrength, hillDisplacementStrength);
         materialInstance.SetFloat(ID_MountainDisplacementStrength, mountainDisplacementStrength);
+        materialInstance.SetFloat(ID_TerrainElevationDisplacementStrength, terrainElevationDisplacementStrength);
         materialInstance.SetFloat(ID_IceDisplacementStrength, iceDisplacementStrength);
         materialInstance.SetFloat(ID_VolcanicDisplacementStrength, volcanicDisplacementStrength);
         materialInstance.SetFloat(ID_OceanDepthStrength, oceanDepthStrength);
