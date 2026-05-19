@@ -1,0 +1,156 @@
+#pragma kernel GenerateHeight
+
+Texture2D<float4> _TectonicSurfaceTex;
+Texture2D<float4> _TectonicCrustTex;
+RWTexture2D<float4> _GpuHeightTex;
+
+int _MapWidth;
+int _MapHeight;
+float _Seed;
+float _Elevation;
+
+static const float PI = 3.14159265359;
+
+float Hash31(float3 p)
+{
+    p = frac(p * float3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return frac((p.x + p.y) * p.z);
+}
+
+float Noise3D(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float n000 = Hash31(i + float3(0, 0, 0));
+    float n100 = Hash31(i + float3(1, 0, 0));
+    float n010 = Hash31(i + float3(0, 1, 0));
+    float n110 = Hash31(i + float3(1, 1, 0));
+    float n001 = Hash31(i + float3(0, 0, 1));
+    float n101 = Hash31(i + float3(1, 0, 1));
+    float n011 = Hash31(i + float3(0, 1, 1));
+    float n111 = Hash31(i + float3(1, 1, 1));
+
+    return lerp(
+        lerp(lerp(n000, n100, f.x), lerp(n010, n110, f.x), f.y),
+        lerp(lerp(n001, n101, f.x), lerp(n011, n111, f.x), f.y),
+        f.z
+    );
+}
+
+float Fbm(float3 p)
+{
+    float v = 0.0;
+    float a = 0.5;
+    float f = 1.0;
+
+    [unroll]
+    for (int i = 0; i < 4; i++)
+    {
+        v += a * Noise3D(p * f);
+        f *= 2.0;
+        a *= 0.5;
+    }
+
+    return saturate(v);
+}
+
+float RidgedFbm(float3 p)
+{
+    float v = 0.0;
+    float a = 0.5;
+    float f = 1.0;
+
+    [unroll]
+    for (int i = 0; i < 4; i++)
+    {
+        float n = Noise3D(p * f);
+        float ridge = 1.0 - abs(n * 2.0 - 1.0);
+        v += a * ridge;
+        f *= 2.0;
+        a *= 0.5;
+    }
+
+    return saturate(v);
+}
+
+[numthreads(8, 8, 1)]
+void GenerateHeight(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_MapWidth || id.y >= (uint)_MapHeight)
+    {
+        return;
+    }
+
+    int2 pixel = int2((int)id.x, (int)id.y);
+    float2 uv = (float2((float)pixel.x, (float)pixel.y) + 0.5) / float2((float)_MapWidth, (float)_MapHeight);
+    float longitude = uv.x * 2.0 * PI - PI;
+    float latitude = (0.5 - uv.y) * PI;
+    float cosLatitude = cos(latitude);
+    float3 objNorm = normalize(float3(
+        cosLatitude * cos(longitude),
+        sin(latitude),
+        cosLatitude * sin(longitude)
+    ));
+
+    float landMask = _TectonicSurfaceTex.Load(int3(pixel, 0)).r;
+    float continentality = _TectonicCrustTex.Load(int3(pixel, 0)).r;
+
+    if (landMask <= 0.001)
+    {
+        _GpuHeightTex[pixel] = float4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    float3 seedOffsetA = _Seed * float3(0.103, 0.071, 0.137) + float3(13.7, 41.2, 5.9);
+    float3 seedOffsetB = _Seed * float3(0.067, 0.149, 0.091) + float3(59.1, 11.6, 83.4);
+    float3 seedOffsetC = _Seed * float3(0.173, 0.113, 0.047) + float3(27.8, 73.5, 19.2);
+
+    float hillNoise = Fbm(objNorm * 1.35 + seedOffsetA);
+    float mountainProvinceNoise = Fbm(objNorm * 1.85 + seedOffsetB);
+    float mountainRangeNoise = RidgedFbm(objNorm * 3.5 + seedOffsetC);
+
+    float roughness = saturate(_Elevation);
+    float hillThreshold = lerp(0.76, 0.30, roughness);
+    float mountainThreshold = lerp(0.96, 0.62, roughness);
+
+    float hillMask =
+        landMask *
+        smoothstep(hillThreshold - 0.12, hillThreshold + 0.12, hillNoise);
+
+    float mountainCandidate = saturate(
+        mountainProvinceNoise * 0.55 +
+        mountainRangeNoise * 0.45
+    );
+
+    float mountainMask =
+        landMask *
+        smoothstep(mountainThreshold - 0.10, mountainThreshold + 0.10, mountainCandidate);
+
+    float usableHillMask = hillMask * (1.0 - mountainMask * 0.45);
+    float interiorBoost = lerp(0.85, 1.10, saturate(continentality));
+
+    float lowlandBase =
+        landMask * lerp(0.03, 0.09, roughness);
+
+    float hillHeight =
+        usableHillMask *
+        lerp(0.10, 0.42, roughness) *
+        interiorBoost;
+
+    float mountainHeight =
+        mountainMask *
+        lerp(0.20, 0.95, roughness) *
+        interiorBoost;
+
+    float finalHeight = saturate(lowlandBase + hillHeight + mountainHeight);
+
+    _GpuHeightTex[pixel] = float4(
+        finalHeight,
+        usableHillMask,
+        mountainMask,
+        saturate(mountainCandidate)
+    );
+}

@@ -73,6 +73,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private Vector2Int standardRiverRange = new Vector2Int(24, 40);
     [SerializeField] private Vector2Int abundantRiverRange = new Vector2Int(45, 70);
 
+    [Header("GPU Height")]
+    [SerializeField] private bool useGpuHeightPreview = true;
+    [SerializeField] private ComputeShader menuPlanetPreviewHeightCompute;
+
     [SerializeField, Range(4, 64)] private int minRiverSourceSpacingPixels = 18;
     [SerializeField, Range(1, 16)] private int riverCandidateStride = 4;
 
@@ -95,6 +99,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public Texture2D BiomeWeights0Texture => biomeWeights0Texture;
     public Texture2D BiomeWeights1Texture => biomeWeights1Texture;
     public Texture2D BiomeWeights2Texture => biomeWeights2Texture;
+    public RenderTexture GpuHeightTexture => gpuHeightTexture;
     public event Action WorldTexturesUpdated;
 
     private struct TopologyCell { public bool isLand; public int groupId; }
@@ -153,14 +158,32 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int cachedTopologyWidth;
     private int cachedTopologyHeight;
     private bool fastNoiseFieldsValid;
+    private RenderTexture gpuHeightTexture;
+    private int gpuHeightKernel = -1;
 
     public void SetInputs(MenuPlanetPreviewWorldInputs v) => inputs = v;
+    public void RefreshGpuHeightOnly(MenuPlanetPreviewWorldInputs updatedInputs)
+    {
+        inputs = updatedInputs;
+        DispatchGpuHeight();
+    }
     public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
         pending |= ExpandDependencies(scope);
         generationVersion++;
         scheduledAt = immediate ? Time.time : Time.time + regenerationDelay;
     }
-    public void Release() { DestroyTex(ref surfaceDataTexture); DestroyTex(ref auxiliaryMaskTexture); DestroyTex(ref worldStructureTexture); DestroyTex(ref climateTexture); DestroyTex(ref hydrologyMaskTexture); DestroyTex(ref biomeWeights0Texture); DestroyTex(ref biomeWeights1Texture); DestroyTex(ref biomeWeights2Texture); }
+    public void Release()
+    {
+        DestroyTex(ref surfaceDataTexture);
+        DestroyTex(ref auxiliaryMaskTexture);
+        DestroyTex(ref worldStructureTexture);
+        DestroyTex(ref climateTexture);
+        DestroyTex(ref hydrologyMaskTexture);
+        DestroyTex(ref biomeWeights0Texture);
+        DestroyTex(ref biomeWeights1Texture);
+        DestroyTex(ref biomeWeights2Texture);
+        ReleaseGpuHeightTexture();
+    }
     private void Update()
     {
         if (scheduledAt > 0f && Time.time >= scheduledAt)
@@ -194,6 +217,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         {
             GenerateTerrain(out land, out elev, out mtn, out shelf, out cont, out hill, out diag);
             WriteSurfaceAndStructure(land, elev, mtn, shelf, cont, hill);
+            DispatchGpuHeight();
             yield return null;
             if (version != generationVersion) { if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}"); IsGeneratingPreview = false; yield break; }
         }
@@ -247,6 +271,74 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void EnsureAllTextures(){Ensure(ref surfaceDataTexture,"MenuSurfaceDataV2");Ensure(ref auxiliaryMaskTexture,"MenuAuxMasksV2");Ensure(ref worldStructureTexture,"MenuStructureV2");Ensure(ref climateTexture,"MenuClimateV2");Ensure(ref hydrologyMaskTexture,"MenuHydrologyV2");Ensure(ref biomeWeights0Texture,"MenuBiome0V2");Ensure(ref biomeWeights1Texture,"MenuBiome1V2");Ensure(ref biomeWeights2Texture,"MenuBiome2V2");}
     private void Ensure(ref Texture2D t,string n){if(t!=null&&t.width==mapWidth&&t.height==mapHeight)return;DestroyTex(ref t);t=new Texture2D(mapWidth,mapHeight,TextureFormat.RGBA32,false,true){name=n,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear};}
     private void DestroyTex(ref Texture2D t){if(t!=null)Destroy(t);t=null;}
+    private void EnsureGpuHeightTexture()
+    {
+        if (gpuHeightTexture != null &&
+            gpuHeightTexture.width == mapWidth &&
+            gpuHeightTexture.height == mapHeight &&
+            gpuHeightTexture.IsCreated())
+        {
+            return;
+        }
+
+        ReleaseGpuHeightTexture();
+        gpuHeightTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
+        {
+            name = "MenuGpuHeightV2",
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            useMipMap = false,
+            autoGenerateMips = false
+        };
+        gpuHeightTexture.Create();
+    }
+
+    private void ReleaseGpuHeightTexture()
+    {
+        if (gpuHeightTexture == null) return;
+        gpuHeightTexture.Release();
+        Destroy(gpuHeightTexture);
+        gpuHeightTexture = null;
+        gpuHeightKernel = -1;
+    }
+
+    private void DispatchGpuHeight()
+    {
+        if (!useGpuHeightPreview) return;
+        TryAssignDefaultGpuHeightCompute();
+        if (menuPlanetPreviewHeightCompute == null) return;
+        if (surfaceDataTexture == null || worldStructureTexture == null) return;
+
+        EnsureGpuHeightTexture();
+        if (gpuHeightTexture == null) return;
+
+        if (gpuHeightKernel < 0)
+            gpuHeightKernel = menuPlanetPreviewHeightCompute.FindKernel("GenerateHeight");
+
+        menuPlanetPreviewHeightCompute.SetInt("_MapWidth", mapWidth);
+        menuPlanetPreviewHeightCompute.SetInt("_MapHeight", mapHeight);
+        menuPlanetPreviewHeightCompute.SetFloat("_Seed", inputs.seed);
+        menuPlanetPreviewHeightCompute.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation));
+
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", surfaceDataTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", worldStructureTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuHeightTex", gpuHeightTexture);
+
+        int groupsX = Mathf.CeilToInt(mapWidth / 8f);
+        int groupsY = Mathf.CeilToInt(mapHeight / 8f);
+        menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
+    }
+
+    private void TryAssignDefaultGpuHeightCompute()
+    {
+#if UNITY_EDITOR
+        if (menuPlanetPreviewHeightCompute == null)
+        {
+            menuPlanetPreviewHeightCompute = UnityEditor.AssetDatabase.LoadAssetAtPath<ComputeShader>("Assets/Shaders/MenuPlanetPreviewHeight.compute");
+        }
+#endif
+    }
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
 
     // concise but complete implementation

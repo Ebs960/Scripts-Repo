@@ -39,6 +39,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Shader atmosphereShader;
     [SerializeField] private MenuPlanetPreviewWorldGeneratorV2 worldGenerator;
 
+    [Header("GPU Preview Pipeline")]
+    [SerializeField] private bool useGpuLiveClimateAndBiomes = true;
+
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
     [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
@@ -531,7 +534,9 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TectonicSurfaceTex = Shader.PropertyToID("_TectonicSurfaceTex");
     private static readonly int ID_TectonicBoundaryTex = Shader.PropertyToID("_TectonicBoundaryTex");
     private static readonly int ID_TectonicCrustTex = Shader.PropertyToID("_TectonicCrustTex");
+    private static readonly int ID_GpuHeightTex = Shader.PropertyToID("_GpuHeightTex");
     private static readonly int ID_UseTectonicPreview = Shader.PropertyToID("_UseTectonicPreview");
+    private static readonly int ID_UseGpuLiveClimateBiomes = Shader.PropertyToID("_UseGpuLiveClimateBiomes");
     private static readonly int ID_ShowTectonicLandMaskOnly = Shader.PropertyToID("_ShowTectonicLandMaskOnly");
     private static readonly int ID_ShowTectonicHeightOnly = Shader.PropertyToID("_ShowTectonicHeightOnly");
     private static readonly int ID_ShowPlateBoundariesOnly = Shader.PropertyToID("_ShowPlateBoundariesOnly");
@@ -637,6 +642,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicSurfaceTex, worldGenerator.TectonicSurfaceTexture);
         materialInstance.SetTexture(ID_TectonicBoundaryTex, worldGenerator.TectonicBoundaryTexture);
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
+        materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
         materialInstance.SetTexture(ID_ClimateTex, worldGenerator.ClimateTexture);
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
         materialInstance.SetTexture(ID_BiomeWeights0Tex, worldGenerator.BiomeWeights0Texture);
@@ -681,6 +687,7 @@ public class MenuPlanetPreview : MonoBehaviour
             return;
 
         bool tectonicChanged = TectonicInputsChanged();
+        bool gpuHeightChanged = GpuHeightInputsChanged();
 
         ApplyAllParameters();
         PushCloudParameters();
@@ -692,6 +699,11 @@ public class MenuPlanetPreview : MonoBehaviour
 
         if (tectonicChanged)
             RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics, false);
+        else if (gpuHeightChanged && worldGenerator != null)
+        {
+            worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
+            BindGeneratedWorldTextures();
+        }
 
         CacheValidatedGeneratorInputs();
     }
@@ -738,6 +750,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_Seed,         seed);
+        materialInstance.SetFloat(ID_UseGpuLiveClimateBiomes, useGpuLiveClimateAndBiomes ? 1f : 0f);
 
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
@@ -967,6 +980,13 @@ public class MenuPlanetPreview : MonoBehaviour
         return waterwaysPreset != lastValidatedWaterwaysPreset;
     }
 
+    private bool GpuHeightInputsChanged()
+    {
+        if (!validateCacheInitialized) return true;
+
+        return !Mathf.Approximately(elevation, lastValidatedElevation);
+    }
+
     // -----------------------------------------------------------------
     //  Public API — called by UI sliders / MainMenuManager
     // -----------------------------------------------------------------
@@ -1054,7 +1074,13 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Elevation, elevation);
             PushDisplacementParameters();
             RecalculateDerivedVisuals();
-            }
+        }
+
+        if (worldGenerator != null)
+        {
+            worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
+            BindGeneratedWorldTextures();
+        }
     }
 
     /// <summary>
