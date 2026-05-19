@@ -644,7 +644,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
         materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
         materialInstance.SetTexture(ID_ClimateTex, worldGenerator.ClimateTexture);
-        materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
+        materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
         materialInstance.SetTexture(ID_BiomeWeights0Tex, worldGenerator.BiomeWeights0Texture);
         materialInstance.SetTexture(ID_BiomeWeights1Tex, worldGenerator.BiomeWeights1Texture);
         materialInstance.SetTexture(ID_BiomeWeights2Tex, worldGenerator.BiomeWeights2Texture);
@@ -688,6 +688,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         bool tectonicChanged = TectonicInputsChanged();
         bool gpuHeightChanged = GpuHeightInputsChanged();
+        bool gpuHydrologyChanged = GpuHydrologyInputsChanged();
 
         ApplyAllParameters();
         PushCloudParameters();
@@ -699,10 +700,21 @@ public class MenuPlanetPreview : MonoBehaviour
 
         if (tectonicChanged)
             RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics, false);
-        else if (gpuHeightChanged && worldGenerator != null)
+        else
         {
-            worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
-            BindGeneratedWorldTextures();
+            bool rebound = false;
+            if (gpuHeightChanged && worldGenerator != null)
+            {
+                worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
+                worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
+                rebound = true;
+            }
+            else if (gpuHydrologyChanged && worldGenerator != null)
+            {
+                worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
+                rebound = true;
+            }
+            if (rebound) BindGeneratedWorldTextures();
         }
 
         CacheValidatedGeneratorInputs();
@@ -807,7 +819,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_OceanAlbedoTex, oceanAlbedoTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
-        if (worldGenerator != null && worldGenerator.HydrologyMaskTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.HydrologyMaskTexture);
+        if (worldGenerator != null && worldGenerator.ActiveHydrologyTexture != null) materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
         materialInstance.SetTexture(ID_OceanNormalTex, oceanNormalTexture);
         materialInstance.SetTexture(ID_MountainNormalTex, mountainNormalTexture);
         materialInstance.SetTexture(ID_IceNormalTex, iceNormalTexture);
@@ -973,11 +985,11 @@ public class MenuPlanetPreview : MonoBehaviour
             currentLandPresetIndex != lastValidatedLandPresetIndex;
     }
 
-    private bool HydrologyOnlyInputsChanged()
+    private bool GpuHydrologyInputsChanged()
     {
         if (!validateCacheInitialized) return true;
 
-        return waterwaysPreset != lastValidatedWaterwaysPreset;
+        return !Mathf.Approximately(moisture, lastValidatedMoisture) || waterwaysPreset != lastValidatedWaterwaysPreset;
     }
 
     private bool GpuHeightInputsChanged()
@@ -1078,6 +1090,12 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Moisture, moisture);
             RecalculateDerivedVisuals();
         }
+
+        if (worldGenerator != null)
+        {
+            worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
+            BindGeneratedWorldTextures();
+        }
     }
 
     /// <summary>
@@ -1103,6 +1121,7 @@ public class MenuPlanetPreview : MonoBehaviour
         if (worldGenerator != null)
         {
             worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
+            worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
             BindGeneratedWorldTextures();
         }
     }
@@ -1192,8 +1211,19 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
 
     public void SetWaterwaysPreset(int preset)
     {
-        waterwaysPreset = Mathf.Clamp(preset, 0, 2);
+        int next = Mathf.Clamp(preset, 0, 2);
+        if (waterwaysPreset == next)
+            return;
+
+        waterwaysPreset = next;
         RecalculateDerivedVisuals();
+
+        if (worldGenerator != null)
+        {
+            worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
+            BindGeneratedWorldTextures();
+        }
+
         PushCloudParameters();
     }
 
