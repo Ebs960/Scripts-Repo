@@ -239,6 +239,17 @@ public class MainMenuManager : MonoBehaviour
 
     private int selectedTerrainPreset = 2; // Default to Rocky
 
+    // Preview update cache (prevents resending unchanged values).
+    private int lastPreviewLandPreset = -1;
+    private int lastPreviewClimatePreset = -1;
+    private int lastPreviewMoisturePreset = -1;
+    private int lastPreviewWaterwaysPreset = -1;
+    private int lastPreviewTerrainPreset = -1;
+    private int lastPreviewMapSize = -1;
+    private int lastPreviewParsedSeed = int.MinValue;
+    private bool? lastPreviewRandomSeed = null;
+    private float lastPreviewMapStyle = float.NaN;
+
     [Header("References")]
     private GameManager gameManager; // Reference to GameManager
 
@@ -660,18 +671,35 @@ public class MainMenuManager : MonoBehaviour
         float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.82f, 0.65f };
         float[] landThresholds = { 0.64f, 0.62f, 0.53f, 0.49f, 0.40f, 0.29f };
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
-        planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx], landIdx);
+        if (lastPreviewLandPreset != selectedLandPreset)
+        {
+            planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx], landIdx);
+            lastPreviewLandPreset = selectedLandPreset;
+        }
 
         // Temperature: map selectedClimatePreset (0-5) to 0–1
         // 0=Frozen→0, 5=Scorching→1
         float temp = Mathf.Clamp01(selectedClimatePreset / 5f);
-        planetPreview.SetTemperature(temp);
+        if (lastPreviewClimatePreset != selectedClimatePreset)
+        {
+            planetPreview.SetTemperature(temp);
+            lastPreviewClimatePreset = selectedClimatePreset;
+        }
 
         // Moisture: map selectedMoisturePreset (0-5) to 0–1
         // 0=Very Low→0, 5=Extreme→1
         float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);
-        planetPreview.SetMoisture(moist);
-        planetPreview.SetWaterwaysPreset(selectedWaterwaysPreset);
+        if (lastPreviewMoisturePreset != selectedMoisturePreset)
+        {
+            planetPreview.SetMoisture(moist);
+            lastPreviewMoisturePreset = selectedMoisturePreset;
+        }
+
+        if (lastPreviewWaterwaysPreset != selectedWaterwaysPreset)
+        {
+            planetPreview.SetWaterwaysPreset(selectedWaterwaysPreset);
+            lastPreviewWaterwaysPreset = selectedWaterwaysPreset;
+        }
 
         // Elevation: map GetElevationCategory() (0=Low, 1=Hilly, 2=Mountainous, 3=Alpine) to 0–1
         int elevCat = GetElevationCategory();
@@ -683,7 +711,11 @@ public class MainMenuManager : MonoBehaviour
             3 => 1.0f,  // Alpine — extreme mountains, maximum elevation
             _ => 0.3f
         };
-        planetPreview.SetElevation(elev);
+        if (lastPreviewTerrainPreset != selectedTerrainPreset)
+        {
+            planetPreview.SetElevation(elev);
+            lastPreviewTerrainPreset = selectedTerrainPreset;
+        }
 
         // Map style: 0 = normal, 0.5 = infernal, 1.0 = demonic
         // Detect from generated map type name (same logic as GameSetupData flags).
@@ -695,14 +727,35 @@ public class MainMenuManager : MonoBehaviour
             mapStyleVal = 1f;   // Demonic: darkest, most intense
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
-        planetPreview.SetMapStyle(mapStyleVal);
+
+        if (float.IsNaN(lastPreviewMapStyle) || !Mathf.Approximately(lastPreviewMapStyle, mapStyleVal))
+        {
+            planetPreview.SetMapStyle(mapStyleVal);
+            lastPreviewMapStyle = mapStyleVal;
+        }
+
         float sizeScale = GameSetupData.mapSize == GameManager.MapSize.Small ? 0.86f :
                           (GameSetupData.mapSize == GameManager.MapSize.Large ? 1.18f : 1.0f);
-        planetPreview.SetPlanetScaleMultiplier(sizeScale);
+        int currentMapSizeValue = (int)GameSetupData.mapSize;
+        if (lastPreviewMapSize != currentMapSizeValue)
+        {
+            planetPreview.SetPlanetScaleMultiplier(sizeScale);
+            lastPreviewMapSize = currentMapSizeValue;
+        }
+
         bool randomSeed = randomWorldSeedToggle == null || randomWorldSeedToggle.isOn;
         int parsedSeed = 839201;
         if (worldSeedInput != null && int.TryParse(worldSeedInput.text, out int seedVal)) parsedSeed = seedVal;
-        planetPreview.SetWorldSeed(parsedSeed, randomSeed);
+
+        bool seedModeChanged = !lastPreviewRandomSeed.HasValue || lastPreviewRandomSeed.Value != randomSeed;
+        bool seedValueChanged = lastPreviewParsedSeed != parsedSeed;
+
+        if (seedModeChanged || seedValueChanged)
+        {
+            planetPreview.SetWorldSeed(parsedSeed, randomSeed);
+            lastPreviewRandomSeed = randomSeed;
+            lastPreviewParsedSeed = parsedSeed;
+        }
     }
 
     #endregion
