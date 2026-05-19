@@ -250,12 +250,12 @@ Shader "Custom/MenuPlanetPreview"
             float GetGeneratedSnowIceMask(float3 objNorm){ float2 uv = GetTectonicUV(objNorm); float4 bw2 = SAMPLE_TEXTURE2D_LOD(_BiomeWeights2Tex, sampler_BiomeWeights2Tex, uv, 0); return bw2.g; }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
             float GetActiveMountainMask(float3 objNorm, float landMask){ if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).b; return GetMountainMask(objNorm, landMask); }
-            float GetGeneratedPreviewMountainMask(float mountainRank, float elevationSetting){ float targetCoverage = lerp(0.98, 0.62, saturate(elevationSetting)); return smoothstep(targetCoverage - 0.05, targetCoverage + 0.05, mountainRank); }
+            float GetGeneratedPreviewMountainMask(float mountainRank, float elevationSetting){ float targetCoverage = lerp(0.99, 0.74, saturate(elevationSetting)); return smoothstep(targetCoverage - 0.05, targetCoverage + 0.05, mountainRank); }
             float GetGeneratedPreviewLowlandLift(float landMask, float elevationSetting){ return landMask * lerp(0.03, 0.12, saturate(elevationSetting)); }
             float GetGeneratedPreviewHillRelief(float landMask, float baseRelief, float mountainRank, float encodedHillRelief, float elevationSetting)
             {
                 float mountainMask = GetGeneratedPreviewMountainMask(mountainRank, elevationSetting);
-                float reconstructedHill = saturate(baseRelief - mountainMask * lerp(0.06, 0.70, saturate(elevationSetting))) * landMask;
+                float reconstructedHill = saturate(baseRelief - mountainMask * lerp(0.04, 0.52, saturate(elevationSetting))) * landMask;
                 reconstructedHill *= (1.0 - smoothstep(0.35, 0.85, mountainRank));
                 float hillSource = max(encodedHillRelief, reconstructedHill);
                 return saturate(hillSource) * lerp(0.05, 0.34, saturate(elevationSetting));
