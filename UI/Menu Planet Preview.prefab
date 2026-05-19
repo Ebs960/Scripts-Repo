@@ -465,10 +465,10 @@ MonoBehaviour:
   mountainDetailStrength: 0.432
   iceDetailStrength: 0.13
   oceanDetailStrength: 0.05
-  oceanNormalStrength: 0.516
+  oceanNormalStrength: 0.018
   mountainNormalStrength: 0.463
   iceNormalStrength: 0.22
-  textureDetailScale: 5.5
+  textureDetailScale: 1.8
   jungleAlbedoTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
   desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
   savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
