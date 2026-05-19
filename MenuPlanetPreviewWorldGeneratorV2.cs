@@ -621,7 +621,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return field;
     }
 
-    private float SmoothMax(float a,float b,float k){ float h=Mathf.Clamp01(0.5f+0.5f*(b-a)/Mathf.Max(0.0001f,k)); return Mathf.Lerp(b,a,h)+k*h*(1f-h); }
+    private float SmoothMax(float a, float b, float k)
+    {
+        k = Mathf.Max(0.0001f, k);
+
+        float h = Mathf.Clamp01(
+            0.5f + 0.5f * (a - b) / k
+        );
+
+        return Mathf.Lerp(b, a, h) + k * h * (1f - h);
+    }
 
     private float[] DistanceFromBoundary(float[] land,float threshold,bool forLand){
         int n=land.Length; float[] dist=new float[n]; for(int i=0;i<n;i++) dist[i]=99999f; var q=new Queue<int>();
