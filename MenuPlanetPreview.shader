@@ -59,6 +59,7 @@ Shader "Custom/MenuPlanetPreview"
             _Brightness("Brightness", Range(0.5, 3.0)) = 1.12
             _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
+            _IceAlbedoTex("Ice Albedo", 2D) = "white" {}
             _OceanAlbedoTex("Ocean Albedo", 2D) = "white" {}
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
@@ -245,10 +246,10 @@ Shader "Custom/MenuPlanetPreview"
             {
                 float latitude = abs(objNorm.y);
                 float coldness = 1.0 - saturate(temperature);
-                float capStart = lerp(0.90, 0.58, coldness);
+                float capStart = lerp(0.96, 0.72, coldness);
                 float edgeNoise = noise3D(objNorm * 5.0 + float3(31.7, 12.9, 47.3) + seed * float3(0.37, 0.19, 0.43));
-                float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.08;
-                return smoothstep(capStart - 0.05, capStart + 0.07, distortedLatitude);
+                float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.05;
+                return smoothstep(capStart - 0.035, capStart + 0.055, distortedLatitude);
             }
             float GetGeneratedSnowIceMask(float3 objNorm)
             {
@@ -299,6 +300,7 @@ Shader "Custom/MenuPlanetPreview"
 
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
+            TEXTURE2D(_IceAlbedoTex);
             TEXTURE2D(_OceanAlbedoTex);
             SAMPLER(sampler_OceanAlbedoTex);
             TEXTURE2D(_OceanDetailTex);
@@ -925,14 +927,11 @@ Shader "Custom/MenuPlanetPreview"
                 float iceVariation = noise3D(objNorm * 10.0 + float3(77.7, 88.8, 99.9) + seedOff);
 
                 // Outer fringe of the cap is icy blue, inner core is snow white
-                float edgeFade = smoothstep(capStart - 0.05, capStart + 0.15, latitude + (iceEdgeNoise - 0.5) * 0.15);
-                float3 iceColor = lerp(icyBlue, snowWhite, edgeFade);
-                // Subtle variation within ice
-                iceColor = lerp(iceColor * 0.95, iceColor, smoothstep(0.3, 0.7, iceVariation));
-                // Frozen ocean gets a slightly darker ice sheet
-                iceColor = lerp(iceColor * 0.88, iceColor, edge);
-
-                normalAlbedo = lerp(normalAlbedo, iceColor, saturate(activeSnowIceMask));
+                float edgeFade = smoothstep(capStart - 0.035, capStart + 0.055, latitude + (iceEdgeNoise - 0.5) * 0.05);
+                float3 iceAlbedo = SampleTriplanar(TEXTURE2D_ARGS(_IceAlbedoTex, sampler_IceAlbedoTex), input.positionOS, objNorm);
+                float3 iceTint = lerp(float3(0.82, 0.90, 1.00), float3(1.00, 1.00, 1.00), edgeFade);
+                float3 iceSurfaceColor = iceAlbedo * iceTint;
+                normalAlbedo = lerp(normalAlbedo, iceSurfaceColor, saturate(activeSnowIceMask));
                 if (_UseDetailTextures > 0.5)
                 {
                     float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
