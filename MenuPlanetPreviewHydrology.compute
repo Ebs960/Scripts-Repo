@@ -15,7 +15,7 @@ RWStructuredBuffer<RiverFeature> _RiverFeatures;
 RWStructuredBuffer<LakeFeature> _LakeFeatures;
 
 int _MapWidth,_MapHeight,_RiverCount,_LakeCount,_WaterwaysPreset;
-float _Seed,_Elevation,_Moisture,_RiverMeanderStrength,_RiverSourceElevationPreference,_RiverInlandPreference,_RiverLateralWanderFraction,_RiverUpperWidthPixels,_RiverLowerWidthPixels,_RiverMinSourceContinentality,_LakeMinContinentality,_LakeMinRadiusPixels,_LakeMaxRadiusPixels;
+float _Seed,_Elevation,_Temperature,_Moisture,_RiverMeanderStrength,_RiverSourceElevationPreference,_RiverInlandPreference,_RiverLateralWanderFraction,_RiverUpperWidthPixels,_RiverLowerWidthPixels,_RiverMinSourceContinentality,_LakeMinContinentality,_LakeMinRadiusPixels,_LakeMaxRadiusPixels;
 
 float hash1(uint x){x^=x>>17; x*=0xed5ad4bbU; x^=x>>11; x*=0xac4c1b51U; x^=x>>15; x*=0x31848babU; x^=x>>14; return frac((float)x/65535.0);} 
 float2 rand2(uint id,float s){return float2(hash1(id^asuint(s*31.7)),hash1(id*1664525u+1013904223u));}
@@ -40,7 +40,7 @@ void SearchBestCoastward(float2 src, uint seed, out float2 bestDelta, out float 
 
 [numthreads(64,1,1)]
 void ClearRiverFeatures(uint3 id:SV_DispatchThreadID){
- if(id.x>=_RiverCount) return;
+ if(id.x>=(uint)_RiverCount) return;
  RiverFeature f=_RiverFeatures[id.x];
  f.misc.y=0;
  _RiverFeatures[id.x]=f;
@@ -48,7 +48,7 @@ void ClearRiverFeatures(uint3 id:SV_DispatchThreadID){
 
 [numthreads(64,1,1)]
 void GenerateRiverFeatures(uint3 id:SV_DispatchThreadID){
- if(id.x>=_RiverCount) return; RiverFeature f=(RiverFeature)0; uint rid=id.x; float best=-1; int2 src=0;
+ if(id.x>=(uint)_RiverCount) return; RiverFeature f=(RiverFeature)0; uint rid=id.x; float best=-1; int2 src=0;
  [loop] for(int a=0;a<24;a++){float2 r=rand2(rid*97u+(uint)a,_Seed); int2 p=int2((int)(r.x*_MapWidth),(int)(r.y*_MapHeight)); float l=LoadLand(p),c=LoadContinentality(p),h=LoadHeight(p); if(l>0.5&&c>_RiverMinSourceContinentality){float s=c*_RiverInlandPreference+h*_RiverSourceElevationPreference+hash1((uint)a+rid)*0.05; if(s>best){best=s;src=p;}}}
  if(best<0){f.misc.y=0;_RiverFeatures[rid]=f;return;} float bestLen=0, endpointCont=1, contDrop=0, reachedOcean=0; float2 bestD=0;
  SearchBestCoastward(src,rid,bestD,bestLen,endpointCont,contDrop,reachedOcean);
@@ -58,7 +58,7 @@ void GenerateRiverFeatures(uint3 id:SV_DispatchThreadID){
 }
 
 [numthreads(64,1,1)]
-void GenerateLakeFeatures(uint3 id:SV_DispatchThreadID){ if(id.x>=max(1,_LakeCount)) return; LakeFeature l=(LakeFeature)0; if(id.x>=_LakeCount){_LakeFeatures[id.x]=l;return;} uint lid=id.x; float best=-1; int2 center=0;
+void GenerateLakeFeatures(uint3 id:SV_DispatchThreadID){ if(id.x>=(uint)max(1,_LakeCount)) return; LakeFeature l=(LakeFeature)0; if(id.x>=(uint)_LakeCount){_LakeFeatures[id.x]=l;return;} uint lid=id.x; float best=-1; int2 center=0;
  [loop] for(int a=0;a<24;a++){float2 r=rand2(lid*131u+(uint)a,_Seed+17); int2 p=int2((int)(r.x*_MapWidth),(int)(r.y*_MapHeight)); float land=LoadLand(p),c=LoadContinentality(p),h=LoadHeight(p); if(land>0.5&&c>_LakeMinContinentality&&h<0.75){float s=c+(1-h)*0.35+hash1(lid+(uint)a)*0.08; if(s>best){best=s;center=p;}}}
  if(best<0){l.mainShape.w=0;_LakeFeatures[lid]=l;return;} float m=lerp(0.9,1.15,saturate(_Moisture)); float r=lerp(_LakeMinRadiusPixels,_LakeMaxRadiusPixels,hash1(lid+21u))*m; float asp=lerp(0.65,1.45,hash1(lid+22u));
  l.centerRadii=float4(center.x,center.y,r*asp,r/max(0.35,asp)); l.mainShape=float4(hash1(lid+23u)*6.2831853,(lid+1.0)/max(1.0,_LakeCount),hash1(lid+24u),1);
@@ -71,7 +71,7 @@ void GenerateLakeFeatures(uint3 id:SV_DispatchThreadID){ if(id.x>=max(1,_LakeCou
 
 [numthreads(64,1,1)]
 void GenerateLakeOutflowRiverFeatures(uint3 id:SV_DispatchThreadID){
- if(id.x>=_RiverCount || _LakeCount<=0) return;
+ if(id.x>=(uint)_RiverCount || _LakeCount<=0) return;
  uint rid=id.x;
  RiverFeature f=(RiverFeature)0;
  uint lakeIndex=rid%(uint)_LakeCount;

@@ -921,12 +921,3 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         void SampleNoiseBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%noiseFieldWidth+noiseFieldWidth)%noiseFieldWidth,y0=math.clamp((int)math.floor(uv.y),0,noiseFieldHeight-1); int x1=(x0+1)%noiseFieldWidth,y1=math.min(y0+1,noiseFieldHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*noiseFieldWidth+x0],v10=arr[y0*noiseFieldWidth+x1],v01=arr[y1*noiseFieldWidth+x0],v11=arr[y1*noiseFieldWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
     }
 }
-        cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
-        cs.SetInt("_HydrologyAnalysisHeight", analysisHeight);
-        cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
-        cs.SetFloat("_LakeBasinMinDepth", gpuLakeBasinMinDepth);
-        cs.SetFloat("_LakeBasinFullDepth", gpuLakeBasinFullDepth);
-        cs.SetFloat("_DrainageRiverMinWidthPixels", gpuDrainageRiverMinWidthPixels);
-        cs.SetFloat("_DrainageRiverMaxWidthPixels", gpuDrainageRiverMaxWidthPixels);
-        cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
-        cs.SetFloat("_RiverAccumulationThreshold", inputs.waterwaysPreset <= 0 ? gpuRiverAccumulationThresholdSparse : inputs.waterwaysPreset == 1 ? gpuRiverAccumulationThresholdStandard : gpuRiverAccumulationThresholdAbundant);
