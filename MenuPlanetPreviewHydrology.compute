@@ -146,3 +146,40 @@ void RasterizeHydrology(uint3 id:SV_DispatchThreadID){int2 p=int2(id.xy); if(p.x
  float strongest=max(lf0,max(lf1,lf2)); float noiseLo=(hash1(asuint((q.x*0.37+q.y*0.63+l.mainShape.z)*63.1))*2-1); float noiseHi=(hash1(asuint((q.x*1.21+q.y*1.57+l.mainShape.z*1.9)*137.7))*2-1); float shorelineNoise=(noiseLo*0.65 + noiseHi*0.35)*l.noiseWetness.y; float coves=saturate((lf0+lf1+lf2)*0.55); float shapeSignal=mainField*0.68 + strongest*0.52 + coves*0.12 + shorelineNoise;
  float lm=smoothstep(0.04,0.22,shapeSignal); lake=max(lake,lm); wet=max(wet,smoothstep(-0.45,0.08,shapeSignal)*0.5*l.noiseWetness.z); prio=max(prio,l.mainShape.y*lm);} }
  _GpuHydrologyTex[p]=float4(river,lake,saturate(wet),saturate(prio)); }
+#pragma kernel InitDrainageFill
+#pragma kernel RelaxDrainageFill
+#pragma kernel BuildFlowDirections
+#pragma kernel InitFlowAccumulation
+#pragma kernel RelaxFlowAccumulation
+#pragma kernel BuildTerrainDrivenHydrologyMasks
+#pragma kernel UpsampleAndBeautifyHydrology
+
+RWTexture2D<float4> _GpuHydrologyDepthTex;
+RWTexture2D<float4> _DrainageFillTexA;
+RWTexture2D<float4> _DrainageFillTexB;
+RWTexture2D<float4> _HydroFlowTex;
+RWTexture2D<float4> _FlowAccumTexA;
+RWTexture2D<float4> _FlowAccumTexB;
+RWTexture2D<float4> _CoarseHydrologyMaskTex;
+
+int _HydrologyAnalysisWidth,_HydrologyAnalysisHeight;
+float _HydroRoutingJitter,_LakeBasinMinDepth,_LakeBasinFullDepth,_DrainageRiverMinWidthPixels,_DrainageRiverMaxWidthPixels,_LakeShorelineWarpPixels,_RiverAccumulationThreshold;
+
+int2 ClampAnalysis(int2 p){ return int2((p.x%_HydrologyAnalysisWidth+_HydrologyAnalysisWidth)%_HydrologyAnalysisWidth, clamp(p.y,0,_HydrologyAnalysisHeight-1)); }
+float CoarseHeight(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return _GpuHeightTex.Load(int3(clampPix(hp),0)).r;}
+float CoarseLand(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return LoadLand(hp);} 
+
+[numthreads(8,8,1)]
+void InitDrainageFill(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float land=CoarseLand(p); _DrainageFillTexA[p]=float4(land>0.5?1.0:0.0,0,0,1);} 
+[numthreads(8,8,1)]
+void RelaxDrainageFill(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float land=CoarseLand(p); if(land<=0.5){_DrainageFillTexB[p]=float4(0,0,0,1); return;} float baseH=CoarseHeight(p); float minN=10; int2 best=p; [unroll] for(int oy=-1;oy<=1;oy++) [unroll] for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue; int2 np=ClampAnalysis(p+int2(ox,oy)); float n=_DrainageFillTexA[np].r; if(n<minN){minN=n;best=np;}} float nh=max(baseH,minN+0.0002); float2 dir=normalize((float2(best-p))+1e-5); _DrainageFillTexB[p]=float4(nh,dir*0.5+0.5,1);} 
+[numthreads(8,8,1)]
+void BuildFlowDirections(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float4 f=_DrainageFillTexA[p]; float2 d=f.gb*2-1; d=normalize(d + float2(hash1((uint)(p.x*73856093u+p.y*19349663u))-0.5, hash1((uint)(p.x*83492791u+p.y*1237u))-0.5)*_HydroRoutingJitter); _HydroFlowTex[p]=float4(d*0.5+0.5,saturate(1-f.r),1);} 
+[numthreads(8,8,1)]
+void InitFlowAccumulation(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float land=CoarseLand(p); float runoff=land*saturate(lerp(0.65,1.35,_Moisture)*lerp(0.85,1.15,_Temperature)); _FlowAccumTexA[p]=float4(runoff,runoff,0,1);} 
+[numthreads(8,8,1)]
+void RelaxFlowAccumulation(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float local=_FlowAccumTexA[p].g; float acc=local; [unroll] for(int oy=-1;oy<=1;oy++) [unroll] for(int ox=-1;ox<=1;ox++){ if(ox==0&&oy==0) continue; int2 n=ClampAnalysis(p+int2(ox,oy)); float2 nd=_HydroFlowTex[n].rg*2-1; int2 target=ClampAnalysis(n+int2(round(nd))); if(all(target==p)) acc+=_FlowAccumTexA[n].r*0.125; } _FlowAccumTexB[p]=float4(acc,local,0,1);} 
+[numthreads(8,8,1)]
+void BuildTerrainDrivenHydrologyMasks(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float land=CoarseLand(p); float h=CoarseHeight(p); float fill=_DrainageFillTexA[p].r; float basin=max(0,fill-h); float accum=_FlowAccumTexA[p].r; float nacc=saturate(accum/12.0); float river=smoothstep(_RiverAccumulationThreshold,_RiverAccumulationThreshold+0.2,nacc)*land; float lake=smoothstep(_LakeBasinMinDepth,_LakeBasinFullDepth,basin)*land; float wet=saturate(max(river,lake)*0.5+nacc*0.4); _CoarseHydrologyMaskTex[p]=float4(river,lake,wet,saturate(max(river,lake))); _GpuHydrologyDepthTex[int2(p.x*4,p.y*4)]=float4(river*nacc,lake*basin,nacc,saturate(basin*8));}
+[numthreads(8,8,1)]
+void UpsampleAndBeautifyHydrology(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_MapWidth||p.y>=_MapHeight) return; float2 uv=(float2(p)+0.5)/float2(_MapWidth,_MapHeight); float2 cuv=uv*float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 cp=ClampAnalysis((int2)cuv); float4 c=_CoarseHydrologyMaskTex[cp]; _GpuHydrologyTex[p]=c; float4 d=_GpuHydrologyDepthTex[p]; _GpuHydrologyDepthTex[p]=float4(d.r,d.g,d.b,d.a);} 

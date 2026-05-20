@@ -8,6 +8,11 @@ int _MapWidth;
 int _MapHeight;
 float _Seed;
 float _Elevation;
+float _MacroReliefStrength;
+float _MacroReliefScale;
+float _InlandBasinStrength;
+float _InlandBasinScale;
+float _WatershedRidgeStrength;
 
 static const float PI = 3.14159265359;
 
@@ -111,6 +116,9 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
     float hillNoise = Fbm(objNorm * 1.35 + seedOffsetA);
     float mountainProvinceNoise = Fbm(objNorm * 1.85 + seedOffsetB);
     float mountainRangeNoise = RidgedFbm(objNorm * 3.5 + seedOffsetC);
+    float macroReliefNoise = Fbm(objNorm * max(0.2, _MacroReliefScale) + seedOffsetA * 0.25);
+    float basinNoise = 1.0 - Fbm(objNorm * max(0.2, _InlandBasinScale) + seedOffsetB * 0.21);
+    float watershedRidge = RidgedFbm(objNorm * 2.2 + seedOffsetC * 0.35);
 
     float roughness = saturate(_Elevation);
     float hillThreshold = lerp(0.76, 0.30, roughness);
@@ -145,7 +153,13 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
         lerp(0.20, 0.95, roughness) *
         interiorBoost;
 
-    float finalHeight = saturate(lowlandBase + hillHeight + mountainHeight);
+    float macroRelief = (macroReliefNoise - 0.5) * 2.0 * _MacroReliefStrength * landMask * lerp(0.8, 1.25, roughness);
+    float inlandPreference = saturate(continentality * smoothstep(0.15, 0.7, landMask));
+    float midElevationPreference = 1.0 - smoothstep(0.45, 0.95, lowlandBase + hillHeight + mountainHeight);
+    float basinPotential = saturate(basinNoise * inlandPreference * midElevationPreference);
+    float basinCarve = basinPotential * _InlandBasinStrength;
+    float ridgeLift = (watershedRidge - 0.5) * 2.0 * _WatershedRidgeStrength * inlandPreference;
+    float finalHeight = saturate(lowlandBase + hillHeight + mountainHeight + macroRelief + ridgeLift - basinCarve);
 
     _GpuHeightTex[pixel] = float4(
         finalHeight,
