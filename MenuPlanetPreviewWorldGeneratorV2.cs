@@ -81,6 +81,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private bool useGpuHydrologyPreview = true;
     [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
 
+    [Header("GPU Climate / Biomes")]
+    [SerializeField] private bool useGpuLiveClimateAndBiomesPreview = true;
+
     [SerializeField, Range(1, 40)] private int gpuSparseRiverCount = 10;
     [SerializeField, Range(1, 50)] private int gpuStandardRiverCount = 18;
     [SerializeField, Range(1, 64)] private int gpuAbundantRiverCount = 28;
@@ -227,6 +230,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         inputs = updatedInputs;
         DispatchGpuHydrology();
     }
+
+    public void SetGpuLiveClimateAndBiomesPreview(bool enabled)
+    {
+        useGpuLiveClimateAndBiomesPreview = enabled;
+    }
     public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
         pending |= ExpandDependencies(scope);
         generationVersion++;
@@ -270,7 +278,14 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         var sw = System.Diagnostics.Stopwatch.StartNew();
         if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Started generation version={version}");
         var s = pending; pending = PreviewWorldRebuildScope.None;
-        EnsureAllTextures();
+        if (logWorldGenerationDiagnostics)
+        {
+            Debug.Log($"[WorldGenV2 Pipeline] Scopes={s} GpuPipelineActive={IsGpuPreviewPipelineActive()} LegacyClimateBiomeActive={IsLegacyClimateBiomePipelineActive()}");
+        }
+
+        EnsureCoreTerrainTextures();
+        if (!IsGpuPreviewPipelineActive())
+            EnsureLegacyClimateBiomeTextures();
         float[] land = null, elev = null, mtn = null, shelf = null, cont = null, hill = null, moisture = null, temp = null;
         GenDiagnostics diag = default;
 
@@ -283,7 +298,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             yield return null;
             if (version != generationVersion) { if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}"); IsGeneratingPreview = false; yield break; }
         }
-        if ((s & PreviewWorldRebuildScope.Climate) != 0)
+        if ((s & PreviewWorldRebuildScope.Climate) != 0 &&
+            IsLegacyClimateBiomePipelineActive())
         {
             if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
             GenerateClimate(land, elev, mtn, cont, out temp, out moisture);
@@ -291,6 +307,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         }
         if ((s & PreviewWorldRebuildScope.Hydrology) != 0)
         {
+            // In the modern GPU path this branch is used only for explicit
+            // hydrology refresh requests, not as a downstream side effect
+            // of Tectonics rebuilds.
             if (useGpuHydrologyPreview)
             {
                 DispatchGpuHydrology();
@@ -303,7 +322,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             }
             yield return null;
         }
-        if ((s & PreviewWorldRebuildScope.Biomes) != 0)
+        if ((s & PreviewWorldRebuildScope.Biomes) != 0 &&
+            IsLegacyClimateBiomePipelineActive())
         {
             if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
             if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
@@ -328,7 +348,38 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         generationCoroutine = null;
     }
 
-    private PreviewWorldRebuildScope ExpandDependencies(PreviewWorldRebuildScope r) => (r & PreviewWorldRebuildScope.Tectonics) != 0 ? PreviewWorldRebuildScope.All : (r & PreviewWorldRebuildScope.Climate) != 0 ? PreviewWorldRebuildScope.Climate | PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Hydrology) != 0 ? PreviewWorldRebuildScope.Hydrology | PreviewWorldRebuildScope.Biomes : (r & PreviewWorldRebuildScope.Biomes) != 0 ? PreviewWorldRebuildScope.Biomes : 0;
+    private PreviewWorldRebuildScope ExpandDependencies(PreviewWorldRebuildScope r)
+    {
+        if (IsGpuPreviewPipelineActive())
+        {
+            if ((r & PreviewWorldRebuildScope.Tectonics) != 0)
+                return PreviewWorldRebuildScope.Tectonics;
+
+            if ((r & PreviewWorldRebuildScope.Hydrology) != 0)
+                return PreviewWorldRebuildScope.Hydrology;
+
+            return PreviewWorldRebuildScope.None;
+        }
+
+        if ((r & PreviewWorldRebuildScope.Tectonics) != 0)
+            return PreviewWorldRebuildScope.All;
+
+        if ((r & PreviewWorldRebuildScope.Climate) != 0)
+            return
+                PreviewWorldRebuildScope.Climate |
+                PreviewWorldRebuildScope.Hydrology |
+                PreviewWorldRebuildScope.Biomes;
+
+        if ((r & PreviewWorldRebuildScope.Hydrology) != 0)
+            return
+                PreviewWorldRebuildScope.Hydrology |
+                PreviewWorldRebuildScope.Biomes;
+
+        if ((r & PreviewWorldRebuildScope.Biomes) != 0)
+            return PreviewWorldRebuildScope.Biomes;
+
+        return PreviewWorldRebuildScope.None;
+    }
 
     private struct GenDiagnostics { public string preset; public float targetLand; public float actualLand; public float topologyCoverage; public int topologyLandCells; public int targetTopologyLandCells; public int groupCount; public float largestGroupShare; public int attempts; public int rivers; public int lakes; public float avgElevation; public float maxElevation; public float mountainCoverage; }
 
@@ -337,7 +388,34 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         StartOrRestartGeneration();
     }
 
-    private void EnsureAllTextures(){Ensure(ref surfaceDataTexture,"MenuSurfaceDataV2");Ensure(ref auxiliaryMaskTexture,"MenuAuxMasksV2");Ensure(ref worldStructureTexture,"MenuStructureV2");Ensure(ref climateTexture,"MenuClimateV2");Ensure(ref hydrologyMaskTexture,"MenuHydrologyV2");Ensure(ref biomeWeights0Texture,"MenuBiome0V2");Ensure(ref biomeWeights1Texture,"MenuBiome1V2");Ensure(ref biomeWeights2Texture,"MenuBiome2V2");}
+    private bool IsGpuPreviewPipelineActive()
+    {
+        return
+            useGpuHeightPreview &&
+            useGpuHydrologyPreview &&
+            useGpuLiveClimateAndBiomesPreview;
+    }
+
+    private bool IsLegacyClimateBiomePipelineActive()
+    {
+        return !useGpuLiveClimateAndBiomesPreview;
+    }
+
+    private void EnsureCoreTerrainTextures()
+    {
+        Ensure(ref surfaceDataTexture, "MenuSurfaceDataV2");
+        Ensure(ref auxiliaryMaskTexture, "MenuAuxMasksV2");
+        Ensure(ref worldStructureTexture, "MenuStructureV2");
+    }
+
+    private void EnsureLegacyClimateBiomeTextures()
+    {
+        Ensure(ref climateTexture, "MenuClimateV2");
+        Ensure(ref hydrologyMaskTexture, "MenuHydrologyV2");
+        Ensure(ref biomeWeights0Texture, "MenuBiome0V2");
+        Ensure(ref biomeWeights1Texture, "MenuBiome1V2");
+        Ensure(ref biomeWeights2Texture, "MenuBiome2V2");
+    }
     private void Ensure(ref Texture2D t,string n){if(t!=null&&t.width==mapWidth&&t.height==mapHeight)return;DestroyTex(ref t);t=new Texture2D(mapWidth,mapHeight,TextureFormat.RGBA32,false,true){name=n,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear};}
     private void DestroyTex(ref Texture2D t){if(t!=null)Destroy(t);t=null;}
     private void EnsureGpuHeightTexture()
