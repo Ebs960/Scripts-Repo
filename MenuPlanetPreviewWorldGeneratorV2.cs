@@ -68,65 +68,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(128, 1024)] private int noiseFieldWidth = 512;
     [SerializeField, Range(64, 512)] private int noiseFieldHeight = 256;
 
-    [Header("Hydrology Targets")]
-    [SerializeField] private Vector2Int sparseRiverRange = new Vector2Int(12, 20);
-    [SerializeField] private Vector2Int standardRiverRange = new Vector2Int(24, 40);
-    [SerializeField] private Vector2Int abundantRiverRange = new Vector2Int(45, 70);
-
-    [Header("GPU Height")]
-    [SerializeField] private bool useGpuHeightPreview = true;
-    [SerializeField] private ComputeShader menuPlanetPreviewHeightCompute;
-
-    [Header("GPU Hydrology")]
-    [SerializeField] private bool useGpuHydrologyPreview = true;
-    [SerializeField] private bool gpuAllRiversStartFromLakes = true;
-    [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
-
-    [Header("GPU Climate / Biomes")]
-    [SerializeField] private bool useGpuLiveClimateAndBiomesPreview = true;
-
-    [SerializeField, Range(1, 40)] private int gpuSparseRiverCount = 10;
-    [SerializeField, Range(1, 50)] private int gpuStandardRiverCount = 18;
-    [SerializeField, Range(1, 64)] private int gpuAbundantRiverCount = 28;
-    [SerializeField, Range(0, 20)] private int gpuSparseLakeCount = 4;
-    [SerializeField, Range(0, 24)] private int gpuStandardLakeCount = 8;
-    [SerializeField, Range(0, 32)] private int gpuAbundantLakeCount = 13;
-    [SerializeField, Range(0f, 1f)] private float gpuHydrologyMoistureCountInfluence = 0.35f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverMeanderStrength = 0.42f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverSourceElevationPreference = 0.25f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverInlandPreference = 0.75f;
-    [SerializeField, Range(0.01f, 0.20f)] private float gpuRiverLateralWanderFraction = 0.07f;
-    [SerializeField, Range(1f, 12f)] private float gpuRiverUpperWidthPixels = 2.2f;
-    [SerializeField, Range(1f, 16f)] private float gpuRiverLowerWidthPixels = 5.0f;
-    [SerializeField, Range(4f, 80f)] private float gpuRiverMinSourceContinentality = 0.18f;
-    [SerializeField, Range(0.01f, 0.50f)] private float gpuLakeMinContinentality = 0.12f;
-    [SerializeField, Range(6f, 80f)] private float gpuLakeMinRadiusPixels = 18f;
-    [SerializeField, Range(6f, 120f)] private float gpuLakeMaxRadiusPixels = 52f;
-    [SerializeField] private bool logGpuHydrologyFeatureDiagnostics = true;
-
-    [SerializeField, Range(4, 64)] private int minRiverSourceSpacingPixels = 18;
-    [SerializeField, Range(1, 16)] private int riverCandidateStride = 4;
-
-    [Header("Decorative River Shape")]
-    [SerializeField, Range(4f, 80f)] private float decorativeRiverMinSourceCoastDistance = 22f;
-    [SerializeField, Range(0f, 1f)] private float decorativeRiverMeanderStrength = 0.55f;
-    [SerializeField, Range(0.02f, 0.40f)] private float decorativeRiverLateralWanderFraction = 0.14f;
-    [SerializeField, Range(3, 10)] private int decorativeRiverControlPointCountMin = 5;
-    [SerializeField, Range(4, 14)] private int decorativeRiverControlPointCountMax = 8;
-    [SerializeField, Range(1, 6)] private int decorativeRiverUpperRadius = 2;
-    [SerializeField, Range(2, 10)] private int decorativeRiverLowerRadius = 5;
-    [SerializeField, Range(1, 16)] private int decorativeRiverLandSnapRadius = 6;
-
-    Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture, climateTexture, hydrologyMaskTexture, biomeWeights0Texture, biomeWeights1Texture, biomeWeights2Texture;
+    Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture;
     public Texture2D TectonicSurfaceTexture => surfaceDataTexture;
     public Texture2D TectonicBoundaryTexture => auxiliaryMaskTexture;
     public Texture2D TectonicCrustTexture => worldStructureTexture;
-    public Texture2D ClimateTexture => climateTexture;
-    public Texture2D HydrologyMaskTexture => hydrologyMaskTexture;
-    public Texture ActiveHydrologyTexture => useGpuHydrologyPreview && gpuHydrologyTexture != null ? gpuHydrologyTexture : hydrologyMaskTexture;
-    public Texture2D BiomeWeights0Texture => biomeWeights0Texture;
-    public Texture2D BiomeWeights1Texture => biomeWeights1Texture;
-    public Texture2D BiomeWeights2Texture => biomeWeights2Texture;
+    public Texture ActiveHydrologyTexture => gpuHydrologyTexture;
     public RenderTexture GpuHeightTexture => gpuHeightTexture;
     public event Action WorldTexturesUpdated;
 
@@ -175,9 +121,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private float[] cachedMacroCoastNoise;
     private float[] cachedMidCoastNoise;
     private float[] cachedCoastEdgeNoise;
-    private float[] cachedUplandProvinceNoise;
-    private float[] cachedMountainProvinceNoise;
-    private float[] cachedMountainRangeNoise;
     private float[] cachedTopologyShapeNoise;
 
     private int cachedNoiseSeed;
@@ -232,11 +175,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         inputs = updatedInputs;
         DispatchGpuHydrology();
     }
-
-    public void SetGpuLiveClimateAndBiomesPreview(bool enabled)
-    {
-        useGpuLiveClimateAndBiomesPreview = enabled;
-    }
     public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
         pending |= ExpandDependencies(scope);
         generationVersion++;
@@ -247,11 +185,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         DestroyTex(ref surfaceDataTexture);
         DestroyTex(ref auxiliaryMaskTexture);
         DestroyTex(ref worldStructureTexture);
-        DestroyTex(ref climateTexture);
-        DestroyTex(ref hydrologyMaskTexture);
-        DestroyTex(ref biomeWeights0Texture);
-        DestroyTex(ref biomeWeights1Texture);
-        DestroyTex(ref biomeWeights2Texture);
         ReleaseGpuHeightTexture();
         ReleaseGpuHydrologyResources();
     }
@@ -281,56 +214,24 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Started generation version={version}");
         var s = pending; pending = PreviewWorldRebuildScope.None;
         if (logWorldGenerationDiagnostics)
-        {
-            Debug.Log($"[WorldGenV2 Pipeline] Scopes={s} GpuPipelineActive={IsGpuPreviewPipelineActive()} LegacyClimateBiomeActive={IsLegacyClimateBiomePipelineActive()}");
-        }
+            Debug.Log($"[WorldGenV2 Pipeline] Scopes={s}");
 
         EnsureCoreTerrainTextures();
-        if (!IsGpuPreviewPipelineActive())
-            EnsureLegacyClimateBiomeTextures();
-        float[] land = null, elev = null, mtn = null, shelf = null, cont = null, hill = null, moisture = null, temp = null;
+        float[] land = null, shelf = null, cont = null;
         GenDiagnostics diag = default;
 
         if ((s & PreviewWorldRebuildScope.Tectonics) != 0)
         {
-            GenerateTerrain(out land, out elev, out mtn, out shelf, out cont, out hill, out diag);
-            WriteSurfaceAndStructure(land, elev, mtn, shelf, cont, hill);
+            GenerateTerrain(out land, out shelf, out cont, out diag);
+            WriteSurfaceAndStructure(land, shelf, cont);
             DispatchGpuHeight();
             DispatchGpuHydrology();
             yield return null;
             if (version != generationVersion) { if (logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Async] Cancelled stale generation version={version}"); IsGeneratingPreview = false; yield break; }
         }
-        if ((s & PreviewWorldRebuildScope.Climate) != 0 &&
-            IsLegacyClimateBiomePipelineActive())
-        {
-            if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
-            GenerateClimate(land, elev, mtn, cont, out temp, out moisture);
-            yield return null;
-        }
         if ((s & PreviewWorldRebuildScope.Hydrology) != 0)
         {
-            // In the modern GPU path this branch is used only for explicit
-            // hydrology refresh requests, not as a downstream side effect
-            // of Tectonics rebuilds.
-            if (useGpuHydrologyPreview)
-            {
-                DispatchGpuHydrology();
-            }
-            else
-            {
-                if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
-                if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
-                GenerateHydrology(land, elev, moisture, ref diag);
-            }
-            yield return null;
-        }
-        if ((s & PreviewWorldRebuildScope.Biomes) != 0 &&
-            IsLegacyClimateBiomePipelineActive())
-        {
-            if (land == null) ReadSurface(out land, out elev, out mtn, out shelf);
-            if (temp == null || moisture == null) ReadClimate(out temp, out moisture, out cont);
-            ReadHydrology(out var river, out var lake, out var hydroWetness, out _);
-            GenerateBiomes(land, elev, mtn, temp, moisture, river, lake, hydroWetness);
+            DispatchGpuHydrology();
             yield return null;
         }
         if (version == generationVersion)
@@ -352,55 +253,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private PreviewWorldRebuildScope ExpandDependencies(PreviewWorldRebuildScope r)
     {
-        if (IsGpuPreviewPipelineActive())
-        {
-            if ((r & PreviewWorldRebuildScope.Tectonics) != 0)
-                return PreviewWorldRebuildScope.Tectonics;
-
-            if ((r & PreviewWorldRebuildScope.Hydrology) != 0)
-                return PreviewWorldRebuildScope.Hydrology;
-
-            return PreviewWorldRebuildScope.None;
-        }
-
         if ((r & PreviewWorldRebuildScope.Tectonics) != 0)
-            return PreviewWorldRebuildScope.All;
-
-        if ((r & PreviewWorldRebuildScope.Climate) != 0)
-            return
-                PreviewWorldRebuildScope.Climate |
-                PreviewWorldRebuildScope.Hydrology |
-                PreviewWorldRebuildScope.Biomes;
+            return PreviewWorldRebuildScope.Tectonics;
 
         if ((r & PreviewWorldRebuildScope.Hydrology) != 0)
-            return
-                PreviewWorldRebuildScope.Hydrology |
-                PreviewWorldRebuildScope.Biomes;
-
-        if ((r & PreviewWorldRebuildScope.Biomes) != 0)
-            return PreviewWorldRebuildScope.Biomes;
+            return PreviewWorldRebuildScope.Hydrology;
 
         return PreviewWorldRebuildScope.None;
-    }
-
-    private struct GenDiagnostics { public string preset; public float targetLand; public float actualLand; public float topologyCoverage; public int topologyLandCells; public int targetTopologyLandCells; public int groupCount; public float largestGroupShare; public int attempts; public int rivers; public int lakes; public float avgElevation; public float maxElevation; public float mountainCoverage; }
-
-    private void Flush()
-    {
-        StartOrRestartGeneration();
-    }
-
-    private bool IsGpuPreviewPipelineActive()
-    {
-        return
-            useGpuHeightPreview &&
-            useGpuHydrologyPreview &&
-            useGpuLiveClimateAndBiomesPreview;
-    }
-
-    private bool IsLegacyClimateBiomePipelineActive()
-    {
-        return !useGpuLiveClimateAndBiomesPreview;
     }
 
     private void EnsureCoreTerrainTextures()
@@ -408,15 +267,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         Ensure(ref surfaceDataTexture, "MenuSurfaceDataV2");
         Ensure(ref auxiliaryMaskTexture, "MenuAuxMasksV2");
         Ensure(ref worldStructureTexture, "MenuStructureV2");
-    }
-
-    private void EnsureLegacyClimateBiomeTextures()
-    {
-        Ensure(ref climateTexture, "MenuClimateV2");
-        Ensure(ref hydrologyMaskTexture, "MenuHydrologyV2");
-        Ensure(ref biomeWeights0Texture, "MenuBiome0V2");
-        Ensure(ref biomeWeights1Texture, "MenuBiome1V2");
-        Ensure(ref biomeWeights2Texture, "MenuBiome2V2");
     }
     private void Ensure(ref Texture2D t,string n){if(t!=null&&t.width==mapWidth&&t.height==mapHeight)return;DestroyTex(ref t);t=new Texture2D(mapWidth,mapHeight,TextureFormat.RGBA32,false,true){name=n,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear};}
     private void DestroyTex(ref Texture2D t){if(t!=null)Destroy(t);t=null;}
@@ -551,7 +401,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (!useGpuHydrologyPreview) return;
         if (!SystemInfo.supportsComputeShaders)
         {
-            Debug.LogWarning("[MenuPlanetPreview GPU Hydrology] Compute shaders unsupported. Falling back to CPU hydrology.");
+            Debug.LogWarning("[MenuPlanetPreview GPU Hydrology] Compute shaders unsupported. GPU hydrology unavailable.");
             return;
         }
         if (!SystemInfo.SupportsRandomWriteOnRenderTextureFormat(RenderTextureFormat.ARGBHalf)) return;
@@ -608,7 +458,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
 
     // concise but complete implementation
-    private void GenerateTerrain(out float[] land,out float[] elev,out float[] mtn,out float[] shelf,out float[] cont,out float[] hill,out GenDiagnostics diag){
+    private void GenerateTerrain(out float[] land,out float[] shelf,out float[] cont,out GenDiagnostics diag){
         int tw=Mathf.Max(16,topologyWidth),th=Mathf.Max(8,topologyHeight),tn=tw*th; diag=default;
         int presetIndex=Mathf.Clamp(inputs.landPresetIndex,0,presets.Length-1); var preset=presets[presetIndex]; diag.preset=preset.name;
         float sizeBias=Mathf.Clamp01(1f-inputs.landThreshold); float shapeBias=Mathf.InverseLerp(0.5f,5f,inputs.landScale); diag.targetLand=0f;
@@ -617,44 +467,30 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         EnsureFastNoiseFields(seedBase, tw, th);
         var r=new System.Random((seedBase*73856093) ^ 19349663);
         var plans=BuildLandmassPlan(preset,tw,th,r,sizeBias,shapeBias,out var planBuildDiag);
-        if (logWorldGenerationDiagnostics && logLandmassGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmass Plan]\nPreset={preset.name}\nTopologySize={tw}x{th} ({tn} cells)\nRequestedMajor={planBuildDiag.requestedMajorCount}\nBuiltMajor={planBuildDiag.builtMajorCount}\nRequestedLargeIslands={planBuildDiag.requestedLargeIslandCount}\nBuiltLargeIslands={planBuildDiag.builtLargeIslandCount}\nRequestedSmallClusters={planBuildDiag.requestedSmallClusterCount}\nBuiltSmallClusters={planBuildDiag.builtSmallClusterCount}\nFailedCenterPlacements={planBuildDiag.failedCenterPlacements}\nTotalPlannedTargetCells={planBuildDiag.totalPlannedTargetCells}\nPlannedCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}");
         RasterizeLandmassPlansToTopology(topo,plans,preset,tw,th,shapeBias);
-        diag.attempts=1;
         diag.targetTopologyLandCells = planBuildDiag.totalPlannedTargetCells;
         diag.topologyLandCells = CountTopologyLandCells(topo);
         diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
         int[] comp; diag.largestGroupShare=LargestLandmassShare(topo,tw,th,out diag.groupCount,out comp);
-        if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmass Field]\nPreset={preset.name}\nPlannedMajor={planBuildDiag.builtMajorCount}\nPlannedLargeIslands={planBuildDiag.builtLargeIslandCount}\nPlannedSmallClusters={planBuildDiag.builtSmallClusterCount}\nPlannedTargetCoverage={(float)planBuildDiag.totalPlannedTargetCells / tn:F4}\nRasterizedTopologyCoverage={diag.topologyCoverage:F4}");
-        if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 Landmasses]\nPreset={preset.name}\nWorldCoverage={diag.topologyCoverage:F2}");
         bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = topo[i].isLand;
         float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
         float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
         float[] topoSignedCoastDistance = BuildSignedTopologyCoastDistance(topoLand, topoLandDist, topoOceanDist);
         int noiseW = Mathf.Max(1, cachedNoiseWidth);
         int noiseH = Mathf.Max(1, cachedNoiseHeight);
-        int n=mapWidth*mapHeight; land=new float[n]; elev=new float[n]; mtn=new float[n]; shelf=new float[n]; cont=new float[n]; hill=new float[n];
+        int n=mapWidth*mapHeight; land=new float[n]; shelf=new float[n]; cont=new float[n];
         var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
         var nTopoSignedCoastDistance = new NativeArray<float>(tn, Allocator.TempJob);
         var nLand = new NativeArray<float>(n, Allocator.TempJob);
         var nInland = new NativeArray<float>(n, Allocator.TempJob);
         var nOffshore = new NativeArray<float>(n, Allocator.TempJob);
-        var nElev = new NativeArray<float>(n, Allocator.TempJob);
-        var nMtn = new NativeArray<float>(n, Allocator.TempJob);
         var nShelf = new NativeArray<float>(n, Allocator.TempJob);
         var nCont = new NativeArray<float>(n, Allocator.TempJob);
-        var nUpland = new NativeArray<float>(n, Allocator.TempJob);
-        var nRawMtn = new NativeArray<float>(n, Allocator.TempJob);
         int nn = noiseW * noiseH;
         var nMacroCoastNoise = new NativeArray<float>(nn, Allocator.TempJob);
         var nMidCoastNoise = new NativeArray<float>(nn, Allocator.TempJob);
         var nCoastEdgeNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        var nUplandProvinceNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        var nMountainProvinceNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        var nMountainRangeNoise = new NativeArray<float>(nn, Allocator.TempJob);
         try{
             for(int i=0;i<tn;i++){nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i]; nTopoSignedCoastDistance[i]=topoSignedCoastDistance[i];}
             if (fastNoiseFieldsValid && useFastNoiseLiteFields)
@@ -662,62 +498,20 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 nMacroCoastNoise.CopyFrom(cachedMacroCoastNoise);
                 nMidCoastNoise.CopyFrom(cachedMidCoastNoise);
                 nCoastEdgeNoise.CopyFrom(cachedCoastEdgeNoise);
-                nUplandProvinceNoise.CopyFrom(cachedUplandProvinceNoise);
-                nMountainProvinceNoise.CopyFrom(cachedMountainProvinceNoise);
-                nMountainRangeNoise.CopyFrom(cachedMountainRangeNoise);
             }
-            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineDeformationWidthCells=coastlineDeformationWidthCells,coastlineWarpStrength=coastlineWarpStrength,coastlineMidNoiseStrength=coastlineMidNoiseStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,coastlineThresholdBias=coastlineThresholdBias,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,topoSignedCoastDistance=nTopoSignedCoastDistance,macroCoastNoise=nMacroCoastNoise,midCoastNoise=nMidCoastNoise,coastEdgeNoise=nCoastEdgeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore};
-            var jh=landJob.ScheduleParallel(n,64,default);
-            var terrJob=new TerrainPotentialJob{mapWidth=mapWidth,mapHeight=mapHeight,seed=inputs.seed,land=nLand,inlandDistance=nInland,uplandProvinceNoise=nUplandProvinceNoise,mountainProvinceNoise=nMountainProvinceNoise,mountainRangeNoise=nMountainRangeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,rawMountainPotential=nRawMtn,uplandPotential=nUpland};
-            jh=terrJob.ScheduleParallel(n,64,jh); jh.Complete();
-            float[] mountainRank = BuildMountainRankField(nLand, nRawMtn);
-            float[] hillRank = BuildHillRankField(nLand, nUpland);
-            var nMountainRank = new NativeArray<float>(mountainRank, Allocator.TempJob);
-            var nHillRank = new NativeArray<float>(hillRank, Allocator.TempJob);
-            var nHillMask = new NativeArray<float>(n, Allocator.TempJob);
-            var mfJob=new MountainFinalizeJob{mapHeight=mapHeight,terrainRoughness=Mathf.Clamp01(inputs.elevation),land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,hillRank=nHillRank,mountainRank=nMountainRank,mountain=nMtn,elevation=nElev,shelf=nShelf,continentality=nCont,hillMaskOut=nHillMask};
-            mfJob.ScheduleParallel(n,64,default).Complete();
-            float elevSum=0,elevMax=0,mtnPixels=0,landPixels=0,lc=0,maxHillRelief=0,averageHillReliefOnLand=0,hillPixelsAbove025=0,hillPixelsAbove050=0; for(int i=0;i<n;i++){land[i]=nLand[i];elev[i]=nElev[i];mtn[i]=nMtn[i];shelf[i]=nShelf[i];cont[i]=nCont[i];hill[i]=nHillMask[i]; if(land[i]>0.5f){lc++; landPixels++; elevSum+=elev[i]; elevMax=Mathf.Max(elevMax,elev[i]); maxHillRelief=Mathf.Max(maxHillRelief,hill[i]); averageHillReliefOnLand+=hill[i]; if(hill[i]>0.25f)hillPixelsAbove025++; if(hill[i]>0.50f)hillPixelsAbove050++; if(mtn[i]>0.35f)mtnPixels++;}}
-            nHillMask.Dispose();
-            nHillRank.Dispose();
-            nMountainRank.Dispose();
-            averageHillReliefOnLand=landPixels>0?averageHillReliefOnLand/landPixels:0f;
-            float hillCoverageAbove025=landPixels>0?hillPixelsAbove025/landPixels:0f;
-            float hillCoverageAbove050=landPixels>0?hillPixelsAbove050/landPixels:0f;
+            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineDeformationWidthCells=coastlineDeformationWidthCells,coastlineWarpStrength=coastlineWarpStrength,coastlineMidNoiseStrength=coastlineMidNoiseStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,coastlineThresholdBias=coastlineThresholdBias,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,topoSignedCoastDistance=nTopoSignedCoastDistance,macroCoastNoise=nMacroCoastNoise,midCoastNoise=nMidCoastNoise,coastEdgeNoise=nCoastEdgeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,shelf=nShelf,continentality=nCont};
+            landJob.ScheduleParallel(n,64,default).Complete();
+            float lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];shelf[i]=nShelf[i];cont[i]=nCont[i];if(land[i]>0.5f)lc++;}
             float finalCoastLandCoverage = n > 0 ? lc / n : 0f;
             if (logWorldGenerationDiagnostics)
-            {
-                Debug.Log($"[WorldGenV2 Hill Relief]\nMaxHillMask={maxHillRelief:F4}\nAvgHillMaskOnLand={averageHillReliefOnLand:F4}\nCoverageAbove0.25={hillCoverageAbove025:F4}\nCoverageAbove0.50={hillCoverageAbove050:F4}");
-                Debug.Log($"[WorldGenV2 Coast Sculpt]\nTopologyCoverage={diag.topologyCoverage:F4}\nFinalLandCoverage={finalCoastLandCoverage:F4}\nCoastlineDeformationWidthCells={coastlineDeformationWidthCells:F2}\nCoastlineWarpStrength={coastlineWarpStrength:F3}\nCoastlineMidNoiseStrength={coastlineMidNoiseStrength:F3}\nCoastlineEdgeNoiseStrength={coastlineEdgeNoiseStrength:F3}\nCoastlineThresholdBias={coastlineThresholdBias:F3}");
-                if (Mathf.Abs(finalCoastLandCoverage - diag.topologyCoverage) > 0.18f)
-                {
-                    Debug.LogWarning("[WorldGenV2 Coast Sculpt WARNING]\nFinal FastNoise coastline changed land coverage substantially.\nThis may be fine visually, but tune coastlineThresholdBias or deformation strength if presets drift too far.");
-                }
-            }
-            diag.actualLand=lc/n; diag.avgElevation=landPixels>0?elevSum/landPixels:0; diag.maxElevation=elevMax; diag.mountainCoverage=landPixels>0?mtnPixels/landPixels:0;
+                Debug.Log($"[WorldGenV2 Coast Sculpt]
+TopologyCoverage={diag.topologyCoverage:F4}
+FinalLandCoverage={finalCoastLandCoverage:F4}");
+            diag.actualLand=lc/n;
         } finally {
-            nMountainRangeNoise.Dispose();
-            nMountainProvinceNoise.Dispose();
-            nUplandProvinceNoise.Dispose();
-            nCoastEdgeNoise.Dispose();
-            nMidCoastNoise.Dispose();
-            nMacroCoastNoise.Dispose();
-            nRawMtn.Dispose();
-            nUpland.Dispose();
-            nCont.Dispose();
-            nShelf.Dispose();
-            nMtn.Dispose();
-            nElev.Dispose();
-            nOffshore.Dispose();
-            nInland.Dispose();
-            nLand.Dispose();
-            nTopoSignedCoastDistance.Dispose();
-            nTopoOceanDist.Dispose();
-            nTopoLandDist.Dispose();
+            nCoastEdgeNoise.Dispose(); nMidCoastNoise.Dispose(); nMacroCoastNoise.Dispose(); nCont.Dispose(); nShelf.Dispose(); nOffshore.Dispose(); nInland.Dispose(); nLand.Dispose(); nTopoSignedCoastDistance.Dispose(); nTopoOceanDist.Dispose(); nTopoLandDist.Dispose();
         }
     }
-
-
 
     private void EnsureFastNoiseFields(int seedBase, int topologyW, int topologyH)
     {
@@ -744,9 +538,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cachedMacroCoastNoise = new float[n];
         cachedMidCoastNoise = new float[n];
         cachedCoastEdgeNoise = new float[n];
-        cachedUplandProvinceNoise = new float[n];
-        cachedMountainProvinceNoise = new float[n];
-        cachedMountainRangeNoise = new float[n];
         cachedTopologyShapeNoise = new float[tw * th];
 
         var macroCoastNoise = new FastNoiseLite(seedBase + 1101);
@@ -805,9 +596,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             cachedMacroCoastNoise[idx] = macroCoastNoise.GetNoise(wx, wy, wz);
             cachedMidCoastNoise[idx] = midCoastNoise.GetNoise(wx, wy, wz);
             cachedCoastEdgeNoise[idx] = coastEdgeNoise.GetNoise(dx, dy, dz);
-            cachedUplandProvinceNoise[idx] = uplandNoise.GetNoise(dx, dy, dz);
-            cachedMountainProvinceNoise[idx] = mountainProvinceNoise.GetNoise(dx, dy, dz);
-            cachedMountainRangeNoise[idx] = mountainRangeNoise.GetNoise(dx, dy, dz);
         }
 
         for (int y = 0; y < th; y++) for (int x = 0; x < tw; x++)
@@ -827,7 +615,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cachedNoiseSeed = seedBase; cachedNoiseWidth = nw; cachedNoiseHeight = nh; cachedTopologyWidth = tw; cachedTopologyHeight = th;
         fastNoiseFieldsValid = true;
         if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 FastNoise] Rebuilt cached sphere-space noise fields. Seed={seedBase} Size={nw}x{nh}");
+            Debug.Log($"[WorldGenV2 FastNoise] Rebuilt cached coastline/topology noise fields. Seed={seedBase} Size={nw}x{nh}");
     }
 
     private int CountTopologyLandCells(TopologyCell[] topo){
@@ -1057,252 +845,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         }
         return signed;
     }
-    private float[] BuildMountainRankField(NativeArray<float> land, NativeArray<float> rawMountainPotential)
-    {
-        const int bins = 256;
-        int[] hist = new int[bins];
-        int landCount = 0;
-        for (int i = 0; i < land.Length; i++)
-        {
-            if (land[i] <= 0.5f) continue;
-            landCount++;
-            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(rawMountainPotential[i]) * (bins - 1)), 0, bins - 1);
-            hist[bin]++;
-        }
-        int[] cdf = new int[bins];
-        int run = 0;
-        for (int i = 0; i < bins; i++) { run += hist[i]; cdf[i] = run; }
-        float[] rank = new float[land.Length];
-        for (int i = 0; i < land.Length; i++)
-        {
-            if (land[i] <= 0.5f) { rank[i] = 0f; continue; }
-            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(rawMountainPotential[i]) * (bins - 1)), 0, bins - 1);
-            rank[i] = landCount > 0
-                ? Mathf.Clamp01((cdf[bin] - hist[bin] * 0.5f) / (float)landCount)
-                : 0f;
-        }
-        return rank;
-    }
-
-    private float[] BuildHillRankField(NativeArray<float> land, NativeArray<float> uplandPotential)
-    {
-        const int bins = 256;
-        int[] hist = new int[bins];
-        int landCount = 0;
-        for (int i = 0; i < land.Length; i++)
-        {
-            if (land[i] <= 0.5f) continue;
-            landCount++;
-            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(uplandPotential[i]) * (bins - 1)), 0, bins - 1);
-            hist[bin]++;
-        }
-        int[] cdf = new int[bins];
-        int run = 0;
-        for (int i = 0; i < bins; i++) { run += hist[i]; cdf[i] = run; }
-        float[] rank = new float[land.Length];
-        for (int i = 0; i < land.Length; i++)
-        {
-            if (land[i] <= 0.5f) { rank[i] = 0f; continue; }
-            int bin = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(uplandPotential[i]) * (bins - 1)), 0, bins - 1);
-            rank[i] = landCount > 0
-                ? Mathf.Clamp01((cdf[bin] - hist[bin] * 0.5f) / (float)landCount)
-                : 0f;
-        }
-        return rank;
-    }
-
-    private void WriteSurfaceAndStructure(float[] land,float[] elev,float[] mtn,float[] shelf,float[] cont,float[] hill){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){float hillRelief=hill!=null&&i<hill.Length?hill[i]:0f;s[i]=new Color32(B(land[i]),B(elev[i]),B(mtn[i]),B(shelf[i]));w[i]=new Color32(B(cont[i]),B(mtn[i]),B(elev[i]),B(hillRelief));a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}
-    private void ReadSurface(out float[] land,out float[] elev,out float[] mtn,out float[] shelf){int n=mapWidth*mapHeight;land=new float[n];elev=new float[n];mtn=new float[n];shelf=new float[n];var p=surfaceDataTexture.GetPixels32();for(int i=0;i<n;i++){land[i]=p[i].r/255f;elev[i]=p[i].g/255f;mtn[i]=p[i].b/255f;shelf[i]=p[i].a/255f;}}
-    private void ReadClimate(out float[] temp,out float[] moisture,out float[] cont){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];cont=new float[n];var p=climateTexture.GetPixels32();for(int i=0;i<n;i++){temp[i]=p[i].r/255f;moisture[i]=p[i].g/255f;cont[i]=p[i].b/255f;}}
-    private void ReadHydrology(out float[] river, out float[] lake, out float[] wetness, out float[] flowOrDepth){int n=mapWidth*mapHeight;river=new float[n];lake=new float[n];wetness=new float[n];flowOrDepth=new float[n];var p=hydrologyMaskTexture.GetPixels32();for(int i=0;i<n;i++){river[i]=p[i].r/255f;lake[i]=p[i].g/255f;wetness[i]=p[i].b/255f;flowOrDepth[i]=p[i].a/255f;}}
-    private void GenerateClimate(float[] land,float[] elev,float[] mtn,float[] contIn,out float[] temp,out float[] moisture){int n=mapWidth*mapHeight;temp=new float[n];moisture=new float[n];if(contIn==null){contIn=new float[n];for(int i=0;i<n;i++)contIn[i]=land[i]*Mathf.Clamp01(elev[i]);}var coast=DistanceFromBoundary(land,0.5f,true);var p=new Color32[n];for(int i=0;i<n;i++){int x=i%mapWidth;int y=i/mapWidth;float lat=Mathf.Abs(((float)y/(mapHeight-1))*2f-1f);float equatorWarmth=1f-lat;float continentality=contIn[i];float tempNoise=(Mathf.PerlinNoise((x+inputs.seed*0.31f)*0.006f,(y-inputs.seed*0.17f)*0.006f)-0.5f)*2f;float localTemperature=equatorWarmth-elev[i]*0.42f+continentality*inputs.continentalTemperatureStrength+tempNoise*inputs.climateNoiseStrength*0.35f;float coastProximity=Mathf.Clamp01(1f-coast[i]/(0.08f*mapHeight));float moistureNoise=(Mathf.PerlinNoise((x-inputs.seed*0.23f)*0.007f,(y+inputs.seed*0.29f)*0.007f)-0.5f)*2f;float localMoisture=0.5f+coastProximity*inputs.coastWetnessStrength-continentality*inputs.continentalDrynessStrength+moistureNoise*inputs.climateNoiseStrength+0.06f*(1f-lat);localTemperature=Mathf.Clamp01(localTemperature);localMoisture=Mathf.Clamp01(localMoisture);temp[i]=localTemperature;moisture[i]=localMoisture;p[i]=new Color32(B(localTemperature),B(localMoisture),B(continentality),0);}climateTexture.SetPixelData(p,0);climateTexture.Apply(false,false);}
-    private void GenerateHydrology(float[] land,float[] elev,float[] moisture,ref GenDiagnostics diag){
-        int n=mapWidth*mapHeight;float[] river=new float[n],lake=new float[n],wet=new float[n],priority=new float[n];
-        float[] coastDist=DistanceFromBoundary(land,0.5f,true);
-        int hydroSeed = Mathf.RoundToInt(inputs.seed * 1000f);
-        var rng=new System.Random(hydroSeed*31+17);
-
-        var inlandCandidates=new List<int>(n/4);
-        float maxCoastDist=0.0001f;
-        for(int i=0;i<n;i++) if(land[i]>0.5f) maxCoastDist=Mathf.Max(maxCoastDist,coastDist[i]);
-        for(int i=0;i<n;i++) if(land[i]>0.5f && coastDist[i]>=decorativeRiverMinSourceCoastDistance) inlandCandidates.Add(i);
-
-        int riverTarget=Mathf.Clamp(rng.Next(12,23)+(inlandCandidates.Count>n*0.22f?rng.Next(0,5):0),12,28), riversPainted=0, riversReachedCoast=0;
-        int minRiverSteps=35, minStampedPixels=120, totalRiverLength=0, minRiverLength=int.MaxValue, maxRiverLength=0;
-        var chosenSources=new List<int>();
-
-        for(int ri=0;ri<riverTarget;ri++){
-            if(inlandCandidates.Count==0) break;
-            int source=PickGuidedRiverSource(inlandCandidates,chosenSources,land,elev,moisture,coastDist,maxCoastDist,rng);
-            if(source<0) break;
-            chosenSources.Add(source);
-            float t=(ri+1f)/Mathf.Max(1f,riverTarget);
-            float riverPriority=t<0.20f?Mathf.Lerp(0.8f,1f,(float)rng.NextDouble()):t<0.65f?Mathf.Lerp(0.55f,0.85f,(float)rng.NextDouble()):Mathf.Lerp(0.35f,0.65f,(float)rng.NextDouble());
-            bool reachedCoast=PaintSplineMeanderingRiver(source,land,elev,moisture,coastDist,river,wet,priority,rng,riverPriority,out int stamped,out int steps);
-            if(reachedCoast) riversReachedCoast++;
-            if(stamped>=minStampedPixels && steps>=minRiverSteps){ riversPainted++; totalRiverLength+=steps; minRiverLength=Mathf.Min(minRiverLength,steps); maxRiverLength=Mathf.Max(maxRiverLength,steps); }
-        }
-
-        int lakeRequested=rng.Next(6,11), lakesPainted=0, lakesRejected=0;
-        for(int li=0;li<lakeRequested;li++){
-            if(inlandCandidates.Count==0) break;
-            int center=inlandCandidates[rng.Next(inlandCandidates.Count)];
-            if(coastDist[center]<10f) continue;
-            int baseRadius=rng.Next(20,46); float m=Mathf.Clamp01(moisture[center]); if(rng.NextDouble()<0.20+0.28*m) baseRadius=rng.Next(45,76);
-            float lakePriority=baseRadius>=50?Mathf.Lerp(0.75f,1f,(float)rng.NextDouble()):baseRadius>=30?Mathf.Lerp(0.55f,0.80f,(float)rng.NextDouble()):Mathf.Lerp(0.40f,0.60f,(float)rng.NextDouble());
-            if(PaintOrganicLakeBasin(center,baseRadius,land,lake,wet,priority,lakePriority,rng,li,coastDist)) lakesPainted++;
-            else lakesRejected++;
-        }
-
-        ApplyHydrologyWetnessHalo(land,river,lake,wet);
-        int riverPixels=0,lakePixels=0,hydroPixels=0; var p=new Color32[n];
-        for(int i=0;i<n;i++){ if(river[i]>0.04f) riverPixels++; if(lake[i]>0.04f) lakePixels++; if(river[i]>0.02f||lake[i]>0.02f) hydroPixels++; p[i]=new Color32(B(river[i]),B(lake[i]),B(wet[i]),B(priority[i])); }
-        hydrologyMaskTexture.SetPixelData(p,0); hydrologyMaskTexture.Apply(false,false);
-        diag.rivers=riversPainted; diag.lakes=lakesPainted;
-
-        float avgRiverLength=riversPainted>0?(float)totalRiverLength/riversPainted:0f;
-        if(minRiverLength==int.MaxValue) minRiverLength=0;
-        if(logWorldGenerationDiagnostics) Debug.Log($"[WorldGenV2 Decorative Hydrology] RiversRequested={riverTarget} RiversPainted={riversPainted} RiversReachedCoast={riversReachedCoast} AvgRiverLength={avgRiverLength:F1} MinRiverLength={minRiverLength} MaxRiverLength={maxRiverLength} LakesRequested={lakeRequested} LakesPainted={lakesPainted} LakesRejected={lakesRejected} RiverPixels={riverPixels} LakePixels={lakePixels} HydrologyCoverage={(float)hydroPixels/Mathf.Max(1,n):F3}");
-    }
-
-    private int PickGuidedRiverSource(List<int> candidates,List<int> chosenSources,float[] land,float[] elevation,float[] moisture,float[] coastDistance,float maxCoastDist,System.Random r){
-        int sampleCount=Mathf.Min(96,candidates.Count); int best=-1; float bestScore=float.NegativeInfinity;
-        for(int s=0;s<sampleCount;s++){
-            int idx=candidates[r.Next(candidates.Count)]; if(land[idx]<=0.5f||coastDistance[idx]<decorativeRiverMinSourceCoastDistance) continue;
-            float coastN=Mathf.Clamp01(coastDistance[idx]/Mathf.Max(1f,maxCoastDist));
-            float spacingPenalty=0f;
-            for(int i=0;i<chosenSources.Count;i++){ Vector2 d=DeltaWrap(IndexToXY(chosenSources[i]),IndexToXY(idx)); float dist=d.magnitude; if(dist<minRiverSourceSpacingPixels*2.4f) spacingPenalty+=Mathf.Clamp01(1f-dist/(minRiverSourceSpacingPixels*2.4f)); }
-            float score=coastN*0.65f + Mathf.Clamp01(elevation[idx])*0.20f + Mathf.Clamp01(moisture[idx])*0.15f - spacingPenalty*0.40f + ((float)r.NextDouble()-0.5f)*0.06f;
-            if(score>bestScore){bestScore=score; best=idx;}
-        }
-        return best;
-    }
-
-    private bool PaintSplineMeanderingRiver(int sourceIndex,float[] land,float[] elevation,float[] moisture,float[] coastDistance,float[] river,float[] wet,float[] priority,System.Random r,float riverPriority,out int stampedPixelCount,out int stepCount){
-        stampedPixelCount=0; stepCount=0; if(land[sourceIndex]<=0.5f) return false;
-        int coastTarget=PickRiverCoastTarget(sourceIndex,land,coastDistance,r);
-        if(coastTarget<0) return false;
-        Vector2 source=IndexToXY(sourceIndex); Vector2 target=IndexToXY(coastTarget);
-        var control=BuildRiverControlPoints(source,target,r,sourceIndex);
-        if(control.Count<4) return false;
-        float routeDistance=DeltaWrap(source,target).magnitude;
-        int samples=Mathf.Clamp(Mathf.RoundToInt(routeDistance*1.25f),90,520);
-        bool reachedCoast=false; int consecutiveFail=0;
-        for(int i=0;i<samples;i++){
-            float t=i/(float)Mathf.Max(1,samples-1);
-            Vector2 p=SampleCatmullSpline(control,t);
-            int idx=XYToWrappedIndex(p);
-            if(land[idx]<=0.5f){ int snap=FindNearestLand((int)Mathf.Round(p.x),(int)Mathf.Round(p.y),land,decorativeRiverLandSnapRadius); if(snap>=0) idx=snap; else { consecutiveFail++; if(consecutiveFail>14) break; continue; }}
-            consecutiveFail=0;
-            float widthT=Mathf.SmoothStep(0f,1f,t); float radius=Mathf.Lerp(decorativeRiverUpperRadius,decorativeRiverLowerRadius,widthT);
-            if(t>0.87f) radius+=Mathf.Lerp(0f,1.5f,(t-0.87f)/0.13f);
-            stampedPixelCount+=StampRiverAtIndex(idx,radius,riverPriority,land,river,wet,priority,sourceIndex+i*17);
-            stepCount++;
-            if(coastDistance[idx]<=2.5f) reachedCoast=true;
-        }
-        return reachedCoast;
-    }
-
-    private int PickRiverCoastTarget(int sourceIndex,float[] land,float[] coastDistance,System.Random r){
-        var candidates=new List<(int idx,float dist)>(); Vector2 source=IndexToXY(sourceIndex);
-        for(int i=0;i<land.Length;i+=Mathf.Max(1,riverCandidateStride)){
-            if(land[i]<=0.5f || coastDistance[i]>2.5f) continue;
-            float d=DeltaWrap(source,IndexToXY(i)).magnitude; if(d<decorativeRiverMinSourceCoastDistance*0.45f) continue;
-            candidates.Add((i,d));
-        }
-        if(candidates.Count==0) return -1;
-        candidates.Sort((a,b)=>a.dist.CompareTo(b.dist));
-        int nearCount=Mathf.Max(1,Mathf.Min(candidates.Count,Mathf.CeilToInt(candidates.Count*0.25f)));
-        if(r.NextDouble()<0.70) return candidates[r.Next(nearCount)].idx;
-        int fartherStart=Mathf.Min(candidates.Count-1,nearCount);
-        return candidates[r.Next(fartherStart,candidates.Count)].idx;
-    }
-
-    private List<Vector2> BuildRiverControlPoints(Vector2 source,Vector2 target,System.Random r,int riverSeed){
-        int controlCount=Mathf.Clamp(r.Next(decorativeRiverControlPointCountMin,decorativeRiverControlPointCountMax+1),4,32);
-        var pts=new List<Vector2>(controlCount); Vector2 delta=DeltaWrap(source,target); float dist=Mathf.Max(1f,delta.magnitude); Vector2 dir=delta/dist; Vector2 perp=new Vector2(-dir.y,dir.x);
-        for(int k=0;k<controlCount;k++){
-            float t=controlCount<=1?0f:k/(float)(controlCount-1); Vector2 basePoint=source+delta*t; float envelope=Mathf.Sin(Mathf.PI*t);
-            float initialSide=(riverSeed&1)==0?1f:-1f;
-            float alternatingSide=(k%2==0)?1f:-1f;
-            float sign=initialSide*alternatingSide;
-            float middleBias=Mathf.Lerp(0.82f,1.18f,envelope);
-            float lateral=dist*decorativeRiverLateralWanderFraction*decorativeRiverMeanderStrength*envelope*middleBias*sign*Mathf.Lerp(0.65f,1.25f,(float)r.NextDouble());
-            Vector2 cp=basePoint+perp*lateral; cp.x=(cp.x%mapWidth+mapWidth)%mapWidth; cp.y=Mathf.Clamp(cp.y,0,mapHeight-1); pts.Add(cp);
-        }
-        return pts;
-    }
-
-    private Vector2 SampleCatmullSpline(List<Vector2> pts,float t){
-        int segCount=pts.Count-1; float ft=t*segCount; int i=Mathf.Clamp(Mathf.FloorToInt(ft),0,segCount-1); float lt=ft-i;
-        Vector2 p0=pts[Mathf.Max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Mathf.Min(pts.Count-1,i+2)];
-        return CatmullRom(p0,p1,p2,p3,lt);
-    }
-
-    private Vector2 CatmullRom(Vector2 p0,Vector2 p1,Vector2 p2,Vector2 p3,float t){
-        float t2=t*t,t3=t2*t;
-        return 0.5f*((2f*p1)+(-p0+p2)*t+(2f*p0-5f*p1+4f*p2-p3)*t2+(-p0+3f*p1-3f*p2+p3)*t3);
-    }
-
-    private int XYToWrappedIndex(Vector2 p){ int x=((Mathf.RoundToInt(p.x)%mapWidth)+mapWidth)%mapWidth; int y=Mathf.Clamp(Mathf.RoundToInt(p.y),0,mapHeight-1); return y*mapWidth+x; }
-
-    private int StampRiverAtIndex(int centerIndex,float radius,float riverPriority,float[] land,float[] river,float[] wet,float[] priority,int riverId){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth; int ir=Mathf.CeilToInt(radius+1f); int stamped=0; for(int oy=-ir;oy<=ir;oy++)for(int ox=-ir;ox<=ir;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float d=Mathf.Sqrt(ox*ox+oy*oy); float edgeN=(Mathf.PerlinNoise((nx+riverId*13.1f+inputs.seed)*0.19f,(ny-riverId*7.3f-inputs.seed)*0.19f)-0.5f)*0.45f; float allowed=radius+edgeN; if(d>allowed) continue; float core=Mathf.Clamp01(1f-d/Mathf.Max(0.01f,allowed)); float channel=Mathf.Lerp(0.42f,1f,core); river[ni]=Mathf.Max(river[ni],channel); wet[ni]=Mathf.Max(wet[ni],Mathf.Lerp(0.35f,0.9f,core)); priority[ni]=Mathf.Max(priority[ni],riverPriority); stamped++;} return stamped; }
-
-    private struct PendingLakePixel
-    {
-        public int index;
-        public float lakeValue;
-        public float wetValue;
-        public float priorityValue;
-    }
-
-    private bool PaintOrganicLakeBasin(int centerIndex,int baseRadius,float[] land,float[] lake,float[] wet,float[] priority,float lakePriority,System.Random rng,int lakeId,float[] coastDistance){int cx=centerIndex%mapWidth,cy=centerIndex/mapWidth; if(coastDistance[centerIndex]<8f) return false; float stretch=Mathf.Lerp(0.75f,1.35f,(float)rng.NextDouble()); float angle=(float)rng.NextDouble()*Mathf.PI*2f; Vector2 axisX=new Vector2(Mathf.Cos(angle),Mathf.Sin(angle)); Vector2 axisY=new Vector2(-axisX.y,axisX.x); int lobeCount=rng.Next(2,5); var lobeOffsets=new Vector2[lobeCount]; var lobeRadii=new float[lobeCount]; for(int i=0;i<lobeCount;i++){float a=(float)rng.NextDouble()*Mathf.PI*2f; float dist=baseRadius*Mathf.Lerp(0.25f,0.95f,(float)rng.NextDouble()); lobeOffsets[i]=new Vector2(Mathf.Cos(a),Mathf.Sin(a))*dist; lobeRadii[i]=baseRadius*Mathf.Lerp(0.35f,0.85f,(float)rng.NextDouble()); }
-        float threshold=Mathf.Lerp(0.57f,0.72f,(float)rng.NextDouble()); int reach=Mathf.CeilToInt(baseRadius*1.9f); int validLand=0, candidate=0, stamped=0;
-        var pendingPixels = new List<PendingLakePixel>();
-        for(int oy=-reach;oy<=reach;oy++)for(int ox=-reach;ox<=reach;ox++){int nx=(cx+ox+mapWidth)%mapWidth,ny=cy+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; candidate++; if(land[ni]>0.5f) validLand++; Vector2 d=new Vector2(ox,oy); float lx=Vector2.Dot(d,axisX), ly=Vector2.Dot(d,axisY); float rx=baseRadius*stretch, ry=baseRadius/Mathf.Max(0.2f,stretch); float e=Mathf.Sqrt((lx*lx)/(rx*rx)+(ly*ly)/(ry*ry)); float baseEllipse=Mathf.Clamp01(1f-e);
-            float strongestLobe=0f; for(int li=0;li<lobeCount;li++){Vector2 dl=d-lobeOffsets[li]; float nd=dl.magnitude/Mathf.Max(1f,lobeRadii[li]); strongestLobe=Mathf.Max(strongestLobe,Mathf.Clamp01(1f-nd));}
-            float shoreNoise=Mathf.PerlinNoise((nx+inputs.seed*0.17f+lakeId*1.93f)*0.065f,(ny-inputs.seed*0.21f-lakeId*2.31f)*0.065f);
-            float shape=baseEllipse*0.65f + strongestLobe*0.30f + shoreNoise*0.18f;
-            if(shape<=threshold) continue; if(land[ni]<=0.5f) continue;
-            float fill=Mathf.Clamp01((shape-threshold)/Mathf.Max(0.05f,1f-threshold)); fill=Mathf.SmoothStep(0f,1f,fill);
-            pendingPixels.Add(new PendingLakePixel { index = ni, lakeValue = fill, wetValue = Mathf.Lerp(0.45f,1f,fill), priorityValue = lakePriority }); stamped++; }
-        float landRatio=candidate>0?(float)validLand/candidate:0f;
-        bool accepted = stamped>260 && landRatio>=0.58f;
-        if(!accepted) return false;
-        for(int i=0;i<pendingPixels.Count;i++){var p=pendingPixels[i]; lake[p.index]=Mathf.Max(lake[p.index],p.lakeValue); wet[p.index]=Mathf.Max(wet[p.index],p.wetValue); priority[p.index]=Mathf.Max(priority[p.index],p.priorityValue);}        
-        return true;
-    }
-
-    private void ApplyHydrologyWetnessHalo(float[] land,float[] river,float[] lake,float[] wet){for(int y=0;y<mapHeight;y++)for(int x=0;x<mapWidth;x++){int i=y*mapWidth+x; if(land[i]<=0.5f) continue; float src=Mathf.Max(river[i],lake[i]); if(src<=0.01f) continue; int r=lake[i]>river[i]?10:7; for(int oy=-r;oy<=r;oy++)for(int ox=-r;ox<=r;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]<=0.5f) continue; float d=Mathf.Sqrt(ox*ox+oy*oy); if(d>r) continue; float falloff=1f-d/r; float baseV=lake[i]>river[i]?Mathf.Lerp(0.40f,0.75f,falloff):Mathf.Lerp(0.35f,0.70f,falloff); wet[ni]=Mathf.Max(wet[ni],baseV*src); }}}
-    private int FindNearestLand(int x,int y,float[] land,int radius){for(int r=0;r<=radius;r++)for(int oy=-r;oy<=r;oy++)for(int ox=-r;ox<=r;ox++){int nx=(x+ox+mapWidth)%mapWidth,ny=y+oy; if(ny<0||ny>=mapHeight) continue; int ni=ny*mapWidth+nx; if(land[ni]>0.5f) return ni;} return -1;}
-    private Vector2 IndexToXY(int index)=>new Vector2(index%mapWidth,index/mapWidth);
-    private Vector2 DeltaWrap(Vector2 from,Vector2 to){float dx=to.x-from.x; if(Mathf.Abs(dx)>mapWidth*0.5f) dx-=Mathf.Sign(dx)*mapWidth; return new Vector2(dx,to.y-from.y);}
-    private Vector2 Bezier(Vector2 p0,Vector2 p1,Vector2 p2,Vector2 p3,float t){float u=1f-t; return u*u*u*p0+3f*u*u*t*p1+3f*u*t*t*p2+t*t*t*p3;}
+    private void WriteSurfaceAndStructure(float[] land,float[] shelf,float[] cont){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){s[i]=new Color32(B(land[i]),0,0,B(shelf[i]));w[i]=new Color32(B(cont[i]),0,0,0);a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}
     [BurstCompile] private struct LandUpsampleAndDistanceJob : IJobFor
     {
         [ReadOnly] public NativeArray<float> topoLandCoastDistance, topoOceanCoastDistance, topoSignedCoastDistance;
         [ReadOnly] public NativeArray<float> macroCoastNoise, midCoastNoise, coastEdgeNoise;
         public int noiseFieldWidth, noiseFieldHeight;
         public int mapWidth, mapHeight, topoWidth, topoHeight; public float seed, coastlineDeformationWidthCells, coastlineWarpStrength, coastlineMidNoiseStrength, coastlineEdgeNoiseStrength, coastlineSoftness, coastlineThresholdBias;
-        public NativeArray<float> land, inlandDistance, offshoreDistance;
-        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float2 uv=new float2(((float)x/mapWidth)*topoWidth,((float)y/mapHeight)*topoHeight); SampleBilinear(uv, topoLandCoastDistance, out var inD); SampleBilinear(uv, topoOceanCoastDistance, out var offD); SampleBilinear(uv, topoSignedCoastDistance, out var signedTopoDistance); float2 noiseUV=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(noiseUV, macroCoastNoise, out var macro); SampleNoiseBilinear(noiseUV, midCoastNoise, out var mid); SampleNoiseBilinear(noiseUV, coastEdgeNoise, out var edge); float deformationWidth=math.max(0.001f,coastlineDeformationWidthCells); float signedEnvelope=signedTopoDistance/deformationWidth; float coastInfluence=1f-math.saturate(math.abs(signedEnvelope)); coastInfluence=coastInfluence*coastInfluence*(3f-2f*coastInfluence); float macroDisplacement=macro*coastlineWarpStrength; float midDisplacement=mid*coastlineMidNoiseStrength; float fineDisplacement=edge*coastlineEdgeNoiseStrength; float coastlineNoiseDisplacement=macroDisplacement+midDisplacement+fineDisplacement; float finalCoastSignal=signedEnvelope+coastlineNoiseDisplacement*coastInfluence-coastlineThresholdBias; land[i]=math.smoothstep(-coastlineSoftness,coastlineSoftness,finalCoastSignal); inlandDistance[i]=inD; offshoreDistance[i]=offD;}
+        public NativeArray<float> land, inlandDistance, offshoreDistance, shelf, continentality;
+        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float2 uv=new float2(((float)x/mapWidth)*topoWidth,((float)y/mapHeight)*topoHeight); SampleBilinear(uv, topoLandCoastDistance, out var inD); SampleBilinear(uv, topoOceanCoastDistance, out var offD); SampleBilinear(uv, topoSignedCoastDistance, out var signedTopoDistance); float2 noiseUV=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(noiseUV, macroCoastNoise, out var macro); SampleNoiseBilinear(noiseUV, midCoastNoise, out var mid); SampleNoiseBilinear(noiseUV, coastEdgeNoise, out var edge); float deformationWidth=math.max(0.001f,coastlineDeformationWidthCells); float signedEnvelope=signedTopoDistance/deformationWidth; float coastInfluence=1f-math.saturate(math.abs(signedEnvelope)); coastInfluence=coastInfluence*coastInfluence*(3f-2f*coastInfluence); float macroDisplacement=macro*coastlineWarpStrength; float midDisplacement=mid*coastlineMidNoiseStrength; float fineDisplacement=edge*coastlineEdgeNoiseStrength; float coastlineNoiseDisplacement=macroDisplacement+midDisplacement+fineDisplacement; float finalCoastSignal=signedEnvelope+coastlineNoiseDisplacement*coastInfluence-coastlineThresholdBias; land[i]=math.smoothstep(-coastlineSoftness,coastlineSoftness,finalCoastSignal); inlandDistance[i]=inD; offshoreDistance[i]=offD; float finalLand=land[i]; shelf[i]=(1f-finalLand)*math.saturate(1f-offD/(0.04f*mapHeight)); continentality[i]=finalLand*math.saturate(inD/(0.24f*mapHeight));}
         void SampleBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%topoWidth+topoWidth)%topoWidth,y0=math.clamp((int)math.floor(uv.y),0,topoHeight-1); int x1=(x0+1)%topoWidth,y1=math.min(y0+1,topoHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*topoWidth+x0],v10=arr[y0*topoWidth+x1],v01=arr[y1*topoWidth+x0],v11=arr[y1*topoWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
         void SampleNoiseBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%noiseFieldWidth+noiseFieldWidth)%noiseFieldWidth,y0=math.clamp((int)math.floor(uv.y),0,noiseFieldHeight-1); int x1=(x0+1)%noiseFieldWidth,y1=math.min(y0+1,noiseFieldHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*noiseFieldWidth+x0],v10=arr[y0*noiseFieldWidth+x1],v01=arr[y1*noiseFieldWidth+x0],v11=arr[y1*noiseFieldWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
     }
-    [BurstCompile] private struct TerrainPotentialJob : IJobFor
-    {
-        [ReadOnly] public NativeArray<float> uplandProvinceNoise,mountainProvinceNoise,mountainRangeNoise;
-        public int noiseFieldWidth,noiseFieldHeight;
-        [ReadOnly] public NativeArray<float> land,inlandDistance; public int mapWidth,mapHeight; public float seed;
-        public NativeArray<float> rawMountainPotential,uplandPotential;
-        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float inland=math.saturate(inlandDistance[i]/(0.24f*mapHeight)); float hillInland=math.smoothstep(0.02f,0.30f,inland); float2 uv=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(uv,uplandProvinceNoise,out var uplandRaw); SampleNoiseBilinear(uv,mountainProvinceNoise,out var mountainProvinceRaw); SampleNoiseBilinear(uv,mountainRangeNoise,out var mountainRangeRaw); float upland01=uplandRaw*0.5f+0.5f; float mountainProvince01=mountainProvinceRaw*0.5f+0.5f; float mountainRange01=mountainRangeRaw*0.5f+0.5f; float upland=math.smoothstep(0.36f,0.72f,upland01)*math.lerp(0.35f,1.0f,hillInland); uplandPotential[i]=land[i]*upland; float mountainProvince=math.smoothstep(0.45f,0.78f,mountainProvince01); float rangeBelts=math.smoothstep(0.40f,0.82f,mountainRange01); rawMountainPotential[i]=land[i]*inland*(mountainProvince*0.55f+rangeBelts*0.45f);}
-        void SampleNoiseBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%noiseFieldWidth+noiseFieldWidth)%noiseFieldWidth,y0=math.clamp((int)math.floor(uv.y),0,noiseFieldHeight-1); int x1=(x0+1)%noiseFieldWidth,y1=math.min(y0+1,noiseFieldHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*noiseFieldWidth+x0],v10=arr[y0*noiseFieldWidth+x1],v01=arr[y1*noiseFieldWidth+x0],v11=arr[y1*noiseFieldWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
-    }
-    [BurstCompile] private struct MountainFinalizeJob : IJobFor
-    {
-        [ReadOnly] public NativeArray<float> land,inlandDistance,offshoreDistance,hillRank,mountainRank; public int mapHeight; public float terrainRoughness;
-        public NativeArray<float> mountain,elevation,shelf,continentality,hillMaskOut;
-        public void Execute(int i){float l=land[i]; float roughness=math.saturate(terrainRoughness); float inland=math.saturate(inlandDistance[i]/(0.24f*mapHeight)); float hillRankValue=math.saturate(hillRank[i]); float mountainRankValue=math.saturate(mountainRank[i]); float hillCoverageThreshold=math.lerp(0.78f,0.28f,roughness); float mountainCoverageThreshold=math.lerp(0.985f,0.72f,roughness); float hillMask=l*math.smoothstep(hillCoverageThreshold-0.10f,hillCoverageThreshold+0.12f,hillRankValue); float mountainMask=l*math.smoothstep(mountainCoverageThreshold-0.06f,mountainCoverageThreshold+0.08f,mountainRankValue); float nonMountainHillMask=hillMask*(1.0f-mountainMask*0.55f); float lowlandHeight=l*math.lerp(0.035f,0.10f,roughness); float hillHeight=nonMountainHillMask*math.lerp(0.08f,0.42f,roughness); float mountainHeight=mountainMask*math.lerp(0.16f,0.92f,roughness); float finalElevation=math.saturate(lowlandHeight+hillHeight+mountainHeight); elevation[i]=finalElevation; mountain[i]=mountainMask; hillMaskOut[i]=nonMountainHillMask; shelf[i]=(1f-l)*math.saturate(1f-offshoreDistance[i]/(0.04f*mapHeight)); continentality[i]=l*inland;}
-    }
-    private void GenerateBiomes(float[] land,float[] elev,float[] mtn,float[] temp,float[] moisture,float[] river,float[] lake,float[] hydroWetness){int n=mapWidth*mapHeight;var o0=new Color32[n];var o1=new Color32[n];var o2=new Color32[n];float sharpness=Mathf.Lerp(0.75f,2.0f,Mathf.InverseLerp(0.5f,1.25f,inputs.biomeCompetitionSharpness));for(int i=0;i<n;i++){if(land[i]<0.5f){o0[i]=o1[i]=o2[i]=new Color32();continue;}float hot=temp[i],wet=moisture[i];float provinceNoise=(Mathf.PerlinNoise(((i%mapWidth)+inputs.seed*0.41f)*0.004f,((i/mapWidth)-inputs.seed*0.37f)*0.004f)-0.5f)*2f*inputs.biomeProvinceStrength*0.18f;float jungle=Mathf.Clamp01((hot-0.6f)*2f*(wet-0.6f+provinceNoise)*2f);float desert=Mathf.Clamp01((hot-0.5f)*2f*(0.7f-wet-provinceNoise*0.5f)*2f);float sav=Mathf.Clamp01((hot-0.5f)*2f*(1f-Mathf.Abs(wet-0.5f+provinceNoise*0.3f)*2f));float grass=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(1f-Mathf.Abs(wet-0.45f-provinceNoise*0.25f)*2f));float forest=Mathf.Clamp01((1f-Mathf.Abs(hot-0.5f)*2f)*(wet-0.45f+provinceNoise)*2f);float taiga=Mathf.Clamp01((0.55f-hot)*2f*(wet-0.35f+provinceNoise*0.4f)*2f);float tundra=Mathf.Clamp01((0.45f-hot)*2.5f);float polar=Mathf.Clamp01((0.3f-hot)*3f+elev[i]*0.2f+mtn[i]*0.2f);float lowlandFactor=Mathf.Clamp01((0.55f-elev[i])*2f);float marsh=Mathf.Clamp01(lowlandFactor*(hydroWetness[i]*Mathf.Lerp(0.5f,1.25f,inputs.riparianWetnessStrength)+lake[i]*0.65f+river[i]*0.30f)+wet*0.08f);jungle=Mathf.Pow(jungle,sharpness);desert=Mathf.Pow(desert,sharpness);sav=Mathf.Pow(sav,sharpness);grass=Mathf.Pow(grass,sharpness);forest=Mathf.Pow(forest,sharpness);taiga=Mathf.Pow(taiga,sharpness);tundra=Mathf.Pow(tundra,sharpness);polar=Mathf.Pow(polar,sharpness);marsh=Mathf.Pow(marsh,sharpness);float sum=jungle+desert+sav+grass+forest+taiga+tundra+polar+marsh+1e-5f;o0[i]=new Color32(B(jungle/sum),B(desert/sum),B(sav/sum),B(grass/sum));o1[i]=new Color32(B(forest/sum),B(taiga/sum),B(tundra/sum),B(polar/sum));o2[i]=new Color32(B(marsh/sum),B(polar),B(mtn[i]),0);}biomeWeights0Texture.SetPixelData(o0,0);biomeWeights0Texture.Apply(false,false);biomeWeights1Texture.SetPixelData(o1,0);biomeWeights1Texture.Apply(false,false);biomeWeights2Texture.SetPixelData(o2,0);biomeWeights2Texture.Apply(false,false);}
 }
