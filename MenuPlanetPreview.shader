@@ -64,6 +64,9 @@ Shader "Custom/MenuPlanetPreview"
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
             _WaterwayMaskTex("Waterway Mask Texture", 2D) = "black" {}
+            _WaterwayDepthTex("Waterway Depth Texture", 2D) = "black" {}
+            _RiverChannelCarveStrength("River Channel Carve Strength", Range(0,0.5)) = 0.05
+            _LakeBasinCarveStrength("Lake Basin Carve Strength", Range(0,0.5)) = 0.08
                                                         _GpuHeightTex("GPU Height Texture", 2D) = "black" {}
         _TectonicSurfaceTex("Tectonic Surface Texture", 2D) = "black" {}
         _TectonicBoundaryTex("Tectonic Boundary Texture", 2D) = "black" {}
@@ -191,7 +194,9 @@ Shader "Custom/MenuPlanetPreview"
                 float _Smoothness; float _Metallic; float _AmbientOcclusion; float _AmbientStrength; float _Brightness;
                 float _MountainDetailStrength; float _IceDetailStrength; float _OceanDetailStrength; float _OceanNormalStrength; float _MountainNormalStrength; float _IceNormalStrength;
                 float _TextureDetailScale; float _UseDetailTextures; float _UseTextureDrivenBiomes; float _BiomeTextureStrength; float _BiomeTintStrength; float _BiomeNormalStrength; float _BiomeTextureScale; float _BiomeTextureContrast;
-                float _ShowBiomeWeightsOnly; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly; float _ShowRiverMaskOnly; float _ShowLakeMaskOnly; float _ShowSurfaceWaterMaskOnly; float _ShowCloudShadowMaskOnly; float _ShowCoastShelfMaskOnly; float _ShowShorelineMaskOnly; float _ShowWetlandMaskOnly; float _ShowWaterDepthMaskOnly;
+                float _ShowBiomeWeightsOnly;
+                float _RiverChannelCarveStrength;
+                float _LakeBasinCarveStrength; float _ShowBiomeTextureOnly; float _ShowSmoothnessOnly; float _ShowLocalMoistureOnly; float _ShowLocalTemperatureOnly; float _ShowContinentalityOnly; float _ShowSeasonalityOnly; float _ShowRainShadowOnly; float _ShowRiparianWetnessOnly; float _ShowDominantBiomeOnly; float _ShowWaterwaysOnly; float _ShowWaterwayAmountOnly; float _ShowRiverMaskOnly; float _ShowLakeMaskOnly; float _ShowSurfaceWaterMaskOnly; float _ShowCloudShadowMaskOnly; float _ShowCoastShelfMaskOnly; float _ShowShorelineMaskOnly; float _ShowWetlandMaskOnly; float _ShowWaterDepthMaskOnly;
                 float _MoistureResponseScale; float _TemperatureHumidityInfluence; float _ClimateNoiseStrength; float _CoastWetnessStrength; float _ContinentalDrynessStrength; float _ContinentalTemperatureStrength; float _RainShadowStrength; float _OrographicWetnessStrength; float _OrographicSampleOffset; float _RiparianWetnessStrength; float _SeasonalityStrength; float _BiomeProvinceStrength; float _BiomeCompetitionSharpness;
                 float _TerminatorSoftness; float _ShowLandMaskOnly; float _ShowDetailTexturesOnly; float _ShowNormalsOnly; float _UseTectonicPreview; float _ShowTectonicLandMaskOnly; float _ShowTectonicHeightOnly; float _ShowPlateBoundariesOnly; float _ShowConvergentBoundariesOnly; float _ShowDivergentBoundariesOnly; float _ShowMountainUpliftOnly; float _ShowGeneratedHillReliefOnly; float _ShowContinentalShelfOnly; float _ShowCrustTypeOnly; float _ShowContinentalPotentialOnly;
                 float _VolcanicRockStrength; float _LavaCrackStrength; float _LavaEmissionStrength; float _LavaTextureScale; float _AshDetailStrength;
@@ -306,6 +311,7 @@ Shader "Custom/MenuPlanetPreview"
             TEXTURE2D(_OceanDetailTex);
             TEXTURE2D(_WaterwayDetailTex);
             TEXTURE2D(_WaterwayMaskTex); SAMPLER(sampler_WaterwayMaskTex);
+            TEXTURE2D(_WaterwayDepthTex); SAMPLER(sampler_WaterwayDepthTex);
                                                 TEXTURE2D(_OceanNormalTex);
             TEXTURE2D(_MountainNormalTex);
             TEXTURE2D(_IceNormalTex);
@@ -899,8 +905,11 @@ Shader "Custom/MenuPlanetPreview"
                 float generatedRiverMask = generatedWaterwayMask.r;
                 float generatedLakeMask = generatedWaterwayMask.g;
                 float wetlandMask = generatedWaterwayMask.b;
-                float waterDepthMask = generatedWaterwayMask.a;
                 float featurePriority = generatedWaterwayMask.a;
+                float4 depthData = SAMPLE_TEXTURE2D(_WaterwayDepthTex, sampler_WaterwayDepthTex, waterwayUV);
+                float riverCarveDepth = depthData.r;
+                float lakeBasinDepth = depthData.g;
+                float waterDepthMask = max(riverCarveDepth, lakeBasinDepth);
                 float revealThreshold = 1.0 - _WaterwayAmount;
                 float waterwayReveal = smoothstep(revealThreshold - 0.05, revealThreshold + 0.05, featurePriority);
                 float riverMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedRiverMask * waterwayReveal) : normalRiverMask;

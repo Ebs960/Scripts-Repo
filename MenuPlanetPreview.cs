@@ -213,6 +213,13 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showShorelineMaskOnly = false;
     [SerializeField] private bool showWetlandMaskOnly = false;
     [SerializeField] private bool showWaterDepthMaskOnly = false;
+    [SerializeField] private bool showHydroFillHeightOnly = false;
+    [SerializeField] private bool showFlowDirectionsOnly = false;
+    [SerializeField] private bool showFlowAccumulationOnly = false;
+    [SerializeField] private bool showBasinDepthOnly = false;
+    [SerializeField] private bool showHydroCarveDepthOnly = false;
+    [SerializeField, Range(0f, 0.5f)] private float riverChannelCarveStrength = 0.05f;
+    [SerializeField, Range(0f, 0.5f)] private float lakeBasinCarveStrength = 0.08f;
     [SerializeField] private bool disableCloudsForDebug = false;
     [SerializeField] private bool showTectonicLandMaskOnly = false;
     [SerializeField] private bool showTectonicHeightOnly = false;
@@ -405,6 +412,9 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_WaterwayDetailTex = Shader.PropertyToID("_WaterwayDetailTex");
     private static readonly int ID_WaterwayMaskTex = Shader.PropertyToID("_WaterwayMaskTex");
+    private static readonly int ID_WaterwayDepthTex = Shader.PropertyToID("_WaterwayDepthTex");
+    private static readonly int ID_RiverChannelCarveStrength = Shader.PropertyToID("_RiverChannelCarveStrength");
+    private static readonly int ID_LakeBasinCarveStrength = Shader.PropertyToID("_LakeBasinCarveStrength");
     private static readonly int ID_OceanNormalTex = Shader.PropertyToID("_OceanNormalTex");
     private static readonly int ID_MountainNormalTex = Shader.PropertyToID("_MountainNormalTex");
     private static readonly int ID_IceNormalTex = Shader.PropertyToID("_IceNormalTex");
@@ -641,6 +651,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
         materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
+        materialInstance.SetTexture(ID_WaterwayDepthTex, worldGenerator.ActiveHydrologyDepthTexture);
     }
 
     private void Update()
@@ -797,6 +808,8 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_IceDisplacementStrength, iceDisplacementStrength);
         materialInstance.SetFloat(ID_VolcanicDisplacementStrength, volcanicDisplacementStrength);
         materialInstance.SetFloat(ID_OceanDepthStrength, oceanDepthStrength);
+        materialInstance.SetFloat(ID_RiverChannelCarveStrength, riverChannelCarveStrength);
+        materialInstance.SetFloat(ID_LakeBasinCarveStrength, lakeBasinCarveStrength);
         materialInstance.SetFloat(ID_ShowElevationOnly, showElevationOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowMountainMaskOnly, showMountainMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDisplacementHeightOnly, showDisplacementHeightOnly ? 1f : 0f);
