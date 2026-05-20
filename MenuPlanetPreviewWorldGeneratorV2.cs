@@ -196,7 +196,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int gpuCoastlineKernel = -1;
     private RenderTexture gpuHeightTexture;
     private RenderTexture gpuHydrologyTexture;
-    private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture;
+    private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private int gpuHeightKernel = -1;
     private int gpuRiverKernel = -1;
     private int gpuLakeKernel = -1;
@@ -381,7 +381,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         topoSignedCoastDistanceBuffer.SetData(topoSignedCoastDistance);
         if (gpuCoastlineKernel < 0) gpuCoastlineKernel = menuPlanetPreviewCoastlineCompute.FindKernel("GenerateCoastline");
         var cs = menuPlanetPreviewCoastlineCompute;
-        cs.SetInt("_MapWidth", mapWidth); cs.SetInt("_MapHeight", mapHeight); cs.SetInt("_TopologyWidth", topologyWidth); cs.SetInt("_TopologyHeight", topologyHeight);
+        cs.SetInt("_MapWidth", mapWidth); cs.SetInt("_MapHeight", mapHeight);
+        cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
+        cs.SetInt("_HydrologyAnalysisHeight", analysisHeight); cs.SetInt("_TopologyWidth", topologyWidth); cs.SetInt("_TopologyHeight", topologyHeight);
         cs.SetFloat("_Seed", inputs.seed); cs.SetFloat("_CoastlineDeformationWidthCells", coastlineDeformationWidthCells); cs.SetFloat("_CoastlineWarpStrength", coastlineWarpStrength); cs.SetFloat("_CoastlineMidNoiseStrength", coastlineMidNoiseStrength); cs.SetFloat("_CoastlineEdgeNoiseStrength", coastlineEdgeNoiseStrength); cs.SetFloat("_CoastlineSoftness", coastlineSoftness); cs.SetFloat("_CoastlineThresholdBias", coastlineThresholdBias);
         cs.SetBuffer(gpuCoastlineKernel, "_TopoLandCoastDistance", topoLandCoastDistanceBuffer);
         cs.SetBuffer(gpuCoastlineKernel, "_TopoOceanCoastDistance", topoOceanCoastDistanceBuffer);
@@ -514,20 +516,30 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (gpuFlowAccumA == null) { gpuFlowAccumA = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuFlowAccumA.Create(); }
         if (gpuFlowAccumB == null) { gpuFlowAccumB = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuFlowAccumB.Create(); }
         if (gpuCoarseHydrologyMaskTexture == null) { gpuCoarseHydrologyMaskTexture = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuCoarseHydrologyMaskTexture.Create(); }
+        if (gpuCoarseHydrologyDepthTexture == null) { gpuCoarseHydrologyDepthTexture = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuCoarseHydrologyDepthTexture.Create(); }
+    }
+
+    private void ReleaseRenderTexture(ref RenderTexture rt)
+    {
+        if (rt == null) return;
+        rt.Release();
+        Destroy(rt);
+        rt = null;
     }
 
     private void ReleaseGpuHydrologyResources()
     {
-        if (gpuHydrologyTexture != null)
-        {
-            gpuHydrologyTexture.Release();
-            Destroy(gpuHydrologyTexture);
-            gpuHydrologyTexture = null;
-        }
+        ReleaseRenderTexture(ref gpuHydrologyTexture);
         if (gpuRiverFeatureBuffer != null) { gpuRiverFeatureBuffer.Release(); gpuRiverFeatureBuffer = null; }
         if (gpuLakeFeatureBuffer != null) { gpuLakeFeatureBuffer.Release(); gpuLakeFeatureBuffer = null; }
-        foreach (var rt in new[] { gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture }) { if (rt != null) rt.Release(); }
-        gpuHydrologyDepthTexture = gpuDrainageFillA = gpuDrainageFillB = gpuFlowDirectionTexture = gpuFlowAccumA = gpuFlowAccumB = gpuCoarseHydrologyMaskTexture = null;
+        ReleaseRenderTexture(ref gpuHydrologyDepthTexture);
+        ReleaseRenderTexture(ref gpuDrainageFillA);
+        ReleaseRenderTexture(ref gpuDrainageFillB);
+        ReleaseRenderTexture(ref gpuFlowDirectionTexture);
+        ReleaseRenderTexture(ref gpuFlowAccumA);
+        ReleaseRenderTexture(ref gpuFlowAccumB);
+        ReleaseRenderTexture(ref gpuCoarseHydrologyMaskTexture);
+        ReleaseRenderTexture(ref gpuCoarseHydrologyDepthTexture);
         gpuRiverKernel = -1;
         gpuLakeKernel = -1;
         gpuClearRiverKernel = -1;
@@ -570,6 +582,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
         var cs = menuPlanetPreviewHydrologyCompute;
         cs.SetInt("_MapWidth", mapWidth); cs.SetInt("_MapHeight", mapHeight);
+        cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
+        cs.SetInt("_HydrologyAnalysisHeight", analysisHeight);
         cs.SetFloat("_Seed", inputs.seed); cs.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation)); cs.SetFloat("_Moisture", Mathf.Clamp01(inputs.moisture));
         cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset); cs.SetInt("_RiverCount", riverCount); cs.SetInt("_LakeCount", lakeCount);
         cs.SetFloat("_RiverMeanderStrength", gpuRiverMeanderStrength); cs.SetFloat("_RiverSourceElevationPreference", gpuRiverSourceElevationPreference); cs.SetFloat("_RiverInlandPreference", gpuRiverInlandPreference); cs.SetFloat("_RiverLateralWanderFraction", gpuRiverLateralWanderFraction); cs.SetFloat("_RiverUpperWidthPixels", gpuRiverUpperWidthPixels); cs.SetFloat("_RiverLowerWidthPixels", gpuRiverLowerWidthPixels); cs.SetFloat("_RiverMinSourceContinentality", gpuRiverMinSourceContinentality);
@@ -597,23 +611,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         }
         cs.SetTexture(gpuRasterHydrologyKernel, "_GpuHydrologyTex", gpuHydrologyTexture);
 
-        cs.Dispatch(gpuClearRiverKernel, Mathf.CeilToInt(Mathf.Max(1, riverCount) / 64f), 1, 1);
-        if (!gpuAllRiversStartFromLakes)
-            cs.Dispatch(gpuRiverKernel, Mathf.CeilToInt(riverCount / 64f), 1, 1);
-        cs.Dispatch(gpuLakeKernel, Mathf.CeilToInt(Mathf.Max(1, lakeCount) / 64f), 1, 1);
-        cs.Dispatch(gpuLakeOutflowRiverKernel, Mathf.CeilToInt(Mathf.Max(1, riverCount) / 64f), 1, 1);
-        if (logGpuHydrologyFeatureDiagnostics)
-        {
-            var riverData = new RiverFeaturePacked[riverCount];
-            var lakeData = new LakeFeaturePacked[lakeCount];
-            gpuRiverFeatureBuffer.GetData(riverData, 0, 0, riverCount);
-            if (lakeCount > 0) gpuLakeFeatureBuffer.GetData(lakeData, 0, 0, lakeCount);
-            int validRivers = 0;
-            for (int i = 0; i < riverData.Length; i++) if (riverData[i].misc.y > 0.5f) validRivers++;
-            int validLakes = 0;
-            for (int i = 0; i < lakeData.Length; i++) if (lakeData[i].mainShape.w > 0.5f) validLakes++;
-            Debug.Log($"[WorldGenV2 GPU Hydrology Features] RiversRequested={riverCount} LakeOutflowRiversValid={validRivers} LakesRequested={lakeCount} LakesValid={validLakes} AllRiversFromLakes={gpuAllRiversStartFromLakes}");
-        }
         if (useTerrainDrivenHydrology)
         {
             int kInitFill = cs.FindKernel("InitDrainageFill");
@@ -633,6 +630,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 cs.SetTexture(k, "_FlowAccumTexA", gpuFlowAccumA);
                 cs.SetTexture(k, "_FlowAccumTexB", gpuFlowAccumB);
                 cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
+                cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
                 cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
                 cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
             }
@@ -644,7 +642,27 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             cs.Dispatch(kBuild, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
             cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
         }
-        else cs.Dispatch(gpuRasterHydrologyKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
+        else
+        {
+            cs.Dispatch(gpuClearRiverKernel, Mathf.CeilToInt(Mathf.Max(1, riverCount) / 64f), 1, 1);
+            if (!gpuAllRiversStartFromLakes)
+                cs.Dispatch(gpuRiverKernel, Mathf.CeilToInt(riverCount / 64f), 1, 1);
+            cs.Dispatch(gpuLakeKernel, Mathf.CeilToInt(Mathf.Max(1, lakeCount) / 64f), 1, 1);
+            cs.Dispatch(gpuLakeOutflowRiverKernel, Mathf.CeilToInt(Mathf.Max(1, riverCount) / 64f), 1, 1);
+            cs.Dispatch(gpuRasterHydrologyKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
+        }
+        if (logGpuHydrologyFeatureDiagnostics)
+        {
+            var riverData = new RiverFeaturePacked[riverCount];
+            var lakeData = new LakeFeaturePacked[lakeCount];
+            gpuRiverFeatureBuffer.GetData(riverData, 0, 0, riverCount);
+            if (lakeCount > 0) gpuLakeFeatureBuffer.GetData(lakeData, 0, 0, lakeCount);
+            int validRivers = 0;
+            for (int i = 0; i < riverData.Length; i++) if (riverData[i].misc.y > 0.5f) validRivers++;
+            int validLakes = 0;
+            for (int i = 0; i < lakeData.Length; i++) if (lakeData[i].mainShape.w > 0.5f) validLakes++;
+            Debug.Log($"[WorldGenV2 GPU Hydrology Features] RiversRequested={riverCount} LakeOutflowRiversValid={validRivers} LakesRequested={lakeCount} LakesValid={validLakes} AllRiversFromLakes={gpuAllRiversStartFromLakes}");
+        }
         Debug.Log($"[WorldGenV2 GPU Hydrology] RiversRequested={riverCount} LakesRequested={lakeCount} Moisture={inputs.moisture:F2} WaterwaysPreset={inputs.waterwaysPreset} HeightRTReady={gpuHeightTexture != null}");
     }
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
