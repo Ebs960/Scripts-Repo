@@ -418,14 +418,13 @@ MonoBehaviour:
   cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   worldGenerator: {fileID: 7555492816204091449}
-  useGpuLiveClimateAndBiomes: 1
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 20
   detailScale: 100
   detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.035
+  displacementScale: 0.05
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
@@ -500,7 +499,7 @@ MonoBehaviour:
   biomeTextureStrength: 1
   climateGradeStrength: 0.06
   biomeNormalStrength: 0.394
-  biomeTextureScale: 2.8
+  biomeTextureScale: 2
   biomeTextureContrast: 0.324
   landUpliftStrength: 0.15
   hillDisplacementStrength: 0.5
@@ -558,9 +557,9 @@ MonoBehaviour:
   coastWetnessStrength: 0.3
   continentalDrynessStrength: 0.1
   continentalTemperatureStrength: 0.05
-  riparianWetnessStrength: 0.15
-  biomeProvinceStrength: 0.3
-  biomeCompetitionSharpness: 0.85
+  riparianWetnessStrength: 0.095
+  biomeProvinceStrength: 0.214
+  biomeCompetitionSharpness: 1.017
   elevation: 0.3
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
@@ -598,55 +597,41 @@ MonoBehaviour:
   mapWidth: 2048
   mapHeight: 1024
   regenerationDelay: 0.01
-  topologyWidth: 1024
-  topologyHeight: 512
+  topologyWidth: 512
+  topologyHeight: 256
   coastlineDeformationWidthCells: 24
   coastlineWarpStrength: 1.3
   coastlineMidNoiseStrength: 1.5
-  coastlineEdgeNoiseStrength: 0.314
+  coastlineEdgeNoiseStrength: 0.479
   coastlineSoftness: 0.05
   coastlineThresholdBias: 0
-  logWorldGenerationDiagnostics: 1
-  logLandmassGenerationDiagnostics: 1
+  logWorldGenerationDiagnostics: 0
   useFastNoiseLiteFields: 1
   noiseFieldWidth: 1024
   noiseFieldHeight: 512
-  sparseRiverRange: {x: 12, y: 170}
-  standardRiverRange: {x: 50, y: 170}
-  abundantRiverRange: {x: 45, y: 200}
   useGpuHeightPreview: 1
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
   useGpuHydrologyPreview: 1
+  gpuAllRiversStartFromLakes: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
-  useGpuLiveClimateAndBiomesPreview: 1
-  gpuSparseRiverCount: 10
-  gpuStandardRiverCount: 18
-  gpuAbundantRiverCount: 28
+  gpuSparseRiverCount: 4
+  gpuStandardRiverCount: 6
+  gpuAbundantRiverCount: 12
   gpuSparseLakeCount: 4
-  gpuStandardLakeCount: 8
-  gpuAbundantLakeCount: 13
+  gpuStandardLakeCount: 7
+  gpuAbundantLakeCount: 10
   gpuHydrologyMoistureCountInfluence: 0.35
-  gpuRiverMeanderStrength: 0.42
-  gpuRiverSourceElevationPreference: 0.25
+  gpuRiverMeanderStrength: 0.613
+  gpuRiverSourceElevationPreference: 0.428
   gpuRiverInlandPreference: 0.75
-  gpuRiverLateralWanderFraction: 0.07
-  gpuRiverUpperWidthPixels: 5.15
-  gpuRiverLowerWidthPixels: 3.12
-  gpuRiverMinSourceContinentality: 0.18
+  gpuRiverLateralWanderFraction: 0.088
+  gpuRiverUpperWidthPixels: 2.1
+  gpuRiverLowerWidthPixels: 1.81
+  gpuRiverMinSourceContinentality: 4
   gpuLakeMinContinentality: 0.12
-  gpuLakeMinRadiusPixels: 18
-  gpuLakeMaxRadiusPixels: 52
-  logGpuHydrologyFeatureDiagnostics: 1
-  minRiverSourceSpacingPixels: 20
-  riverCandidateStride: 7
-  decorativeRiverMinSourceCoastDistance: 30
-  decorativeRiverMeanderStrength: 0.4
-  decorativeRiverLateralWanderFraction: 0.1
-  decorativeRiverControlPointCountMin: 10
-  decorativeRiverControlPointCountMax: 14
-  decorativeRiverUpperRadius: 3
-  decorativeRiverLowerRadius: 2
-  decorativeRiverLandSnapRadius: 6
+  gpuLakeMinRadiusPixels: 13
+  gpuLakeMaxRadiusPixels: 19.2
+  logGpuHydrologyFeatureDiagnostics: 0
   presets:
   - name: Archipelago
     majorLandmasses:
@@ -708,13 +693,13 @@ MonoBehaviour:
     majorLandmasses:
       minCount: 3
       maxCount: 4
-      minAreaFraction: 0.1
-      maxAreaFraction: 0.12
+      minAreaFraction: 0.07
+      maxAreaFraction: 0.1
       minLobes: 6
-      maxLobes: 8
+      maxLobes: 7
     largeIslands:
-      minCount: 4
-      maxCount: 5
+      minCount: 3
+      maxCount: 3
       minAreaFraction: 0.005
       maxAreaFraction: 0.005
       minLobes: 1
@@ -735,7 +720,7 @@ MonoBehaviour:
   - name: Large Continents
     majorLandmasses:
       minCount: 4
-      maxCount: 4
+      maxCount: 5
       minAreaFraction: 0.2
       maxAreaFraction: 0.28
       minLobes: 3
@@ -791,18 +776,18 @@ MonoBehaviour:
   - name: Terrestrial
     majorLandmasses:
       minCount: 5
-      maxCount: 5
+      maxCount: 6
       minAreaFraction: 0.3
       maxAreaFraction: 0.35
-      minLobes: 3
+      minLobes: 4
       maxLobes: 9
     largeIslands:
-      minCount: 2
+      minCount: 5
       maxCount: 6
       minAreaFraction: 0.006
       maxAreaFraction: 0.026
-      minLobes: 1
-      maxLobes: 3
+      minLobes: 6
+      maxLobes: 8
     smallIslandClusters:
       minCount: 2
       maxCount: 8
