@@ -1,0 +1,56 @@
+#pragma kernel GenerateCoastline
+
+StructuredBuffer<float> _TopoLandCoastDistance;
+StructuredBuffer<float> _TopoOceanCoastDistance;
+StructuredBuffer<float> _TopoSignedCoastDistance;
+
+RWTexture2D<float4> _GpuTectonicSurfaceTex;
+RWTexture2D<float4> _GpuTectonicBoundaryTex;
+RWTexture2D<float4> _GpuTectonicCrustTex;
+
+int _MapWidth;
+int _MapHeight;
+int _TopologyWidth;
+int _TopologyHeight;
+
+float _Seed;
+float _CoastlineDeformationWidthCells;
+float _CoastlineWarpStrength;
+float _CoastlineMidNoiseStrength;
+float _CoastlineEdgeNoiseStrength;
+float _CoastlineSoftness;
+float _CoastlineThresholdBias;
+
+float Hash31(float3 p){ return frac(sin(dot(p,float3(127.1,311.7,74.7)))*43758.5453123); }
+float Noise3D(float3 p){ float3 i=floor(p), f=frac(p); f=f*f*(3.0-2.0*f); float n000=Hash31(i+float3(0,0,0)),n100=Hash31(i+float3(1,0,0)),n010=Hash31(i+float3(0,1,0)),n110=Hash31(i+float3(1,1,0)); float n001=Hash31(i+float3(0,0,1)),n101=Hash31(i+float3(1,0,1)),n011=Hash31(i+float3(0,1,1)),n111=Hash31(i+float3(1,1,1)); float nx00=lerp(n000,n100,f.x),nx10=lerp(n010,n110,f.x),nx01=lerp(n001,n101,f.x),nx11=lerp(n011,n111,f.x); return lerp(lerp(nx00,nx10,f.y),lerp(nx01,nx11,f.y),f.z); }
+float Fbm(float3 p){ float s=0,a=0.5; [unroll] for(int i=0;i<4;i++){ s+=Noise3D(p)*a; p*=2.0; a*=0.5; } return saturate(s); }
+
+float3 TexelToDir(int x,int y,int w,int h){ float u=(x+0.5)/w; float v=(y+0.5)/h; float lon=u*6.28318530718-3.14159265359; float lat=(0.5-v)*3.14159265359; float cl=cos(lat); return float3(cl*cos(lon),sin(lat),cl*sin(lon)); }
+float SampleBilinear(StructuredBuffer<float> buf, int w, int h, float2 uv){ int x0=((int)floor(uv.x)%w+w)%w, y0=clamp((int)floor(uv.y),0,h-1); int x1=(x0+1)%w, y1=min(y0+1,h-1); float fx=frac(uv.x), fy=frac(uv.y); float v00=buf[y0*w+x0], v10=buf[y0*w+x1], v01=buf[y1*w+x0], v11=buf[y1*w+x1]; return lerp(lerp(v00,v10,fx),lerp(v01,v11,fx),fy); }
+
+[numthreads(8,8,1)]
+void GenerateCoastline(uint3 id:SV_DispatchThreadID){
+ if(id.x>=_MapWidth||id.y>=_MapHeight) return;
+ int x=(int)id.x, y=(int)id.y;
+ float2 topoUV=float2(((float)x/_MapWidth)*_TopologyWidth,((float)y/_MapHeight)*_TopologyHeight);
+ float inD=SampleBilinear(_TopoLandCoastDistance,_TopologyWidth,_TopologyHeight,topoUV);
+ float offD=SampleBilinear(_TopoOceanCoastDistance,_TopologyWidth,_TopologyHeight,topoUV);
+ float signedTopoDistance=SampleBilinear(_TopoSignedCoastDistance,_TopologyWidth,_TopologyHeight,topoUV);
+ float3 dir=TexelToDir(x,y,_MapWidth,_MapHeight);
+ float seed=_Seed*17.13;
+ float3 warp=float3(Fbm(dir*1.10+float3(seed+11.1,seed+23.2,seed+37.7)),Fbm(dir*1.10+float3(seed+47.3,seed+59.9,seed+71.4)),Fbm(dir*1.10+float3(seed+83.8,seed+97.5,seed+109.2)))-0.5;
+ float3 warpedDir=normalize(dir+warp*0.40);
+ float macro=Fbm(warpedDir*1.35+float3(seed+131.1,seed+149.2,seed+163.7))*2.0-1.0;
+ float mid=Fbm(warpedDir*2.55+float3(seed+181.3,seed+197.9,seed+211.4))*2.0-1.0;
+ float edge=Fbm(dir*4.75+float3(seed+227.2,seed+239.6,seed+251.8))*2.0-1.0;
+ float signedEnvelope=signedTopoDistance/max(0.001,_CoastlineDeformationWidthCells);
+ float coastInfluence=1.0-saturate(abs(signedEnvelope)); coastInfluence=coastInfluence*coastInfluence*(3.0-2.0*coastInfluence);
+ float coastlineNoiseDisplacement=macro*_CoastlineWarpStrength+mid*_CoastlineMidNoiseStrength+edge*_CoastlineEdgeNoiseStrength;
+ float finalCoastSignal=signedEnvelope+coastlineNoiseDisplacement*coastInfluence-_CoastlineThresholdBias;
+ float land=smoothstep(-_CoastlineSoftness,_CoastlineSoftness,finalCoastSignal);
+ float shelf=(1.0-land)*saturate(1.0-offD/(0.04*_MapHeight));
+ float continentality=land*saturate(inD/(0.24*_MapHeight));
+ _GpuTectonicSurfaceTex[int2(x,y)] = float4(land,0,0,shelf);
+ _GpuTectonicBoundaryTex[int2(x,y)] = float4(shelf,continentality,0,0);
+ _GpuTectonicCrustTex[int2(x,y)] = float4(continentality,0,0,0);
+}

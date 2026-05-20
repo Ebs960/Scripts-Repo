@@ -62,10 +62,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(-0.75f, 0.75f)] private float coastlineThresholdBias = 0f;
     [SerializeField] private bool logWorldGenerationDiagnostics = true;
 
-    [Header("FastNoiseLite Sphere Fields")]
-    [SerializeField] private bool useFastNoiseLiteFields = true;
-    [SerializeField, Range(128, 1024)] private int noiseFieldWidth = 512;
-    [SerializeField, Range(64, 512)] private int noiseFieldHeight = 256;
+    [Header("GPU Coastline")]
+    [SerializeField] private bool useGpuCoastlinePreview = true;
+    [SerializeField] private ComputeShader menuPlanetPreviewCoastlineCompute;
 
     [Header("GPU Height")]
     [SerializeField] private bool useGpuHeightPreview = true;
@@ -101,9 +100,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private bool logGpuHydrologyFeatureDiagnostics = false;
 
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture;
-    public Texture2D TectonicSurfaceTexture => surfaceDataTexture;
-    public Texture2D TectonicBoundaryTexture => auxiliaryMaskTexture;
-    public Texture2D TectonicCrustTexture => worldStructureTexture;
+    public Texture TectonicSurfaceTexture => useGpuCoastlinePreview ? gpuTectonicSurfaceTexture : surfaceDataTexture;
+    public Texture TectonicBoundaryTexture => useGpuCoastlinePreview ? gpuTectonicBoundaryTexture : auxiliaryMaskTexture;
+    public Texture TectonicCrustTexture => useGpuCoastlinePreview ? gpuTectonicCrustTexture : worldStructureTexture;
     public Texture ActiveHydrologyTexture => gpuHydrologyTexture;
     public RenderTexture GpuHeightTexture => gpuHeightTexture;
     public event Action WorldTexturesUpdated;
@@ -162,17 +161,21 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public bool IsGeneratingPreview { get; private set; }
     private float generationStartedAt;
 
-    private float[] cachedMacroCoastNoise;
-    private float[] cachedMidCoastNoise;
-    private float[] cachedCoastEdgeNoise;
     private float[] cachedTopologyShapeNoise;
 
-    private int cachedNoiseSeed;
+    private int cachedTopologyNoiseSeed;
     private int cachedNoiseWidth;
     private int cachedNoiseHeight;
     private int cachedTopologyWidth;
     private int cachedTopologyHeight;
-    private bool fastNoiseFieldsValid;
+    private bool topologyShapeNoiseValid;
+    private RenderTexture gpuTectonicSurfaceTexture;
+    private RenderTexture gpuTectonicBoundaryTexture;
+    private RenderTexture gpuTectonicCrustTexture;
+    private ComputeBuffer topoLandCoastDistanceBuffer;
+    private ComputeBuffer topoOceanCoastDistanceBuffer;
+    private ComputeBuffer topoSignedCoastDistanceBuffer;
+    private int gpuCoastlineKernel = -1;
     private RenderTexture gpuHeightTexture;
     private RenderTexture gpuHydrologyTexture;
     private int gpuHeightKernel = -1;
@@ -229,6 +232,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         DestroyTex(ref surfaceDataTexture);
         DestroyTex(ref auxiliaryMaskTexture);
         DestroyTex(ref worldStructureTexture);
+        ReleaseGpuCoastlineResources();
         ReleaseGpuHeightTexture();
         ReleaseGpuHydrologyResources();
     }
@@ -266,8 +270,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
         if ((s & PreviewWorldRebuildScope.Tectonics) != 0)
         {
-            GenerateTerrain(out land, out shelf, out cont, out diag);
-            WriteSurfaceAndStructure(land, shelf, cont);
+            GenerateTopologyFields(out var topoLandDist, out var topoOceanDist, out var topoSignedCoastDistance, out diag);
+            DispatchGpuCoastline(topoLandDist, topoOceanDist, topoSignedCoastDistance);
             DispatchGpuHeight();
             DispatchGpuHydrology();
             yield return null;
@@ -324,6 +328,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             return;
         }
 
+        ReleaseGpuCoastlineResources();
         ReleaseGpuHeightTexture();
         ReleaseGpuHydrologyResources();
         gpuHeightTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
@@ -352,7 +357,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (!useGpuHeightPreview) return;
         TryAssignDefaultGpuHeightCompute();
         if (menuPlanetPreviewHeightCompute == null) return;
-        if (surfaceDataTexture == null || worldStructureTexture == null) return;
+        if (TectonicSurfaceTexture == null || TectonicCrustTexture == null) return;
 
         EnsureGpuHeightTexture();
         if (gpuHeightTexture == null) return;
@@ -365,8 +370,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         menuPlanetPreviewHeightCompute.SetFloat("_Seed", inputs.seed);
         menuPlanetPreviewHeightCompute.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation));
 
-        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", surfaceDataTexture);
-        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", worldStructureTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", TectonicCrustTexture);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuHeightTex", gpuHeightTexture);
 
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
@@ -452,7 +457,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
         TryAssignDefaultGpuHydrologyCompute();
         if (menuPlanetPreviewHydrologyCompute == null) return;
-        if (surfaceDataTexture == null || worldStructureTexture == null || gpuHeightTexture == null) return;
+        if (TectonicSurfaceTexture == null || TectonicCrustTexture == null || gpuHeightTexture == null) return;
 
         EnsureGpuHydrologyResources();
         GetGpuHydrologyCounts(out int riverCount, out int lakeCount);
@@ -471,8 +476,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
         foreach (int k in new [] { gpuRiverKernel, gpuClearRiverKernel, gpuLakeKernel, gpuLakeOutflowRiverKernel, gpuRasterHydrologyKernel })
         {
-            cs.SetTexture(k, "_TectonicSurfaceTex", surfaceDataTexture);
-            cs.SetTexture(k, "_TectonicCrustTex", worldStructureTexture);
+            cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+            cs.SetTexture(k, "_TectonicCrustTex", TectonicCrustTexture);
             cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
             cs.SetBuffer(k, "_RiverFeatures", gpuRiverFeatureBuffer);
             cs.SetBuffer(k, "_LakeFeatures", gpuLakeFeatureBuffer);
@@ -502,128 +507,35 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
 
     // concise but complete implementation
-    private void GenerateTerrain(out float[] land,out float[] shelf,out float[] cont,out GenDiagnostics diag){
+    private void GenerateTopologyFields(out float[] topoLandDist,out float[] topoOceanDist,out float[] topoSignedCoastDistance,out GenDiagnostics diag){
         int tw=Mathf.Max(16,topologyWidth),th=Mathf.Max(8,topologyHeight),tn=tw*th; diag=default;
         int presetIndex=Mathf.Clamp(inputs.landPresetIndex,0,presets.Length-1); var preset=presets[presetIndex]; diag.preset=preset.name;
-        float sizeBias=Mathf.Clamp01(1f-inputs.landThreshold); float shapeBias=Mathf.InverseLerp(0.5f,5f,inputs.landScale); diag.targetLand=0f;
-        TopologyCell[] topo=new TopologyCell[tn];
-        int seedBase = Mathf.RoundToInt(inputs.seed * 1000f);
-        EnsureFastNoiseFields(seedBase, tw, th);
+        float sizeBias=Mathf.Clamp01(1f-inputs.landThreshold); float shapeBias=Mathf.InverseLerp(0.5f,5f,inputs.landScale);
+        TopologyCell[] topo=new TopologyCell[tn]; int seedBase=Mathf.RoundToInt(inputs.seed*1000f);
+        EnsureTopologyShapeNoiseField(seedBase, tw, th);
         var r=new System.Random((seedBase*73856093) ^ 19349663);
         var plans=BuildLandmassPlan(preset,tw,th,r,sizeBias,shapeBias,out var planBuildDiag);
         RasterizeLandmassPlansToTopology(topo,plans,preset,tw,th,shapeBias);
-        diag.targetTopologyLandCells = planBuildDiag.totalPlannedTargetCells;
-        diag.topologyLandCells = CountTopologyLandCells(topo);
-        diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
+        diag.targetTopologyLandCells = planBuildDiag.totalPlannedTargetCells; diag.topologyLandCells = CountTopologyLandCells(topo); diag.topologyCoverage = tn > 0 ? (float)diag.topologyLandCells / tn : 0f;
         int[] comp; diag.largestGroupShare=LargestLandmassShare(topo,tw,th,out diag.groupCount,out comp);
         bool[] topoLand = new bool[tn]; for (int i = 0; i < tn; i++) topoLand[i] = topo[i].isLand;
-        float[] topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
-        float[] topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
-        float[] topoSignedCoastDistance = BuildSignedTopologyCoastDistance(topoLand, topoLandDist, topoOceanDist);
-        int noiseW = Mathf.Max(1, cachedNoiseWidth);
-        int noiseH = Mathf.Max(1, cachedNoiseHeight);
-        int n=mapWidth*mapHeight; land=new float[n]; shelf=new float[n]; cont=new float[n];
-        var nTopoLandDist = new NativeArray<float>(tn, Allocator.TempJob);
-        var nTopoOceanDist = new NativeArray<float>(tn, Allocator.TempJob);
-        var nTopoSignedCoastDistance = new NativeArray<float>(tn, Allocator.TempJob);
-        var nLand = new NativeArray<float>(n, Allocator.TempJob);
-        var nInland = new NativeArray<float>(n, Allocator.TempJob);
-        var nOffshore = new NativeArray<float>(n, Allocator.TempJob);
-        var nShelf = new NativeArray<float>(n, Allocator.TempJob);
-        var nCont = new NativeArray<float>(n, Allocator.TempJob);
-        int nn = noiseW * noiseH;
-        var nMacroCoastNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        var nMidCoastNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        var nCoastEdgeNoise = new NativeArray<float>(nn, Allocator.TempJob);
-        try{
-            for(int i=0;i<tn;i++){nTopoLandDist[i]=topoLandDist[i]; nTopoOceanDist[i]=topoOceanDist[i]; nTopoSignedCoastDistance[i]=topoSignedCoastDistance[i];}
-            if (fastNoiseFieldsValid && useFastNoiseLiteFields)
-            {
-                nMacroCoastNoise.CopyFrom(cachedMacroCoastNoise);
-                nMidCoastNoise.CopyFrom(cachedMidCoastNoise);
-                nCoastEdgeNoise.CopyFrom(cachedCoastEdgeNoise);
-            }
-            var landJob=new LandUpsampleAndDistanceJob{mapWidth=mapWidth,mapHeight=mapHeight,topoWidth=tw,topoHeight=th,seed=inputs.seed,coastlineDeformationWidthCells=coastlineDeformationWidthCells,coastlineWarpStrength=coastlineWarpStrength,coastlineMidNoiseStrength=coastlineMidNoiseStrength,coastlineEdgeNoiseStrength=coastlineEdgeNoiseStrength,coastlineSoftness=coastlineSoftness,coastlineThresholdBias=coastlineThresholdBias,topoLandCoastDistance=nTopoLandDist,topoOceanCoastDistance=nTopoOceanDist,topoSignedCoastDistance=nTopoSignedCoastDistance,macroCoastNoise=nMacroCoastNoise,midCoastNoise=nMidCoastNoise,coastEdgeNoise=nCoastEdgeNoise,noiseFieldWidth=noiseW,noiseFieldHeight=noiseH,land=nLand,inlandDistance=nInland,offshoreDistance=nOffshore,shelf=nShelf,continentality=nCont};
-            landJob.ScheduleParallel(n,64,default).Complete();
-            float lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];shelf[i]=nShelf[i];cont[i]=nCont[i];if(land[i]>0.5f)lc++;}
-            float finalCoastLandCoverage = n > 0 ? lc / n : 0f;
-            if (logWorldGenerationDiagnostics)
-                Debug.Log($"[WorldGenV2 Coast Sculpt] TopologyCoverage={diag.topologyCoverage:F4} FinalLandCoverage={finalCoastLandCoverage:F4}");
-            diag.actualLand=lc/n;
-        } finally {
-            nCoastEdgeNoise.Dispose(); nMidCoastNoise.Dispose(); nMacroCoastNoise.Dispose(); nCont.Dispose(); nShelf.Dispose(); nOffshore.Dispose(); nInland.Dispose(); nLand.Dispose(); nTopoSignedCoastDistance.Dispose(); nTopoOceanDist.Dispose(); nTopoLandDist.Dispose();
-        }
+        topoLandDist = DistanceFromBoundaryTopology(topoLand, tw, th, true);
+        topoOceanDist = DistanceFromBoundaryTopology(topoLand, tw, th, false);
+        topoSignedCoastDistance = BuildSignedTopologyCoastDistance(topoLand, topoLandDist, topoOceanDist);
     }
 
-    private void EnsureFastNoiseFields(int seedBase, int topologyW, int topologyH)
+    private void EnsureTopologyShapeNoiseField(int seedBase, int topologyW, int topologyH)
     {
-        if (!useFastNoiseLiteFields)
-        {
-            fastNoiseFieldsValid = false;
-            return;
-        }
-
-        int nw = Mathf.Max(128, noiseFieldWidth);
-        int nh = Mathf.Max(64, noiseFieldHeight);
         int tw = Mathf.Max(8, topologyW);
         int th = Mathf.Max(4, topologyH);
-        bool needsRebuild = !fastNoiseFieldsValid
-            || cachedNoiseSeed != seedBase
-            || cachedNoiseWidth != nw
-            || cachedNoiseHeight != nh
-            || cachedTopologyWidth != tw
-            || cachedTopologyHeight != th;
-
+        bool needsRebuild = !topologyShapeNoiseValid || cachedTopologyNoiseSeed != seedBase || cachedTopologyWidth != tw || cachedTopologyHeight != th;
         if (!needsRebuild) return;
 
-        int n = nw * nh;
-        cachedMacroCoastNoise = new float[n];
-        cachedMidCoastNoise = new float[n];
-        cachedCoastEdgeNoise = new float[n];
         cachedTopologyShapeNoise = new float[tw * th];
-
-        var macroCoastNoise = new FastNoiseLite(seedBase + 1101);
-        macroCoastNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        macroCoastNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        macroCoastNoise.SetFractalOctaves(3); macroCoastNoise.SetFractalLacunarity(2f); macroCoastNoise.SetFractalGain(0.5f); macroCoastNoise.SetFrequency(1.35f);
-
-        var coastWarp = new FastNoiseLite(seedBase + 2202);
-        coastWarp.SetDomainWarpType(FastNoiseLite.DomainWarpType.OpenSimplex2);
-        coastWarp.SetFractalType(FastNoiseLite.FractalType.DomainWarpProgressive);
-        coastWarp.SetFractalOctaves(2); coastWarp.SetFractalLacunarity(2f); coastWarp.SetFractalGain(0.5f); coastWarp.SetFrequency(1.10f); coastWarp.SetDomainWarpAmp(0.45f);
-
-        var midCoastNoise = new FastNoiseLite(seedBase + 2752);
-        midCoastNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        midCoastNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        midCoastNoise.SetFractalOctaves(3); midCoastNoise.SetFractalLacunarity(2.0f); midCoastNoise.SetFractalGain(0.52f); midCoastNoise.SetFrequency(2.55f);
-
-        var coastEdgeNoise = new FastNoiseLite(seedBase + 3303);
-        coastEdgeNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        coastEdgeNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        coastEdgeNoise.SetFractalOctaves(2); coastEdgeNoise.SetFractalLacunarity(2.1f); coastEdgeNoise.SetFractalGain(0.45f); coastEdgeNoise.SetFrequency(4.75f);
-
         var topologyShapeNoise = new FastNoiseLite(seedBase + 7707);
         topologyShapeNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
         topologyShapeNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
         topologyShapeNoise.SetFractalOctaves(3); topologyShapeNoise.SetFractalLacunarity(2f); topologyShapeNoise.SetFractalGain(0.5f); topologyShapeNoise.SetFrequency(1.65f);
-
-        for (int y = 0; y < nh; y++) for (int x = 0; x < nw; x++)
-        {
-            int idx = y * nw + x;
-            float u = (x + 0.5f) / nw;
-            float v = (y + 0.5f) / nh;
-            float longitude = (u * Mathf.PI * 2f) - Mathf.PI;
-            float latitude = (0.5f - v) * Mathf.PI;
-            float cosLat = Mathf.Cos(latitude);
-            float dx = cosLat * Mathf.Cos(longitude);
-            float dy = Mathf.Sin(latitude);
-            float dz = cosLat * Mathf.Sin(longitude);
-            float wx = dx, wy = dy, wz = dz;
-            coastWarp.DomainWarp(ref wx, ref wy, ref wz);
-            cachedMacroCoastNoise[idx] = macroCoastNoise.GetNoise(wx, wy, wz);
-            cachedMidCoastNoise[idx] = midCoastNoise.GetNoise(wx, wy, wz);
-            cachedCoastEdgeNoise[idx] = coastEdgeNoise.GetNoise(dx, dy, dz);
-        }
 
         for (int y = 0; y < th; y++) for (int x = 0; x < tw; x++)
         {
@@ -639,10 +551,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             cachedTopologyShapeNoise[idx] = topologyShapeNoise.GetNoise(dx, dy, dz);
         }
 
-        cachedNoiseSeed = seedBase; cachedNoiseWidth = nw; cachedNoiseHeight = nh; cachedTopologyWidth = tw; cachedTopologyHeight = th;
-        fastNoiseFieldsValid = true;
-        if (logWorldGenerationDiagnostics)
-            Debug.Log($"[WorldGenV2 FastNoise] Rebuilt cached coastline/topology noise fields. Seed={seedBase} Size={nw}x{nh}");
+        cachedTopologyNoiseSeed = seedBase; cachedTopologyWidth = tw; cachedTopologyHeight = th;
+        topologyShapeNoiseValid = true;
     }
 
     private int CountTopologyLandCells(TopologyCell[] topo){
@@ -873,15 +783,40 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return signed;
     }
     private void WriteSurfaceAndStructure(float[] land,float[] shelf,float[] cont){int n=mapWidth*mapHeight;var s=new Color32[n];var a=new Color32[n];var w=new Color32[n];for(int i=0;i<n;i++){s[i]=new Color32(B(land[i]),0,0,B(shelf[i]));w[i]=new Color32(B(cont[i]),0,0,0);a[i]=new Color32(B(shelf[i]),B(cont[i]),0,0);}surfaceDataTexture.SetPixelData(s,0);surfaceDataTexture.Apply(false,false);worldStructureTexture.SetPixelData(w,0);worldStructureTexture.Apply(false,false);auxiliaryMaskTexture.SetPixelData(a,0);auxiliaryMaskTexture.Apply(false,false);}
-    [BurstCompile] private struct LandUpsampleAndDistanceJob : IJobFor
-    {
-        [ReadOnly] public NativeArray<float> topoLandCoastDistance, topoOceanCoastDistance, topoSignedCoastDistance;
-        [ReadOnly] public NativeArray<float> macroCoastNoise, midCoastNoise, coastEdgeNoise;
-        public int noiseFieldWidth, noiseFieldHeight;
-        public int mapWidth, mapHeight, topoWidth, topoHeight; public float seed, coastlineDeformationWidthCells, coastlineWarpStrength, coastlineMidNoiseStrength, coastlineEdgeNoiseStrength, coastlineSoftness, coastlineThresholdBias;
-        public NativeArray<float> land, inlandDistance, offshoreDistance, shelf, continentality;
-        public void Execute(int i){int x=i%mapWidth,y=i/mapWidth; float2 uv=new float2(((float)x/mapWidth)*topoWidth,((float)y/mapHeight)*topoHeight); SampleBilinear(uv, topoLandCoastDistance, out var inD); SampleBilinear(uv, topoOceanCoastDistance, out var offD); SampleBilinear(uv, topoSignedCoastDistance, out var signedTopoDistance); float2 noiseUV=new float2(((float)x/mapWidth)*noiseFieldWidth,((float)y/mapHeight)*noiseFieldHeight); SampleNoiseBilinear(noiseUV, macroCoastNoise, out var macro); SampleNoiseBilinear(noiseUV, midCoastNoise, out var mid); SampleNoiseBilinear(noiseUV, coastEdgeNoise, out var edge); float deformationWidth=math.max(0.001f,coastlineDeformationWidthCells); float signedEnvelope=signedTopoDistance/deformationWidth; float coastInfluence=1f-math.saturate(math.abs(signedEnvelope)); coastInfluence=coastInfluence*coastInfluence*(3f-2f*coastInfluence); float macroDisplacement=macro*coastlineWarpStrength; float midDisplacement=mid*coastlineMidNoiseStrength; float fineDisplacement=edge*coastlineEdgeNoiseStrength; float coastlineNoiseDisplacement=macroDisplacement+midDisplacement+fineDisplacement; float finalCoastSignal=signedEnvelope+coastlineNoiseDisplacement*coastInfluence-coastlineThresholdBias; land[i]=math.smoothstep(-coastlineSoftness,coastlineSoftness,finalCoastSignal); inlandDistance[i]=inD; offshoreDistance[i]=offD; float finalLand=land[i]; shelf[i]=(1f-finalLand)*math.saturate(1f-offD/(0.04f*mapHeight)); continentality[i]=finalLand*math.saturate(inD/(0.24f*mapHeight));}
-        void SampleBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%topoWidth+topoWidth)%topoWidth,y0=math.clamp((int)math.floor(uv.y),0,topoHeight-1); int x1=(x0+1)%topoWidth,y1=math.min(y0+1,topoHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*topoWidth+x0],v10=arr[y0*topoWidth+x1],v01=arr[y1*topoWidth+x0],v11=arr[y1*topoWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
-        void SampleNoiseBilinear(float2 uv, NativeArray<float> arr, out float value){int x0=((int)math.floor(uv.x)%noiseFieldWidth+noiseFieldWidth)%noiseFieldWidth,y0=math.clamp((int)math.floor(uv.y),0,noiseFieldHeight-1); int x1=(x0+1)%noiseFieldWidth,y1=math.min(y0+1,noiseFieldHeight-1); float fx=uv.x-math.floor(uv.x),fy=uv.y-math.floor(uv.y); float v00=arr[y0*noiseFieldWidth+x0],v10=arr[y0*noiseFieldWidth+x1],v01=arr[y1*noiseFieldWidth+x0],v11=arr[y1*noiseFieldWidth+x1]; value=math.lerp(math.lerp(v00,v10,fx),math.lerp(v01,v11,fx),fy);}
+    
+
+    private void DispatchGpuCoastline(float[] topoLandDist, float[] topoOceanDist, float[] topoSignedCoastDistance){
+        if (!useGpuCoastlinePreview) { WriteSurfaceAndStructure(new float[mapWidth*mapHeight],new float[mapWidth*mapHeight],new float[mapWidth*mapHeight]); return; }
+        TryAssignDefaultGpuCoastlineCompute(); if (menuPlanetPreviewCoastlineCompute==null) return;
+        EnsureGpuCoastlineResources(); if (gpuCoastlineKernel<0) gpuCoastlineKernel = menuPlanetPreviewCoastlineCompute.FindKernel("GenerateCoastline");
+        topoLandCoastDistanceBuffer?.Release(); topoOceanCoastDistanceBuffer?.Release(); topoSignedCoastDistanceBuffer?.Release();
+        topoLandCoastDistanceBuffer=new ComputeBuffer(topoLandDist.Length,sizeof(float)); topoOceanCoastDistanceBuffer=new ComputeBuffer(topoOceanDist.Length,sizeof(float)); topoSignedCoastDistanceBuffer=new ComputeBuffer(topoSignedCoastDistance.Length,sizeof(float));
+        topoLandCoastDistanceBuffer.SetData(topoLandDist); topoOceanCoastDistanceBuffer.SetData(topoOceanDist); topoSignedCoastDistanceBuffer.SetData(topoSignedCoastDistance);
+        var cs=menuPlanetPreviewCoastlineCompute; cs.SetInt("_MapWidth",mapWidth); cs.SetInt("_MapHeight",mapHeight); cs.SetInt("_TopologyWidth",Mathf.Max(16,topologyWidth)); cs.SetInt("_TopologyHeight",Mathf.Max(8,topologyHeight));
+        cs.SetFloat("_Seed",inputs.seed); cs.SetFloat("_CoastlineDeformationWidthCells",coastlineDeformationWidthCells); cs.SetFloat("_CoastlineWarpStrength",coastlineWarpStrength); cs.SetFloat("_CoastlineMidNoiseStrength",coastlineMidNoiseStrength); cs.SetFloat("_CoastlineEdgeNoiseStrength",coastlineEdgeNoiseStrength); cs.SetFloat("_CoastlineSoftness",coastlineSoftness); cs.SetFloat("_CoastlineThresholdBias",coastlineThresholdBias);
+        cs.SetBuffer(gpuCoastlineKernel,"_TopoLandCoastDistance",topoLandCoastDistanceBuffer); cs.SetBuffer(gpuCoastlineKernel,"_TopoOceanCoastDistance",topoOceanCoastDistanceBuffer); cs.SetBuffer(gpuCoastlineKernel,"_TopoSignedCoastDistance",topoSignedCoastDistanceBuffer);
+        cs.SetTexture(gpuCoastlineKernel,"_GpuTectonicSurfaceTex",gpuTectonicSurfaceTexture); cs.SetTexture(gpuCoastlineKernel,"_GpuTectonicBoundaryTex",gpuTectonicBoundaryTexture); cs.SetTexture(gpuCoastlineKernel,"_GpuTectonicCrustTex",gpuTectonicCrustTexture);
+        cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth/8f), Mathf.CeilToInt(mapHeight/8f),1);
+    }
+
+    private void TryAssignDefaultGpuCoastlineCompute(){
+#if UNITY_EDITOR
+        if(menuPlanetPreviewCoastlineCompute==null) menuPlanetPreviewCoastlineCompute = UnityEditor.AssetDatabase.LoadAssetAtPath<ComputeShader>("Assets/Shaders/MenuPlanetPreviewCoastline.compute");
+#endif
+    }
+
+    private void EnsureGpuCoastlineResources(){
+        if(gpuTectonicSurfaceTexture!=null && gpuTectonicSurfaceTexture.width==mapWidth && gpuTectonicSurfaceTexture.height==mapHeight && gpuTectonicSurfaceTexture.IsCreated()) return;
+        ReleaseGpuCoastlineResources();
+        RenderTexture Make(string n){ var rt=new RenderTexture(mapWidth,mapHeight,0,RenderTextureFormat.ARGBHalf,RenderTextureReadWrite.Linear){name=n,enableRandomWrite=true,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,useMipMap=false,autoGenerateMips=false}; rt.Create(); return rt;}
+        gpuTectonicSurfaceTexture=Make("MenuGpuTectonicSurfaceV2"); gpuTectonicBoundaryTexture=Make("MenuGpuTectonicBoundaryV2"); gpuTectonicCrustTexture=Make("MenuGpuTectonicCrustV2");
+    }
+
+    private void ReleaseGpuCoastlineResources(){
+        if(gpuTectonicSurfaceTexture!=null){gpuTectonicSurfaceTexture.Release();Destroy(gpuTectonicSurfaceTexture);gpuTectonicSurfaceTexture=null;}
+        if(gpuTectonicBoundaryTexture!=null){gpuTectonicBoundaryTexture.Release();Destroy(gpuTectonicBoundaryTexture);gpuTectonicBoundaryTexture=null;}
+        if(gpuTectonicCrustTexture!=null){gpuTectonicCrustTexture.Release();Destroy(gpuTectonicCrustTexture);gpuTectonicCrustTexture=null;}
+        topoLandCoastDistanceBuffer?.Release(); topoOceanCoastDistanceBuffer?.Release(); topoSignedCoastDistanceBuffer?.Release();
+        topoLandCoastDistanceBuffer=null; topoOceanCoastDistanceBuffer=null; topoSignedCoastDistanceBuffer=null; gpuCoastlineKernel=-1;
     }
 }
