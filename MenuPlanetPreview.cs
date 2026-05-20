@@ -39,9 +39,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Shader atmosphereShader;
     [SerializeField] private MenuPlanetPreviewWorldGeneratorV2 worldGenerator;
 
-    [Header("GPU Preview Pipeline")]
-    [SerializeField] private bool useGpuLiveClimateAndBiomes = true;
-
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
     [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
@@ -536,7 +533,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TectonicCrustTex = Shader.PropertyToID("_TectonicCrustTex");
     private static readonly int ID_GpuHeightTex = Shader.PropertyToID("_GpuHeightTex");
     private static readonly int ID_UseTectonicPreview = Shader.PropertyToID("_UseTectonicPreview");
-    private static readonly int ID_UseGpuLiveClimateBiomes = Shader.PropertyToID("_UseGpuLiveClimateBiomes");
     private static readonly int ID_ShowTectonicLandMaskOnly = Shader.PropertyToID("_ShowTectonicLandMaskOnly");
     private static readonly int ID_ShowTectonicHeightOnly = Shader.PropertyToID("_ShowTectonicHeightOnly");
     private static readonly int ID_ShowPlateBoundariesOnly = Shader.PropertyToID("_ShowPlateBoundariesOnly");
@@ -547,10 +543,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_ShowContinentalShelfOnly = Shader.PropertyToID("_ShowContinentalShelfOnly");
     private static readonly int ID_ShowCrustTypeOnly = Shader.PropertyToID("_ShowCrustTypeOnly");
     private static readonly int ID_ShowContinentalPotentialOnly = Shader.PropertyToID("_ShowContinentalPotentialOnly");
-    private static readonly int ID_ClimateTex = Shader.PropertyToID("_ClimateTex");
-    private static readonly int ID_BiomeWeights0Tex = Shader.PropertyToID("_BiomeWeights0Tex");
-    private static readonly int ID_BiomeWeights1Tex = Shader.PropertyToID("_BiomeWeights1Tex");
-    private static readonly int ID_BiomeWeights2Tex = Shader.PropertyToID("_BiomeWeights2Tex");
 
 
     private int currentLandPresetIndex = 2;
@@ -588,7 +580,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         worldGenerator.WorldTexturesUpdated -= BindGeneratedWorldTextures;
         worldGenerator.WorldTexturesUpdated += BindGeneratedWorldTextures;
-        RequestWorldRebuild(PreviewWorldRebuildScope.All, false);
+        RequestWorldRebuild(PreviewWorldRebuildScope.Tectonics, false);
         CacheValidatedGeneratorInputs();
 
         SetupSpaceBackgroundIfNeeded();
@@ -615,7 +607,6 @@ public class MenuPlanetPreview : MonoBehaviour
             worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGeneratorV2>();
 
         if (worldGenerator != null)
-            worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
     }
 
     private MenuPlanetPreviewWorldInputs BuildWorldInputs()
@@ -635,7 +626,6 @@ public class MenuPlanetPreview : MonoBehaviour
     private void RequestWorldRebuild(PreviewWorldRebuildScope scope, bool immediate = false)
     {
         if (worldGenerator == null) return;
-        worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
         worldGenerator.SetInputs(BuildWorldInputs());
         worldGenerator.RequestRebuild(scope, immediate);
     }
@@ -647,11 +637,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicBoundaryTex, worldGenerator.TectonicBoundaryTexture);
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
         materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
-        materialInstance.SetTexture(ID_ClimateTex, worldGenerator.ClimateTexture);
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
-        materialInstance.SetTexture(ID_BiomeWeights0Tex, worldGenerator.BiomeWeights0Texture);
-        materialInstance.SetTexture(ID_BiomeWeights1Tex, worldGenerator.BiomeWeights1Texture);
-        materialInstance.SetTexture(ID_BiomeWeights2Tex, worldGenerator.BiomeWeights2Texture);
     }
 
     private void Update()
@@ -766,9 +752,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_Seed,         seed);
-        materialInstance.SetFloat(ID_UseGpuLiveClimateBiomes, useGpuLiveClimateAndBiomes ? 1f : 0f);
         if (worldGenerator != null)
-            worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
 
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
