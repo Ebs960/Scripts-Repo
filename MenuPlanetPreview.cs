@@ -761,8 +761,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_Seed,         seed);
-        if (worldGenerator != null)
-
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
 
