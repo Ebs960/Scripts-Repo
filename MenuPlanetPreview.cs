@@ -276,6 +276,8 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 1f)]
     [Tooltip("0 = flat lowlands,  0.5 = hilly,  1 = extreme mountains with snow peaks.")]
     [SerializeField] private float elevation = 0.3f;
+    [SerializeField, Range(0f, 1f)] private float elevationNoiseStrength = 0.45f;
+    [SerializeField, Range(0f, 1f)] private float elevationTemperatureImpact = 0.18f;
 
     [Header("Map Style")]
     [Range(0f, 1f)]
@@ -287,6 +289,7 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Color oceanColor = new Color(0.06f, 0.22f, 0.45f, 1f);
 
     [Header("Biome Tuning")]
+    [SerializeField] private bool enableIceCaps = true;
     [Range(0f, 1f)]
     [Tooltip("Ice cap coverage size. 0 = no ice caps, 1 = massive polar ice.")]
     [FormerlySerializedAs("iceCapSize")][SerializeField, HideInInspector] private float legacyIceCapSize = 0.5f;
@@ -622,6 +625,7 @@ public class MenuPlanetPreview : MonoBehaviour
         return new MenuPlanetPreviewWorldInputs
         {
             seed = seed, landScale = landScale, landThreshold = landThreshold, landPresetIndex = currentLandPresetIndex, elevation = elevation,
+            elevationNoiseStrength = elevationNoiseStrength, elevationTemperatureImpact = elevationTemperatureImpact, enableIceCaps = enableIceCaps,
             temperature = temperature, moisture = moisture, waterwaysPreset = waterwaysPreset,
             climateNoiseStrength = climateNoiseStrength,
             coastWetnessStrength = coastWetnessStrength, continentalDrynessStrength = continentalDrynessStrength, continentalTemperatureStrength = continentalTemperatureStrength,
@@ -765,7 +769,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
 
         // Biome tuning
-        materialInstance.SetFloat(ID_IceCapSize,    legacyIceCapSize);
+        materialInstance.SetFloat(ID_IceCapSize,    enableIceCaps ? legacyIceCapSize : 0f);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         RecalculateDerivedVisuals();
@@ -1256,12 +1260,15 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         if (materialInstance == null) return;
 
         // Snow factor is primarily temperature-driven but reinforced by elevation
-        float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.35f);
+        float effectiveIceCapSize = enableIceCaps ? legacyIceCapSize : 0f;
+        float snowFactor = enableIceCaps
+            ? Mathf.Clamp01((1f - temperature) * Mathf.Lerp(0.08f, 0.35f, elevationTemperatureImpact) + elevation * 0.08f)
+            : 0f;
 
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
         materialInstance.SetColor(ID_OceanColor, oceanColor);
-        materialInstance.SetFloat(ID_IceCapSize, legacyIceCapSize);
+        materialInstance.SetFloat(ID_IceCapSize, effectiveIceCapSize);
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
         float baseWaterwayAmount = waterwaysPreset == 0 ? 0.22f : (waterwaysPreset == 1 ? 0.70f : 1.0f);
