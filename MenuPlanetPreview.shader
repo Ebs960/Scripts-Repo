@@ -59,6 +59,7 @@ Shader "Custom/MenuPlanetPreview"
             _Brightness("Brightness", Range(0.5, 3.0)) = 1.12
             _MountainDetailTex("Mountain Detail", 2D) = "gray" {}
             _IceDetailTex("Ice Detail", 2D) = "gray" {}
+            _IceAlbedoTex("Ice Albedo", 2D) = "white" {}
             _OceanAlbedoTex("Ocean Albedo", 2D) = "white" {}
             _OceanDetailTex("Ocean Detail", 2D) = "gray" {}
             _WaterwayDetailTex("Waterway Detail", 2D) = "gray" {}
@@ -240,7 +241,7 @@ Shader "Custom/MenuPlanetPreview"
             }
 
             float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
-            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float capStart = lerp(0.99, 0.34, _IceCapSize); return smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15); }
+            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float edgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float coldness = saturate(_IceCapSize); float capStart = lerp(0.96, 0.72, coldness); float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.05; return smoothstep(capStart - 0.035, capStart + 0.055, distortedLatitude); }
             float GetGeneratedMinimumPolarCapMask(float3 objNorm, float temperature, float seed)
             {
                 float latitude = abs(objNorm.y);
@@ -299,6 +300,7 @@ Shader "Custom/MenuPlanetPreview"
 
             TEXTURE2D(_MountainDetailTex); SAMPLER(sampler_MountainDetailTex);
             TEXTURE2D(_IceDetailTex);
+            TEXTURE2D(_IceAlbedoTex);
             TEXTURE2D(_OceanAlbedoTex);
             SAMPLER(sampler_OceanAlbedoTex);
             TEXTURE2D(_OceanDetailTex);
@@ -730,7 +732,7 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  NORMAL WORLD colors
                 // ==============================================================
-                float capStart = lerp(0.99, 0.34, _IceCapSize);
+                float capStart = lerp(0.96, 0.72, saturate(_IceCapSize));
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 // Local temperature: latitude-first, then elevation lapse-rate cooling,
                 // then small noise to avoid strict banding.
@@ -935,6 +937,10 @@ Shader "Custom/MenuPlanetPreview"
                 normalAlbedo = lerp(normalAlbedo, iceColor, saturate(activeSnowIceMask));
                 if (_UseDetailTextures > 0.5)
                 {
+                    float3 iceAlbedo = SampleTriplanar(TEXTURE2D_ARGS(_IceAlbedoTex, sampler_MountainDetailTex), input.positionOS, objNorm);
+                    float3 iceTint = lerp(float3(0.82, 0.90, 1.00), float3(1.00, 1.00, 1.00), edgeFade);
+                    float3 iceSurfaceColor = iceAlbedo * iceTint;
+                    normalAlbedo = lerp(normalAlbedo, iceSurfaceColor, saturate(activeSnowIceMask));
                     float3 iceDetail = SampleTriplanar(TEXTURE2D_ARGS(_IceDetailTex, sampler_MountainDetailTex), input.positionOS, objNorm);
                     float iceFactor = (dot(iceDetail, float3(0.333,0.333,0.333)) - 0.5) * 2.0;
                     normalAlbedo = lerp(normalAlbedo, normalAlbedo * (1.0 + iceFactor * _IceDetailStrength), saturate(activeSnowIceMask));
