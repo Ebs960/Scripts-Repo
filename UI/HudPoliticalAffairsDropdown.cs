@@ -256,7 +256,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         label.fontSize = fontSize;
         label.fontStyle = fontStyle;
         label.color = Color.white;
-        label.enableWordWrapping = true;
+        label.textWrappingMode = TextWrappingModes.Normal;
 
         var rect = go.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);

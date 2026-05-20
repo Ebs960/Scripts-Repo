@@ -61,7 +61,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [Tooltip("Shifts final coastline threshold. Positive values reduce land slightly; negative values expand land slightly. Leave near 0 unless final FastNoise coastline consistently adds/removes too much land.")]
     [SerializeField, Range(-0.75f, 0.75f)] private float coastlineThresholdBias = 0f;
     [SerializeField] private bool logWorldGenerationDiagnostics = true;
-    [SerializeField] private bool logLandmassGenerationDiagnostics = true;
 
     [Header("FastNoiseLite Sphere Fields")]
     [SerializeField] private bool useFastNoiseLiteFields = true;
