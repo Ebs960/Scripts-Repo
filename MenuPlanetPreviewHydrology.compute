@@ -54,7 +54,7 @@ void GenerateRiverFeatures(uint3 id:SV_DispatchThreadID){
  SearchBestCoastward(src,rid,bestD,bestLen,endpointCont,contDrop,reachedOcean);
  bool valid = bestLen>=24 && (reachedOcean>0.5 || endpointCont<0.10 || contDrop>0.12);
  if(!valid){f.misc.y=0;_RiverFeatures[rid]=f;return;} float amp1=bestLen*_RiverLateralWanderFraction*_RiverMeanderStrength; float3 r3=rand3(rid,_Seed);
- f.sourceDelta=float4(src,bestD); f.waveA=float4(amp1,lerp(1.5,3.0,r3.x),r3.y*6.2831853,amp1*lerp(0.35,0.6,r3.z)); f.waveB=float4(lerp(3.0,6.0,hash1(rid+7u)),hash1(rid+9u)*6.2831853,_RiverUpperWidthPixels,_RiverLowerWidthPixels); f.misc=float4((rid+1.0)/max(1.0,_RiverCount),1,0,0); _RiverFeatures[rid]=f;
+ f.sourceDelta=float4(src,bestD); f.waveA=float4(amp1,lerp(1.6,3.2,r3.x),r3.y*6.2831853,amp1*lerp(0.30,0.58,r3.z)); f.waveB=float4(lerp(3.2,6.6,hash1(rid+7u)),hash1(rid+9u)*6.2831853,_RiverUpperWidthPixels,_RiverLowerWidthPixels); float phase3=hash1(rid+123u)*6.2831853; float amp3=amp1*lerp(0.12,0.28,hash1(rid+133u)); float noiseAmp=amp1*lerp(0.07,0.18,hash1(rid+149u)); f.misc=float4((rid+1.0)/max(1.0,_RiverCount),1,noiseAmp,amp3); f.waveB.y += phase3*0.17; _RiverFeatures[rid]=f;
 }
 
 [numthreads(64,1,1)]
@@ -101,24 +101,48 @@ void GenerateLakeOutflowRiverFeatures(uint3 id:SV_DispatchThreadID){
  float2 bestD=0; float bestLen=0, endpointCont=1, contDrop=0, reachedOcean=0;
  SearchBestCoastward(src,rid+10000u+lakeIndex*313u,bestD,bestLen,endpointCont,contDrop,reachedOcean);
  bool valid=bestLen>=24 && (reachedOcean>0.5 || endpointCont<0.12 || contDrop>0.10);
+ if(!valid && outflowNumber==0){
+   SearchBestCoastward(src,rid+70000u+lakeIndex*1237u,bestD,bestLen,endpointCont,contDrop,reachedOcean);
+   valid=bestLen>=18;
+ }
  if(!valid){f.misc.y=0;_RiverFeatures[rid]=f;return;}
  float amp1=bestLen*_RiverLateralWanderFraction*_RiverMeanderStrength*0.55;
  float3 r3=rand3(rid+500u+lakeIndex*23u,_Seed+11+outflowNumber*0.33);
  f.sourceDelta=float4(src,bestD);
- f.waveA=float4(amp1,lerp(1.8,3.2,r3.x),r3.y*6.2831853,amp1*lerp(0.25,0.45,r3.z));
- f.waveB=float4(lerp(3.0,5.6,hash1(rid+7u)),hash1(rid+9u)*6.2831853,max(_RiverUpperWidthPixels,3.0),_RiverLowerWidthPixels);
- f.misc=float4((rid+1.0)/max(1.0,_RiverCount),1,0,0);
+ f.waveA=float4(amp1,lerp(1.9,3.4,r3.x),r3.y*6.2831853,amp1*lerp(0.24,0.48,r3.z));
+ f.waveB=float4(lerp(3.3,5.9,hash1(rid+7u)),hash1(rid+9u)*6.2831853,max(_RiverUpperWidthPixels,3.0),_RiverLowerWidthPixels);
+ float phase3=hash1(localSeed+71u)*6.2831853;
+ float amp3=amp1*lerp(0.10,0.24,hash1(localSeed+77u));
+ float noiseAmp=amp1*lerp(0.06,0.15,hash1(localSeed+83u));
+ f.misc=float4((rid+1.0)/max(1.0,_RiverCount),1,noiseAmp,amp3);
+ f.waveB.y += phase3*0.2;
  _RiverFeatures[rid]=f;
 }
 
 float segDistWrap(float2 p,float2 a,float2 b){float d=1e9; [unroll] for(int i=0;i<3;i++){float ox=(i==0?0:(i==1?_MapWidth:-_MapWidth)); float2 pp=float2(p.x+ox,p.y); float2 ab=b-a; float t=saturate(dot(pp-a,ab)/max(1e-4,dot(ab,ab))); d=min(d,distance(pp,a+ab*t));} return d;}
-float2 riverPt(RiverFeature f,float t){float2 s=f.sourceDelta.xy,d=f.sourceDelta.zw,b=s+d*t,dir=normalize(d+1e-5),perp=float2(-dir.y,dir.x); float lat=sin(3.14159265*t)*(f.waveA.x*sin(f.waveA.z+t*f.waveA.y*3.14159265)+f.waveA.w*sin(f.waveB.y+t*f.waveB.x*3.14159265)); return b+perp*lat;}
+float riverNoise1D(float x)
+{
+    float h = frac(sin(x * 12.9898 + 78.233) * 43758.5453);
+    return h * 2.0 - 1.0;
+}
+
+float2 riverPt(RiverFeature f,float t){
+ float2 s=f.sourceDelta.xy,d=f.sourceDelta.zw,b=s+d*t,dir=normalize(d+1e-5),perp=float2(-dir.y,dir.x);
+ float env=sin(3.14159265*t);
+ float ph=t*3.14159265;
+ float sinA=sin(f.waveA.z+ph*f.waveA.y);
+ float sinB=sin(f.waveB.y+ph*f.waveB.x);
+ float sinC=sin((f.waveA.z*0.7+f.waveB.y*1.3)+ph*(f.waveA.y+f.waveB.x)*0.6);
+ float noiseTerm=riverNoise1D(t*17.0+f.misc.x*101.0)*f.misc.z;
+ float lat=env*(f.waveA.x*sinA + f.waveA.w*sinB + f.misc.w*sinC) + env*noiseTerm;
+ return b+perp*lat;
+}
 
 [numthreads(8,8,1)]
 void RasterizeHydrology(uint3 id:SV_DispatchThreadID){int2 p=int2(id.xy); if(p.x>=_MapWidth||p.y>=_MapHeight) return; float land=LoadLand(p); float river=0,lake=0,wet=0,prio=0;
  for(int i=0;i<_RiverCount;i++){RiverFeature f=_RiverFeatures[i]; if(f.misc.y<0.5) continue; float md=1e9,bt=0; float2 prev=riverPt(f,0); [unroll] for(int s=1;s<=24;s++){float t=s/24.0; float2 cur=riverPt(f,t); float d=segDistWrap(p,prev,cur); if(d<md){md=d;bt=t;} prev=cur;} float w=lerp(f.waveB.z,f.waveB.w,bt); float rm=smoothstep(w+1.5,w-0.5,md); river=max(river,rm); wet=max(wet,smoothstep(w+6,w+1,md)*0.45); prio=max(prio,f.misc.x*rm);} 
  if(land>0.5){ for(int i=0;i<_LakeCount;i++){LakeFeature l=_LakeFeatures[i]; if(l.mainShape.w<0.5) continue; float dx=p.x-l.centerRadii.x; if(dx>_MapWidth*0.5) dx-=_MapWidth; if(dx<-_MapWidth*0.5) dx+=_MapWidth; float2 d=float2(dx,p.y-l.centerRadii.y); float c=cos(l.mainShape.x),s=sin(l.mainShape.x); float2 q=float2(d.x*c-d.y*s,d.x*s+d.y*c); float2 n=q/max(l.centerRadii.zw,1);
  float mainField=1.0-length(n); float lf0=l.lobe0.w*saturate(1.0-length(q-l.lobe0.xy)/max(1e-4,l.lobe0.z)); float lf1=l.lobe1.w*saturate(1.0-length(q-l.lobe1.xy)/max(1e-4,l.lobe1.z)); float lf2=l.lobe2.w*saturate(1.0-length(q-l.lobe2.xy)/max(1e-4,l.lobe2.z));
- float strongest=max(lf0,max(lf1,lf2)); float noise=(hash1(asuint((q.x*0.71+q.y*1.17+l.mainShape.z)*91.1))*2-1)*l.noiseWetness.y; float shapeSignal=mainField*0.72 + strongest*0.45 + noise;
+ float strongest=max(lf0,max(lf1,lf2)); float noiseLo=(hash1(asuint((q.x*0.37+q.y*0.63+l.mainShape.z)*63.1))*2-1); float noiseHi=(hash1(asuint((q.x*1.21+q.y*1.57+l.mainShape.z*1.9)*137.7))*2-1); float shorelineNoise=(noiseLo*0.65 + noiseHi*0.35)*l.noiseWetness.y; float coves=saturate((lf0+lf1+lf2)*0.55); float shapeSignal=mainField*0.68 + strongest*0.52 + coves*0.12 + shorelineNoise;
  float lm=smoothstep(0.04,0.22,shapeSignal); lake=max(lake,lm); wet=max(wet,smoothstep(-0.45,0.08,shapeSignal)*0.5*l.noiseWetness.z); prio=max(prio,l.mainShape.y*lm);} }
  _GpuHydrologyTex[p]=float4(river,lake,saturate(wet),saturate(prio)); }
