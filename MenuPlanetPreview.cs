@@ -607,6 +607,7 @@ public class MenuPlanetPreview : MonoBehaviour
             worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGeneratorV2>();
 
         if (worldGenerator != null)
+            worldGenerator.SetInputs(BuildWorldInputs());
     }
 
     private MenuPlanetPreviewWorldInputs BuildWorldInputs()
