@@ -23,8 +23,11 @@ public struct MenuPlanetPreviewWorldInputs
     public float landScale;
     public float landThreshold;
     public float elevation;
+    public float elevationNoiseStrength;
+    public float elevationTemperatureImpact;
     public float temperature;
     public float moisture;
+    public bool enableIceCaps;
 
     public float climateNoiseStrength;
     public float coastWetnessStrength;
@@ -116,6 +119,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(0f, 0.20f)] private float gpuInlandBasinStrength = 0.045f;
     [SerializeField, Range(0.25f, 4f)] private float gpuInlandBasinScale = 1.0f;
     [SerializeField, Range(0f, 0.15f)] private float gpuWatershedRidgeStrength = 0.025f;
+    [Header("Terrain Roughness Preset Multipliers")]
+    [SerializeField, Range(0.2f, 2.0f)] private float archipelagoElevationMultiplier = 0.8f;
+    [SerializeField, Range(0.2f, 2.0f)] private float islandsElevationMultiplier = 0.9f;
+    [SerializeField, Range(0.2f, 2.0f)] private float standardElevationMultiplier = 1.0f;
+    [SerializeField, Range(0.2f, 2.0f)] private float largeContinentsElevationMultiplier = 1.1f;
+    [SerializeField, Range(0.2f, 2.0f)] private float pangaeaElevationMultiplier = 1.2f;
+    [SerializeField, Range(0.2f, 2.0f)] private float terrestrialElevationMultiplier = 1.15f;
 
 
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture;
@@ -382,8 +392,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (gpuCoastlineKernel < 0) gpuCoastlineKernel = menuPlanetPreviewCoastlineCompute.FindKernel("GenerateCoastline");
         var cs = menuPlanetPreviewCoastlineCompute;
         cs.SetInt("_MapWidth", mapWidth); cs.SetInt("_MapHeight", mapHeight);
-        cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
-        cs.SetInt("_HydrologyAnalysisHeight", analysisHeight); cs.SetInt("_TopologyWidth", topologyWidth); cs.SetInt("_TopologyHeight", topologyHeight);
+        cs.SetInt("_TopologyWidth", topologyWidth); cs.SetInt("_TopologyHeight", topologyHeight);
         cs.SetFloat("_Seed", inputs.seed); cs.SetFloat("_CoastlineDeformationWidthCells", coastlineDeformationWidthCells); cs.SetFloat("_CoastlineWarpStrength", coastlineWarpStrength); cs.SetFloat("_CoastlineMidNoiseStrength", coastlineMidNoiseStrength); cs.SetFloat("_CoastlineEdgeNoiseStrength", coastlineEdgeNoiseStrength); cs.SetFloat("_CoastlineSoftness", coastlineSoftness); cs.SetFloat("_CoastlineThresholdBias", coastlineThresholdBias);
         cs.SetBuffer(gpuCoastlineKernel, "_TopoLandCoastDistance", topoLandCoastDistanceBuffer);
         cs.SetBuffer(gpuCoastlineKernel, "_TopoOceanCoastDistance", topoOceanCoastDistanceBuffer);
@@ -442,7 +451,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         menuPlanetPreviewHeightCompute.SetInt("_MapWidth", mapWidth);
         menuPlanetPreviewHeightCompute.SetInt("_MapHeight", mapHeight);
         menuPlanetPreviewHeightCompute.SetFloat("_Seed", inputs.seed);
-        menuPlanetPreviewHeightCompute.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation));
+        float presetMultiplier = GetLandPresetElevationMultiplier(Mathf.Clamp(inputs.landPresetIndex, 0, presets.Length - 1));
+        menuPlanetPreviewHeightCompute.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation * presetMultiplier));
+        menuPlanetPreviewHeightCompute.SetFloat("_ElevationNoiseStrength", Mathf.Clamp01(inputs.elevationNoiseStrength));
         menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefStrength", gpuMacroReliefStrength);
         menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefScale", gpuMacroReliefScale);
         menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinStrength", gpuInlandBasinStrength);
@@ -456,6 +467,19 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
         menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
+    }
+    private float GetLandPresetElevationMultiplier(int presetIndex)
+    {
+        return presetIndex switch
+        {
+            0 => archipelagoElevationMultiplier,
+            1 => islandsElevationMultiplier,
+            2 => standardElevationMultiplier,
+            3 => largeContinentsElevationMultiplier,
+            4 => pangaeaElevationMultiplier,
+            5 => terrestrialElevationMultiplier,
+            _ => 1f
+        };
     }
 
 
