@@ -574,6 +574,18 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset); cs.SetInt("_RiverCount", riverCount); cs.SetInt("_LakeCount", lakeCount);
         cs.SetFloat("_RiverMeanderStrength", gpuRiverMeanderStrength); cs.SetFloat("_RiverSourceElevationPreference", gpuRiverSourceElevationPreference); cs.SetFloat("_RiverInlandPreference", gpuRiverInlandPreference); cs.SetFloat("_RiverLateralWanderFraction", gpuRiverLateralWanderFraction); cs.SetFloat("_RiverUpperWidthPixels", gpuRiverUpperWidthPixels); cs.SetFloat("_RiverLowerWidthPixels", gpuRiverLowerWidthPixels); cs.SetFloat("_RiverMinSourceContinentality", gpuRiverMinSourceContinentality);
         cs.SetFloat("_LakeMinContinentality", gpuLakeMinContinentality); cs.SetFloat("_LakeMinRadiusPixels", gpuLakeMinRadiusPixels); cs.SetFloat("_LakeMaxRadiusPixels", gpuLakeMaxRadiusPixels);
+        cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
+        cs.SetFloat("_DrainageRiverMinWidthPixels", gpuDrainageRiverMinWidthPixels);
+        cs.SetFloat("_DrainageRiverMaxWidthPixels", gpuDrainageRiverMaxWidthPixels);
+        cs.SetFloat("_LakeBasinMinDepth", gpuLakeBasinMinDepth);
+        cs.SetFloat("_LakeBasinFullDepth", gpuLakeBasinFullDepth);
+        cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
+        float riverAccumulationThreshold = inputs.waterwaysPreset <= 0
+            ? gpuRiverAccumulationThresholdSparse
+            : inputs.waterwaysPreset == 1
+                ? gpuRiverAccumulationThresholdStandard
+                : gpuRiverAccumulationThresholdAbundant;
+        cs.SetFloat("_RiverAccumulationThreshold", riverAccumulationThreshold);
 
         foreach (int k in new [] { gpuRiverKernel, gpuClearRiverKernel, gpuLakeKernel, gpuLakeOutflowRiverKernel, gpuRasterHydrologyKernel })
         {

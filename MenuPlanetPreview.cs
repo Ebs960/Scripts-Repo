@@ -213,11 +213,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showShorelineMaskOnly = false;
     [SerializeField] private bool showWetlandMaskOnly = false;
     [SerializeField] private bool showWaterDepthMaskOnly = false;
-    [SerializeField] private bool showHydroFillHeightOnly = false;
-    [SerializeField] private bool showFlowDirectionsOnly = false;
-    [SerializeField] private bool showFlowAccumulationOnly = false;
-    [SerializeField] private bool showBasinDepthOnly = false;
-    [SerializeField] private bool showHydroCarveDepthOnly = false;
     [SerializeField, Range(0f, 0.5f)] private float riverChannelCarveStrength = 0.05f;
     [SerializeField, Range(0f, 0.5f)] private float lakeBasinCarveStrength = 0.08f;
     [SerializeField] private bool disableCloudsForDebug = false;
