@@ -380,7 +380,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             return;
         }
 
-        ReleaseGpuCoastlineResources();
         ReleaseGpuHeightTexture();
         ReleaseGpuHydrologyResources();
         gpuHeightTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
