@@ -200,9 +200,9 @@ public class MainMenuManager : MonoBehaviour
     
     // Climate preset values - each entry contains (polarThreshold, subPolarThreshold, equatorThreshold)
     private readonly (float polar, float subPolar, float equator)[] climatePresets = new[] {
-        (0.60f, 0.15f, 0.01f),  // Frozen: enormous polar regions, minimal tropics
+        (0.50f, 0.24f, 0.05f),  // Frozen: enormous polar regions, minimal tropics
         (0.70f, 0.30f, 0.05f),  // Cold: large polar regions, large tundra
-        (0.80f, 0.60f, 0.20f),  // Temperate: medium polar regions (default)
+        (0.85f, 0.55f, 0.15f),  // Temperate: medium polar regions (default)
         (0.85f, 0.70f, 0.30f),  // Warm: smaller polar regions
         (0.90f, 0.75f, 0.50f),  // Hot: small polar regions
         (0.95f, 0.85f, 0.60f)   // Scorching: minimal polar regions, small tropical band
@@ -220,12 +220,12 @@ public class MainMenuManager : MonoBehaviour
 
     // Moisture preset values
     private readonly (float frequency, float bias)[] moisturePresets = new[] {
-    (2.0f, -0.25f),  // Desert: Very dry, minimal moisture
-    (2.5f, -0.15f),  // Arid: Lower frequency and drier bias
-    (4.0f, 0.05f),   // Standard: Slightly wetter to reduce overwhelming deserts
-    (5.0f, 0.1f),    // Moist: Higher frequency and wetter bias
+    (2.5f, -0.20f),  // Desert: Very dry, minimal moisture
+    (3.5f, -0.08f),  // Arid: Lower frequency and drier bias
+    (5.0f, 0.00f),   // Standard: Slightly wetter to reduce overwhelming deserts
+    (5.7f, 0.1f),    // Moist: Higher frequency and wetter bias
     (6.0f, 0.2f),    // Wet: High moisture for many forests/jungles
-    (7.0f, 0.3f)     // Oceanic: Extremely wet world with minimal deserts
+    (7.0f, 0.2f)     // Oceanic: Extremely wet world with minimal deserts
 };
     
     // Terrain roughness presets (combines hills and mountains)
@@ -1180,8 +1180,8 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.moistureBias = moistureSettings.bias;
 
         // Set temperatureBias and moistureBias for strong climate impact
-        float[] tempBiases = { -0.30f, -0.15f, 0.1f, 0.15f, 0.2f, 0.30f }; // Frozen to Scorching
-        float[] moistBiases = { -0.45f, -0.15f, -0.05f, 0.1f, 0.2f, 0.45f }; // Desert to Oceanic
+        float[] tempBiases = { -0.30f, -0.15f, 0.1f, 0.15f, 0.2f, 0.25f }; // Frozen to Scorching
+        float[] moistBiases = { -0.30f, -0.15f, -0.05f, 0.1f, 0.2f, 0.32f }; // Desert to Oceanic
         GameSetupData.temperatureBias = tempBiases[Mathf.Clamp(selectedClimatePreset, 0, tempBiases.Length-1)];
         GameSetupData.moistureBias += moistBiases[Mathf.Clamp(selectedMoisturePreset, 0, moistBiases.Length-1)];
         

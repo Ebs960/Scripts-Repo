@@ -1250,7 +1250,7 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         if (materialInstance == null) return;
 
         // Snow factor is primarily temperature-driven but reinforced by elevation
-        float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.8f);
+        float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.35f);
 
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
