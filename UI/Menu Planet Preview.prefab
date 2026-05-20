@@ -463,11 +463,11 @@ MonoBehaviour:
   lavaTextureScale: 10
   ashDetailStrength: 0.25
   mountainDetailStrength: 0.432
-  iceDetailStrength: 0.13
+  iceDetailStrength: 1
   oceanDetailStrength: 0.05
   oceanNormalStrength: 0.018
   mountainNormalStrength: 0.463
-  iceNormalStrength: 0.22
+  iceNormalStrength: 1
   textureDetailScale: 1.8
   jungleAlbedoTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
   desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
@@ -555,9 +555,9 @@ MonoBehaviour:
   moisture: 0.5
   climateNoiseStrength: 0.25
   coastWetnessStrength: 0.3
-  continentalDrynessStrength: 0.1
-  continentalTemperatureStrength: 0.05
-  riparianWetnessStrength: 0.095
+  continentalDrynessStrength: 0.05
+  continentalTemperatureStrength: 0.15
+  riparianWetnessStrength: 0.15
   biomeProvinceStrength: 0.214
   biomeCompetitionSharpness: 1.017
   elevation: 0.3
@@ -615,16 +615,16 @@ MonoBehaviour:
   gpuAllRiversStartFromLakes: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
   gpuSparseRiverCount: 4
-  gpuStandardRiverCount: 6
+  gpuStandardRiverCount: 8
   gpuAbundantRiverCount: 12
   gpuSparseLakeCount: 4
   gpuStandardLakeCount: 7
   gpuAbundantLakeCount: 10
   gpuHydrologyMoistureCountInfluence: 0.35
-  gpuRiverMeanderStrength: 0.613
-  gpuRiverSourceElevationPreference: 0.428
-  gpuRiverInlandPreference: 0.75
-  gpuRiverLateralWanderFraction: 0.088
+  gpuRiverMeanderStrength: 0.797
+  gpuRiverSourceElevationPreference: 0.31
+  gpuRiverInlandPreference: 0.526
+  gpuRiverLateralWanderFraction: 0.125
   gpuRiverUpperWidthPixels: 2.1
   gpuRiverLowerWidthPixels: 1.81
   gpuRiverMinSourceContinentality: 4
@@ -642,10 +642,10 @@ MonoBehaviour:
       minLobes: 0
       maxLobes: 0
     largeIslands:
-      minCount: 10
-      maxCount: 18
-      minAreaFraction: 0.004
-      maxAreaFraction: 0.018
+      minCount: 15
+      maxCount: 20
+      minAreaFraction: 0.001
+      maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 3
     smallIslandClusters:
@@ -692,14 +692,14 @@ MonoBehaviour:
   - name: Standard
     majorLandmasses:
       minCount: 3
-      maxCount: 4
-      minAreaFraction: 0.07
-      maxAreaFraction: 0.1
+      maxCount: 3
+      minAreaFraction: 0.06
+      maxAreaFraction: 0.13
       minLobes: 6
       maxLobes: 7
     largeIslands:
-      minCount: 3
-      maxCount: 3
+      minCount: 4
+      maxCount: 5
       minAreaFraction: 0.005
       maxAreaFraction: 0.005
       minLobes: 1
@@ -713,9 +713,9 @@ MonoBehaviour:
       maxLobes: 2
     minMajorSeedSeparationDegrees: 26
     minMajorOceanGapCells: 1.5
-    compactnessBias: 0.58
-    irregularityBias: 0.66
-    elongationBias: 0.34
+    compactnessBias: 0.4
+    irregularityBias: 0.75
+    elongationBias: 0.37
     allowMajorLandmassMerging: 0
   - name: Large Continents
     majorLandmasses:
