@@ -504,9 +504,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             float lc=0; for(int i=0;i<n;i++){land[i]=nLand[i];shelf[i]=nShelf[i];cont[i]=nCont[i];if(land[i]>0.5f)lc++;}
             float finalCoastLandCoverage = n > 0 ? lc / n : 0f;
             if (logWorldGenerationDiagnostics)
-                Debug.Log($"[WorldGenV2 Coast Sculpt]
-TopologyCoverage={diag.topologyCoverage:F4}
-FinalLandCoverage={finalCoastLandCoverage:F4}");
+                Debug.Log($"[WorldGenV2 Coast Sculpt] TopologyCoverage={diag.topologyCoverage:F4} FinalLandCoverage={finalCoastLandCoverage:F4}");
             diag.actualLand=lc/n;
         } finally {
             nCoastEdgeNoise.Dispose(); nMidCoastNoise.Dispose(); nMacroCoastNoise.Dispose(); nCont.Dispose(); nShelf.Dispose(); nOffshore.Dispose(); nInland.Dispose(); nLand.Dispose(); nTopoSignedCoastDistance.Dispose(); nTopoOceanDist.Dispose(); nTopoLandDist.Dispose();
