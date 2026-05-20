@@ -613,6 +613,9 @@ public class MenuPlanetPreview : MonoBehaviour
 
         if (worldGenerator == null)
             worldGenerator = gameObject.AddComponent<MenuPlanetPreviewWorldGeneratorV2>();
+
+        if (worldGenerator != null)
+            worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
     }
 
     private MenuPlanetPreviewWorldInputs BuildWorldInputs()
@@ -632,6 +635,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private void RequestWorldRebuild(PreviewWorldRebuildScope scope, bool immediate = false)
     {
         if (worldGenerator == null) return;
+        worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
         worldGenerator.SetInputs(BuildWorldInputs());
         worldGenerator.RequestRebuild(scope, immediate);
     }
@@ -763,6 +767,8 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_Seed,         seed);
         materialInstance.SetFloat(ID_UseGpuLiveClimateBiomes, useGpuLiveClimateAndBiomes ? 1f : 0f);
+        if (worldGenerator != null)
+            worldGenerator.SetGpuLiveClimateAndBiomesPreview(useGpuLiveClimateAndBiomes);
 
         // Ocean color
         materialInstance.SetColor(ID_OceanColor,    oceanColor);
