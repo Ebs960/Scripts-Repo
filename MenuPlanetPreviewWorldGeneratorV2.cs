@@ -68,6 +68,39 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(128, 1024)] private int noiseFieldWidth = 512;
     [SerializeField, Range(64, 512)] private int noiseFieldHeight = 256;
 
+    [Header("GPU Height")]
+    [SerializeField] private bool useGpuHeightPreview = true;
+    [SerializeField] private ComputeShader menuPlanetPreviewHeightCompute;
+
+    [Header("GPU Hydrology")]
+    [SerializeField] private bool useGpuHydrologyPreview = true;
+    [SerializeField] private bool gpuAllRiversStartFromLakes = true;
+    [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
+
+    [SerializeField, Range(1, 40)] private int gpuSparseRiverCount = 10;
+    [SerializeField, Range(1, 50)] private int gpuStandardRiverCount = 18;
+    [SerializeField, Range(1, 64)] private int gpuAbundantRiverCount = 28;
+
+    [SerializeField, Range(0, 20)] private int gpuSparseLakeCount = 4;
+    [SerializeField, Range(0, 24)] private int gpuStandardLakeCount = 8;
+    [SerializeField, Range(0, 32)] private int gpuAbundantLakeCount = 13;
+
+    [SerializeField, Range(0f, 1f)] private float gpuHydrologyMoistureCountInfluence = 0.35f;
+
+    [SerializeField, Range(0f, 1f)] private float gpuRiverMeanderStrength = 0.42f;
+    [SerializeField, Range(0f, 1f)] private float gpuRiverSourceElevationPreference = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float gpuRiverInlandPreference = 0.75f;
+    [SerializeField, Range(0.01f, 0.20f)] private float gpuRiverLateralWanderFraction = 0.07f;
+    [SerializeField, Range(1f, 12f)] private float gpuRiverUpperWidthPixels = 2.2f;
+    [SerializeField, Range(1f, 16f)] private float gpuRiverLowerWidthPixels = 5.0f;
+    [SerializeField, Range(4f, 80f)] private float gpuRiverMinSourceContinentality = 0.18f;
+
+    [SerializeField, Range(0.01f, 0.50f)] private float gpuLakeMinContinentality = 0.12f;
+    [SerializeField, Range(6f, 80f)] private float gpuLakeMinRadiusPixels = 18f;
+    [SerializeField, Range(6f, 120f)] private float gpuLakeMaxRadiusPixels = 52f;
+
+    [SerializeField] private bool logGpuHydrologyFeatureDiagnostics = false;
+
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture;
     public Texture2D TectonicSurfaceTexture => surfaceDataTexture;
     public Texture2D TectonicBoundaryTexture => auxiliaryMaskTexture;
@@ -97,6 +130,18 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         public int builtSmallClusterCount;
         public int failedCenterPlacements;
         public int totalPlannedTargetCells;
+    }
+
+    private struct GenDiagnostics
+    {
+        public string preset;
+        public float targetLand;
+        public float actualLand;
+        public float topologyCoverage;
+        public int topologyLandCells;
+        public int targetTopologyLandCells;
+        public int groupCount;
+        public float largestGroupShare;
     }
 
     [SerializeField] private PreviewLandPresetProfileV3[] presets = new PreviewLandPresetProfileV3[6]
@@ -557,21 +602,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         coastEdgeNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
         coastEdgeNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
         coastEdgeNoise.SetFractalOctaves(2); coastEdgeNoise.SetFractalLacunarity(2.1f); coastEdgeNoise.SetFractalGain(0.45f); coastEdgeNoise.SetFrequency(4.75f);
-
-        var uplandNoise = new FastNoiseLite(seedBase + 4404);
-        uplandNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        uplandNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        uplandNoise.SetFractalOctaves(3); uplandNoise.SetFractalLacunarity(2f); uplandNoise.SetFractalGain(0.5f); uplandNoise.SetFrequency(1.25f);
-
-        var mountainProvinceNoise = new FastNoiseLite(seedBase + 5505);
-        mountainProvinceNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        mountainProvinceNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        mountainProvinceNoise.SetFractalOctaves(3); mountainProvinceNoise.SetFractalLacunarity(2f); mountainProvinceNoise.SetFractalGain(0.5f); mountainProvinceNoise.SetFrequency(1.8f);
-
-        var mountainRangeNoise = new FastNoiseLite(seedBase + 6606);
-        mountainRangeNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        mountainRangeNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
-        mountainRangeNoise.SetFractalOctaves(4); mountainRangeNoise.SetFractalLacunarity(2f); mountainRangeNoise.SetFractalGain(0.5f); mountainRangeNoise.SetFrequency(3.6f);
 
         var topologyShapeNoise = new FastNoiseLite(seedBase + 7707);
         topologyShapeNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
