@@ -99,6 +99,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Ice / Snow Overlay")]
     [SerializeField] private Texture2D iceDetailTexture;
+    [SerializeField] private Texture2D iceAlbedoTexture;
     [SerializeField] private Texture2D iceNormalTexture;
     [SerializeField] private Texture2D iceSmoothnessTexture;
 
@@ -399,6 +400,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Brightness = Shader.PropertyToID("_Brightness");
     private static readonly int ID_MountainDetailTex = Shader.PropertyToID("_MountainDetailTex");
     private static readonly int ID_IceDetailTex = Shader.PropertyToID("_IceDetailTex");
+    private static readonly int ID_IceAlbedoTex = Shader.PropertyToID("_IceAlbedoTex");
     private static readonly int ID_OceanAlbedoTex = Shader.PropertyToID("_OceanAlbedoTex");
     private static readonly int ID_OceanDetailTex = Shader.PropertyToID("_OceanDetailTex");
     private static readonly int ID_WaterwayDetailTex = Shader.PropertyToID("_WaterwayDetailTex");
@@ -807,6 +809,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         materialInstance.SetTexture(ID_MountainDetailTex, mountainDetailTexture);
         materialInstance.SetTexture(ID_IceDetailTex, iceDetailTexture);
+        materialInstance.SetTexture(ID_IceAlbedoTex, iceAlbedoTexture);
         materialInstance.SetTexture(ID_OceanAlbedoTex, oceanAlbedoTexture);
         materialInstance.SetTexture(ID_OceanDetailTex, oceanDetailTexture);
         materialInstance.SetTexture(ID_WaterwayDetailTex, waterwayDetailTexture != null ? waterwayDetailTexture : oceanDetailTexture);
@@ -858,7 +861,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowContinentalShelfOnly, showContinentalShelfOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowCrustTypeOnly, showCrustTypeOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowContinentalPotentialOnly, showContinentalPotentialOnly ? 1f : 0f);
-        bool useDetails = mountainDetailTexture != null || iceDetailTexture != null ||
+        bool useDetails = mountainDetailTexture != null || iceDetailTexture != null || iceAlbedoTexture != null ||
                           oceanDetailTexture != null || waterwayDetailTexture != null || oceanNormalTexture != null ||
                           mountainNormalTexture != null || iceNormalTexture != null ||
                           oceanSmoothnessTexture != null || iceSmoothnessTexture != null ||
