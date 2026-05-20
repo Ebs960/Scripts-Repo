@@ -433,7 +433,7 @@ MonoBehaviour:
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
   cloudSurfaceShadowStrength: 0.12
-  enableAtmosphereShell: 0
+  enableAtmosphereShell: 1
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
   atmosphereIntensity: 0.16
@@ -444,12 +444,13 @@ MonoBehaviour:
   mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
   iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
+  iceAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanAlbedoTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
   waterwayDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  oceanNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
+  oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
   volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
@@ -476,7 +477,7 @@ MonoBehaviour:
   temperateForestAlbedoTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
   taigaAlbedoTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
   tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
-  polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
+  polarAlbedoTexture: {fileID: 2800000, guid: 6c4cbd3baaed82740a377f0a9bc71bee, type: 3}
   marshAlbedoTexture: {fileID: 2800000, guid: 2b80de7f6e5fc0544a3a39f35e955252, type: 3}
   jungleNormalTexture: {fileID: 2800000, guid: 1c9961e69d0c1ce499ddb6b843f1ce2d, type: 3}
   desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
@@ -606,9 +607,8 @@ MonoBehaviour:
   coastlineSoftness: 0.05
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 0
-  useFastNoiseLiteFields: 1
-  noiseFieldWidth: 1024
-  noiseFieldHeight: 512
+  useGpuCoastlinePreview: 1
+  menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 930babc1193edcd4591e7fcdd6ecde15, type: 3}
   useGpuHeightPreview: 1
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
   useGpuHydrologyPreview: 1
