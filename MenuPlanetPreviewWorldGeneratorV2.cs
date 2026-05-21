@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [System.Flags]
 public enum PreviewWorldRebuildScope
@@ -203,6 +204,84 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private float lastValidatedGpuFlowMinDownhillDelta;
     private float lastValidatedGpuFlowAccumulationCompression;
 
+
+
+
+    [ContextMenu("Log GPU Terrain/Hydrology Coverage Stats")]
+    public void LogGpuCoverageStats()
+    {
+        if (gpuHeightTexture == null || gpuHydrologyTexture == null)
+        {
+            Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] GPU textures are not ready. Generate preview first.");
+            return;
+        }
+
+        AsyncGPUReadback.Request(gpuHeightTexture, 0, request =>
+        {
+            if (request.hasError)
+            {
+                Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Height readback failed.");
+                return;
+            }
+
+            var heightData = request.GetData<Vector4>();
+            int count = heightData.Length;
+            if (count <= 0) return;
+
+            float minHeight = float.MaxValue;
+            float maxHeight = float.MinValue;
+            double sumHeight = 0.0;
+            int hillCount = 0;
+            int mountainCount = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                Vector4 h = heightData[i];
+                float finalHeight = h.x;
+                minHeight = Mathf.Min(minHeight, finalHeight);
+                maxHeight = Mathf.Max(maxHeight, finalHeight);
+                sumHeight += finalHeight;
+                if (h.y > 0.05f) hillCount++;
+                if (h.z > 0.05f) mountainCount++;
+            }
+
+            AsyncGPUReadback.Request(gpuHydrologyTexture, 0, hydroReq =>
+            {
+                if (hydroReq.hasError)
+                {
+                    Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Hydrology readback failed.");
+                    return;
+                }
+
+                var hydroData = hydroReq.GetData<Vector4>();
+                int hydroCount = hydroData.Length;
+                if (hydroCount <= 0) return;
+
+                int lakeCount = 0;
+                int riverCount = 0;
+                int wetlandCount = 0;
+
+                for (int i = 0; i < hydroCount; i++)
+                {
+                    Vector4 w = hydroData[i];
+                    if (w.y > 0.05f) lakeCount++;
+                    if (w.z > 0.05f) riverCount++;
+                    if (w.w > 0.05f) wetlandCount++;
+                }
+
+                float invHeight = 1f / count;
+                float invHydro = 1f / hydroCount;
+                float hillCoverage = hillCount * invHeight * 100f;
+                float mountainCoverage = mountainCount * invHeight * 100f;
+                float lakeCoverage = lakeCount * invHydro * 100f;
+                float riverCoverage = riverCount * invHydro * 100f;
+                float wetlandCoverage = wetlandCount * invHydro * 100f;
+                float meanHeight = (float)(sumHeight * invHeight);
+
+                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU stats | Height min/max/mean: {minHeight:F4}/{maxHeight:F4}/{meanHeight:F4} | Hill coverage: {hillCoverage:F2}% | Mountain coverage: {mountainCoverage:F2}% | Lake: {lakeCoverage:F2}% | River: {riverCoverage:F2}% | Wetland: {wetlandCoverage:F2}%");
+            });
+        });
+    }
 
     public void SetInputs(MenuPlanetPreviewWorldInputs v) => inputs = v;
     public void RefreshGpuHeightOnly(MenuPlanetPreviewWorldInputs updatedInputs)
