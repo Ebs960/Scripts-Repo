@@ -269,15 +269,12 @@ Shader "Custom/MenuPlanetPreview"
                 float latTemperature = saturate((1.0 - latitude) * 0.82 + 0.18);
                 float globalCooling = (0.5 - _Temperature) * 0.55;
                 float globalWarming = (_Temperature - 0.5) * 0.30;
-                float elevationSnowBand = smoothstep(0.50, 0.84, terrainHeight);
-                float elevationCooling = terrainHeight * lerp(0.10, 0.28, saturate(_Elevation + elevationSnowBand * 0.8));
-                float temperatureLocal = saturate(latTemperature - globalCooling + globalWarming - elevationCooling + tempNoise);
-                float coldClimateSnow = 1.0 - smoothstep(0.22, 0.48, temperatureLocal);
+                float snowTemperatureLocal = saturate(latTemperature - globalCooling + globalWarming + tempNoise);
+                float coldClimateSnow = 1.0 - smoothstep(0.18, 0.42, snowTemperatureLocal);
 
                 return saturate(
                     forcedPolarCapMask
-                    + coldClimateSnow * 0.70
-                    + elevationSnowBand * coldClimateSnow * 0.65
+                    + coldClimateSnow * 0.55
                 );
             }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
@@ -774,17 +771,16 @@ Shader "Custom/MenuPlanetPreview"
                 forcedPolarCapMask *= (1.0 - smoothstep(0.4, 0.8, _MapStyle));
                 if (_UseTectonicPreview > 0.5)
                 {
-                    float coldClimateSnow =
-                        (1.0 - smoothstep(0.22, 0.48, temperatureLocal));
+                    float snowTemperatureLocal =
+                        saturate(latTemperature - globalCooling + globalWarming + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
 
-                    float elevationSnow =
-                        smoothstep(0.50, 0.84, terrainHeight);
+                    float coldClimateSnow =
+                        1.0 - smoothstep(0.18, 0.42, snowTemperatureLocal);
 
                     generatedSnowIceMask =
                         saturate(
                             forcedPolarCapMask
-                            + coldClimateSnow * 0.70
-                            + elevationSnow * coldClimateSnow * 0.65
+                            + coldClimateSnow * 0.55
                         );
 
                     generatedAlpineRockMask =
