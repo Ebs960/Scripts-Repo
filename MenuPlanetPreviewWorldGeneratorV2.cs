@@ -87,6 +87,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdSparse = 0.58f;
     [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdStandard = 0.45f;
     [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdAbundant = 0.32f;
+    [SerializeField, Range(0f, 0.05f)] private float gpuFlowMinDownhillDelta = 0.004f;
+    [SerializeField, Range(0.01f, 0.6f)] private float gpuFlowAccumulationCompression = 0.12f;
     [SerializeField, Range(0f, 0.25f)] private float gpuMacroReliefStrength = 0.07f;
     [SerializeField, Range(0.25f, 4f)] private float gpuMacroReliefScale = 1.25f;
     [SerializeField, Range(0f, 0.20f)] private float gpuInlandBasinStrength = 0.045f;
@@ -535,6 +537,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetFloat("_LakeBasinMinDepth", gpuLakeBasinMinDepth);
         cs.SetFloat("_LakeBasinFullDepth", gpuLakeBasinFullDepth);
         cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
+        cs.SetFloat("_FlowMinDownhillDelta", gpuFlowMinDownhillDelta);
+        cs.SetFloat("_FlowAccumulationCompression", gpuFlowAccumulationCompression);
         float riverAccumulationThreshold = inputs.waterwaysPreset <= 0
             ? gpuRiverAccumulationThresholdSparse
             : inputs.waterwaysPreset == 1
