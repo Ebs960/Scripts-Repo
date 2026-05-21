@@ -420,7 +420,7 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 17
+  rotationSpeed: 10
   detailScale: 100
   detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
@@ -502,7 +502,7 @@ MonoBehaviour:
   biomeNormalStrength: 0.394
   biomeTextureScale: 2
   biomeTextureContrast: 0.324
-  landUpliftStrength: 0
+  landUpliftStrength: 0.124
   hillDisplacementStrength: 0.5
   mountainDisplacementStrength: 0.02
   terrainElevationDisplacementStrength: 1.13
@@ -535,8 +535,8 @@ MonoBehaviour:
   showShorelineMaskOnly: 0
   showWetlandMaskOnly: 0
   showWaterDepthMaskOnly: 0
-  riverChannelCarveStrength: 0
-  lakeBasinCarveStrength: 0.01
+  riverChannelCarveStrength: 0.078
+  lakeBasinCarveStrength: 0.121
   disableCloudsForDebug: 0
   showTectonicLandMaskOnly: 0
   showTectonicHeightOnly: 0
@@ -605,12 +605,12 @@ MonoBehaviour:
   regenerationDelay: 0.01
   topologyWidth: 512
   topologyHeight: 256
-  coastlineDeformationWidthCells: 8
-  coastlineWarpStrength: 0.4
-  coastlineMidNoiseStrength: 1
-  coastlineEdgeNoiseStrength: 0.1
+  coastlineDeformationWidthCells: 24
+  coastlineWarpStrength: 1.26
+  coastlineMidNoiseStrength: 1.307
+  coastlineEdgeNoiseStrength: 0.622
   coastlineSoftness: 0.107
-  coastlineThresholdBias: -0.145
+  coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
   useGpuCoastlinePreview: 1
   menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 930babc1193edcd4591e7fcdd6ecde15, type: 3}
@@ -628,10 +628,10 @@ MonoBehaviour:
   gpuLakeShorelineWarpPixels: 1.51
   gpuRiverAccumulationThresholdSparse: 0.95
   gpuRiverAccumulationThresholdStandard: 0.85
-  gpuRiverAccumulationThresholdAbundant: 0.8
+  gpuRiverAccumulationThresholdAbundant: 0.6
   gpuFlowMinDownhillDelta: 0.04
   gpuFlowAccumulationCompression: 0.15
-  gpuMacroReliefStrength: 0.07
+  gpuMacroReliefStrength: 0.133
   gpuMacroReliefScale: 0.8
   gpuInlandBasinStrength: 0.03
   gpuInlandBasinScale: 0.39
