@@ -915,15 +915,17 @@ Shader "Custom/MenuPlanetPreview"
                 float riverMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedRiverMask * waterwayReveal) : normalRiverMask;
                 float lakeMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedLakeMask * waterwayReveal) : lakeMask;
                 wetlandMask *= (_UseTectonicPreview > 0.5) ? waterwayReveal : 1.0;
-                float inlandSurfaceWaterMask = smoothstep(0.18, 0.72, saturate(max(riverMaskFinal, lakeMaskFinal)));
-                float totalSurfaceWaterMask = saturate(max(oceanSurfaceWaterMask, inlandSurfaceWaterMask));
+                float rawRiverLake = saturate(max(riverMaskFinal, lakeMaskFinal));
+                float actualSurfaceWaterMask = smoothstep(0.58, 0.82, rawRiverLake);
+                float hydrologyWetnessMask = saturate(max(wetlandMask, smoothstep(0.10, 0.45, rawRiverLake)));
+                float totalSurfaceWaterMask = saturate(max(oceanSurfaceWaterMask, actualSurfaceWaterMask));
                 float dryLandSurfaceMask = saturate(1.0 - totalSurfaceWaterMask);
 
                 float3 dryLandAlbedo = elevatedLand;
                 float3 waterSurfaceAlbedo = oceanColor;
                 normalAlbedo = lerp(waterSurfaceAlbedo, dryLandAlbedo, dryLandSurfaceMask);
 
-                float waterInfluence = inlandSurfaceWaterMask;
+                float waterInfluence = hydrologyWetnessMask;
                 riparianWetness = max(riparianWetness, waterInfluence * _RiparianWetnessStrength);
 
                 // ---- Ice caps ----
@@ -1168,10 +1170,10 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowShorelineMaskOnly > 0.5) return float4(shorelineMask.xxx, 1.0);
                 if (_ShowWetlandMaskOnly > 0.5) return float4(wetlandMask.xxx, 1.0);
                 if (_ShowWaterDepthMaskOnly > 0.5) return float4(waterDepthMask.xxx, 1.0);
-                if (_ShowWaterwaysOnly > 0.5) return float4(0.1*riverMaskFinal,0.3*riverMaskFinal,0.8*inlandSurfaceWaterMask,1.0);
+                if (_ShowWaterwaysOnly > 0.5) return float4(0.1*riverMaskFinal,0.3*riverMaskFinal,0.8*actualSurfaceWaterMask,1.0);
                 if (_ShowSurfaceWaterMaskOnly > 0.5)
                 {
-                    float3 c = oceanSurfaceWaterMask * float3(1,1,1) + inlandSurfaceWaterMask * float3(0.45,0.45,0.45);
+                    float3 c = oceanSurfaceWaterMask * float3(1,1,1) + actualSurfaceWaterMask * float3(0.45,0.45,0.45);
                     return float4(saturate(c), 1);
                 }
                 if (_ShowWaterwayAmountOnly > 0.5) return float4(_WaterwayAmount.xxx,1.0);
