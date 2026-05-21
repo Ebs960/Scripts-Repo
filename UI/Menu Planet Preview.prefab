@@ -557,15 +557,15 @@ MonoBehaviour:
   temperature: 0.5
   moisture: 0.5
   climateNoiseStrength: 0.25
-  coastWetnessStrength: 0.3
+  coastWetnessStrength: 0.197
   continentalDrynessStrength: 0.05
   continentalTemperatureStrength: 0.15
   riparianWetnessStrength: 0.15
   biomeProvinceStrength: 0.214
   biomeCompetitionSharpness: 1.017
   elevation: 0.3
-  elevationNoiseStrength: 0.062
-  elevationTemperatureImpact: 0.071
+  elevationNoiseStrength: 0.241
+  elevationTemperatureImpact: 0
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   enableIceCaps: 1
@@ -606,7 +606,7 @@ MonoBehaviour:
   topologyWidth: 512
   topologyHeight: 256
   coastlineDeformationWidthCells: 24
-  coastlineWarpStrength: 1.3
+  coastlineWarpStrength: 1.665
   coastlineMidNoiseStrength: 1.5
   coastlineEdgeNoiseStrength: 0.479
   coastlineSoftness: 0.05
@@ -618,22 +618,24 @@ MonoBehaviour:
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
   useGpuHydrologyPreview: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
-  gpuDrainageFillIterations: 32
-  gpuFlowAccumulationIterations: 32
-  gpuHydroRoutingJitter: 0.0258
+  gpuDrainageFillIterations: 50
+  gpuFlowAccumulationIterations: 75
+  gpuHydroRoutingJitter: 0.04
   gpuDrainageRiverMinWidthPixels: 1
-  gpuDrainageRiverMaxWidthPixels: 2
-  gpuLakeBasinMinDepth: 0.08
+  gpuDrainageRiverMaxWidthPixels: 2.96
+  gpuLakeBasinMinDepth: 0.09
   gpuLakeBasinFullDepth: 0.18
-  gpuLakeShorelineWarpPixels: 0
+  gpuLakeShorelineWarpPixels: 0.7
   gpuRiverAccumulationThresholdSparse: 0.95
   gpuRiverAccumulationThresholdStandard: 0.9
   gpuRiverAccumulationThresholdAbundant: 0.8
-  gpuMacroReliefStrength: 0.053
+  gpuFlowMinDownhillDelta: 0.004
+  gpuFlowAccumulationCompression: 0.12
+  gpuMacroReliefStrength: 0.1
   gpuMacroReliefScale: 1.04
-  gpuInlandBasinStrength: 0
-  gpuInlandBasinScale: 0.25
-  gpuWatershedRidgeStrength: 0.0136
+  gpuInlandBasinStrength: 0.045
+  gpuInlandBasinScale: 1
+  gpuWatershedRidgeStrength: 0.025
   archipelagoElevationMultiplier: 1
   islandsElevationMultiplier: 1
   standardElevationMultiplier: 1
@@ -701,8 +703,8 @@ MonoBehaviour:
     majorLandmasses:
       minCount: 3
       maxCount: 3
-      minAreaFraction: 0.06
-      maxAreaFraction: 0.13
+      minAreaFraction: 0.04
+      maxAreaFraction: 0.1
       minLobes: 6
       maxLobes: 7
     largeIslands:
@@ -723,7 +725,7 @@ MonoBehaviour:
     minMajorOceanGapCells: 1.5
     compactnessBias: 0.4
     irregularityBias: 0.75
-    elongationBias: 0.37
+    elongationBias: 0.5
     allowMajorLandmassMerging: 0
   - name: Large Continents
     majorLandmasses:
