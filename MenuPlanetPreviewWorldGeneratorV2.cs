@@ -189,6 +189,19 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private float lastValidatedGpuInlandBasinStrength;
     private float lastValidatedGpuInlandBasinScale;
     private float lastValidatedGpuWatershedRidgeStrength;
+    private int lastValidatedGpuDrainageFillIterations;
+    private int lastValidatedGpuFlowAccumulationIterations;
+    private float lastValidatedGpuHydroRoutingJitter;
+    private float lastValidatedGpuDrainageRiverMinWidthPixels;
+    private float lastValidatedGpuDrainageRiverMaxWidthPixels;
+    private float lastValidatedGpuLakeBasinMinDepth;
+    private float lastValidatedGpuLakeBasinFullDepth;
+    private float lastValidatedGpuLakeShorelineWarpPixels;
+    private float lastValidatedGpuRiverAccumulationThresholdSparse;
+    private float lastValidatedGpuRiverAccumulationThresholdStandard;
+    private float lastValidatedGpuRiverAccumulationThresholdAbundant;
+    private float lastValidatedGpuFlowMinDownhillDelta;
+    private float lastValidatedGpuFlowAccumulationCompression;
 
 
     public void SetInputs(MenuPlanetPreviewWorldInputs v) => inputs = v;
@@ -227,11 +240,23 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             return;
         }
 
-        if (GpuHeightSettingsChanged())
+        bool gpuHeightChanged = GpuHeightSettingsChanged();
+        bool gpuHydrologyChanged = GpuHydrologySettingsChanged();
+
+        if (gpuHeightChanged)
         {
             DispatchGpuHeight();
             DispatchGpuHydrology();
             WorldTexturesUpdated?.Invoke();
+        }
+        else if (gpuHydrologyChanged)
+        {
+            DispatchGpuHydrology();
+            WorldTexturesUpdated?.Invoke();
+        }
+
+        if (gpuHeightChanged || gpuHydrologyChanged)
+        {
             CacheValidatedGpuHeightInputs();
         }
     }
@@ -245,6 +270,24 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength);
     }
 
+
+    private bool GpuHydrologySettingsChanged()
+    {
+        return gpuDrainageFillIterations != lastValidatedGpuDrainageFillIterations ||
+               gpuFlowAccumulationIterations != lastValidatedGpuFlowAccumulationIterations ||
+               !Mathf.Approximately(gpuHydroRoutingJitter, lastValidatedGpuHydroRoutingJitter) ||
+               !Mathf.Approximately(gpuDrainageRiverMinWidthPixels, lastValidatedGpuDrainageRiverMinWidthPixels) ||
+               !Mathf.Approximately(gpuDrainageRiverMaxWidthPixels, lastValidatedGpuDrainageRiverMaxWidthPixels) ||
+               !Mathf.Approximately(gpuLakeBasinMinDepth, lastValidatedGpuLakeBasinMinDepth) ||
+               !Mathf.Approximately(gpuLakeBasinFullDepth, lastValidatedGpuLakeBasinFullDepth) ||
+               !Mathf.Approximately(gpuLakeShorelineWarpPixels, lastValidatedGpuLakeShorelineWarpPixels) ||
+               !Mathf.Approximately(gpuRiverAccumulationThresholdSparse, lastValidatedGpuRiverAccumulationThresholdSparse) ||
+               !Mathf.Approximately(gpuRiverAccumulationThresholdStandard, lastValidatedGpuRiverAccumulationThresholdStandard) ||
+               !Mathf.Approximately(gpuRiverAccumulationThresholdAbundant, lastValidatedGpuRiverAccumulationThresholdAbundant) ||
+               !Mathf.Approximately(gpuFlowMinDownhillDelta, lastValidatedGpuFlowMinDownhillDelta) ||
+               !Mathf.Approximately(gpuFlowAccumulationCompression, lastValidatedGpuFlowAccumulationCompression);
+    }
+
     private void CacheValidatedGpuHeightInputs()
     {
         lastValidatedGpuMacroReliefStrength = gpuMacroReliefStrength;
@@ -252,6 +295,19 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedGpuInlandBasinStrength = gpuInlandBasinStrength;
         lastValidatedGpuInlandBasinScale = gpuInlandBasinScale;
         lastValidatedGpuWatershedRidgeStrength = gpuWatershedRidgeStrength;
+        lastValidatedGpuDrainageFillIterations = gpuDrainageFillIterations;
+        lastValidatedGpuFlowAccumulationIterations = gpuFlowAccumulationIterations;
+        lastValidatedGpuHydroRoutingJitter = gpuHydroRoutingJitter;
+        lastValidatedGpuDrainageRiverMinWidthPixels = gpuDrainageRiverMinWidthPixels;
+        lastValidatedGpuDrainageRiverMaxWidthPixels = gpuDrainageRiverMaxWidthPixels;
+        lastValidatedGpuLakeBasinMinDepth = gpuLakeBasinMinDepth;
+        lastValidatedGpuLakeBasinFullDepth = gpuLakeBasinFullDepth;
+        lastValidatedGpuLakeShorelineWarpPixels = gpuLakeShorelineWarpPixels;
+        lastValidatedGpuRiverAccumulationThresholdSparse = gpuRiverAccumulationThresholdSparse;
+        lastValidatedGpuRiverAccumulationThresholdStandard = gpuRiverAccumulationThresholdStandard;
+        lastValidatedGpuRiverAccumulationThresholdAbundant = gpuRiverAccumulationThresholdAbundant;
+        lastValidatedGpuFlowMinDownhillDelta = gpuFlowMinDownhillDelta;
+        lastValidatedGpuFlowAccumulationCompression = gpuFlowAccumulationCompression;
         validateCacheInitialized = true;
     }
     private void Update()
