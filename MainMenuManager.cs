@@ -238,6 +238,12 @@ public class MainMenuManager : MonoBehaviour
     };
 
     private int selectedTerrainPreset = 2; // Default to Rocky
+    [Header("Menu Preview Terrain Roughness Elevation")]
+    [SerializeField, Range(0.05f, 1f)] private float previewFlatElevation = 0.12f;
+    [SerializeField, Range(0.05f, 1f)] private float previewSmoothElevation = 0.28f;
+    [SerializeField, Range(0.05f, 1f)] private float previewStandardElevation = 0.50f;
+    [SerializeField, Range(0.05f, 1f)] private float previewMountainousElevation = 0.72f;
+    [SerializeField, Range(0.05f, 1f)] private float previewAlpineElevation = 0.90f;
 
     // Preview update cache (prevents resending unchanged values).
     private int lastPreviewLandPreset = -1;
@@ -701,16 +707,18 @@ public class MainMenuManager : MonoBehaviour
             lastPreviewWaterwaysPreset = selectedWaterwaysPreset;
         }
 
-        // Elevation: map GetElevationCategory() (0=Low, 1=Hilly, 2=Mountainous, 3=Alpine) to 0–1
+        // Elevation uses the terrain roughness preset dropdown directly:
+        // 0=Flat, 1=Smooth, 2=Standard, 3=Mountainous, 4=Alpine.
         int elevCat = GetElevationCategory();
-        float elev = elevCat switch
+        float elev = Mathf.Clamp01(selectedTerrainPreset switch
         {
-            0 => 0.2f,  // Low — mostly flat with gentle hills
-            1 => 0.55f, // Hilly — visible highlands and color variation
-            2 => 0.75f, // Mountainous — dramatic peaks with snow caps
-            3 => 1.0f,  // Alpine — extreme mountains, maximum elevation
-            _ => 0.3f
-        };
+            0 => previewFlatElevation,
+            1 => previewSmoothElevation,
+            2 => previewStandardElevation,
+            3 => previewMountainousElevation,
+            4 => previewAlpineElevation,
+            _ => previewStandardElevation
+        });
         if (lastPreviewTerrainPreset != selectedTerrainPreset)
         {
             planetPreview.SetElevation(elev);

@@ -8,6 +8,7 @@ int _MapWidth;
 int _MapHeight;
 float _Seed;
 float _Elevation;
+float _ElevationNoiseStrength;
 float _MacroReliefStrength;
 float _MacroReliefScale;
 float _InlandBasinStrength;
@@ -113,9 +114,10 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
     float3 seedOffsetB = _Seed * float3(0.067, 0.149, 0.091) + float3(59.1, 11.6, 83.4);
     float3 seedOffsetC = _Seed * float3(0.173, 0.113, 0.047) + float3(27.8, 73.5, 19.2);
 
-    float hillNoise = Fbm(objNorm * 1.35 + seedOffsetA);
-    float mountainProvinceNoise = Fbm(objNorm * 1.85 + seedOffsetB);
-    float mountainRangeNoise = RidgedFbm(objNorm * 3.5 + seedOffsetC);
+    float elevationNoise = lerp(0.55, 1.45, saturate(_ElevationNoiseStrength));
+    float hillNoise = Fbm(objNorm * (1.35 * elevationNoise) + seedOffsetA);
+    float mountainProvinceNoise = Fbm(objNorm * (1.85 * elevationNoise) + seedOffsetB);
+    float mountainRangeNoise = RidgedFbm(objNorm * (3.5 * elevationNoise) + seedOffsetC);
     float macroReliefNoise = Fbm(objNorm * max(0.2, _MacroReliefScale) + seedOffsetA * 0.25);
     float basinNoise = 1.0 - Fbm(objNorm * max(0.2, _InlandBasinScale) + seedOffsetB * 0.21);
     float watershedRidge = RidgedFbm(objNorm * 2.2 + seedOffsetC * 0.35);
