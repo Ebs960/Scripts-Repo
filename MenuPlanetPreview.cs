@@ -1259,10 +1259,11 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
     {
         if (materialInstance == null) return;
 
-        // Snow factor is primarily temperature-driven but reinforced by elevation
         float effectiveIceCapSize = enableIceCaps ? legacyIceCapSize : 0f;
+
+        float coldness = 1f - temperature;
         float snowFactor = enableIceCaps
-            ? Mathf.Clamp01((1f - temperature) * Mathf.Lerp(0.08f, 0.35f, elevationTemperatureImpact) + elevation * 0.08f)
+            ? Mathf.Clamp01(coldness * Mathf.Lerp(0.08f, 0.28f, elevationTemperatureImpact))
             : 0f;
 
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
