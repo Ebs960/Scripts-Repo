@@ -54,7 +54,12 @@ public class MenuPlanetPreviewRenderTexture : MonoBehaviour
         if (previewTexture != null)
         {
             previewTexture.Release();
-            Destroy(previewTexture);
+
+            if (Application.isPlaying)
+                Destroy(previewTexture);
+            else
+                DestroyImmediate(previewTexture);
+
             previewTexture = null;
         }
     }
