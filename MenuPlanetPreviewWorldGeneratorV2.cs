@@ -572,6 +572,14 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.Dispatch(kFlowDir, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
         cs.Dispatch(kInitAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
         for (int i = 0; i < gpuFlowAccumulationIterations; i++) { cs.Dispatch(kRelaxAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1); var t = gpuFlowAccumA; gpuFlowAccumA = gpuFlowAccumB; gpuFlowAccumB = t; cs.SetTexture(kRelaxAcc, "_FlowAccumTexA", gpuFlowAccumA); cs.SetTexture(kRelaxAcc, "_FlowAccumTexB", gpuFlowAccumB); }
+
+        // Rebind ping-pong outputs so downstream kernels always read final buffers.
+        RenderTexture finalFill = gpuDrainageFillA;
+        RenderTexture finalAccum = gpuFlowAccumA;
+        cs.SetTexture(kBuild, "_DrainageFillTexA", finalFill);
+        cs.SetTexture(kBuild, "_FlowAccumTexA", finalAccum);
+        cs.SetTexture(kUpsample, "_FlowAccumTexA", finalAccum);
+
         cs.Dispatch(kBuild, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
         cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
         Debug.Log(
