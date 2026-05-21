@@ -24,10 +24,11 @@ float _Seed,_Elevation,_Moisture;
 float _HydroRoutingJitter,_LakeBasinMinDepth,_LakeBasinFullDepth,_DrainageRiverMinWidthPixels,_DrainageRiverMaxWidthPixels,_LakeShorelineWarpPixels,_RiverAccumulationThreshold;
 
 float hash1(uint x){x^=x>>17; x*=0xed5ad4bbU; x^=x>>11; x*=0xac4c1b51U; x^=x>>15; x*=0x31848babU; x^=x>>14; return frac((float)x/65535.0);} 
-int wrapX(int x){int w=max(1,_MapWidth); x%=w; if(x<0)x+=w; return x;}
+int WrapSignedNoMod(int x, int width){int w=max(1,width); return x - (int)floor((float)x/(float)w)*w;}
+int wrapX(int x){return WrapSignedNoMod(x,_MapWidth);}
 int2 clampPix(int2 p){return int2(wrapX(p.x), clamp(p.y,0,max(0,_MapHeight-1)));}
 float LoadLand(int2 p){return _TectonicSurfaceTex.Load(int3(clampPix(p),0)).x;}
-int2 ClampAnalysis(int2 p){ return int2((p.x%_HydrologyAnalysisWidth+_HydrologyAnalysisWidth)%_HydrologyAnalysisWidth, clamp(p.y,0,_HydrologyAnalysisHeight-1)); }
+int2 ClampAnalysis(int2 p){ return int2(WrapSignedNoMod(p.x,_HydrologyAnalysisWidth), clamp(p.y,0,_HydrologyAnalysisHeight-1)); }
 float CoarseHeight(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return _GpuHeightTex.Load(int3(clampPix(hp),0)).r;}
 float CoarseLand(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return LoadLand(hp);} 
 
