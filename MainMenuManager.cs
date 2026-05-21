@@ -713,6 +713,7 @@ public class MainMenuManager : MonoBehaviour
         };
         if (lastPreviewTerrainPreset != selectedTerrainPreset)
         {
+            planetPreview.SetTerrainRoughnessPreset(selectedTerrainPreset);
             planetPreview.SetElevation(elev);
             lastPreviewTerrainPreset = selectedTerrainPreset;
         }

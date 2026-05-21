@@ -39,6 +39,7 @@ public struct MenuPlanetPreviewWorldInputs
     public float biomeCompetitionSharpness;
 
     public int landPresetIndex;
+    public int terrainRoughnessPresetIndex;
     public int waterwaysPreset;
 }
 
@@ -94,13 +95,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(0f, 0.20f)] private float gpuInlandBasinStrength = 0.045f;
     [SerializeField, Range(0.25f, 4f)] private float gpuInlandBasinScale = 1.0f;
     [SerializeField, Range(0f, 0.15f)] private float gpuWatershedRidgeStrength = 0.025f;
-    [Header("Terrain Roughness Preset Multipliers")]
-    [SerializeField, Range(0.2f, 2.0f)] private float archipelagoElevationMultiplier = 0.8f;
-    [SerializeField, Range(0.2f, 2.0f)] private float islandsElevationMultiplier = 0.9f;
+    [Header("Terrain Roughness Type Elevation Multipliers")]
+    [SerializeField, Range(0.2f, 2.0f)] private float flatElevationMultiplier = 0.8f;
+    [SerializeField, Range(0.2f, 2.0f)] private float smoothElevationMultiplier = 0.9f;
     [SerializeField, Range(0.2f, 2.0f)] private float standardElevationMultiplier = 1.0f;
-    [SerializeField, Range(0.2f, 2.0f)] private float largeContinentsElevationMultiplier = 1.1f;
-    [SerializeField, Range(0.2f, 2.0f)] private float pangaeaElevationMultiplier = 1.2f;
-    [SerializeField, Range(0.2f, 2.0f)] private float terrestrialElevationMultiplier = 1.15f;
+    [SerializeField, Range(0.2f, 2.0f)] private float mountainousElevationMultiplier = 1.15f;
+    [SerializeField, Range(0.2f, 2.0f)] private float alpineElevationMultiplier = 1.25f;
 
 
     Texture2D surfaceDataTexture, auxiliaryMaskTexture, worldStructureTexture;
@@ -183,6 +183,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private int gpuHeightKernel = -1;
+    private bool validateCacheInitialized;
+    private float lastValidatedGpuMacroReliefStrength;
+    private float lastValidatedGpuMacroReliefScale;
+    private float lastValidatedGpuInlandBasinStrength;
+    private float lastValidatedGpuInlandBasinScale;
+    private float lastValidatedGpuWatershedRidgeStrength;
 
 
     public void SetInputs(MenuPlanetPreviewWorldInputs v) => inputs = v;
@@ -210,6 +216,43 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         ReleaseGpuCoastlineResources();
         ReleaseGpuHeightTexture();
         ReleaseGpuHydrologyResources();
+    }
+
+    private void OnValidate()
+    {
+        if (!Application.isPlaying) return;
+        if (!validateCacheInitialized)
+        {
+            CacheValidatedGpuHeightInputs();
+            return;
+        }
+
+        if (GpuHeightSettingsChanged())
+        {
+            DispatchGpuHeight();
+            DispatchGpuHydrology();
+            WorldTexturesUpdated?.Invoke();
+            CacheValidatedGpuHeightInputs();
+        }
+    }
+
+    private bool GpuHeightSettingsChanged()
+    {
+        return !Mathf.Approximately(gpuMacroReliefStrength, lastValidatedGpuMacroReliefStrength) ||
+               !Mathf.Approximately(gpuMacroReliefScale, lastValidatedGpuMacroReliefScale) ||
+               !Mathf.Approximately(gpuInlandBasinStrength, lastValidatedGpuInlandBasinStrength) ||
+               !Mathf.Approximately(gpuInlandBasinScale, lastValidatedGpuInlandBasinScale) ||
+               !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength);
+    }
+
+    private void CacheValidatedGpuHeightInputs()
+    {
+        lastValidatedGpuMacroReliefStrength = gpuMacroReliefStrength;
+        lastValidatedGpuMacroReliefScale = gpuMacroReliefScale;
+        lastValidatedGpuInlandBasinStrength = gpuInlandBasinStrength;
+        lastValidatedGpuInlandBasinScale = gpuInlandBasinScale;
+        lastValidatedGpuWatershedRidgeStrength = gpuWatershedRidgeStrength;
+        validateCacheInitialized = true;
     }
     private void Update()
     {
@@ -397,7 +440,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         menuPlanetPreviewHeightCompute.SetInt("_MapWidth", mapWidth);
         menuPlanetPreviewHeightCompute.SetInt("_MapHeight", mapHeight);
         menuPlanetPreviewHeightCompute.SetFloat("_Seed", inputs.seed);
-        float presetMultiplier = GetLandPresetElevationMultiplier(Mathf.Clamp(inputs.landPresetIndex, 0, presets.Length - 1));
+        float presetMultiplier = GetTerrainRoughnessElevationMultiplier(Mathf.Clamp(inputs.terrainRoughnessPresetIndex, 0, 4));
         menuPlanetPreviewHeightCompute.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation * presetMultiplier));
         menuPlanetPreviewHeightCompute.SetFloat("_ElevationNoiseStrength", Mathf.Clamp01(inputs.elevationNoiseStrength));
         menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefStrength", gpuMacroReliefStrength);
@@ -414,16 +457,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
         menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
     }
-    private float GetLandPresetElevationMultiplier(int presetIndex)
+    private float GetTerrainRoughnessElevationMultiplier(int presetIndex)
     {
         return presetIndex switch
         {
-            0 => archipelagoElevationMultiplier,
-            1 => islandsElevationMultiplier,
+            0 => flatElevationMultiplier,
+            1 => smoothElevationMultiplier,
             2 => standardElevationMultiplier,
-            3 => largeContinentsElevationMultiplier,
-            4 => pangaeaElevationMultiplier,
-            5 => terrestrialElevationMultiplier,
+            3 => mountainousElevationMultiplier,
+            4 => alpineElevationMultiplier,
             _ => 1f
         };
     }

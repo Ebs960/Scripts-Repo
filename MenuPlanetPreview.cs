@@ -352,9 +352,11 @@ public class MenuPlanetPreview : MonoBehaviour
     private float lastValidatedLandScale;
     private float lastValidatedLandThreshold;
     private float lastValidatedElevation;
+    private float lastValidatedElevationNoiseStrength;
     private float lastValidatedMoisture;
     private float lastValidatedTemperature;
     private int lastValidatedLandPresetIndex;
+    private int lastValidatedTerrainPresetIndex;
     private float lastValidatedClimateNoiseStrength;
     private float lastValidatedCoastWetnessStrength;
     private float lastValidatedContinentalDrynessStrength;
@@ -556,6 +558,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
 
     private int currentLandPresetIndex = 2;
+    private int currentTerrainRoughnessPresetIndex = 2;
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -625,6 +628,7 @@ public class MenuPlanetPreview : MonoBehaviour
         return new MenuPlanetPreviewWorldInputs
         {
             seed = seed, landScale = landScale, landThreshold = landThreshold, landPresetIndex = currentLandPresetIndex, elevation = elevation,
+            terrainRoughnessPresetIndex = currentTerrainRoughnessPresetIndex,
             elevationNoiseStrength = elevationNoiseStrength, elevationTemperatureImpact = elevationTemperatureImpact, enableIceCaps = enableIceCaps,
             temperature = temperature, moisture = moisture, waterwaysPreset = waterwaysPreset,
             climateNoiseStrength = climateNoiseStrength,
@@ -959,7 +963,9 @@ public class MenuPlanetPreview : MonoBehaviour
         lastValidatedLandScale = landScale;
         lastValidatedLandThreshold = landThreshold;
         lastValidatedLandPresetIndex = currentLandPresetIndex;
+        lastValidatedTerrainPresetIndex = currentTerrainRoughnessPresetIndex;
         lastValidatedElevation = elevation;
+        lastValidatedElevationNoiseStrength = elevationNoiseStrength;
 
         lastValidatedMoisture = moisture;
         lastValidatedTemperature = temperature;
@@ -1000,7 +1006,25 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         if (!validateCacheInitialized) return true;
 
-        return !Mathf.Approximately(elevation, lastValidatedElevation);
+        return !Mathf.Approximately(elevation, lastValidatedElevation) ||
+               !Mathf.Approximately(elevationNoiseStrength, lastValidatedElevationNoiseStrength) ||
+               currentTerrainRoughnessPresetIndex != lastValidatedTerrainPresetIndex;
+    }
+
+    public void SetTerrainRoughnessPreset(int terrainPresetIndex)
+    {
+        int nextPreset = Mathf.Clamp(terrainPresetIndex, 0, 4);
+        if (currentTerrainRoughnessPresetIndex == nextPreset)
+            return;
+
+        currentTerrainRoughnessPresetIndex = nextPreset;
+
+        if (worldGenerator != null)
+        {
+            worldGenerator.RefreshGpuHeightOnly(BuildWorldInputs());
+            worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
+            BindGeneratedWorldTextures();
+        }
     }
 
     // -----------------------------------------------------------------
