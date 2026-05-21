@@ -252,32 +252,32 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private float landThreshold = 0.4f;
 
     [Header("Climate")]
-    [Range(0f, 1f)]
-    [Tooltip("0 = frozen / icy,  0.5 = temperate / green,  1 = hot / arid.")]
+    [Range(0f, 2f)]
+    [Tooltip("0 = frozen / icy,  0.5 = temperate / green,  1 = hot / arid, values above 1 push extreme heat.")]
     [SerializeField] private float temperature = 0.5f;
 
-    [Range(0f, 1f)]
-    [Tooltip("0 = dry / brown,  1 = wet / lush green.")]
+    [Range(0f, 2f)]
+    [Tooltip("0 = dry / brown,  1 = wet / lush green, values above 1 push extreme humidity.")]
     [SerializeField] private float moisture = 0.5f;
 
     
     [Header("Advanced Climate Tuning")]
-    [SerializeField, Range(0f, 0.3f)] private float climateNoiseStrength = 0.12f;
-    [SerializeField, Range(0f, 0.3f)] private float coastWetnessStrength = 0.08f;
-    [SerializeField, Range(0f, 0.3f)] private float continentalDrynessStrength = 0.08f;
-    [SerializeField, Range(0f, 0.3f)] private float continentalTemperatureStrength = 0.06f;
-    [SerializeField, Range(0f, 0.3f)] private float riparianWetnessStrength = 0.12f;
+    [SerializeField, Range(0f, 2f)] private float climateNoiseStrength = 0.12f;
+    [SerializeField, Range(0f, 2f)] private float coastWetnessStrength = 0.08f;
+    [SerializeField, Range(0f, 2f)] private float continentalDrynessStrength = 0.08f;
+    [SerializeField, Range(0f, 2f)] private float continentalTemperatureStrength = 0.06f;
+    [SerializeField, Range(0f, 2f)] private float riparianWetnessStrength = 0.12f;
 
     [Header("Advanced Biome Tuning")]
-    [SerializeField, Range(0f, 0.5f)] private float biomeProvinceStrength = 0.20f;
-    [SerializeField, Range(0.5f, 1.25f)] private float biomeCompetitionSharpness = 0.85f;
+    [SerializeField, Range(0f, 2f)] private float biomeProvinceStrength = 0.20f;
+    [SerializeField, Range(0.5f, 3f)] private float biomeCompetitionSharpness = 0.85f;
 
     [Header("Terrain")]
-    [Range(0f, 1f)]
-    [Tooltip("0 = flat lowlands,  0.5 = hilly,  1 = extreme mountains with snow peaks.")]
+    [Range(0f, 2f)]
+    [Tooltip("0 = flat lowlands,  0.5 = hilly,  1 = extreme mountains with snow peaks, values above 1 exaggerate relief.")]
     [SerializeField] private float elevation = 0.3f;
-    [SerializeField, Range(0f, 1f)] private float elevationNoiseStrength = 0.45f;
-    [SerializeField, Range(0f, 1f)] private float elevationTemperatureImpact = 0.18f;
+    [SerializeField, Range(0f, 2f)] private float elevationNoiseStrength = 0.45f;
+    [SerializeField, Range(0f, 2f)] private float elevationTemperatureImpact = 0.18f;
 
     [Header("Map Style")]
     [Range(0f, 1f)]
