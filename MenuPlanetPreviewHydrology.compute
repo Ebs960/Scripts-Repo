@@ -29,7 +29,22 @@ int wrapX(int x){return WrapSignedNoMod(x,_MapWidth);}
 int2 clampPix(int2 p){return int2(wrapX(p.x), clamp(p.y,0,max(0,_MapHeight-1)));}
 float LoadLand(int2 p){return _TectonicSurfaceTex.Load(int3(clampPix(p),0)).x;}
 int2 ClampAnalysis(int2 p){ return int2(WrapSignedNoMod(p.x,_HydrologyAnalysisWidth), clamp(p.y,0,_HydrologyAnalysisHeight-1)); }
-float CoarseHeight(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return _GpuHeightTex.Load(int3(clampPix(hp),0)).r;}
+float GetRawHeight(int2 p){return _GpuHeightTex.Load(int3(clampPix(p),0)).r;}
+float GetHydrologyHeight(int2 p)
+{
+    int2 cp = clampPix(p);
+    float center = GetRawHeight(cp);
+    float n = GetRawHeight(cp + int2(0, 1));
+    float s = GetRawHeight(cp + int2(0,-1));
+    float e = GetRawHeight(cp + int2(1, 0));
+    float w = GetRawHeight(cp + int2(-1,0));
+    float ne = GetRawHeight(cp + int2(1, 1));
+    float nw = GetRawHeight(cp + int2(-1, 1));
+    float se = GetRawHeight(cp + int2(1, -1));
+    float sw = GetRawHeight(cp + int2(-1, -1));
+    return center * 0.55 + (n + s + e + w) * 0.10 + (ne + nw + se + sw) * 0.0125;
+}
+float CoarseHeight(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return GetHydrologyHeight(hp);}
 float CoarseLand(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return LoadLand(hp);} 
 
 [numthreads(8,8,1)]
