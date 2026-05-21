@@ -128,7 +128,7 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
 
     float hillMask =
         landMask *
-        smoothstep(hillThreshold - 0.12, hillThreshold + 0.12, hillNoise);
+        smoothstep(hillThreshold, hillThreshold + 0.12, hillNoise);
 
     float mountainCandidate = saturate(
         mountainProvinceNoise * 0.55 +
@@ -137,31 +137,32 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
 
     float mountainMask =
         landMask *
-        smoothstep(mountainThreshold - 0.10, mountainThreshold + 0.10, mountainCandidate);
+        smoothstep(mountainThreshold, mountainThreshold + 0.10, mountainCandidate);
 
     float usableHillMask = hillMask * (1.0 - mountainMask * 0.45);
     float interiorBoost = lerp(0.85, 1.10, saturate(continentality));
 
-    float lowlandBase =
-        landMask * lerp(0.03, 0.09, roughness);
+    float baseLandHeight =
+        landMask * 0.075;
 
     float hillHeight =
         usableHillMask *
-        lerp(0.10, 0.42, roughness) *
+        lerp(0.025, 0.12, roughness) *
         interiorBoost;
 
     float mountainHeight =
         mountainMask *
-        lerp(0.20, 0.95, roughness) *
+        lerp(0.06, 0.28, roughness) *
         interiorBoost;
 
-    float macroRelief = (macroReliefNoise - 0.5) * 2.0 * _MacroReliefStrength * landMask * lerp(0.8, 1.25, roughness);
+    float centeredMacroNoise = (macroReliefNoise - 0.5) * 2.0;
+    float macroRelief = centeredMacroNoise * _MacroReliefStrength * landMask;
     float inlandPreference = saturate(continentality * smoothstep(0.15, 0.7, landMask));
-    float midElevationPreference = 1.0 - smoothstep(0.45, 0.95, lowlandBase + hillHeight + mountainHeight);
+    float midElevationPreference = 1.0 - smoothstep(0.45, 0.95, baseLandHeight + hillHeight + mountainHeight);
     float basinPotential = saturate(basinNoise * inlandPreference * midElevationPreference);
     float basinCarve = basinPotential * _InlandBasinStrength;
     float ridgeLift = (watershedRidge - 0.5) * 2.0 * _WatershedRidgeStrength * inlandPreference;
-    float finalHeight = saturate(lowlandBase + hillHeight + mountainHeight + macroRelief + ridgeLift - basinCarve);
+    float finalHeight = saturate(baseLandHeight + hillHeight + mountainHeight + macroRelief + ridgeLift - basinCarve);
 
     _GpuHeightTex[pixel] = float4(
         finalHeight,
