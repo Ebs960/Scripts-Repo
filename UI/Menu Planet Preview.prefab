@@ -535,6 +535,8 @@ MonoBehaviour:
   showShorelineMaskOnly: 0
   showWetlandMaskOnly: 0
   showWaterDepthMaskOnly: 0
+  riverChannelCarveStrength: 0.05
+  lakeBasinCarveStrength: 0.08
   disableCloudsForDebug: 0
   showTectonicLandMaskOnly: 0
   showTectonicHeightOnly: 0
@@ -562,8 +564,11 @@ MonoBehaviour:
   biomeProvinceStrength: 0.214
   biomeCompetitionSharpness: 1.017
   elevation: 0.3
+  elevationNoiseStrength: 0.062
+  elevationTemperatureImpact: 0.071
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
+  enableIceCaps: 1
   legacyIceCapSize: 0.5
   legacyBiomeBlend: 0.045
   smoothness: 0.5
@@ -615,11 +620,11 @@ MonoBehaviour:
   gpuAllRiversStartFromLakes: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
   gpuSparseRiverCount: 4
-  gpuStandardRiverCount: 8
-  gpuAbundantRiverCount: 12
-  gpuSparseLakeCount: 4
-  gpuStandardLakeCount: 7
-  gpuAbundantLakeCount: 10
+  gpuStandardRiverCount: 6
+  gpuAbundantRiverCount: 10
+  gpuSparseLakeCount: 2
+  gpuStandardLakeCount: 3
+  gpuAbundantLakeCount: 5
   gpuHydrologyMoistureCountInfluence: 0.35
   gpuRiverMeanderStrength: 0.797
   gpuRiverSourceElevationPreference: 0.31
@@ -632,6 +637,29 @@ MonoBehaviour:
   gpuLakeMinRadiusPixels: 13
   gpuLakeMaxRadiusPixels: 19.2
   logGpuHydrologyFeatureDiagnostics: 0
+  useTerrainDrivenHydrology: 1
+  gpuDrainageFillIterations: 32
+  gpuFlowAccumulationIterations: 32
+  gpuHydroRoutingJitter: 0.0258
+  gpuDrainageRiverMinWidthPixels: 1
+  gpuDrainageRiverMaxWidthPixels: 2
+  gpuLakeBasinMinDepth: 0.08
+  gpuLakeBasinFullDepth: 0.18
+  gpuLakeShorelineWarpPixels: 0
+  gpuRiverAccumulationThresholdSparse: 0.95
+  gpuRiverAccumulationThresholdStandard: 0.9
+  gpuRiverAccumulationThresholdAbundant: 0.8
+  gpuMacroReliefStrength: 0.053
+  gpuMacroReliefScale: 1.04
+  gpuInlandBasinStrength: 0
+  gpuInlandBasinScale: 0.25
+  gpuWatershedRidgeStrength: 0.0136
+  archipelagoElevationMultiplier: 1
+  islandsElevationMultiplier: 1
+  standardElevationMultiplier: 1
+  largeContinentsElevationMultiplier: 1
+  pangaeaElevationMultiplier: 1.2
+  terrestrialElevationMultiplier: 1.15
   presets:
   - name: Archipelago
     majorLandmasses:
