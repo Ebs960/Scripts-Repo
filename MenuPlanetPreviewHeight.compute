@@ -158,6 +158,13 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
         landMask *
         interiorBoost;
 
+    float broadRelief = (Fbm(objNorm * (0.85 * elevationNoise) + seedOffsetB * 0.41) - 0.5) * 2.0;
+    float midRelief = (Fbm(objNorm * (2.20 * elevationNoise) + seedOffsetA * 0.73) - 0.5) * 2.0;
+    float terrainVariance =
+        broadRelief * lerp(0.010, 0.085, roughness) +
+        midRelief * lerp(0.004, 0.045, roughness);
+    terrainVariance *= landMask * interiorBoost;
+
     float hillHeight =
         usableHillMask *
         lerp(0.025, 0.12, roughness) *
@@ -181,12 +188,12 @@ void GenerateHeight(uint3 id : SV_DispatchThreadID)
     basinPotential *= (1.0 - saturate(abs(rollingReliefNoise) * lerp(0.15, 0.55, roughness)));
     float basinCarve = basinPotential * _InlandBasinStrength;
     float ridgeLift = (watershedRidge - 0.5) * 2.0 * _WatershedRidgeStrength * inlandPreference;
-    float finalHeight = saturate(baseLandHeight + rollingRelief + hillHeight + foothillHeight + mountainHeight + macroRelief + ridgeLift - basinCarve);
+    float finalHeight = saturate(baseLandHeight + terrainVariance + hillHeight + foothillHeight + mountainHeight + macroRelief + ridgeLift - basinCarve);
 
     _GpuHeightTex[pixel] = float4(
         finalHeight,
-        usableHillMask,
+        saturate(hillMask + foothillMask * 0.75),
         mountainMask,
-        saturate(mountainCandidate)
+        saturate((rollingRelief + 0.12) / 0.24)
     );
 }
