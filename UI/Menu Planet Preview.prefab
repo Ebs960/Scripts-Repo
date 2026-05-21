@@ -420,7 +420,7 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 20
+  rotationSpeed: 17
   detailScale: 100
   detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
@@ -433,7 +433,7 @@ MonoBehaviour:
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
   cloudSurfaceShadowStrength: 0.12
-  enableAtmosphereShell: 1
+  enableAtmosphereShell: 0
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
   atmosphereIntensity: 0.16
@@ -464,11 +464,11 @@ MonoBehaviour:
   lavaTextureScale: 10
   ashDetailStrength: 0.25
   mountainDetailStrength: 0.432
-  iceDetailStrength: 1
+  iceDetailStrength: 0.425
   oceanDetailStrength: 0.05
   oceanNormalStrength: 0.018
   mountainNormalStrength: 0.463
-  iceNormalStrength: 1
+  iceNormalStrength: 0.541
   textureDetailScale: 1.8
   jungleAlbedoTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
   desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
@@ -498,17 +498,17 @@ MonoBehaviour:
   polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   marshSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
   biomeTextureStrength: 1
-  climateGradeStrength: 0.06
+  climateGradeStrength: 0.106
   biomeNormalStrength: 0.394
   biomeTextureScale: 2
   biomeTextureContrast: 0.324
-  landUpliftStrength: 0.15
+  landUpliftStrength: 0
   hillDisplacementStrength: 0.5
-  mountainDisplacementStrength: 0.35
-  terrainElevationDisplacementStrength: 1
+  mountainDisplacementStrength: 0.02
+  terrainElevationDisplacementStrength: 1.13
   iceDisplacementStrength: 0
   volcanicDisplacementStrength: 0.45
-  oceanDepthStrength: 0.25
+  oceanDepthStrength: 0.347
   showElevationOnly: 0
   showMountainMaskOnly: 0
   showDisplacementHeightOnly: 0
@@ -535,8 +535,8 @@ MonoBehaviour:
   showShorelineMaskOnly: 0
   showWetlandMaskOnly: 0
   showWaterDepthMaskOnly: 0
-  riverChannelCarveStrength: 0.05
-  lakeBasinCarveStrength: 0.08
+  riverChannelCarveStrength: 0
+  lakeBasinCarveStrength: 0.01
   disableCloudsForDebug: 0
   showTectonicLandMaskOnly: 0
   showTectonicHeightOnly: 0
@@ -556,16 +556,16 @@ MonoBehaviour:
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
-  climateNoiseStrength: 0.25
-  coastWetnessStrength: 0.197
-  continentalDrynessStrength: 0.05
-  continentalTemperatureStrength: 0.15
-  riparianWetnessStrength: 0.15
+  climateNoiseStrength: 0.3
+  coastWetnessStrength: 0.14
+  continentalDrynessStrength: 0.083
+  continentalTemperatureStrength: 0.178
+  riparianWetnessStrength: 0.223
   biomeProvinceStrength: 0.214
   biomeCompetitionSharpness: 1.017
   elevation: 0.3
-  elevationNoiseStrength: 0.241
-  elevationTemperatureImpact: 0
+  elevationNoiseStrength: 0.5
+  elevationTemperatureImpact: 0.054
   mapStyle: 0
   oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   enableIceCaps: 1
@@ -605,43 +605,42 @@ MonoBehaviour:
   regenerationDelay: 0.01
   topologyWidth: 512
   topologyHeight: 256
-  coastlineDeformationWidthCells: 24
-  coastlineWarpStrength: 1.665
-  coastlineMidNoiseStrength: 1.5
-  coastlineEdgeNoiseStrength: 0.479
-  coastlineSoftness: 0.05
-  coastlineThresholdBias: 0
-  logWorldGenerationDiagnostics: 0
+  coastlineDeformationWidthCells: 8
+  coastlineWarpStrength: 0.4
+  coastlineMidNoiseStrength: 1
+  coastlineEdgeNoiseStrength: 0.1
+  coastlineSoftness: 0.107
+  coastlineThresholdBias: -0.145
+  logWorldGenerationDiagnostics: 1
   useGpuCoastlinePreview: 1
   menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 930babc1193edcd4591e7fcdd6ecde15, type: 3}
   useGpuHeightPreview: 1
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
   useGpuHydrologyPreview: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
-  gpuDrainageFillIterations: 50
-  gpuFlowAccumulationIterations: 75
-  gpuHydroRoutingJitter: 0.04
-  gpuDrainageRiverMinWidthPixels: 1
-  gpuDrainageRiverMaxWidthPixels: 2.96
-  gpuLakeBasinMinDepth: 0.09
-  gpuLakeBasinFullDepth: 0.18
-  gpuLakeShorelineWarpPixels: 0.7
+  gpuDrainageFillIterations: 192
+  gpuFlowAccumulationIterations: 203
+  gpuHydroRoutingJitter: 0.01
+  gpuDrainageRiverMinWidthPixels: 1.52
+  gpuDrainageRiverMaxWidthPixels: 3.5
+  gpuLakeBasinMinDepth: 0.04
+  gpuLakeBasinFullDepth: 0.15
+  gpuLakeShorelineWarpPixels: 1.51
   gpuRiverAccumulationThresholdSparse: 0.95
-  gpuRiverAccumulationThresholdStandard: 0.9
+  gpuRiverAccumulationThresholdStandard: 0.85
   gpuRiverAccumulationThresholdAbundant: 0.8
-  gpuFlowMinDownhillDelta: 0.004
-  gpuFlowAccumulationCompression: 0.12
-  gpuMacroReliefStrength: 0.1
-  gpuMacroReliefScale: 1.04
-  gpuInlandBasinStrength: 0.045
-  gpuInlandBasinScale: 1
-  gpuWatershedRidgeStrength: 0.025
-  archipelagoElevationMultiplier: 1
-  islandsElevationMultiplier: 1
+  gpuFlowMinDownhillDelta: 0.04
+  gpuFlowAccumulationCompression: 0.15
+  gpuMacroReliefStrength: 0.07
+  gpuMacroReliefScale: 0.8
+  gpuInlandBasinStrength: 0.03
+  gpuInlandBasinScale: 0.39
+  gpuWatershedRidgeStrength: 0.035
+  flatElevationMultiplier: 0.8
+  smoothElevationMultiplier: 0.9
   standardElevationMultiplier: 1
-  largeContinentsElevationMultiplier: 1
-  pangaeaElevationMultiplier: 1.2
-  terrestrialElevationMultiplier: 1.15
+  mountainousElevationMultiplier: 1.15
+  alpineElevationMultiplier: 1.25
   presets:
   - name: Archipelago
     majorLandmasses:
