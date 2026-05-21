@@ -617,27 +617,7 @@ MonoBehaviour:
   useGpuHeightPreview: 1
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
   useGpuHydrologyPreview: 1
-  gpuAllRiversStartFromLakes: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
-  gpuSparseRiverCount: 4
-  gpuStandardRiverCount: 6
-  gpuAbundantRiverCount: 10
-  gpuSparseLakeCount: 2
-  gpuStandardLakeCount: 3
-  gpuAbundantLakeCount: 5
-  gpuHydrologyMoistureCountInfluence: 0.35
-  gpuRiverMeanderStrength: 0.797
-  gpuRiverSourceElevationPreference: 0.31
-  gpuRiverInlandPreference: 0.526
-  gpuRiverLateralWanderFraction: 0.125
-  gpuRiverUpperWidthPixels: 2.1
-  gpuRiverLowerWidthPixels: 1.81
-  gpuRiverMinSourceContinentality: 4
-  gpuLakeMinContinentality: 0.12
-  gpuLakeMinRadiusPixels: 13
-  gpuLakeMaxRadiusPixels: 19.2
-  logGpuHydrologyFeatureDiagnostics: 0
-  useTerrainDrivenHydrology: 1
   gpuDrainageFillIterations: 32
   gpuFlowAccumulationIterations: 32
   gpuHydroRoutingJitter: 0.0258
