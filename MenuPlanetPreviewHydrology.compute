@@ -35,14 +35,12 @@ float GetHydrologyHeight(int2 p)
     int2 cp = clampPix(p);
     float center = GetRawHeight(cp);
     float n = GetRawHeight(cp + int2(0, 1));
-    float s = GetRawHeight(cp + int2(0,-1));
+    float s = GetRawHeight(cp + int2(0, -1));
     float e = GetRawHeight(cp + int2(1, 0));
-    float w = GetRawHeight(cp + int2(-1,0));
-    float ne = GetRawHeight(cp + int2(1, 1));
-    float nw = GetRawHeight(cp + int2(-1, 1));
-    float se = GetRawHeight(cp + int2(1, -1));
-    float sw = GetRawHeight(cp + int2(-1, -1));
-    return center * 0.55 + (n + s + e + w) * 0.10 + (ne + nw + se + sw) * 0.0125;
+    float w = GetRawHeight(cp + int2(-1, 0));
+
+    // Center-heavy 5-tap smoothing to suppress single-pixel spikes before routing.
+    return center * 0.5 + (n + s + e + w) * 0.125;
 }
 float CoarseHeight(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return GetHydrologyHeight(hp);}
 float CoarseLand(int2 p){float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); return LoadLand(hp);} 
