@@ -149,11 +149,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     [SerializeField] private ExperimentalTerrainProfile[] experimentalTerrainProfiles =
     {
-        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.06f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.72f, mountainThreshold = 0.98f, basinCandidateBias = 1.25f },
-        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.10f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.62f, mountainThreshold = 0.93f, basinCandidateBias = 1.15f },
-        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 0.18f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.50f, mountainThreshold = 0.82f, basinCandidateBias = 1.00f },
-        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 0.32f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.38f, mountainThreshold = 0.68f, basinCandidateBias = 0.90f },
-        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 0.48f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.28f, mountainThreshold = 0.54f, basinCandidateBias = 0.75f }
+        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.60f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.04f, mountainThreshold = 0.22f, basinCandidateBias = 1.25f },
+        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.85f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.05f, mountainThreshold = 0.20f, basinCandidateBias = 1.15f },
+        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 1.10f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.06f, mountainThreshold = 0.18f, basinCandidateBias = 1.00f },
+        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 1.45f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.07f, mountainThreshold = 0.16f, basinCandidateBias = 0.90f },
+        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 1.80f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.08f, mountainThreshold = 0.14f, basinCandidateBias = 0.75f }
     };
 
 
@@ -314,8 +314,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             float minHeight = float.MaxValue;
             float maxHeight = float.MinValue;
             double sumHeight = 0.0;
+            float minHill = float.MaxValue;
+            float maxHill = float.MinValue;
+            float minMountain = float.MaxValue;
+            float maxMountain = float.MinValue;
+            float minBasinPotential = float.MaxValue;
+            float maxBasinPotential = float.MinValue;
+            int positiveHeightCount = 0;
+            int negativeBasinCount = 0;
             int hillCount = 0;
             int mountainCount = 0;
+            int basinPotentialCount = 0;
 
             for (int i = 0; i < count; i++)
             {
@@ -324,8 +333,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 minHeight = Mathf.Min(minHeight, finalHeight);
                 maxHeight = Mathf.Max(maxHeight, finalHeight);
                 sumHeight += finalHeight;
+                minHill = Mathf.Min(minHill, h.y);
+                maxHill = Mathf.Max(maxHill, h.y);
+                minMountain = Mathf.Min(minMountain, h.z);
+                maxMountain = Mathf.Max(maxMountain, h.z);
+                minBasinPotential = Mathf.Min(minBasinPotential, h.w);
+                maxBasinPotential = Mathf.Max(maxBasinPotential, h.w);
+                if (h.x > 0.02f) positiveHeightCount++;
+                if (h.x < -0.02f) negativeBasinCount++;
                 if (h.y > 0.05f) hillCount++;
                 if (h.z > 0.05f) mountainCount++;
+                if (h.w > 0.05f) basinPotentialCount++;
             }
 
             AsyncGPUReadback.Request(gpuHydrologyTexture, 0, hydroReq =>
@@ -354,14 +372,20 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 float invHeight = 1f / count;
                 float invHydro = 1f / hydroCount;
+                float positiveCoverage = positiveHeightCount * invHeight * 100f;
+                float negativeCoverage = negativeBasinCount * invHeight * 100f;
                 float hillCoverage = hillCount * invHeight * 100f;
                 float mountainCoverage = mountainCount * invHeight * 100f;
+                float basinPotentialCoverage = basinPotentialCount * invHeight * 100f;
                 float lakeCoverage = lakeCount * invHydro * 100f;
                 float riverCoverage = riverCount * invHydro * 100f;
                 float wetlandCoverage = wetlandCount * invHydro * 100f;
                 float meanHeight = (float)(sumHeight * invHeight);
+                float balanceCoverage = 100f - positiveCoverage - negativeCoverage;
 
-                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU stats | Height min/max/mean: {minHeight:F4}/{maxHeight:F4}/{meanHeight:F4} | Hill coverage: {hillCoverage:F2}% | Mountain coverage: {mountainCoverage:F2}% | Lake: {lakeCoverage:F2}% | River: {riverCoverage:F2}% | Wetland: {wetlandCoverage:F2}%");
+                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU stats | SignedHeight min/max/mean: {minHeight:F4}/{maxHeight:F4}/{meanHeight:F4} | Positive={positiveCoverage:F2}% | Negative={negativeCoverage:F2}% | NearZero={balanceCoverage:F2}% | Hill={hillCoverage:F2}% | Mountain={mountainCoverage:F2}% | BasinPotential={basinPotentialCoverage:F2}% | Lake: {lakeCoverage:F2}% | River: {riverCoverage:F2}% | Wetland: {wetlandCoverage:F2}%");
+                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU channel ranges | Hill(y) min/max: {minHill:F4}/{maxHill:F4} | Mountain(z) min/max: {minMountain:F4}/{maxMountain:F4} | BasinPotential(w) min/max: {minBasinPotential:F4}/{maxBasinPotential:F4}");
+                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU interpretation hints | AlpineSignedHeightMaxCheck={(maxHeight < 0.04f ? \"WARN: <0.04 (too weak)\" : \"OK\")} | PositiveThreshold=0.02 | NegativeThreshold=-0.02 | HillThreshold=0.05 | MountainThreshold=0.05 | BasinPotentialThreshold=0.05");
             });
         });
     }
@@ -716,6 +740,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
         menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
+
+        Debug.Log(
+            $"[WorldGenV2 GPU Height] ExperimentalSigned={useExperimentalSignedTerrain} " +
+            $"PresetIndex={terrainPreset} PresetName={expProfile.name} " +
+            $"Seed={inputs.seed:0.000} Elevation={inputs.elevation:0.000} PresetMultiplier={presetMultiplier:0.000} " +
+            $"ExpBias={expProfile.heightBias:0.000} ExpUpwardReliefStrength={expProfile.upwardReliefStrength:0.000} " +
+            $"ExpDownwardBasinStrength={expProfile.downwardBasinStrength:0.000} ExpValleyCutStrength={expProfile.valleyCutStrength:0.000} " +
+            $"ExpBroadAmp={expProfile.broadNoiseAmplitude:0.000} ExpMidAmp={expProfile.midNoiseAmplitude:0.000} ExpFineAmp={expProfile.fineNoiseAmplitude:0.000} " +
+            $"ExpBroadScale={expProfile.broadNoiseScale:0.000} ExpMidScale={expProfile.midNoiseScale:0.000} ExpFineScale={expProfile.fineNoiseScale:0.000} " +
+            $"ExpRidge={expProfile.ridgeStrength:0.000} HillThreshold={expProfile.hillThreshold:0.000} MountainThreshold={expProfile.mountainThreshold:0.000} BasinBias={expProfile.basinCandidateBias:0.000} " +
+            $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY}");
     }
     private float GetTerrainRoughnessElevationMultiplier(int presetIndex)
     {
