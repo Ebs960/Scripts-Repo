@@ -238,6 +238,22 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private RenderTexture gpuExperimentalBasinCandidateTexture, gpuExperimentalSelectedBasinTexture, gpuExperimentalRiverPathTexture;
+
+    private struct ExperimentalBasinCandidate
+    {
+        public int x;
+        public int y;
+        public float score;
+        public float depth;
+    }
+
+    private struct ExperimentalRiverPathCell
+    {
+        public int x;
+        public int y;
+        public float strength;
+    }
+
     private int gpuHeightKernel = -1;
     private bool validateCacheInitialized;
     private float lastValidatedGpuMacroReliefStrength;
@@ -932,7 +948,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int kCandidate = cs.FindKernel("BuildExperimentalBasinCandidates");
         int kRasterLakes = cs.FindKernel("RasterizeExperimentalSelectedBasins");
         int kClear = cs.FindKernel("ClearExperimentalHydrology");
-        int kRivers = cs.FindKernel("BuildExperimentalRiverPotential");
         int kUpsample = cs.FindKernel("UpsampleExperimentalBasinHydrology");
         int aw = Mathf.Max(32, mapWidth / 4);
         int ah = Mathf.Max(16, mapHeight / 4);
@@ -960,7 +975,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetFloat("_ExperimentalRiverMeanderStrength", experimentalRiverMeanderStrength);
         cs.SetFloat("_ExperimentalRiverValleyBias", experimentalRiverValleyBias);
         cs.SetFloat("_ExperimentalLakeToCoastChance", experimentalLakeToCoastChance);
-        foreach (int k in new[] { kClear, kCandidate, kRasterLakes, kRivers, kUpsample })
+        foreach (int k in new[] { kClear, kCandidate, kRasterLakes, kUpsample })
         {
             cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
             cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
@@ -975,12 +990,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int gx = Mathf.CeilToInt(aw / 8f), gy = Mathf.CeilToInt(ah / 8f);
         cs.Dispatch(kClear, gx, gy, 1);
         cs.Dispatch(kCandidate, gx, gy, 1);
-        ApplyExperimentalBasinSelectionCpu(aw, ah, targetLakeCount, experimentalMinBasinPixelArea, experimentalMinBasinSeparationPixels, experimentalMinBasinScore * presetScoreBias);
+        ApplyExperimentalBasinSelectionCpu(aw, ah, targetLakeCount, experimentalMinBasinPixelArea, experimentalMinBasinScore * presetScoreBias, experimentalMinBasinSeparationPixels);
+        BuildExperimentalRiverPathsCpu(aw, ah, riverAttempts);
         cs.Dispatch(kRasterLakes, gx, gy, 1);
-        cs.Dispatch(kRivers, gx, gy, 1);
         cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
-        Debug.Log($"[WorldGenV2 Experimental Basin Hydrology] WaterwaysPreset={inputs.waterwaysPreset} Moisture={inputs.moisture:0.00} Analysis={aw}x{ah} Lakes={targetLakeCount} Rivers={riverAttempts} SignedHeight={useExperimentalSignedTerrain} HeightRTReady={gpuHeightTexture != null}");
+        float pathCoverage = ComputeExperimentalRiverCoverageCpu(aw, ah);
+        Debug.Log($"[WorldGenV2 Experimental Basin Hydrology] WaterwaysPreset={inputs.waterwaysPreset} Moisture={inputs.moisture:0.00} Analysis={aw}x{ah} TargetLakes={targetLakeCount} SelectedLakes={experimentalSelectedBasinsCache.Count} RiverAttempts={riverAttempts} ActualRiverPathCoverage={pathCoverage:0.000} MinScore={(experimentalMinBasinScore * presetScoreBias):0.000} MinSeparation={experimentalMinBasinSeparationPixels:0.0} SignedHeight={useExperimentalSignedTerrain}");
     }
+
+    private readonly List<ExperimentalBasinCandidate> experimentalSelectedBasinsCache = new();
 
     private void ApplyExperimentalBasinSelectionCpu(int width, int height, int targetLakeCount, int minAreaPixels, float minScore, float minSeparationPixels)
     {
@@ -994,7 +1012,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         RenderTexture.active = prev;
 
         bool[] visited = new bool[pixels.Length];
-        var candidates = new List<(int x, int y, float score, int area)>();
+        var candidates = new List<ExperimentalBasinCandidate>();
         int[] nx = { 1, -1, 0, 0 };
         int[] ny = { 0, 0, 1, -1 };
         for (int y = 0; y < height; y++)
@@ -1006,13 +1024,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             q.Enqueue(start);
             visited[start] = true;
             int area = 0, bestIndex = start;
-            float bestScore = pixels[start].r;
+            float bestScore = pixels[start].r, bestDepth = pixels[start].g;
             while (q.Count > 0)
             {
                 int i = q.Dequeue();
                 area++;
                 float s = pixels[i].r;
-                if (s > bestScore) { bestScore = s; bestIndex = i; }
+                if (s > bestScore) { bestScore = s; bestDepth = pixels[i].g; bestIndex = i; }
                 int cx = i % width, cy = i / width;
                 for (int d = 0; d < 4; d++)
                 {
@@ -1026,35 +1044,88 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 }
             }
             if (area >= minAreaPixels)
-                candidates.Add((bestIndex % width, bestIndex / width, bestScore, area));
+                candidates.Add(new ExperimentalBasinCandidate { x = bestIndex % width, y = bestIndex / width, score = bestScore, depth = bestDepth });
         }
 
         candidates.Sort((a, b) => b.score.CompareTo(a.score));
-        var selected = new List<(int x, int y, float score)>();
-        float minSepSq = minSeparationPixels * minSeparationPixels;
+        experimentalSelectedBasinsCache.Clear();
         foreach (var c in candidates)
         {
+            if (experimentalSelectedBasinsCache.Count >= Mathf.Max(0, targetLakeCount)) break;
             bool tooClose = false;
-            foreach (var s in selected)
+            foreach (var s in experimentalSelectedBasinsCache)
             {
-                float dx = Mathf.Abs(c.x - s.x);
-                dx = Mathf.Min(dx, width - dx);
+                int dx = WrappedDeltaX(c.x - s.x, width);
                 float dy = c.y - s.y;
-                if ((dx * dx) + (dy * dy) < minSepSq) { tooClose = true; break; }
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                if (dist < minSeparationPixels) { tooClose = true; break; }
             }
-            if (tooClose) continue;
-            selected.Add((c.x, c.y, c.score));
-            if (selected.Count >= Mathf.Max(0, targetLakeCount)) break;
+            if (!tooClose) experimentalSelectedBasinsCache.Add(c);
         }
 
-        Color[] outPixels = new Color[width * height];
-        foreach (var s in selected)
-            outPixels[s.y * width + s.x] = new Color(1f, Mathf.Clamp01(s.score), 0f, 1f);
+        Debug.Log($"[Experimental Basin Selection] Candidates={candidates.Count} Selected={experimentalSelectedBasinsCache.Count}/{targetLakeCount} MinScore={minScore:0.000} Separation={minSeparationPixels:0.0} TopScore={(experimentalSelectedBasinsCache.Count > 0 ? experimentalSelectedBasinsCache[0].score : 0f):0.000} LowScore={(experimentalSelectedBasinsCache.Count > 0 ? experimentalSelectedBasinsCache[experimentalSelectedBasinsCache.Count - 1].score : 0f):0.000}");
+        if (experimentalSelectedBasinsCache.Count == 0 && candidates.Count > 0)
+            Debug.LogWarning($"[Experimental Basin Selection] Basin candidates exist but none selected; minScore={minScore:0.000}, separation={minSeparationPixels:0.0}. Likely rejected by min separation.");
+
+        var outPixels = new Color[width * height];
+        for (int i = 0; i < experimentalSelectedBasinsCache.Count; i++)
+        {
+            var s = experimentalSelectedBasinsCache[i];
+            float id01 = experimentalSelectedBasinsCache.Count > 1 ? (float)i / (experimentalSelectedBasinsCache.Count - 1) : 1f;
+            outPixels[s.y * width + s.x] = new Color(1f, Mathf.Clamp01(s.score), Mathf.Clamp01(s.depth), id01);
+        }
         var selectedTex = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
         selectedTex.SetPixels(outPixels);
         selectedTex.Apply(false, false);
         Graphics.Blit(selectedTex, gpuExperimentalSelectedBasinTexture);
         Destroy(selectedTex);
+    }
+
+    private static int WrappedDeltaX(int dx, int width)
+    {
+        int half = width / 2;
+        if (dx > half) dx -= width;
+        if (dx < -half) dx += width;
+        return dx;
+    }
+
+    private void BuildExperimentalRiverPathsCpu(int width, int height, int riverAttempts)
+    {
+        var data = new Color[width * height];
+        foreach (var basin in experimentalSelectedBasinsCache)
+        {
+            int idx = basin.y * width + basin.x;
+            data[idx].r = 1f; data[idx].g = Mathf.Max(data[idx].g, basin.score);
+            int steps = Mathf.Clamp(riverAttempts, 4, Mathf.Max(width, height));
+            int x = basin.x, y = basin.y;
+            for (int s = 0; s < steps; s++)
+            {
+                int nx = (x + 1) % width;
+                int ny = y;
+                int nidx = ny * width + nx;
+                data[nidx].r = 1f; data[nidx].g = Mathf.Max(data[nidx].g, Mathf.Clamp01(basin.score * (1f - (s / (float)steps) * 0.4f)));
+                x = nx; y = ny;
+            }
+        }
+        var tex = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
+        tex.SetPixels(data); tex.Apply(false, false);
+        Graphics.Blit(tex, gpuExperimentalRiverPathTexture);
+        Destroy(tex);
+    }
+
+    private float ComputeExperimentalRiverCoverageCpu(int width, int height)
+    {
+        RenderTexture prev = RenderTexture.active;
+        var readback = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
+        RenderTexture.active = gpuExperimentalRiverPathTexture;
+        readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        readback.Apply(false, false);
+        var px = readback.GetPixels();
+        Destroy(readback);
+        RenderTexture.active = prev;
+        int hit = 0;
+        for (int i = 0; i < px.Length; i++) if (px[i].r > 0.01f) hit++;
+        return px.Length > 0 ? hit / (float)px.Length : 0f;
     }
 
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
