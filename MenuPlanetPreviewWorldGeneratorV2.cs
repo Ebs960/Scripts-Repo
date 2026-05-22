@@ -319,9 +319,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 for (int i = 0; i < hydroCount; i++)
                 {
                     Vector4 w = hydroData[i];
+                    if (w.x > 0.05f) riverCount++;
                     if (w.y > 0.05f) lakeCount++;
-                    if (w.z > 0.05f) riverCount++;
-                    if (w.w > 0.05f) wetlandCount++;
+                    if (w.z > 0.05f) wetlandCount++;
                 }
 
                 float invHeight = 1f / count;
@@ -869,12 +869,20 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private void DispatchExperimentalBasinHydrology()
     {
+        if (!useExperimentalSignedTerrain)
+        {
+            Debug.LogWarning("[WorldGenV2 Experimental Basin Hydrology] Experimental basin hydrology requires experimental signed terrain. Aborting.");
+            ClearHydrologyTextures();
+            return;
+        }
+
         EnsureExperimentalBasinHydrologyResources();
         var cs = menuPlanetPreviewHydrologyCompute;
         int kCandidate = cs.FindKernel("BuildExperimentalBasinCandidates");
         int kSelect = cs.FindKernel("SelectExperimentalBasins");
         int kRasterLakes = cs.FindKernel("RasterizeExperimentalSelectedBasins");
-        int kRivers = cs.FindKernel("BuildExperimentalRiverPaths");
+        int kClear = cs.FindKernel("ClearExperimentalHydrology");
+        int kRivers = cs.FindKernel("BuildExperimentalRiverPotential");
         int kUpsample = cs.FindKernel("UpsampleExperimentalBasinHydrology");
         int aw = Mathf.Max(32, mapWidth / 4);
         int ah = Mathf.Max(16, mapHeight / 4);
@@ -884,6 +892,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         targetLakeCount = Mathf.RoundToInt(targetLakeCount * Mathf.Lerp(0.65f, 1.35f, moisture) * experimentalMoistureLakeMultiplier);
         riverAttempts = Mathf.RoundToInt(riverAttempts * Mathf.Lerp(0.65f, 1.50f, moisture) * experimentalMoistureRiverMultiplier);
         float presetScoreBias = inputs.waterwaysPreset <= 0 ? 1.15f : inputs.waterwaysPreset == 1 ? 1.0f : 0.82f;
+        cs.SetInt("_MapWidth", mapWidth);
+        cs.SetInt("_MapHeight", mapHeight);
+        cs.SetInt("_HydrologyAnalysisWidth", aw);
+        cs.SetInt("_HydrologyAnalysisHeight", ah);
+        cs.SetFloat("_Seed", inputs.seed);
+        cs.SetFloat("_Moisture", moisture);
+        cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
         cs.SetInt("_UseExperimentalBasinHydrology", 1);
         cs.SetInt("_ExperimentalTargetLakeCount", targetLakeCount);
         cs.SetInt("_ExperimentalRiverAttempts", riverAttempts);
@@ -895,7 +910,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetFloat("_ExperimentalRiverMeanderStrength", experimentalRiverMeanderStrength);
         cs.SetFloat("_ExperimentalRiverValleyBias", experimentalRiverValleyBias);
         cs.SetFloat("_ExperimentalLakeToCoastChance", experimentalLakeToCoastChance);
-        foreach (int k in new[] { kCandidate, kSelect, kRasterLakes, kRivers, kUpsample })
+        foreach (int k in new[] { kClear, kCandidate, kSelect, kRasterLakes, kRivers, kUpsample })
         {
             cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
             cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
@@ -908,7 +923,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
         }
         int gx = Mathf.CeilToInt(aw / 8f), gy = Mathf.CeilToInt(ah / 8f);
-        cs.Dispatch(kCandidate, gx, gy, 1); cs.Dispatch(kSelect, gx, gy, 1); cs.Dispatch(kRasterLakes, gx, gy, 1); cs.Dispatch(kRivers, gx, gy, 1);
+        cs.Dispatch(kClear, gx, gy, 1); cs.Dispatch(kCandidate, gx, gy, 1); cs.Dispatch(kSelect, gx, gy, 1); cs.Dispatch(kRasterLakes, gx, gy, 1); cs.Dispatch(kRivers, gx, gy, 1);
         cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
         Debug.Log($"[WorldGenV2 Experimental Basin Hydrology] WaterwaysPreset={inputs.waterwaysPreset} Moisture={inputs.moisture:0.00} Analysis={aw}x{ah} Lakes={targetLakeCount} Rivers={riverAttempts} SignedHeight={useExperimentalSignedTerrain} HeightRTReady={gpuHeightTexture != null}");
     }
