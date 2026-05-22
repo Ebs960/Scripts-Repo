@@ -1091,26 +1091,208 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private void BuildExperimentalRiverPathsCpu(int width, int height, int riverAttempts)
     {
-        var data = new Color[width * height];
-        foreach (var basin in experimentalSelectedBasinsCache)
+        int n = width * height;
+        var signedHeight = new float[n];
+        var basinPotential = new float[n];
+        var landMask = new float[n];
+
+        RenderTexture prev = RenderTexture.active;
+        var readback = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
+        RenderTexture.active = gpuExperimentalBasinCandidateTexture;
+        readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        readback.Apply(false, false);
+        var coarse = readback.GetPixels();
+        Destroy(readback);
+        RenderTexture.active = prev;
+
+        for (int i = 0; i < n; i++)
         {
-            int idx = basin.y * width + basin.x;
-            data[idx].r = 1f; data[idx].g = Mathf.Max(data[idx].g, basin.score);
-            int steps = Mathf.Clamp(riverAttempts, 4, Mathf.Max(width, height));
-            int x = basin.x, y = basin.y;
-            for (int s = 0; s < steps; s++)
+            signedHeight[i] = -coarse[i].g;
+            basinPotential[i] = coarse[i].b;
+            landMask[i] = coarse[i].a;
+        }
+
+        bool IsLand(int x, int y) => landMask[y * width + x] > 0.5f;
+        bool IsCoast(int x, int y)
+        {
+            if (!IsLand(x, y)) return false;
+            for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
             {
-                int nx = (x + 1) % width;
-                int ny = y;
-                int nidx = ny * width + nx;
-                data[nidx].r = 1f; data[nidx].g = Mathf.Max(data[nidx].g, Mathf.Clamp01(basin.score * (1f - (s / (float)steps) * 0.4f)));
-                x = nx; y = ny;
+                if (dx == 0 && dy == 0) continue;
+                int ny = y + dy;
+                if (ny < 0 || ny >= height) continue;
+                int nx = (x + dx + width) % width;
+                if (!IsLand(nx, ny)) return true;
+            }
+            return false;
+        }
+
+        var coastCells = new List<Vector2Int>();
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+            if (IsCoast(x, y)) coastCells.Add(new Vector2Int(x, y));
+
+        var coastDist = new float[n];
+        for (int i = 0; i < n; i++) coastDist[i] = 1e9f;
+        var q = new Queue<int>();
+        foreach (var c in coastCells)
+        {
+            int idx = c.y * width + c.x;
+            coastDist[idx] = 0f;
+            q.Enqueue(idx);
+        }
+
+        int[] ndx = { -1, 0, 1, -1, 1, -1, 0, 1 };
+        int[] ndy = { -1, -1, -1, 0, 0, 1, 1, 1 };
+        while (q.Count > 0)
+        {
+            int cur = q.Dequeue();
+            int cx = cur % width;
+            int cy = cur / width;
+            float baseDist = coastDist[cur];
+            for (int k = 0; k < 8; k++)
+            {
+                int ny = cy + ndy[k];
+                if (ny < 0 || ny >= height) continue;
+                int nx = (cx + ndx[k] + width) % width;
+                if (!IsLand(nx, ny)) continue;
+                int ni = ny * width + nx;
+                float step = (ndx[k] == 0 || ndy[k] == 0) ? 1f : 1.414f;
+                float d = baseDist + step;
+                if (d < coastDist[ni])
+                {
+                    coastDist[ni] = d;
+                    q.Enqueue(ni);
+                }
             }
         }
+
+        var riverMask = new float[n];
+        var riverStrength = new float[n];
+        var riverDebug = new float[n];
+        int routesToCreate = Mathf.Min(experimentalSelectedBasinsCache.Count, Mathf.Max(1, riverAttempts));
+        int createdCells = 0;
+
+        if (experimentalSelectedBasinsCache.Count > 0 && coastCells.Count == 0)
+            Debug.LogWarning("[Experimental River Routing] Selected basins exist but no coast cells were detected; skipping coast routing.");
+
+        for (int r = 0; r < routesToCreate && coastCells.Count > 0; r++)
+        {
+            var basin = experimentalSelectedBasinsCache[r];
+            int x = basin.x;
+            int y = basin.y;
+            int maxSteps = Mathf.Max(width, height) * 2;
+            var visited = new bool[n];
+            Vector2Int prevDir = Vector2Int.zero;
+            float baseStrength = Mathf.Clamp01(0.55f + basin.score * 0.45f);
+
+            for (int step = 0; step < maxSteps; step++)
+            {
+                int idx = y * width + x;
+                if (riverMask[idx] < 0.5f) createdCells++;
+                riverMask[idx] = 1f;
+                float taper = 1f - Mathf.Clamp01(step / (float)maxSteps) * 0.12f;
+                riverStrength[idx] = Mathf.Max(riverStrength[idx], baseStrength * taper);
+                riverDebug[idx] = Mathf.Max(riverDebug[idx], 1f - Mathf.Clamp01(coastDist[idx] / Mathf.Max(width, height)));
+                visited[idx] = true;
+                if (coastDist[idx] <= 0.5f) break;
+
+                float currentDist = coastDist[idx];
+                float currentHeight = signedHeight[idx];
+                float bestScore = float.MaxValue;
+                int bestNx = x, bestNy = y;
+                float bestDist = currentDist;
+                bool bestVisited = true;
+                bool hasCandidate = false;
+
+                for (int k = 0; k < 8; k++)
+                {
+                    int ny = y + ndy[k];
+                    if (ny < 0 || ny >= height) continue;
+                    int nx = (x + ndx[k] + width) % width;
+                    int ni = ny * width + nx;
+                    bool onLand = IsLand(nx, ny);
+                    if (!onLand && currentDist > 1.5f) continue;
+
+                    float cdist = onLand ? coastDist[ni] : 0f;
+                    bool wasVisited = visited[ni];
+
+                    float neighborHeight = signedHeight[ni];
+                    float uphill = Mathf.Max(0f, neighborHeight - currentHeight);
+                    float downhill = Mathf.Max(0f, currentHeight - neighborHeight);
+                    float coastCost = cdist * 10f;
+                    float uphillPenalty = uphill * 2f;
+                    float downhillBonus = downhill * 0.5f;
+                    float valley = basinPotential[ni] + Mathf.Clamp01(-neighborHeight);
+                    float valleyBonus = valley * experimentalRiverValleyBias * 0.75f;
+                    float meander = Hash01(nx, ny, inputs.seed) * experimentalRiverMeanderStrength * 0.25f;
+                    Vector2Int dir = new Vector2Int(ndx[k], ndy[k]);
+                    float turnPenalty = ComputeTurnPenalty(prevDir, dir) * 0.35f;
+                    float visitedPenalty = wasVisited ? 2.25f : 0f;
+                    float score = coastCost + uphillPenalty - downhillBonus - valleyBonus + meander + turnPenalty + visitedPenalty;
+
+                    if (!hasCandidate || score < bestScore || (Mathf.Approximately(score, bestScore) && cdist < bestDist) || (Mathf.Approximately(score, bestScore) && Mathf.Approximately(cdist, bestDist) && !wasVisited && bestVisited))
+                    {
+                        hasCandidate = true;
+                        bestScore = score;
+                        bestNx = nx;
+                        bestNy = ny;
+                        bestDist = cdist;
+                        bestVisited = wasVisited;
+                    }
+                }
+
+                if (!hasCandidate) break;
+                if (bestNx == x && bestNy == y) break;
+                prevDir = new Vector2Int(WrappedDeltaX(bestNx - x, width), bestNy - y);
+                x = bestNx;
+                y = bestNy;
+            }
+        }
+
+        var data = new Color[n];
+        for (int i = 0; i < n; i++)
+            data[i] = new Color(riverMask[i], riverStrength[i], riverDebug[i], riverMask[i] > 0f ? 1f : 0f);
         var tex = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        tex.SetPixels(data); tex.Apply(false, false);
+        tex.SetPixels(data);
+        tex.Apply(false, false);
         Graphics.Blit(tex, gpuExperimentalRiverPathTexture);
         Destroy(tex);
+
+        float coverage = n > 0 ? (createdCells / (float)n) * 100f : 0f;
+        Debug.Log($"[Experimental River Routing] SelectedBasins={experimentalSelectedBasinsCache.Count} RequestedRoutes={riverAttempts} CreatedCoverage={coverage:0.000}%");
+        if (experimentalSelectedBasinsCache.Count > 0 && coverage <= 0f)
+            Debug.LogWarning("[Experimental River Routing] Selected basins exist but river coverage is zero.");
+    }
+
+    private static float Hash01(int x, int y, float seed)
+    {
+        unchecked
+        {
+            int h = x * 73856093 ^ y * 19349663 ^ Mathf.RoundToInt(seed * 1000f) * 83492791;
+            h ^= h >> 13;
+            h *= 1274126177;
+            h ^= h >> 16;
+            return (h & 0x00FFFFFF) / 16777215f;
+        }
+    }
+
+    private static float WrappedDistance(int x0, int y0, int x1, int y1, int width)
+    {
+        int dx = Mathf.Abs(x0 - x1);
+        dx = Mathf.Min(dx, width - dx);
+        int dy = y0 - y1;
+        return Mathf.Sqrt(dx * dx + dy * dy);
+    }
+
+    private static float ComputeTurnPenalty(Vector2Int previousDir, Vector2Int nextDir)
+    {
+        if (previousDir == Vector2Int.zero) return 0f;
+        Vector2 a = new Vector2(previousDir.x, previousDir.y).normalized;
+        Vector2 b = new Vector2(nextDir.x, nextDir.y).normalized;
+        float dot = Vector2.Dot(a, b);
+        return Mathf.Clamp01((1f - dot) * 0.5f);
     }
 
     private float ComputeExperimentalRiverCoverageCpu(int width, int height)
