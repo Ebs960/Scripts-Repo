@@ -5,6 +5,11 @@
 #pragma kernel RelaxFlowAccumulation
 #pragma kernel BuildTerrainDrivenHydrologyMasks
 #pragma kernel UpsampleAndBeautifyHydrology
+#pragma kernel BuildExperimentalBasinCandidates
+#pragma kernel SelectExperimentalBasins
+#pragma kernel RasterizeExperimentalSelectedBasins
+#pragma kernel BuildExperimentalRiverPaths
+#pragma kernel UpsampleExperimentalBasinHydrology
 
 Texture2D<float4> _TectonicSurfaceTex;
 Texture2D<float4> _GpuHeightTex;
@@ -17,11 +22,16 @@ RWTexture2D<float4> _FlowAccumTexA;
 RWTexture2D<float4> _FlowAccumTexB;
 RWTexture2D<float4> _CoarseHydrologyMaskTex;
 RWTexture2D<float4> _CoarseHydrologyDepthTex;
+RWTexture2D<float4> _ExperimentalBasinCandidateTex;
+RWTexture2D<float4> _ExperimentalSelectedBasinTex;
+RWTexture2D<float4> _ExperimentalRiverPathTex;
 
 int _MapWidth,_MapHeight,_WaterwaysPreset;
 int _HydrologyAnalysisWidth,_HydrologyAnalysisHeight;
 float _Seed,_Elevation,_Moisture;
 float _HydroRoutingJitter,_LakeBasinMinDepth,_LakeBasinFullDepth,_DrainageRiverMinWidthPixels,_DrainageRiverMaxWidthPixels,_LakeShorelineWarpPixels,_RiverAccumulationThreshold,_FlowMinDownhillDelta,_FlowAccumulationCompression;
+int _UseExperimentalBasinHydrology,_ExperimentalTargetLakeCount,_ExperimentalRiverAttempts,_ExperimentalMinBasinPixelArea;
+float _ExperimentalMinBasinScore,_ExperimentalEffectiveMinBasinScore,_ExperimentalMinBasinSeparationPixels,_ExperimentalWetlandSpread,_ExperimentalRiverMeanderStrength,_ExperimentalRiverValleyBias,_ExperimentalLakeToCoastChance;
 
 float hash1(uint x){x^=x>>17; x*=0xed5ad4bbU; x^=x>>11; x*=0xac4c1b51U; x^=x>>15; x*=0x31848babU; x^=x>>14; return frac((float)x/65535.0);} 
 int WrapSignedNoMod(int x, int width){int w=max(1,width); return x - (int)floor((float)x/(float)w)*w;}
@@ -59,3 +69,15 @@ void RelaxFlowAccumulation(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_
 void BuildTerrainDrivenHydrologyMasks(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float land=CoarseLand(p); float h=CoarseHeight(p); float fill=_DrainageFillTexA[p].r; float basin=max(0,fill-h); float accum=_FlowAccumTexA[p].r; float nacc=saturate(1.0-exp(-accum*max(0.001,_FlowAccumulationCompression))); float river=smoothstep(_RiverAccumulationThreshold,_RiverAccumulationThreshold+0.2,nacc)*land; float lake=smoothstep(_LakeBasinMinDepth,_LakeBasinFullDepth,basin)*land; float wet=saturate(max(river,lake)*0.5+nacc*0.22); _CoarseHydrologyMaskTex[p]=float4(river,lake,wet,saturate(max(river,lake))); _CoarseHydrologyDepthTex[p]=float4(river*nacc,lake*saturate(basin*8),nacc,saturate(basin*8));}
 [numthreads(8,8,1)]
 void UpsampleAndBeautifyHydrology(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_MapWidth||p.y>=_MapHeight) return; float2 uv=(float2(p)+0.5)/float2(_MapWidth,_MapHeight); float2 coarse=uv*float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight)-0.5; int2 base=int2(floor(coarse)); float2 f=frac(coarse); int2 c00=ClampAnalysis(base); int2 c10=ClampAnalysis(base+int2(1,0)); int2 c01=ClampAnalysis(base+int2(0,1)); int2 c11=ClampAnalysis(base+int2(1,1)); float4 m00=_CoarseHydrologyMaskTex[c00],m10=_CoarseHydrologyMaskTex[c10],m01=_CoarseHydrologyMaskTex[c01],m11=_CoarseHydrologyMaskTex[c11]; float4 d00=_CoarseHydrologyDepthTex[c00],d10=_CoarseHydrologyDepthTex[c10],d01=_CoarseHydrologyDepthTex[c01],d11=_CoarseHydrologyDepthTex[c11]; float4 mask=lerp(lerp(m00,m10,f.x),lerp(m01,m11,f.x),f.y); float4 depth=lerp(lerp(d00,d10,f.x),lerp(d01,d11,f.x),f.y); float flow=depth.b; float pxToCoarse=max(0.25,(float)_HydrologyAnalysisWidth/max(1.0,(float)_MapWidth)); float widthPx=lerp(_DrainageRiverMinWidthPixels,_DrainageRiverMaxWidthPixels,saturate(flow)); float widthCoarse=widthPx*pxToCoarse; float riverField=0; [unroll] for(int oy=-1;oy<=1;oy++) [unroll] for(int ox=-1;ox<=1;ox++){ int2 n=ClampAnalysis(base+int2(ox,oy)); float4 nm=_CoarseHydrologyMaskTex[n]; float4 nd=_CoarseHydrologyDepthTex[n]; float2 c=float2(n)+0.5; float d=length((float2(p)+0.5)/float2(_MapWidth,_MapHeight)*float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight)-c); float nWidth=max(0.35,widthCoarse*lerp(0.75,1.25,nd.b)); riverField=max(riverField,smoothstep(nWidth+0.75,nWidth-0.15,d)*nm.r); } float noise=hash1((uint)(p.x*92837111u+p.y*689287499u+asuint(_Seed*97.0))); float lakeOffset=(noise-0.5)*2.0*_LakeShorelineWarpPixels*pxToCoarse*0.15; float lakeSignal=mask.g+lakeOffset; float lake=saturate(smoothstep(0.50,0.65,lakeSignal)); float river=saturate(max(mask.r,riverField)); float wet=saturate(max(river,lake)*0.65 + depth.b*0.45); _GpuHydrologyTex[p]=float4(river,lake,wet,saturate(max(river,lake))); _GpuHydrologyDepthTex[p]=float4(river*depth.r,lake*depth.g,depth.b,depth.a);} 
+
+
+[numthreads(8,8,1)]
+void BuildExperimentalBasinCandidates(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); float4 h=_GpuHeightTex.Load(int3(clampPix(hp),0)); float land=LoadLand(hp); float signedHeight=h.r; float basinPotential=h.a; float localLow=0; [unroll] for(int oy=-1;oy<=1;oy++) [unroll] for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue; int2 np=ClampAnalysis(p+int2(ox,oy)); float2 nuv=(float2(np)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 nhp=int2(nuv*float2(_MapWidth,_MapHeight)); float nH=_GpuHeightTex.Load(int3(clampPix(nhp),0)).r; localLow += saturate(nH-signedHeight);} localLow/=8.0; float inland=saturate(_TectonicSurfaceTex.Load(int3(clampPix(hp),0)).b); float score=(basinPotential*0.55+localLow*0.30+saturate(-signedHeight)*0.35+inland*0.15)*land; if(score<_ExperimentalMinBasinScore) score=0; _ExperimentalBasinCandidateTex[p]=float4(score,saturate(-signedHeight),basinPotential,inland);}
+[numthreads(8,8,1)]
+void SelectExperimentalBasins(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float4 c=_ExperimentalBasinCandidateTex[p]; float score=c.r; if(score<=_ExperimentalEffectiveMinBasinScore){_ExperimentalSelectedBasinTex[p]=0;return;} bool isMax=true; [unroll] for(int oy=-1;oy<=1;oy++) [unroll] for(int ox=-1;ox<=1;ox++){if(ox==0&&oy==0)continue; if(_ExperimentalBasinCandidateTex[ClampAnalysis(p+int2(ox,oy))].r>score){isMax=false;}} if(!isMax){_ExperimentalSelectedBasinTex[p]=0;return;} _ExperimentalSelectedBasinTex[p]=float4(1,score,c.g,1);}
+[numthreads(8,8,1)]
+void RasterizeExperimentalSelectedBasins(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float2 uv=(float2(p)+0.5)/float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight); int2 hp=int2(uv*float2(_MapWidth,_MapHeight)); float land=LoadLand(hp); float signedHeight=_GpuHeightTex.Load(int3(clampPix(hp),0)).r; float sel=_ExperimentalSelectedBasinTex[p].r; float lake=sel*smoothstep(0.02,0.18,-signedHeight)*land; float wet=lake*0.35; _CoarseHydrologyMaskTex[p]=float4(0,lake,wet,lake); _CoarseHydrologyDepthTex[p]=float4(0,lake*saturate(-signedHeight*3),_ExperimentalBasinCandidateTex[p].r,sel);}
+[numthreads(8,8,1)]
+void BuildExperimentalRiverPaths(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_HydrologyAnalysisWidth||p.y>=_HydrologyAnalysisHeight) return; float sel=_ExperimentalSelectedBasinTex[p].r; float valley=_ExperimentalBasinCandidateTex[p].r; float river=sel*0.45 + valley*0.25; river=saturate(river + (hash1((uint)(p.x*173u+p.y*941u))-0.5)*_ExperimentalRiverMeanderStrength*0.2); _ExperimentalRiverPathTex[p]=float4(river,0,0,1); float4 m=_CoarseHydrologyMaskTex[p]; m.r=max(m.r,river); m.b=saturate(m.b+river*0.35); m.a=max(m.a,m.r); _CoarseHydrologyMaskTex[p]=m; _CoarseHydrologyDepthTex[p].r=max(_CoarseHydrologyDepthTex[p].r,river*0.4);}
+[numthreads(8,8,1)]
+void UpsampleExperimentalBasinHydrology(uint3 id:SV_DispatchThreadID){int2 p=id.xy; if(p.x>=_MapWidth||p.y>=_MapHeight) return; float2 uv=(float2(p)+0.5)/float2(_MapWidth,_MapHeight); int2 cp=ClampAnalysis(int2(uv*float2(_HydrologyAnalysisWidth,_HydrologyAnalysisHeight))); float4 coarse=_CoarseHydrologyMaskTex[cp]; float4 cDepth=_CoarseHydrologyDepthTex[cp]; float basinPot=_GpuHeightTex.Load(int3(p,0)).a; float wet=saturate((coarse.g*0.45+coarse.r*0.35+basinPot*0.25)*_ExperimentalWetlandSpread*lerp(0.5,1.8,_Moisture)); _GpuHydrologyTex[p]=float4(saturate(coarse.r),saturate(coarse.g),wet,saturate(max(coarse.r,coarse.g))); _GpuHydrologyDepthTex[p]=float4(cDepth.r,cDepth.g,saturate(coarse.r),saturate(coarse.g));}
