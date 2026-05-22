@@ -252,7 +252,22 @@ Shader "Custom/MenuPlanetPreview"
                 return SAMPLE_TEXTURE2D_LOD(_GpuHeightTex, sampler_GpuHeightTex, uv, 0);
             }
 
-            float GetLandMask(float3 objNorm, float3 seedOff) { if(_UseTectonicPreview>0.5) return GetTectonicSurface(objNorm).r; return smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, GetWarpedLandValue(objNorm, seedOff)); }
+            float GetLandMask(float3 objNorm, float3 seedOff)
+            {
+                float landMask = 0.0;
+
+                if (_UseTectonicPreview > 0.5)
+                {
+                    landMask = GetTectonicSurface(objNorm).r;
+                }
+                else
+                {
+                    float warpedLand = GetWarpedLandValue(objNorm, seedOff);
+                    landMask = smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, warpedLand);
+                }
+
+                return saturate(landMask);
+            }
             float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float edgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float coldness = saturate(_IceCapSize); float capStart = lerp(0.96, 0.72, coldness); float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.05; return smoothstep(capStart - 0.035, capStart + 0.055, distortedLatitude); }
             float GetGeneratedMinimumPolarCapMask(float3 objNorm, float temperature, float seed)
             {
@@ -284,9 +299,117 @@ Shader "Custom/MenuPlanetPreview"
                 );
             }
             float GetMountainMask(float3 objNorm, float landMask) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float broad = fbm(objNorm * (_LandScale * 1.2) + seedOff + float3(29.3, 17.7, 63.1)); float ridge = 1.0 - abs(fbm(objNorm * (_LandScale * 4.6) + seedOff + float3(83.5, 9.2, 44.7)) * 2.0 - 1.0); ridge = pow(saturate(ridge), 2.5); return smoothstep(0.58, 0.85, ridge + broad * 0.35) * landMask * smoothstep(0.35, 1.0, _Elevation); }
-            float GetActiveMountainMask(float3 objNorm, float landMask){ if(_UseTectonicPreview>0.5) return GetGpuHeightData(objNorm).b; return GetMountainMask(objNorm, landMask); }
-            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask) { if(_UseTectonicPreview>0.5){ float4 gpuHeightData=GetGpuHeightData(objNorm); float generatedLandMask=GetTectonicSurface(objNorm).r; float hillMask=gpuHeightData.g; float mountainMask=gpuHeightData.b; float terrainHeight=0; if(_UseExperimentalSignedTerrain>0.5){ float signedHeight=gpuHeightData.r; float visualSignedHeight = signedHeight>=0.0 ? signedHeight : signedHeight*_ExperimentalNegativeDisplacementScale; terrainHeight = visualSignedHeight * _TerrainElevationDisplacementStrength + hillMask * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength; } else { float generatedElevationScore=gpuHeightData.r; terrainHeight=generatedElevationScore * _TerrainElevationDisplacementStrength + generatedLandMask * _LandUpliftStrength + hillMask * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength; } float iceLift=GetGeneratedSnowIceMask(objNorm) * _IceDisplacementStrength; float oceanDepth=(1.0-generatedLandMask) * _OceanDepthStrength; float2 hydroUV = GetTectonicUV(normalize(objNorm)); float4 hydroDepth = SAMPLE_TEXTURE2D_LOD(_WaterwayDepthTex, sampler_WaterwayDepthTex, hydroUV, 0); float hydroCarve = hydroDepth.r * _RiverChannelCarveStrength + hydroDepth.g * _LakeBasinCarveStrength; return terrainHeight + iceLift - oceanDepth - hydroCarve; } float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float hills = fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7)) * landMask; float mountainMask = GetMountainMask(objNorm, landMask); float volcanicMask = smoothstep(0.35, 1.0, _MapStyle) * mountainMask * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8)); float waterMask = 1.0 - landMask; return landMask * _LandUpliftStrength + hills * _HillDisplacementStrength + mountainMask * _MountainDisplacementStrength + capMask * _IceDisplacementStrength + volcanicMask * _VolcanicDisplacementStrength - waterMask * _OceanDepthStrength; }
-            float GetPreviewDisplacementHeight(float3 objNorm) { float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3); float capMask = (_UseTectonicPreview > 0.5) ? 0.0 : GetCapMask(objNorm, seedOff); return GetTerrainHeightValue(objNorm, GetLandMask(objNorm, seedOff), capMask) * _DisplacementScale; }
+            float GetActiveMountainMask(float3 objNorm, float landMask)
+            {
+                float mountainMask = 0.0;
+
+                if (_UseTectonicPreview > 0.5)
+                {
+                    mountainMask = GetGpuHeightData(objNorm).b;
+                }
+                else
+                {
+                    mountainMask = GetMountainMask(objNorm, landMask);
+                }
+
+                return saturate(mountainMask);
+            }
+            float GetTerrainHeightValue(float3 objNorm, float landMask, float capMask)
+            {
+                float heightValue = 0.0;
+
+                if (_UseTectonicPreview > 0.5)
+                {
+                    float4 gpuHeightData = GetGpuHeightData(objNorm);
+                    float generatedLandMask = saturate(GetTectonicSurface(objNorm).r);
+
+                    float hillMask = saturate(gpuHeightData.g);
+                    float mountainMask = saturate(gpuHeightData.b);
+
+                    float terrainHeight = 0.0;
+
+                    if (_UseExperimentalSignedTerrain > 0.5)
+                    {
+                        float signedHeight = gpuHeightData.r;
+
+                        float visualSignedHeight = signedHeight;
+                        if (signedHeight < 0.0)
+                        {
+                            visualSignedHeight = signedHeight * _ExperimentalNegativeDisplacementScale;
+                        }
+
+                        terrainHeight =
+                            visualSignedHeight * _TerrainElevationDisplacementStrength
+                            + hillMask * _HillDisplacementStrength
+                            + mountainMask * _MountainDisplacementStrength;
+                    }
+                    else
+                    {
+                        float generatedElevationScore = saturate(gpuHeightData.r);
+
+                        terrainHeight =
+                            generatedElevationScore * _TerrainElevationDisplacementStrength
+                            + generatedLandMask * _LandUpliftStrength
+                            + hillMask * _HillDisplacementStrength
+                            + mountainMask * _MountainDisplacementStrength;
+                    }
+
+                    float iceLift = GetGeneratedSnowIceMask(objNorm) * _IceDisplacementStrength;
+                    float oceanDepth = (1.0 - generatedLandMask) * _OceanDepthStrength;
+
+                    float2 hydroUV = GetTectonicUV(normalize(objNorm));
+                    float4 hydroDepth = SAMPLE_TEXTURE2D_LOD(_WaterwayDepthTex, sampler_WaterwayDepthTex, hydroUV, 0);
+
+                    float riverCarve = saturate(hydroDepth.r) * _RiverChannelCarveStrength;
+                    float lakeCarve = saturate(hydroDepth.g) * _LakeBasinCarveStrength;
+                    float hydroCarve = riverCarve + lakeCarve;
+
+                    heightValue = terrainHeight + iceLift - oceanDepth - hydroCarve;
+                }
+                else
+                {
+                    float safeLandMask = saturate(landMask);
+                    float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+
+                    float hills =
+                        fbm(objNorm * (_LandScale * 2.2) + seedOff + float3(99.1, 55.3, 12.7))
+                        * safeLandMask;
+
+                    float mountainMask = GetMountainMask(objNorm, safeLandMask);
+
+                    float volcanicMask =
+                        smoothstep(0.35, 1.0, _MapStyle)
+                        * mountainMask
+                        * fbm(objNorm * (_LandScale * 6.0) + seedOff + float3(4.4, 66.1, 27.8));
+
+                    float waterMask = 1.0 - safeLandMask;
+
+                    heightValue =
+                        safeLandMask * _LandUpliftStrength
+                        + hills * _HillDisplacementStrength
+                        + mountainMask * _MountainDisplacementStrength
+                        + capMask * _IceDisplacementStrength
+                        + volcanicMask * _VolcanicDisplacementStrength
+                        - waterMask * _OceanDepthStrength;
+                }
+
+                return heightValue;
+            }
+            float GetPreviewDisplacementHeight(float3 objNorm)
+            {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+
+                float capMask = 0.0;
+                if (_UseTectonicPreview <= 0.5)
+                {
+                    capMask = GetCapMask(objNorm, seedOff);
+                }
+
+                float landMask = GetLandMask(objNorm, seedOff);
+                float terrainHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
+
+                return terrainHeight * _DisplacementScale;
+            }
         ENDHLSL
 
         // =====================================================================
@@ -866,8 +989,8 @@ Shader "Custom/MenuPlanetPreview"
                 // IMPORTANT: waterwayAmount now changes network density/shape,
                 // not just brightness. Higher values widen channels, add tributaries,
                 // and lower lake thresholds to create more actual water features.
-                float waterwayAmount = _WaterwayAmount;
-                float waterwayDensity = saturate(pow(waterwayAmount, 0.85) * 1.2);
+                float waterwayAmount = saturate(_WaterwayAmount);
+                float waterwayDensity = saturate(pow(max(waterwayAmount, 1e-4), 0.85) * 1.2);
                 float riverWidthA = lerp(0.028, 0.072, waterwayDensity);
                 float riverWidthB = lerp(0.021, 0.052, waterwayDensity);
                 float mainRiverA = 1.0 - smoothstep(0.0, riverWidthA, abs(riverNoise1 - 0.5));
