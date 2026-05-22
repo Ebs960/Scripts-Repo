@@ -338,10 +338,13 @@ Shader "Custom/MenuPlanetPreview"
                             visualSignedHeight = signedHeight * _ExperimentalNegativeDisplacementScale;
                         }
 
-                        terrainHeight =
+                        float experimentalVisualHeight =
                             visualSignedHeight * _TerrainElevationDisplacementStrength
                             + hillMask * _HillDisplacementStrength
                             + mountainMask * _MountainDisplacementStrength;
+
+                        // Make signed terrain visually readable without affecting hydrology.
+                        terrainHeight = experimentalVisualHeight;
                     }
                     else
                     {
@@ -751,7 +754,24 @@ Shader "Custom/MenuPlanetPreview"
                 float mountainMask = (_UseTectonicPreview > 0.5) ? gpuHeightData.b : GetMountainMask(objNorm, landMask);
                 float finalHeight = GetTerrainHeightValue(objNorm, landMask, capMask);
                 if (_ShowTectonicLandMaskOnly > 0.5) return float4(tectonicSurface.rrr, 1.0);
-                if (_ShowSignedHeightOnly > 0.5) { float signedHeight = GetGpuHeightData(objNorm).r; return float4((signedHeight * 0.5 + 0.5).xxx, 1); }
+                if (_ShowSignedHeightOnly > 0.5)
+                {
+                    float signedHeight = GetGpuHeightData(objNorm).r;
+
+                    // Debug remap: signed height near zero should not look flat.
+                    float debugHeight = saturate(signedHeight * 3.0 + 0.5);
+
+                    // Blue-ish/dark = negative basins, gray = neutral, white = high.
+                    float3 negCol = float3(0.05, 0.12, 0.35);
+                    float3 midCol = float3(0.50, 0.50, 0.50);
+                    float3 posCol = float3(1.00, 0.95, 0.75);
+
+                    float3 col = signedHeight < 0.0
+                        ? lerp(midCol, negCol, saturate(-signedHeight * 4.0))
+                        : lerp(midCol, posCol, saturate(signedHeight * 4.0));
+
+                    return float4(col, 1);
+                }
                 if (_ShowBasinPotentialOnly > 0.5) { float basinPotential = GetGpuHeightData(objNorm).a; return float4(basinPotential.xxx, 1); }
                 if (_ShowSelectedBasinMaskOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayMaskTex, sampler_WaterwayMaskTex, huv); return float4(hm.ggg,1); }
                 if (_ShowExperimentalRiverPathOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayMaskTex, sampler_WaterwayMaskTex, huv); return float4(hm.rrr,1); }
@@ -764,13 +784,39 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowContinentalShelfOnly > 0.5) return float4(tectonicSurface.aaa, 1.0);
                 if (_ShowCrustTypeOnly > 0.5) return float4(tectonicCrust.r, tectonicCrust.g, 0, 1.0);
                 if (_ShowContinentalPotentialOnly > 0.5) return float4(tectonicCrust.aaa, 1.0);
-                if (_ShowElevationOnly > 0.5) return float4(terrainHeight.xxx, 1);
+                if (_ShowElevationOnly > 0.5)
+                {
+                    if (_UseExperimentalSignedTerrain > 0.5)
+                    {
+                        float signedHeight = gpuHeightData.r;
+                        float debugHeight = saturate(signedHeight * 3.0 + 0.5);
+                        return float4(debugHeight.xxx, 1);
+                    }
+
+                    return float4(saturate(terrainHeight).xxx, 1);
+                }
                 if (_ShowMountainMaskOnly > 0.5) return float4(mountainMask.xxx, 1);
                 if (_ShowDisplacementHeightOnly > 0.5) return float4(saturate(finalHeight).xxx, 1);
 
-                float highBand = smoothstep(0.30, 0.50, terrainHeight);
-                float mtnBand  = smoothstep(0.50, 0.65, terrainHeight);
-                float snowBand = smoothstep(0.62, 0.78, terrainHeight);
+                float signedHeight = gpuHeightData.r;
+                float hillMaskFromGpu = saturate(gpuHeightData.g);
+                float mountainMaskFromGpu = saturate(gpuHeightData.b);
+
+                float terrainDisplayHeight = terrainHeight;
+
+                if (_UseTectonicPreview > 0.5 && _UseExperimentalSignedTerrain > 0.5)
+                {
+                    terrainDisplayHeight = saturate(
+                        signedHeight * 1.8
+                        + hillMaskFromGpu * 0.35
+                        + mountainMaskFromGpu * 0.60
+                        + 0.18
+                    );
+                }
+
+                float highBand = smoothstep(0.30, 0.50, terrainDisplayHeight);
+                float mtnBand  = smoothstep(0.50, 0.65, terrainDisplayHeight);
+                float snowBand = smoothstep(0.62, 0.78, terrainDisplayHeight);
 
                 float latitude = abs(objNorm.y);
 
@@ -873,7 +919,7 @@ Shader "Custom/MenuPlanetPreview"
                 // Local temperature: latitude-first, then elevation lapse-rate cooling,
                 // then small noise to avoid strict banding.
                 float tempNoise = (noise3D(objNorm * 4.5 + float3(14.2, 36.1, 6.5) + seedOff) - 0.5) * 0.09;
-                float elevationCooling = terrainHeight * lerp(0.10, 0.28, saturate(_Elevation + mtnBand * 0.8));
+                float elevationCooling = terrainDisplayHeight * lerp(0.10, 0.28, saturate(_Elevation + mtnBand * 0.8));
                 float seasonalityNoise = fbm(objNorm * 2.2 + seedOff * 5.1);
                 float subtropicalBias = smoothstep(0.15, 0.70, latitude) * (1.0 - smoothstep(0.60, 0.95, latitude));
                 float seasonality = saturate((seasonalityNoise * 0.55 + continentality * 0.25 + subtropicalBias * 0.20) * _SeasonalityStrength + (1.0 - _SeasonalityStrength) * 0.5);
@@ -893,7 +939,7 @@ Shader "Custom/MenuPlanetPreview"
                 float temperatureLocal = saturate(latTemperature - globalCooling + globalWarming - elevationCooling + tempNoise + (_Temperature - 0.5) * continentality * _ContinentalTemperatureStrength);
                 // Biome color selected strictly by latitude, shifted by temperature
                 PreviewClimateFields climate; climate.temperature=temperatureLocal; climate.moisture=localMoist; climate.continentality=continentality; climate.seasonality=seasonality; climate.rainShadow=rainShadowDryness; climate.windwardWetness=windwardWetness; climate.riparianWetness=riparianWetness;
-                SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainHeight, capMask, latitude, objNorm, _Seed);
+                SurfaceBiomeWeights biomeWeights = GetSurfaceBiomeWeights(climate, terrainDisplayHeight, capMask, latitude, objNorm, _Seed);
                 if (_ShowLocalMoistureOnly > 0.5) return float4(localMoist.xxx,1);
                 if (_ShowLocalTemperatureOnly > 0.5) return float4(temperatureLocal.xxx,1);
                 if (_ShowContinentalityOnly > 0.5) return float4(continentality.xxx,1);
@@ -918,7 +964,7 @@ Shader "Custom/MenuPlanetPreview"
 
                     generatedAlpineRockMask =
                         saturate(
-                            smoothstep(0.52, 0.86, terrainHeight)
+                            smoothstep(0.52, 0.86, terrainDisplayHeight)
                             * (1.0 - generatedSnowIceMask * 0.55)
                         );
                 }
@@ -957,7 +1003,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 snowPeakColor = float3(0.92, 0.93, 0.96);
 
                 float3 elevatedLand = biomeTextureAlbedo;
-                float mtnBlendBase = mountainMask * smoothstep(0.35, 0.60, terrainHeight);
+                float mtnBlendBase = mountainMask * smoothstep(0.35, 0.60, terrainDisplayHeight);
                 float mtnBlend = (_UseTectonicPreview > 0.5) ? max(mtnBlendBase, generatedAlpineRockMask) : mtnBlendBase;
                 // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
                 float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
