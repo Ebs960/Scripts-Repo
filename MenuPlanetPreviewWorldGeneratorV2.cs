@@ -385,7 +385,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU stats | SignedHeight min/max/mean: {minHeight:F4}/{maxHeight:F4}/{meanHeight:F4} | Positive={positiveCoverage:F2}% | Negative={negativeCoverage:F2}% | NearZero={balanceCoverage:F2}% | Hill={hillCoverage:F2}% | Mountain={mountainCoverage:F2}% | BasinPotential={basinPotentialCoverage:F2}% | Lake: {lakeCoverage:F2}% | River: {riverCoverage:F2}% | Wetland: {wetlandCoverage:F2}%");
                 Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU channel ranges | Hill(y) min/max: {minHill:F4}/{maxHill:F4} | Mountain(z) min/max: {minMountain:F4}/{maxMountain:F4} | BasinPotential(w) min/max: {minBasinPotential:F4}/{maxBasinPotential:F4}");
-                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU interpretation hints | AlpineSignedHeightMaxCheck={(maxHeight < 0.04f ? \"WARN: <0.04 (too weak)\" : \"OK\")} | PositiveThreshold=0.02 | NegativeThreshold=-0.02 | HillThreshold=0.05 | MountainThreshold=0.05 | BasinPotentialThreshold=0.05");
+                Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU interpretation hints | AlpineSignedHeightMaxCheck={(maxHeight < 0.04f ? "WARN: <0.04 (too weak)" : "OK")} | PositiveThreshold=0.02 | NegativeThreshold=-0.02 | HillThreshold=0.05 | MountainThreshold=0.05 | BasinPotentialThreshold=0.05");
             });
         });
     }
