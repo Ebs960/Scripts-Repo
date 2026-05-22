@@ -761,6 +761,21 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         ReleaseRenderTexture(ref gpuExperimentalRiverPathTexture);
     }
 
+    private void ClearHydrologyTextures()
+    {
+        ClearRenderTexture(gpuHydrologyTexture, Color.clear);
+        ClearRenderTexture(gpuHydrologyDepthTexture, Color.clear);
+    }
+
+    private static void ClearRenderTexture(RenderTexture rt, Color clearColor)
+    {
+        if (rt == null || !rt.IsCreated()) return;
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = rt;
+        GL.Clear(true, true, clearColor);
+        RenderTexture.active = previous;
+    }
+
     private void DispatchGpuHydrology()
     {
         if (!useGpuHydrologyPreview) return;
