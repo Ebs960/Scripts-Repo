@@ -630,8 +630,8 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowTectonicLandMaskOnly > 0.5) return float4(tectonicSurface.rrr, 1.0);
                 if (_ShowSignedHeightOnly > 0.5) { float signedHeight = GetGpuHeightData(objNorm).r; return float4((signedHeight * 0.5 + 0.5).xxx, 1); }
                 if (_ShowBasinPotentialOnly > 0.5) { float basinPotential = GetGpuHeightData(objNorm).a; return float4(basinPotential.xxx, 1); }
-                if (_ShowSelectedBasinMaskOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayTex, sampler_WaterwayTex, huv); return float4(hm.ggg,1); }
-                if (_ShowExperimentalRiverPathOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayTex, sampler_WaterwayTex, huv); return float4(hm.rrr,1); }
+                if (_ShowSelectedBasinMaskOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayMaskTex, sampler_WaterwayMaskTex, huv); return float4(hm.ggg,1); }
+                if (_ShowExperimentalRiverPathOnly > 0.5) { float2 huv = GetTectonicUV(normalize(objNorm)); float4 hm = SAMPLE_TEXTURE2D(_WaterwayMaskTex, sampler_WaterwayMaskTex, huv); return float4(hm.rrr,1); }
                 if (_ShowTectonicHeightOnly > 0.5) return float4(((_UseTectonicPreview > 0.5) ? gpuHeightData.r : tectonicSurface.g).xxx, 1.0);
                 if (_ShowPlateBoundariesOnly > 0.5) return float4(tectonicBoundary.ggg, 1.0);
                 if (_ShowConvergentBoundariesOnly > 0.5) return float4(tectonicBoundary.bbb, 1.0);
