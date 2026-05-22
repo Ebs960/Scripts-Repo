@@ -701,15 +701,16 @@ public class MainMenuManager : MonoBehaviour
             lastPreviewWaterwaysPreset = selectedWaterwaysPreset;
         }
 
-        // Elevation: map GetElevationCategory() (0=Low, 1=Hilly, 2=Mountainous, 3=Alpine) to 0–1
+        // Elevation: map terrain roughness preset directly to preserve five distinct categories.
         int elevCat = GetElevationCategory();
-        float elev = elevCat switch
+        float elev = selectedTerrainPreset switch
         {
-            0 => 0.2f,  // Low — mostly flat with gentle hills
-            1 => 0.55f, // Hilly — visible highlands and color variation
-            2 => 0.75f, // Mountainous — dramatic peaks with snow caps
-            3 => 1.0f,  // Alpine — extreme mountains, maximum elevation
-            _ => 0.3f
+            0 => 0.10f,
+            1 => 0.30f,
+            2 => 0.50f,
+            3 => 0.75f,
+            4 => 1.00f,
+            _ => 0.50f
         };
         if (lastPreviewTerrainPreset != selectedTerrainPreset)
         {
