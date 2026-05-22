@@ -223,6 +223,10 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private bool showDivergentBoundariesOnly = false;
     [SerializeField] private bool showMountainUpliftOnly = false;
     [SerializeField] private bool showGeneratedHillReliefOnly = false;
+    [SerializeField] private bool showSignedHeightOnly = false;
+    [SerializeField] private bool showBasinPotentialOnly = false;
+    [SerializeField] private bool showSelectedBasinMaskOnly = false;
+    [SerializeField] private bool showExperimentalRiverPathOnly = false;
     [SerializeField] private bool showContinentalShelfOnly = false;
     [SerializeField] private bool showCrustTypeOnly = false;
     [SerializeField] private bool showContinentalPotentialOnly = false;
@@ -545,6 +549,11 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_TectonicCrustTex = Shader.PropertyToID("_TectonicCrustTex");
     private static readonly int ID_GpuHeightTex = Shader.PropertyToID("_GpuHeightTex");
     private static readonly int ID_UseTectonicPreview = Shader.PropertyToID("_UseTectonicPreview");
+    private static readonly int ID_UseExperimentalSignedTerrain = Shader.PropertyToID("_UseExperimentalSignedTerrain");
+    private static readonly int ID_ShowSignedHeightOnly = Shader.PropertyToID("_ShowSignedHeightOnly");
+    private static readonly int ID_ShowBasinPotentialOnly = Shader.PropertyToID("_ShowBasinPotentialOnly");
+    private static readonly int ID_ShowSelectedBasinMaskOnly = Shader.PropertyToID("_ShowSelectedBasinMaskOnly");
+    private static readonly int ID_ShowExperimentalRiverPathOnly = Shader.PropertyToID("_ShowExperimentalRiverPathOnly");
     private static readonly int ID_ShowTectonicLandMaskOnly = Shader.PropertyToID("_ShowTectonicLandMaskOnly");
     private static readonly int ID_ShowTectonicHeightOnly = Shader.PropertyToID("_ShowTectonicHeightOnly");
     private static readonly int ID_ShowPlateBoundariesOnly = Shader.PropertyToID("_ShowPlateBoundariesOnly");
@@ -865,6 +874,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowWetlandMaskOnly, showWetlandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowWaterDepthMaskOnly, showWaterDepthMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_UseTectonicPreview, 1f);
+        materialInstance.SetFloat(ID_UseExperimentalSignedTerrain, worldGenerator != null && worldGenerator.UseExperimentalSignedTerrain ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowSignedHeightOnly, showSignedHeightOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowBasinPotentialOnly, showBasinPotentialOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowSelectedBasinMaskOnly, showSelectedBasinMaskOnly ? 1f : 0f);
+        materialInstance.SetFloat(ID_ShowExperimentalRiverPathOnly, showExperimentalRiverPathOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowTectonicLandMaskOnly, showTectonicLandMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowTectonicHeightOnly, showTectonicHeightOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowPlateBoundariesOnly, showPlateBoundariesOnly ? 1f : 0f);
