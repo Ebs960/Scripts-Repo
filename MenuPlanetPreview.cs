@@ -664,6 +664,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
         materialInstance.SetTexture(ID_WaterwayDepthTex, worldGenerator.ActiveHydrologyDepthTexture);
+        materialInstance.SetFloat(ID_UseTectonicPreview, 1f);
+        materialInstance.SetFloat(
+            ID_UseExperimentalSignedTerrain,
+            worldGenerator.UseExperimentalSignedTerrain ? 1f : 0f
+        );
     }
 
     private void Update()
@@ -824,6 +829,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_ShowMountainMaskOnly, showMountainMaskOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_ShowDisplacementHeightOnly, showDisplacementHeightOnly ? 1f : 0f);
         materialInstance.SetFloat(ID_UseDisplacedNormals, useDisplacedNormals ? 1f : 0f);
+        materialInstance.SetFloat(ID_UseTectonicPreview, 1f);
+        materialInstance.SetFloat(
+            ID_UseExperimentalSignedTerrain,
+            worldGenerator != null && worldGenerator.UseExperimentalSignedTerrain ? 1f : 0f
+        );
     }
 
     private void PushDetailTextureParameters()
