@@ -67,6 +67,14 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(-0.75f, 0.75f)] private float coastlineThresholdBias = 0f;
     [SerializeField] private bool logWorldGenerationDiagnostics = true;
 
+    [Header("Temporary Height Auto-Debug")]
+    [SerializeField] private bool logHeightAutoDebugAfterDispatch = true;
+    [SerializeField, Range(0f, 2f)] private float debugTerrainElevationStrength = 1.0f;
+    [SerializeField, Range(0f, 1f)] private float debugHillStrength = 0.08f;
+    [SerializeField, Range(0f, 1f)] private float debugMountainStrength = 0.18f;
+    [SerializeField, Range(0f, 1f)] private float debugOceanDepth = 0.01f;
+
+
     [Header("GPU Coastline")]
     [SerializeField] private bool useGpuCoastlinePreview = true;
     [SerializeField] private ComputeShader menuPlanetPreviewCoastlineCompute;
@@ -107,9 +115,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private bool useExperimentalSignedTerrain = false;
     [SerializeField] private bool useExperimentalBasinHydrology = false;
 
-    [SerializeField, Range(0, 16)] private int experimentalSparseLakeCount = 2;
-    [SerializeField, Range(0, 16)] private int experimentalStandardLakeCount = 4;
-    [SerializeField, Range(0, 16)] private int experimentalAbundantLakeCount = 7;
+    [SerializeField, Range(0, 512)] private int experimentalSparseLakeCount = 2;
+    [SerializeField, Range(0, 512)] private int experimentalStandardLakeCount = 4;
+    [SerializeField, Range(0, 512)] private int experimentalAbundantLakeCount = 7;
 
     [SerializeField, Range(0, 24)] private int experimentalSparseRiverAttempts = 3;
     [SerializeField, Range(0, 24)] private int experimentalStandardRiverAttempts = 7;
@@ -286,6 +294,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int lastValidatedExperimentalStandardRiverAttempts;
     private int lastValidatedExperimentalAbundantRiverAttempts;
     private float lastValidatedExperimentalWetlandSpread;
+    private int lastValidatedExperimentalTerrainProfilesHash;
 
 
 
@@ -454,7 +463,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                !Mathf.Approximately(gpuInlandBasinStrength, lastValidatedGpuInlandBasinStrength) ||
                !Mathf.Approximately(gpuInlandBasinScale, lastValidatedGpuInlandBasinScale) ||
                !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength) ||
-               useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain;
+               useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain ||
+               ComputeExperimentalTerrainProfilesHash() != lastValidatedExperimentalTerrainProfilesHash;
     }
 
 
@@ -518,6 +528,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedExperimentalStandardRiverAttempts = experimentalStandardRiverAttempts;
         lastValidatedExperimentalAbundantRiverAttempts = experimentalAbundantRiverAttempts;
         lastValidatedExperimentalWetlandSpread = experimentalWetlandSpread;
+        lastValidatedExperimentalTerrainProfilesHash = ComputeExperimentalTerrainProfilesHash();
         validateCacheInitialized = true;
     }
     private void Update()
@@ -657,6 +668,39 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicCrustTex", gpuTectonicCrustTexture);
         cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
     }
+
+    private int ComputeExperimentalTerrainProfilesHash()
+    {
+        unchecked
+        {
+            int hash = 17;
+            if (experimentalTerrainProfiles == null) return hash;
+
+            hash = hash * 31 + experimentalTerrainProfiles.Length;
+            for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
+            {
+                var p = experimentalTerrainProfiles[i];
+                hash = hash * 31 + (p.name != null ? p.name.GetHashCode() : 0);
+                hash = hash * 31 + p.heightBias.GetHashCode();
+                hash = hash * 31 + p.upwardReliefStrength.GetHashCode();
+                hash = hash * 31 + p.downwardBasinStrength.GetHashCode();
+                hash = hash * 31 + p.valleyCutStrength.GetHashCode();
+                hash = hash * 31 + p.broadNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.midNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.fineNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.broadNoiseScale.GetHashCode();
+                hash = hash * 31 + p.midNoiseScale.GetHashCode();
+                hash = hash * 31 + p.fineNoiseScale.GetHashCode();
+                hash = hash * 31 + p.ridgeStrength.GetHashCode();
+                hash = hash * 31 + p.hillThreshold.GetHashCode();
+                hash = hash * 31 + p.mountainThreshold.GetHashCode();
+                hash = hash * 31 + p.basinCandidateBias.GetHashCode();
+            }
+
+            return hash;
+        }
+    }
+
     private void EnsureGpuHeightTexture()
     {
         if (gpuHeightTexture != null &&
@@ -751,7 +795,80 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             $"ExpBroadScale={expProfile.broadNoiseScale:0.000} ExpMidScale={expProfile.midNoiseScale:0.000} ExpFineScale={expProfile.fineNoiseScale:0.000} " +
             $"ExpRidge={expProfile.ridgeStrength:0.000} HillThreshold={expProfile.hillThreshold:0.000} MountainThreshold={expProfile.mountainThreshold:0.000} BasinBias={expProfile.basinCandidateBias:0.000} " +
             $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY}");
+
+        LogHeightAutoDebugStats();
     }
+    private void LogHeightAutoDebugStats()
+    {
+        if (!logHeightAutoDebugAfterDispatch || gpuHeightTexture == null) return;
+
+        AsyncGPUReadback.Request(gpuHeightTexture, 0, req =>
+        {
+            if (req.hasError)
+            {
+                Debug.LogWarning("[WorldGenV2 Height Stats] GPU readback failed.");
+                return;
+            }
+
+            var heightData = req.GetData<Vector4>();
+            int count = heightData.Length;
+            if (count <= 0) return;
+
+            float signedHeightMin = float.MaxValue;
+            float signedHeightMax = float.MinValue;
+            double signedHeightSum = 0.0;
+            int positiveCount = 0;
+            int negativeCount = 0;
+            int hillCount = 0;
+            int mountainCount = 0;
+            int basinPotentialCount = 0;
+            float approxFinalDisplacementMin = float.MaxValue;
+            float approxFinalDisplacementMax = float.MinValue;
+
+            for (int i = 0; i < count; i++)
+            {
+                Vector4 h = heightData[i];
+                float signedHeight = h.x;
+                float hillMask = h.y;
+                float mountainMask = h.z;
+                float basinPotential = h.w;
+
+                signedHeightMin = Mathf.Min(signedHeightMin, signedHeight);
+                signedHeightMax = Mathf.Max(signedHeightMax, signedHeight);
+                signedHeightSum += signedHeight;
+
+                if (signedHeight > 0.02f) positiveCount++;
+                if (signedHeight < -0.02f) negativeCount++;
+                if (hillMask > 0.05f) hillCount++;
+                if (mountainMask > 0.05f) mountainCount++;
+                if (basinPotential > 0.05f) basinPotentialCount++;
+
+                float approxFinalDisplacement =
+                    signedHeight * debugTerrainElevationStrength +
+                    hillMask * debugHillStrength +
+                    mountainMask * debugMountainStrength -
+                    debugOceanDepth;
+
+                approxFinalDisplacementMin = Mathf.Min(approxFinalDisplacementMin, approxFinalDisplacement);
+                approxFinalDisplacementMax = Mathf.Max(approxFinalDisplacementMax, approxFinalDisplacement);
+            }
+
+            float invCount = 1f / count;
+            float signedHeightMean = (float)(signedHeightSum * invCount);
+            float positiveCoverage = positiveCount * invCount * 100f;
+            float negativeCoverage = negativeCount * invCount * 100f;
+            float hillCoverage = hillCount * invCount * 100f;
+            float mountainCoverage = mountainCount * invCount * 100f;
+            float basinPotentialCoverage = basinPotentialCount * invCount * 100f;
+
+            Debug.Log(
+                $"[WorldGenV2 Height Stats] SignedHeightMin={signedHeightMin:F4} SignedHeightMax={signedHeightMax:F4} SignedHeightMean={signedHeightMean:F4} " +
+                $"PositiveCoverage={positiveCoverage:F2}% NegativeCoverage={negativeCoverage:F2}% HillCoverage={hillCoverage:F2}% MountainCoverage={mountainCoverage:F2}% " +
+                $"BasinPotentialCoverage={basinPotentialCoverage:F2}% ApproxFinalDisplacementMin={approxFinalDisplacementMin:F4} ApproxFinalDisplacementMax={approxFinalDisplacementMax:F4} " +
+                $"(TerrainElevationStrength={debugTerrainElevationStrength:F3} HillStrength={debugHillStrength:F3} MountainStrength={debugMountainStrength:F3} OceanDepth={debugOceanDepth:F3})");
+        });
+    }
+
     private float GetTerrainRoughnessElevationMultiplier(int presetIndex)
     {
         return presetIndex switch
