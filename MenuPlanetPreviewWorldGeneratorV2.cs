@@ -910,9 +910,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             );
 
             RenderTexture boundSurfaceTexture = gpuTectonicSurfaceTexture;
+            Texture activeSurfaceTexture = TectonicSurfaceTexture;
+            bool activeIsRenderTexture = activeSurfaceTexture is RenderTexture activeRt;
             if (!logHeightAttributionDebug || boundSurfaceTexture == null || !boundSurfaceTexture.IsCreated()) return;
 
-            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview}");
+            string activeSurfaceInfo = activeSurfaceTexture == null
+                ? "NULL"
+                : $"{activeSurfaceTexture.name} Type={activeSurfaceTexture.GetType().Name}";
+            string activeRenderTextureInfo = activeIsRenderTexture
+                ? $" ActiveRT={activeRt.name} ActiveRTCreated={activeRt.IsCreated()} ActiveRTSize={activeRt.width}x{activeRt.height}"
+                : string.Empty;
+            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview} ActiveSurface={activeSurfaceInfo}{activeRenderTextureInfo}");
 
             AsyncGPUReadback.Request(boundSurfaceTexture, 0, surfaceReq =>
             {
@@ -986,6 +994,43 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                     $"{signedOverLandMaskRange} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot} DispatchSerial={dispatchSerialSnapshot}"
                 );
             });
+
+            if (surfaceDataTexture != null &&
+                (activeSurfaceTexture == null || !ReferenceEquals(activeSurfaceTexture, surfaceDataTexture)))
+            {
+                AsyncGPUReadback.Request(surfaceDataTexture, 0, cpuSurfaceReq =>
+                {
+                    if (cpuSurfaceReq.hasError)
+                    {
+                        Debug.LogWarning("[WorldGenV2 Height Attribution] CPU surfaceDataTexture readback failed.");
+                        return;
+                    }
+
+                    var cpuSurfaceData = cpuSurfaceReq.GetData<Color32>();
+                    int cpuCount = cpuSurfaceData.Length;
+                    if (cpuCount <= 0) return;
+
+                    int cpuLandStrongCount = 0;
+                    double cpuLandSum = 0.0;
+                    byte cpuLandMin = byte.MaxValue;
+                    byte cpuLandMax = byte.MinValue;
+                    for (int i = 0; i < cpuCount; i++)
+                    {
+                        byte land = cpuSurfaceData[i].r;
+                        cpuLandMin = (byte)Mathf.Min(cpuLandMin, land);
+                        cpuLandMax = (byte)Mathf.Max(cpuLandMax, land);
+                        cpuLandSum += land;
+                        if (land >= 230) cpuLandStrongCount++;
+                    }
+
+                    float invCpu = 1f / cpuCount;
+                    Debug.Log(
+                        $"[WorldGenV2 Height Attribution CPU Surface] SourceTex={surfaceDataTexture.name} " +
+                        $"LandByteMin={cpuLandMin} LandByteMax={cpuLandMax} LandByteMean={(float)(cpuLandSum * invCpu):F2} " +
+                        $"LandStrong(>=230)={(cpuLandStrongCount * invCpu * 100f):F2}% DispatchSerial={dispatchSerialSnapshot}"
+                    );
+                });
+            }
         });
     }
 
