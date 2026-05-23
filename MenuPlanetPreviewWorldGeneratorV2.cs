@@ -911,7 +911,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
             RenderTexture boundSurfaceTexture = gpuTectonicSurfaceTexture;
             Texture activeSurfaceTexture = TectonicSurfaceTexture;
-            bool activeIsRenderTexture = activeSurfaceTexture is RenderTexture activeRt;
+            RenderTexture activeRt = activeSurfaceTexture as RenderTexture;
+            bool activeIsRenderTexture = activeRt != null;
             if (!logHeightAttributionDebug || boundSurfaceTexture == null || !boundSurfaceTexture.IsCreated()) return;
 
             string activeSurfaceInfo = activeSurfaceTexture == null
