@@ -174,6 +174,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public Texture ActiveHydrologyTexture => gpuHydrologyTexture;
     public Texture ActiveHydrologyDepthTexture => gpuHydrologyDepthTexture;
     public RenderTexture GpuHeightTexture => gpuHeightTexture;
+    public RenderTexture GpuLandMaskTexture => gpuLandMaskTexture;
     public bool UseExperimentalSignedTerrain => useExperimentalSignedTerrain;
     public event Action WorldTexturesUpdated;
 
@@ -238,6 +239,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int cachedTopologyHeight;
     private bool topologyShapeNoiseValid;
     private RenderTexture gpuTectonicSurfaceTexture;
+    private RenderTexture gpuLandMaskTexture;
     private RenderTexture gpuTectonicBoundaryTexture;
     private RenderTexture gpuTectonicCrustTexture;
     private ComputeBuffer topoLandCoastDistanceBuffer;
@@ -617,9 +619,20 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void DestroyTex(ref Texture2D t){if(t!=null)Destroy(t);t=null;}
     private void EnsureGpuCoastlineResources()
     {
+        EnsureGpuLandMaskTexture();
         EnsureGpuCoastlineTexture(ref gpuTectonicSurfaceTexture, "MenuGpuTectonicSurfaceV2");
         EnsureGpuCoastlineTexture(ref gpuTectonicBoundaryTexture, "MenuGpuTectonicBoundaryV2");
         EnsureGpuCoastlineTexture(ref gpuTectonicCrustTexture, "MenuGpuTectonicCrustV2");
+    }
+    private void EnsureGpuLandMaskTexture()
+    {
+        if (gpuLandMaskTexture != null && gpuLandMaskTexture.width == mapWidth && gpuLandMaskTexture.height == mapHeight && gpuLandMaskTexture.IsCreated()) return;
+        if (gpuLandMaskTexture != null) { gpuLandMaskTexture.Release(); Destroy(gpuLandMaskTexture); gpuLandMaskTexture = null; }
+        gpuLandMaskTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
+        {
+            name = "MenuGpuLandMaskV2", enableRandomWrite = true, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point, useMipMap = false, autoGenerateMips = false
+        };
+        gpuLandMaskTexture.Create();
     }
 
     private void EnsureGpuCoastlineTexture(ref RenderTexture rt, string name)
@@ -635,6 +648,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private void ReleaseGpuCoastlineResources()
     {
+        if (gpuLandMaskTexture != null) { gpuLandMaskTexture.Release(); Destroy(gpuLandMaskTexture); gpuLandMaskTexture = null; }
         if (gpuTectonicSurfaceTexture != null) { gpuTectonicSurfaceTexture.Release(); Destroy(gpuTectonicSurfaceTexture); gpuTectonicSurfaceTexture = null; }
         if (gpuTectonicBoundaryTexture != null) { gpuTectonicBoundaryTexture.Release(); Destroy(gpuTectonicBoundaryTexture); gpuTectonicBoundaryTexture = null; }
         if (gpuTectonicCrustTexture != null) { gpuTectonicCrustTexture.Release(); Destroy(gpuTectonicCrustTexture); gpuTectonicCrustTexture = null; }
@@ -667,6 +681,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetBuffer(gpuCoastlineKernel, "_TopoOceanCoastDistance", topoOceanCoastDistanceBuffer);
         cs.SetBuffer(gpuCoastlineKernel, "_TopoSignedCoastDistance", topoSignedCoastDistanceBuffer);
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicSurfaceTex", gpuTectonicSurfaceTexture);
+        cs.SetTexture(gpuCoastlineKernel, "_GpuLandMaskTex", gpuLandMaskTexture);
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicBoundaryTex", gpuTectonicBoundaryTexture);
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicCrustTex", gpuTectonicCrustTexture);
         cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
@@ -790,6 +805,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         menuPlanetPreviewHeightCompute.SetFloat("_WatershedRidgeStrength", gpuWatershedRidgeStrength);
 
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+        Texture landMaskSource = gpuLandMaskTexture != null && gpuLandMaskTexture.IsCreated()
+            ? (Texture)gpuLandMaskTexture
+            : TectonicSurfaceTexture;
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_LandMaskTex", landMaskSource);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", TectonicCrustTexture);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuHeightTex", gpuHeightTexture);
 
@@ -909,7 +928,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 $"NegativeAny<-0.0001={negativeAnyCoverage:F2}% NegativeWeak<-0.005={negativeWeakCoverage:F2}% NegativeStrong<-0.02={negativeStrongCoverage:F2}%"
             );
 
-            RenderTexture boundSurfaceTexture = gpuTectonicSurfaceTexture;
+            RenderTexture boundSurfaceTexture = gpuLandMaskTexture;
             Texture activeSurfaceTexture = TectonicSurfaceTexture;
             RenderTexture activeRt = activeSurfaceTexture as RenderTexture;
             bool activeIsRenderTexture = activeRt != null;
