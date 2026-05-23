@@ -661,10 +661,11 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicSurfaceTex, worldGenerator.TectonicSurfaceTexture);
         materialInstance.SetTexture(ID_TectonicBoundaryTex, worldGenerator.TectonicBoundaryTexture);
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
-        materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
+        materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuDisplacementTexture != null ? worldGenerator.GpuDisplacementTexture : worldGenerator.GpuHeightTexture);
         if (worldGenerator.GpuHeightTexture != null)
         {
-            Debug.Log($"[MenuPlanetPreview Binding] HeightTex={worldGenerator.GpuHeightTexture.name} Size={worldGenerator.GpuHeightTexture.width}x{worldGenerator.GpuHeightTexture.height} Format={worldGenerator.GpuHeightTexture.format} Created={worldGenerator.GpuHeightTexture.IsCreated()}");
+            var boundHeightTex = worldGenerator.GpuDisplacementTexture != null ? worldGenerator.GpuDisplacementTexture : worldGenerator.GpuHeightTexture;
+            Debug.Log($"[MenuPlanetPreview Binding] HeightTex={boundHeightTex.name} Size={boundHeightTex.width}x{boundHeightTex.height} Format={boundHeightTex.format} Created={boundHeightTex.IsCreated()} Source={(worldGenerator.GpuDisplacementTexture != null ? "GpuDisplacementTexture" : "GpuHeightTexture")}");
         }
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
         materialInstance.SetTexture(ID_WaterwayDepthTex, worldGenerator.ActiveHydrologyDepthTexture);

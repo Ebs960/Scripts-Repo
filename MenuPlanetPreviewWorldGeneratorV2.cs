@@ -174,6 +174,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public Texture ActiveHydrologyTexture => gpuHydrologyTexture;
     public Texture ActiveHydrologyDepthTexture => gpuHydrologyDepthTexture;
     public RenderTexture GpuHeightTexture => gpuHeightTexture;
+    public RenderTexture GpuDisplacementTexture => gpuDisplacementTexture;
     public RenderTexture GpuLandMaskTexture => gpuLandMaskTexture;
     public bool UseExperimentalSignedTerrain => useExperimentalSignedTerrain;
     public event Action WorldTexturesUpdated;
@@ -247,6 +248,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private ComputeBuffer topoSignedCoastDistanceBuffer;
     private int gpuCoastlineKernel = -1;
     private RenderTexture gpuHeightTexture;
+    private RenderTexture gpuDisplacementTexture;
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private RenderTexture gpuExperimentalBasinCandidateTexture, gpuExperimentalSelectedBasinTexture, gpuExperimentalRiverPathTexture;
@@ -307,7 +309,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [ContextMenu("Log GPU Terrain/Hydrology Coverage Stats")]
     public void LogGpuCoverageStats()
     {
-        if (gpuHeightTexture == null || gpuHydrologyTexture == null)
+        if (gpuHeightTexture == null || gpuHydrologyTexture == null || gpuDisplacementTexture == null)
         {
             Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] GPU textures are not ready. Generate preview first.");
             return;
@@ -428,6 +430,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         DestroyTex(ref worldStructureTexture);
         ReleaseGpuCoastlineResources();
         ReleaseGpuHeightTexture();
+        ReleaseGpuDisplacementTexture();
         ReleaseGpuHydrologyResources();
     }
 
@@ -733,6 +736,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         }
 
         ReleaseGpuHeightTexture();
+        ReleaseGpuDisplacementTexture();
         ReleaseGpuHydrologyResources();
         gpuHeightTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
         {
@@ -755,6 +759,37 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         gpuHeightKernel = -1;
     }
 
+    private void EnsureGpuDisplacementTexture()
+    {
+        if (gpuDisplacementTexture != null &&
+            gpuDisplacementTexture.width == mapWidth &&
+            gpuDisplacementTexture.height == mapHeight &&
+            gpuDisplacementTexture.IsCreated())
+        {
+            return;
+        }
+
+        ReleaseGpuDisplacementTexture();
+        gpuDisplacementTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
+        {
+            name = "MenuGpuDisplacementV2",
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            useMipMap = false,
+            autoGenerateMips = false
+        };
+        gpuDisplacementTexture.Create();
+    }
+
+    private void ReleaseGpuDisplacementTexture()
+    {
+        if (gpuDisplacementTexture == null) return;
+        gpuDisplacementTexture.Release();
+        Destroy(gpuDisplacementTexture);
+        gpuDisplacementTexture = null;
+    }
+
     private void DispatchGpuHeight()
     {
         if (!useGpuHeightPreview) return;
@@ -763,7 +798,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (surfaceDataTexture == null || worldStructureTexture == null) return;
 
         EnsureGpuHeightTexture();
-        if (gpuHeightTexture == null) return;
+        EnsureGpuDisplacementTexture();
+        if (gpuHeightTexture == null || gpuDisplacementTexture == null) return;
 
         if (gpuHeightKernel < 0)
             gpuHeightKernel = menuPlanetPreviewHeightCompute.FindKernel("GenerateHeight");
@@ -811,6 +847,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_LandMaskTex", landMaskSource);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", TectonicCrustTexture);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuHeightTex", gpuHeightTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuDisplacementTex", gpuDisplacementTexture);
 
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
