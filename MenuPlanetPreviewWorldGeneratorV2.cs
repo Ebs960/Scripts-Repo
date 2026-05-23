@@ -940,7 +940,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             string activeRenderTextureInfo = activeIsRenderTexture
                 ? $" ActiveRT={activeRt.name} ActiveRTCreated={activeRt.IsCreated()} ActiveRTSize={activeRt.width}x{activeRt.height}"
                 : string.Empty;
-            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview} ActiveSurface={activeSurfaceInfo}{activeRenderTextureInfo}");
+            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Format={boundSurfaceTexture.format} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview} ActiveSurface={activeSurfaceInfo}{activeRenderTextureInfo}");
 
             AsyncGPUReadback.Request(boundSurfaceTexture, 0, surfaceReq =>
             {
@@ -950,19 +950,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                     return;
                 }
 
-                var surfaceData = surfaceReq.GetData<Vector4>();
+                var surfaceData = surfaceReq.GetData<float>();
                 if (surfaceData.Length != count)
                 {
-                    Debug.LogWarning($"[WorldGenV2 Height Attribution] Surface/height mismatch surface={surfaceData.Length} height={count}");
+                    Debug.LogWarning($"[WorldGenV2 Height Attribution] LandMask/height mismatch landMask={surfaceData.Length} height={count} BoundLandMaskFormat={boundSurfaceTexture.format}");
                     return;
                 }
 
                 float landMaskMin = float.MaxValue;
                 float landMaskMax = float.MinValue;
                 double landMaskSum = 0.0;
-                float channelAMin = float.MaxValue;
-                float channelAMax = float.MinValue;
-                double channelASum = 0.0;
                 int landMaskStrongCount = 0;
                 int landMaskMidCount = 0;
                 int nearCoastCount = 0;
@@ -974,16 +971,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 for (int i = 0; i < count; i++)
                 {
-                    float landMask = surfaceData[i].x;
-                    float channelA = surfaceData[i].w;
+                    float landMask = surfaceData[i];
                     float signedHeight = heightSnapshot[i].x;
 
                     landMaskMin = Mathf.Min(landMaskMin, landMask);
                     landMaskMax = Mathf.Max(landMaskMax, landMask);
                     landMaskSum += landMask;
-                    channelAMin = Mathf.Min(channelAMin, channelA);
-                    channelAMax = Mathf.Max(channelAMax, channelA);
-                    channelASum += channelA;
 
                     if (landMask > 0.90f) landMaskStrongCount++;
                     if (landMask > 0.10f && landMask <= 0.90f) landMaskMidCount++;
@@ -1008,7 +1001,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 Debug.Log(
                     $"[WorldGenV2 Height Attribution] LandMaskMin={landMaskMin:F4} LandMaskMax={landMaskMax:F4} LandMaskMean={(float)(landMaskSum * inv):F4} " +
-                    $"ChannelA_Min={channelAMin:F4} ChannelA_Max={channelAMax:F4} ChannelA_Mean={(float)(channelASum * inv):F4} " +
                     $"LandMaskStrong>0.90={(landMaskStrongCount * inv * 100f):F2}% LandMaskMid0.10-0.90={(landMaskMidCount * inv * 100f):F2}% NearCoast0.01-0.99={(nearCoastCount * inv * 100f):F2}% " +
                     $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% NormalizedSamples={normalizedSampleCount} " +
                     $"{signedOverLandMaskRange} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot} DispatchSerial={dispatchSerialSnapshot}"
