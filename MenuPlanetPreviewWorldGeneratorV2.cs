@@ -903,9 +903,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 $"NegativeAny<-0.0001={negativeAnyCoverage:F2}% NegativeWeak<-0.005={negativeWeakCoverage:F2}% NegativeStrong<-0.02={negativeStrongCoverage:F2}%"
             );
 
-            if (!logHeightAttributionDebug || TectonicSurfaceTexture == null) return;
+            RenderTexture boundSurfaceTexture = gpuTectonicSurfaceTexture;
+            if (!logHeightAttributionDebug || boundSurfaceTexture == null || !boundSurfaceTexture.IsCreated()) return;
 
-            AsyncGPUReadback.Request(TectonicSurfaceTexture, 0, surfaceReq =>
+            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview}");
+
+            AsyncGPUReadback.Request(boundSurfaceTexture, 0, surfaceReq =>
             {
                 if (surfaceReq.hasError)
                 {
@@ -930,6 +933,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 int landWithNegativeHeightCount = 0;
                 float signedOverLandMaskMax = float.MinValue;
                 float signedOverLandMaskMin = float.MaxValue;
+                int normalizedSampleCount = 0;
 
                 for (int i = 0; i < count; i++)
                 {
@@ -952,15 +956,20 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                         float normalized = signedHeight / Mathf.Max(0.001f, landMask);
                         signedOverLandMaskMax = Mathf.Max(signedOverLandMaskMax, normalized);
                         signedOverLandMaskMin = Mathf.Min(signedOverLandMaskMin, normalized);
+                        normalizedSampleCount++;
                     }
                 }
 
                 float inv = 1f / count;
+                string signedOverLandMaskRange = normalizedSampleCount > 0
+                    ? $"SignedOverLandMaskMin={signedOverLandMaskMin:F4} SignedOverLandMaskMax={signedOverLandMaskMax:F4}"
+                    : "SignedOverLandMaskMin=NA SignedOverLandMaskMax=NA";
+
                 Debug.Log(
                     $"[WorldGenV2 Height Attribution] LandMaskMin={landMaskMin:F4} LandMaskMax={landMaskMax:F4} LandMaskMean={(float)(landMaskSum * inv):F4} " +
                     $"LandMaskStrong>0.90={(landMaskStrongCount * inv * 100f):F2}% LandMaskMid0.10-0.90={(landMaskMidCount * inv * 100f):F2}% NearCoast0.01-0.99={(nearCoastCount * inv * 100f):F2}% " +
-                    $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% " +
-                    $"SignedOverLandMaskMin={signedOverLandMaskMin:F4} SignedOverLandMaskMax={signedOverLandMaskMax:F4} Sentinel={debugForceSignedHeightSentinel}"
+                    $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% NormalizedSamples={normalizedSampleCount} " +
+                    $"{signedOverLandMaskRange} Sentinel={debugForceSignedHeightSentinel}"
                 );
             });
         });
