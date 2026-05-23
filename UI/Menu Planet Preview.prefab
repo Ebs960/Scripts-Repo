@@ -616,6 +616,11 @@ MonoBehaviour:
   coastlineSoftness: 0.107
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
+  logHeightAutoDebugAfterDispatch: 1
+  debugTerrainElevationStrength: 1
+  debugHillStrength: 0.08
+  debugMountainStrength: 0.18
+  debugOceanDepth: 0.01
   useGpuCoastlinePreview: 1
   menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 930babc1193edcd4591e7fcdd6ecde15, type: 3}
   useGpuHeightPreview: 1
@@ -733,7 +738,7 @@ MonoBehaviour:
     fineNoiseAmplitude: 1
     broadNoiseScale: 4
     midNoiseScale: 7
-    fineNoiseScale: 0.9
+    fineNoiseScale: 0.15
     ridgeStrength: 0.4
     hillThreshold: 0.11
     mountainThreshold: 0.185
