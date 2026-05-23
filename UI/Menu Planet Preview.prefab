@@ -420,11 +420,11 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 10
+  rotationSpeed: 4
   detailScale: 100
   detailStrength: 0.2
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.05
+  displacementScale: 0.01
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.0297
@@ -617,6 +617,7 @@ MonoBehaviour:
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
   logHeightAutoDebugAfterDispatch: 1
+  logHeightAttributionDebug: 1
   debugTerrainElevationStrength: 1
   debugHillStrength: 0.08
   debugMountainStrength: 0.18
@@ -649,12 +650,13 @@ MonoBehaviour:
   smoothElevationMultiplier: 0.9
   standardElevationMultiplier: 1
   mountainousElevationMultiplier: 1.15
-  alpineElevationMultiplier: 1.25
+  alpineElevationMultiplier: 1
   useExperimentalSignedTerrain: 1
+  debugForceSignedHeightSentinel: 1
   useExperimentalBasinHydrology: 1
   experimentalSparseLakeCount: 2
   experimentalStandardLakeCount: 4
-  experimentalAbundantLakeCount: 7
+  experimentalAbundantLakeCount: 60
   experimentalSparseRiverAttempts: 3
   experimentalStandardRiverAttempts: 7
   experimentalAbundantRiverAttempts: 12
@@ -700,7 +702,7 @@ MonoBehaviour:
     basinCandidateBias: 1.15
   - name: Standard
     heightBias: 0
-    upwardReliefStrength: 0.18
+    upwardReliefStrength: 1
     downwardBasinStrength: 0.13
     valleyCutStrength: 0.1
     broadNoiseAmplitude: 0.2
@@ -710,8 +712,8 @@ MonoBehaviour:
     midNoiseScale: 1.7
     fineNoiseScale: 3
     ridgeStrength: 0.05
-    hillThreshold: 0.5
-    mountainThreshold: 0.82
+    hillThreshold: 0.3
+    mountainThreshold: 0.5
     basinCandidateBias: 1
   - name: Mountainous
     heightBias: 0.03
