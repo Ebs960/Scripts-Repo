@@ -662,6 +662,10 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetTexture(ID_TectonicBoundaryTex, worldGenerator.TectonicBoundaryTexture);
         materialInstance.SetTexture(ID_TectonicCrustTex, worldGenerator.TectonicCrustTexture);
         materialInstance.SetTexture(ID_GpuHeightTex, worldGenerator.GpuHeightTexture);
+        if (worldGenerator.GpuHeightTexture != null)
+        {
+            Debug.Log($"[MenuPlanetPreview Binding] HeightTex={worldGenerator.GpuHeightTexture.name} Size={worldGenerator.GpuHeightTexture.width}x{worldGenerator.GpuHeightTexture.height} Format={worldGenerator.GpuHeightTexture.format} Created={worldGenerator.GpuHeightTexture.IsCreated()}");
+        }
         materialInstance.SetTexture(ID_WaterwayMaskTex, worldGenerator.ActiveHydrologyTexture);
         materialInstance.SetTexture(ID_WaterwayDepthTex, worldGenerator.ActiveHydrologyDepthTexture);
         materialInstance.SetFloat(ID_UseTectonicPreview, 1f);

@@ -5,6 +5,7 @@ StructuredBuffer<float> _TopoSignedCoastDistance;
 RWTexture2D<float4> _GpuTectonicSurfaceTex;
 RWTexture2D<float4> _GpuTectonicBoundaryTex;
 RWTexture2D<float4> _GpuTectonicCrustTex;
+RWTexture2D<float> _GpuLandMaskTex;
 int _MapWidth,_MapHeight,_TopologyWidth,_TopologyHeight; float _Seed,_CoastlineDeformationWidthCells,_CoastlineWarpStrength,_CoastlineMidNoiseStrength,_CoastlineEdgeNoiseStrength,_CoastlineSoftness,_CoastlineThresholdBias;
 static const float PI=3.14159265359;
 float Hash31(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973)); p+=dot(p,p.yxz+33.33); return frac((p.x+p.y)*p.z);} 
@@ -20,4 +21,4 @@ float macro=Fbm(warpedDir*1.35+seedA)*2-1, mid=Fbm(warpedDir*2.55+seedB)*2-1, ed
 float signedEnvelope=signedTopoDistance/max(0.001,_CoastlineDeformationWidthCells); float coastInfluence=1-saturate(abs(signedEnvelope)); coastInfluence=coastInfluence*coastInfluence*(3-2*coastInfluence);
 float finalCoastSignal=signedEnvelope+(macro*_CoastlineWarpStrength+mid*_CoastlineMidNoiseStrength+edge*_CoastlineEdgeNoiseStrength)*coastInfluence-_CoastlineThresholdBias;
 float land=smoothstep(-_CoastlineSoftness,_CoastlineSoftness,finalCoastSignal); float shelf=(1-land)*saturate(1-offshore/(0.04*_MapHeight)); float continentality=land*saturate(inland/(0.24*_MapHeight));
-_GpuTectonicSurfaceTex[p]=float4(land,0,0,shelf); _GpuTectonicBoundaryTex[p]=float4(shelf,continentality,0,0); _GpuTectonicCrustTex[p]=float4(continentality,0,0,0); }
+float binaryLand=land>0.5?1.0:0.0; _GpuLandMaskTex[p]=binaryLand; _GpuTectonicSurfaceTex[p]=float4(land,0,0,shelf); _GpuTectonicBoundaryTex[p]=float4(shelf,continentality,0,0); _GpuTectonicCrustTex[p]=float4(continentality,0,0,0); }
