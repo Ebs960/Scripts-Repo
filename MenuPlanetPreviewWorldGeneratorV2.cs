@@ -69,6 +69,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     [Header("Temporary Height Auto-Debug")]
     [SerializeField] private bool logHeightAutoDebugAfterDispatch = true;
+    [SerializeField] private bool logHeightAttributionDebug = true;
     [SerializeField, Range(0f, 2f)] private float debugTerrainElevationStrength = 1.0f;
     [SerializeField, Range(0f, 1f)] private float debugHillStrength = 0.08f;
     [SerializeField, Range(0f, 1f)] private float debugMountainStrength = 0.18f;
@@ -804,7 +805,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             $"ExpBroadAmp={expProfile.broadNoiseAmplitude:0.000} ExpMidAmp={expProfile.midNoiseAmplitude:0.000} ExpFineAmp={expProfile.fineNoiseAmplitude:0.000} " +
             $"ExpBroadScale={expProfile.broadNoiseScale:0.000} ExpMidScale={expProfile.midNoiseScale:0.000} ExpFineScale={expProfile.fineNoiseScale:0.000} " +
             $"ExpRidge={expProfile.ridgeStrength:0.000} HillThreshold={expProfile.hillThreshold:0.000} MountainThreshold={expProfile.mountainThreshold:0.000} BasinBias={expProfile.basinCandidateBias:0.000} " +
-            $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY}");
+            $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY} Sentinel={debugForceSignedHeightSentinel}");
 
         LogHeightAutoDebugStats();
     }
@@ -821,7 +822,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             }
 
             var heightData = req.GetData<Vector4>();
-            int count = heightData.Length;
+            Vector4[] heightSnapshot = heightData.ToArray();
+            int count = heightSnapshot.Length;
             if (count <= 0) return;
 
             float signedHeightMin = float.MaxValue;
@@ -843,7 +845,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
             for (int i = 0; i < count; i++)
             {
-                Vector4 h = heightData[i];
+                Vector4 h = heightSnapshot[i];
                 float signedHeight = h.x;
                 float hillMask = h.y;
                 float mountainMask = h.z;
@@ -900,6 +902,67 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 $"PositiveAny>0.0001={positiveAnyCoverage:F2}% PositiveWeak>0.005={positiveWeakCoverage:F2}% PositiveStrong>0.02={positiveStrongCoverage:F2}% | " +
                 $"NegativeAny<-0.0001={negativeAnyCoverage:F2}% NegativeWeak<-0.005={negativeWeakCoverage:F2}% NegativeStrong<-0.02={negativeStrongCoverage:F2}%"
             );
+
+            if (!logHeightAttributionDebug || TectonicSurfaceTexture == null) return;
+
+            AsyncGPUReadback.Request(TectonicSurfaceTexture, 0, surfaceReq =>
+            {
+                if (surfaceReq.hasError)
+                {
+                    Debug.LogWarning("[WorldGenV2 Height Attribution] Tectonic surface readback failed.");
+                    return;
+                }
+
+                var surfaceData = surfaceReq.GetData<Vector4>();
+                if (surfaceData.Length != count)
+                {
+                    Debug.LogWarning($"[WorldGenV2 Height Attribution] Surface/height mismatch surface={surfaceData.Length} height={count}");
+                    return;
+                }
+
+                float landMaskMin = float.MaxValue;
+                float landMaskMax = float.MinValue;
+                double landMaskSum = 0.0;
+                int landMaskStrongCount = 0;
+                int landMaskMidCount = 0;
+                int nearCoastCount = 0;
+                int landWithPositiveHeightCount = 0;
+                int landWithNegativeHeightCount = 0;
+                float signedOverLandMaskMax = float.MinValue;
+                float signedOverLandMaskMin = float.MaxValue;
+
+                for (int i = 0; i < count; i++)
+                {
+                    float landMask = surfaceData[i].x;
+                    float signedHeight = heightSnapshot[i].x;
+
+                    landMaskMin = Mathf.Min(landMaskMin, landMask);
+                    landMaskMax = Mathf.Max(landMaskMax, landMask);
+                    landMaskSum += landMask;
+
+                    if (landMask > 0.90f) landMaskStrongCount++;
+                    if (landMask > 0.10f && landMask <= 0.90f) landMaskMidCount++;
+                    if (landMask > 0.01f && landMask < 0.99f) nearCoastCount++;
+
+                    if (landMask > 0.10f && signedHeight > 0.0001f) landWithPositiveHeightCount++;
+                    if (landMask > 0.10f && signedHeight < -0.0001f) landWithNegativeHeightCount++;
+
+                    if (landMask > 0.001f)
+                    {
+                        float normalized = signedHeight / Mathf.Max(0.001f, landMask);
+                        signedOverLandMaskMax = Mathf.Max(signedOverLandMaskMax, normalized);
+                        signedOverLandMaskMin = Mathf.Min(signedOverLandMaskMin, normalized);
+                    }
+                }
+
+                float inv = 1f / count;
+                Debug.Log(
+                    $"[WorldGenV2 Height Attribution] LandMaskMin={landMaskMin:F4} LandMaskMax={landMaskMax:F4} LandMaskMean={(float)(landMaskSum * inv):F4} " +
+                    $"LandMaskStrong>0.90={(landMaskStrongCount * inv * 100f):F2}% LandMaskMid0.10-0.90={(landMaskMidCount * inv * 100f):F2}% NearCoast0.01-0.99={(nearCoastCount * inv * 100f):F2}% " +
+                    $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% " +
+                    $"SignedOverLandMaskMin={signedOverLandMaskMin:F4} SignedOverLandMaskMax={signedOverLandMaskMax:F4} Sentinel={debugForceSignedHeightSentinel}"
+                );
+            });
         });
     }
 
