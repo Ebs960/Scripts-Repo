@@ -69,6 +69,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     [Header("Temporary Height Auto-Debug")]
     [SerializeField] private bool logHeightAutoDebugAfterDispatch = true;
+    [SerializeField] private bool logHeightAttributionDebug = true;
     [SerializeField, Range(0f, 2f)] private float debugTerrainElevationStrength = 1.0f;
     [SerializeField, Range(0f, 1f)] private float debugHillStrength = 0.08f;
     [SerializeField, Range(0f, 1f)] private float debugMountainStrength = 0.18f;
@@ -113,6 +114,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
 [Header("Experimental Signed Basin Hydrology")]
     [SerializeField] private bool useExperimentalSignedTerrain = false;
+    [SerializeField] private bool debugForceSignedHeightSentinel = false;
     [SerializeField] private bool useExperimentalBasinHydrology = false;
 
     [SerializeField, Range(0, 512)] private int experimentalSparseLakeCount = 2;
@@ -246,6 +248,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private RenderTexture gpuExperimentalBasinCandidateTexture, gpuExperimentalSelectedBasinTexture, gpuExperimentalRiverPathTexture;
+    private int heightDebugDispatchSerial;
 
     private struct ExperimentalBasinCandidate
     {
@@ -294,7 +297,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int lastValidatedExperimentalStandardRiverAttempts;
     private int lastValidatedExperimentalAbundantRiverAttempts;
     private float lastValidatedExperimentalWetlandSpread;
-    private int lastValidatedExperimentalTerrainProfilesHash;
+    private int lastValidatedExperimentalTerrainProfileHash;
 
 
 
@@ -464,7 +467,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                !Mathf.Approximately(gpuInlandBasinScale, lastValidatedGpuInlandBasinScale) ||
                !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength) ||
                useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain ||
-               ComputeExperimentalTerrainProfilesHash() != lastValidatedExperimentalTerrainProfilesHash;
+               ComputeExperimentalTerrainProfileHash() != lastValidatedExperimentalTerrainProfileHash;
     }
 
 
@@ -528,7 +531,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedExperimentalStandardRiverAttempts = experimentalStandardRiverAttempts;
         lastValidatedExperimentalAbundantRiverAttempts = experimentalAbundantRiverAttempts;
         lastValidatedExperimentalWetlandSpread = experimentalWetlandSpread;
-        lastValidatedExperimentalTerrainProfilesHash = ComputeExperimentalTerrainProfilesHash();
+        lastValidatedExperimentalTerrainProfileHash = ComputeExperimentalTerrainProfileHash();
         validateCacheInitialized = true;
     }
     private void Update()
@@ -669,35 +672,38 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
     }
 
-    private int ComputeExperimentalTerrainProfilesHash()
+    private int ComputeExperimentalTerrainProfileHash()
     {
         unchecked
         {
-            int hash = 17;
-            if (experimentalTerrainProfiles == null) return hash;
+            int h = 17;
 
-            hash = hash * 31 + experimentalTerrainProfiles.Length;
-            for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
+            if (experimentalTerrainProfiles != null)
             {
-                var p = experimentalTerrainProfiles[i];
-                hash = hash * 31 + (p.name != null ? p.name.GetHashCode() : 0);
-                hash = hash * 31 + p.heightBias.GetHashCode();
-                hash = hash * 31 + p.upwardReliefStrength.GetHashCode();
-                hash = hash * 31 + p.downwardBasinStrength.GetHashCode();
-                hash = hash * 31 + p.valleyCutStrength.GetHashCode();
-                hash = hash * 31 + p.broadNoiseAmplitude.GetHashCode();
-                hash = hash * 31 + p.midNoiseAmplitude.GetHashCode();
-                hash = hash * 31 + p.fineNoiseAmplitude.GetHashCode();
-                hash = hash * 31 + p.broadNoiseScale.GetHashCode();
-                hash = hash * 31 + p.midNoiseScale.GetHashCode();
-                hash = hash * 31 + p.fineNoiseScale.GetHashCode();
-                hash = hash * 31 + p.ridgeStrength.GetHashCode();
-                hash = hash * 31 + p.hillThreshold.GetHashCode();
-                hash = hash * 31 + p.mountainThreshold.GetHashCode();
-                hash = hash * 31 + p.basinCandidateBias.GetHashCode();
+                for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
+                {
+                    var p = experimentalTerrainProfiles[i];
+
+                    h = h * 31 + i;
+                    h = h * 31 + (p.name == null ? 0 : p.name.GetHashCode());
+                    h = h * 31 + Mathf.RoundToInt(p.heightBias * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.upwardReliefStrength * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.downwardBasinStrength * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.valleyCutStrength * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.broadNoiseAmplitude * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.midNoiseAmplitude * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.fineNoiseAmplitude * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.broadNoiseScale * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.midNoiseScale * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.fineNoiseScale * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.ridgeStrength * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.hillThreshold * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.mountainThreshold * 10000f);
+                    h = h * 31 + Mathf.RoundToInt(p.basinCandidateBias * 10000f);
+                }
             }
 
-            return hash;
+            return h;
         }
     }
 
@@ -747,6 +753,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         if (gpuHeightKernel < 0)
             gpuHeightKernel = menuPlanetPreviewHeightCompute.FindKernel("GenerateHeight");
 
+        Debug.Log(
+            $"[WorldGenV2 GPU Height Asset] ComputeAsset={(menuPlanetPreviewHeightCompute != null ? menuPlanetPreviewHeightCompute.name : "NULL")} " +
+            $"Kernel={gpuHeightKernel}"
+        );
+
         menuPlanetPreviewHeightCompute.SetInt("_MapWidth", mapWidth);
         menuPlanetPreviewHeightCompute.SetInt("_MapHeight", mapHeight);
         menuPlanetPreviewHeightCompute.SetFloat("_Seed", inputs.seed);
@@ -755,6 +766,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int terrainPreset = Mathf.Clamp(inputs.terrainRoughnessPresetIndex, 0, Mathf.Max(0, experimentalTerrainProfiles.Length - 1));
         var expProfile = experimentalTerrainProfiles[Mathf.Min(terrainPreset, experimentalTerrainProfiles.Length - 1)];
         menuPlanetPreviewHeightCompute.SetInt("_UseExperimentalSignedTerrain", useExperimentalSignedTerrain ? 1 : 0);
+        menuPlanetPreviewHeightCompute.SetInt("_DebugForceSignedHeightSentinel", debugForceSignedHeightSentinel ? 1 : 0);
         menuPlanetPreviewHeightCompute.SetInt("_TerrainRoughnessPresetIndex", terrainPreset);
         menuPlanetPreviewHeightCompute.SetFloat("_ExpHeightBias", expProfile.heightBias);
         menuPlanetPreviewHeightCompute.SetFloat("_ExpUpwardReliefStrength", expProfile.upwardReliefStrength);
@@ -784,6 +796,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
         menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
+        heightDebugDispatchSerial++;
 
         Debug.Log(
             $"[WorldGenV2 GPU Height] ExperimentalSigned={useExperimentalSignedTerrain} " +
@@ -794,13 +807,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             $"ExpBroadAmp={expProfile.broadNoiseAmplitude:0.000} ExpMidAmp={expProfile.midNoiseAmplitude:0.000} ExpFineAmp={expProfile.fineNoiseAmplitude:0.000} " +
             $"ExpBroadScale={expProfile.broadNoiseScale:0.000} ExpMidScale={expProfile.midNoiseScale:0.000} ExpFineScale={expProfile.fineNoiseScale:0.000} " +
             $"ExpRidge={expProfile.ridgeStrength:0.000} HillThreshold={expProfile.hillThreshold:0.000} MountainThreshold={expProfile.mountainThreshold:0.000} BasinBias={expProfile.basinCandidateBias:0.000} " +
-            $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY}");
+            $"Map={mapWidth}x{mapHeight} Groups={groupsX}x{groupsY} Sentinel={debugForceSignedHeightSentinel}");
 
         LogHeightAutoDebugStats();
     }
     private void LogHeightAutoDebugStats()
     {
         if (!logHeightAutoDebugAfterDispatch || gpuHeightTexture == null) return;
+        int dispatchSerialSnapshot = heightDebugDispatchSerial;
+        bool sentinelSnapshot = debugForceSignedHeightSentinel;
+        bool useExperimentalSignedSnapshot = useExperimentalSignedTerrain;
 
         AsyncGPUReadback.Request(gpuHeightTexture, 0, req =>
         {
@@ -811,7 +827,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             }
 
             var heightData = req.GetData<Vector4>();
-            int count = heightData.Length;
+            Vector4[] heightSnapshot = heightData.ToArray();
+            int count = heightSnapshot.Length;
             if (count <= 0) return;
 
             float signedHeightMin = float.MaxValue;
@@ -819,6 +836,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             double signedHeightSum = 0.0;
             int positiveCount = 0;
             int negativeCount = 0;
+            int positiveAnyCount = 0;
+            int positiveWeakCount = 0;
+            int positiveStrongCount = 0;
+            int negativeAnyCount = 0;
+            int negativeWeakCount = 0;
+            int negativeStrongCount = 0;
             int hillCount = 0;
             int mountainCount = 0;
             int basinPotentialCount = 0;
@@ -827,7 +850,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
             for (int i = 0; i < count; i++)
             {
-                Vector4 h = heightData[i];
+                Vector4 h = heightSnapshot[i];
                 float signedHeight = h.x;
                 float hillMask = h.y;
                 float mountainMask = h.z;
@@ -839,6 +862,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 if (signedHeight > 0.02f) positiveCount++;
                 if (signedHeight < -0.02f) negativeCount++;
+                if (signedHeight > 0.0001f) positiveAnyCount++;
+                if (signedHeight > 0.005f) positiveWeakCount++;
+                if (signedHeight > 0.02f) positiveStrongCount++;
+                if (signedHeight < -0.0001f) negativeAnyCount++;
+                if (signedHeight < -0.005f) negativeWeakCount++;
+                if (signedHeight < -0.02f) negativeStrongCount++;
                 if (hillMask > 0.05f) hillCount++;
                 if (mountainMask > 0.05f) mountainCount++;
                 if (basinPotential > 0.05f) basinPotentialCount++;
@@ -857,6 +886,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             float signedHeightMean = (float)(signedHeightSum * invCount);
             float positiveCoverage = positiveCount * invCount * 100f;
             float negativeCoverage = negativeCount * invCount * 100f;
+            float positiveAnyCoverage = positiveAnyCount * invCount * 100f;
+            float positiveWeakCoverage = positiveWeakCount * invCount * 100f;
+            float positiveStrongCoverage = positiveStrongCount * invCount * 100f;
+            float negativeAnyCoverage = negativeAnyCount * invCount * 100f;
+            float negativeWeakCoverage = negativeWeakCount * invCount * 100f;
+            float negativeStrongCoverage = negativeStrongCount * invCount * 100f;
             float hillCoverage = hillCount * invCount * 100f;
             float mountainCoverage = mountainCount * invCount * 100f;
             float basinPotentialCoverage = basinPotentialCount * invCount * 100f;
@@ -865,7 +900,138 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 $"[WorldGenV2 Height Stats] SignedHeightMin={signedHeightMin:F4} SignedHeightMax={signedHeightMax:F4} SignedHeightMean={signedHeightMean:F4} " +
                 $"PositiveCoverage={positiveCoverage:F2}% NegativeCoverage={negativeCoverage:F2}% HillCoverage={hillCoverage:F2}% MountainCoverage={mountainCoverage:F2}% " +
                 $"BasinPotentialCoverage={basinPotentialCoverage:F2}% ApproxFinalDisplacementMin={approxFinalDisplacementMin:F4} ApproxFinalDisplacementMax={approxFinalDisplacementMax:F4} " +
-                $"(TerrainElevationStrength={debugTerrainElevationStrength:F3} HillStrength={debugHillStrength:F3} MountainStrength={debugMountainStrength:F3} OceanDepth={debugOceanDepth:F3})");
+                $"(TerrainElevationStrength={debugTerrainElevationStrength:F3} HillStrength={debugHillStrength:F3} MountainStrength={debugMountainStrength:F3} OceanDepth={debugOceanDepth:F3}) " +
+                $"DispatchSerial={dispatchSerialSnapshot} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot}");
+
+            Debug.Log(
+                $"[WorldGenV2 Height Stats Detail] " +
+                $"PositiveAny>0.0001={positiveAnyCoverage:F2}% PositiveWeak>0.005={positiveWeakCoverage:F2}% PositiveStrong>0.02={positiveStrongCoverage:F2}% | " +
+                $"NegativeAny<-0.0001={negativeAnyCoverage:F2}% NegativeWeak<-0.005={negativeWeakCoverage:F2}% NegativeStrong<-0.02={negativeStrongCoverage:F2}%"
+            );
+
+            RenderTexture boundSurfaceTexture = gpuTectonicSurfaceTexture;
+            Texture activeSurfaceTexture = TectonicSurfaceTexture;
+            RenderTexture activeRt = activeSurfaceTexture as RenderTexture;
+            bool activeIsRenderTexture = activeRt != null;
+            if (!logHeightAttributionDebug || boundSurfaceTexture == null || !boundSurfaceTexture.IsCreated()) return;
+
+            string activeSurfaceInfo = activeSurfaceTexture == null
+                ? "NULL"
+                : $"{activeSurfaceTexture.name} Type={activeSurfaceTexture.GetType().Name}";
+            string activeRenderTextureInfo = activeIsRenderTexture
+                ? $" ActiveRT={activeRt.name} ActiveRTCreated={activeRt.IsCreated()} ActiveRTSize={activeRt.width}x{activeRt.height}"
+                : string.Empty;
+            Debug.Log($"[WorldGenV2 Height Attribution] SourceTex={boundSurfaceTexture.name} Size={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Created={boundSurfaceTexture.IsCreated()} UseGpuCoastline={useGpuCoastlinePreview} ActiveSurface={activeSurfaceInfo}{activeRenderTextureInfo}");
+
+            AsyncGPUReadback.Request(boundSurfaceTexture, 0, surfaceReq =>
+            {
+                if (surfaceReq.hasError)
+                {
+                    Debug.LogWarning("[WorldGenV2 Height Attribution] Tectonic surface readback failed.");
+                    return;
+                }
+
+                var surfaceData = surfaceReq.GetData<Vector4>();
+                if (surfaceData.Length != count)
+                {
+                    Debug.LogWarning($"[WorldGenV2 Height Attribution] Surface/height mismatch surface={surfaceData.Length} height={count}");
+                    return;
+                }
+
+                float landMaskMin = float.MaxValue;
+                float landMaskMax = float.MinValue;
+                double landMaskSum = 0.0;
+                float channelAMin = float.MaxValue;
+                float channelAMax = float.MinValue;
+                double channelASum = 0.0;
+                int landMaskStrongCount = 0;
+                int landMaskMidCount = 0;
+                int nearCoastCount = 0;
+                int landWithPositiveHeightCount = 0;
+                int landWithNegativeHeightCount = 0;
+                float signedOverLandMaskMax = float.MinValue;
+                float signedOverLandMaskMin = float.MaxValue;
+                int normalizedSampleCount = 0;
+
+                for (int i = 0; i < count; i++)
+                {
+                    float landMask = surfaceData[i].x;
+                    float channelA = surfaceData[i].w;
+                    float signedHeight = heightSnapshot[i].x;
+
+                    landMaskMin = Mathf.Min(landMaskMin, landMask);
+                    landMaskMax = Mathf.Max(landMaskMax, landMask);
+                    landMaskSum += landMask;
+                    channelAMin = Mathf.Min(channelAMin, channelA);
+                    channelAMax = Mathf.Max(channelAMax, channelA);
+                    channelASum += channelA;
+
+                    if (landMask > 0.90f) landMaskStrongCount++;
+                    if (landMask > 0.10f && landMask <= 0.90f) landMaskMidCount++;
+                    if (landMask > 0.01f && landMask < 0.99f) nearCoastCount++;
+
+                    if (landMask > 0.10f && signedHeight > 0.0001f) landWithPositiveHeightCount++;
+                    if (landMask > 0.10f && signedHeight < -0.0001f) landWithNegativeHeightCount++;
+
+                    if (landMask > 0.001f)
+                    {
+                        float normalized = signedHeight / Mathf.Max(0.001f, landMask);
+                        signedOverLandMaskMax = Mathf.Max(signedOverLandMaskMax, normalized);
+                        signedOverLandMaskMin = Mathf.Min(signedOverLandMaskMin, normalized);
+                        normalizedSampleCount++;
+                    }
+                }
+
+                float inv = 1f / count;
+                string signedOverLandMaskRange = normalizedSampleCount > 0
+                    ? $"SignedOverLandMaskMin={signedOverLandMaskMin:F4} SignedOverLandMaskMax={signedOverLandMaskMax:F4}"
+                    : "SignedOverLandMaskMin=NA SignedOverLandMaskMax=NA";
+
+                Debug.Log(
+                    $"[WorldGenV2 Height Attribution] LandMaskMin={landMaskMin:F4} LandMaskMax={landMaskMax:F4} LandMaskMean={(float)(landMaskSum * inv):F4} " +
+                    $"ChannelA_Min={channelAMin:F4} ChannelA_Max={channelAMax:F4} ChannelA_Mean={(float)(channelASum * inv):F4} " +
+                    $"LandMaskStrong>0.90={(landMaskStrongCount * inv * 100f):F2}% LandMaskMid0.10-0.90={(landMaskMidCount * inv * 100f):F2}% NearCoast0.01-0.99={(nearCoastCount * inv * 100f):F2}% " +
+                    $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% NormalizedSamples={normalizedSampleCount} " +
+                    $"{signedOverLandMaskRange} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot} DispatchSerial={dispatchSerialSnapshot}"
+                );
+            });
+
+            if (surfaceDataTexture != null &&
+                (activeSurfaceTexture == null || !ReferenceEquals(activeSurfaceTexture, surfaceDataTexture)))
+            {
+                AsyncGPUReadback.Request(surfaceDataTexture, 0, cpuSurfaceReq =>
+                {
+                    if (cpuSurfaceReq.hasError)
+                    {
+                        Debug.LogWarning("[WorldGenV2 Height Attribution] CPU surfaceDataTexture readback failed.");
+                        return;
+                    }
+
+                    var cpuSurfaceData = cpuSurfaceReq.GetData<Color32>();
+                    int cpuCount = cpuSurfaceData.Length;
+                    if (cpuCount <= 0) return;
+
+                    int cpuLandStrongCount = 0;
+                    double cpuLandSum = 0.0;
+                    byte cpuLandMin = byte.MaxValue;
+                    byte cpuLandMax = byte.MinValue;
+                    for (int i = 0; i < cpuCount; i++)
+                    {
+                        byte land = cpuSurfaceData[i].r;
+                        cpuLandMin = (byte)Mathf.Min(cpuLandMin, land);
+                        cpuLandMax = (byte)Mathf.Max(cpuLandMax, land);
+                        cpuLandSum += land;
+                        if (land >= 230) cpuLandStrongCount++;
+                    }
+
+                    float invCpu = 1f / cpuCount;
+                    Debug.Log(
+                        $"[WorldGenV2 Height Attribution CPU Surface] SourceTex={surfaceDataTexture.name} " +
+                        $"LandByteMin={cpuLandMin} LandByteMax={cpuLandMax} LandByteMean={(float)(cpuLandSum * invCpu):F2} " +
+                        $"LandStrong(>=230)={(cpuLandStrongCount * invCpu * 100f):F2}% DispatchSerial={dispatchSerialSnapshot}"
+                    );
+                });
+            }
         });
     }
 
