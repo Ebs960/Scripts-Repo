@@ -294,6 +294,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int lastValidatedExperimentalStandardRiverAttempts;
     private int lastValidatedExperimentalAbundantRiverAttempts;
     private float lastValidatedExperimentalWetlandSpread;
+    private int lastValidatedExperimentalTerrainProfilesHash;
 
 
 
@@ -462,7 +463,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                !Mathf.Approximately(gpuInlandBasinStrength, lastValidatedGpuInlandBasinStrength) ||
                !Mathf.Approximately(gpuInlandBasinScale, lastValidatedGpuInlandBasinScale) ||
                !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength) ||
-               useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain;
+               useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain ||
+               ComputeExperimentalTerrainProfilesHash() != lastValidatedExperimentalTerrainProfilesHash;
     }
 
 
@@ -526,6 +528,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedExperimentalStandardRiverAttempts = experimentalStandardRiverAttempts;
         lastValidatedExperimentalAbundantRiverAttempts = experimentalAbundantRiverAttempts;
         lastValidatedExperimentalWetlandSpread = experimentalWetlandSpread;
+        lastValidatedExperimentalTerrainProfilesHash = ComputeExperimentalTerrainProfilesHash();
         validateCacheInitialized = true;
     }
     private void Update()
@@ -665,6 +668,39 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicCrustTex", gpuTectonicCrustTexture);
         cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
     }
+
+    private int ComputeExperimentalTerrainProfilesHash()
+    {
+        unchecked
+        {
+            int hash = 17;
+            if (experimentalTerrainProfiles == null) return hash;
+
+            hash = hash * 31 + experimentalTerrainProfiles.Length;
+            for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
+            {
+                var p = experimentalTerrainProfiles[i];
+                hash = hash * 31 + (p.name != null ? p.name.GetHashCode() : 0);
+                hash = hash * 31 + p.heightBias.GetHashCode();
+                hash = hash * 31 + p.upwardReliefStrength.GetHashCode();
+                hash = hash * 31 + p.downwardBasinStrength.GetHashCode();
+                hash = hash * 31 + p.valleyCutStrength.GetHashCode();
+                hash = hash * 31 + p.broadNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.midNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.fineNoiseAmplitude.GetHashCode();
+                hash = hash * 31 + p.broadNoiseScale.GetHashCode();
+                hash = hash * 31 + p.midNoiseScale.GetHashCode();
+                hash = hash * 31 + p.fineNoiseScale.GetHashCode();
+                hash = hash * 31 + p.ridgeStrength.GetHashCode();
+                hash = hash * 31 + p.hillThreshold.GetHashCode();
+                hash = hash * 31 + p.mountainThreshold.GetHashCode();
+                hash = hash * 31 + p.basinCandidateBias.GetHashCode();
+            }
+
+            return hash;
+        }
+    }
+
     private void EnsureGpuHeightTexture()
     {
         if (gpuHeightTexture != null &&
