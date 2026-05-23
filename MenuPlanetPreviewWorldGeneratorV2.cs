@@ -631,7 +631,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     {
         if (gpuLandMaskTexture != null && gpuLandMaskTexture.width == mapWidth && gpuLandMaskTexture.height == mapHeight && gpuLandMaskTexture.IsCreated()) return;
         if (gpuLandMaskTexture != null) { gpuLandMaskTexture.Release(); Destroy(gpuLandMaskTexture); gpuLandMaskTexture = null; }
-        gpuLandMaskTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
+        gpuLandMaskTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
         {
             name = "MenuGpuLandMaskV2", enableRandomWrite = true, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point, useMipMap = false, autoGenerateMips = false
         };
@@ -688,6 +688,59 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicBoundaryTex", gpuTectonicBoundaryTexture);
         cs.SetTexture(gpuCoastlineKernel, "_GpuTectonicCrustTex", gpuTectonicCrustTexture);
         cs.Dispatch(gpuCoastlineKernel, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
+        ValidateGpuLandMaskAfterCoastlineDispatch();
+    }
+
+    private void ValidateGpuLandMaskAfterCoastlineDispatch()
+    {
+        if (!logHeightAttributionDebug || gpuLandMaskTexture == null || !gpuLandMaskTexture.IsCreated()) return;
+
+        AsyncGPUReadback.Request(gpuLandMaskTexture, 0, req =>
+        {
+            if (req.hasError)
+            {
+                Debug.LogWarning("[WorldGenV2 LandMask Validation] GPU readback failed.");
+                return;
+            }
+
+            var data = req.GetData<float>();
+            int count = data.Length;
+            if (count <= 0) return;
+
+            float minV = float.MaxValue;
+            float maxV = float.MinValue;
+            double sum = 0.0;
+            int landCount = 0;
+            int midCount = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                float v = data[i];
+                minV = Mathf.Min(minV, v);
+                maxV = Mathf.Max(maxV, v);
+                sum += v;
+                if (v >= 0.5f) landCount++;
+                if (v > 0.001f && v < 0.999f) midCount++;
+            }
+
+            float inv = 1f / count;
+            float mean = (float)(sum * inv);
+            float landCoverage = landCount * inv * 100f;
+            float midCoverage = midCount * inv * 100f;
+
+            Debug.Log(
+                $"[WorldGenV2 LandMask Validation] Min={minV:F4} Max={maxV:F4} Mean={mean:F4} " +
+                $"Land>=0.5={landCoverage:F2}% Mid(0.001-0.999)={midCoverage:F2}% Format={gpuLandMaskTexture.format}"
+            );
+
+            if (maxV < 0.99f || minV > 0.01f)
+            {
+                Debug.LogError(
+                    $"[WorldGenV2 LandMask Validation] Invalid binary land mask range Min={minV:F4} Max={maxV:F4}. " +
+                    "Expected near 0 and near 1. Signed terrain/hydrology inputs are unreliable this frame."
+                );
+            }
+        });
     }
 
     private int ComputeExperimentalTerrainProfileHash()
