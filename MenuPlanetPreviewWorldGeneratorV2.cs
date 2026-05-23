@@ -248,6 +248,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
     private RenderTexture gpuExperimentalBasinCandidateTexture, gpuExperimentalSelectedBasinTexture, gpuExperimentalRiverPathTexture;
+    private int heightDebugDispatchSerial;
 
     private struct ExperimentalBasinCandidate
     {
@@ -795,6 +796,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int groupsX = Mathf.CeilToInt(mapWidth / 8f);
         int groupsY = Mathf.CeilToInt(mapHeight / 8f);
         menuPlanetPreviewHeightCompute.Dispatch(gpuHeightKernel, groupsX, groupsY, 1);
+        heightDebugDispatchSerial++;
 
         Debug.Log(
             $"[WorldGenV2 GPU Height] ExperimentalSigned={useExperimentalSignedTerrain} " +
@@ -812,6 +814,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private void LogHeightAutoDebugStats()
     {
         if (!logHeightAutoDebugAfterDispatch || gpuHeightTexture == null) return;
+        int dispatchSerialSnapshot = heightDebugDispatchSerial;
+        bool sentinelSnapshot = debugForceSignedHeightSentinel;
+        bool useExperimentalSignedSnapshot = useExperimentalSignedTerrain;
 
         AsyncGPUReadback.Request(gpuHeightTexture, 0, req =>
         {
@@ -895,7 +900,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 $"[WorldGenV2 Height Stats] SignedHeightMin={signedHeightMin:F4} SignedHeightMax={signedHeightMax:F4} SignedHeightMean={signedHeightMean:F4} " +
                 $"PositiveCoverage={positiveCoverage:F2}% NegativeCoverage={negativeCoverage:F2}% HillCoverage={hillCoverage:F2}% MountainCoverage={mountainCoverage:F2}% " +
                 $"BasinPotentialCoverage={basinPotentialCoverage:F2}% ApproxFinalDisplacementMin={approxFinalDisplacementMin:F4} ApproxFinalDisplacementMax={approxFinalDisplacementMax:F4} " +
-                $"(TerrainElevationStrength={debugTerrainElevationStrength:F3} HillStrength={debugHillStrength:F3} MountainStrength={debugMountainStrength:F3} OceanDepth={debugOceanDepth:F3})");
+                $"(TerrainElevationStrength={debugTerrainElevationStrength:F3} HillStrength={debugHillStrength:F3} MountainStrength={debugMountainStrength:F3} OceanDepth={debugOceanDepth:F3}) " +
+                $"DispatchSerial={dispatchSerialSnapshot} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot}");
 
             Debug.Log(
                 $"[WorldGenV2 Height Stats Detail] " +
@@ -926,6 +932,9 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 float landMaskMin = float.MaxValue;
                 float landMaskMax = float.MinValue;
                 double landMaskSum = 0.0;
+                float channelAMin = float.MaxValue;
+                float channelAMax = float.MinValue;
+                double channelASum = 0.0;
                 int landMaskStrongCount = 0;
                 int landMaskMidCount = 0;
                 int nearCoastCount = 0;
@@ -938,11 +947,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 for (int i = 0; i < count; i++)
                 {
                     float landMask = surfaceData[i].x;
+                    float channelA = surfaceData[i].w;
                     float signedHeight = heightSnapshot[i].x;
 
                     landMaskMin = Mathf.Min(landMaskMin, landMask);
                     landMaskMax = Mathf.Max(landMaskMax, landMask);
                     landMaskSum += landMask;
+                    channelAMin = Mathf.Min(channelAMin, channelA);
+                    channelAMax = Mathf.Max(channelAMax, channelA);
+                    channelASum += channelA;
 
                     if (landMask > 0.90f) landMaskStrongCount++;
                     if (landMask > 0.10f && landMask <= 0.90f) landMaskMidCount++;
@@ -967,9 +980,10 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 Debug.Log(
                     $"[WorldGenV2 Height Attribution] LandMaskMin={landMaskMin:F4} LandMaskMax={landMaskMax:F4} LandMaskMean={(float)(landMaskSum * inv):F4} " +
+                    $"ChannelA_Min={channelAMin:F4} ChannelA_Max={channelAMax:F4} ChannelA_Mean={(float)(channelASum * inv):F4} " +
                     $"LandMaskStrong>0.90={(landMaskStrongCount * inv * 100f):F2}% LandMaskMid0.10-0.90={(landMaskMidCount * inv * 100f):F2}% NearCoast0.01-0.99={(nearCoastCount * inv * 100f):F2}% " +
                     $"LandPosHeight={(landWithPositiveHeightCount * inv * 100f):F2}% LandNegHeight={(landWithNegativeHeightCount * inv * 100f):F2}% NormalizedSamples={normalizedSampleCount} " +
-                    $"{signedOverLandMaskRange} Sentinel={debugForceSignedHeightSentinel}"
+                    $"{signedOverLandMaskRange} Sentinel={sentinelSnapshot} ExperimentalSigned={useExperimentalSignedSnapshot} DispatchSerial={dispatchSerialSnapshot}"
                 );
             });
         });
