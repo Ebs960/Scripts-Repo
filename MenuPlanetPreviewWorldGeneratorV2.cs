@@ -926,6 +926,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         int dispatchSerialSnapshot = heightDebugDispatchSerial;
         bool sentinelSnapshot = debugForceSignedHeightSentinel;
         bool useExperimentalSignedSnapshot = useExperimentalSignedTerrain;
+        int expectedWidthSnapshot = mapWidth;
+        int expectedHeightSnapshot = mapHeight;
+        int expectedCountSnapshot = expectedWidthSnapshot * expectedHeightSnapshot;
+        int heightRtWidthSnapshot = gpuHeightTexture.width;
+        int heightRtHeightSnapshot = gpuHeightTexture.height;
+        int displacementRtWidthSnapshot = gpuDisplacementTexture != null ? gpuDisplacementTexture.width : -1;
+        int displacementRtHeightSnapshot = gpuDisplacementTexture != null ? gpuDisplacementTexture.height : -1;
 
         AsyncGPUReadback.Request(gpuHeightTexture, 0, req =>
         {
@@ -939,6 +946,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             Vector4[] heightSnapshot = heightData.ToArray();
             int count = heightSnapshot.Length;
             if (count <= 0) return;
+            if (count != expectedCountSnapshot)
+            {
+                Debug.LogError(
+                    $"[WorldGenV2 Height Stats Contract] Height readback count mismatch. " +
+                    $"Expected={expectedCountSnapshot} ({expectedWidthSnapshot}x{expectedHeightSnapshot}) " +
+                    $"Actual={count} HeightRT={heightRtWidthSnapshot}x{heightRtHeightSnapshot} " +
+                    $"DisplacementRT={displacementRtWidthSnapshot}x{displacementRtHeightSnapshot} " +
+                    $"DispatchSerial={dispatchSerialSnapshot}"
+                );
+                return;
+            }
 
             float signedHeightMin = float.MaxValue;
             float signedHeightMax = float.MinValue;
@@ -1041,9 +1059,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 }
 
                 var surfaceData = surfaceReq.GetData<float>();
-                if (surfaceData.Length != count)
+                if (surfaceData.Length != expectedCountSnapshot)
                 {
-                    Debug.LogWarning($"[WorldGenV2 Height Attribution] LandMask/height mismatch landMask={surfaceData.Length} height={count} BoundLandMaskFormat={boundSurfaceTexture.format}");
+                    Debug.LogError(
+                        $"[WorldGenV2 Height Stats Contract] Land mask readback count mismatch. " +
+                        $"Expected={expectedCountSnapshot} ({expectedWidthSnapshot}x{expectedHeightSnapshot}) " +
+                        $"LandMaskActual={surfaceData.Length} HeightActual={count} " +
+                        $"LandMaskRT={boundSurfaceTexture.width}x{boundSurfaceTexture.height} Format={boundSurfaceTexture.format} " +
+                        $"HeightRT={heightRtWidthSnapshot}x{heightRtHeightSnapshot} DisplacementRT={displacementRtWidthSnapshot}x{displacementRtHeightSnapshot} " +
+                        $"DispatchSerial={dispatchSerialSnapshot}"
+                    );
                     return;
                 }
 
