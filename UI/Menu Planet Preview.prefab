@@ -348,19 +348,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 3422204533714289333}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8159b575ee3b3c44490b4df2e0593f83, type: 3}
+  m_Script: {fileID: 11500000, guid: 854597f78ec4c2346ad06aa28c9a3204, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewRenderTexture
-  previewCamera: {fileID: 5433544173430284001}
+  previewCamera: {fileID: 0}
   targetRawImage: {fileID: 0}
   textureWidth: 2048
-  textureHeight: 1024
+  textureHeight: 2048
   antiAliasing: 4
   useHDR: 1
   filterMode: 1
   useMipMap: 0
   cameraBackgroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
-  clearFlags: 1
+  clearFlags: 2
 --- !u!1 &3523082564983676708
 GameObject:
   m_ObjectHideFlags: 0
@@ -410,105 +410,105 @@ MonoBehaviour:
   m_GameObject: {fileID: 3523082564983676708}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72e557551d3be6541a5f63b4ee555fce, type: 3}
+  m_Script: {fileID: 11500000, guid: 4857ff64a256a4d41820ba9533088680, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreview
-  previewRenderer: {fileID: 3801824977754855485}
-  previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
-  cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
-  atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
-  worldGenerator: {fileID: 7555492816204091449}
-  previewLight: {fileID: 7093151305136474556}
-  previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 4
-  detailScale: 100
-  detailStrength: 0.2
-  atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.01
-  useDisplacedNormals: 1
+  previewRenderer: {fileID: 0}
+  previewShader: {fileID: 0}
+  cloudShader: {fileID: 0}
+  atmosphereShader: {fileID: 0}
+  worldGenerator: {fileID: 0}
+  previewLight: {fileID: 0}
+  previewCamera: {fileID: 0}
+  rotationSpeed: 5
+  detailScale: 18
+  detailStrength: 0.18
+  atmosphereColor: {r: 0.62, g: 0.78, b: 0.95, a: 1}
+  displacementScale: 0.0169
+  useDisplacedNormals: 0
   enableCloudShell: 1
-  cloudAltitude: 0.0297
-  cloudDensity: 0.069
+  cloudAltitude: 0.018
+  cloudDensity: 0.55
   cloudScale: 3
   cloudSpeed: 0.08
   cloudRotationMultiplier: 1.25
   cloudSurfaceShadowStrength: 0.12
   enableAtmosphereShell: 0
-  atmosphereShellScale: 1.0416
-  atmosphereFalloff: 1
-  atmosphereIntensity: 0.16
+  atmosphereShellScale: 1.06
+  atmosphereFalloff: 3.5
+  atmosphereIntensity: 1.2
   atmosphereRotationMultiplier: 0
   atmosphereDayRimBoost: 1.15
   atmosphereNightRimStrength: 0.42
-  atmosphereInnerScatterStrength: 0.56
+  atmosphereInnerScatterStrength: 0.12
   mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
-  iceDetailTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
-  iceAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
-  iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
-  iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
-  oceanAlbedoTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  oceanDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  waterwayDetailTexture: {fileID: 2800000, guid: 629efc9b19615744abdbbff5cacc720e, type: 3}
-  oceanNormalTexture: {fileID: 2800000, guid: 99f93fb4f794d3a488d81bc55b001494, type: 3}
-  oceanSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
-  volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: 05ef2c8a16e50514293020c44b212bb8, type: 3}
-  volcanicRockTexture: {fileID: 2800000, guid: e8b94f835cd993c41ae2a80b1bba190e, type: 3}
-  lavaCrackTexture: {fileID: 2800000, guid: 9cdf319a8ad3e9b4f8fc3579eb41b52d, type: 3}
-  lavaEmissiveTexture: {fileID: 2800000, guid: cb2e61627a3a2724d82ffd5f7fbd68bb, type: 3}
-  ashDetailTexture: {fileID: 2800000, guid: f98b640d71a1d0a41962a7aacdc5ae7a, type: 3}
-  cloudNoiseTexture: {fileID: 2800000, guid: 35f7d9e7ec3c29446adb33629118b00b, type: 3}
+  iceDetailTexture: {fileID: 0}
+  iceAlbedoTexture: {fileID: 0}
+  iceNormalTexture: {fileID: 0}
+  iceSmoothnessTexture: {fileID: 0}
+  oceanAlbedoTexture: {fileID: 0}
+  oceanDetailTexture: {fileID: 0}
+  waterwayDetailTexture: {fileID: 0}
+  oceanNormalTexture: {fileID: 0}
+  oceanSmoothnessTexture: {fileID: 0}
+  volcanicSurfaceSmoothnessTexture: {fileID: 0}
+  volcanicRockTexture: {fileID: 0}
+  lavaCrackTexture: {fileID: 0}
+  lavaEmissiveTexture: {fileID: 0}
+  ashDetailTexture: {fileID: 0}
+  cloudNoiseTexture: {fileID: 0}
   volcanicRockStrength: 0.35
   lavaCrackStrength: 0.65
   lavaEmissionStrength: 2.2
   lavaTextureScale: 10
   ashDetailStrength: 0.25
-  mountainDetailStrength: 0.432
-  iceDetailStrength: 0.425
-  oceanDetailStrength: 0.05
-  oceanNormalStrength: 0.018
-  mountainNormalStrength: 0.463
-  iceNormalStrength: 0.541
-  textureDetailScale: 1.8
-  jungleAlbedoTexture: {fileID: 2800000, guid: 197108f9fa34cea458560f4a36363cc8, type: 3}
-  desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
-  savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
-  temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
-  temperateForestAlbedoTexture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
-  taigaAlbedoTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
-  tundraAlbedoTexture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
-  polarAlbedoTexture: {fileID: 2800000, guid: 6c4cbd3baaed82740a377f0a9bc71bee, type: 3}
-  marshAlbedoTexture: {fileID: 2800000, guid: 2b80de7f6e5fc0544a3a39f35e955252, type: 3}
-  jungleNormalTexture: {fileID: 2800000, guid: 1c9961e69d0c1ce499ddb6b843f1ce2d, type: 3}
-  desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
-  savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
-  temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
-  temperateForestNormalTexture: {fileID: 2800000, guid: fa3fac320ca6b4145a31b98a8201cb79, type: 3}
-  taigaNormalTexture: {fileID: 2800000, guid: 58e71acd37ef7d847a1f9d84db10f7ab, type: 3}
-  tundraNormalTexture: {fileID: 2800000, guid: bc40c1843a32f124a9f2d429d3d99693, type: 3}
-  polarNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
-  marshNormalTexture: {fileID: 2800000, guid: 48898860d2920444ea901b97f8677b2b, type: 3}
-  jungleSmoothnessTexture: {fileID: 2800000, guid: 405afb98b6fd0804d940f9a510cb19ee, type: 3}
-  desertSmoothnessTexture: {fileID: 2800000, guid: 7e92ceab8b302e7478121a2b408c5635, type: 3}
-  savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
-  temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
-  temperateForestSmoothnessTexture: {fileID: 2800000, guid: b5476c4812cf9da4585cc982ba3d2604, type: 3}
-  taigaSmoothnessTexture: {fileID: 2800000, guid: e0559a4720de81f4ea9ae614a597961a, type: 3}
-  tundraSmoothnessTexture: {fileID: 2800000, guid: a724993669b0ede40b21a105448e82ea, type: 3}
-  polarSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
-  marshSmoothnessTexture: {fileID: 2800000, guid: 0c7b60b54cd148a45a3770462d02528d, type: 3}
+  mountainDetailStrength: 0.14
+  iceDetailStrength: 0.12
+  oceanDetailStrength: 0.15
+  oceanNormalStrength: 0.1
+  mountainNormalStrength: 0.18
+  iceNormalStrength: 0.22
+  textureDetailScale: 8
+  jungleAlbedoTexture: {fileID: 0}
+  desertAlbedoTexture: {fileID: 0}
+  savannaAlbedoTexture: {fileID: 0}
+  temperateGrassAlbedoTexture: {fileID: 0}
+  temperateForestAlbedoTexture: {fileID: 0}
+  taigaAlbedoTexture: {fileID: 0}
+  tundraAlbedoTexture: {fileID: 0}
+  polarAlbedoTexture: {fileID: 0}
+  marshAlbedoTexture: {fileID: 0}
+  jungleNormalTexture: {fileID: 0}
+  desertNormalTexture: {fileID: 0}
+  savannaNormalTexture: {fileID: 0}
+  temperateGrassNormalTexture: {fileID: 0}
+  temperateForestNormalTexture: {fileID: 0}
+  taigaNormalTexture: {fileID: 0}
+  tundraNormalTexture: {fileID: 0}
+  polarNormalTexture: {fileID: 0}
+  marshNormalTexture: {fileID: 0}
+  jungleSmoothnessTexture: {fileID: 0}
+  desertSmoothnessTexture: {fileID: 0}
+  savannaSmoothnessTexture: {fileID: 0}
+  temperateGrassSmoothnessTexture: {fileID: 0}
+  temperateForestSmoothnessTexture: {fileID: 0}
+  taigaSmoothnessTexture: {fileID: 0}
+  tundraSmoothnessTexture: {fileID: 0}
+  polarSmoothnessTexture: {fileID: 0}
+  marshSmoothnessTexture: {fileID: 0}
   biomeTextureStrength: 1
-  climateGradeStrength: 0.106
-  biomeNormalStrength: 0.394
-  biomeTextureScale: 2
-  biomeTextureContrast: 0.324
-  landUpliftStrength: 0.124
-  hillDisplacementStrength: 0.5
-  mountainDisplacementStrength: 0.02
-  terrainElevationDisplacementStrength: 1.13
-  iceDisplacementStrength: 0
-  volcanicDisplacementStrength: 0.45
-  oceanDepthStrength: 0.347
+  climateGradeStrength: 0.06
+  biomeNormalStrength: 0.15
+  biomeTextureScale: 2.4
+  biomeTextureContrast: 0.18
+  landUpliftStrength: 0.161
+  hillDisplacementStrength: 0.431
+  mountainDisplacementStrength: 0.609
+  terrainElevationDisplacementStrength: 1
+  iceDisplacementStrength: 0.04
+  volcanicDisplacementStrength: 0.12
+  oceanDepthStrength: 0.306
   showElevationOnly: 0
   showMountainMaskOnly: 0
   showDisplacementHeightOnly: 0
@@ -535,8 +535,8 @@ MonoBehaviour:
   showShorelineMaskOnly: 0
   showWetlandMaskOnly: 0
   showWaterDepthMaskOnly: 0
-  riverChannelCarveStrength: 0.078
-  lakeBasinCarveStrength: 0.121
+  riverChannelCarveStrength: 0.05
+  lakeBasinCarveStrength: 0.08
   disableCloudsForDebug: 0
   showTectonicLandMaskOnly: 0
   showTectonicHeightOnly: 0
@@ -553,42 +553,42 @@ MonoBehaviour:
   showCrustTypeOnly: 0
   showContinentalPotentialOnly: 0
   enableBloom: 1
-  bloomThreshold: 1.4
-  bloomIntensity: 0.18
+  bloomThreshold: 0.8
+  bloomIntensity: 0.9
   icosphereSubdivisions: 6
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
-  climateNoiseStrength: 0.3
-  coastWetnessStrength: 0.14
-  continentalDrynessStrength: 0.083
-  continentalTemperatureStrength: 0.178
-  riparianWetnessStrength: 0.223
-  biomeProvinceStrength: 0.214
-  biomeCompetitionSharpness: 1.017
+  climateNoiseStrength: 0.596
+  coastWetnessStrength: 0.352
+  continentalDrynessStrength: 0.08
+  continentalTemperatureStrength: 0.06
+  riparianWetnessStrength: 0.411
+  biomeProvinceStrength: 0.2
+  biomeCompetitionSharpness: 0.85
   elevation: 0.3
-  elevationNoiseStrength: 0.5
-  elevationTemperatureImpact: 0.054
+  elevationNoiseStrength: 0.45
+  elevationTemperatureImpact: 0.18
   mapStyle: 0
-  oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
+  oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
   enableIceCaps: 1
   legacyIceCapSize: 0.5
-  legacyBiomeBlend: 0.045
-  smoothness: 0.5
+  legacyBiomeBlend: 0.03
+  smoothness: 0.3
   metallic: 0
   ambientOcclusion: 1
-  ambientStrength: 1
-  brightness: 1
+  ambientStrength: 0.12
+  brightness: 1.12
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 6
+  cameraDistance: 4
   cameraFov: 28
   cameraLocalEuler: {x: 8, y: 0, z: 0}
-  keyLightEuler: {x: 25, y: -20, z: 0}
-  keyLightIntensity: 1.85
-  keyLightColor: {r: 0.93962264, g: 0.69894874, b: 0.36698464, a: 1}
+  keyLightEuler: {x: 25, y: -35, z: 0}
+  keyLightIntensity: 3
+  keyLightColor: {r: 1, g: 0.95, b: 0.88, a: 1}
   basePlanetScale: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
@@ -601,19 +601,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 3523082564983676708}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 05bb3d06a5eb88444bb53bab38a7f5e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 2e473f079fe32d34aab835751c70b602, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewWorldGeneratorV2
   mapWidth: 2048
   mapHeight: 1024
-  regenerationDelay: 0.01
+  regenerationDelay: 0.15
   topologyWidth: 512
   topologyHeight: 256
   coastlineDeformationWidthCells: 24
-  coastlineWarpStrength: 1.26
-  coastlineMidNoiseStrength: 1.307
-  coastlineEdgeNoiseStrength: 0.622
-  coastlineSoftness: 0.107
+  coastlineWarpStrength: 0.95
+  coastlineMidNoiseStrength: 0.969
+  coastlineEdgeNoiseStrength: 0.431
+  coastlineSoftness: 0.045
   coastlineThresholdBias: 0
   logWorldGenerationDiagnostics: 1
   logHeightAutoDebugAfterDispatch: 1
@@ -623,40 +623,40 @@ MonoBehaviour:
   debugMountainStrength: 0.18
   debugOceanDepth: 0.01
   useGpuCoastlinePreview: 1
-  menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 930babc1193edcd4591e7fcdd6ecde15, type: 3}
+  menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 0f14491f071e92040b7a3da3d2f65f7a, type: 3}
   useGpuHeightPreview: 1
-  menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: 88840b1c852d4e8e9d49a45c8de652f8, type: 3}
+  menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: c02f76a0820ece643bcb29cdf1334f95, type: 3}
   useGpuHydrologyPreview: 1
-  menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: fa5e2ed056ca0a543ac3a77e4c7a6f8e, type: 3}
+  menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: d80f2bfb9080eb04c86dc97ad14619d1, type: 3}
   gpuDrainageFillIterations: 192
-  gpuFlowAccumulationIterations: 203
-  gpuHydroRoutingJitter: 0.01
-  gpuDrainageRiverMinWidthPixels: 1.52
-  gpuDrainageRiverMaxWidthPixels: 3.5
-  gpuLakeBasinMinDepth: 0.04
-  gpuLakeBasinFullDepth: 0.15
-  gpuLakeShorelineWarpPixels: 1.51
-  gpuRiverAccumulationThresholdSparse: 0.95
-  gpuRiverAccumulationThresholdStandard: 0.85
-  gpuRiverAccumulationThresholdAbundant: 0.6
-  gpuFlowMinDownhillDelta: 0.04
-  gpuFlowAccumulationCompression: 0.15
-  gpuMacroReliefStrength: 0.133
-  gpuMacroReliefScale: 0.8
-  gpuInlandBasinStrength: 0.03
-  gpuInlandBasinScale: 0.39
-  gpuWatershedRidgeStrength: 0.035
+  gpuFlowAccumulationIterations: 192
+  gpuHydroRoutingJitter: 0.0313
+  gpuDrainageRiverMinWidthPixels: 2
+  gpuDrainageRiverMaxWidthPixels: 6.5
+  gpuLakeBasinMinDepth: 0.018
+  gpuLakeBasinFullDepth: 0.065
+  gpuLakeShorelineWarpPixels: 1.5
+  gpuRiverAccumulationThresholdSparse: 0.58
+  gpuRiverAccumulationThresholdStandard: 0.45
+  gpuRiverAccumulationThresholdAbundant: 0.32
+  gpuFlowMinDownhillDelta: 0.004
+  gpuFlowAccumulationCompression: 0.12
+  gpuMacroReliefStrength: 0.07
+  gpuMacroReliefScale: 1.25
+  gpuInlandBasinStrength: 0.045
+  gpuInlandBasinScale: 1
+  gpuWatershedRidgeStrength: 0.025
   flatElevationMultiplier: 0.8
   smoothElevationMultiplier: 0.9
   standardElevationMultiplier: 1
   mountainousElevationMultiplier: 1.15
-  alpineElevationMultiplier: 1
+  alpineElevationMultiplier: 1.25
   useExperimentalSignedTerrain: 1
-  debugForceSignedHeightSentinel: 1
+  debugForceSignedHeightSentinel: 0
   useExperimentalBasinHydrology: 1
   experimentalSparseLakeCount: 2
   experimentalStandardLakeCount: 4
-  experimentalAbundantLakeCount: 60
+  experimentalAbundantLakeCount: 96
   experimentalSparseRiverAttempts: 3
   experimentalStandardRiverAttempts: 7
   experimentalAbundantRiverAttempts: 12
@@ -672,7 +672,7 @@ MonoBehaviour:
   experimentalTerrainProfiles:
   - name: Flat
     heightBias: -0.03
-    upwardReliefStrength: 0.06
+    upwardReliefStrength: 0.6
     downwardBasinStrength: 0.16
     valleyCutStrength: 0.05
     broadNoiseAmplitude: 0.14
@@ -682,12 +682,12 @@ MonoBehaviour:
     midNoiseScale: 1.1
     fineNoiseScale: 2
     ridgeStrength: 0.005
-    hillThreshold: 0.72
-    mountainThreshold: 0.98
+    hillThreshold: 0.04
+    mountainThreshold: 0.22
     basinCandidateBias: 1.25
   - name: Smooth
     heightBias: -0.015
-    upwardReliefStrength: 0.1
+    upwardReliefStrength: 0.85
     downwardBasinStrength: 0.14
     valleyCutStrength: 0.07
     broadNoiseAmplitude: 0.16
@@ -697,12 +697,12 @@ MonoBehaviour:
     midNoiseScale: 1.3
     fineNoiseScale: 2.3
     ridgeStrength: 0.015
-    hillThreshold: 0.62
-    mountainThreshold: 0.93
+    hillThreshold: 0.05
+    mountainThreshold: 0.2
     basinCandidateBias: 1.15
   - name: Standard
     heightBias: 0
-    upwardReliefStrength: 1
+    upwardReliefStrength: 1.1
     downwardBasinStrength: 0.13
     valleyCutStrength: 0.1
     broadNoiseAmplitude: 0.2
@@ -712,12 +712,12 @@ MonoBehaviour:
     midNoiseScale: 1.7
     fineNoiseScale: 3
     ridgeStrength: 0.05
-    hillThreshold: 0.3
-    mountainThreshold: 0.5
+    hillThreshold: 0.06
+    mountainThreshold: 0.18
     basinCandidateBias: 1
   - name: Mountainous
     heightBias: 0.03
-    upwardReliefStrength: 0.32
+    upwardReliefStrength: 1.45
     downwardBasinStrength: 0.15
     valleyCutStrength: 0.16
     broadNoiseAmplitude: 0.24
@@ -727,24 +727,24 @@ MonoBehaviour:
     midNoiseScale: 2.2
     fineNoiseScale: 4
     ridgeStrength: 0.14
-    hillThreshold: 0.38
-    mountainThreshold: 0.68
+    hillThreshold: 0.07
+    mountainThreshold: 0.16
     basinCandidateBias: 0.9
   - name: Alpine
     heightBias: 0.05
     upwardReliefStrength: 3
     downwardBasinStrength: 2.7
     valleyCutStrength: 0.22
-    broadNoiseAmplitude: 1
-    midNoiseAmplitude: 1.4
+    broadNoiseAmplitude: 2
+    midNoiseAmplitude: 1.5
     fineNoiseAmplitude: 1
-    broadNoiseScale: 4
-    midNoiseScale: 7
-    fineNoiseScale: 0.15
-    ridgeStrength: 0.4
+    broadNoiseScale: 1.25
+    midNoiseScale: 2.8
+    fineNoiseScale: 0.5
+    ridgeStrength: 0.25
     hillThreshold: 0.11
-    mountainThreshold: 0.185
-    basinCandidateBias: 0.75
+    mountainThreshold: 0.18
+    basinCandidateBias: 0.5
   presets:
   - name: Archipelago
     majorLandmasses:
@@ -755,10 +755,10 @@ MonoBehaviour:
       minLobes: 0
       maxLobes: 0
     largeIslands:
-      minCount: 15
-      maxCount: 20
-      minAreaFraction: 0.001
-      maxAreaFraction: 0.004
+      minCount: 10
+      maxCount: 18
+      minAreaFraction: 0.004
+      maxAreaFraction: 0.018
       minLobes: 1
       maxLobes: 3
     smallIslandClusters:
@@ -805,42 +805,42 @@ MonoBehaviour:
   - name: Standard
     majorLandmasses:
       minCount: 3
-      maxCount: 3
-      minAreaFraction: 0.04
-      maxAreaFraction: 0.1
-      minLobes: 6
-      maxLobes: 7
-    largeIslands:
-      minCount: 4
       maxCount: 5
-      minAreaFraction: 0.005
-      maxAreaFraction: 0.005
-      minLobes: 1
+      minAreaFraction: 0.06
+      maxAreaFraction: 0.12
+      minLobes: 2
       maxLobes: 5
+    largeIslands:
+      minCount: 3
+      maxCount: 8
+      minAreaFraction: 0.005
+      maxAreaFraction: 0.02
+      minLobes: 1
+      maxLobes: 3
     smallIslandClusters:
-      minCount: 10
+      minCount: 4
       maxCount: 12
       minAreaFraction: 0.001
       maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 2
-    minMajorSeedSeparationDegrees: 26
+    minMajorSeedSeparationDegrees: 22
     minMajorOceanGapCells: 1.5
-    compactnessBias: 0.4
-    irregularityBias: 0.75
-    elongationBias: 0.5
+    compactnessBias: 0.58
+    irregularityBias: 0.66
+    elongationBias: 0.34
     allowMajorLandmassMerging: 0
   - name: Large Continents
     majorLandmasses:
-      minCount: 4
-      maxCount: 5
-      minAreaFraction: 0.2
-      maxAreaFraction: 0.28
+      minCount: 2
+      maxCount: 3
+      minAreaFraction: 0.14
+      maxAreaFraction: 0.26
       minLobes: 3
       maxLobes: 6
     largeIslands:
-      minCount: 3
-      maxCount: 5
+      minCount: 2
+      maxCount: 6
       minAreaFraction: 0.006
       maxAreaFraction: 0.024
       minLobes: 1
@@ -860,10 +860,10 @@ MonoBehaviour:
     allowMajorLandmassMerging: 0
   - name: Pangaea
     majorLandmasses:
-      minCount: 2
-      maxCount: 2
-      minAreaFraction: 0.55
-      maxAreaFraction: 0.7
+      minCount: 1
+      maxCount: 1
+      minAreaFraction: 0.4
+      maxAreaFraction: 0.62
       minLobes: 5
       maxLobes: 10
     largeIslands:
@@ -880,27 +880,27 @@ MonoBehaviour:
       maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 2
-    minMajorSeedSeparationDegrees: 10
-    minMajorOceanGapCells: 10
+    minMajorSeedSeparationDegrees: 0
+    minMajorOceanGapCells: 0
     compactnessBias: 0.48
     irregularityBias: 0.72
     elongationBias: 0.72
     allowMajorLandmassMerging: 1
   - name: Terrestrial
     majorLandmasses:
-      minCount: 5
-      maxCount: 6
-      minAreaFraction: 0.3
-      maxAreaFraction: 0.35
-      minLobes: 4
-      maxLobes: 9
+      minCount: 2
+      maxCount: 4
+      minAreaFraction: 0.16
+      maxAreaFraction: 0.28
+      minLobes: 3
+      maxLobes: 6
     largeIslands:
-      minCount: 5
+      minCount: 2
       maxCount: 6
       minAreaFraction: 0.006
       maxAreaFraction: 0.026
-      minLobes: 6
-      maxLobes: 8
+      minLobes: 1
+      maxLobes: 3
     smallIslandClusters:
       minCount: 2
       maxCount: 8
@@ -908,12 +908,12 @@ MonoBehaviour:
       maxAreaFraction: 0.004
       minLobes: 1
       maxLobes: 2
-    minMajorSeedSeparationDegrees: 10
+    minMajorSeedSeparationDegrees: 24
     minMajorOceanGapCells: 1.5
     compactnessBias: 0.56
     irregularityBias: 0.52
     elongationBias: 0.44
-    allowMajorLandmassMerging: 1
+    allowMajorLandmassMerging: 0
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
