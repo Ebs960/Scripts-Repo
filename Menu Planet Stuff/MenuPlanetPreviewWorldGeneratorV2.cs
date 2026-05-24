@@ -1335,6 +1335,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
             cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
             cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
+            cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
         }
         cs.Dispatch(kInitFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
         for (int i = 0; i < gpuDrainageFillIterations; i++) { cs.Dispatch(kRelaxFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1); var t = gpuDrainageFillA; gpuDrainageFillA = gpuDrainageFillB; gpuDrainageFillB = t; cs.SetTexture(kRelaxFill, "_DrainageFillTexA", gpuDrainageFillA); cs.SetTexture(kRelaxFill, "_DrainageFillTexB", gpuDrainageFillB); }
@@ -1423,6 +1424,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         {
             cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
             cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
+            cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
             cs.SetTexture(k, "_ExperimentalBasinCandidateTex", gpuExperimentalBasinCandidateTexture);
             cs.SetTexture(k, "_ExperimentalSelectedBasinTex", gpuExperimentalSelectedBasinTexture);
             cs.SetTexture(k, "_ExperimentalRiverPathTex", gpuExperimentalRiverPathTexture);
