@@ -54,15 +54,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private int topologyHeight = 128;
         [Header("Coastline Sculpting")]
     [Tooltip("How many topology cells inland/oceanward FastNoiseLite may significantly reshape the coastline. Higher values let noise carve broader bays, peninsulas, and coastal irregularity.")]
-    [SerializeField, Range(1f, 24f)] private float coastlineDeformationWidthCells = 10f;
+    [SerializeField, Range(1f, 50f)] private float coastlineDeformationWidthCells = 10f;
     [Tooltip("Large-scale FastNoiseLite authority over the coastline. Higher values let noise meaningfully push coastlines inland or outward.")]
-    [SerializeField, Range(0f, 2f)] private float coastlineWarpStrength = 0.95f;
+    [SerializeField, Range(0f, 5f)] private float coastlineWarpStrength = 0.95f;
     [Tooltip("Medium-scale coastline sculpting. Controls bays, coastal shoulders, peninsulas, and major coastline irregularity between macro shape and fine shoreline detail.")]
-    [SerializeField, Range(0f, 1.5f)] private float coastlineMidNoiseStrength = 0.65f;
+    [SerializeField, Range(0f, 5f)] private float coastlineMidNoiseStrength = 0.65f;
     [Tooltip("Fine-scale FastNoiseLite coastal roughness. This adds smaller shoreline detail, but should stay lower than macro warp strength.")]
-    [SerializeField, Range(0f, 1f)] private float coastlineEdgeNoiseStrength = 0.28f;
+    [SerializeField, Range(0f, 5f)] private float coastlineEdgeNoiseStrength = 0.28f;
     [Tooltip("Soft threshold width used when turning the coastline signal into the final land mask.")]
-    [SerializeField, Range(0.001f, 0.20f)] private float coastlineSoftness = 0.045f;
+    [SerializeField, Range(0.001f, 1f)] private float coastlineSoftness = 0.045f;
     [Tooltip("Shifts final coastline threshold. Positive values reduce land slightly; negative values expand land slightly. Leave near 0 unless final FastNoise coastline consistently adds/removes too much land.")]
     [SerializeField, Range(-0.75f, 0.75f)] private float coastlineThresholdBias = 0f;
     [SerializeField] private bool logWorldGenerationDiagnostics = true;
@@ -89,22 +89,22 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
     [SerializeField, Range(32, 384)] private int gpuDrainageFillIterations = 192;
     [SerializeField, Range(32, 384)] private int gpuFlowAccumulationIterations = 192;
-    [SerializeField, Range(0f, 0.08f)] private float gpuHydroRoutingJitter = 0.015f;
-    [SerializeField, Range(1f, 10f)] private float gpuDrainageRiverMinWidthPixels = 2.0f;
-    [SerializeField, Range(2f, 18f)] private float gpuDrainageRiverMaxWidthPixels = 6.5f;
-    [SerializeField, Range(0f, 0.2f)] private float gpuLakeBasinMinDepth = 0.018f;
-    [SerializeField, Range(0f, 0.4f)] private float gpuLakeBasinFullDepth = 0.065f;
+    [SerializeField, Range(0f, 5f)] private float gpuHydroRoutingJitter = 0.015f;
+    [SerializeField, Range(0.3f, 10f)] private float gpuDrainageRiverMinWidthPixels = 2.0f;
+    [SerializeField, Range(1f, 18f)] private float gpuDrainageRiverMaxWidthPixels = 6.5f;
+    [SerializeField, Range(0f, 1f)] private float gpuLakeBasinMinDepth = 0.018f;
+    [SerializeField, Range(0f, 1f)] private float gpuLakeBasinFullDepth = 0.065f;
     [SerializeField, Range(0f, 6f)] private float gpuLakeShorelineWarpPixels = 1.5f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdSparse = 0.58f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdStandard = 0.45f;
-    [SerializeField, Range(0f, 1f)] private float gpuRiverAccumulationThresholdAbundant = 0.32f;
-    [SerializeField, Range(0f, 0.05f)] private float gpuFlowMinDownhillDelta = 0.004f;
-    [SerializeField, Range(0.01f, 0.6f)] private float gpuFlowAccumulationCompression = 0.12f;
-    [SerializeField, Range(0f, 0.25f)] private float gpuMacroReliefStrength = 0.07f;
-    [SerializeField, Range(0.25f, 4f)] private float gpuMacroReliefScale = 1.25f;
-    [SerializeField, Range(0f, 0.20f)] private float gpuInlandBasinStrength = 0.045f;
-    [SerializeField, Range(0.25f, 4f)] private float gpuInlandBasinScale = 1.0f;
-    [SerializeField, Range(0f, 0.15f)] private float gpuWatershedRidgeStrength = 0.025f;
+    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdSparse = 0.58f;
+    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdStandard = 0.45f;
+    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdAbundant = 0.32f;
+    [SerializeField, Range(0f, 1f)] private float gpuFlowMinDownhillDelta = 0.004f;
+    [SerializeField, Range(0.01f, 1f)] private float gpuFlowAccumulationCompression = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float gpuMacroReliefStrength = 0.07f;
+    [SerializeField, Range(0f, 10f)] private float gpuMacroReliefScale = 1.25f;
+    [SerializeField, Range(0f, 1f)] private float gpuInlandBasinStrength = 0.045f;
+    [SerializeField, Range(0f, 4f)] private float gpuInlandBasinScale = 1.0f;
+    [SerializeField, Range(0f, 1f)] private float gpuWatershedRidgeStrength = 0.025f;
     [Header("Terrain Roughness Type Elevation Multipliers")]
     [SerializeField, Range(0.2f, 2.0f)] private float flatElevationMultiplier = 0.8f;
     [SerializeField, Range(0.2f, 2.0f)] private float smoothElevationMultiplier = 0.9f;

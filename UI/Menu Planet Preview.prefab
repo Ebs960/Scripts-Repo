@@ -351,10 +351,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 854597f78ec4c2346ad06aa28c9a3204, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreviewRenderTexture
-  previewCamera: {fileID: 0}
+  previewCamera: {fileID: 5433544173430284001}
   targetRawImage: {fileID: 0}
   textureWidth: 2048
-  textureHeight: 2048
+  textureHeight: 1024
   antiAliasing: 4
   useHDR: 1
   filterMode: 1
@@ -413,19 +413,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4857ff64a256a4d41820ba9533088680, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreview
-  previewRenderer: {fileID: 0}
-  previewShader: {fileID: 0}
-  cloudShader: {fileID: 0}
-  atmosphereShader: {fileID: 0}
-  worldGenerator: {fileID: 0}
-  previewLight: {fileID: 0}
-  previewCamera: {fileID: 0}
+  previewRenderer: {fileID: 3801824977754855485}
+  previewShader: {fileID: 4800000, guid: e059f072ef2c0fb4db41325124726a8d, type: 3}
+  cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
+  atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
+  worldGenerator: {fileID: 7555492816204091449}
+  previewLight: {fileID: 7093151305136474556}
+  previewCamera: {fileID: 5433544173430284001}
   rotationSpeed: 5
-  detailScale: 18
+  detailScale: 19
   detailStrength: 0.18
   atmosphereColor: {r: 0.62, g: 0.78, b: 0.95, a: 1}
   displacementScale: 0.0169
-  useDisplacedNormals: 0
+  useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.018
   cloudDensity: 0.55
@@ -441,14 +441,14 @@ MonoBehaviour:
   atmosphereDayRimBoost: 1.15
   atmosphereNightRimStrength: 0.42
   atmosphereInnerScatterStrength: 0.12
-  mountainDetailTexture: {fileID: 2800000, guid: 2d23197c2e6f5ee42a929d3dbf24cf3b, type: 3}
+  mountainDetailTexture: {fileID: 2800000, guid: 6a19e5ee8532dda44bcd14072785b034, type: 3}
   mountainNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
-  iceDetailTexture: {fileID: 0}
-  iceAlbedoTexture: {fileID: 0}
-  iceNormalTexture: {fileID: 0}
-  iceSmoothnessTexture: {fileID: 0}
-  oceanAlbedoTexture: {fileID: 0}
-  oceanDetailTexture: {fileID: 0}
+  iceDetailTexture: {fileID: 2800000, guid: 563dd84c7151eb547b42a8841c3eaf2e, type: 3}
+  iceAlbedoTexture: {fileID: 2800000, guid: 563dd84c7151eb547b42a8841c3eaf2e, type: 3}
+  iceNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
+  iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
+  oceanAlbedoTexture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
+  oceanDetailTexture: {fileID: 2800000, guid: c8c45d4316adf8b4fa3cc48c52de0dcf, type: 3}
   waterwayDetailTexture: {fileID: 0}
   oceanNormalTexture: {fileID: 0}
   oceanSmoothnessTexture: {fileID: 0}
@@ -474,7 +474,7 @@ MonoBehaviour:
   desertAlbedoTexture: {fileID: 0}
   savannaAlbedoTexture: {fileID: 0}
   temperateGrassAlbedoTexture: {fileID: 0}
-  temperateForestAlbedoTexture: {fileID: 0}
+  temperateForestAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   taigaAlbedoTexture: {fileID: 0}
   tundraAlbedoTexture: {fileID: 0}
   polarAlbedoTexture: {fileID: 0}
@@ -483,7 +483,7 @@ MonoBehaviour:
   desertNormalTexture: {fileID: 0}
   savannaNormalTexture: {fileID: 0}
   temperateGrassNormalTexture: {fileID: 0}
-  temperateForestNormalTexture: {fileID: 0}
+  temperateForestNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   taigaNormalTexture: {fileID: 0}
   tundraNormalTexture: {fileID: 0}
   polarNormalTexture: {fileID: 0}
@@ -492,7 +492,7 @@ MonoBehaviour:
   desertSmoothnessTexture: {fileID: 0}
   savannaSmoothnessTexture: {fileID: 0}
   temperateGrassSmoothnessTexture: {fileID: 0}
-  temperateForestSmoothnessTexture: {fileID: 0}
+  temperateForestSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   taigaSmoothnessTexture: {fileID: 0}
   tundraSmoothnessTexture: {fileID: 0}
   polarSmoothnessTexture: {fileID: 0}
@@ -583,8 +583,8 @@ MonoBehaviour:
   seed: 0
   randomizeSeed: 1
   autoConfigurePreviewRig: 1
-  cameraDistance: 4
-  cameraFov: 28
+  cameraDistance: 5
+  cameraFov: 37.5
   cameraLocalEuler: {x: 8, y: 0, z: 0}
   keyLightEuler: {x: 25, y: -35, z: 0}
   keyLightIntensity: 3
@@ -653,38 +653,38 @@ MonoBehaviour:
   alpineElevationMultiplier: 1.25
   useExperimentalSignedTerrain: 1
   debugForceSignedHeightSentinel: 0
-  useExperimentalBasinHydrology: 1
+  useExperimentalBasinHydrology: 0
   experimentalSparseLakeCount: 2
   experimentalStandardLakeCount: 4
-  experimentalAbundantLakeCount: 96
+  experimentalAbundantLakeCount: 90
   experimentalSparseRiverAttempts: 3
   experimentalStandardRiverAttempts: 7
-  experimentalAbundantRiverAttempts: 12
+  experimentalAbundantRiverAttempts: 24
   experimentalMoistureLakeMultiplier: 0.75
   experimentalMoistureRiverMultiplier: 1
-  experimentalWetlandSpread: 1
-  experimentalMinBasinScore: 0.2
-  experimentalMinBasinPixelArea: 8
-  experimentalMinBasinSeparationPixels: 18
-  experimentalRiverMeanderStrength: 0.25
+  experimentalWetlandSpread: 1.5
+  experimentalMinBasinScore: 0.798
+  experimentalMinBasinPixelArea: 6
+  experimentalMinBasinSeparationPixels: 13
+  experimentalRiverMeanderStrength: 0.5
   experimentalRiverValleyBias: 0.65
   experimentalLakeToCoastChance: 0.75
   experimentalTerrainProfiles:
   - name: Flat
-    heightBias: -0.03
-    upwardReliefStrength: 0.6
-    downwardBasinStrength: 0.16
-    valleyCutStrength: 0.05
-    broadNoiseAmplitude: 0.14
-    midNoiseAmplitude: 0.035
-    fineNoiseAmplitude: 0.008
-    broadNoiseScale: 0.55
-    midNoiseScale: 1.1
-    fineNoiseScale: 2
+    heightBias: -0.15
+    upwardReliefStrength: 0.3
+    downwardBasinStrength: 0.6
+    valleyCutStrength: 0
+    broadNoiseAmplitude: 1
+    midNoiseAmplitude: 1
+    fineNoiseAmplitude: 2
+    broadNoiseScale: 5
+    midNoiseScale: 6
+    fineNoiseScale: 0.5
     ridgeStrength: 0.005
-    hillThreshold: 0.04
+    hillThreshold: 0.15
     mountainThreshold: 0.22
-    basinCandidateBias: 1.25
+    basinCandidateBias: 1
   - name: Smooth
     heightBias: -0.015
     upwardReliefStrength: 0.85
@@ -735,16 +735,16 @@ MonoBehaviour:
     upwardReliefStrength: 3
     downwardBasinStrength: 2.7
     valleyCutStrength: 0.22
-    broadNoiseAmplitude: 2
+    broadNoiseAmplitude: 2.2
     midNoiseAmplitude: 1.5
     fineNoiseAmplitude: 1
     broadNoiseScale: 1.25
     midNoiseScale: 2.8
     fineNoiseScale: 0.5
-    ridgeStrength: 0.25
+    ridgeStrength: 0
     hillThreshold: 0.11
     mountainThreshold: 0.18
-    basinCandidateBias: 0.5
+    basinCandidateBias: 1
   presets:
   - name: Archipelago
     majorLandmasses:
@@ -960,7 +960,7 @@ Camera:
   m_GameObject: {fileID: 6832828193519875274}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
+  m_ClearFlags: 2
   m_BackGroundColor: {r: 0.005, g: 0.008, b: 0.018, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 1
