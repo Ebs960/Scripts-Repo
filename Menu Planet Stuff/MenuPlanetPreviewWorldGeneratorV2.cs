@@ -141,29 +141,38 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private struct ExperimentalTerrainProfile
     {
         public string name;
-        public float heightBias;
-        public float upwardReliefStrength;
-        public float downwardBasinStrength;
-        public float valleyCutStrength;
-        public float broadNoiseAmplitude;
-        public float midNoiseAmplitude;
-        public float fineNoiseAmplitude;
-        public float broadNoiseScale;
-        public float midNoiseScale;
-        public float fineNoiseScale;
-        public float ridgeStrength;
-        public float hillThreshold;
-        public float mountainThreshold;
-        public float basinCandidateBias;
+    public float heightBias;
+    public float upwardReliefStrength;
+    public float downwardBasinStrength;
+    public float valleyCutStrength;
+    public float broadNoiseAmplitude;
+    public float midNoiseAmplitude;
+    public float fineNoiseAmplitude;
+    public float broadNoiseScale;
+    public float midNoiseScale;
+    public float fineNoiseScale;
+    public float ridgeStrength;
+    public float hillThreshold;
+    public float mountainThreshold;
+    public float basinCandidateBias;
+
+    // --- New hydrology overrides for this terrain preset ---
+    [Header("Hydrology")]
+    [Range(0f, 1f)] public float lakeBasinMinDepth;
+    [Range(0f, 1f)] public float lakeBasinFullDepth;
+    [Range(0f, 10f)]   public float riverAccumulationThresholdSparse;
+    [Range(0f, 10f)]   public float riverAccumulationThresholdStandard;
+    [Range(0f, 10f)]   public float riverAccumulationThresholdAbundant;
+    [Range(0f, 10f)] public float inlandBasinStrength;
     }
 
     [SerializeField] private ExperimentalTerrainProfile[] experimentalTerrainProfiles =
     {
-        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.60f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.04f, mountainThreshold = 0.22f, basinCandidateBias = 1.25f },
-        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.85f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.05f, mountainThreshold = 0.20f, basinCandidateBias = 1.15f },
-        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 1.10f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.06f, mountainThreshold = 0.18f, basinCandidateBias = 1.00f },
-        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 1.45f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.07f, mountainThreshold = 0.16f, basinCandidateBias = 0.90f },
-        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 1.80f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.08f, mountainThreshold = 0.14f, basinCandidateBias = 0.75f }
+        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.60f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.04f, mountainThreshold = 0.22f, basinCandidateBias = 1.25f, lakeBasinMinDepth = 0.012f, lakeBasinFullDepth = 0.045f, riverAccumulationThresholdSparse = 0.65f, riverAccumulationThresholdStandard = 0.52f, riverAccumulationThresholdAbundant = 0.38f, inlandBasinStrength = 0.065f },
+        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.85f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.05f, mountainThreshold = 0.20f, basinCandidateBias = 1.15f, lakeBasinMinDepth = 0.015f, lakeBasinFullDepth = 0.055f, riverAccumulationThresholdSparse = 0.62f, riverAccumulationThresholdStandard = 0.48f, riverAccumulationThresholdAbundant = 0.34f, inlandBasinStrength = 0.055f },
+        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 1.10f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.06f, mountainThreshold = 0.18f, basinCandidateBias = 1.00f, lakeBasinMinDepth = 0.018f, lakeBasinFullDepth = 0.065f, riverAccumulationThresholdSparse = 0.58f, riverAccumulationThresholdStandard = 0.45f, riverAccumulationThresholdAbundant = 0.32f, inlandBasinStrength = 0.045f },
+        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 1.45f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.07f, mountainThreshold = 0.16f, basinCandidateBias = 0.90f, lakeBasinMinDepth = 0.022f, lakeBasinFullDepth = 0.085f, riverAccumulationThresholdSparse = 0.52f, riverAccumulationThresholdStandard = 0.38f, riverAccumulationThresholdAbundant = 0.24f, inlandBasinStrength = 0.035f },
+        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 1.80f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.08f, mountainThreshold = 0.14f, basinCandidateBias = 0.75f, lakeBasinMinDepth = 0.028f, lakeBasinFullDepth = 0.12f, riverAccumulationThresholdSparse = 0.45f, riverAccumulationThresholdStandard = 0.32f, riverAccumulationThresholdAbundant = 0.18f, inlandBasinStrength = 0.025f }
     };
 
 
@@ -743,40 +752,44 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         });
     }
 
-    private int ComputeExperimentalTerrainProfileHash()
+private int ComputeExperimentalTerrainProfileHash()
+{
+    unchecked
     {
-        unchecked
+        int h = 17;
+        if (experimentalTerrainProfiles != null)
         {
-            int h = 17;
-
-            if (experimentalTerrainProfiles != null)
+            for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
             {
-                for (int i = 0; i < experimentalTerrainProfiles.Length; i++)
-                {
-                    var p = experimentalTerrainProfiles[i];
-
-                    h = h * 31 + i;
-                    h = h * 31 + (p.name == null ? 0 : p.name.GetHashCode());
-                    h = h * 31 + Mathf.RoundToInt(p.heightBias * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.upwardReliefStrength * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.downwardBasinStrength * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.valleyCutStrength * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.broadNoiseAmplitude * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.midNoiseAmplitude * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.fineNoiseAmplitude * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.broadNoiseScale * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.midNoiseScale * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.fineNoiseScale * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.ridgeStrength * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.hillThreshold * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.mountainThreshold * 10000f);
-                    h = h * 31 + Mathf.RoundToInt(p.basinCandidateBias * 10000f);
-                }
+                var p = experimentalTerrainProfiles[i];
+                h = h * 31 + i;
+                h = h * 31 + (p.name == null ? 0 : p.name.GetHashCode());
+                h = h * 31 + Mathf.RoundToInt(p.heightBias * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.upwardReliefStrength * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.downwardBasinStrength * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.valleyCutStrength * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.broadNoiseAmplitude * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.midNoiseAmplitude * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.fineNoiseAmplitude * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.broadNoiseScale * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.midNoiseScale * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.fineNoiseScale * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.ridgeStrength * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.hillThreshold * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.mountainThreshold * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.basinCandidateBias * 10000f);
+                // New hydrology fields
+                h = h * 31 + Mathf.RoundToInt(p.lakeBasinMinDepth * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.lakeBasinFullDepth * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.riverAccumulationThresholdSparse * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.riverAccumulationThresholdStandard * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.riverAccumulationThresholdAbundant * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.inlandBasinStrength * 10000f);
             }
-
-            return h;
         }
+        return h;
     }
+}
 
     private void EnsureGpuHeightTexture()
     {
@@ -1274,93 +1287,128 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private void DispatchGpuHydrology()
     {
-        if (!useGpuHydrologyPreview) return;
-        if (!SystemInfo.supportsComputeShaders)
-        {
-            Debug.LogWarning("[MenuPlanetPreview GPU Hydrology] Compute shaders unsupported. GPU hydrology unavailable.");
-            return;
-        }
-        if (!SystemInfo.SupportsRandomWriteOnRenderTextureFormat(RenderTextureFormat.ARGBHalf)) return;
-
-        TryAssignDefaultGpuHydrologyCompute();
-        if (menuPlanetPreviewHydrologyCompute == null) return;
-        if (surfaceDataTexture == null || worldStructureTexture == null || gpuHeightTexture == null) return;
-
-        EnsureGpuHydrologyResources();
-        if (useExperimentalBasinHydrology)
-        {
-            DispatchExperimentalBasinHydrology();
-            return;
-        }
-        int analysisWidth = Mathf.Max(32, mapWidth / 4);
-        int analysisHeight = Mathf.Max(16, mapHeight / 4);
-        var cs = menuPlanetPreviewHydrologyCompute;
-        cs.SetInt("_MapWidth", mapWidth); cs.SetInt("_MapHeight", mapHeight);
-        cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
-        cs.SetInt("_HydrologyAnalysisHeight", analysisHeight);
-        cs.SetFloat("_Seed", inputs.seed); cs.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation)); cs.SetFloat("_Moisture", Mathf.Clamp01(inputs.moisture));
-        cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
-        cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
-        cs.SetFloat("_DrainageRiverMinWidthPixels", gpuDrainageRiverMinWidthPixels);
-        cs.SetFloat("_DrainageRiverMaxWidthPixels", gpuDrainageRiverMaxWidthPixels);
-        cs.SetFloat("_LakeBasinMinDepth", gpuLakeBasinMinDepth);
-        cs.SetFloat("_LakeBasinFullDepth", gpuLakeBasinFullDepth);
-        cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
-        cs.SetFloat("_FlowMinDownhillDelta", gpuFlowMinDownhillDelta);
-        cs.SetFloat("_FlowAccumulationCompression", gpuFlowAccumulationCompression);
-        float riverAccumulationThreshold = inputs.waterwaysPreset <= 0
-            ? gpuRiverAccumulationThresholdSparse
-            : inputs.waterwaysPreset == 1
-                ? gpuRiverAccumulationThresholdStandard
-                : gpuRiverAccumulationThresholdAbundant;
-        cs.SetFloat("_RiverAccumulationThreshold", riverAccumulationThreshold);
-
-        int kInitFill = cs.FindKernel("InitDrainageFill");
-        int kRelaxFill = cs.FindKernel("RelaxDrainageFill");
-        int kFlowDir = cs.FindKernel("BuildFlowDirections");
-        int kInitAcc = cs.FindKernel("InitFlowAccumulation");
-        int kRelaxAcc = cs.FindKernel("RelaxFlowAccumulation");
-        int kBuild = cs.FindKernel("BuildTerrainDrivenHydrologyMasks");
-        int kUpsample = cs.FindKernel("UpsampleAndBeautifyHydrology");
-        foreach (int k in new[] { kInitFill, kRelaxFill, kFlowDir, kInitAcc, kRelaxAcc, kBuild, kUpsample })
-        {
-            cs.SetTexture(k, "_GpuHydrologyTex", gpuHydrologyTexture);
-            cs.SetTexture(k, "_GpuHydrologyDepthTex", gpuHydrologyDepthTexture);
-            cs.SetTexture(k, "_DrainageFillTexA", gpuDrainageFillA);
-            cs.SetTexture(k, "_DrainageFillTexB", gpuDrainageFillB);
-            cs.SetTexture(k, "_HydroFlowTex", gpuFlowDirectionTexture);
-            cs.SetTexture(k, "_FlowAccumTexA", gpuFlowAccumA);
-            cs.SetTexture(k, "_FlowAccumTexB", gpuFlowAccumB);
-            cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
-            cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
-            cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
-            cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
-            cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
-        }
-        cs.Dispatch(kInitFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        for (int i = 0; i < gpuDrainageFillIterations; i++) { cs.Dispatch(kRelaxFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1); var t = gpuDrainageFillA; gpuDrainageFillA = gpuDrainageFillB; gpuDrainageFillB = t; cs.SetTexture(kRelaxFill, "_DrainageFillTexA", gpuDrainageFillA); cs.SetTexture(kRelaxFill, "_DrainageFillTexB", gpuDrainageFillB); }
-        cs.Dispatch(kFlowDir, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        cs.Dispatch(kInitAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        for (int i = 0; i < gpuFlowAccumulationIterations; i++) { cs.Dispatch(kRelaxAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1); var t = gpuFlowAccumA; gpuFlowAccumA = gpuFlowAccumB; gpuFlowAccumB = t; cs.SetTexture(kRelaxAcc, "_FlowAccumTexA", gpuFlowAccumA); cs.SetTexture(kRelaxAcc, "_FlowAccumTexB", gpuFlowAccumB); }
-
-        // Rebind ping-pong outputs so downstream kernels always read final buffers.
-        RenderTexture finalFill = gpuDrainageFillA;
-        RenderTexture finalAccum = gpuFlowAccumA;
-        cs.SetTexture(kBuild, "_DrainageFillTexA", finalFill);
-        cs.SetTexture(kBuild, "_FlowAccumTexA", finalAccum);
-        cs.SetTexture(kUpsample, "_FlowAccumTexA", finalAccum);
-
-        cs.Dispatch(kBuild, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
-        Debug.Log(
-            $"[WorldGenV2 GPU Hydrology] TerrainDriven=True " +
-            $"WaterwaysPreset={inputs.waterwaysPreset} Moisture={inputs.moisture:0.00} " +
-            $"Analysis={analysisWidth}x{analysisHeight} " +
-            $"FillIter={gpuDrainageFillIterations} AccumIter={gpuFlowAccumulationIterations} " +
-            $"RiverThreshold={riverAccumulationThreshold:0.00} " +
-            $"LakeDepth={gpuLakeBasinMinDepth:0.000}-{gpuLakeBasinFullDepth:0.000} " +
-            $"HeightRTReady={gpuHeightTexture != null}");
+if (!useGpuHydrologyPreview) return;
+    if (!SystemInfo.supportsComputeShaders)
+    {
+        Debug.LogWarning("[MenuPlanetPreview GPU Hydrology] Compute shaders unsupported.");
+        return;
     }
+    if (!SystemInfo.SupportsRandomWriteOnRenderTextureFormat(RenderTextureFormat.ARGBHalf)) return;
+
+    TryAssignDefaultGpuHydrologyCompute();
+    if (menuPlanetPreviewHydrologyCompute == null) return;
+    if (surfaceDataTexture == null || worldStructureTexture == null || gpuHeightTexture == null) return;
+
+    EnsureGpuHydrologyResources();
+    if (useExperimentalBasinHydrology)
+    {
+        DispatchExperimentalBasinHydrology();
+        return;
+    }
+
+    int analysisWidth = Mathf.Max(32, mapWidth / 4);
+    int analysisHeight = Mathf.Max(16, mapHeight / 4);
+    var cs = menuPlanetPreviewHydrologyCompute;
+    cs.SetInt("_MapWidth", mapWidth);
+    cs.SetInt("_MapHeight", mapHeight);
+    cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
+    cs.SetInt("_HydrologyAnalysisHeight", analysisHeight);
+    cs.SetFloat("_Seed", inputs.seed);
+    cs.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation));
+    cs.SetFloat("_Moisture", Mathf.Clamp01(inputs.moisture));
+    cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
+    cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
+    cs.SetFloat("_DrainageRiverMinWidthPixels", gpuDrainageRiverMinWidthPixels);
+    cs.SetFloat("_DrainageRiverMaxWidthPixels", gpuDrainageRiverMaxWidthPixels);
+    cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
+    cs.SetFloat("_FlowMinDownhillDelta", gpuFlowMinDownhillDelta);
+    cs.SetFloat("_FlowAccumulationCompression", gpuFlowAccumulationCompression);
+
+    // ================================================================
+    // NEW: Apply preset-specific hydrology overrides
+    // ================================================================
+    int presetIdx = Mathf.Clamp(inputs.terrainRoughnessPresetIndex, 0, experimentalTerrainProfiles.Length - 1);
+    var terrainProfile = experimentalTerrainProfiles[presetIdx];
+
+    cs.SetFloat("_LakeBasinMinDepth", terrainProfile.lakeBasinMinDepth);
+    cs.SetFloat("_LakeBasinFullDepth", terrainProfile.lakeBasinFullDepth);
+    cs.SetFloat("_InlandBasinStrength", terrainProfile.inlandBasinStrength);
+    // Optionally override macro relief and ridge strength (if you added those fields)
+    // cs.SetFloat("_MacroReliefStrength", terrainProfile.macroReliefStrength);
+    // cs.SetFloat("_WatershedRidgeStrength", terrainProfile.watershedRidgeStrength);
+
+    // River accumulation threshold depends on waterways preset
+    float riverThreshold = inputs.waterwaysPreset <= 0 ? terrainProfile.riverAccumulationThresholdSparse :
+                           inputs.waterwaysPreset == 1 ? terrainProfile.riverAccumulationThresholdStandard :
+                           terrainProfile.riverAccumulationThresholdAbundant;
+    cs.SetFloat("_RiverAccumulationThreshold", riverThreshold);
+    // ================================================================
+
+    int kInitFill = cs.FindKernel("InitDrainageFill");
+    int kRelaxFill = cs.FindKernel("RelaxDrainageFill");
+    int kFlowDir = cs.FindKernel("BuildFlowDirections");
+    int kInitAcc = cs.FindKernel("InitFlowAccumulation");
+    int kRelaxAcc = cs.FindKernel("RelaxFlowAccumulation");
+    int kBuild = cs.FindKernel("BuildTerrainDrivenHydrologyMasks");
+    int kUpsample = cs.FindKernel("UpsampleAndBeautifyHydrology");
+
+    foreach (int k in new[] { kInitFill, kRelaxFill, kFlowDir, kInitAcc, kRelaxAcc, kBuild, kUpsample })
+    {
+        cs.SetTexture(k, "_GpuHydrologyTex", gpuHydrologyTexture);
+        cs.SetTexture(k, "_GpuHydrologyDepthTex", gpuHydrologyDepthTexture);
+        cs.SetTexture(k, "_DrainageFillTexA", gpuDrainageFillA);
+        cs.SetTexture(k, "_DrainageFillTexB", gpuDrainageFillB);
+        cs.SetTexture(k, "_HydroFlowTex", gpuFlowDirectionTexture);
+        cs.SetTexture(k, "_FlowAccumTexA", gpuFlowAccumA);
+        cs.SetTexture(k, "_FlowAccumTexB", gpuFlowAccumB);
+        cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
+        cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
+        cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+        cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
+        cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
+    }
+
+    cs.Dispatch(kInitFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+    for (int i = 0; i < gpuDrainageFillIterations; i++)
+    {
+        cs.Dispatch(kRelaxFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+        var t = gpuDrainageFillA;
+        gpuDrainageFillA = gpuDrainageFillB;
+        gpuDrainageFillB = t;
+        cs.SetTexture(kRelaxFill, "_DrainageFillTexA", gpuDrainageFillA);
+        cs.SetTexture(kRelaxFill, "_DrainageFillTexB", gpuDrainageFillB);
+    }
+    cs.Dispatch(kFlowDir, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+    cs.Dispatch(kInitAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+    for (int i = 0; i < gpuFlowAccumulationIterations; i++)
+    {
+        cs.Dispatch(kRelaxAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+        var t = gpuFlowAccumA;
+        gpuFlowAccumA = gpuFlowAccumB;
+        gpuFlowAccumB = t;
+        cs.SetTexture(kRelaxAcc, "_FlowAccumTexA", gpuFlowAccumA);
+        cs.SetTexture(kRelaxAcc, "_FlowAccumTexB", gpuFlowAccumB);
+    }
+
+    // Rebind final buffers
+    cs.SetTexture(kBuild, "_DrainageFillTexA", gpuDrainageFillA);
+    cs.SetTexture(kBuild, "_FlowAccumTexA", gpuFlowAccumA);
+    cs.SetTexture(kUpsample, "_FlowAccumTexA", gpuFlowAccumA);
+
+    cs.Dispatch(kBuild, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
+    cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
+
+    // Log using the active river threshold
+    string activeThresholdType = inputs.waterwaysPreset <= 0 ? "Sparse" : (inputs.waterwaysPreset == 1 ? "Standard" : "Abundant");
+    Debug.Log(
+        $"[WorldGenV2 GPU Hydrology] TerrainDriven=True " +
+        $"WaterwaysPreset={inputs.waterwaysPreset} ({activeThresholdType}) Moisture={inputs.moisture:0.00} " +
+        $"Analysis={analysisWidth}x{analysisHeight} " +
+        $"FillIter={gpuDrainageFillIterations} AccumIter={gpuFlowAccumulationIterations} " +
+        $"RiverThreshold={riverThreshold:0.00} (S={terrainProfile.riverAccumulationThresholdSparse:0.00} St={terrainProfile.riverAccumulationThresholdStandard:0.00} A={terrainProfile.riverAccumulationThresholdAbundant:0.00}) " +
+        $"LakeDepth={terrainProfile.lakeBasinMinDepth:0.000}-{terrainProfile.lakeBasinFullDepth:0.000} " +
+        $"HeightRTReady={gpuHeightTexture != null}");
+}
     private void EnsureExperimentalBasinHydrologyResources()
     {
         int aw = Mathf.Max(32, mapWidth / 4);
