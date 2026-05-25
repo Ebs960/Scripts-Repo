@@ -420,11 +420,11 @@ MonoBehaviour:
   worldGenerator: {fileID: 7555492816204091449}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 5
-  detailScale: 19
+  rotationSpeed: 3
+  detailScale: 13
   detailStrength: 0.18
   atmosphereColor: {r: 0.62, g: 0.78, b: 0.95, a: 1}
-  displacementScale: 0.0169
+  displacementScale: 0.01
   useDisplacedNormals: 1
   enableCloudShell: 1
   cloudAltitude: 0.018
@@ -449,15 +449,15 @@ MonoBehaviour:
   iceSmoothnessTexture: {fileID: 2800000, guid: 7b5d2b98c6ae51e42b508a16e2518507, type: 3}
   oceanAlbedoTexture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
   oceanDetailTexture: {fileID: 2800000, guid: c8c45d4316adf8b4fa3cc48c52de0dcf, type: 3}
-  waterwayDetailTexture: {fileID: 0}
-  oceanNormalTexture: {fileID: 0}
-  oceanSmoothnessTexture: {fileID: 0}
+  waterwayDetailTexture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
+  oceanNormalTexture: {fileID: 2800000, guid: c8c45d4316adf8b4fa3cc48c52de0dcf, type: 3}
+  oceanSmoothnessTexture: {fileID: 2800000, guid: b8a40d5040227c340a00398f1d2f3171, type: 3}
   volcanicSurfaceSmoothnessTexture: {fileID: 0}
   volcanicRockTexture: {fileID: 0}
   lavaCrackTexture: {fileID: 0}
   lavaEmissiveTexture: {fileID: 0}
   ashDetailTexture: {fileID: 0}
-  cloudNoiseTexture: {fileID: 0}
+  cloudNoiseTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
   volcanicRockStrength: 0.35
   lavaCrackStrength: 0.65
   lavaEmissionStrength: 2.2
@@ -470,33 +470,33 @@ MonoBehaviour:
   mountainNormalStrength: 0.18
   iceNormalStrength: 0.22
   textureDetailScale: 8
-  jungleAlbedoTexture: {fileID: 0}
-  desertAlbedoTexture: {fileID: 0}
-  savannaAlbedoTexture: {fileID: 0}
+  jungleAlbedoTexture: {fileID: 2800000, guid: af2ac35d9104d134db2e55497851e636, type: 3}
+  desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
+  savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
   temperateGrassAlbedoTexture: {fileID: 0}
   temperateForestAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   taigaAlbedoTexture: {fileID: 0}
   tundraAlbedoTexture: {fileID: 0}
   polarAlbedoTexture: {fileID: 0}
-  marshAlbedoTexture: {fileID: 0}
-  jungleNormalTexture: {fileID: 0}
-  desertNormalTexture: {fileID: 0}
-  savannaNormalTexture: {fileID: 0}
+  marshAlbedoTexture: {fileID: 2800000, guid: 2a84a8312b0f0454d8dd88e86ed5c40b, type: 3}
+  jungleNormalTexture: {fileID: 2800000, guid: a67b2c87acf346445bea1eeaf05bfd3e, type: 3}
+  desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
+  savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
   temperateGrassNormalTexture: {fileID: 0}
   temperateForestNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   taigaNormalTexture: {fileID: 0}
   tundraNormalTexture: {fileID: 0}
   polarNormalTexture: {fileID: 0}
-  marshNormalTexture: {fileID: 0}
-  jungleSmoothnessTexture: {fileID: 0}
-  desertSmoothnessTexture: {fileID: 0}
-  savannaSmoothnessTexture: {fileID: 0}
+  marshNormalTexture: {fileID: 2800000, guid: 1aae1862a6aff0b4590caacf2c278b92, type: 3}
+  jungleSmoothnessTexture: {fileID: 2800000, guid: 046df90e7a8f3434f9e524b2ef43db16, type: 3}
+  desertSmoothnessTexture: {fileID: 2800000, guid: 7e92ceab8b302e7478121a2b408c5635, type: 3}
+  savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
   temperateGrassSmoothnessTexture: {fileID: 0}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   taigaSmoothnessTexture: {fileID: 0}
   tundraSmoothnessTexture: {fileID: 0}
   polarSmoothnessTexture: {fileID: 0}
-  marshSmoothnessTexture: {fileID: 0}
+  marshSmoothnessTexture: {fileID: 2800000, guid: b8a40d5040227c340a00398f1d2f3171, type: 3}
   biomeTextureStrength: 1
   climateGradeStrength: 0.06
   biomeNormalStrength: 0.15
@@ -572,7 +572,7 @@ MonoBehaviour:
   elevationTemperatureImpact: 0.18
   mapStyle: 0
   oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
-  enableIceCaps: 1
+  enableIceCaps: 0
   legacyIceCapSize: 0.5
   legacyBiomeBlend: 0.03
   smoothness: 0.3
@@ -607,8 +607,8 @@ MonoBehaviour:
   mapWidth: 2048
   mapHeight: 1024
   regenerationDelay: 0.15
-  topologyWidth: 512
-  topologyHeight: 256
+  topologyWidth: 256
+  topologyHeight: 128
   coastlineDeformationWidthCells: 24
   coastlineWarpStrength: 0.95
   coastlineMidNoiseStrength: 0.969
@@ -628,47 +628,19 @@ MonoBehaviour:
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: c02f76a0820ece643bcb29cdf1334f95, type: 3}
   useGpuHydrologyPreview: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: d80f2bfb9080eb04c86dc97ad14619d1, type: 3}
-  gpuDrainageFillIterations: 192
-  gpuFlowAccumulationIterations: 192
+  gpuDrainageFillIterations: 100
+  gpuFlowAccumulationIterations: 100
   gpuHydroRoutingJitter: 0.0313
-  gpuDrainageRiverMinWidthPixels: 2
-  gpuDrainageRiverMaxWidthPixels: 6.5
-  gpuLakeBasinMinDepth: 0.018
-  gpuLakeBasinFullDepth: 0.065
   gpuLakeShorelineWarpPixels: 1.5
-  gpuRiverAccumulationThresholdSparse: 0.58
-  gpuRiverAccumulationThresholdStandard: 0.45
-  gpuRiverAccumulationThresholdAbundant: 0.32
-  gpuFlowMinDownhillDelta: 0.004
-  gpuFlowAccumulationCompression: 0.12
-  gpuMacroReliefStrength: 0.07
-  gpuMacroReliefScale: 1.25
-  gpuInlandBasinStrength: 0.045
-  gpuInlandBasinScale: 1
-  gpuWatershedRidgeStrength: 0.025
   flatElevationMultiplier: 0.8
   smoothElevationMultiplier: 0.9
   standardElevationMultiplier: 1
   mountainousElevationMultiplier: 1.15
   alpineElevationMultiplier: 1.25
+  debugHeightInspect: 0
+  debugHeightRemap: 100
   useExperimentalSignedTerrain: 1
   debugForceSignedHeightSentinel: 0
-  useExperimentalBasinHydrology: 0
-  experimentalSparseLakeCount: 2
-  experimentalStandardLakeCount: 4
-  experimentalAbundantLakeCount: 90
-  experimentalSparseRiverAttempts: 3
-  experimentalStandardRiverAttempts: 7
-  experimentalAbundantRiverAttempts: 24
-  experimentalMoistureLakeMultiplier: 0.75
-  experimentalMoistureRiverMultiplier: 1
-  experimentalWetlandSpread: 1.5
-  experimentalMinBasinScore: 0.798
-  experimentalMinBasinPixelArea: 6
-  experimentalMinBasinSeparationPixels: 13
-  experimentalRiverMeanderStrength: 0.5
-  experimentalRiverValleyBias: 0.65
-  experimentalLakeToCoastChance: 0.75
   experimentalTerrainProfiles:
   - name: Flat
     heightBias: -0.15
@@ -685,6 +657,20 @@ MonoBehaviour:
     hillThreshold: 0.15
     mountainThreshold: 0.22
     basinCandidateBias: 1
+    lakeBasinMinDepth: 0.012
+    lakeBasinFullDepth: 0.045
+    riverAccumulationThresholdSparse: 0.65
+    riverAccumulationThresholdStandard: 0.52
+    riverAccumulationThresholdAbundant: 0.38
+    inlandBasinStrength: 0.065
+    flowMinDownhillDelta: 0.002
+    flowAccumulationCompression: 0.08
+    macroReliefStrength: 0.05
+    macroReliefScale: 0.75
+    inlandBasinScale: 0.75
+    watershedRidgeStrength: 0.015
+    riverMinWidthPixels: 1.5
+    riverMaxWidthPixels: 5
   - name: Smooth
     heightBias: -0.015
     upwardReliefStrength: 0.85
@@ -700,6 +686,20 @@ MonoBehaviour:
     hillThreshold: 0.05
     mountainThreshold: 0.2
     basinCandidateBias: 1.15
+    lakeBasinMinDepth: 0.015
+    lakeBasinFullDepth: 0.055
+    riverAccumulationThresholdSparse: 0.62
+    riverAccumulationThresholdStandard: 0.48
+    riverAccumulationThresholdAbundant: 0.34
+    inlandBasinStrength: 0.055
+    flowMinDownhillDelta: 0.003
+    flowAccumulationCompression: 0.1
+    macroReliefStrength: 0.06
+    macroReliefScale: 0.85
+    inlandBasinScale: 0.85
+    watershedRidgeStrength: 0.02
+    riverMinWidthPixels: 1.75
+    riverMaxWidthPixels: 5.5
   - name: Standard
     heightBias: 0
     upwardReliefStrength: 1.1
@@ -715,6 +715,20 @@ MonoBehaviour:
     hillThreshold: 0.06
     mountainThreshold: 0.18
     basinCandidateBias: 1
+    lakeBasinMinDepth: 0.018
+    lakeBasinFullDepth: 0.065
+    riverAccumulationThresholdSparse: 0.58
+    riverAccumulationThresholdStandard: 0.45
+    riverAccumulationThresholdAbundant: 0.32
+    inlandBasinStrength: 0.045
+    flowMinDownhillDelta: 0.004
+    flowAccumulationCompression: 0.12
+    macroReliefStrength: 0.07
+    macroReliefScale: 1.25
+    inlandBasinScale: 1
+    watershedRidgeStrength: 0.025
+    riverMinWidthPixels: 2
+    riverMaxWidthPixels: 6
   - name: Mountainous
     heightBias: 0.03
     upwardReliefStrength: 1.45
@@ -730,14 +744,28 @@ MonoBehaviour:
     hillThreshold: 0.07
     mountainThreshold: 0.16
     basinCandidateBias: 0.9
+    lakeBasinMinDepth: 0.022
+    lakeBasinFullDepth: 0.085
+    riverAccumulationThresholdSparse: 0.52
+    riverAccumulationThresholdStandard: 0.38
+    riverAccumulationThresholdAbundant: 0.24
+    inlandBasinStrength: 0.035
+    flowMinDownhillDelta: 0.006
+    flowAccumulationCompression: 0.16
+    macroReliefStrength: 0.1
+    macroReliefScale: 1.75
+    inlandBasinScale: 1.25
+    watershedRidgeStrength: 0.035
+    riverMinWidthPixels: 2.5
+    riverMaxWidthPixels: 7
   - name: Alpine
-    heightBias: 0.05
-    upwardReliefStrength: 3
-    downwardBasinStrength: 2.7
+    heightBias: 0.5
+    upwardReliefStrength: 2.5
+    downwardBasinStrength: 0.8
     valleyCutStrength: 0.22
-    broadNoiseAmplitude: 2.2
-    midNoiseAmplitude: 1.5
-    fineNoiseAmplitude: 1
+    broadNoiseAmplitude: 2
+    midNoiseAmplitude: 1
+    fineNoiseAmplitude: 0.4
     broadNoiseScale: 1.25
     midNoiseScale: 2.8
     fineNoiseScale: 0.5
@@ -745,6 +773,20 @@ MonoBehaviour:
     hillThreshold: 0.11
     mountainThreshold: 0.18
     basinCandidateBias: 1
+    lakeBasinMinDepth: 0.19
+    lakeBasinFullDepth: 0.21
+    riverAccumulationThresholdSparse: 0.99
+    riverAccumulationThresholdStandard: 0.9
+    riverAccumulationThresholdAbundant: 0.5
+    inlandBasinStrength: 0.025
+    flowMinDownhillDelta: 0.02
+    flowAccumulationCompression: 0.2
+    macroReliefStrength: 0.14
+    macroReliefScale: 1.75
+    inlandBasinScale: 1.5
+    watershedRidgeStrength: 0.05
+    riverMinWidthPixels: 3
+    riverMaxWidthPixels: 8
   presets:
   - name: Archipelago
     majorLandmasses:

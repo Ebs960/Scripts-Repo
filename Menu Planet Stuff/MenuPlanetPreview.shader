@@ -268,15 +268,16 @@ Shader "Custom/MenuPlanetPreview"
 
                 return saturate(landMask);
             }
-            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float edgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float coldness = saturate(_IceCapSize); float capStart = lerp(0.96, 0.72, coldness); float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.05; return smoothstep(capStart - 0.035, capStart + 0.055, distortedLatitude); }
+            float GetCapMask(float3 objNorm, float3 seedOff) { float latitude = abs(objNorm.y); float edgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff); float coldness = saturate(_IceCapSize); float capStart = lerp(0.96, 0.76, coldness); float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.035; return smoothstep(capStart - 0.03, capStart + 0.045, distortedLatitude); }
             float GetGeneratedMinimumPolarCapMask(float3 objNorm, float temperature, float seed)
             {
                 float latitude = abs(objNorm.y);
                 float coldness = 1.0 - saturate(temperature);
-                float capStart = lerp(0.90, 0.58, coldness);
+                // Make generated minimum polar caps slightly smaller by raising the warm bound
+                float capStart = lerp(0.90, 0.64, coldness);
                 float edgeNoise = noise3D(objNorm * 5.0 + float3(31.7, 12.9, 47.3) + seed * float3(0.37, 0.19, 0.43));
-                float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.08;
-                return smoothstep(capStart - 0.05, capStart + 0.07, distortedLatitude);
+                float distortedLatitude = latitude + (edgeNoise - 0.5) * 0.06;
+                return smoothstep(capStart - 0.04, capStart + 0.06, distortedLatitude);
             }
             float GetGeneratedSnowIceMask(float3 objNorm)
             {
@@ -564,8 +565,8 @@ Shader "Custom/MenuPlanetPreview"
                 float tHot=BellFit(c.temperature,0.86,0.19);
                 float tWarm=BellFit(c.temperature,0.70,0.23);
                 float tTemp=BellFit(c.temperature,0.52,0.22);
-                float tCool=BellFit(c.temperature,0.33,0.18);
-                float tCold=BellFit(c.temperature,0.19,0.14);
+                float tCool=BellFit(c.temperature,0.33,0.22);
+                float tCold=BellFit(c.temperature,0.19,0.18);
 
                 float mDry=BellFit(c.moisture,0.14,0.17);
                 float mSemiDry=BellFit(c.moisture,0.34,0.19);
@@ -598,12 +599,27 @@ Shader "Custom/MenuPlanetPreview"
                 w.temperateForest=tTemp*mMoist*(1.0-polarMask)*lerp(1.0,1.22,windwardWet)*lerp(1-ps,1+ps,forestP)*lerp(1.0,0.82,continentalDry);
 
                 // Cool, moist to semi-moist forest biome; avoid strong direct latitude forcing.
-                w.taiga=tCool*RangeFit(c.moisture,0.28,0.42,0.80,0.94)*(1.0-polarMask*0.65)*lerp(1-ps,1+ps,forestP*0.58+coldP*0.42)*lerp(1.0,1.12,seasonal);
+                w.taiga=tCool*RangeFit(c.moisture,0.22,0.36,0.82,0.96)*(1.0-polarMask*0.65)*lerp(1-ps,1+ps,forestP*0.58+coldP*0.42)*lerp(1.0,1.12,seasonal);
 
                 // Cold, generally drier biome with some moisture tolerance.
-                w.tundra=tCold*RangeFit(c.moisture,0.08,0.20,0.58,0.76)*(1.0-polarMask*0.35)*lerp(1-ps,1+ps,coldP)*lerp(1.0,1.1,highElev);
+                w.tundra=tCold*RangeFit(c.moisture,0.06,0.16,0.62,0.80)*(1.0-polarMask*0.35)*lerp(1-ps,1+ps,coldP)*lerp(1.0,1.1,highElev);
 
                 w.polar=polarMask;
+
+                // Global frozen-map bias: when the global temperature slider is low, amplify cold biomes
+                // at all latitudes except a small equatorial band so cold climates prevail (except near equator).
+                float globalFrozen = pow(saturate(1.0 - _Temperature), 1.6);
+                float latAbs = abs(objNorm.y);
+                float latColdMask = smoothstep(0.08, 0.28, latAbs);
+                float frozenBoost = globalFrozen * latColdMask;
+                float coldAmplify = 1.0 + frozenBoost * 1.15;
+                float warmSuppress = 1.0 - frozenBoost * 0.9;
+                w.taiga *= coldAmplify;
+                w.tundra *= coldAmplify;
+                w.polar *= coldAmplify * 1.15;
+                w.jungle *= warmSuppress;
+                w.desert *= warmSuppress;
+                w.savanna *= warmSuppress;
 
                 // Wet low-elevation and riparian zones.
                 w.marsh=lowElev*mWet*(1.0-polarMask)*lerp(1.0,1.55,riparianBoost)*lerp(1.0,1.2,windwardWet)*lerp(1-ps,1+ps,wetP);
@@ -746,9 +762,12 @@ Shader "Custom/MenuPlanetPreview"
                 float4 gpuHeightData = GetGpuHeightData(objNorm);
                 float terrainHeight = (_UseTectonicPreview > 0.5) ? gpuHeightData.r : legacyTerrainHeight;
                 float landMask = edge;
-                float capMask = (_UseTectonicPreview > 0.5) ? 0.0 : GetCapMask(objNorm, seedOff);
+                float baseCapMask = (_UseTectonicPreview > 0.5) ? 0.0 : GetCapMask(objNorm, seedOff);
                 float generatedSnowIceMask = 0.0;
                 float generatedAlpineRockMask = 0.0;
+                float forcedPolarCapMask = GetGeneratedMinimumPolarCapMask(objNorm, _Temperature, _Seed);
+                forcedPolarCapMask *= (1.0 - smoothstep(0.4, 0.8, _MapStyle));
+                float capMask = (_UseTectonicPreview > 0.5) ? forcedPolarCapMask : baseCapMask;
                 float4 tectonicBoundary = GetTectonicBoundary(objNorm);
                 float4 tectonicCrust = GetTectonicCrust(objNorm);
                 float mountainMask = (_UseTectonicPreview > 0.5) ? gpuHeightData.b : GetMountainMask(objNorm, landMask);
@@ -946,8 +965,6 @@ Shader "Custom/MenuPlanetPreview"
                 if (_ShowSeasonalityOnly > 0.5) return float4(seasonality.xxx,1);
                 if (_ShowRainShadowOnly > 0.5) return float4(rainShadowDryness.xxx,1);
                 if (_ShowRiparianWetnessOnly > 0.5) return float4(riparianWetness.xxx,1);
-                float forcedPolarCapMask = GetGeneratedMinimumPolarCapMask(objNorm, _Temperature, _Seed);
-                forcedPolarCapMask *= (1.0 - smoothstep(0.4, 0.8, _MapStyle));
                 if (_UseTectonicPreview > 0.5)
                 {
                     float snowTemperatureLocal =
@@ -968,7 +985,8 @@ Shader "Custom/MenuPlanetPreview"
                             * (1.0 - generatedSnowIceMask * 0.55)
                         );
                 }
-                float activeSnowIceMask = (_UseTectonicPreview > 0.5) ? generatedSnowIceMask : capMask;
+                float iceCapEnabled = step(0.001, _IceCapSize);   // 1 if enabled, 0 if disabled
+                float activeSnowIceMask = (_UseTectonicPreview > 0.5) ? (generatedSnowIceMask * iceCapEnabled) : capMask;
                 float3 climateGrade = GetClimateGrade(latitude, localMoist, style);
                 float3 biomeTextureAlbedo = GetTextureBiomeAlbedo(biomeWeights, climateGrade, input.positionOS, objNorm, temperatureLocal);
 

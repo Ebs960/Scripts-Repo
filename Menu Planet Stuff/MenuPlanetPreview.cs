@@ -1319,10 +1319,13 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
             ? Mathf.Clamp01(coldness * Mathf.Lerp(0.08f, 0.28f, elevationTemperatureImpact))
             : 0f;
 
-        materialInstance.SetFloat(ID_SnowFactor, snowFactor);
+        // Slightly amplify snow on globally frozen previews so cold climates feel stronger
+        float frozenSnowBoost = Mathf.Lerp(1f, 1.45f, Mathf.Clamp01((0.5f - temperature) * 2f));
+        materialInstance.SetFloat(ID_SnowFactor, snowFactor * frozenSnowBoost);
         
         materialInstance.SetColor(ID_OceanColor, oceanColor);
-        materialInstance.SetFloat(ID_IceCapSize, effectiveIceCapSize);
+        // Make ice caps slightly smaller in the preview by applying a modest scale-down
+        materialInstance.SetFloat(ID_IceCapSize, effectiveIceCapSize * 0.86f);
         materialInstance.SetFloat(ID_Seed, seed);
         materialInstance.SetFloat(ID_Moisture, moisture);
         float baseWaterwayAmount = waterwaysPreset == 0 ? 0.22f : (waterwaysPreset == 1 ? 0.70f : 1.0f);

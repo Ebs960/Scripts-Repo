@@ -90,19 +90,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(2, 384)] private int gpuDrainageFillIterations = 192;
     [SerializeField, Range(2, 384)] private int gpuFlowAccumulationIterations = 192;
     [SerializeField, Range(0f, 5f)] private float gpuHydroRoutingJitter = 0.015f;
-    [SerializeField, Range(0f, 1f)] private float gpuLakeBasinMinDepth = 0.018f;
-    [SerializeField, Range(0f, 1f)] private float gpuLakeBasinFullDepth = 0.065f;
     [SerializeField, Range(0f, 6f)] private float gpuLakeShorelineWarpPixels = 1.5f;
-    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdSparse = 0.58f;
-    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdStandard = 0.45f;
-    [SerializeField, Range(0f, 5f)] private float gpuRiverAccumulationThresholdAbundant = 0.32f;
-    [SerializeField, Range(0f, 1f)] private float gpuFlowMinDownhillDelta = 0.004f;
-    [SerializeField, Range(0.01f, 1f)] private float gpuFlowAccumulationCompression = 0.12f;
-    [SerializeField, Range(0f, 1f)] private float gpuMacroReliefStrength = 0.07f;
-    [SerializeField, Range(0f, 10f)] private float gpuMacroReliefScale = 1.25f;
-    [SerializeField, Range(0f, 1f)] private float gpuInlandBasinStrength = 0.045f;
-    [SerializeField, Range(0f, 4f)] private float gpuInlandBasinScale = 1.0f;
-    [SerializeField, Range(0f, 1f)] private float gpuWatershedRidgeStrength = 0.025f;
     [Header("Terrain Roughness Type Elevation Multipliers")]
     [SerializeField, Range(0.2f, 2.0f)] private float flatElevationMultiplier = 0.8f;
     [SerializeField, Range(0.2f, 2.0f)] private float smoothElevationMultiplier = 0.9f;
@@ -110,30 +98,15 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(0.2f, 2.0f)] private float mountainousElevationMultiplier = 1.15f;
     [SerializeField, Range(0.2f, 2.0f)] private float alpineElevationMultiplier = 1.25f;
 
-[Header("Experimental Signed Basin Hydrology")]
+    [Header("Debug Height")]
+    [Tooltip("When enabled, the height compute writes debug values into the height RT (raw/bias/mask stages).")]
+    [SerializeField] private bool debugHeightInspect = false;
+    [Tooltip("When debug inspection is enabled, raw/bias values are multiplied by this remap for visibility.")]
+    [SerializeField, Range(1f, 1000f)] private float debugHeightRemap = 100f;
+
+    [Header("Experimental Signed Basin Hydrology")]
     [SerializeField] private bool useExperimentalSignedTerrain = false;
     [SerializeField] private bool debugForceSignedHeightSentinel = false;
-    [SerializeField] private bool useExperimentalBasinHydrology = false;
-
-    [SerializeField, Range(0, 512)] private int experimentalSparseLakeCount = 2;
-    [SerializeField, Range(0, 512)] private int experimentalStandardLakeCount = 4;
-    [SerializeField, Range(0, 512)] private int experimentalAbundantLakeCount = 7;
-
-    [SerializeField, Range(0, 24)] private int experimentalSparseRiverAttempts = 3;
-    [SerializeField, Range(0, 24)] private int experimentalStandardRiverAttempts = 7;
-    [SerializeField, Range(0, 24)] private int experimentalAbundantRiverAttempts = 12;
-
-    [SerializeField, Range(0f, 3f)] private float experimentalMoistureLakeMultiplier = 0.75f;
-    [SerializeField, Range(0f, 3f)] private float experimentalMoistureRiverMultiplier = 1.0f;
-    [SerializeField, Range(0f, 3f)] private float experimentalWetlandSpread = 1.0f;
-
-    [SerializeField, Range(0f, 1f)] private float experimentalMinBasinScore = 0.20f;
-    [SerializeField, Range(1, 64)] private int experimentalMinBasinPixelArea = 8;
-    [SerializeField, Range(4f, 80f)] private float experimentalMinBasinSeparationPixels = 18f;
-
-    [SerializeField, Range(0f, 1f)] private float experimentalRiverMeanderStrength = 0.25f;
-    [SerializeField, Range(0f, 1f)] private float experimentalRiverValleyBias = 0.65f;
-    [SerializeField, Range(0f, 1f)] private float experimentalLakeToCoastChance = 0.75f;
 
     [System.Serializable]
     private struct ExperimentalTerrainProfile
@@ -267,54 +240,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuDisplacementTexture;
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
-    private RenderTexture gpuExperimentalBasinCandidateTexture, gpuExperimentalSelectedBasinTexture, gpuExperimentalRiverPathTexture;
     private int heightDebugDispatchSerial;
 
-    private struct ExperimentalBasinCandidate
-    {
-        public int x;
-        public int y;
-        public float score;
-        public float depth;
-    }
-
-    private struct ExperimentalRiverPathCell
-    {
-        public int x;
-        public int y;
-        public float strength;
-    }
+    
 
     private int gpuHeightKernel = -1;
     private bool validateCacheInitialized;
-    private float lastValidatedGpuMacroReliefStrength;
-    private float lastValidatedGpuMacroReliefScale;
-    private float lastValidatedGpuInlandBasinStrength;
-    private float lastValidatedGpuInlandBasinScale;
-    private float lastValidatedGpuWatershedRidgeStrength;
     private int lastValidatedGpuDrainageFillIterations;
     private int lastValidatedGpuFlowAccumulationIterations;
     private float lastValidatedGpuHydroRoutingJitter;
-    private float lastValidatedGpuLakeBasinMinDepth;
-    private float lastValidatedGpuLakeBasinFullDepth;
     private float lastValidatedGpuLakeShorelineWarpPixels;
-    private float lastValidatedGpuRiverAccumulationThresholdSparse;
-    private float lastValidatedGpuRiverAccumulationThresholdStandard;
-    private float lastValidatedGpuRiverAccumulationThresholdAbundant;
-    private float lastValidatedGpuFlowMinDownhillDelta;
-    private float lastValidatedGpuFlowAccumulationCompression;
     private bool lastValidatedUseExperimentalSignedTerrain;
-    private bool lastValidatedUseExperimentalBasinHydrology;
-    private float lastValidatedExperimentalMinBasinScore;
-    private int lastValidatedExperimentalMinBasinPixelArea;
-    private float lastValidatedExperimentalMinBasinSeparationPixels;
-    private int lastValidatedExperimentalSparseLakeCount;
-    private int lastValidatedExperimentalStandardLakeCount;
-    private int lastValidatedExperimentalAbundantLakeCount;
-    private int lastValidatedExperimentalSparseRiverAttempts;
-    private int lastValidatedExperimentalStandardRiverAttempts;
-    private int lastValidatedExperimentalAbundantRiverAttempts;
-    private float lastValidatedExperimentalWetlandSpread;
     private int lastValidatedExperimentalTerrainProfileHash;
 
 
@@ -329,7 +265,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             return;
         }
 
-        AsyncGPUReadback.Request(gpuHeightTexture, 0, request =>
+        AsyncGPUReadback.Request(gpuHeightTexture, 0, TextureFormat.RGBAHalf, request =>
         {
             if (request.hasError)
             {
@@ -337,9 +273,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 return;
             }
 
-            var heightData = request.GetData<Vector4>();
-            int count = heightData.Length;
-            if (count <= 0) return;
+            var raw = request.GetData<ushort>();
+            int pixelCount = gpuHeightTexture.width * gpuHeightTexture.height;
+            if (raw == null || raw.Length < pixelCount * 4)
+            {
+                Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Height readback size mismatch.");
+                return;
+            }
 
             float minHeight = float.MaxValue;
             float maxHeight = float.MinValue;
@@ -356,27 +296,31 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
             int mountainCount = 0;
             int basinPotentialCount = 0;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < pixelCount; i++)
             {
-                Vector4 h = heightData[i];
-                float finalHeight = h.x;
+                int bi = i * 4;
+                float finalHeight = Mathf.HalfToFloat(raw[bi + 0]);
+                float hill = Mathf.HalfToFloat(raw[bi + 1]);
+                float mountain = Mathf.HalfToFloat(raw[bi + 2]);
+                float basin = Mathf.HalfToFloat(raw[bi + 3]);
+
                 minHeight = Mathf.Min(minHeight, finalHeight);
                 maxHeight = Mathf.Max(maxHeight, finalHeight);
                 sumHeight += finalHeight;
-                minHill = Mathf.Min(minHill, h.y);
-                maxHill = Mathf.Max(maxHill, h.y);
-                minMountain = Mathf.Min(minMountain, h.z);
-                maxMountain = Mathf.Max(maxMountain, h.z);
-                minBasinPotential = Mathf.Min(minBasinPotential, h.w);
-                maxBasinPotential = Mathf.Max(maxBasinPotential, h.w);
-                if (h.x > 0.02f) positiveHeightCount++;
-                if (h.x < -0.02f) negativeBasinCount++;
-                if (h.y > 0.05f) hillCount++;
-                if (h.z > 0.05f) mountainCount++;
-                if (h.w > 0.05f) basinPotentialCount++;
+                minHill = Mathf.Min(minHill, hill);
+                maxHill = Mathf.Max(maxHill, hill);
+                minMountain = Mathf.Min(minMountain, mountain);
+                maxMountain = Mathf.Max(maxMountain, mountain);
+                minBasinPotential = Mathf.Min(minBasinPotential, basin);
+                maxBasinPotential = Mathf.Max(maxBasinPotential, basin);
+                if (finalHeight > 0.02f) positiveHeightCount++;
+                if (finalHeight < -0.02f) negativeBasinCount++;
+                if (hill > 0.05f) hillCount++;
+                if (mountain > 0.05f) mountainCount++;
+                if (basin > 0.05f) basinPotentialCount++;
             }
 
-            AsyncGPUReadback.Request(gpuHydrologyTexture, 0, hydroReq =>
+            AsyncGPUReadback.Request(gpuHydrologyTexture, 0, TextureFormat.RGBAHalf, hydroReq =>
             {
                 if (hydroReq.hasError)
                 {
@@ -384,9 +328,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                     return;
                 }
 
-                var hydroData = hydroReq.GetData<Vector4>();
-                int hydroCount = hydroData.Length;
-                if (hydroCount <= 0) return;
+                var rawH = hydroReq.GetData<ushort>();
+                int hydroCount = gpuHydrologyTexture.width * gpuHydrologyTexture.height;
+                if (rawH == null || rawH.Length < hydroCount * 4)
+                {
+                    Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Hydrology readback size mismatch.");
+                    return;
+                }
 
                 int lakeCount = 0;
                 int riverCount = 0;
@@ -394,13 +342,16 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
                 for (int i = 0; i < hydroCount; i++)
                 {
-                    Vector4 w = hydroData[i];
-                    if (w.x > 0.05f) riverCount++;
-                    if (w.y > 0.05f) lakeCount++;
-                    if (w.z > 0.05f) wetlandCount++;
+                    int bi = i * 4;
+                    float rx = Mathf.HalfToFloat(rawH[bi + 0]);
+                    float ry = Mathf.HalfToFloat(rawH[bi + 1]);
+                    float rz = Mathf.HalfToFloat(rawH[bi + 2]);
+                    if (rx > 0.05f) riverCount++;
+                    if (ry > 0.05f) lakeCount++;
+                    if (rz > 0.05f) wetlandCount++;
                 }
 
-                float invHeight = 1f / count;
+                float invHeight = 1f / pixelCount;
                 float invHydro = 1f / hydroCount;
                 float positiveCoverage = positiveHeightCount * invHeight * 100f;
                 float negativeCoverage = negativeBasinCount * invHeight * 100f;
@@ -480,12 +431,7 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 
     private bool GpuHeightSettingsChanged()
     {
-        return !Mathf.Approximately(gpuMacroReliefStrength, lastValidatedGpuMacroReliefStrength) ||
-               !Mathf.Approximately(gpuMacroReliefScale, lastValidatedGpuMacroReliefScale) ||
-               !Mathf.Approximately(gpuInlandBasinStrength, lastValidatedGpuInlandBasinStrength) ||
-               !Mathf.Approximately(gpuInlandBasinScale, lastValidatedGpuInlandBasinScale) ||
-               !Mathf.Approximately(gpuWatershedRidgeStrength, lastValidatedGpuWatershedRidgeStrength) ||
-               useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain ||
+        return useExperimentalSignedTerrain != lastValidatedUseExperimentalSignedTerrain ||
                ComputeExperimentalTerrainProfileHash() != lastValidatedExperimentalTerrainProfileHash;
     }
 
@@ -495,57 +441,17 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return gpuDrainageFillIterations != lastValidatedGpuDrainageFillIterations ||
                gpuFlowAccumulationIterations != lastValidatedGpuFlowAccumulationIterations ||
                !Mathf.Approximately(gpuHydroRoutingJitter, lastValidatedGpuHydroRoutingJitter) ||
-               !Mathf.Approximately(gpuLakeBasinMinDepth, lastValidatedGpuLakeBasinMinDepth) ||
-               !Mathf.Approximately(gpuLakeBasinFullDepth, lastValidatedGpuLakeBasinFullDepth) ||
                !Mathf.Approximately(gpuLakeShorelineWarpPixels, lastValidatedGpuLakeShorelineWarpPixels) ||
-               !Mathf.Approximately(gpuRiverAccumulationThresholdSparse, lastValidatedGpuRiverAccumulationThresholdSparse) ||
-               !Mathf.Approximately(gpuRiverAccumulationThresholdStandard, lastValidatedGpuRiverAccumulationThresholdStandard) ||
-               !Mathf.Approximately(gpuRiverAccumulationThresholdAbundant, lastValidatedGpuRiverAccumulationThresholdAbundant) ||
-               !Mathf.Approximately(gpuFlowMinDownhillDelta, lastValidatedGpuFlowMinDownhillDelta) ||
-               !Mathf.Approximately(gpuFlowAccumulationCompression, lastValidatedGpuFlowAccumulationCompression) ||
-               useExperimentalBasinHydrology != lastValidatedUseExperimentalBasinHydrology ||
-               !Mathf.Approximately(experimentalMinBasinScore, lastValidatedExperimentalMinBasinScore) ||
-               experimentalMinBasinPixelArea != lastValidatedExperimentalMinBasinPixelArea ||
-               !Mathf.Approximately(experimentalMinBasinSeparationPixels, lastValidatedExperimentalMinBasinSeparationPixels) ||
-               experimentalSparseLakeCount != lastValidatedExperimentalSparseLakeCount ||
-               experimentalStandardLakeCount != lastValidatedExperimentalStandardLakeCount ||
-               experimentalAbundantLakeCount != lastValidatedExperimentalAbundantLakeCount ||
-               experimentalSparseRiverAttempts != lastValidatedExperimentalSparseRiverAttempts ||
-               experimentalStandardRiverAttempts != lastValidatedExperimentalStandardRiverAttempts ||
-               experimentalAbundantRiverAttempts != lastValidatedExperimentalAbundantRiverAttempts ||
-               !Mathf.Approximately(experimentalWetlandSpread, lastValidatedExperimentalWetlandSpread);
+               ComputeExperimentalTerrainProfileHash() != lastValidatedExperimentalTerrainProfileHash;
     }
 
     private void CacheValidatedGpuHeightInputs()
     {
-        lastValidatedGpuMacroReliefStrength = gpuMacroReliefStrength;
-        lastValidatedGpuMacroReliefScale = gpuMacroReliefScale;
-        lastValidatedGpuInlandBasinStrength = gpuInlandBasinStrength;
-        lastValidatedGpuInlandBasinScale = gpuInlandBasinScale;
-        lastValidatedGpuWatershedRidgeStrength = gpuWatershedRidgeStrength;
         lastValidatedGpuDrainageFillIterations = gpuDrainageFillIterations;
         lastValidatedGpuFlowAccumulationIterations = gpuFlowAccumulationIterations;
         lastValidatedGpuHydroRoutingJitter = gpuHydroRoutingJitter;
-        lastValidatedGpuLakeBasinMinDepth = gpuLakeBasinMinDepth;
-        lastValidatedGpuLakeBasinFullDepth = gpuLakeBasinFullDepth;
         lastValidatedGpuLakeShorelineWarpPixels = gpuLakeShorelineWarpPixels;
-        lastValidatedGpuRiverAccumulationThresholdSparse = gpuRiverAccumulationThresholdSparse;
-        lastValidatedGpuRiverAccumulationThresholdStandard = gpuRiverAccumulationThresholdStandard;
-        lastValidatedGpuRiverAccumulationThresholdAbundant = gpuRiverAccumulationThresholdAbundant;
-        lastValidatedGpuFlowMinDownhillDelta = gpuFlowMinDownhillDelta;
-        lastValidatedGpuFlowAccumulationCompression = gpuFlowAccumulationCompression;
         lastValidatedUseExperimentalSignedTerrain = useExperimentalSignedTerrain;
-        lastValidatedUseExperimentalBasinHydrology = useExperimentalBasinHydrology;
-        lastValidatedExperimentalMinBasinScore = experimentalMinBasinScore;
-        lastValidatedExperimentalMinBasinPixelArea = experimentalMinBasinPixelArea;
-        lastValidatedExperimentalMinBasinSeparationPixels = experimentalMinBasinSeparationPixels;
-        lastValidatedExperimentalSparseLakeCount = experimentalSparseLakeCount;
-        lastValidatedExperimentalStandardLakeCount = experimentalStandardLakeCount;
-        lastValidatedExperimentalAbundantLakeCount = experimentalAbundantLakeCount;
-        lastValidatedExperimentalSparseRiverAttempts = experimentalSparseRiverAttempts;
-        lastValidatedExperimentalStandardRiverAttempts = experimentalStandardRiverAttempts;
-        lastValidatedExperimentalAbundantRiverAttempts = experimentalAbundantRiverAttempts;
-        lastValidatedExperimentalWetlandSpread = experimentalWetlandSpread;
         lastValidatedExperimentalTerrainProfileHash = ComputeExperimentalTerrainProfileHash();
         validateCacheInitialized = true;
     }
@@ -894,6 +800,9 @@ private int ComputeExperimentalTerrainProfileHash()
         var expProfile = experimentalTerrainProfiles[Mathf.Min(terrainPreset, experimentalTerrainProfiles.Length - 1)];
         menuPlanetPreviewHeightCompute.SetInt("_UseExperimentalSignedTerrain", useExperimentalSignedTerrain ? 1 : 0);
         menuPlanetPreviewHeightCompute.SetInt("_DebugForceSignedHeightSentinel", debugForceSignedHeightSentinel ? 1 : 0);
+        // Height debug inspection: when enabled the compute writes debug vectors into the height RT
+        menuPlanetPreviewHeightCompute.SetInt("_DebugHeightInspect", debugHeightInspect ? 1 : 0);
+        menuPlanetPreviewHeightCompute.SetFloat("_DebugHeightRemap", debugHeightRemap);
         menuPlanetPreviewHeightCompute.SetInt("_TerrainRoughnessPresetIndex", terrainPreset);
         menuPlanetPreviewHeightCompute.SetFloat("_ExpHeightBias", expProfile.heightBias);
         menuPlanetPreviewHeightCompute.SetFloat("_ExpUpwardReliefStrength", expProfile.upwardReliefStrength);
@@ -910,11 +819,11 @@ private int ComputeExperimentalTerrainProfileHash()
         menuPlanetPreviewHeightCompute.SetFloat("_ExpMountainThreshold", expProfile.mountainThreshold);
         menuPlanetPreviewHeightCompute.SetFloat("_ExpBasinCandidateBias", expProfile.basinCandidateBias);
         menuPlanetPreviewHeightCompute.SetFloat("_ElevationNoiseStrength", Mathf.Clamp01(inputs.elevationNoiseStrength));
-        menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefStrength", gpuMacroReliefStrength);
-        menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefScale", gpuMacroReliefScale);
-        menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinStrength", gpuInlandBasinStrength);
-        menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinScale", gpuInlandBasinScale);
-        menuPlanetPreviewHeightCompute.SetFloat("_WatershedRidgeStrength", gpuWatershedRidgeStrength);
+        menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefStrength", expProfile.macroReliefStrength);
+        menuPlanetPreviewHeightCompute.SetFloat("_MacroReliefScale", expProfile.macroReliefScale);
+        menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinStrength", expProfile.inlandBasinStrength);
+        menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinScale", expProfile.inlandBasinScale);
+        menuPlanetPreviewHeightCompute.SetFloat("_WatershedRidgeStrength", expProfile.watershedRidgeStrength);
 
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", TectonicSurfaceTexture);
         Texture landMaskSource = gpuLandMaskTexture != null && gpuLandMaskTexture.IsCreated()
@@ -957,7 +866,7 @@ private int ComputeExperimentalTerrainProfileHash()
         int displacementRtWidthSnapshot = gpuDisplacementTexture != null ? gpuDisplacementTexture.width : -1;
         int displacementRtHeightSnapshot = gpuDisplacementTexture != null ? gpuDisplacementTexture.height : -1;
 
-        AsyncGPUReadback.Request(gpuHeightTexture, 0, req =>
+        AsyncGPUReadback.Request(gpuHeightTexture, 0, TextureFormat.RGBAHalf, req =>
         {
             if (req.hasError)
             {
@@ -965,9 +874,8 @@ private int ComputeExperimentalTerrainProfileHash()
                 return;
             }
 
-            var heightData = req.GetData<Vector4>();
-            Vector4[] heightSnapshot = heightData.ToArray();
-            int count = heightSnapshot.Length;
+            var raw = req.GetData<ushort>();
+            int count = raw.Length / 4;
             if (count <= 0) return;
             if (count != expectedCountSnapshot)
             {
@@ -979,6 +887,18 @@ private int ComputeExperimentalTerrainProfileHash()
                     $"DispatchSerial={dispatchSerialSnapshot}"
                 );
                 return;
+            }
+
+            Vector4[] heightSnapshot = new Vector4[count];
+            for (int i = 0; i < count; i++)
+            {
+                int bi = i * 4;
+                heightSnapshot[i] = new Vector4(
+                    Mathf.HalfToFloat(raw[bi + 0]),
+                    Mathf.HalfToFloat(raw[bi + 1]),
+                    Mathf.HalfToFloat(raw[bi + 2]),
+                    Mathf.HalfToFloat(raw[bi + 3])
+                );
             }
 
             float signedHeightMin = float.MaxValue;
@@ -1058,6 +978,24 @@ private int ComputeExperimentalTerrainProfileHash()
                 $"PositiveAny>0.0001={positiveAnyCoverage:F2}% PositiveWeak>0.005={positiveWeakCoverage:F2}% PositiveStrong>0.02={positiveStrongCoverage:F2}% | " +
                 $"NegativeAny<-0.0001={negativeAnyCoverage:F2}% NegativeWeak<-0.005={negativeWeakCoverage:F2}% NegativeStrong<-0.02={negativeStrongCoverage:F2}%"
             );
+
+            // If the compute was asked to emit debug inspection values, interpret channels differently
+            if (debugHeightInspect)
+            {
+                float rawMin = float.MaxValue, rawMax = float.MinValue;
+                float shapingMin = float.MaxValue, shapingMax = float.MinValue;
+                float scaledHeightMin = float.MaxValue, scaledHeightMax = float.MinValue;
+                float landMaskMinDebug = float.MaxValue, landMaskMaxDebug = float.MinValue;
+                for (int i = 0; i < count; i++)
+                {
+                    Vector4 d = heightSnapshot[i];
+                    rawMin = Mathf.Min(rawMin, d.x); rawMax = Mathf.Max(rawMax, d.x);
+                    shapingMin = Mathf.Min(shapingMin, d.y); shapingMax = Mathf.Max(shapingMax, d.y);
+                    scaledHeightMin = Mathf.Min(scaledHeightMin, d.z); scaledHeightMax = Mathf.Max(scaledHeightMax, d.z);
+                    landMaskMinDebug = Mathf.Min(landMaskMinDebug, d.w); landMaskMaxDebug = Mathf.Max(landMaskMaxDebug, d.w);
+                }
+                Debug.Log($"[WorldGenV2 Height Debug Inspect] RawNoiseMin={rawMin:F6} RawNoiseMax={rawMax:F6} | ShapingMin={shapingMin:F6} ShapingMax={shapingMax:F6} | ScaledHeightMin={scaledHeightMin:F6} ScaledHeightMax={scaledHeightMax:F6} | LandMaskMin={landMaskMinDebug:F6} LandMaskMax={landMaskMaxDebug:F6}");
+            }
 
             RenderTexture boundSurfaceTexture = gpuLandMaskTexture;
             Texture activeSurfaceTexture = TectonicSurfaceTexture;
@@ -1275,9 +1213,7 @@ private int ComputeExperimentalTerrainProfileHash()
         ReleaseRenderTexture(ref gpuFlowAccumB);
         ReleaseRenderTexture(ref gpuCoarseHydrologyMaskTexture);
         ReleaseRenderTexture(ref gpuCoarseHydrologyDepthTexture);
-        ReleaseRenderTexture(ref gpuExperimentalBasinCandidateTexture);
-        ReleaseRenderTexture(ref gpuExperimentalSelectedBasinTexture);
-        ReleaseRenderTexture(ref gpuExperimentalRiverPathTexture);
+        
     }
 
     private void ClearHydrologyTextures()
@@ -1310,11 +1246,7 @@ if (!useGpuHydrologyPreview) return;
     if (surfaceDataTexture == null || worldStructureTexture == null || gpuHeightTexture == null) return;
 
     EnsureGpuHydrologyResources();
-    if (useExperimentalBasinHydrology)
-    {
-        DispatchExperimentalBasinHydrology();
-        return;
-    }
+    
 
     int analysisWidth = Mathf.Max(32, mapWidth / 4);
     int analysisHeight = Mathf.Max(16, mapHeight / 4);
@@ -1420,400 +1352,7 @@ cs.SetFloat("_DrainageRiverMaxWidthPixels", terrainProfile.riverMaxWidthPixels);
         $"LakeDepth={terrainProfile.lakeBasinMinDepth:0.000}-{terrainProfile.lakeBasinFullDepth:0.000} " +
         $"HeightRTReady={gpuHeightTexture != null}");
 }
-    private void EnsureExperimentalBasinHydrologyResources()
-    {
-        int aw = Mathf.Max(32, mapWidth / 4);
-        int ah = Mathf.Max(16, mapHeight / 4);
-        EnsureExperimentalRt(ref gpuExperimentalBasinCandidateTexture, aw, ah, "MenuGpuExpBasinCandidates");
-        EnsureExperimentalRt(ref gpuExperimentalSelectedBasinTexture, aw, ah, "MenuGpuExpSelectedBasins");
-        EnsureExperimentalRt(ref gpuExperimentalRiverPathTexture, aw, ah, "MenuGpuExpRiverPaths");
-    }
-
-    private void EnsureExperimentalRt(ref RenderTexture rt, int w, int h, string name)
-    {
-        if (rt != null && rt.width == w && rt.height == h && rt.IsCreated()) return;
-        if (rt != null) { rt.Release(); Destroy(rt); }
-        rt = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
-        { name = name, enableRandomWrite = true, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear, useMipMap = false, autoGenerateMips = false };
-        rt.Create();
-    }
-
-    private void DispatchExperimentalBasinHydrology()
-    {
-        if (!useExperimentalSignedTerrain)
-        {
-            Debug.LogWarning("[WorldGenV2 Experimental Basin Hydrology] Experimental basin hydrology requires experimental signed terrain. Aborting.");
-            ClearHydrologyTextures();
-            return;
-        }
-
-        EnsureExperimentalBasinHydrologyResources();
-        var cs = menuPlanetPreviewHydrologyCompute;
-        int kCandidate = cs.FindKernel("BuildExperimentalBasinCandidates");
-        int kRasterLakes = cs.FindKernel("RasterizeExperimentalSelectedBasins");
-        int kClear = cs.FindKernel("ClearExperimentalHydrology");
-        int kUpsample = cs.FindKernel("UpsampleExperimentalBasinHydrology");
-        int aw = Mathf.Max(32, mapWidth / 4);
-        int ah = Mathf.Max(16, mapHeight / 4);
-        int targetLakeCount = inputs.waterwaysPreset <= 0 ? experimentalSparseLakeCount : inputs.waterwaysPreset == 1 ? experimentalStandardLakeCount : experimentalAbundantLakeCount;
-        int riverAttempts = inputs.waterwaysPreset <= 0 ? experimentalSparseRiverAttempts : inputs.waterwaysPreset == 1 ? experimentalStandardRiverAttempts : experimentalAbundantRiverAttempts;
-        float moisture = Mathf.Clamp01(inputs.moisture);
-        targetLakeCount = Mathf.RoundToInt(targetLakeCount * Mathf.Lerp(0.65f, 1.35f, moisture) * experimentalMoistureLakeMultiplier);
-        riverAttempts = Mathf.RoundToInt(riverAttempts * Mathf.Lerp(0.65f, 1.50f, moisture) * experimentalMoistureRiverMultiplier);
-        float presetScoreBias = inputs.waterwaysPreset <= 0 ? 1.15f : inputs.waterwaysPreset == 1 ? 1.0f : 0.82f;
-        cs.SetInt("_MapWidth", mapWidth);
-        cs.SetInt("_MapHeight", mapHeight);
-        cs.SetInt("_HydrologyAnalysisWidth", aw);
-        cs.SetInt("_HydrologyAnalysisHeight", ah);
-        cs.SetFloat("_Seed", inputs.seed);
-        cs.SetFloat("_Moisture", moisture);
-        cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
-        cs.SetInt("_UseExperimentalBasinHydrology", 1);
-        cs.SetInt("_ExperimentalTargetLakeCount", targetLakeCount);
-        cs.SetInt("_ExperimentalRiverAttempts", riverAttempts);
-        cs.SetFloat("_ExperimentalMinBasinScore", experimentalMinBasinScore);
-        cs.SetFloat("_ExperimentalEffectiveMinBasinScore", experimentalMinBasinScore * presetScoreBias);
-        cs.SetInt("_ExperimentalMinBasinPixelArea", experimentalMinBasinPixelArea);
-        cs.SetFloat("_ExperimentalMinBasinSeparationPixels", experimentalMinBasinSeparationPixels);
-        cs.SetFloat("_ExperimentalWetlandSpread", experimentalWetlandSpread);
-        cs.SetFloat("_ExperimentalRiverMeanderStrength", experimentalRiverMeanderStrength);
-        cs.SetFloat("_ExperimentalRiverValleyBias", experimentalRiverValleyBias);
-        cs.SetFloat("_ExperimentalLakeToCoastChance", experimentalLakeToCoastChance);
-        foreach (int k in new[] { kClear, kCandidate, kRasterLakes, kUpsample })
-        {
-            cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
-            cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
-            cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
-            cs.SetTexture(k, "_ExperimentalBasinCandidateTex", gpuExperimentalBasinCandidateTexture);
-            cs.SetTexture(k, "_ExperimentalSelectedBasinTex", gpuExperimentalSelectedBasinTexture);
-            cs.SetTexture(k, "_ExperimentalRiverPathTex", gpuExperimentalRiverPathTexture);
-            cs.SetTexture(k, "_GpuHydrologyTex", gpuHydrologyTexture);
-            cs.SetTexture(k, "_GpuHydrologyDepthTex", gpuHydrologyDepthTexture);
-            cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
-            cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
-        }
-        int gx = Mathf.CeilToInt(aw / 8f), gy = Mathf.CeilToInt(ah / 8f);
-        cs.Dispatch(kClear, gx, gy, 1);
-        cs.Dispatch(kCandidate, gx, gy, 1);
-        ApplyExperimentalBasinSelectionCpu(aw, ah, targetLakeCount, experimentalMinBasinPixelArea, experimentalMinBasinScore * presetScoreBias, experimentalMinBasinSeparationPixels);
-        BuildExperimentalRiverPathsCpu(aw, ah, riverAttempts);
-        cs.Dispatch(kRasterLakes, gx, gy, 1);
-        cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
-        float pathCoverage = ComputeExperimentalRiverCoverageCpu(aw, ah);
-        Debug.Log($"[WorldGenV2 Experimental Basin Hydrology] WaterwaysPreset={inputs.waterwaysPreset} Moisture={inputs.moisture:0.00} Analysis={aw}x{ah} TargetLakes={targetLakeCount} SelectedLakes={experimentalSelectedBasinsCache.Count} RiverAttempts={riverAttempts} ActualRiverPathCoverage={pathCoverage:0.000} MinScore={(experimentalMinBasinScore * presetScoreBias):0.000} MinSeparation={experimentalMinBasinSeparationPixels:0.0} SignedHeight={useExperimentalSignedTerrain}");
-    }
-
-    private readonly List<ExperimentalBasinCandidate> experimentalSelectedBasinsCache = new();
-
-    private void ApplyExperimentalBasinSelectionCpu(int width, int height, int targetLakeCount, int minAreaPixels, float minScore, float minSeparationPixels)
-    {
-        RenderTexture prev = RenderTexture.active;
-        var readback = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        RenderTexture.active = gpuExperimentalBasinCandidateTexture;
-        readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        readback.Apply(false, false);
-        var pixels = readback.GetPixels();
-        Destroy(readback);
-        RenderTexture.active = prev;
-
-        bool[] visited = new bool[pixels.Length];
-        var candidates = new List<ExperimentalBasinCandidate>();
-        int[] nx = { 1, -1, 0, 0 };
-        int[] ny = { 0, 0, 1, -1 };
-        for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-        {
-            int start = y * width + x;
-            if (visited[start] || pixels[start].r < minScore) continue;
-            var q = new Queue<int>();
-            q.Enqueue(start);
-            visited[start] = true;
-            int area = 0, bestIndex = start;
-            float bestScore = pixels[start].r, bestDepth = pixels[start].g;
-            while (q.Count > 0)
-            {
-                int i = q.Dequeue();
-                area++;
-                float s = pixels[i].r;
-                if (s > bestScore) { bestScore = s; bestDepth = pixels[i].g; bestIndex = i; }
-                int cx = i % width, cy = i / width;
-                for (int d = 0; d < 4; d++)
-                {
-                    int px = (cx + nx[d] + width) % width;
-                    int py = cy + ny[d];
-                    if (py < 0 || py >= height) continue;
-                    int ni = py * width + px;
-                    if (visited[ni] || pixels[ni].r < minScore) continue;
-                    visited[ni] = true;
-                    q.Enqueue(ni);
-                }
-            }
-            if (area >= minAreaPixels)
-                candidates.Add(new ExperimentalBasinCandidate { x = bestIndex % width, y = bestIndex / width, score = bestScore, depth = bestDepth });
-        }
-
-        candidates.Sort((a, b) => b.score.CompareTo(a.score));
-        experimentalSelectedBasinsCache.Clear();
-        foreach (var c in candidates)
-        {
-            if (experimentalSelectedBasinsCache.Count >= Mathf.Max(0, targetLakeCount)) break;
-            bool tooClose = false;
-            foreach (var s in experimentalSelectedBasinsCache)
-            {
-                int dx = WrappedDeltaX(c.x - s.x, width);
-                float dy = c.y - s.y;
-                float dist = Mathf.Sqrt(dx * dx + dy * dy);
-                if (dist < minSeparationPixels) { tooClose = true; break; }
-            }
-            if (!tooClose) experimentalSelectedBasinsCache.Add(c);
-        }
-
-        Debug.Log($"[Experimental Basin Selection] Candidates={candidates.Count} Selected={experimentalSelectedBasinsCache.Count}/{targetLakeCount} MinScore={minScore:0.000} Separation={minSeparationPixels:0.0} TopScore={(experimentalSelectedBasinsCache.Count > 0 ? experimentalSelectedBasinsCache[0].score : 0f):0.000} LowScore={(experimentalSelectedBasinsCache.Count > 0 ? experimentalSelectedBasinsCache[experimentalSelectedBasinsCache.Count - 1].score : 0f):0.000}");
-        if (experimentalSelectedBasinsCache.Count == 0 && candidates.Count > 0)
-            Debug.LogWarning($"[Experimental Basin Selection] Basin candidates exist but none selected; minScore={minScore:0.000}, separation={minSeparationPixels:0.0}. Likely rejected by min separation.");
-
-        var outPixels = new Color[width * height];
-        for (int i = 0; i < experimentalSelectedBasinsCache.Count; i++)
-        {
-            var s = experimentalSelectedBasinsCache[i];
-            float id01 = experimentalSelectedBasinsCache.Count > 1 ? (float)i / (experimentalSelectedBasinsCache.Count - 1) : 1f;
-            outPixels[s.y * width + s.x] = new Color(1f, Mathf.Clamp01(s.score), Mathf.Clamp01(s.depth), id01);
-        }
-        var selectedTex = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        selectedTex.SetPixels(outPixels);
-        selectedTex.Apply(false, false);
-        Graphics.Blit(selectedTex, gpuExperimentalSelectedBasinTexture);
-        Destroy(selectedTex);
-    }
-
-    private static int WrappedDeltaX(int dx, int width)
-    {
-        int half = width / 2;
-        if (dx > half) dx -= width;
-        if (dx < -half) dx += width;
-        return dx;
-    }
-
-    private void BuildExperimentalRiverPathsCpu(int width, int height, int riverAttempts)
-    {
-        int n = width * height;
-        var signedHeight = new float[n];
-        var basinPotential = new float[n];
-        var landMask = new float[n];
-
-        RenderTexture prev = RenderTexture.active;
-        var readback = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        RenderTexture.active = gpuExperimentalBasinCandidateTexture;
-        readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        readback.Apply(false, false);
-        var coarse = readback.GetPixels();
-        Destroy(readback);
-        RenderTexture.active = prev;
-
-        for (int i = 0; i < n; i++)
-        {
-            signedHeight[i] = -coarse[i].g;
-            basinPotential[i] = coarse[i].b;
-            landMask[i] = coarse[i].a;
-        }
-
-        bool IsLand(int x, int y) => landMask[y * width + x] > 0.5f;
-        bool IsCoast(int x, int y)
-        {
-            if (!IsLand(x, y)) return false;
-            for (int dy = -1; dy <= 1; dy++)
-            for (int dx = -1; dx <= 1; dx++)
-            {
-                if (dx == 0 && dy == 0) continue;
-                int ny = y + dy;
-                if (ny < 0 || ny >= height) continue;
-                int nx = (x + dx + width) % width;
-                if (!IsLand(nx, ny)) return true;
-            }
-            return false;
-        }
-
-        var coastCells = new List<Vector2Int>();
-        for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-            if (IsCoast(x, y)) coastCells.Add(new Vector2Int(x, y));
-
-        var coastDist = new float[n];
-        for (int i = 0; i < n; i++) coastDist[i] = 1e9f;
-        var q = new Queue<int>();
-        foreach (var c in coastCells)
-        {
-            int idx = c.y * width + c.x;
-            coastDist[idx] = 0f;
-            q.Enqueue(idx);
-        }
-
-        int[] ndx = { -1, 0, 1, -1, 1, -1, 0, 1 };
-        int[] ndy = { -1, -1, -1, 0, 0, 1, 1, 1 };
-        while (q.Count > 0)
-        {
-            int cur = q.Dequeue();
-            int cx = cur % width;
-            int cy = cur / width;
-            float baseDist = coastDist[cur];
-            for (int k = 0; k < 8; k++)
-            {
-                int ny = cy + ndy[k];
-                if (ny < 0 || ny >= height) continue;
-                int nx = (cx + ndx[k] + width) % width;
-                if (!IsLand(nx, ny)) continue;
-                int ni = ny * width + nx;
-                float step = (ndx[k] == 0 || ndy[k] == 0) ? 1f : 1.414f;
-                float d = baseDist + step;
-                if (d < coastDist[ni])
-                {
-                    coastDist[ni] = d;
-                    q.Enqueue(ni);
-                }
-            }
-        }
-
-        var riverMask = new float[n];
-        var riverStrength = new float[n];
-        var riverDebug = new float[n];
-        int routesToCreate = Mathf.Min(experimentalSelectedBasinsCache.Count, Mathf.Max(1, riverAttempts));
-        int createdCells = 0;
-
-        if (experimentalSelectedBasinsCache.Count > 0 && coastCells.Count == 0)
-            Debug.LogWarning("[Experimental River Routing] Selected basins exist but no coast cells were detected; skipping coast routing.");
-
-        for (int r = 0; r < routesToCreate && coastCells.Count > 0; r++)
-        {
-            var basin = experimentalSelectedBasinsCache[r];
-            int x = basin.x;
-            int y = basin.y;
-            int maxSteps = Mathf.Max(width, height) * 2;
-            var visited = new bool[n];
-            Vector2Int prevDir = Vector2Int.zero;
-            float baseStrength = Mathf.Clamp01(0.55f + basin.score * 0.45f);
-
-            for (int step = 0; step < maxSteps; step++)
-            {
-                int idx = y * width + x;
-                if (riverMask[idx] < 0.5f) createdCells++;
-                riverMask[idx] = 1f;
-                float taper = 1f - Mathf.Clamp01(step / (float)maxSteps) * 0.12f;
-                riverStrength[idx] = Mathf.Max(riverStrength[idx], baseStrength * taper);
-                riverDebug[idx] = Mathf.Max(riverDebug[idx], 1f - Mathf.Clamp01(coastDist[idx] / Mathf.Max(width, height)));
-                visited[idx] = true;
-                if (coastDist[idx] <= 0.5f) break;
-
-                float currentDist = coastDist[idx];
-                float currentHeight = signedHeight[idx];
-                float bestScore = float.MaxValue;
-                int bestNx = x, bestNy = y;
-                float bestDist = currentDist;
-                bool bestVisited = true;
-                bool hasCandidate = false;
-
-                for (int k = 0; k < 8; k++)
-                {
-                    int ny = y + ndy[k];
-                    if (ny < 0 || ny >= height) continue;
-                    int nx = (x + ndx[k] + width) % width;
-                    int ni = ny * width + nx;
-                    bool onLand = IsLand(nx, ny);
-                    if (!onLand && currentDist > 1.5f) continue;
-
-                    float cdist = onLand ? coastDist[ni] : 0f;
-                    bool wasVisited = visited[ni];
-
-                    float neighborHeight = signedHeight[ni];
-                    float uphill = Mathf.Max(0f, neighborHeight - currentHeight);
-                    float downhill = Mathf.Max(0f, currentHeight - neighborHeight);
-                    float coastCost = cdist * 10f;
-                    float uphillPenalty = uphill * 2f;
-                    float downhillBonus = downhill * 0.5f;
-                    float valley = basinPotential[ni] + Mathf.Clamp01(-neighborHeight);
-                    float valleyBonus = valley * experimentalRiverValleyBias * 0.75f;
-                    float meander = Hash01(nx, ny, inputs.seed) * experimentalRiverMeanderStrength * 0.25f;
-                    Vector2Int dir = new Vector2Int(ndx[k], ndy[k]);
-                    float turnPenalty = ComputeTurnPenalty(prevDir, dir) * 0.35f;
-                    float visitedPenalty = wasVisited ? 2.25f : 0f;
-                    float score = coastCost + uphillPenalty - downhillBonus - valleyBonus + meander + turnPenalty + visitedPenalty;
-
-                    if (!hasCandidate || score < bestScore || (Mathf.Approximately(score, bestScore) && cdist < bestDist) || (Mathf.Approximately(score, bestScore) && Mathf.Approximately(cdist, bestDist) && !wasVisited && bestVisited))
-                    {
-                        hasCandidate = true;
-                        bestScore = score;
-                        bestNx = nx;
-                        bestNy = ny;
-                        bestDist = cdist;
-                        bestVisited = wasVisited;
-                    }
-                }
-
-                if (!hasCandidate) break;
-                if (bestNx == x && bestNy == y) break;
-                prevDir = new Vector2Int(WrappedDeltaX(bestNx - x, width), bestNy - y);
-                x = bestNx;
-                y = bestNy;
-            }
-        }
-
-        var data = new Color[n];
-        for (int i = 0; i < n; i++)
-            data[i] = new Color(riverMask[i], riverStrength[i], riverDebug[i], riverMask[i] > 0f ? 1f : 0f);
-        var tex = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        tex.SetPixels(data);
-        tex.Apply(false, false);
-        Graphics.Blit(tex, gpuExperimentalRiverPathTexture);
-        Destroy(tex);
-
-        float coverage = n > 0 ? (createdCells / (float)n) * 100f : 0f;
-        Debug.Log($"[Experimental River Routing] SelectedBasins={experimentalSelectedBasinsCache.Count} RequestedRoutes={riverAttempts} CreatedCoverage={coverage:0.000}%");
-        if (experimentalSelectedBasinsCache.Count > 0 && coverage <= 0f)
-            Debug.LogWarning("[Experimental River Routing] Selected basins exist but river coverage is zero.");
-    }
-
-    private static float Hash01(int x, int y, float seed)
-    {
-        unchecked
-        {
-            int h = x * 73856093 ^ y * 19349663 ^ Mathf.RoundToInt(seed * 1000f) * 83492791;
-            h ^= h >> 13;
-            h *= 1274126177;
-            h ^= h >> 16;
-            return (h & 0x00FFFFFF) / 16777215f;
-        }
-    }
-
-    private static float WrappedDistance(int x0, int y0, int x1, int y1, int width)
-    {
-        int dx = Mathf.Abs(x0 - x1);
-        dx = Mathf.Min(dx, width - dx);
-        int dy = y0 - y1;
-        return Mathf.Sqrt(dx * dx + dy * dy);
-    }
-
-    private static float ComputeTurnPenalty(Vector2Int previousDir, Vector2Int nextDir)
-    {
-        if (previousDir == Vector2Int.zero) return 0f;
-        Vector2 a = new Vector2(previousDir.x, previousDir.y).normalized;
-        Vector2 b = new Vector2(nextDir.x, nextDir.y).normalized;
-        float dot = Vector2.Dot(a, b);
-        return Mathf.Clamp01((1f - dot) * 0.5f);
-    }
-
-    private float ComputeExperimentalRiverCoverageCpu(int width, int height)
-    {
-        RenderTexture prev = RenderTexture.active;
-        var readback = new Texture2D(width, height, TextureFormat.RGBAHalf, false, true);
-        RenderTexture.active = gpuExperimentalRiverPathTexture;
-        readback.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        readback.Apply(false, false);
-        var px = readback.GetPixels();
-        Destroy(readback);
-        RenderTexture.active = prev;
-        int hit = 0;
-        for (int i = 0; i < px.Length; i++) if (px[i].r > 0.01f) hit++;
-        return px.Length > 0 ? hit / (float)px.Length : 0f;
-    }
+    
 
     private static byte B(float v)=> (byte)Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(v)*255f),0,255);
 
