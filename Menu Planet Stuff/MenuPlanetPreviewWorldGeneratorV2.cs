@@ -90,8 +90,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [SerializeField, Range(2, 384)] private int gpuDrainageFillIterations = 192;
     [SerializeField, Range(2, 384)] private int gpuFlowAccumulationIterations = 192;
     [SerializeField, Range(0f, 5f)] private float gpuHydroRoutingJitter = 0.015f;
-    [SerializeField, Range(0.3f, 10f)] private float gpuDrainageRiverMinWidthPixels = 2.0f;
-    [SerializeField, Range(1f, 18f)] private float gpuDrainageRiverMaxWidthPixels = 6.5f;
     [SerializeField, Range(0f, 1f)] private float gpuLakeBasinMinDepth = 0.018f;
     [SerializeField, Range(0f, 1f)] private float gpuLakeBasinFullDepth = 0.065f;
     [SerializeField, Range(0f, 6f)] private float gpuLakeShorelineWarpPixels = 1.5f;
@@ -170,15 +168,18 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
 [Range(0.25f, 4f)] public float macroReliefScale;
 [Range(0.25f, 4f)] public float inlandBasinScale;
 [Range(0f, 1f)]  public float watershedRidgeStrength;
+
+[Range(1f, 8f)]  public float riverMinWidthPixels;
+[Range(1f, 12f)] public float riverMaxWidthPixels;
     }
 
     [SerializeField] private ExperimentalTerrainProfile[] experimentalTerrainProfiles =
     {
-        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.60f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.04f, mountainThreshold = 0.22f, basinCandidateBias = 1.25f, lakeBasinMinDepth = 0.012f, lakeBasinFullDepth = 0.045f, riverAccumulationThresholdSparse = 0.65f, riverAccumulationThresholdStandard = 0.52f, riverAccumulationThresholdAbundant = 0.38f, inlandBasinStrength = 0.065f, flowMinDownhillDelta = 0.002f, flowAccumulationCompression = 0.08f, macroReliefStrength = 0.05f, macroReliefScale = 0.75f, inlandBasinScale = 0.75f, watershedRidgeStrength = 0.015f },
-        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.85f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.05f, mountainThreshold = 0.20f, basinCandidateBias = 1.15f, lakeBasinMinDepth = 0.015f, lakeBasinFullDepth = 0.055f, riverAccumulationThresholdSparse = 0.62f, riverAccumulationThresholdStandard = 0.48f, riverAccumulationThresholdAbundant = 0.34f, inlandBasinStrength = 0.055f, flowMinDownhillDelta = 0.003f, flowAccumulationCompression = 0.10f, macroReliefStrength = 0.06f, macroReliefScale = 0.85f, inlandBasinScale = 0.85f, watershedRidgeStrength = 0.02f },
-        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 1.10f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.06f, mountainThreshold = 0.18f, basinCandidateBias = 1.00f, lakeBasinMinDepth = 0.018f, lakeBasinFullDepth = 0.065f, riverAccumulationThresholdSparse = 0.58f, riverAccumulationThresholdStandard = 0.45f, riverAccumulationThresholdAbundant = 0.32f, inlandBasinStrength = 0.045f, flowMinDownhillDelta = 0.004f, flowAccumulationCompression = 0.12f, macroReliefStrength = 0.07f, macroReliefScale = 1.25f, inlandBasinScale = 1.0f, watershedRidgeStrength = 0.025f },
-        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 1.45f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.07f, mountainThreshold = 0.16f, basinCandidateBias = 0.90f, lakeBasinMinDepth = 0.022f, lakeBasinFullDepth = 0.085f, riverAccumulationThresholdSparse = 0.52f, riverAccumulationThresholdStandard = 0.38f, riverAccumulationThresholdAbundant = 0.24f, inlandBasinStrength = 0.035f, flowMinDownhillDelta = 0.006f, flowAccumulationCompression = 0.16f, macroReliefStrength = 0.10f, macroReliefScale = 1.75f, inlandBasinScale = 1.25f, watershedRidgeStrength = 0.035f },
-        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 1.80f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.08f, mountainThreshold = 0.14f, basinCandidateBias = 0.75f, lakeBasinMinDepth = 0.028f, lakeBasinFullDepth = 0.12f, riverAccumulationThresholdSparse = 0.45f, riverAccumulationThresholdStandard = 0.32f, riverAccumulationThresholdAbundant = 0.18f, inlandBasinStrength = 0.025f, flowMinDownhillDelta = 0.008f, flowAccumulationCompression = 0.20f, macroReliefStrength = 0.14f, macroReliefScale = 1.75f, inlandBasinScale = 1.5f, watershedRidgeStrength = 0.05f }
+        new ExperimentalTerrainProfile { name = "Flat", heightBias = -0.03f, upwardReliefStrength = 0.60f, downwardBasinStrength = 0.16f, valleyCutStrength = 0.05f, broadNoiseAmplitude = 0.14f, midNoiseAmplitude = 0.035f, fineNoiseAmplitude = 0.008f, broadNoiseScale = 0.55f, midNoiseScale = 1.10f, fineNoiseScale = 2.00f, ridgeStrength = 0.005f, hillThreshold = 0.04f, mountainThreshold = 0.22f, basinCandidateBias = 1.25f, lakeBasinMinDepth = 0.012f, lakeBasinFullDepth = 0.045f, riverAccumulationThresholdSparse = 0.65f, riverAccumulationThresholdStandard = 0.52f, riverAccumulationThresholdAbundant = 0.38f, inlandBasinStrength = 0.065f, flowMinDownhillDelta = 0.002f, flowAccumulationCompression = 0.08f, macroReliefStrength = 0.05f, macroReliefScale = 0.75f, inlandBasinScale = 0.75f, watershedRidgeStrength = 0.015f, riverMinWidthPixels = 1.5f, riverMaxWidthPixels = 5f },
+        new ExperimentalTerrainProfile { name = "Smooth", heightBias = -0.015f, upwardReliefStrength = 0.85f, downwardBasinStrength = 0.14f, valleyCutStrength = 0.07f, broadNoiseAmplitude = 0.16f, midNoiseAmplitude = 0.055f, fineNoiseAmplitude = 0.012f, broadNoiseScale = 0.70f, midNoiseScale = 1.30f, fineNoiseScale = 2.30f, ridgeStrength = 0.015f, hillThreshold = 0.05f, mountainThreshold = 0.20f, basinCandidateBias = 1.15f, lakeBasinMinDepth = 0.015f, lakeBasinFullDepth = 0.055f, riverAccumulationThresholdSparse = 0.62f, riverAccumulationThresholdStandard = 0.48f, riverAccumulationThresholdAbundant = 0.34f, inlandBasinStrength = 0.055f, flowMinDownhillDelta = 0.003f, flowAccumulationCompression = 0.10f, macroReliefStrength = 0.06f, macroReliefScale = 0.85f, inlandBasinScale = 0.85f, watershedRidgeStrength = 0.02f, riverMinWidthPixels = 1.75f, riverMaxWidthPixels = 5.5f },
+        new ExperimentalTerrainProfile { name = "Standard", heightBias = 0.00f, upwardReliefStrength = 1.10f, downwardBasinStrength = 0.13f, valleyCutStrength = 0.10f, broadNoiseAmplitude = 0.20f, midNoiseAmplitude = 0.09f, fineNoiseAmplitude = 0.02f, broadNoiseScale = 0.90f, midNoiseScale = 1.70f, fineNoiseScale = 3.00f, ridgeStrength = 0.05f, hillThreshold = 0.06f, mountainThreshold = 0.18f, basinCandidateBias = 1.00f, lakeBasinMinDepth = 0.018f, lakeBasinFullDepth = 0.065f, riverAccumulationThresholdSparse = 0.58f, riverAccumulationThresholdStandard = 0.45f, riverAccumulationThresholdAbundant = 0.32f, inlandBasinStrength = 0.045f, flowMinDownhillDelta = 0.004f, flowAccumulationCompression = 0.12f, macroReliefStrength = 0.07f, macroReliefScale = 1.25f, inlandBasinScale = 1.0f, watershedRidgeStrength = 0.025f, riverMinWidthPixels = 2f, riverMaxWidthPixels = 6f },
+        new ExperimentalTerrainProfile { name = "Mountainous", heightBias = 0.03f, upwardReliefStrength = 1.45f, downwardBasinStrength = 0.15f, valleyCutStrength = 0.16f, broadNoiseAmplitude = 0.24f, midNoiseAmplitude = 0.14f, fineNoiseAmplitude = 0.035f, broadNoiseScale = 1.10f, midNoiseScale = 2.20f, fineNoiseScale = 4.00f, ridgeStrength = 0.14f, hillThreshold = 0.07f, mountainThreshold = 0.16f, basinCandidateBias = 0.90f, lakeBasinMinDepth = 0.022f, lakeBasinFullDepth = 0.085f, riverAccumulationThresholdSparse = 0.52f, riverAccumulationThresholdStandard = 0.38f, riverAccumulationThresholdAbundant = 0.24f, inlandBasinStrength = 0.035f, flowMinDownhillDelta = 0.006f, flowAccumulationCompression = 0.16f, macroReliefStrength = 0.10f, macroReliefScale = 1.75f, inlandBasinScale = 1.25f, watershedRidgeStrength = 0.035f, riverMinWidthPixels = 2.5f, riverMaxWidthPixels = 7f },
+        new ExperimentalTerrainProfile { name = "Alpine", heightBias = 0.05f, upwardReliefStrength = 1.80f, downwardBasinStrength = 0.18f, valleyCutStrength = 0.22f, broadNoiseAmplitude = 0.28f, midNoiseAmplitude = 0.20f, fineNoiseAmplitude = 0.05f, broadNoiseScale = 1.25f, midNoiseScale = 2.80f, fineNoiseScale = 5.00f, ridgeStrength = 0.25f, hillThreshold = 0.08f, mountainThreshold = 0.14f, basinCandidateBias = 0.75f, lakeBasinMinDepth = 0.028f, lakeBasinFullDepth = 0.12f, riverAccumulationThresholdSparse = 0.45f, riverAccumulationThresholdStandard = 0.32f, riverAccumulationThresholdAbundant = 0.18f, inlandBasinStrength = 0.025f, flowMinDownhillDelta = 0.008f, flowAccumulationCompression = 0.20f, macroReliefStrength = 0.14f, macroReliefScale = 1.75f, inlandBasinScale = 1.5f, watershedRidgeStrength = 0.05f, riverMinWidthPixels = 3f, riverMaxWidthPixels = 8f }
     };
 
 
@@ -294,8 +295,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int lastValidatedGpuDrainageFillIterations;
     private int lastValidatedGpuFlowAccumulationIterations;
     private float lastValidatedGpuHydroRoutingJitter;
-    private float lastValidatedGpuDrainageRiverMinWidthPixels;
-    private float lastValidatedGpuDrainageRiverMaxWidthPixels;
     private float lastValidatedGpuLakeBasinMinDepth;
     private float lastValidatedGpuLakeBasinFullDepth;
     private float lastValidatedGpuLakeShorelineWarpPixels;
@@ -496,8 +495,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return gpuDrainageFillIterations != lastValidatedGpuDrainageFillIterations ||
                gpuFlowAccumulationIterations != lastValidatedGpuFlowAccumulationIterations ||
                !Mathf.Approximately(gpuHydroRoutingJitter, lastValidatedGpuHydroRoutingJitter) ||
-               !Mathf.Approximately(gpuDrainageRiverMinWidthPixels, lastValidatedGpuDrainageRiverMinWidthPixels) ||
-               !Mathf.Approximately(gpuDrainageRiverMaxWidthPixels, lastValidatedGpuDrainageRiverMaxWidthPixels) ||
                !Mathf.Approximately(gpuLakeBasinMinDepth, lastValidatedGpuLakeBasinMinDepth) ||
                !Mathf.Approximately(gpuLakeBasinFullDepth, lastValidatedGpuLakeBasinFullDepth) ||
                !Mathf.Approximately(gpuLakeShorelineWarpPixels, lastValidatedGpuLakeShorelineWarpPixels) ||
@@ -529,8 +526,6 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedGpuDrainageFillIterations = gpuDrainageFillIterations;
         lastValidatedGpuFlowAccumulationIterations = gpuFlowAccumulationIterations;
         lastValidatedGpuHydroRoutingJitter = gpuHydroRoutingJitter;
-        lastValidatedGpuDrainageRiverMinWidthPixels = gpuDrainageRiverMinWidthPixels;
-        lastValidatedGpuDrainageRiverMaxWidthPixels = gpuDrainageRiverMaxWidthPixels;
         lastValidatedGpuLakeBasinMinDepth = gpuLakeBasinMinDepth;
         lastValidatedGpuLakeBasinFullDepth = gpuLakeBasinFullDepth;
         lastValidatedGpuLakeShorelineWarpPixels = gpuLakeShorelineWarpPixels;
@@ -798,6 +793,8 @@ private int ComputeExperimentalTerrainProfileHash()
                 h = h * 31 + Mathf.RoundToInt(p.inlandBasinStrength * 10000f);
                 h = h * 31 + Mathf.RoundToInt(p.inlandBasinScale * 10000f);
                 h = h * 31 + Mathf.RoundToInt(p.watershedRidgeStrength * 10000f);
+                h = h * 31 + Mathf.RoundToInt(p.riverMinWidthPixels * 100f);
+                h = h * 31 + Mathf.RoundToInt(p.riverMaxWidthPixels * 100f);
             }
         }
         return h;
@@ -1331,8 +1328,6 @@ if (!useGpuHydrologyPreview) return;
     cs.SetFloat("_Moisture", Mathf.Clamp01(inputs.moisture));
     cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
     cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
-    cs.SetFloat("_DrainageRiverMinWidthPixels", gpuDrainageRiverMinWidthPixels);
-    cs.SetFloat("_DrainageRiverMaxWidthPixels", gpuDrainageRiverMaxWidthPixels);
     cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
 
     // ================================================================
@@ -1350,6 +1345,8 @@ cs.SetFloat("_MacroReliefStrength", terrainProfile.macroReliefStrength);
 cs.SetFloat("_MacroReliefScale", terrainProfile.macroReliefScale);
 cs.SetFloat("_InlandBasinScale", terrainProfile.inlandBasinScale);
 cs.SetFloat("_WatershedRidgeStrength", terrainProfile.watershedRidgeStrength);
+cs.SetFloat("_DrainageRiverMinWidthPixels", terrainProfile.riverMinWidthPixels);
+cs.SetFloat("_DrainageRiverMaxWidthPixels", terrainProfile.riverMaxWidthPixels);
 
     // River accumulation threshold depends on waterways preset
     float riverThreshold = inputs.waterwaysPreset <= 0 ? terrainProfile.riverAccumulationThresholdSparse :
