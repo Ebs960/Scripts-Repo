@@ -87,8 +87,8 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [Header("GPU Hydrology")]
     [SerializeField] private bool useGpuHydrologyPreview = true;
     [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
-    [SerializeField, Range(32, 384)] private int gpuDrainageFillIterations = 192;
-    [SerializeField, Range(32, 384)] private int gpuFlowAccumulationIterations = 192;
+    [SerializeField, Range(2, 384)] private int gpuDrainageFillIterations = 192;
+    [SerializeField, Range(2, 384)] private int gpuFlowAccumulationIterations = 192;
     [SerializeField, Range(0f, 5f)] private float gpuHydroRoutingJitter = 0.015f;
     [SerializeField, Range(0.3f, 10f)] private float gpuDrainageRiverMinWidthPixels = 2.0f;
     [SerializeField, Range(1f, 18f)] private float gpuDrainageRiverMaxWidthPixels = 6.5f;
