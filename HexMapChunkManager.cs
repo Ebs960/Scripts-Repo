@@ -1837,7 +1837,7 @@ public class HexMapChunkManager : MonoBehaviour
         return tex;
     }
 
-    private void ApplyBiomeMaterialSettings()
+    public void ApplyBiomeMaterialSettings()
     {
         if (sharedMaterial == null) return;
 
@@ -2041,26 +2041,6 @@ public class HexMapChunkManager : MonoBehaviour
                 }
             }
             catch (System.Exception ex) { Debug.LogWarning($"[HexMapChunkManager] debugBiomeDetails error: {ex.Message}"); }
-        }
-
-        // Bind sun/light uniforms from optional LightingController so artists can tweak
-        // sun direction/color/intensity per-scene without editing the shader asset.
-        var lc = LightingController.Instance;
-        if (lc != null)
-        {
-            Vector4 sunDir = new Vector4(lc.sunDirection.x, lc.sunDirection.y, lc.sunDirection.z, 0f);
-            if (sharedMaterial != null)
-            {
-                if (sharedMaterial.HasProperty("_SunDir")) sharedMaterial.SetVector("_SunDir", sunDir);
-                if (sharedMaterial.HasProperty("_SunColor")) sharedMaterial.SetColor("_SunColor", lc.sunColor);
-                if (sharedMaterial.HasProperty("_SunIntensity")) sharedMaterial.SetFloat("_SunIntensity", lc.sunIntensity);
-            }
-            if (waterMaterial != null)
-            {
-                if (waterMaterial.HasProperty("_SunDir")) waterMaterial.SetVector("_SunDir", sunDir);
-                if (waterMaterial.HasProperty("_SunColor")) waterMaterial.SetColor("_SunColor", lc.sunColor);
-                if (waterMaterial.HasProperty("_SunIntensity")) waterMaterial.SetFloat("_SunIntensity", lc.sunIntensity);
-            }
         }
 
         ApplyIceSurfaceSettingsToMaterial(sharedMaterial);

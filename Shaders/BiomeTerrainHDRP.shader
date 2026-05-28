@@ -87,14 +87,6 @@ Shader "Custom/BiomeTerrainHDRP"
         _HexGridWidth ("Hex Grid Width (texels)", Range(0.1, 8)) = 1.0
         _HexGridFadeDistance ("Hex Grid Fade Distance", Range(0, 1000)) = 200
 
-        [Header(Lighting Fallback)]
-        _SunDir ("Sun Direction (normalized)", Vector) = (0.3, -0.8, 0.5, 0)
-        _SunColor ("Sun Color", Color) = (1, 0.95, 0.85, 1)
-        _SunIntensity ("Sun Intensity", Range(0, 5)) = 1.5
-        _AmbientSkyColor ("Ambient Sky Color", Color) = (0.5, 0.6, 0.75, 1)
-        _AmbientGroundColor ("Ambient Ground Color", Color) = (0.15, 0.12, 0.1, 1)
-        _AmbientIntensity ("Ambient Intensity", Range(0, 3)) = 0.4
-
         [Header(Tile Highlight)]
         _HighlightTileIndex ("Highlight Tile Index", Float) = -1
         _HighlightColor ("Highlight Color", Color) = (1, 1, 0, 1)
@@ -218,12 +210,6 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _TerrainFogColor;
     float _EnableOwnership;
     float _OwnershipAlpha;
-    float4 _SunDir;
-    float4 _SunColor;
-    float _SunIntensity;
-    float4 _AmbientSkyColor;
-    float4 _AmbientGroundColor;
-    float _AmbientIntensity;
     float _HighlightTileIndex;
     float4 _HighlightColor;
 
@@ -612,9 +598,13 @@ Shader "Custom/BiomeTerrainHDRP"
             #pragma multi_compile _ SHADOW_LOW SHADOW_MEDIUM SHADOW_HIGH SHADOW_VERY_HIGH
             #pragma multi_compile _ LIGHT_LAYERS
 
-            // NOTE:
-            // This shader intentionally uses its own (property-driven) lighting so it can compile
-            // without relying on HDRP lightloop internals that can change between HDRP versions.
+            #define SHADERPASS SHADERPASS_FORWARD
+            #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
+#include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderLibrary/ShaderConfig.c.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
+
+
 
             // ===================== Structures =====================
 
@@ -936,7 +926,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     mask = lerp(primary.mask, secondary.mask, blend);
                     emission = lerp(primary.emission, secondary.emission, blend);
                     biomeParams = lerp(primary.biomeParams, secondary.biomeParams, blend);
-                    float blendedHeight = lerp(primary.height, secondary.height, blend);
+                     blendedHeight = lerp(primary.height, secondary.height, blend);
                 }
                 else
                 {
@@ -945,7 +935,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     mask = primary.mask;
                     emission = primary.emission;
                     biomeParams = primary.biomeParams;
-                    float blendedHeight = primary.height;
+                     blendedHeight = primary.height;
                 }
 
                 // ==========================================================
@@ -1188,6 +1178,8 @@ Shader "Custom/BiomeTerrainHDRP"
                     albedo = lerp(albedo, ownerColor.rgb, ownerMask);
                 }
 
+
+
                 // ==========================================================
                 // TILE HIGHLIGHT
                 // ==========================================================
@@ -1202,64 +1194,30 @@ Shader "Custom/BiomeTerrainHDRP"
                     }
                 }
 
-                // ==========================================================
-                // PBR LIGHTING (property-driven, no HDRP lightloop internals)
-                // ==========================================================
+                                // 1. Build SurfaceData (albedo, normal, smoothness, metallic, AO, emission)
+SurfaceData surfaceData;
+surfaceData.albedo = albedo;
+surfaceData.normalWS = normalWS;   // already in world space
+surfaceData.perceptualRoughness = 1.0 - smoothness; // HDRP uses roughness = 1 - smoothness
+surfaceData.metallic = metallic;
+surfaceData.ambientOcclusion = ao;
+surfaceData.emission = emission;
+surfaceData.specularColor = 0;     // we let metallic drive it
+surfaceData.materialFeatures = 0;  // no special features
 
-                float3 N = normalize(normalWS);
+// 2. Build BuiltinData (required by HDRP)
+BuiltinData builtinData;
+ZERO_INITIALIZE(BuiltinData, builtinData);
+builtinData.ambientOcclusion = ao;
+// For standard opaque lit surface, most fields can be left zero or default.
 
-                // Sun direction from material property (negate so it points toward the surface)
-                float3 lightDir = -normalize(_SunDir.xyz);
-                float3 lightColor = _SunColor.rgb * _SunIntensity;
-
-                float NdotL = saturate(dot(N, lightDir));
-                float3 H = normalize(lightDir + V);
-                float NdotH = saturate(dot(N, H));
-                float NdotV = saturate(dot(N, V));
-
-                // Diffuse (Lambert)
-                float3 diffuse = albedo * (1.0 - metallic) * NdotL * lightColor;
-
-                // Specular (GGX approximation)
-                float roughness = max(1.0 - smoothness, 0.04);
-                float alpha_r = roughness * roughness;
-                float alpha2 = alpha_r * alpha_r;
-                float denom = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
-                float D = alpha2 / (PI * denom * denom);
-
-                float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-                float G_V = NdotV / (NdotV * (1.0 - k) + k);
-                float G_L = NdotL / (NdotL * (1.0 - k) + k);
-                float G = G_V * G_L;
-
-                float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
-                float3 F = F0 + (1.0 - F0) * pow(1.0 - saturate(dot(H, V)), 5.0);
-
-                float3 specular = D * G * F / max(4.0 * NdotV * NdotL, 0.001) * lightColor * NdotL;
-
-                // Ambient (hemisphere with indirect specular / environment reflection)
-                float hemiFactor = N.y * 0.5 + 0.5;
-                float3 ambientColor = lerp(_AmbientGroundColor.rgb, _AmbientSkyColor.rgb, hemiFactor);
-
-                // Diffuse ambient (Lambert): attenuated by metallic (metals have no diffuse)
-                float3 ambientDiffuse = ambientColor * _AmbientIntensity * albedo * (1.0 - metallic);
-
-                // Indirect specular (environment reflection approximation)
-                // Without a cubemap/probe, approximate by reflecting the hemisphere color
-                // along the dominant reflection direction. Smooth surfaces pick up more
-                // of the sky, making wet/glossy biomes visually distinct from rough ones.
-                float3 reflDir = reflect(-V, N);
-                float reflHemi = reflDir.y * 0.5 + 0.5;
-                float3 reflColor = lerp(_AmbientGroundColor.rgb, _AmbientSkyColor.rgb, reflHemi);
-                // Fresnel at grazing angles (Schlick)
-                float3 F_ambient = F0 + (max(float3(smoothness, smoothness, smoothness), F0) - F0) * pow(1.0 - NdotV, 5.0);
-                // Scale by smoothness squared so rough surfaces get minimal reflection
-                float3 ambientSpecular = reflColor * _AmbientIntensity * F_ambient * (smoothness * smoothness);
-
-                float3 ambient = ambientDiffuse + ambientSpecular;
-
-                // Combine with AO
-                float3 finalColor = (diffuse + specular + ambient) * ao + emission;
+// 3. Let HDRP compute lighting
+float3 V = GetWorldSpaceNormalizeViewDir(input.positionWS);
+PositionInputs posInput = GetPositionInput(input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, input.normalWS);
+LightLoopOutput lightLoopOutput;
+SurfaceData surfaceDataForLight = surfaceData;
+BuiltinData builtinDataForLight = builtinData;
+float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, posInput, V, lightLoopOutput);
 
                 // ==========================================================
                 // HEX GRID OVERLAY (simple biome-edge detection)
@@ -1538,6 +1496,12 @@ Shader "Custom/BiomeTerrainHDRP"
 
             #pragma vertex vert
             #pragma fragment frag
+
+            #define SHADERPASS SHADERPASS_DEPTHNORMALS_ONLY
+            #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderConfig.cs.hlsl"
 
             struct Attributes
             {
