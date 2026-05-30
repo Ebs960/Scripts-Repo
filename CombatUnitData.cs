@@ -247,6 +247,12 @@ public class CombatUnitData : ScriptableObject
 
     [Header("Base Stats")]
     public int baseAttack;
+    [Tooltip("Base melee attack value for this combat unit. Falls back to baseAttack if unset.")]
+    public int baseMeleeAttack;
+    [Tooltip("Base ranged attack value for this combat unit. Falls back to baseAttack if unset.")]
+    public int baseRangedAttack;
+    [Tooltip("Base city attack value for this combat unit. Falls back to baseAttack if unset.")]
+    public int baseCityAttack;
     [Tooltip("Base movement points for this combat unit (per turn). Set to 0 to opt-out of turn-based movement.)")]
     public int baseMovePoints = 0;
     public int baseDefense;

@@ -600,9 +600,9 @@ Shader "Custom/BiomeTerrainHDRP"
 
             #define SHADERPASS SHADERPASS_FORWARD
             #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
-#include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderLibrary/ShaderConfig.c.hlsl"
-#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
-#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
 
 
 
@@ -1499,9 +1499,9 @@ float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, p
 
             #define SHADERPASS SHADERPASS_DEPTHNORMALS_ONLY
             #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
-#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
-#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
-#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
 
             struct Attributes
             {

@@ -44,6 +44,9 @@ public class CultureData : ScriptableObject
     // Building availability: BuildingData.requiredCultures
     // Improvement availability: ImprovementData.requiredCultures
     public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
     public float defenseBonus;
     public float movementBonus;
     public float foodModifier;                  // Percentage modifier (e.g. 0.1 = +10%)

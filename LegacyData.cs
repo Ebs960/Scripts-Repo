@@ -26,10 +26,19 @@ public class LegacyData : ScriptableObject
 
     [Header("Stat Bonuses (while promoted)")]
     public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
     public float defenseBonus;
     public float movementBonus;
     [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
     public float attackModifier;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float meleeAttackModifier;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float rangedAttackModifier;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float cityAttackModifier;
     [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
     public float defenseModifier;
     [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]

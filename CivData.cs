@@ -50,6 +50,9 @@ public class CivData : ScriptableObject
     [Header("Preferences & Modifiers")]
     public Biome[] climatePreferences;   // Preferred biomes for starting placement
     public float attackBonus;                // % bonus to all unit attacks
+    public float meleeAttackBonus;           // % bonus to melee attacks
+    public float rangedAttackBonus;          // % bonus to ranged attacks
+    public float cityAttackBonus;            // % bonus to city attacks
     public float defenseBonus;               // % bonus to all unit defenses
     public float movementBonus;              // % bonus to movement points
     public float foodModifier;              // New

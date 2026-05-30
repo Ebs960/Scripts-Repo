@@ -822,6 +822,24 @@ public abstract class BaseUnit : MonoBehaviour
         (_equippedArmor?.attackBonus ?? 0f) +
         (_equippedMiscellaneous?.attackBonus ?? 0f);
 
+    public float EquipmentMeleeAttackBonus =>
+        (_equippedWeapon?.meleeAttackBonus ?? 0f) +
+        (_equippedShield?.meleeAttackBonus ?? 0f) +
+        (_equippedArmor?.meleeAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.meleeAttackBonus ?? 0f);
+
+    public float EquipmentRangedAttackBonus =>
+        (_equippedWeapon?.rangedAttackBonus ?? 0f) +
+        (_equippedShield?.rangedAttackBonus ?? 0f) +
+        (_equippedArmor?.rangedAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.rangedAttackBonus ?? 0f);
+
+    public float EquipmentCityAttackBonus =>
+        (_equippedWeapon?.cityAttackBonus ?? 0f) +
+        (_equippedShield?.cityAttackBonus ?? 0f) +
+        (_equippedArmor?.cityAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.cityAttackBonus ?? 0f);
+
     public float EquipmentDefenseBonus =>
         (_equippedWeapon?.defenseBonus ?? 0f) +
         (_equippedShield?.defenseBonus ?? 0f) +
@@ -1033,6 +1051,14 @@ public abstract class BaseUnit : MonoBehaviour
     #endregion
 
     #region Current Stats (virtual - can be overridden for additional bonuses)
+
+    public virtual int BaseMeleeAttack => BaseAttack;
+    public virtual int BaseRangedAttack => BaseAttack;
+    public virtual int BaseCityAttack => BaseAttack;
+
+    public virtual int CurrentMeleeAttack => CurrentAttack;
+    public virtual int CurrentRangedAttack => CurrentAttack;
+    public virtual int CurrentCityAttack => CurrentAttack;
 
     public virtual int CurrentAttack
     {

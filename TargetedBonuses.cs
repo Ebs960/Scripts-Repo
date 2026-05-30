@@ -84,6 +84,9 @@ public class UnitStatBonus
 
     [Header("Additive (flat)")]
     public int attackAdd;
+    public int meleeAttackAdd;
+    public int rangedAttackAdd;
+    public int cityAttackAdd;
     public int defenseAdd;
     public int healthAdd;
     public int rangeAdd;
@@ -91,6 +94,9 @@ public class UnitStatBonus
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float attackPct;
+    public float meleeAttackPct;
+    public float rangedAttackPct;
+    public float cityAttackPct;
     public float defensePct;
     public float healthPct;
     public float rangePct;
@@ -173,6 +179,9 @@ public class WorkerUnitStatBonus
 
     [Header("Additive (flat)")]
     public int attackAdd;
+    public int meleeAttackAdd;
+    public int rangedAttackAdd;
+    public int cityAttackAdd;
     public int defenseAdd;
     public int workPointsAdd;
     public int movePointsAdd;
@@ -182,6 +191,9 @@ public class WorkerUnitStatBonus
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float attackPct;
+    public float meleeAttackPct;
+    public float rangedAttackPct;
+    public float cityAttackPct;
     public float defensePct;
     public float workPointsPct;
     public float movePointsPct;
@@ -241,6 +253,9 @@ public class EquipmentStatBonus
 
     [Header("Additive (flat)")]
     public int attackAdd;
+    public int meleeAttackAdd;
+    public int rangedAttackAdd;
+    public int cityAttackAdd;
     public int defenseAdd;
     public int healthAdd;
     public int rangeAdd;
@@ -248,6 +263,9 @@ public class EquipmentStatBonus
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float attackPct;
+    public float meleeAttackPct;
+    public float rangedAttackPct;
+    public float cityAttackPct;
     public float defensePct;
     public float healthPct;
     public float rangePct;

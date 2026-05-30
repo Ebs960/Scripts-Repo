@@ -33,6 +33,12 @@ public class BeliefData : ScriptableObject
     public float productionRateModifier;
 
     // Adding percentage-based yield modifiers for consistency
+    [Header("Combat Modifiers")]
+    public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
+
     [Header("Percentage Yield Modifiers")]
     public float foodModifier;          // New
     public float productionModifier;    // New

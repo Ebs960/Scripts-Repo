@@ -9,6 +9,9 @@ public class CombatUnit : BaseUnit
 {
     [Header("Stats (Override Data Asset)")]
     [SerializeField] private int attack = 0;
+    [SerializeField] private int meleeAttack = 0;
+    [SerializeField] private int rangedAttack = 0;
+    [SerializeField] private int cityAttack = 0;
     [SerializeField] private int defense = 0;
     [SerializeField] private int health = 0; 
     [SerializeField] private float range = 0;
@@ -28,6 +31,9 @@ public class CombatUnit : BaseUnit
     public override string UnitName => data?.unitName ?? "Unknown";
     
     public override int BaseAttack => useOverrideStats && attack > 0 ? attack : (data?.baseAttack ?? 0);
+    public override int BaseMeleeAttack => useOverrideStats && meleeAttack > 0 ? meleeAttack : (data?.baseMeleeAttack ?? data?.baseAttack ?? 0);
+    public override int BaseRangedAttack => useOverrideStats && rangedAttack > 0 ? rangedAttack : (data?.baseRangedAttack ?? data?.baseAttack ?? 0);
+    public override int BaseCityAttack => useOverrideStats && cityAttack > 0 ? cityAttack : (data?.baseCityAttack ?? data?.baseAttack ?? 0);
     public override int BaseDefense => useOverrideStats && defense > 0 ? defense : (data?.baseDefense ?? 0);
     public override int BaseHealth => useOverrideStats && health > 0 ? health : (data?.baseHealth ?? 0);
     public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);
@@ -369,8 +375,8 @@ public class CombatUnit : BaseUnit
 
     // Combined stats - UPDATED to include all ability modifiers
     // Local aggregation structs
-    private struct UnitAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
-    private struct EquipAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
+    private struct UnitAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
+    private struct EquipAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
 
     private static bool MatchesRequirement(BoolRequirement requirement, bool value)
     {
@@ -458,9 +464,9 @@ public class CombatUnit : BaseUnit
                 if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
                     continue;
 
-                a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
                 a.rangeAdd += b.rangeAdd;
-                a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
                 a.rangePct += b.rangePct;
             }
         }
@@ -512,9 +518,9 @@ public class CombatUnit : BaseUnit
                 if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     continue;
 
-                a.attackAdd += b.attackAdd;
+                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd;
                 a.defenseAdd += b.defenseAdd;
-                a.attackPct += b.attackPct;
+                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct;
                 a.defensePct += b.defensePct;
             }
         }
@@ -571,6 +577,50 @@ public class CombatUnit : BaseUnit
         return unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
     }
 
+    public int GetSituationalAttackAddAgainst(BaseUnit target, AttackType attackType)
+    {
+        if (owner == null || data == null || target == null) return 0;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                total += unitBonuses.meleeAttackAdd + equipmentBonuses.meleeAttackAdd;
+                break;
+            case AttackType.Ranged:
+                total += unitBonuses.rangedAttackAdd + equipmentBonuses.rangedAttackAdd;
+                break;
+            case AttackType.City:
+                total += unitBonuses.cityAttackAdd + equipmentBonuses.cityAttackAdd;
+                break;
+        }
+        return Mathf.RoundToInt(total);
+    }
+
+    public float GetSituationalAttackPctAgainst(BaseUnit target, AttackType attackType)
+    {
+        if (owner == null || data == null || target == null) return 0f;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                total += unitBonuses.meleeAttackPct + equipmentBonuses.meleeAttackPct;
+                break;
+            case AttackType.Ranged:
+                total += unitBonuses.rangedAttackPct + equipmentBonuses.rangedAttackPct;
+                break;
+            case AttackType.City:
+                total += unitBonuses.cityAttackPct + equipmentBonuses.cityAttackPct;
+                break;
+        }
+        return total;
+    }
+
     public override int GetSituationalDefenseAddAgainst(BaseUnit attacker)
     {
         if (owner == null || data == null || attacker == null) return 0;
@@ -602,8 +652,8 @@ public class CombatUnit : BaseUnit
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
-                            a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
-                            a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
                         }
                         a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
@@ -620,8 +670,8 @@ public class CombatUnit : BaseUnit
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
-                            a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
-                            a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
                         }
                         a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
@@ -644,8 +694,8 @@ public class CombatUnit : BaseUnit
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
                     }
             }
         if (civ.researchedCultures != null)
@@ -657,8 +707,8 @@ public class CombatUnit : BaseUnit
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
-                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd;
-                        a.attackPct += b.attackPct; a.defensePct += b.defensePct;
+                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
                     }
             }
         return a;
@@ -674,27 +724,174 @@ public class CombatUnit : BaseUnit
         {
             if (it == null) continue;
             var e = AggregateEquipBonusesLocal(civ, it);
-            total.attackAdd += e.attackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
+            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
             total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
-            total.attackPct += e.attackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
+            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
             total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
         }
         return total;
     }
 
+    // Sum equipment-targeted bonuses across all currently equipped items (opponent-specific)
     private EquipAgg AggregateAllEquippedTargetedBonusesLocal(Civilization civ, BaseUnit opponent)
     {
         EquipAgg total = new EquipAgg();
         if (civ == null || opponent == null) return total;
-        EquipmentData[] items = { equippedWeapon, equippedProjectileWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
+        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
         foreach (var it in items)
         {
             if (it == null) continue;
             var e = AggregateTargetedEquipBonuses(civ, it, opponent);
-            total.attackAdd += e.attackAdd; total.defenseAdd += e.defenseAdd;
-            total.attackPct += e.attackPct; total.defensePct += e.defensePct;
+            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
+            total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
+            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
+            total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
         }
         return total;
+    }
+
+    public enum AttackType { Generic, Melee, Ranged, City }
+
+    private float ApplyTypeSpecificAttackBonuses(float valF, AttackType attackType)
+    {
+        if (owner != null && data != null)
+        {
+            var u = AggregateUnitBonusesLocal(owner, data);
+            float attackAdd = u.attackAdd;
+            float attackPct = u.attackPct;
+            switch (attackType)
+            {
+                case AttackType.Melee:
+                    attackAdd += u.meleeAttackAdd;
+                    attackPct += u.meleeAttackPct;
+                    break;
+                case AttackType.Ranged:
+                    attackAdd += u.rangedAttackAdd;
+                    attackPct += u.rangedAttackPct;
+                    break;
+                case AttackType.City:
+                    attackAdd += u.cityAttackAdd;
+                    attackPct += u.cityAttackPct;
+                    break;
+            }
+            valF = (valF + attackAdd) * (1f + attackPct);
+        }
+
+        if (owner != null)
+        {
+            var e = AggregateAllEquippedBonusesLocal(owner);
+            float attackAdd = e.attackAdd;
+            float attackPct = e.attackPct;
+            switch (attackType)
+            {
+                case AttackType.Melee:
+                    attackAdd += e.meleeAttackAdd;
+                    attackPct += e.meleeAttackPct;
+                    break;
+                case AttackType.Ranged:
+                    attackAdd += e.rangedAttackAdd;
+                    attackPct += e.rangedAttackPct;
+                    break;
+                case AttackType.City:
+                    attackAdd += e.cityAttackAdd;
+                    attackPct += e.cityAttackPct;
+                    break;
+            }
+            valF = (valF + attackAdd) * (1f + attackPct);
+        }
+
+        return valF;
+    }
+
+    private float AddTypedEquipmentAttackBonus(float valF, AttackType attackType)
+    {
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                return valF + EquipmentMeleeAttackBonus;
+            case AttackType.Ranged:
+                return valF + EquipmentRangedAttackBonus;
+            case AttackType.City:
+                return valF + EquipmentCityAttackBonus;
+            default:
+                return valF;
+        }
+    }
+
+    private float ApplyOwnerAttackBonuses(float valF, AttackType attackType)
+    {
+        if (owner == null)
+            return valF;
+
+        float attackPct = owner.attackBonus;
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                attackPct += owner.meleeAttackBonus;
+                break;
+            case AttackType.Ranged:
+                attackPct += owner.rangedAttackBonus;
+                break;
+            case AttackType.City:
+                attackPct += owner.cityAttackBonus;
+                break;
+        }
+
+        return valF * (1f + attackPct);
+    }
+
+    private float GetBaseAttackFloat(AttackType attackType)
+    {
+        float baseValue = attackType switch
+        {
+            AttackType.Melee => BaseMeleeAttack,
+            AttackType.Ranged => BaseRangedAttack,
+            AttackType.City => BaseCityAttack,
+            _ => BaseAttack,
+        };
+
+        float valF = baseValue + EquipmentAttackBonus + GetAbilityAttackModifier();
+        valF = AddTypedEquipmentAttackBonus(valF, attackType);
+        return valF;
+    }
+
+    public override int CurrentMeleeAttack
+    {
+        get
+        {
+            float valF = GetBaseAttackFloat(AttackType.Melee);
+            valF = ApplyTypeSpecificAttackBonuses(valF, AttackType.Melee);
+            valF = ApplyOwnerAttackBonuses(valF, AttackType.Melee);
+            valF *= FatigueMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
+            return Mathf.RoundToInt(valF);
+        }
+    }
+
+    public override int CurrentRangedAttack
+    {
+        get
+        {
+            float valF = GetBaseAttackFloat(AttackType.Ranged);
+            valF = ApplyTypeSpecificAttackBonuses(valF, AttackType.Ranged);
+            valF = ApplyOwnerAttackBonuses(valF, AttackType.Ranged);
+            valF *= FatigueMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
+            return Mathf.RoundToInt(valF);
+        }
+    }
+
+    public override int CurrentCityAttack
+    {
+        get
+        {
+            float valF = GetBaseAttackFloat(AttackType.City);
+            valF = ApplyTypeSpecificAttackBonuses(valF, AttackType.City);
+            valF = ApplyOwnerAttackBonuses(valF, AttackType.City);
+            valF *= FatigueMultiplier;
+            valF = ApplyResourceUpkeepToStat(valF);
+            return Mathf.RoundToInt(valF);
+        }
     }
 
     public override int CurrentAttack
@@ -713,6 +910,8 @@ public class CombatUnit : BaseUnit
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.attackAdd) * (1f + e.attackPct);
             }
+
+            valF = ApplyOwnerAttackBonuses(valF, AttackType.Generic);
 
             // Fatigue scaling
             valF *= FatigueMultiplier;
@@ -1008,8 +1207,9 @@ public class CombatUnit : BaseUnit
         // Damage calculation using floats and per-target equipment modifiers
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target);
 
-        float attackerValue = GetBaseAttackFloat();
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
+        AttackType attackType = activeWeapon != null && activeWeapon.projectileData != null ? AttackType.Ranged : AttackType.Melee;
+        float attackerValue = GetBaseAttackFloat(attackType);
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, attackType)) * (1f + GetSituationalAttackPctAgainst(target, attackType));
         float defenderValue = target.GetBaseDefenseFloat();
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
 
@@ -1106,8 +1306,9 @@ public class CombatUnit : BaseUnit
         // Combat units fight at advantage against workers (+2 bonus vs non-combatants)
         int combatBonus = 2;
         
-        float attackerValue = GetBaseAttackFloat() + combatBonus;
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
+        AttackType attackType = isRangedAttack ? AttackType.Ranged : AttackType.Melee;
+        float attackerValue = GetBaseAttackFloat(attackType) + combatBonus;
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, attackType)) * (1f + GetSituationalAttackPctAgainst(target, attackType));
         float defenderValue = target.CurrentDefense;
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
         
@@ -1237,9 +1438,9 @@ public class CombatUnit : BaseUnit
         }
 
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(attacker);
-
-        float attackerValue = GetBaseAttackFloat();
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker)) * (1f + GetSituationalAttackPctAgainst(attacker));
+        AttackType attackType = AttackType.Melee;
+        float attackerValue = GetBaseAttackFloat(attackType);
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker, attackType)) * (1f + GetSituationalAttackPctAgainst(attacker, attackType));
         float defenderValue = attacker.GetBaseDefenseFloat();
         defenderValue = (defenderValue + attacker.GetSituationalDefenseAddAgainst(this)) * (1f + attacker.GetSituationalDefensePctAgainst(this));
 

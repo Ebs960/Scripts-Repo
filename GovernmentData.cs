@@ -19,6 +19,9 @@ public class GovernmentData : ScriptableObject
     // REMOVED: unlocksPolicies
     // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
     public float defenseBonus;
     public float movementBonus;
     public float foodModifier;          // New

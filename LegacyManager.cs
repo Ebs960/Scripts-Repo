@@ -132,12 +132,18 @@ public class LegacyManager : MonoBehaviour
     {
         // Flat/legacy bonuses (backwards-compatible)
         civ.attackBonus += legacy.attackBonus;
+        civ.meleeAttackBonus += legacy.meleeAttackBonus;
+        civ.rangedAttackBonus += legacy.rangedAttackBonus;
+        civ.cityAttackBonus += legacy.cityAttackBonus;
         civ.defenseBonus += legacy.defenseBonus;
         civ.movementBonus += legacy.movementBonus;
         // Percentage-style modifiers: legacy fields are fractional (0.1 = +10%).
         // Convert to the existing civ attack/defense/movement scale by multiplying by 100 so
         // that inspector/tooltip displays (which expect percent-like numbers) remain meaningful.
         civ.attackBonus += legacy.attackModifier * 100f;
+        civ.meleeAttackBonus += legacy.meleeAttackModifier * 100f;
+        civ.rangedAttackBonus += legacy.rangedAttackModifier * 100f;
+        civ.cityAttackBonus += legacy.cityAttackModifier * 100f;
         civ.defenseBonus += legacy.defenseModifier * 100f;
         civ.movementBonus += legacy.movementModifier * 100f;
         civ.foodModifier += legacy.foodModifier;
@@ -152,10 +158,16 @@ public class LegacyManager : MonoBehaviour
     {
         // Remove flat/legacy bonuses
         civ.attackBonus -= legacy.attackBonus;
+        civ.meleeAttackBonus -= legacy.meleeAttackBonus;
+        civ.rangedAttackBonus -= legacy.rangedAttackBonus;
+        civ.cityAttackBonus -= legacy.cityAttackBonus;
         civ.defenseBonus -= legacy.defenseBonus;
         civ.movementBonus -= legacy.movementBonus;
         // Remove percentage-style modifiers (converted the same way as when applied)
         civ.attackBonus -= legacy.attackModifier * 100f;
+        civ.meleeAttackBonus -= legacy.meleeAttackModifier * 100f;
+        civ.rangedAttackBonus -= legacy.rangedAttackModifier * 100f;
+        civ.cityAttackBonus -= legacy.cityAttackModifier * 100f;
         civ.defenseBonus -= legacy.defenseModifier * 100f;
         civ.movementBonus -= legacy.movementModifier * 100f;
         civ.foodModifier -= legacy.foodModifier;

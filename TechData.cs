@@ -87,6 +87,9 @@ public class TechData : ScriptableObject
     [Tooltip("Whether this technology unlocks pantheon founding and religion mechanics")]
     public bool unlocksReligion;
     public float attackBonus;                   // e.g. +10% attack
+    public float meleeAttackBonus;              // e.g. +10% melee attack
+    public float rangedAttackBonus;             // e.g. +10% ranged attack
+    public float cityAttackBonus;               // e.g. +10% city attack
     public float defenseBonus;                  // e.g. +10% defense
     public float movementBonus;                 // e.g. +1 move point
     public float foodModifier;                  // Percentage modifier (e.g. 0.1 = +10%)

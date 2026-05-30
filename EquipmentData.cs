@@ -88,6 +88,12 @@ public class EquipmentData : ScriptableObject
     [Header("Stat Bonuses")]
     [Tooltip("Flat attack bonus provided by this equipment (can be fractional)")]
     public float attackBonus;
+    [Tooltip("Flat melee attack bonus provided by this equipment (can be fractional)")]
+    public float meleeAttackBonus;
+    [Tooltip("Flat ranged attack bonus provided by this equipment (can be fractional)")]
+    public float rangedAttackBonus;
+    [Tooltip("Flat city attack bonus provided by this equipment (can be fractional)")]
+    public float cityAttackBonus;
     [Tooltip("Flat defense bonus provided by this equipment (can be fractional)")]
     public float defenseBonus;
     [Tooltip("Flat health bonus provided by this equipment (can be fractional)")]

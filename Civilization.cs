@@ -455,6 +455,9 @@ public class Civilization : MonoBehaviour
 
     [Header("Modifiers")]
     public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
     public float defenseBonus;
     public float movementBonus;
     // Specific yield modifiers
@@ -1322,6 +1325,9 @@ public class Civilization : MonoBehaviour
 
         // Apply leader-specific modifiers
         attackBonus += leader.militaryStrengthModifier;
+        meleeAttackBonus += leader.meleeAttackBonus;
+        rangedAttackBonus += leader.rangedAttackBonus;
+        cityAttackBonus += leader.cityAttackBonus;
         goldModifier += leader.goldModifier;
         scienceModifier += leader.scienceModifier;
         productionModifier += leader.productionModifier;
@@ -2121,6 +2127,9 @@ public class Civilization : MonoBehaviour
     private void RecalculateCivilizationModifiers()
     {
         attackBonus = civData != null ? civData.attackBonus : 0f;
+        meleeAttackBonus = civData != null ? civData.meleeAttackBonus : 0f;
+        rangedAttackBonus = civData != null ? civData.rangedAttackBonus : 0f;
+        cityAttackBonus = civData != null ? civData.cityAttackBonus : 0f;
         defenseBonus = civData != null ? civData.defenseBonus : 0f;
         movementBonus = civData != null ? civData.movementBonus : 0f;
         foodModifier = civData != null ? civData.foodModifier : 0f;
@@ -2140,6 +2149,9 @@ public class Civilization : MonoBehaviour
         foreach (var bonuses in EnumeratePantheonBonuses())
         {
             attackBonus += bonuses.attackBonus;
+            meleeAttackBonus += bonuses.meleeAttackBonus;
+            rangedAttackBonus += bonuses.rangedAttackBonus;
+            cityAttackBonus += bonuses.cityAttackBonus;
             defenseBonus += bonuses.defenseBonus;
             movementBonus += bonuses.movementBonus;
             foodModifier += bonuses.foodModifier;
@@ -2158,6 +2170,10 @@ public class Civilization : MonoBehaviour
         {
             if (b == null) continue;
             if (!IsBeliefSeasonActive(b)) continue;
+            attackBonus += b.attackBonus;
+            meleeAttackBonus += b.meleeAttackBonus;
+            rangedAttackBonus += b.rangedAttackBonus;
+            cityAttackBonus += b.cityAttackBonus;
             foodModifier += b.foodModifier;
             productionModifier += b.productionModifier;
             goldModifier += b.goldModifier;
@@ -2786,6 +2802,9 @@ public class Civilization : MonoBehaviour
         
         // Apply civilization bonuses from tech
         attackBonus += tech.attackBonus;
+        meleeAttackBonus += tech.meleeAttackBonus;
+        rangedAttackBonus += tech.rangedAttackBonus;
+        cityAttackBonus += tech.cityAttackBonus;
         defenseBonus += tech.defenseBonus;
         movementBonus += tech.movementBonus;
         foodModifier += tech.foodModifier;
@@ -2868,6 +2887,9 @@ public class Civilization : MonoBehaviour
     private void ApplyCultureBonuses(CultureData cult)
     {
         attackBonus   += cult.attackBonus;
+        meleeAttackBonus += cult.meleeAttackBonus;
+        rangedAttackBonus += cult.rangedAttackBonus;
+        cityAttackBonus += cult.cityAttackBonus;
         defenseBonus  += cult.defenseBonus;
         movementBonus += cult.movementBonus;
         foodModifier += cult.foodModifier;
@@ -3094,6 +3116,9 @@ public class Civilization : MonoBehaviour
     {
         if (policy == null) return;
         attackBonus += policy.attackBonus;
+        meleeAttackBonus += policy.meleeAttackBonus;
+        rangedAttackBonus += policy.rangedAttackBonus;
+        cityAttackBonus += policy.cityAttackBonus;
         defenseBonus += policy.defenseBonus;
         movementBonus += policy.movementBonus;
         foodModifier += policy.foodModifier;
@@ -3125,6 +3150,9 @@ public class Civilization : MonoBehaviour
     {
         if (policy == null) return;
         attackBonus -= policy.attackBonus;
+        meleeAttackBonus -= policy.meleeAttackBonus;
+        rangedAttackBonus -= policy.rangedAttackBonus;
+        cityAttackBonus -= policy.cityAttackBonus;
         defenseBonus -= policy.defenseBonus;
         movementBonus -= policy.movementBonus;
         foodModifier -= policy.foodModifier;
@@ -3167,6 +3195,9 @@ public class Civilization : MonoBehaviour
     {
         if (gov == null) return;
         attackBonus += gov.attackBonus;
+        meleeAttackBonus += gov.meleeAttackBonus;
+        rangedAttackBonus += gov.rangedAttackBonus;
+        cityAttackBonus += gov.cityAttackBonus;
         defenseBonus += gov.defenseBonus;
         movementBonus += gov.movementBonus;
         foodModifier += gov.foodModifier;
@@ -3182,6 +3213,9 @@ public class Civilization : MonoBehaviour
     {
         if (gov == null) return;
         attackBonus -= gov.attackBonus;
+        meleeAttackBonus -= gov.meleeAttackBonus;
+        rangedAttackBonus -= gov.rangedAttackBonus;
+        cityAttackBonus -= gov.cityAttackBonus;
         defenseBonus -= gov.defenseBonus;
         movementBonus -= gov.movementBonus;
         foodModifier -= gov.foodModifier;
@@ -5289,6 +5323,9 @@ return true;
         public float cultureModifier;
         public float faithModifier;
         public float attackBonus;
+        public float meleeAttackBonus;
+        public float rangedAttackBonus;
+        public float cityAttackBonus;
         public float defenseBonus;
         public float movementBonus;
 
@@ -5320,6 +5357,9 @@ return true;
             result.cultureModifier += tech.cultureModifier;
             result.faithModifier += tech.faithModifier;
             result.attackBonus += tech.attackBonus;
+            result.meleeAttackBonus += tech.meleeAttackBonus;
+            result.rangedAttackBonus += tech.rangedAttackBonus;
+            result.cityAttackBonus += tech.cityAttackBonus;
             result.defenseBonus += tech.defenseBonus;
             result.movementBonus += tech.movementBonus;
 
@@ -5360,6 +5400,9 @@ return true;
             result.cultureModifier += culture.cultureModifier;
             result.faithModifier += culture.faithModifier;
             result.attackBonus += culture.attackBonus;
+            result.meleeAttackBonus += culture.meleeAttackBonus;
+            result.rangedAttackBonus += culture.rangedAttackBonus;
+            result.cityAttackBonus += culture.cityAttackBonus;
             result.defenseBonus += culture.defenseBonus;
             result.movementBonus += culture.movementBonus;
 
@@ -5402,6 +5445,9 @@ return true;
         result.cultureModifier = bonuses1.cultureModifier + bonuses2.cultureModifier;
         result.faithModifier = bonuses1.faithModifier + bonuses2.faithModifier;
         result.attackBonus = bonuses1.attackBonus + bonuses2.attackBonus;
+        result.meleeAttackBonus = bonuses1.meleeAttackBonus + bonuses2.meleeAttackBonus;
+        result.rangedAttackBonus = bonuses1.rangedAttackBonus + bonuses2.rangedAttackBonus;
+        result.cityAttackBonus = bonuses1.cityAttackBonus + bonuses2.cityAttackBonus;
         result.defenseBonus = bonuses1.defenseBonus + bonuses2.defenseBonus;
         result.movementBonus = bonuses1.movementBonus + bonuses2.movementBonus;
 

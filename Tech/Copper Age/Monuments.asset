@@ -19,7 +19,7 @@ MonoBehaviour:
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 60
+  scienceCost: 65
   requiredTechnologies:
   - {fileID: 11400000, guid: d734e90d29c111e46a2779c15f77f4a1, type: 2}
   requiredCultures: []
@@ -53,10 +53,18 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  enablesHerding: 0
+  preventsMosquitoDamage: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
+  unlocksUnitStacking: 0
+  unitStackSizeGranted: 2

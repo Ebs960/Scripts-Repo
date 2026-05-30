@@ -77,7 +77,10 @@ public class LeaderData : ScriptableObject
     public float foodModifier = 0f;            // Percentage boost to food output
     public float cultureModifier = 0f;         // Percentage boost to culture output
     public float faithModifier = 0f;           // Percentage boost to faith output
-    public float militaryStrengthModifier = 0f; // Percentage boost to military units
+    public float militaryStrengthModifier = 0f; // Percentage boost to all military attacks
+    public float meleeAttackBonus = 0f;        // Percentage boost to melee attacks
+    public float rangedAttackBonus = 0f;       // Percentage boost to ranged attacks
+    public float cityAttackBonus = 0f;         // Percentage boost to city attacks
     [Tooltip("Per-herd per-turn yield bonuses granted by this leader (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
     

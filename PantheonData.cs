@@ -19,6 +19,9 @@ public class PantheonBonuses
 
     [Header("Civilization Modifiers")]
     public float attackBonus;
+    public float meleeAttackBonus;
+    public float rangedAttackBonus;
+    public float cityAttackBonus;
     public float defenseBonus;
     public float movementBonus;
     public float foodModifier;
