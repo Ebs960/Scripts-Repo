@@ -8,7 +8,7 @@ using GameCombat;
 public class CombatUnit : BaseUnit
 {
     [Header("Stats (Override Data Asset)")]
-    [SerializeField] private int attack = 0;
+    [HideInInspector][SerializeField] private int attack = 0; // legacy generic fallback
     [SerializeField] private int meleeAttack = 0;
     [SerializeField] private int rangedAttack = 0;
     [SerializeField] private int cityAttack = 0;
@@ -31,9 +31,9 @@ public class CombatUnit : BaseUnit
     public override string UnitName => data?.unitName ?? "Unknown";
     
     public override int BaseAttack => useOverrideStats && attack > 0 ? attack : (data?.baseAttack ?? 0);
-    public override int BaseMeleeAttack => useOverrideStats && meleeAttack > 0 ? meleeAttack : (data?.baseMeleeAttack ?? data?.baseAttack ?? 0);
-    public override int BaseRangedAttack => useOverrideStats && rangedAttack > 0 ? rangedAttack : (data?.baseRangedAttack ?? data?.baseAttack ?? 0);
-    public override int BaseCityAttack => useOverrideStats && cityAttack > 0 ? cityAttack : (data?.baseCityAttack ?? data?.baseAttack ?? 0);
+    public override int BaseMeleeAttack => useOverrideStats && meleeAttack > 0 ? meleeAttack : (data?.baseMeleeAttack ?? 0);
+    public override int BaseRangedAttack => useOverrideStats && rangedAttack > 0 ? rangedAttack : (data?.baseRangedAttack ?? 0);
+    public override int BaseCityAttack => useOverrideStats && cityAttack > 0 ? cityAttack : (data?.baseCityAttack ?? 0);
     public override int BaseDefense => useOverrideStats && defense > 0 ? defense : (data?.baseDefense ?? 0);
     public override int BaseHealth => useOverrideStats && health > 0 ? health : (data?.baseHealth ?? 0);
     public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);

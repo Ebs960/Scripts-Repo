@@ -246,12 +246,12 @@ public class CombatUnitData : ScriptableObject
     public int workerWorkCost = 40;
 
     [Header("Base Stats")]
-    public int baseAttack;
-    [Tooltip("Base melee attack value for this combat unit. Falls back to baseAttack if unset.")]
+    [HideInInspector] public int baseAttack; // legacy generic fallback value
+    [Tooltip("Base melee attack value for this combat unit.")]
     public int baseMeleeAttack;
-    [Tooltip("Base ranged attack value for this combat unit. Falls back to baseAttack if unset.")]
+    [Tooltip("Base ranged attack value for this combat unit.")]
     public int baseRangedAttack;
-    [Tooltip("Base city attack value for this combat unit. Falls back to baseAttack if unset.")]
+    [Tooltip("Base city attack value for this combat unit.")]
     public int baseCityAttack;
     [Tooltip("Base movement points for this combat unit (per turn). Set to 0 to opt-out of turn-based movement.)")]
     public int baseMovePoints = 0;

@@ -182,7 +182,7 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D(_OwnershipOverlay);
     TEXTURE2D(_SliceToBiomeMap);
     TEXTURE2D(_DetailAlbedoMap);     SAMPLER(sampler_DetailAlbedoMap);
-    TEXTURE2D(_DetailNormalMap);
+    TEXTURE2D(_DetailNormalMap);     SAMPLER(sampler_DetailNormalMap);
 
     // ===================== Uniforms =====================
 
@@ -547,19 +547,6 @@ Shader "Custom/BiomeTerrainHDRP"
         return normalize(float3(-dhdx, 1.0, -dhdz));
     }
 
-    // Distance-adaptive tessellation factor
-    float CalcTessellationFactor(float3 positionWS)
-    {
-        // HDRP often uses camera-relative rendering for "world space" positions.
-        // For world-anchored texturing / distances we must operate in absolute WS,
-        // otherwise textures appear to "swim" as the camera moves.
-        float3 absPosWS = GetAbsolutePositionWS(positionWS);
-        float dist = distance(absPosWS, _WorldSpaceCameraPos);
-        float f = 1.0 - saturate((dist - _TessellationFadeStart) /
-            max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
-        return max(f * _TessellationFactor, 1.0);
-    }
-
     ENDHLSL
 
     SubShader
@@ -600,11 +587,31 @@ Shader "Custom/BiomeTerrainHDRP"
 
             #define SHADERPASS SHADERPASS_FORWARD
             #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
+            #define PUNCTUAL_SHADOW_MEDIUM
+            #define DIRECTIONAL_SHADOW_MEDIUM
+            #define AREA_SHADOW_MEDIUM
+            #define HAS_LIGHTLOOP
             #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/LightLoopDef.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Lit/Lit.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/LightLoop.hlsl"
 
 
+
+            // Distance-adaptive tessellation factor
+            float CalcTessellationFactor(float3 positionWS)
+            {
+                // HDRP often uses camera-relative rendering for "world space" positions.
+                // For world-anchored texturing / distances we must operate in absolute WS,
+                // otherwise textures appear to "swim" as the camera moves.
+                float3 absPosWS = GetAbsolutePositionWS(positionWS);
+                float dist = distance(absPosWS, _WorldSpaceCameraPos);
+                float f = 1.0 - saturate((dist - _TessellationFadeStart) /
+                    max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
+                return max(f * _TessellationFactor, 1.0);
+            }
 
             // ===================== Structures =====================
 
@@ -760,12 +767,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 float2 mapUV)
             {
                 BiomeSample s;
-                s.albedo = 0;
+                ZERO_INITIALIZE(BiomeSample, s);
                 s.normalWS = displacedNormal;
                 s.mask = float4(0, 1, 0, _IceSmoothness);
-                s.emission = 0;
-                s.biomeParams = 0;
-                s.height = 0;
 
                 if (sliceCount <= 0.0)
                     return s;
@@ -990,8 +994,8 @@ Shader "Custom/BiomeTerrainHDRP"
                 float ao = saturate(mask.g * _AOIntensity);
                 // Apply per-biome roughness offset from SurfaceFamilyData
                 // (packed 4 per float4; blend between primary/secondary at boundaries)
-                int roIdxP = centerBiome / 4;
-                int roCompP = centerBiome % 4;
+                int roIdxP = centerBiome >> 2;  // Bitwise shift = faster than division by 4
+                int roCompP = centerBiome & 3;  // Bitwise AND = faster than modulus 4
                 float roughnessOffset = _BiomeRoughnessOffsets[roIdxP][roCompP];
                 float smoothness = saturate(mask.a * _SmoothnessMultiplier - roughnessOffset);
 
@@ -1005,7 +1009,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 {
                     float2 detailUV = worldPos.xz * _DetailTiling;
                     float4 detailAlbedo = SAMPLE_TEXTURE2D(_DetailAlbedoMap, sampler_DetailAlbedoMap, detailUV);
-                    float3 detailNorm = UnpackNormal(SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailAlbedoMap, detailUV));
+                    float3 detailNorm = UnpackNormal(SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailNormalMap, detailUV));
 
                     // Modulate albedo (detail map centered around 0.5 gray = no change)
                     float detailMod = lerp(1.0, detailAlbedo.r * 2.0, _DetailStrength * detailFade);
@@ -1194,30 +1198,32 @@ Shader "Custom/BiomeTerrainHDRP"
                     }
                 }
 
-                                // 1. Build SurfaceData (albedo, normal, smoothness, metallic, AO, emission)
-SurfaceData surfaceData;
-surfaceData.albedo = albedo;
-surfaceData.normalWS = normalWS;   // already in world space
-surfaceData.perceptualRoughness = 1.0 - smoothness; // HDRP uses roughness = 1 - smoothness
-surfaceData.metallic = metallic;
-surfaceData.ambientOcclusion = ao;
-surfaceData.emission = emission;
-surfaceData.specularColor = 0;     // we let metallic drive it
-surfaceData.materialFeatures = 0;  // no special features
+                // 1. Build SurfaceData (albedo, normal, smoothness, metallic, emission)
+                SurfaceData surfaceData;
+                ZERO_INITIALIZE(SurfaceData, surfaceData);
+                surfaceData.baseColor = albedo;
+                surfaceData.normalWS = normalWS;   // already in world space
+                surfaceData.perceptualSmoothness = 1.0 - smoothness; // HDRP uses roughness = 1 - smoothness
+                surfaceData.metallic = metallic;
+                surfaceData.specularColor = 0;     // we let metallic drive it
+                surfaceData.materialFeatures = 0;  // no special features
+                surfaceData.diffusionProfileHash = 0; // not using subsurface scattering
 
-// 2. Build BuiltinData (required by HDRP)
-BuiltinData builtinData;
-ZERO_INITIALIZE(BuiltinData, builtinData);
-builtinData.ambientOcclusion = ao;
-// For standard opaque lit surface, most fields can be left zero or default.
+                // 2. Build BuiltinData (required by HDRP)
+                BuiltinData builtinData;
+                ZERO_INITIALIZE(BuiltinData, builtinData);
+                builtinData.opacity = 1.0;
+                builtinData.emissiveColor = emission;
 
-// 3. Let HDRP compute lighting
-float3 V = GetWorldSpaceNormalizeViewDir(input.positionWS);
-PositionInputs posInput = GetPositionInput(input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, input.normalWS);
-LightLoopOutput lightLoopOutput;
-SurfaceData surfaceDataForLight = surfaceData;
-BuiltinData builtinDataForLight = builtinData;
-float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, posInput, V, lightLoopOutput);
+                // 3. Let HDRP compute lighting
+                float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+                PositionInputs posInput = GetPositionInput((uint2)input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, input.normalWS);
+                BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionCS.xy, surfaceData);
+                PreLightData preLightData = GetPreLightData(viewDirWS, posInput, bsdfData);
+                uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE;
+                LightLoopOutput lightLoopOutput;
+                LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
+                float3 finalColor = (lightLoopOutput.diffuseLighting + lightLoopOutput.specularLighting) * GetCurrentExposureMultiplier();
 
                 // ==========================================================
                 // HEX GRID OVERLAY (simple biome-edge detection)
@@ -1274,6 +1280,22 @@ float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, p
 
             #pragma vertex vert
             #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+
+            // Distance-adaptive tessellation factor
+            float CalcTessellationFactor(float3 positionWS)
+            {
+                // HDRP often uses camera-relative rendering for "world space" positions.
+                // For world-anchored texturing / distances we must operate in absolute WS,
+                // otherwise textures appear to "swim" as the camera moves.
+                float3 absPosWS = GetAbsolutePositionWS(positionWS);
+                float dist = distance(absPosWS, _WorldSpaceCameraPos);
+                float f = 1.0 - saturate((dist - _TessellationFadeStart) /
+                    max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
+                return max(f * _TessellationFactor, 1.0);
+            }
 
             struct Attributes
             {
@@ -1385,6 +1407,22 @@ float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, p
 
             #pragma vertex vert
             #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+
+            // Distance-adaptive tessellation factor
+            float CalcTessellationFactor(float3 positionWS)
+            {
+                // HDRP often uses camera-relative rendering for "world space" positions.
+                // For world-anchored texturing / distances we must operate in absolute WS,
+                // otherwise textures appear to "swim" as the camera moves.
+                float3 absPosWS = GetAbsolutePositionWS(positionWS);
+                float dist = distance(absPosWS, _WorldSpaceCameraPos);
+                float f = 1.0 - saturate((dist - _TessellationFadeStart) /
+                    max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
+                return max(f * _TessellationFactor, 1.0);
+            }
 
             struct Attributes
             {
@@ -1499,9 +1537,27 @@ float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, p
 
             #define SHADERPASS SHADERPASS_DEPTHNORMALS_ONLY
             #define SHADEROPTIONS_SHADOW_ALGORITHM SHADOW_ALGORITHM_CLASSIC
+            #define PUNCTUAL_SHADOW_MEDIUM
+            #define DIRECTIONAL_SHADOW_MEDIUM
+            #define AREA_SHADOW_MEDIUM
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
-            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/LightLoopDef.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Lit/Lit.hlsl"
+
+            // Distance-adaptive tessellation factor
+            float CalcTessellationFactor(float3 positionWS)
+            {
+                // HDRP often uses camera-relative rendering for "world space" positions.
+                // For world-anchored texturing / distances we must operate in absolute WS,
+                // otherwise textures appear to "swim" as the camera moves.
+                float3 absPosWS = GetAbsolutePositionWS(positionWS);
+                float dist = distance(absPosWS, _WorldSpaceCameraPos);
+                float f = 1.0 - saturate((dist - _TessellationFadeStart) /
+                    max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
+                return max(f * _TessellationFactor, 1.0);
+            }
 
             struct Attributes
             {
@@ -1668,6 +1724,22 @@ float3 finalColor = LightingStandard(surfaceDataForLight, builtinDataForLight, p
 
             #pragma vertex vert
             #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
+
+            // Distance-adaptive tessellation factor
+            float CalcTessellationFactor(float3 positionWS)
+            {
+                // HDRP often uses camera-relative rendering for "world space" positions.
+                // For world-anchored texturing / distances we must operate in absolute WS,
+                // otherwise textures appear to "swim" as the camera moves.
+                float3 absPosWS = GetAbsolutePositionWS(positionWS);
+                float dist = distance(absPosWS, _WorldSpaceCameraPos);
+                float f = 1.0 - saturate((dist - _TessellationFadeStart) /
+                    max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
+                return max(f * _TessellationFactor, 1.0);
+            }
 
             struct Attributes
             {
