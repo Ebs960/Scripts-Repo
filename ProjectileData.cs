@@ -24,6 +24,8 @@ namespace GameCombat
     public Sprite icon;
     [Tooltip("Category of projectile - determines which weapons can use it")]
     public ProjectileCategory category = ProjectileCategory.Arrow;
+
+    public ProjectileCategory projectileCategory => category;
     
     [Header("Production & Requirements")]
     [Tooltip("Production cost for cities to produce this projectile type")]
@@ -50,9 +52,29 @@ namespace GameCombat
     [HideInInspector]
     public string statusEffectName;
 
+    [Header("Runtime Visuals")]
+    public GameObject projectilePrefab;
+    public GameObject heldProjectilePrefab;
+    public GameObject impactVfxPrefab;
+
     [Header("Audio")]
     public AudioClip launchSound;
     public AudioClip impactSound;
+
+    [Header("Flight")]
+    public float launchSpeed = 18f;
+    public float flightArcHeight = 0.75f;
+    public float maxFlightDuration = 1.25f;
+    public bool rotateAlongVelocity = true;
+
+    [Header("Held/Nocked Offsets")]
+    public Vector3 heldLocalPosition;
+    public Vector3 heldLocalEulerAngles;
+    public Vector3 heldLocalScale = Vector3.one;
+
+    public Vector3 nockedLocalPosition;
+    public Vector3 nockedLocalEulerAngles;
+    public Vector3 nockedLocalScale = Vector3.one;
     
     /// <summary>
     /// Checks if this projectile's requirements are met by the civilization
