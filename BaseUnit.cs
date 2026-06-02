@@ -2660,21 +2660,6 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Find a child transform recursively by name
-    /// </summary>
-    protected static Transform FindChildRecursive(Transform root, string name)
-    {
-        if (root == null || string.IsNullOrEmpty(name)) return null;
-        foreach (Transform child in root)
-        {
-            if (child.name == name) return child;
-            var found = FindChildRecursive(child, name);
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    /// <summary>
     /// Count adjacent allied units
     /// </summary>
     protected int CountAdjacentAllies(int tileIndex)
