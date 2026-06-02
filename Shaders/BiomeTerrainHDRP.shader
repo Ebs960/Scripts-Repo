@@ -143,6 +143,9 @@ Shader "Custom/BiomeTerrainHDRP"
         _CliffStepThreshold ("Cliff Step Threshold (texel units)", Range(0,1)) = 0.15
         _CliffStepBlend ("Cliff Step Blend (texel units)", Range(0,10)) = 0.08
         _CliffSliceCount ("Cliff Slice Count", Float) = 1
+
+        [Header(Debug)]
+        _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
     }
 
     HLSLINCLUDE
@@ -252,6 +255,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _CliffStepThreshold;
     float _CliffStepBlend;
     float _CliffSliceCount;
+    float _TerrainDebugMode;
     float _SurfaceHeightScale;
     float _TessellationFactor;
     float _TessellationFadeStart;
@@ -947,7 +951,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 //  - slope-based: preserves previous slope behavior
                 //  - step-based: detects abrupt per-texel elevation jumps (tile sides)
                 // ==========================================================
-                if (_CliffStrength > 0.001 && _CliffSliceCount >= 1.0)
+                if (_CliffStrength > 0.001 && _CliffSliceCount > 0.5)
                 {
                     // slope-based component (existing)
                     float slope = saturate(1.0 - displacedNormal.y);
@@ -1198,32 +1202,93 @@ Shader "Custom/BiomeTerrainHDRP"
                     }
                 }
 
+                if (_TerrainDebugMode > 0.5 && _TerrainDebugMode < 1.5)
+                {
+                    return float4(saturate(albedo), 1.0);
+                }
+
+                if (_TerrainDebugMode > 1.5 && _TerrainDebugMode < 2.5)
+                {
+                    float sliceDebug = centerSlice / max(_TotalSlices, 1.0);
+                    float biomeDebug = centerBiome / max(_BiomeCount, 1.0);
+                    return float4(sliceDebug, biomeDebug, 0.0, 1.0);
+                }
+
+                if (_TerrainDebugMode > 2.5 && _TerrainDebugMode < 3.5)
+                {
+                    return float4(normalize(normalWS) * 0.5 + 0.5, 1.0);
+                }
+
+                if (_TerrainDebugMode > 3.5 && _TerrainDebugMode < 4.5)
+                {
+                    return float4(saturate(mask.rgb), 1.0);
+                }
+
+                float3 normalizedNormalWS = normalize(normalWS);
+
                 // 1. Build SurfaceData (albedo, normal, smoothness, metallic, emission)
                 SurfaceData surfaceData;
                 ZERO_INITIALIZE(SurfaceData, surfaceData);
-                surfaceData.baseColor = albedo;
-                surfaceData.normalWS = normalWS;   // already in world space
-                surfaceData.perceptualSmoothness = 1.0 - smoothness; // HDRP uses roughness = 1 - smoothness
-                surfaceData.metallic = metallic;
-                surfaceData.specularColor = 0;     // we let metallic drive it
-                surfaceData.materialFeatures = 0;  // no special features
-                surfaceData.diffusionProfileHash = 0; // not using subsurface scattering
+                surfaceData.baseColor = saturate(albedo);
+                surfaceData.normalWS = normalizedNormalWS;
+                surfaceData.perceptualSmoothness = saturate(smoothness);
+                surfaceData.metallic = saturate(metallic);
+                surfaceData.ambientOcclusion = saturate(ao);
+                surfaceData.specularOcclusion = saturate(ao);
+                surfaceData.specularColor = float3(0.04, 0.04, 0.04);
+                surfaceData.materialFeatures = 0;
+                surfaceData.diffusionProfileHash = 0;
 
                 // 2. Build BuiltinData (required by HDRP)
                 BuiltinData builtinData;
                 ZERO_INITIALIZE(BuiltinData, builtinData);
                 builtinData.opacity = 1.0;
                 builtinData.emissiveColor = emission;
+                builtinData.bakeDiffuseLighting = SampleSH(normalizedNormalWS);
+
+                #ifdef LIGHT_LAYERS
+                    builtinData.renderingLayers = GetMeshRenderingLayer();
+                #endif
 
                 // 3. Let HDRP compute lighting
                 float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
-                PositionInputs posInput = GetPositionInput((uint2)input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, input.normalWS);
+                PositionInputs posInput = GetPositionInput((uint2)input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, normalizedNormalWS);
                 BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionCS.xy, surfaceData);
                 PreLightData preLightData = GetPreLightData(viewDirWS, posInput, bsdfData);
                 uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE;
                 LightLoopOutput lightLoopOutput;
                 LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
-                float3 finalColor = (lightLoopOutput.diffuseLighting + lightLoopOutput.specularLighting) * GetCurrentExposureMultiplier();
+
+                float3 hdrpLit =
+                    lightLoopOutput.diffuseLighting +
+                    lightLoopOutput.specularLighting;
+
+                if (_TerrainDebugMode > 4.5 && _TerrainDebugMode < 5.5)
+                {
+                    return float4(saturate(hdrpLit * GetCurrentExposureMultiplier()), 1.0);
+                }
+
+                if (_TerrainDebugMode > 6.5 && _TerrainDebugMode < 7.5)
+                {
+                    return float4(saturate(hdrpLit), 1.0);
+                }
+
+                float3 fallbackLightDir = normalize(float3(0.35, 0.85, 0.25));
+                float fallbackNdotL = saturate(dot(normalizedNormalWS, fallbackLightDir));
+                float3 fallbackLit = albedo * lerp(0.35, 1.0, fallbackNdotL);
+
+                if (_TerrainDebugMode > 5.5 && _TerrainDebugMode < 6.5)
+                {
+                    return float4(saturate(fallbackLit + emission), 1.0);
+                }
+
+                float lightingMagnitude = max(max(hdrpLit.r, hdrpLit.g), hdrpLit.b);
+
+                float3 finalColor = lightingMagnitude > 1e-5
+                    ? hdrpLit * GetCurrentExposureMultiplier()
+                    : fallbackLit;
+
+                finalColor += emission;
 
                 // ==========================================================
                 // HEX GRID OVERLAY (simple biome-edge detection)
@@ -1257,7 +1322,16 @@ Shader "Custom/BiomeTerrainHDRP"
                     finalColor = lerp(finalColor, _HexGridColor.rgb, mask * _HexGridColor.a);
                 }
 
+<<<<<<< ours
+<<<<<<< ours
+                return float4(albedo, 1.0);
                 return float4(finalColor, 1.0);
+=======
+                return float4(saturate(finalColor), 1.0);
+>>>>>>> theirs
+=======
+                return float4(saturate(finalColor), 1.0);
+>>>>>>> theirs
             }
             ENDHLSL
         }

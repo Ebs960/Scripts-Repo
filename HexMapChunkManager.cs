@@ -1864,13 +1864,17 @@ public class HexMapChunkManager : MonoBehaviour
         {
             sharedMaterial.SetTexture("_BiomeMaskArray", biomeMaskArray);
         }
-        if (cliffAlbedoArray != null)
+        bool hasValidCliffArrays = cliffAlbedoArray != null && cliffNormalArray != null;
+
+        if (hasValidCliffArrays)
         {
             sharedMaterial.SetTexture("_CliffAlbedoArray", cliffAlbedoArray);
-        }
-        if (cliffNormalArray != null)
-        {
             sharedMaterial.SetTexture("_CliffNormalArray", cliffNormalArray);
+        }
+        else
+        {
+            sharedMaterial.SetTexture("_CliffAlbedoArray", null);
+            sharedMaterial.SetTexture("_CliffNormalArray", null);
         }
         
         if (biomeTintArray != null)
@@ -1939,7 +1943,7 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_CliffSlopeBlend", cliffSlopeBlend);
         sharedMaterial.SetFloat("_CliffStepThreshold", cliffStepThreshold);
         sharedMaterial.SetFloat("_CliffStepBlend", cliffStepBlend);
-        float cliffSlices = (cliffAlbedoArray != null) ? Mathf.Max(1, cliffAlbedoArray.depth) : 1;
+        float cliffSlices = hasValidCliffArrays ? Mathf.Max(1, cliffAlbedoArray.depth) : 0f;
         sharedMaterial.SetFloat("_CliffSliceCount", cliffSlices);
 
         // Normal sampling and biome blending parameters
