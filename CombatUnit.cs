@@ -1207,7 +1207,7 @@ public class CombatUnit : BaseUnit
         // Damage calculation using floats and per-target equipment modifiers
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target);
 
-        AttackType attackType = activeWeapon != null && activeWeapon.projectileData != null ? AttackType.Ranged : AttackType.Melee;
+        AttackType attackType = activeWeapon != null && IsProjectileWeapon(activeWeapon) ? AttackType.Ranged : AttackType.Melee;
         float attackerValue = GetBaseAttackFloat(attackType);
         attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, attackType)) * (1f + GetSituationalAttackPctAgainst(target, attackType));
         float defenderValue = target.GetBaseDefenseFloat();
@@ -1233,12 +1233,21 @@ public class CombatUnit : BaseUnit
 
         damage = ApplySharedMeleeCombatModifiers(damage, target);
 
-    // If the active weapon defines projectile data, either queue or spawn the projectile depending on settings
-    if (activeWeapon != null && activeWeapon.projectileData != null)
+    // If the active weapon is a projectile weapon, queue/spawn the projectile visual and apply damage on impact.
+    if (activeWeapon != null && IsProjectileWeapon(activeWeapon))
         {
-            // Apply status effect from projectile on hit
-            if (activeWeapon.projectileData.statusEffect != null && target != null)
-                target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
+            ProjectileData resolvedProjectile = ResolveProjectileForWeapon(activeWeapon);
+            if (resolvedProjectile == null)
+            {
+                Debug.LogWarning($"{name}: Ranged attack aborted because no compatible ActiveProjectile/default projectile is available for {activeWeapon.name}.");
+                return;
+            }
+
+            if (!TryConsumeAttackPoint())
+                return;
+
+            SetAnimatorTriggerForFormation(attackHash);
+            AddFatigue(8f);
 
             if (useAnimationEventForProjectiles)
             {
@@ -1255,10 +1264,6 @@ public class CombatUnit : BaseUnit
     // Melee / instant-hit path: apply damage immediately and provide attacker context so the melee weapon behavior can trigger
     var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = damage, isMelee = true, isRanged = false };
     bool targetDies = PerformAttack(ctx);
-
-        // Apply weapon status effect on hit (if any)
-        if (activeWeapon?.projectileData?.statusEffect != null && target != null && target.currentHealth > 0)
-            target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
 
         if (targetDies)
         {
@@ -1296,7 +1301,7 @@ public class CombatUnit : BaseUnit
             activeWeapon = equippedWeapon;
 
         // For ranged attacks, still use the trigger (one-shot projectile launch animation)
-        bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
+        bool isRangedAttack = activeWeapon != null && IsProjectileWeapon(activeWeapon);
         if (isRangedAttack)
         {
             // Ranged visuals handled centrally by BaseUnit.PerformAttack
@@ -1334,20 +1339,29 @@ public class CombatUnit : BaseUnit
         // Handle ranged vs melee
         if (isRangedAttack)
         {
-            if (activeWeapon?.projectileData?.statusEffect != null && target != null)
-                target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
+            ProjectileData resolvedProjectile = ResolveProjectileForWeapon(activeWeapon);
+            if (resolvedProjectile == null)
+            {
+                Debug.LogWarning($"{name}: Ranged attack aborted because no compatible ActiveProjectile/default projectile is available for {activeWeapon.name}.");
+                return;
+            }
 
-            SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
+            if (!TryConsumeAttackPoint())
+                return;
+
+            SetAnimatorTriggerForFormation(attackHash);
+            AddFatigue(8f);
+
+            if (useAnimationEventForProjectiles)
+                QueueProjectileForAnimation(activeWeapon, target.transform.position, target, finalDamage);
+            else
+                SpawnProjectileFromEquipment(activeWeapon, target.transform.position, target, finalDamage);
             return;
         }
 
         // Melee attack — use unified orchestrator so kill rewards/events are centralized
         var ctxWorker = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = finalDamage, isMelee = true, isRanged = false };
         bool targetDied = PerformAttack(ctxWorker);
-
-        // Apply weapon status effect on melee hit
-        if (activeWeapon?.projectileData?.statusEffect != null && target != null && target.currentHealth > 0)
-            target.ApplyStatusEffect(activeWeapon.projectileData.statusEffect);
 
         if (targetDied)
         {
@@ -1390,13 +1404,7 @@ public class CombatUnit : BaseUnit
     /// </summary>
     private void SpawnProjectileTowardsWorker(EquipmentData equipment, Vector3 targetPosition, int damage)
     {
-        if (equipment == null || equipment.projectileData == null) return;
-
-        ProjectileData pd = equipment.projectileData;
-        if (pd.launchSound != null)
-            AudioSource.PlayClipAtPoint(pd.launchSound, transform.position);
-        if (pd.impactSound != null)
-            AudioSource.PlayClipAtPoint(pd.impactSound, targetPosition);
+        SpawnProjectileFromEquipment(equipment, targetPosition, null, damage);
     }
 
     /// <summary>
@@ -1963,7 +1971,7 @@ public class CombatUnit : BaseUnit
         {
             case EquipmentType.Weapon:
                             // Decide whether this weapon should occupy the projectile slot or the main weapon slot (melee uses the main weapon).
-                            if (equipmentData.projectileData != null)
+                            if (IsProjectileWeapon(equipmentData))
                             {
                                 if (equippedProjectileWeapon != equipmentData)
                                 {
@@ -2026,6 +2034,9 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public override void UpdateEquipmentVisuals()
     {
+        ClearLoadedProjectileVisual();
+        currentProjectileWeaponVisual = null;
+
         // Animals don't use equipment; skip any equipment processing or editor logs for them.
         if (data != null && data.unitType == CombatCategory.Animal)
         {
@@ -2139,6 +2150,7 @@ public class CombatUnit : BaseUnit
         if (holder == projectileWeaponHolder)
         {
             extraEquippedItemObjects["Projectile"] = equipObj;
+            currentProjectileWeaponVisual = equipObj;
         }
         else
         {
@@ -2147,7 +2159,7 @@ public class CombatUnit : BaseUnit
     }
 
     // SpawnProjectileFromEquipment needs to be overridden to handle CombatUnit specific target tracking
-    public override void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit = null, int overrideDamage = -1)
+    public override void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, BaseUnit targetUnit = null, int overrideDamage = -1)
     {
         base.SpawnProjectileFromEquipment(equipment, targetPosition, targetUnit, overrideDamage);
     }

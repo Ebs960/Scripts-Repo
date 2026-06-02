@@ -25,6 +25,9 @@ public abstract class BaseUnit : MonoBehaviour
     public Transform weaponHolder;
     [Tooltip("Transform where projectile/ranged weapon visuals will be attached")]
     public Transform projectileWeaponHolder;
+    [Header("Projectile Holders")]
+    [Tooltip("Off-hand holder for temporary arrow/ammo visuals before they are nocked/loaded.")]
+    [SerializeField] protected Transform projectileHandHolder;
     [Tooltip("Transform where shields will be attached")]
     public Transform shieldHolder;
     [Tooltip("Transform where armor will be displayed")]
@@ -46,6 +49,11 @@ public abstract class BaseUnit : MonoBehaviour
     [Header("Active Projectile")]
     [Tooltip("The projectile type this unit will use when firing ranged weapons")]
     [SerializeField] protected ProjectileData _activeProjectile;
+
+    protected GameObject currentProjectileWeaponVisual;
+    protected GameObject currentLoadedProjectileVisual;
+    protected EquipmentData currentLoadedProjectileWeapon;
+    protected ProjectileData currentLoadedProjectileData;
 
     // Track instantiated equipment GameObjects
     protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
@@ -432,7 +440,7 @@ public abstract class BaseUnit : MonoBehaviour
     [Tooltip("If true, projectiles fire via animation event; if false, fire immediately")]
     public bool useAnimationEventForProjectiles = true;
     protected EquipmentData queuedProjectileEquipment;
-    protected CombatUnit queuedProjectileTargetUnit;
+    protected BaseUnit queuedProjectileTargetUnit;
     protected Vector3 queuedProjectileTargetPosition;
     protected int queuedProjectileDamage = -1;
     protected bool hasQueuedProjectile = false;
@@ -737,8 +745,10 @@ public abstract class BaseUnit : MonoBehaviour
     public ProjectileData ActiveProjectile
     {
         get => _activeProjectile;
-        set => _activeProjectile = value;
+        set => TrySetActiveProjectile(value);
     }
+
+    public EquipmentData CurrentProjectileWeapon => _equippedProjectileWeapon;
 
     public EquipmentData equippedWeapon
     {
@@ -1301,6 +1311,9 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual void UpdateEquipmentVisuals()
     {
+        ClearLoadedProjectileVisual();
+        currentProjectileWeaponVisual = null;
+
         // Remove existing equipment objects
         foreach (var item in equippedItemObjects.Values)
         {
@@ -1386,6 +1399,8 @@ public abstract class BaseUnit : MonoBehaviour
         }
 
         equippedItemObjects[type] = equipObj;
+        if (holder == projectileWeaponHolder)
+            currentProjectileWeaponVisual = equipObj;
     }
 
     /// <summary>
@@ -1400,7 +1415,7 @@ public abstract class BaseUnit : MonoBehaviour
         switch (equipmentData.equipmentType)
         {
             case EquipmentType.Weapon:
-                if (equipmentData.projectileData != null)
+                if (IsProjectileWeapon(equipmentData))
                 {
                     if (_equippedProjectileWeapon != equipmentData)
                     {
@@ -1452,59 +1467,319 @@ public abstract class BaseUnit : MonoBehaviour
 
     #region Projectile System
 
-    /// <summary>
-    /// Resolve which ProjectileData to fire (unit's active projectile if it matches,
-    /// otherwise the equipment's default), then play launch and impact sounds immediately.
-    /// No prefab or 3-D object is spawned.
-    /// </summary>
+    public static bool IsProjectileWeapon(EquipmentData equipment)
+    {
+        if (equipment == null)
+            return false;
+
+        return equipment.usesProjectiles ||
+               equipment.projectileData != null;
+    }
+
+    protected ProjectileData ResolveProjectileForWeapon(EquipmentData weapon)
+    {
+        if (weapon == null)
+            return null;
+
+        if (!IsProjectileWeapon(weapon))
+            return null;
+
+        if (_activeProjectile != null)
+        {
+            if (IsProjectileCompatibleWithWeapon(weapon, _activeProjectile))
+                return _activeProjectile;
+
+            Debug.LogWarning($"{name}: Projectile {_activeProjectile.name} category {_activeProjectile.category} is not compatible with weapon {weapon.name} category {weapon.projectileCategory}.");
+        }
+
+        if (weapon.projectileData != null)
+            return weapon.projectileData;
+
+        return null;
+    }
+
+    protected bool IsProjectileCompatibleWithWeapon(EquipmentData weapon, ProjectileData projectile)
+    {
+        if (weapon == null || projectile == null)
+            return false;
+
+        if (!IsProjectileWeapon(weapon))
+            return false;
+
+        if (weapon.projectileCategory == projectile.category)
+            return true;
+
+        return weapon.projectileData == projectile;
+    }
+
+    public bool TrySetActiveProjectile(ProjectileData projectile)
+    {
+        EquipmentData weapon = CurrentProjectileWeapon;
+
+        if (projectile == null)
+        {
+            _activeProjectile = null;
+            ClearLoadedProjectileVisual();
+            return true;
+        }
+
+        if (weapon != null && !IsProjectileCompatibleWithWeapon(weapon, projectile))
+        {
+            Debug.LogWarning($"{name}: Projectile {projectile.name} is not compatible with weapon {weapon.name}.");
+            return false;
+        }
+
+        _activeProjectile = projectile;
+        ClearLoadedProjectileVisual();
+        return true;
+    }
+
+    protected Transform FindChildRecursive(Transform root, string childName)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(childName))
+            return null;
+
+        foreach (Transform child in root)
+        {
+            if (child.name == childName)
+                return child;
+
+            Transform found = FindChildRecursive(child, childName);
+            if (found != null)
+                return found;
+        }
+
+        return null;
+    }
+
+    protected Transform GetProjectileNockTransform(EquipmentData weapon)
+    {
+        if (weapon == null)
+            return null;
+
+        if (currentProjectileWeaponVisual != null)
+        {
+            Transform found = FindChildRecursive(currentProjectileWeaponVisual.transform, weapon.projectileNockName);
+            if (found != null)
+                return found;
+        }
+
+        Debug.LogWarning($"{name}: No {weapon.projectileNockName} found on {weapon.name}.");
+        return null;
+    }
+
+    protected Transform GetProjectileSpawnTransform(EquipmentData weapon)
+    {
+        if (weapon == null)
+            return transform;
+
+        if (weapon.useEquipmentProjectileSpawn && currentProjectileWeaponVisual != null)
+        {
+            Transform found = FindChildRecursive(currentProjectileWeaponVisual.transform, weapon.projectileSpawnName);
+            if (found != null)
+                return found;
+
+            Debug.LogWarning($"{name}: Bow/projectile weapon {weapon.name} is missing {weapon.projectileSpawnName}; falling back to unit holders.");
+        }
+
+        Transform unitSpawn = FindChildRecursive(transform, weapon.projectileSpawnName);
+        if (unitSpawn != null)
+            return unitSpawn;
+
+        if (projectileWeaponHolder != null)
+            return projectileWeaponHolder;
+
+        return transform;
+    }
+
+    protected Transform GetProjectileHandHolder()
+    {
+        if (projectileHandHolder != null)
+            return projectileHandHolder;
+
+        Debug.LogWarning($"{name}: ProjectileHandHolder is missing; falling back to shield/weapon/unit holder.");
+        if (shieldHolder != null)
+            return shieldHolder;
+        if (weaponHolder != null)
+            return weaponHolder;
+        return transform;
+    }
+
+    protected bool ShouldUseHeldProjectileVisual(ProjectileData projectile)
+    {
+        return projectile != null && projectile.category == ProjectileCategory.Arrow;
+    }
+
+    protected void ClearLoadedProjectileVisual()
+    {
+        if (currentLoadedProjectileVisual != null)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                DestroyImmediate(currentLoadedProjectileVisual);
+            else
+#endif
+                Destroy(currentLoadedProjectileVisual);
+            currentLoadedProjectileVisual = null;
+        }
+
+        currentLoadedProjectileWeapon = null;
+        currentLoadedProjectileData = null;
+    }
+
+    public void Anim_LoadProjectile()
+    {
+        EquipmentData weapon = queuedProjectileEquipment != null ? queuedProjectileEquipment : CurrentProjectileWeapon;
+        ProjectileData projectile = ResolveProjectileForWeapon(weapon);
+
+        if (projectile == null)
+        {
+            Debug.LogWarning($"{name}: Tried to load projectile but no compatible projectile was found.");
+            return;
+        }
+
+        if (!ShouldUseHeldProjectileVisual(projectile))
+            return;
+
+        ClearLoadedProjectileVisual();
+
+        GameObject prefab = projectile.heldProjectilePrefab != null ? projectile.heldProjectilePrefab : projectile.projectilePrefab;
+        if (prefab == null)
+        {
+            Debug.LogWarning($"{name}: Projectile {projectile.name} has no projectilePrefab or heldProjectilePrefab.");
+            return;
+        }
+
+        Transform holder = GetProjectileHandHolder();
+        currentLoadedProjectileVisual = Instantiate(prefab, holder);
+        currentLoadedProjectileVisual.transform.localPosition = projectile.heldLocalPosition;
+        currentLoadedProjectileVisual.transform.localRotation = Quaternion.Euler(projectile.heldLocalEulerAngles);
+        currentLoadedProjectileVisual.transform.localScale = projectile.heldLocalScale;
+
+        currentLoadedProjectileWeapon = weapon;
+        currentLoadedProjectileData = projectile;
+    }
+
+    public void Anim_NockProjectile()
+    {
+        if (currentLoadedProjectileVisual == null)
+            Anim_LoadProjectile();
+
+        if (currentLoadedProjectileVisual == null)
+            return;
+
+        if (!ShouldUseHeldProjectileVisual(currentLoadedProjectileData))
+            return;
+
+        Transform nock = GetProjectileNockTransform(currentLoadedProjectileWeapon);
+        if (nock == null)
+            return;
+
+        currentLoadedProjectileVisual.transform.SetParent(nock, false);
+        currentLoadedProjectileVisual.transform.localPosition = currentLoadedProjectileData.nockedLocalPosition;
+        currentLoadedProjectileVisual.transform.localRotation = Quaternion.Euler(currentLoadedProjectileData.nockedLocalEulerAngles);
+        currentLoadedProjectileVisual.transform.localScale = currentLoadedProjectileData.nockedLocalScale;
+    }
+
+    public void Anim_ReleaseProjectile()
+    {
+        FireQueuedProjectile();
+        ClearLoadedProjectileVisual();
+    }
+
+    public void Anim_ClearLoadedProjectile()
+    {
+        ClearLoadedProjectileVisual();
+    }
+
+    protected virtual bool CanConsumeProjectile(ProjectileData projectile)
+    {
+        // The civilization projectile inventory exists, but many test/editor units do not seed it yet.
+        // Enforce ammo counts only when this projectile is already tracked for the owner.
+        if (owner == null || owner.projectileInventory == null || !owner.projectileInventory.ContainsKey(projectile))
+            return true;
+
+        return owner.GetProjectileCount(projectile) > 0;
+    }
+
+    protected virtual bool TryConsumeProjectile(ProjectileData projectile)
+    {
+        // The civilization projectile inventory exists, but many test/editor units do not seed it yet.
+        // Consume only when this projectile is already tracked for the owner.
+        if (owner == null || owner.projectileInventory == null || !owner.projectileInventory.ContainsKey(projectile))
+            return true;
+
+        return owner.ConsumeProjectile(projectile, 1);
+    }
+
     public virtual void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition,
-        CombatUnit targetUnit = null, int overrideDamage = -1)
+        BaseUnit targetUnit = null, int overrideDamage = -1)
     {
-        // Priority 1: active projectile if category matches
-        ProjectileData projectileToUse = null;
-        if (_activeProjectile != null && equipment != null && equipment.usesProjectiles &&
-            _activeProjectile.category == equipment.projectileCategory)
+        ProjectileData projectile = ResolveProjectileForWeapon(equipment);
+
+        if (projectile == null)
         {
-            projectileToUse = _activeProjectile;
-        }
-        // Priority 2: equipment's default projectile
-        else if (equipment != null && equipment.projectileData != null)
-        {
-            projectileToUse = equipment.projectileData;
+            Debug.LogWarning($"{name}: No projectile resolved for weapon {equipment?.name}.");
+            return;
         }
 
-        if (projectileToUse == null) return;
+        if (projectile.projectilePrefab == null)
+        {
+            Debug.LogWarning($"{name}: Projectile {projectile.name} has no projectilePrefab.");
+            return;
+        }
 
-        Vector3 startPos = transform.position;
+        if (!CanConsumeProjectile(projectile))
+        {
+            Debug.LogWarning($"{name}: Cannot fire {projectile.name}; no ammo available.");
+            return;
+        }
 
-        if (projectileToUse.launchSound != null)
-            AudioSource.PlayClipAtPoint(projectileToUse.launchSound, startPos);
+        if (!TryConsumeProjectile(projectile))
+        {
+            Debug.LogWarning($"{name}: Failed to consume projectile {projectile.name}.");
+            return;
+        }
 
-        if (projectileToUse.impactSound != null)
-            AudioSource.PlayClipAtPoint(projectileToUse.impactSound, targetPosition);
+        Transform spawn = GetProjectileSpawnTransform(equipment);
+        if (projectile.launchSound != null)
+            AudioSource.PlayClipAtPoint(projectile.launchSound, spawn.position);
+
+        GameObject obj = Instantiate(projectile.projectilePrefab, spawn.position, spawn.rotation);
+        LaunchedProjectile launched = obj.GetComponent<LaunchedProjectile>();
+        if (launched == null)
+            launched = obj.AddComponent<LaunchedProjectile>();
+
+        Vector3 finalTargetPosition = targetUnit != null ? targetUnit.transform.position : targetPosition;
+        launched.Initialize(projectile, this, targetUnit, finalTargetPosition, overrideDamage, spawn.forward, OnProjectileImpact);
     }
 
-    /// <summary>
-    /// Queue a projectile to be fired via animation event
-    /// </summary>
-    public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition, 
-        CombatUnit targetUnit, int damage)
+    public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition,
+        BaseUnit targetUnit, int damage)
     {
-        queuedProjectileEquipment = equipment;
-        queuedProjectileTargetUnit = targetUnit;
-        queuedProjectileTargetPosition = targetPosition;
-        queuedProjectileDamage = damage;
-        hasQueuedProjectile = (equipment != null && equipment.projectileData != null);
+        ProjectileData projectile = ResolveProjectileForWeapon(equipment);
+        if (equipment != null && projectile != null)
+        {
+            queuedProjectileEquipment = equipment;
+            queuedProjectileTargetUnit = targetUnit;
+            queuedProjectileTargetPosition = targetPosition;
+            queuedProjectileDamage = damage;
+            hasQueuedProjectile = true;
+        }
+        else
+        {
+            Debug.LogWarning($"{name}: Could not queue projectile attack because no compatible projectile was available.");
+            CancelQueuedProjectile();
+        }
     }
 
-    /// <summary>
-    /// Called by animation event to fire queued projectile
-    /// </summary>
     public void FireQueuedProjectile()
     {
         if (!hasQueuedProjectile || queuedProjectileEquipment == null) return;
+        if (queuedProjectileTargetUnit == null && queuedProjectileTargetPosition == Vector3.zero)
+            Debug.LogWarning($"{name}: Projectile was queued but no target exists.");
 
-        SpawnProjectileFromEquipment(queuedProjectileEquipment, queuedProjectileTargetPosition, 
+        SpawnProjectileFromEquipment(queuedProjectileEquipment, queuedProjectileTargetPosition,
             queuedProjectileTargetUnit, queuedProjectileDamage);
 
         hasQueuedProjectile = false;
@@ -1513,15 +1788,30 @@ public abstract class BaseUnit : MonoBehaviour
         queuedProjectileDamage = -1;
     }
 
-    /// <summary>
-    /// Cancel any queued projectile
-    /// </summary>
     public void CancelQueuedProjectile()
     {
         hasQueuedProjectile = false;
         queuedProjectileEquipment = null;
         queuedProjectileTargetUnit = null;
         queuedProjectileDamage = -1;
+        ClearLoadedProjectileVisual();
+    }
+
+    protected virtual void OnProjectileImpact(LaunchedProjectile projectile)
+    {
+        if (projectile == null || projectile.TargetUnit == null || projectile.Damage <= 0)
+            return;
+
+        bool died = projectile.TargetUnit.ApplyDamage(projectile.Damage, this, false);
+        if (projectile.ProjectileData != null && projectile.ProjectileData.statusEffect != null && projectile.TargetUnit.currentHealth > 0)
+            projectile.TargetUnit.ApplyStatusEffect(projectile.ProjectileData.statusEffect);
+
+        if (this is CombatUnit combatUnit)
+        {
+            combatUnit.GainExperience(projectile.Damage);
+            if (died)
+                combatUnit.GainExperience(projectile.Damage);
+        }
     }
 
     #endregion
@@ -1656,6 +1946,7 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     protected virtual void Die()
     {
+        ClearLoadedProjectileVisual();
         try { GameEventManager.Instance?.RaiseUnitLostEvent(this, null, currentTileIndex, planetIndex); } catch { }
 
         // DIAGNOSTIC (animal-only): if animals are dying, this stack trace will include the real caller chain.
