@@ -196,7 +196,7 @@ public class WinterSnowEffect : MonoBehaviour
     private bool IsOrbitOrUnderwater()
     {
         if (cameraManager == null)
-            cameraManager = FindFirstObjectByType<PlanetaryCameraManager>();
+            cameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
         if (cameraManager == null) return false;
         return cameraManager.IsInOrbitMode || cameraManager.IsInUnderwaterMode;
     }

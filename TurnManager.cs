@@ -49,7 +49,7 @@ public class TurnManager : MonoBehaviour
     void Start()
     {
         // Don't automatically gather civs here - let CivilizationManager register them
-        // civs.AddRange(FindObjectsByType<Civilization>(FindObjectsSortMode.None));
+        // civs.AddRange(FindObjectsByType<Civilization>());
     }
 
     /// <summary>

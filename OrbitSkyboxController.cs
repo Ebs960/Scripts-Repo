@@ -76,7 +76,7 @@ public class OrbitSkyboxController : MonoBehaviour
         _volume.priority = 10; // Override scene default sky
 
         if (cameraManager == null)
-            cameraManager = FindFirstObjectByType<PlanetaryCameraManager>();
+            cameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
 
         // Cache sun intensity
         if (sunLight != null)
@@ -88,7 +88,7 @@ public class OrbitSkyboxController : MonoBehaviour
         _hasExposure = false;
 
         // Find the global/default volume with fog
-        var volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        var volumes = FindObjectsByType<Volume>();
         foreach (var vol in volumes)
         {
             if (vol == _volume) continue; // skip our own

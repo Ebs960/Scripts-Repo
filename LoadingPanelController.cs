@@ -68,7 +68,7 @@ public class LoadingPanelController : MonoBehaviour
         // Try to find existing space loading panel first
         if (spaceLoadingPanel == null)
         {
-            spaceLoadingPanel = FindFirstObjectByType<SpaceLoadingPanelController>();
+            spaceLoadingPanel = FindAnyObjectByType<SpaceLoadingPanelController>();
         }
         
         // If none found and we have a prefab, instantiate it
@@ -141,7 +141,7 @@ public class LoadingPanelController : MonoBehaviour
         // Check if we should wait for minimap generation before restoring UI
         if (hideAllUIWhileLoading)
         {
-            var minimapUI = FindFirstObjectByType<MinimapUI>();
+            var minimapUI = FindAnyObjectByType<MinimapUI>();
             if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
             {
                 waitingForMinimapUiRestore = true;
@@ -315,14 +315,14 @@ public class LoadingPanelController : MonoBehaviour
         
         // Don't hide MinimapUI GameObject since it needs to stay active for coroutines
         // MinimapUI now handles its own UI element hiding internally
-        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
         if (minimapUI != null)
         {
             minimapUI.HideVisualsForBlockingUI();
         }
         
         // Hide SpaceMapUI instances
-        var spaceMapUIs = FindObjectsByType<SpaceMapUI>(FindObjectsSortMode.None);
+        var spaceMapUIs = FindObjectsByType<SpaceMapUI>();
         foreach (var spaceMapUI in spaceMapUIs)
         {
             if (spaceMapUI != null)
@@ -330,21 +330,21 @@ public class LoadingPanelController : MonoBehaviour
         }
         
         // Hide other UI systems
-        var cityUIs = FindObjectsByType<CityUI>(FindObjectsSortMode.None);
+        var cityUIs = FindObjectsByType<CityUI>();
         foreach (var cityUI in cityUIs)
         {
             if (cityUI != null)
                 StoreAndHideUIElement(cityUI.gameObject);
         }
         
-        var techUIs = FindObjectsByType<TechUI>(FindObjectsSortMode.None);
+        var techUIs = FindObjectsByType<TechUI>();
         foreach (var techUI in techUIs)
         {
             if (techUI != null)
                 StoreAndHideUIElement(techUI.gameObject);
         }
         
-        var transportUIs = FindObjectsByType<TransportUIManager>(FindObjectsSortMode.None);
+        var transportUIs = FindObjectsByType<TransportUIManager>();
         foreach (var transportUI in transportUIs)
         {
             if (transportUI != null)
@@ -358,7 +358,7 @@ public class LoadingPanelController : MonoBehaviour
     private void ShowAllGameUI()
     {
         // Double-check that minimap generation is complete before showing UI
-        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
         {
             return;
@@ -396,7 +396,7 @@ MusicManager.Instance.InitializeMusicTracks();
     private void TriggerDeferredUIInitialization()
     {
         // Trigger MinimapUI initialization if it was deferred
-        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
         if (minimapUI != null)
         {
             minimapUI.TriggerDeferredInitialization();
@@ -418,7 +418,7 @@ MusicManager.Instance.InitializeMusicTracks();
     /// </summary>
     private System.Collections.IEnumerator WaitForMinimapCompletionAndShowUI()
     {
-        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
         
         if (minimapUI != null)
         {

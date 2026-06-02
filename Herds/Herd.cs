@@ -625,7 +625,7 @@ public class Herd : MonoBehaviour
         {
             var planetGen = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null)
                                        : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, gameObject);
         }
         catch { }

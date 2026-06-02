@@ -419,7 +419,7 @@ public class DemonManager : MonoBehaviour
         // Register demon with wrap registry so it teleports with columns
         try
         {
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == GameManager.Instance?.GetPlanetGenerator(spawnPlanetIndex));
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == GameManager.Instance?.GetPlanetGenerator(spawnPlanetIndex));
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnTileIndex, demonGO);
         }
         catch { }

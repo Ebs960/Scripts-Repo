@@ -66,7 +66,7 @@ public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler
         {
             // Create a dragged copy for palette mode
             draggedObject = Instantiate(gameObject);
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = FindAnyObjectByType<Canvas>();
             if (canvas != null)
             {
                 draggedObject.transform.SetParent(canvas.transform, false);

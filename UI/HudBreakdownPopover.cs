@@ -96,7 +96,7 @@ public class HudBreakdownPopover : MonoBehaviour, IPointerEnterHandler, IPointer
         pooledItemCountInUse = 0;
 
         // Get breakdown data from service
-        var breakdownService = UnityEngine.Object.FindFirstObjectByType<HudBreakdownService>();
+        var breakdownService = UnityEngine.Object.FindAnyObjectByType<HudBreakdownService>();
         if (breakdownService == null)
         {
             Debug.LogWarning("HudBreakdownPopover: HudBreakdownService not found");

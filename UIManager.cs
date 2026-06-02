@@ -427,7 +427,7 @@ public class UIManager : MonoBehaviour
     {
         if (politicalAffairsPanelUI != null) return;
 
-        politicalAffairsPanelUI = FindFirstObjectByType<PoliticalAffairsPanelUI>(FindObjectsInactive.Include);
+        politicalAffairsPanelUI = FindAnyObjectByType<PoliticalAffairsPanelUI>(FindObjectsInactive.Include);
         if (politicalAffairsPanelUI == null)
         {
             Debug.LogWarning("[UIManager] Political Affairs panel is not present in scene/prefabs. Please add a dedicated PoliticalAffairsPanelUI object like other panel UIs.");
@@ -871,7 +871,7 @@ public class UIManager : MonoBehaviour
         if (herdPanel == null)
         {
             Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herdPanel is not assigned in Inspector. Attempting to locate in scene.");
-            var found = FindFirstObjectByType<HerdPanel>();
+            var found = FindAnyObjectByType<HerdPanel>();
             if (found != null)
                 herdPanel = found.gameObject;
             else
@@ -2143,7 +2143,7 @@ public class UIManager : MonoBehaviour
             if (canvas != null) return canvas;
         }
 
-        return FindFirstObjectByType<Canvas>();
+        return FindAnyObjectByType<Canvas>();
     }
 
     private GameObject CreateMissionCrisisFallbackPanel(string name, RectTransform parent, Color color)

@@ -33,14 +33,14 @@ public class SpaceLoadingIntegration : MonoBehaviour
     private void HideAllSpaceUIOnStart()
     {
         // Hide space map UI
-        var spaceMapUI = FindFirstObjectByType<SpaceMapUI>();
+        var spaceMapUI = FindAnyObjectByType<SpaceMapUI>();
         if (spaceMapUI != null)
         {
             spaceMapUI.Hide();
         }
         
         // Hide space loading panels
-        var spaceLoadingPanels = FindObjectsByType<SpaceLoadingPanelController>(FindObjectsSortMode.None);
+        var spaceLoadingPanels = FindObjectsByType<SpaceLoadingPanelController>();
         foreach (var panel in spaceLoadingPanels)
         {
             panel.HideSpaceLoading();
@@ -60,7 +60,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
     public void SetupSpaceLoadingIntegration()
     {
         // Find all LoadingPanelControllers in the scene
-        LoadingPanelController[] loadingPanels = FindObjectsByType<LoadingPanelController>(FindObjectsSortMode.None);
+        LoadingPanelController[] loadingPanels = FindObjectsByType<LoadingPanelController>();
         
         int setupCount = 0;
         
@@ -133,7 +133,7 @@ setupCount++;
         }
         
         // Hide any other space loading panels
-        SpaceLoadingPanelController[] spacePanels = FindObjectsByType<SpaceLoadingPanelController>(FindObjectsSortMode.None);
+        SpaceLoadingPanelController[] spacePanels = FindObjectsByType<SpaceLoadingPanelController>();
         foreach (var panel in spacePanels)
         {
             panel.HideSpaceLoading();
@@ -146,7 +146,7 @@ setupCount++;
     [ContextMenu("Test Space Loading")]
     public void TestSpaceLoading()
     {
-        LoadingPanelController loadingPanel = FindFirstObjectByType<LoadingPanelController>();
+        LoadingPanelController loadingPanel = FindAnyObjectByType<LoadingPanelController>();
         if (loadingPanel != null)
         {
             StartCoroutine(TestSpaceLoadingCoroutine(loadingPanel));

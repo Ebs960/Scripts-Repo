@@ -225,7 +225,7 @@ public class UnitMovementController : MonoBehaviour
             return new List<int>();
 
         // ── Path cache lookup ──
-        int unitId = unit != null ? unit.GetInstanceID() : 0;
+        int unitId = unit != null ? unit.GetRuntimeId() : 0;
         int currentTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
         var cacheKey = (startIndex, endIndex, unitId);
         if (pathCache.TryGetValue(cacheKey, out var cached) && cached.turn == currentTurn)
@@ -566,7 +566,7 @@ public class UnitMovementController : MonoBehaviour
             {
                 int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
                 var allIds = occ.GetAllOccupantIds(targetTile, unit.currentLayer);
-                int selfId = unit.gameObject.GetInstanceID();
+                int selfId = unit.gameObject.GetRuntimeId();
                 bool blocked = false;
                 int othersCount = 0;
                 foreach (int occId in allIds)
@@ -642,10 +642,10 @@ public class UnitMovementController : MonoBehaviour
             // Clear old occupancy for lead unit and companions
             if (previousTile >= 0 && previousTile != targetTile)
             {
-                try { occ?.ClearOccupantById(previousTile, unit.currentLayer, unit.gameObject.GetInstanceID()); } catch { }
+                try { occ?.ClearOccupantById(previousTile, unit.currentLayer, unit.gameObject.GetRuntimeId()); } catch { }
                 foreach (var comp in stackCompanions)
                 {
-                    try { occ?.ClearOccupantById(previousTile, comp.currentLayer, comp.gameObject.GetInstanceID()); } catch { }
+                    try { occ?.ClearOccupantById(previousTile, comp.currentLayer, comp.gameObject.GetRuntimeId()); } catch { }
                 }
             }
 
@@ -731,14 +731,14 @@ public class UnitMovementController : MonoBehaviour
         // PHASE 2: Animate the committed tiles (coroutine with guaranteed cleanup)
         unit.UpdateWalkingState(true);
         var c = StartCoroutine(AnimateAlongPath(unit, committedTiles));
-        try { _activeMoveCoroutines[unit.GetInstanceID()] = c; } catch { }
+        try { _activeMoveCoroutines[unit.GetRuntimeId()] = c; } catch { }
 
         // Animate stacked companions alongside lead unit
         foreach (var comp in stackCompanions)
         {
             comp.UpdateWalkingState(true);
             var cc = StartCoroutine(AnimateAlongPath(comp, committedTiles));
-            try { _activeMoveCoroutines[comp.GetInstanceID()] = cc; } catch { }
+            try { _activeMoveCoroutines[comp.GetRuntimeId()] = cc; } catch { }
         }
     }
 
@@ -882,7 +882,7 @@ public class UnitMovementController : MonoBehaviour
         }
         finally
         {
-            try { _activeMoveCoroutines.Remove(unit != null ? unit.GetInstanceID() : -1); } catch { }
+            try { _activeMoveCoroutines.Remove(unit != null ? unit.GetRuntimeId() : -1); } catch { }
 
             if (unit != null)
             {
@@ -1021,7 +1021,7 @@ public class UnitMovementController : MonoBehaviour
     public void StopMoveForUnit(BaseUnit unit)
     {
         if (unit == null) return;
-        int id = unit.GetInstanceID();
+        int id = unit.GetRuntimeId();
         if (_activeMoveCoroutines.TryGetValue(id, out var coroutine))
         {
             try { if (coroutine != null) StopCoroutine(coroutine); } catch { }
@@ -1038,7 +1038,7 @@ public class UnitMovementController : MonoBehaviour
     public bool HasActiveMove(BaseUnit unit)
     {
         if (unit == null) return false;
-        return _activeMoveCoroutines.ContainsKey(unit.GetInstanceID());
+        return _activeMoveCoroutines.ContainsKey(unit.GetRuntimeId());
     }
 
     private Vector3 GetMovementWorldPosition(BaseUnit unit, TileSystem ts, int tileIndex)
@@ -1096,7 +1096,7 @@ public class UnitMovementController : MonoBehaviour
             var planetGenerator = GameManager.Instance?.GetPlanetGenerator(unit.planetIndex) ?? unit.owner?.GetPlanetGeneratorForIndex(unit.planetIndex);
             if (planetGenerator == null) return;
 
-            var wrapManager = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+            var wrapManager = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
             wrapManager?.RegisterObjectForWrapAtTile(tileIndex, unit.gameObject);
         }
         catch { }
