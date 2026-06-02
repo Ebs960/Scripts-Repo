@@ -51,6 +51,9 @@ public class EquipmentData : ScriptableObject
     public bool usesProjectiles = false;
     [Tooltip("Name of the child transform on the equipment prefab to use as the projectile spawn point. If empty, a sensible holder (projectileWeaponHolder or weaponHolder) will be used.")]
     public string projectileSpawnName = "ProjectileSpawn";
+    [Header("Projectile Weapon Attachment Points")]
+    [Tooltip("Name of the child transform on the equipment prefab where arrows are held while nocked/drawn.")]
+    public string projectileNockName = "ProjectileNock";
     [Tooltip("If true and a spawn transform is found on the equipment prefab, use it instead of the unit's projectile spawn point.")]
     public bool useEquipmentProjectileSpawn = true;
     [Header("Grip & Usage")]
