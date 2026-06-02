@@ -51,7 +51,7 @@ public class SpaceMapButton : MonoBehaviour
     private void OnGameManagerReady()
     {
         // Find managers
-        ancientRuinsManager = FindFirstObjectByType<AncientRuinsManager>(FindObjectsInactive.Include);
+        ancientRuinsManager = FindAnyObjectByType<AncientRuinsManager>(FindObjectsInactive.Include);
 
         // Find existing SpaceMapUI in scene (DON'T CREATE NEW ONES!)
         spaceMapUI = FindSpaceMapUIInScene();
@@ -60,7 +60,7 @@ public class SpaceMapButton : MonoBehaviour
             Debug.LogError("[SpaceMapButton] No SpaceMapUI found in scene! Make sure you have a SpaceMapUI component in your scene.");
             Debug.LogError("[SpaceMapButton] Check that your SpaceMapUI GameObject is active and the component is attached properly.");
             // List all objects with SpaceMapUI components for debugging
-            SpaceMapUI[] allSpaceMapUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            SpaceMapUI[] allSpaceMapUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include);
 foreach (var ui in allSpaceMapUIs)
             {
 }
@@ -172,7 +172,7 @@ foreach (var ui in allSpaceMapUIs)
             Debug.LogError("[SpaceMapButton] Make sure you have a SpaceMapUI component properly set up in your scene hierarchy.");
 
             // Debug: List all GameObjects with "Space" in the name
-            GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            GameObject[] allObjects = FindObjectsByType<GameObject>();
 foreach (GameObject obj in allObjects)
             {
                 if (obj.name.ToLower().Contains("space"))
@@ -199,14 +199,14 @@ foreach (GameObject obj in allObjects)
     private SpaceMapUI FindSpaceMapUIInScene()
     {
 // Method 1: Try normal active search first
-        SpaceMapUI activeUI = FindFirstObjectByType<SpaceMapUI>();
+        SpaceMapUI activeUI = FindAnyObjectByType<SpaceMapUI>();
         if (activeUI != null)
         {
 return activeUI;
         }
 
         // Method 2: Search including inactive objects using the new API
-        SpaceMapUI[] allUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        SpaceMapUI[] allUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include);
         foreach (SpaceMapUI ui in allUIs)
         {
             // Make sure it's a scene object, not a prefab
@@ -217,7 +217,7 @@ return ui;
         }
 
         // Method 3: Search by GameObject name if component search fails
-        GameObject[] allGameObjects = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameObject[] allGameObjects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
         foreach (GameObject go in allGameObjects)
         {
             if (go.name.ToLower().Contains("spacemap") || go.name.ToLower().Contains("space map"))

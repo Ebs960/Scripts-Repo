@@ -224,7 +224,7 @@ public class AIPlanner
 
     private EmpireAI GetOrCreateEmpire(Civilization civ)
     {
-        int id = civ.GetInstanceID();
+        int id = civ.GetRuntimeId();
         if (!empireStates.TryGetValue(id, out var e))
         {
             e = new EmpireAI();
@@ -235,7 +235,7 @@ public class AIPlanner
 
     private OperationalPlanner GetOrCreateOpPlanner(Civilization civ)
     {
-        int id = civ.GetInstanceID();
+        int id = civ.GetRuntimeId();
         if (!opPlanners.TryGetValue(id, out var p))
         {
             p = new OperationalPlanner();
@@ -284,7 +284,7 @@ public class AIPlanner
             if (ClimateManager.Instance.GetSeasonForPlanet(unit.planetIndex) == Season.Winter) return;
             var cmd = new AIUnstoreCommand { unit = unit, planetIndex = unit.planetIndex, score = 100f };
             plannedCommands.Add(cmd);
-            assignedUnits.Add(unit.GetInstanceID());
+            assignedUnits.Add(unit.GetRuntimeId());
         }
 
         if (civ.combatUnits != null)
@@ -311,7 +311,7 @@ public class AIPlanner
             foreach (var cmd in commands)
             {
                 plannedCommands.Add(cmd);
-                if (cmd.unit != null) assignedUnits.Add(cmd.unit.GetInstanceID());
+                if (cmd.unit != null) assignedUnits.Add(cmd.unit.GetRuntimeId());
             }
         }
     }
@@ -324,7 +324,7 @@ public class AIPlanner
         foreach (var unit in civ.combatUnits)
         {
             if (unit == null || unit.hasActedThisTurn || unit.IsInOrbit) continue;
-            if (assignedUnits.Contains(unit.GetInstanceID())) continue;
+            if (assignedUnits.Contains(unit.GetRuntimeId())) continue;
             if (unit.isStored) continue;
             if (unit.planetIndex < 0) continue;
 
@@ -336,7 +336,7 @@ public class AIPlanner
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
-                assignedUnits.Add(unit.GetInstanceID());
+                assignedUnits.Add(unit.GetRuntimeId());
             }
         }
     }
@@ -349,7 +349,7 @@ public class AIPlanner
         foreach (var worker in civ.workerUnits)
         {
             if (worker == null || worker.currentTileIndex < 0) continue;
-            if (assignedUnits.Contains(worker.GetInstanceID())) continue;
+            if (assignedUnits.Contains(worker.GetRuntimeId())) continue;
             if (worker.isStored) continue;
             if (worker.planetIndex < 0) continue;
 
@@ -361,7 +361,7 @@ public class AIPlanner
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
-                assignedUnits.Add(worker.GetInstanceID());
+                assignedUnits.Add(worker.GetRuntimeId());
             }
         }
     }

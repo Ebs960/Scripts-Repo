@@ -74,7 +74,7 @@ public class DangerMap
                 foreach (var enemy in civ.combatUnits)
                 {
                     if (enemy == null || enemy.currentTileIndex < 0 || enemy.planetIndex != planetIndex) continue;
-                    int key = enemy.GetInstanceID();
+                    int key = enemy.GetRuntimeId();
                     MarkThreatRadiusTracked(ts, key, enemy.currentTileIndex, enemy.CurrentAttack,
                         Mathf.FloorToInt(enemy.CurrentRange), 1f);
                 }
@@ -82,7 +82,7 @@ public class DangerMap
                     foreach (var w in civ.workerUnits)
                     {
                         if (w == null || w.currentTileIndex < 0 || w.planetIndex != planetIndex) continue;
-                        MarkThreatRadiusTracked(ts, w.GetInstanceID(), w.currentTileIndex, w.CurrentAttack, 1, 0.5f);
+                        MarkThreatRadiusTracked(ts, w.GetRuntimeId(), w.currentTileIndex, w.CurrentAttack, 1, 0.5f);
                     }
             }
         }
@@ -93,7 +93,7 @@ public class DangerMap
             {
                 if (animal == null || animal.data == null || animal.currentTileIndex < 0 || animal.planetIndex != planetIndex) continue;
                 float weight = animal.data.animalBehavior == AnimalBehaviorType.Predator ? 0.7f : 0.15f;
-                MarkThreatRadiusTracked(ts, animal.GetInstanceID(), animal.currentTileIndex, animal.CurrentAttack, 1, weight);
+                MarkThreatRadiusTracked(ts, animal.GetRuntimeId(), animal.currentTileIndex, animal.CurrentAttack, 1, weight);
             }
         }
 
@@ -105,7 +105,7 @@ public class DangerMap
                 foreach (var city in civ.cities)
                 {
                     if (city == null || city.planetIndex != planetIndex) continue;
-                    MarkThreatRadiusTracked(ts, city.GetInstanceID(), city.centerTileIndex, 5, 2, 0.8f);
+                    MarkThreatRadiusTracked(ts, city.GetRuntimeId(), city.centerTileIndex, 5, 2, 0.8f);
                 }
             }
         }
@@ -170,7 +170,7 @@ public class DangerMap
         var owner = GetOwner(unit);
         if (owner == perspective) return;
 
-        int key = unit.GetInstanceID();
+        int key = unit.GetRuntimeId();
         float weight = 1f;
         int range = 1;
         if (unit is CombatUnit cu)
@@ -189,7 +189,7 @@ public class DangerMap
         var defender = args.Defender as BaseUnit;
         if (defender == null || defender.planetIndex != PlanetIndex) return;
         if (!args.IsLethal) return;
-        RemoveThreat(defender.GetInstanceID());
+        RemoveThreat(defender.GetRuntimeId());
     }
 
     // ──────────────── Tracked BFS ────────────────

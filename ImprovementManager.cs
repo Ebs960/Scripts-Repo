@@ -147,7 +147,7 @@ public class ImprovementManager : MonoBehaviour
         // Register construction visual for wrap teleport
         try
         {
-              var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
+              var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, constructionObject);
         }
         catch { }
@@ -697,7 +697,7 @@ public class ImprovementManager : MonoBehaviour
             // Register completed improvement for wrap teleport
                         try
                         {
-                                    var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
+                                    var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
                                 if (mgr != null) mgr.RegisterObjectForWrapAtTile(job.tileIndex, completedImprovement);
                         }
             catch { }
@@ -835,7 +835,7 @@ public class ImprovementManager : MonoBehaviour
         // Keep hierarchy organized: parent units under their planet generator.
         if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         // Register unit with wrap registry
-              try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
+              try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -885,7 +885,7 @@ public class ImprovementManager : MonoBehaviour
         var go = Object.Instantiate(prefab, pos, Quaternion.identity);
         // Keep hierarchy organized: parent workers under their planet generator.
         if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
-        try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
+        try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
         var unit = go.GetComponent<WorkerUnit>();
         if (unit == null)
         {
@@ -1207,7 +1207,7 @@ public class ImprovementManager : MonoBehaviour
         if (reason == ImprovementRemovalReason.Destroyed && data.destroyedPrefab != null)
         {
             var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
-            try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
+            try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
             var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
             if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         }
@@ -1273,7 +1273,7 @@ public class ImprovementManager : MonoBehaviour
                     Vector3 pos = instanceObj.transform.position;
                     Quaternion rot = instanceObj.transform.rotation;
                     var newObj = Instantiate(found.replacePrefab, pos, rot);
-                    try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
+                    try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
                     var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                     if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                     var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
@@ -1379,7 +1379,7 @@ public class ImprovementManager : MonoBehaviour
                 Vector3 pos = instanceObj.transform.position;
                 Quaternion rot = instanceObj.transform.rotation;
                 var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
-                try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
+                try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
                 var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                 if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                 var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();

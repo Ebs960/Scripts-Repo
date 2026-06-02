@@ -84,7 +84,7 @@ public class SoldierGroup : MonoBehaviour
     {
         targetSoldierCount = Mathf.Max(1, count);
         formation = formationType;
-        variantRng = new System.Random(seed != 0 ? seed : gameObject.GetInstanceID());
+        variantRng = new System.Random(seed != 0 ? seed : gameObject.GetRuntimeId());
 
         // Measure the lead model once for downstream layout/visual logic.
         modelRadius = MeasureModelRadius();

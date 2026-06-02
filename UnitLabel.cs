@@ -92,7 +92,7 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     {
         if (target == null) return;
         // Throttle to every 3rd frame, staggered per instance
-        if ((Time.frameCount + (GetInstanceID() & 0x7FFFFFFF)) % 3 != 0) return;
+        if ((Time.frameCount + (this.GetRuntimeId() & 0x7FFFFFFF)) % 3 != 0) return;
 
         if (mainCam == null) mainCam = Camera.main;
         if (mainCam == null) return;

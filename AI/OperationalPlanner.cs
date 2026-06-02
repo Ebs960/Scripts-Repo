@@ -59,7 +59,7 @@ public class OperationalPlanner
     public UnitAssignment GetAssignment(BaseUnit unit)
     {
         if (unit == null) return null;
-        assignments.TryGetValue(unit.GetInstanceID(), out var a);
+        assignments.TryGetValue(unit.GetRuntimeId(), out var a);
         return a;
     }
 
@@ -164,9 +164,9 @@ public class OperationalPlanner
         // Build a HashSet of alive unit IDs for O(1) lookup instead of O(n) scan
         var aliveIds = new HashSet<int>();
         if (civ.combatUnits != null)
-            foreach (var u in civ.combatUnits) if (u != null) aliveIds.Add(u.GetInstanceID());
+            foreach (var u in civ.combatUnits) if (u != null) aliveIds.Add(u.GetRuntimeId());
         if (civ.workerUnits != null)
-            foreach (var w in civ.workerUnits) if (w != null) aliveIds.Add(w.GetInstanceID());
+            foreach (var w in civ.workerUnits) if (w != null) aliveIds.Add(w.GetRuntimeId());
 
         var toRemove = new List<int>();
         foreach (var kv in assignments)
@@ -200,13 +200,13 @@ public class OperationalPlanner
             foreach (var u in civ.combatUnits)
             {
                 if (u == null || u.isStored || u.IsInOrbit || u.currentHealth <= 0) continue;
-                if (!assignments.ContainsKey(u.GetInstanceID())) freeCombat.Add(u);
+                if (!assignments.ContainsKey(u.GetRuntimeId())) freeCombat.Add(u);
             }
         if (civ.workerUnits != null)
             foreach (var w in civ.workerUnits)
             {
                 if (w == null || w.isStored || w.currentHealth <= 0) continue;
-                if (!assignments.ContainsKey(w.GetInstanceID())) freeWorkers.Add(w);
+                if (!assignments.ContainsKey(w.GetRuntimeId())) freeWorkers.Add(w);
             }
     }
 
@@ -475,7 +475,7 @@ public class OperationalPlanner
 
     private void Assign(BaseUnit unit, UnitRole role, int targetTile, int turn, float priority, int targetCivId = -1)
     {
-        int id = unit.GetInstanceID();
+        int id = unit.GetRuntimeId();
         assignments[id] = new UnitAssignment
         {
             UnitInstanceId = id,
@@ -516,7 +516,7 @@ public class OperationalPlanner
                         if (assignment.TargetCivId >= 0 && atk.target != null)
                         {
                             var targetOwner = GetUnitOwner(atk.target);
-                            if (targetOwner != null && targetOwner.GetInstanceID() == assignment.TargetCivId)
+                            if (targetOwner != null && targetOwner.GetRuntimeId() == assignment.TargetCivId)
                                 bonus += 5f;
                         }
                     }

@@ -57,7 +57,7 @@ public class CivilizationManager : MonoBehaviour
         turnManager = FindAnyObjectByType<TurnManager>();
         
         // Optionally find all Civilization components in scene
-        var all = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+        var all = FindObjectsByType<Civilization>();
         foreach (var civ in all) RegisterCiv(civ);
     }
 
@@ -2510,7 +2510,7 @@ break; // Only propose one alliance per turn
         // Register pioneer with wrap registry
         try
         {
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planet);
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tile, wgo);
         }
         catch { }

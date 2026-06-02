@@ -224,7 +224,7 @@ public class TileOccupancyManager : MonoBehaviour
     {
         if (!ValidIndex(tile) || occupant == null) return -1;
         int layerIdx = (int)layer;
-        int id = occupant.GetInstanceID();
+        int id = occupant.GetRuntimeId();
         int limit = Mathf.Min(maxSlots, MAX_STACK_SLOTS);
 
         // Check if already present
@@ -373,7 +373,7 @@ public class TileOccupancyManager : MonoBehaviour
 
         int layerIdx = (int)layer;
         int existingId = occupants[tile, layerIdx, 0];
-        int id = occupant != null ? occupant.GetInstanceID() : 0;
+        int id = occupant != null ? occupant.GetRuntimeId() : 0;
 
         if (occupant != null && existingId != 0 && existingId != id)
         {

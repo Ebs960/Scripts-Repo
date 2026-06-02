@@ -324,7 +324,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (currentTileIndex < 0) return;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null)
-            occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
+            occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetRuntimeId());
         stackSlot = -1;
     }
 
@@ -339,10 +339,10 @@ public abstract class BaseUnit : MonoBehaviour
         if (occ == null) return result;
 
         var objects = occ.GetAllOccupantObjects(currentTileIndex, currentLayer);
-        int selfId = gameObject.GetInstanceID();
+        int selfId = gameObject.GetRuntimeId();
         foreach (var obj in objects)
         {
-            if (obj.GetInstanceID() == selfId) continue;
+            if (obj.GetRuntimeId() == selfId) continue;
             var unit = obj.GetComponent<BaseUnit>();
             if (unit != null) result.Add(unit);
         }
@@ -360,7 +360,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (occ == null) return this;
 
         int frontId = occ.GetOccupantIdAtSlot(currentTileIndex, currentLayer, 0);
-        if (frontId == 0 || frontId == gameObject.GetInstanceID()) return this;
+        if (frontId == 0 || frontId == gameObject.GetRuntimeId()) return this;
 
         var frontObj = UnitRegistry.GetObject(frontId);
         if (frontObj == null) return this;
@@ -663,7 +663,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (soldierGroup == null)
             soldierGroup = gameObject.AddComponent<SoldierGroup>();
 
-        soldierGroup.Initialize(count, variants, formationType, formationSpacing, gameObject.GetInstanceID());
+        soldierGroup.Initialize(count, variants, formationType, formationSpacing, gameObject.GetRuntimeId());
         DistributeEquipmentToSoldiers();
         if (animator != null)
             soldierGroup.SyncBoolParametersFrom(animator);
@@ -1230,7 +1230,7 @@ public abstract class BaseUnit : MonoBehaviour
                 string compDump = "";
                 try
                 {
-                    int id = gameObject != null ? gameObject.GetInstanceID() : 0;
+                    int id = gameObject != null ? gameObject.GetRuntimeId() : 0;
                     if (id != 0 && AnimalManager.Instance.TryGetSpawnComponentDump(id, out var dump))
                     {
                         compDump = "\n" + dump;
@@ -1239,7 +1239,7 @@ public abstract class BaseUnit : MonoBehaviour
                 }
                 catch { }
                 Debug.LogWarning(
-                    $"[BaseUnit][AnimalDestroyDiag] Animal OnDestroy: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
+                    $"[BaseUnit][AnimalDestroyDiag] Animal OnDestroy: name='{name}' id={(gameObject!=null?gameObject.GetRuntimeId():0)} " +
                     $"scene={sceneName} frame={Time.frameCount} time={Time.time:F3} " +
                     $"planetIndex={planetIndex} tile={currentTileIndex} layer={currentLayer} ownerNull={(owner==null)} parent={parentName}\n" +
                     $"StackTrace:\n{System.Environment.StackTrace}" +
@@ -1553,7 +1553,7 @@ public abstract class BaseUnit : MonoBehaviour
             var cu = this as CombatUnit;
             if (cu != null && cu.data != null && cu.data.unitType == CombatCategory.Animal && AnimalManager.Instance != null && AnimalManager.Instance.debugSpawning)
             {
-                Debug.LogWarning($"[BaseUnit][AnimalDamageDiag] ApplyDamage called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} damage={damageAmount} hpBefore={currentHealth} maxHP={MaxHealth} frame={Time.frameCount} time={Time.time:F3}\nStackTrace:\n{System.Environment.StackTrace}");
+                Debug.LogWarning($"[BaseUnit][AnimalDamageDiag] ApplyDamage called: name='{name}' id={(gameObject!=null?gameObject.GetRuntimeId():0)} damage={damageAmount} hpBefore={currentHealth} maxHP={MaxHealth} frame={Time.frameCount} time={Time.time:F3}\nStackTrace:\n{System.Environment.StackTrace}");
             }
         }
         catch { }
@@ -1669,7 +1669,7 @@ public abstract class BaseUnit : MonoBehaviour
                 AnimalManager.Instance.debugSpawning)
             {
                 Debug.LogWarning(
-                    $"[BaseUnit][AnimalDieDiag] Die called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
+                    $"[BaseUnit][AnimalDieDiag] Die called: name='{name}' id={(gameObject!=null?gameObject.GetRuntimeId():0)} " +
                     $"hp={currentHealth}/{MaxHealth} frame={Time.frameCount} time={Time.time:F3}\n" +
                     $"StackTrace:\n{System.Environment.StackTrace}"
                 );
@@ -1688,7 +1688,7 @@ public abstract class BaseUnit : MonoBehaviour
                 var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
                 if (occ != null)
                 {
-                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
+                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetRuntimeId());
                 }
                 else
                 {
@@ -1783,7 +1783,7 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Check if orbit slot is already occupied by another unit
         var existingOccupant = occ.GetOccupantObject(tileIndex, TileLayer.Orbit);
-        if (existingOccupant != null && existingOccupant.GetInstanceID() != gameObject.GetInstanceID())
+        if (existingOccupant != null && existingOccupant.GetRuntimeId() != gameObject.GetRuntimeId())
         {
             Debug.LogWarning($"[BaseUnit] {name} cannot enter orbit on tile {tileIndex}: already occupied by {existingOccupant.name}.");
             return;
@@ -1800,7 +1800,7 @@ public abstract class BaseUnit : MonoBehaviour
         {
             if (currentTileIndex >= 0)
             {
-                occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
+                occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetRuntimeId());
             }
         }
         catch { }
@@ -1866,7 +1866,7 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Check that the surface tile is not already occupied by another unit
         var surfaceOccupant = occ.GetOccupantObject(landingTileIndex, TileLayer.Surface);
-        if (surfaceOccupant != null && surfaceOccupant.GetInstanceID() != gameObject.GetInstanceID())
+        if (surfaceOccupant != null && surfaceOccupant.GetRuntimeId() != gameObject.GetRuntimeId())
         {
             Debug.LogWarning($"[BaseUnit] {name} cannot land: surface tile {landingTileIndex} is occupied by {surfaceOccupant.name}.");
             return;
@@ -1881,7 +1881,7 @@ public abstract class BaseUnit : MonoBehaviour
         // Claim the surface first so landing cannot clear orbit occupancy and then fail the destination write.
         try
         {
-            occ.ClearOccupantById(currentTileIndex, TileLayer.Orbit, gameObject.GetInstanceID());
+            occ.ClearOccupantById(currentTileIndex, TileLayer.Orbit, gameObject.GetRuntimeId());
         }
         catch { }
 
@@ -2024,7 +2024,7 @@ public abstract class BaseUnit : MonoBehaviour
             {
                 var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
                 var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, TileLayer.Orbit) : null;
-                if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+                if (occObj != null && occObj.GetRuntimeId() != gameObject.GetRuntimeId()) return false;
             }
             catch { }
             return true;
@@ -2071,7 +2071,7 @@ public abstract class BaseUnit : MonoBehaviour
                 var allIds = occ.GetAllOccupantIds(tileIndex, currentLayer);
                 if (allIds.Count > 0)
                 {
-                    int selfId = gameObject.GetInstanceID();
+                    int selfId = gameObject.GetRuntimeId();
                     bool selfPresent = false;
                     bool hasCity = false;
                     bool hasEnemyOrNonUnit = false;
@@ -2216,7 +2216,7 @@ public abstract class BaseUnit : MonoBehaviour
                 // Clear old tile occupancy if moving to a different tile
                 if (currentTileIndex >= 0 && currentTileIndex != tileIndex)
                 {
-                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetInstanceID());
+                    occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetRuntimeId());
                 }
                 int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
                 int slot = occ.TryAddToStack(tileIndex, currentLayer, gameObject, maxStack);

@@ -4500,7 +4500,7 @@ return true;
         }
         // Register city GameObject with HexMapChunkManager so it follows world-wrap columns
         try {
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetToUse);
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetToUse);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, cityGO);
         } catch { }
 // --- Position and orient the city on the correct tile ---
@@ -5633,7 +5633,7 @@ return true;
         // Minimum level: EquipmentManagerPanel configures defaults for archetypes; treat level 1 as baseline.
         if (equipment.minimumLevel > 1) return false;
 
-        long key = ((long)equipment.GetInstanceID() << 32) ^ (uint)unitType;
+        long key = ((long)equipment.GetRuntimeId() << 32) ^ (uint)unitType;
         if (_canEquipByUnitTypeCache.TryGetValue(key, out var cached))
             return cached;
 

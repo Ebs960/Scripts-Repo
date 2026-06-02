@@ -657,7 +657,7 @@ public class GameManager : MonoBehaviour
     private ManagerCache CacheAllManagerReferences()
     {
         // Find all managers in one pass through the scene
-        var allComponents = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var allComponents = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude);
         
         ManagerCache cache = new ManagerCache();
         
@@ -2255,7 +2255,7 @@ public class GameManager : MonoBehaviour
                 UIManager.Instance.gameplayHudRoot.SetActive(true);
         }
 
-        var hud = FindFirstObjectByType<HudController>(FindObjectsInactive.Include);
+        var hud = FindAnyObjectByType<HudController>(FindObjectsInactive.Include);
         if (hud != null)
             hud.RefreshAll();
 
@@ -3004,7 +3004,7 @@ public class GameManager : MonoBehaviour
         if (allCivs == null) return;
 
         var cityLookup = new Dictionary<(int planetIndex, int tileIndex), City>();
-        foreach (var city in FindObjectsByType<City>(FindObjectsSortMode.None))
+        foreach (var city in FindObjectsByType<City>())
         {
             if (city == null) continue;
             cityLookup[(city.planetIndex, city.centerTileIndex)] = city;
@@ -3586,7 +3586,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void WireAllButtonsInScene()
     {
-        var buttons = FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None);
+        var buttons = FindObjectsByType<UnityEngine.UI.Button>();
         foreach (var button in buttons)
         {
             WireButton(button);

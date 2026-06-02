@@ -93,7 +93,7 @@ public class AncientRuinsManager : MonoBehaviour
             return;
         }
 
-        var chunkMgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None)
+        var chunkMgr = FindObjectsByType<HexMapChunkManager>()
                            .FirstOrDefault(m => m.PlanetGenerator == generator);
 
         int spawnedCount = 0; // number of RuinSite records created

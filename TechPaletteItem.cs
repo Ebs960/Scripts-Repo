@@ -113,7 +113,7 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         {
             // Palette mode: create a ghost copy
             draggedObject = Instantiate(gameObject);
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = FindAnyObjectByType<Canvas>();
             if (canvas != null)
             {
                 draggedObject.transform.SetParent(canvas.transform, false);
