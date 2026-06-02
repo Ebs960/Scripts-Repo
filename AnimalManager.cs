@@ -994,7 +994,7 @@ public class AnimalManager : MonoBehaviour
         // Register with HexMapChunkManager so this animal is teleported when its column wraps
         try
         {
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planet);
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
             if (mgr != null)
             {
                 mgr.RegisterObjectForWrapAtTile(chosenIndex, unit.gameObject);
@@ -1038,7 +1038,7 @@ public class AnimalManager : MonoBehaviour
             // Capture component list early (helps identify self-destruct scripts on the prefab).
             try
             {
-                int id = unit.gameObject.GetInstanceID();
+                int id = unit.gameObject.GetRuntimeId();
                 var mbs = unit.gameObject.GetComponentsInChildren<MonoBehaviour>(true);
                 var sb = new System.Text.StringBuilder(512);
                 sb.AppendLine($"Components on '{unit.gameObject.name}' (id={id}):");
@@ -1073,13 +1073,13 @@ public class AnimalManager : MonoBehaviour
                 rend0 = $"{rends[0].GetType().Name} enabled={rends[0].enabled} min={b.min.ToString("F2")} max={b.max.ToString("F2")}";
             }
             Debug.Log(
-                $"[AnimalManager] Spawn diagnostics: id={unit.gameObject.GetInstanceID()} " +
+                $"[AnimalManager] Spawn diagnostics: id={unit.gameObject.GetRuntimeId()} " +
                 $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
                 $"scene={sceneName} layer={layerName} " +
                 $"hp={unit.currentHealth}/{unit.MaxHealth} " +
                 $"pos={unit.transform.position.ToString("F2")} scale={unit.transform.lossyScale.ToString("F3")} " +
                 $"parent={parentName} parentActiveSelf={parentActiveSelf} " +
-                $"registryHas={(UnitRegistry.GetObject(unit.gameObject.GetInstanceID()) != null)} " +
+                $"registryHas={(UnitRegistry.GetObject(unit.gameObject.GetRuntimeId()) != null)} " +
                 $"renderers={rendererCount} rend0={rend0}"
             );
 
@@ -1106,7 +1106,7 @@ public class AnimalManager : MonoBehaviour
             yield break;
         }
         Debug.Log(
-            $"[AnimalManager] VerifySpawn(1f): id={unit.gameObject.GetInstanceID()} " +
+            $"[AnimalManager] VerifySpawn(1f): id={unit.gameObject.GetRuntimeId()} " +
             $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
             $"pos={unit.transform.position.ToString("F2")} parent={(unit.transform.parent != null ? unit.transform.parent.name : "<none>")}"
         );
@@ -1119,7 +1119,7 @@ public class AnimalManager : MonoBehaviour
             yield break;
         }
         Debug.Log(
-            $"[AnimalManager] VerifySpawn(11f): id={unit.gameObject.GetInstanceID()} " +
+            $"[AnimalManager] VerifySpawn(11f): id={unit.gameObject.GetRuntimeId()} " +
             $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
             $"pos={unit.transform.position.ToString("F2")} parent={(unit.transform.parent != null ? unit.transform.parent.name : "<none>")}"
         );

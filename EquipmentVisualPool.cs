@@ -32,7 +32,7 @@ public static class EquipmentVisualPool
     public static GameObject Acquire(GameObject prefab)
     {
         if (prefab == null) return null;
-        int prefabId = prefab.GetInstanceID();
+        int prefabId = prefab.GetRuntimeId();
 
         if (_poolByPrefabId.TryGetValue(prefabId, out var stack))
         {

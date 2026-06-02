@@ -15,7 +15,7 @@ public static class UnitRegistry
     public static void Register(GameObject obj)
     {
         if (obj == null) return;
-        idLookup[obj.GetInstanceID()] = obj;
+        idLookup[obj.GetRuntimeId()] = obj;
         if (obj.TryGetComponent<CombatUnit>(out var cu))
             combatUnits.Add(cu);
         if (obj.TryGetComponent<WorkerUnit>(out var wu))
@@ -31,7 +31,7 @@ public static class UnitRegistry
     public static void Unregister(GameObject obj)
     {
         if (obj == null) return;
-        idLookup.Remove(obj.GetInstanceID());
+        idLookup.Remove(obj.GetRuntimeId());
         if (obj.TryGetComponent<CombatUnit>(out var cu))
             combatUnits.Remove(cu);
         if (obj.TryGetComponent<WorkerUnit>(out var wu))

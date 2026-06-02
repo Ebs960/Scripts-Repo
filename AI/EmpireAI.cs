@@ -487,7 +487,7 @@ public class EmpireAI
             foreach (var other in allCivs)
             {
                 if (other == civ) continue;
-                int id = other.GetInstanceID();
+                int id = other.GetRuntimeId();
                 float add = 0f;
                 if (memory.HasRecentEvent(other, DiplomaticEventType.DeclaredWar, 5)) add += 20f;
                 if (memory.HasRecentEvent(other, DiplomaticEventType.BrokePeace, 5)) add += 15f;
@@ -506,7 +506,7 @@ public class EmpireAI
     public float GetGrudge(Civilization other)
     {
         if (other == null) return 0f;
-        grudges.TryGetValue(other.GetInstanceID(), out float g);
+        grudges.TryGetValue(other.GetRuntimeId(), out float g);
         return g;
     }
 
@@ -523,7 +523,7 @@ public class EmpireAI
             if (allCivs == null) return true;
             foreach (var c in allCivs)
             {
-                if (c.GetInstanceID() == wt.CivInstanceId)
+                if (c.GetRuntimeId() == wt.CivInstanceId)
                 {
                     // Still at war?
                     if (civ.relations != null && civ.relations.TryGetValue(c, out var state) && state == DiplomaticState.War)
@@ -542,7 +542,7 @@ public class EmpireAI
         foreach (var other in allCivsList)
         {
             if (other == civ) continue;
-            int otherId = other.GetInstanceID();
+            int otherId = other.GetRuntimeId();
             bool alreadyTarget = false;
             foreach (var wt in intent.WarTargets)
                 if (wt.CivInstanceId == otherId) { alreadyTarget = true; break; }

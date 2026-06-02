@@ -453,7 +453,7 @@ public class City : MonoBehaviour
     {
         // Position label above city and face camera (every 3rd frame, staggered by instance)
         if (labelCanvas == null) return;
-        if ((Time.frameCount + (GetInstanceID() & 0x7FFFFFFF)) % 3 != 0) return;
+        if ((Time.frameCount + (this.GetRuntimeId() & 0x7FFFFFFF)) % 3 != 0) return;
 
         // Cache Camera.main across all City instances per frame
         if (_cachedCamFrame != Time.frameCount)
@@ -1382,7 +1382,7 @@ if (UIManager.Instance != null)
         // Register unit with HexMapChunkManager so it moves with wrap teleport
         try
         {
-            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
         }
         catch { }
@@ -1477,7 +1477,7 @@ if (UIManager.Instance != null)
                 if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
                 try
                 {
-                    var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+                    var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
                     if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
                 }
                 catch { }
@@ -2628,7 +2628,7 @@ Destroy(oldTuple.instance);
         // Get civilizations without scanning the scene if possible
         IReadOnlyList<Civilization> allCivs = CivilizationManager.Instance != null
             ? CivilizationManager.Instance.GetAllCivs()
-            : (IReadOnlyList<Civilization>)new List<Civilization>(FindObjectsByType<Civilization>(FindObjectsSortMode.None));
+            : (IReadOnlyList<Civilization>)new List<Civilization>(FindObjectsByType<Civilization>());
         
         foreach (var civ in allCivs)
         {

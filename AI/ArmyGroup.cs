@@ -845,7 +845,7 @@ public class ArmyGroupManager
     public ArmyGroup GetGroupForUnit(CombatUnit unit)
     {
         if (unit == null) return null;
-        unitToGroup.TryGetValue(unit.GetInstanceID(), out var g);
+        unitToGroup.TryGetValue(unit.GetRuntimeId(), out var g);
         return g;
     }
 
@@ -869,7 +869,7 @@ public class ArmyGroupManager
     public void AssignUnit(CombatUnit unit, ArmyGroup group)
     {
         if (unit == null || group == null) return;
-        int id = unit.GetInstanceID();
+        int id = unit.GetRuntimeId();
         if (unitToGroup.TryGetValue(id, out var oldGroup) && oldGroup != group)
             oldGroup.RemoveUnit(unit);
         group.AddUnit(unit);
@@ -891,7 +891,7 @@ public class ArmyGroupManager
         unitToGroup.Clear();
         foreach (var g in groups)
             foreach (var u in g.Members)
-                if (u != null) unitToGroup[u.GetInstanceID()] = g;
+                if (u != null) unitToGroup[u.GetRuntimeId()] = g;
     }
 
     /// <summary>

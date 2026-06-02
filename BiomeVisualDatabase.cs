@@ -360,7 +360,7 @@ public class BiomeVisualDatabase : ScriptableObject
         }
 
         // Cache lookup: include formats + mip counts so we don't reuse incompatible caches.
-        int dbId = GetInstanceID();
+        int dbId = this.GetRuntimeId();
         string signature =
             $"{name}|biomes={biomes.Count}|families={families.Count}|size={targetW}x{targetH}|totalSlices={total}" +
             $"|A={albedoFmt}/{albedoMipCount}|N={normalFmt}/{normalMipCount}|M={maskFmt}/{maskMipCount}" +

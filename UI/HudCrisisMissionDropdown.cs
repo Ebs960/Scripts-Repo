@@ -34,7 +34,7 @@ public class HudCrisisMissionDropdown : MonoBehaviour
         }
 
         // Find existing tracker
-        trackerUI = UnityEngine.Object.FindFirstObjectByType<CrisisMissionTrackerUI>();
+        trackerUI = UnityEngine.Object.FindAnyObjectByType<CrisisMissionTrackerUI>();
 
         // Configure dropdown
         dropdownButton.Bind("Crisis & Missions", null, OpenCrisisMissionPanel);

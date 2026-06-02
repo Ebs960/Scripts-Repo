@@ -393,7 +393,7 @@ public class WorkerUnit : BaseUnit
     private void HandleWorkerAssignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
     {
         if (args == null || args.Worker == null) return;
-        if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
+        if (args.Worker.GetRuntimeId() != gameObject.GetRuntimeId()) return;
         isAssignedToBuildJob = true;
         RefreshBuildAnimationState();
     }
@@ -401,7 +401,7 @@ public class WorkerUnit : BaseUnit
     private void HandleWorkerUnassignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
     {
         if (args == null || args.Worker == null) return;
-        if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
+        if (args.Worker.GetRuntimeId() != gameObject.GetRuntimeId()) return;
         isAssignedToBuildJob = false;
         RefreshBuildAnimationState();
     }

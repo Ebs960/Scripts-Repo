@@ -585,7 +585,7 @@ public class MenuPlanetPreview : MonoBehaviour
             previewLight = GetComponentInChildren<Light>();
         if (previewLight == null)
         {
-            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            foreach (var l in FindObjectsByType<Light>())
                 if (l.type == LightType.Directional) { previewLight = l; break; }
         }
 
