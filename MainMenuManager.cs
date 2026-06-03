@@ -266,6 +266,8 @@ public class MainMenuManager : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("[MainMenuManager] Start() called");
+        
         // Get GameManager reference
         gameManager = GameManager.Instance;
         if (gameManager == null)
@@ -274,39 +276,135 @@ public class MainMenuManager : MonoBehaviour
         }
 
         // Initialize panels: show only main menu at start
-        mainMenuPanel.SetActive(true);
-        civSelectionPanel.SetActive(false);
-        leaderSelectionPanel.SetActive(false);
-        gameSetupPanel.SetActive(false);
+        Debug.Log("[MainMenuManager] Initializing panels...");
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(true);
+        else
+            Debug.LogError("[MainMenuManager] mainMenuPanel is NULL!");
+            
+        if (civSelectionPanel != null)
+            civSelectionPanel.SetActive(false);
+        else
+            Debug.LogError("[MainMenuManager] civSelectionPanel is NULL!");
+            
+        if (leaderSelectionPanel != null)
+            leaderSelectionPanel.SetActive(false);
+        else
+            Debug.LogError("[MainMenuManager] leaderSelectionPanel is NULL!");
+            
+        if (gameSetupPanel != null)
+            gameSetupPanel.SetActive(false);
+        else
+            Debug.LogError("[MainMenuManager] gameSetupPanel is NULL!");
+            
+        if (optionsPanel != null)
+            optionsPanel.SetActive(false);
+        else
+            Debug.LogError("[MainMenuManager] optionsPanel is NULL!");
+        
+        Debug.Log("[MainMenuManager] Panels initialized. optionsPanel is now DISABLED.");
+        
+        // Initialize audio settings EARLY to ensure optionsPanel state is correct
+        Debug.Log("[MainMenuManager] Calling InitializeAudioSettings early...");
+        try
+        {
+            InitializeAudioSettings();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[MainMenuManager] Exception in InitializeAudioSettings: {ex}");
+        }
         
         // Start menu music
         if (MenuMusicManager.Instance != null)
         {
             MenuMusicManager.Instance.PlayMenuMusic();
         }
+        else
+        {
+            Debug.LogWarning("[MainMenuManager] MenuMusicManager.Instance is NULL - no music will play");
+        }
         
         // Hook up button callbacks
-        if (newGameButton != null) newGameButton.onClick.AddListener(OnNewGameClicked);
-        if (loadGameButton != null) loadGameButton.onClick.AddListener(OnLoadGameClicked);
-        if (optionsButton != null) optionsButton.onClick.AddListener(OnOptionsClicked);
-        if (quitGameButton != null) quitGameButton.onClick.AddListener(OnQuitGameClicked);
-        if (selectCivButton != null) selectCivButton.onClick.AddListener(OnCivSelected);
-        if (backToMenuButton != null) backToMenuButton.onClick.AddListener(OnBackToMenuClicked);
-        if (backFromCivButton != null) backFromCivButton.onClick.AddListener(OnBackFromCivSelectionClicked);
-        if (startGameButton != null) startGameButton.onClick.AddListener(OnStartGameClicked);
+        Debug.Log("[MainMenuManager] Hooking up button callbacks...");
+        if (newGameButton != null) 
+            newGameButton.onClick.AddListener(OnNewGameClicked);
+        else
+            Debug.LogError("[MainMenuManager] newGameButton is NULL!");
+            
+        if (loadGameButton != null) 
+            loadGameButton.onClick.AddListener(OnLoadGameClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] loadGameButton is NULL");
+            
+        if (optionsButton != null) 
+            optionsButton.onClick.AddListener(OnOptionsClicked);
+        else
+            Debug.LogError("[MainMenuManager] optionsButton is NULL!");
+            
+        if (quitGameButton != null) 
+            quitGameButton.onClick.AddListener(OnQuitGameClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] quitGameButton is NULL");
+            
+        if (selectCivButton != null) 
+            selectCivButton.onClick.AddListener(OnCivSelected);
+        else
+            Debug.LogWarning("[MainMenuManager] selectCivButton is NULL");
+            
+        if (backToMenuButton != null) 
+            backToMenuButton.onClick.AddListener(OnBackToMenuClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] backToMenuButton is NULL");
+            
+        if (backFromCivButton != null) 
+            backFromCivButton.onClick.AddListener(OnBackFromCivSelectionClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] backFromCivButton is NULL");
+            
+        if (startGameButton != null) 
+            startGameButton.onClick.AddListener(OnStartGameClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] startGameButton is NULL");
         
         // Options panel callbacks
-        if (optionsBackButton != null) optionsBackButton.onClick.AddListener(OnOptionsBackClicked);
-        if (menuMusicVolumeSlider != null) menuMusicVolumeSlider.onValueChanged.AddListener(OnMenuMusicVolumeChanged);
-        if (menuMusicEnabledToggle != null) menuMusicEnabledToggle.onValueChanged.AddListener(OnMenuMusicEnabledChanged);
+        Debug.Log("[MainMenuManager] Hooking up options panel callbacks...");
+        if (optionsBackButton != null) 
+            optionsBackButton.onClick.AddListener(OnOptionsBackClicked);
+        else
+            Debug.LogError("[MainMenuManager] optionsBackButton is NULL!");
+            
+        if (menuMusicVolumeSlider != null) 
+            menuMusicVolumeSlider.onValueChanged.AddListener(OnMenuMusicVolumeChanged);
+        else
+            Debug.LogWarning("[MainMenuManager] menuMusicVolumeSlider is NULL");
+            
+        if (menuMusicEnabledToggle != null) 
+            menuMusicEnabledToggle.onValueChanged.AddListener(OnMenuMusicEnabledChanged);
+        else
+            Debug.LogWarning("[MainMenuManager] menuMusicEnabledToggle is NULL");
         
         // Autosave settings callbacks
-        if (autosaveEnabledToggle != null) autosaveEnabledToggle.onValueChanged.AddListener(OnAutosaveEnabledChanged);
-        if (autosaveIntervalSlider != null) autosaveIntervalSlider.onValueChanged.AddListener(OnAutosaveIntervalChanged);
+        if (autosaveEnabledToggle != null) 
+            autosaveEnabledToggle.onValueChanged.AddListener(OnAutosaveEnabledChanged);
+        else
+            Debug.LogWarning("[MainMenuManager] autosaveEnabledToggle is NULL");
+            
+        if (autosaveIntervalSlider != null) 
+            autosaveIntervalSlider.onValueChanged.AddListener(OnAutosaveIntervalChanged);
+        else
+            Debug.LogWarning("[MainMenuManager] autosaveIntervalSlider is NULL");
         
         // New Leader Panel Buttons
-        if (selectLeaderButton != null) selectLeaderButton.onClick.AddListener(OnLeaderSelected);
-        if (backFromLeaderButton != null) backFromLeaderButton.onClick.AddListener(OnBackFromLeaderSelectionClicked);
+        if (selectLeaderButton != null) 
+            selectLeaderButton.onClick.AddListener(OnLeaderSelected);
+        else
+            Debug.LogWarning("[MainMenuManager] selectLeaderButton is NULL");
+            
+        if (backFromLeaderButton != null) 
+            backFromLeaderButton.onClick.AddListener(OnBackFromLeaderSelectionClicked);
+        else
+            Debug.LogWarning("[MainMenuManager] backFromLeaderButton is NULL");
         
         // Initialize climate preset dropdown if available
         if (climatePresetDropdown != null)
@@ -415,24 +513,34 @@ public class MainMenuManager : MonoBehaviour
         }
 
         // Initialize map size dropdown
-        InitializeMapSizeDropdown();
+        Debug.Log("[MainMenuManager] Initializing map size dropdown...");
+        try { InitializeMapSizeDropdown(); }
+        catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeMapSizeDropdown: {ex}"); }
+        
         // Initialize New World UI controls
-        InitializeNewWorldControls();
+        Debug.Log("[MainMenuManager] Initializing new world controls...");
+        try { InitializeNewWorldControls(); }
+        catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeNewWorldControls: {ex}"); }
 
-        // Initialize audio settings
-        InitializeAudioSettings();
+        // NOTE: InitializeAudioSettings was ALREADY CALLED EARLY in Start()
 
         // Initialize autosave settings
-        InitializeAutosaveSettings();
+        Debug.Log("[MainMenuManager] Initializing autosave settings...");
+        try { InitializeAutosaveSettings(); }
+        catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeAutosaveSettings: {ex}"); }
 
         // Update the map type name only after setup dropdowns are populated.
+        Debug.Log("[MainMenuManager] Updating map type name...");
         SafeUpdateMapTypeName();
 
+        Debug.Log("[MainMenuManager] Validating dropdowns...");
         ValidateDropdown("AI Count", aiCountDropdown, 9);
         ValidateDropdown("City States", cityStateCountDropdown, 7);
         ValidateDropdown("Tribes", tribeCountDropdown, 7);
         ValidateDropdown("Wildlife", animalPrevalenceDropdown, 6);
         ValidateDropdown("Map Size", mapSizeDropdown, 3);
+        
+        Debug.Log("[MainMenuManager] Start() completed successfully");
     }
 
     private void SafeUpdateMapTypeName()
@@ -1529,43 +1637,94 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeAudioSettings()
     {
+        Debug.Log("[MainMenuManager] InitializeAudioSettings() called");
+        
         // Initialize options panel state
         if (optionsPanel != null)
+        {
             optionsPanel.SetActive(false);
+            Debug.Log("[MainMenuManager] Options panel initialized and DISABLED in InitializeAudioSettings");
+        }
+        else
+            Debug.LogError("[MainMenuManager] InitializeAudioSettings: optionsPanel is NULL!");
 
         // Initialize menu music volume slider
         if (menuMusicVolumeSlider != null)
         {
-            float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
-            menuMusicVolumeSlider.value = savedVolume;
-            UpdateMenuMusicVolumeText(savedVolume);
+            try
+            {
+                float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
+                menuMusicVolumeSlider.value = savedVolume;
+                UpdateMenuMusicVolumeText(savedVolume);
+                Debug.Log($"[MainMenuManager] Menu music volume set to {savedVolume}");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception setting menu music volume: {ex}");
+            }
         }
+        else
+            Debug.LogWarning("[MainMenuManager] menuMusicVolumeSlider is NULL in InitializeAudioSettings");
 
         // Initialize menu music enabled toggle
         if (menuMusicEnabledToggle != null)
         {
-            bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
-            menuMusicEnabledToggle.isOn = musicEnabled;
+            try
+            {
+                bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
+                menuMusicEnabledToggle.isOn = musicEnabled;
+                Debug.Log($"[MainMenuManager] Menu music enabled set to {musicEnabled}");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception setting menu music enabled: {ex}");
+            }
         }
+        else
+            Debug.LogWarning("[MainMenuManager] menuMusicEnabledToggle is NULL in InitializeAudioSettings");
+            
+        Debug.Log("[MainMenuManager] InitializeAudioSettings() completed");
     }
 
     void OnOptionsClicked()
     {
+        Debug.Log("[MainMenuManager] OnOptionsClicked called");
         if (mainMenuPanel != null)
+        {
             mainMenuPanel.SetActive(false);
+            Debug.Log("[MainMenuManager] Main menu panel disabled");
+        }
+        else
+            Debug.LogError("[MainMenuManager] OnOptionsClicked: mainMenuPanel is NULL!");
         
         if (optionsPanel != null)
+        {
             optionsPanel.SetActive(true);
-}
+            Debug.Log("[MainMenuManager] Options panel ENABLED");
+        }
+        else
+            Debug.LogError("[MainMenuManager] OnOptionsClicked: optionsPanel is NULL!");
+    }
 
     void OnOptionsBackClicked()
     {
+        Debug.Log("[MainMenuManager] OnOptionsBackClicked called");
         if (optionsPanel != null)
+        {
             optionsPanel.SetActive(false);
+            Debug.Log("[MainMenuManager] Options panel DISABLED");
+        }
+        else
+            Debug.LogError("[MainMenuManager] OnOptionsBackClicked: optionsPanel is NULL!");
         
         if (mainMenuPanel != null)
+        {
             mainMenuPanel.SetActive(true);
-}
+            Debug.Log("[MainMenuManager] Main menu panel re-enabled");
+        }
+        else
+            Debug.LogError("[MainMenuManager] OnOptionsBackClicked: mainMenuPanel is NULL!");
+    }
 
     void OnMenuMusicVolumeChanged(float volume)
     {
