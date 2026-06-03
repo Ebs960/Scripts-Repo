@@ -386,17 +386,8 @@ public class MainMenuManager : MonoBehaviour
             terrainRoughnessDropdown.onValueChanged.AddListener(OnTerrainPresetChanged);
         }
         
-        // Update the map type name based on the initial settings
-        UpdateMapTypeName();
-            
         // Initialize all sliders and toggles
         InitializeControls();
-        
-        // Initialize audio settings
-        InitializeAudioSettings();
-        
-        // Initialize autosave settings
-        InitializeAutosaveSettings();
         
         // Initialize selected civ icon with placeholder
         if (selectedCivIcon != null)
@@ -427,6 +418,58 @@ public class MainMenuManager : MonoBehaviour
         InitializeMapSizeDropdown();
         // Initialize New World UI controls
         InitializeNewWorldControls();
+
+        // Initialize audio settings
+        InitializeAudioSettings();
+
+        // Initialize autosave settings
+        InitializeAutosaveSettings();
+
+        // Update the map type name only after setup dropdowns are populated.
+        SafeUpdateMapTypeName();
+
+        ValidateDropdown("AI Count", aiCountDropdown, 9);
+        ValidateDropdown("City States", cityStateCountDropdown, 7);
+        ValidateDropdown("Tribes", tribeCountDropdown, 7);
+        ValidateDropdown("Wildlife", animalPrevalenceDropdown, 6);
+        ValidateDropdown("Map Size", mapSizeDropdown, 3);
+    }
+
+    private void SafeUpdateMapTypeName()
+    {
+        try
+        {
+            UpdateMapTypeName();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[MainMenuManager] UpdateMapTypeName failed after dropdown setup: {ex}");
+        }
+    }
+
+    private void ValidateDropdown(string label, TMP_Dropdown dropdown, int expectedOptions)
+    {
+        int optionCount = dropdown != null && dropdown.options != null ? dropdown.options.Count : 0;
+        if (optionCount <= 1 || optionCount < expectedOptions)
+        {
+            string path = dropdown != null ? GetTransformPath(dropdown.transform) : "<unassigned>";
+            Debug.LogWarning($"[MainMenuManager] Dropdown '{label}' has {optionCount} option(s); expected {expectedOptions}. Path: {path}");
+        }
+    }
+
+    private string GetTransformPath(Transform target)
+    {
+        if (target == null)
+            return "<null>";
+
+        var path = target.name;
+        while (target.parent != null)
+        {
+            target = target.parent;
+            path = $"{target.name}/{path}";
+        }
+
+        return path;
     }
     
     private void InitializeControls()
