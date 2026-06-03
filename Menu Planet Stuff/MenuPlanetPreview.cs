@@ -1151,7 +1151,8 @@ public class MenuPlanetPreview : MonoBehaviour
         if (worldGenerator != null)
         {
             worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
-            BindGeneratedWorldTextures();
+            if (worldGenerator.HasGeneratedWorldTextures())
+                BindGeneratedWorldTextures();
         }
     }
 
@@ -1278,7 +1279,8 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         if (worldGenerator != null)
         {
             worldGenerator.RefreshGpuHydrologyOnly(BuildWorldInputs());
-            BindGeneratedWorldTextures();
+            if (worldGenerator.HasGeneratedWorldTextures())
+                BindGeneratedWorldTextures();
         }
 
         PushCloudParameters();
