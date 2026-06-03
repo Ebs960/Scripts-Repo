@@ -994,8 +994,8 @@ public class CombatUnit : BaseUnit
     public bool CanAttack(CombatUnit target)
     {
         // Target category checks
-    bool targetIsAir = target.data.unitType == CombatCategory.Aircraft;
-    bool targetIsSpace = target.data.unitType == CombatCategory.Spaceship;
+    bool targetIsAir = target != null && target.data != null && CombatUnitData.IsAirCategory(target.data.unitType);
+    bool targetIsSpace = target != null && target.data != null && target.data.unitType == CombatCategory.Spaceship;
     bool targetIsUnderwater = target.data.unitType == CombatCategory.Submarine || 
                  target.data.unitType == CombatCategory.SeaCrawler;
 

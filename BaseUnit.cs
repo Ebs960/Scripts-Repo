@@ -2846,22 +2846,10 @@ public abstract class BaseUnit : MonoBehaviour
         {
             if (combatUnit.data != null)
             {
-                switch (combatUnit.data.unitType)
-                {
-                    case CombatCategory.Animal:
-                    case CombatCategory.Aircraft:
-                    case CombatCategory.HeavyShip:
-                    case CombatCategory.LightShip:
-                    case CombatCategory.TorpedoShip:
-                    case CombatCategory.Boat:
-                    case CombatCategory.SeaCrawler:
-                    case CombatCategory.Submarine:
-                        return true;
-                }
+                var ut = combatUnit.data.unitType;
+                if (ut == CombatCategory.Animal || CombatUnitData.IsAirCategory(ut) || CombatUnitData.IsNavalCategory(ut))
+                    return true;
             }
-
-            if (combatUnit.data != null && combatUnit.data.unitType == CombatCategory.Animal)
-                return true;
 
             return combatUnit.data != null && combatUnit.data.immuneToMosquitoes;
         }

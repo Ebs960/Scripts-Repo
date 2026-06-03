@@ -33,6 +33,11 @@ public enum CombatCategory
     // New ship specializations (added with high explicit values to avoid shifting existing indices)
     LightShip = 26,
     TorpedoShip = 27
+    ,
+    // New air specializations (added without shifting existing indices)
+    Fighter = 28,
+    Bomber = 29,
+    GroundAttack = 30
 }
 
 public enum TravelCapability
@@ -282,6 +287,17 @@ public class CombatUnitData : ScriptableObject
                || cat == CombatCategory.Boat
                || cat == CombatCategory.Submarine
                || cat == CombatCategory.SeaCrawler;
+    }
+
+    /// <summary>
+    /// Returns true if the given category is an air-type (aircraft/fighter/bomber/ground-attack)
+    /// </summary>
+    public static bool IsAirCategory(CombatCategory cat)
+    {
+        return cat == CombatCategory.Aircraft
+               || cat == CombatCategory.Fighter
+               || cat == CombatCategory.Bomber
+               || cat == CombatCategory.GroundAttack;
     }
 
     public int GetFlatAttackBonusAgainst(CombatUnitData defender)

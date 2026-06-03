@@ -162,18 +162,9 @@ public static class AIScorer
             if (combatUnit.data == null)
                 return 0f;
 
-            switch (combatUnit.data.unitType)
-            {
-                case CombatCategory.Animal:
-                case CombatCategory.Aircraft:
-                case CombatCategory.HeavyShip:
-                case CombatCategory.LightShip:
-                case CombatCategory.TorpedoShip:
-                case CombatCategory.Boat:
-                case CombatCategory.SeaCrawler:
-                case CombatCategory.Submarine:
-                    return 0f;
-            }
+            var ut = combatUnit.data.unitType;
+            if (ut == CombatCategory.Animal || CombatUnitData.IsAirCategory(ut) || CombatUnitData.IsNavalCategory(ut))
+                return 0f;
 
             if (combatUnit.data.immuneToMosquitoes)
                 return 0f;
