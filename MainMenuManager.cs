@@ -484,13 +484,14 @@ public class MainMenuManager : MonoBehaviour
     private void OnAICountChanged(int value)
     {
         aiCount = value;
-
+        GameSetupData.numberOfCivilizations = aiCount;  // Immediately save to GameSetupData
         UpdateMapTypeName(); // Update description with new civ count
     }
     
     private void OnCityStateCountChanged(int value)
     {
         cityStateCount = value;
+        GameSetupData.numberOfCityStates = cityStateCount;  // Immediately save to GameSetupData
         UpdateCityStateCountText();
         UpdateMapTypeName(); // Update description with new city-state count
     }
@@ -503,6 +504,7 @@ public class MainMenuManager : MonoBehaviour
     private void OnTribeCountChanged(int value)
     {
         tribeCount = value;
+        GameSetupData.numberOfTribes = tribeCount;  // Immediately save to GameSetupData
         UpdateTribeCountText();
         UpdateMapTypeName(); // Update description with new tribe count
     }
@@ -1232,6 +1234,7 @@ public class MainMenuManager : MonoBehaviour
     private void OnAnimalPrevalenceChanged(int value)
     {
         selectedAnimalPrevalence = value;
+        GameSetupData.animalPrevalence = selectedAnimalPrevalence;  // Immediately save to GameSetupData
         UpdateMapTypeName();
     }
 
@@ -1372,6 +1375,8 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeMapSizeDropdown()
     {
+        if (mapSizeDropdown == null) return;
+        
         mapSizeDropdown.ClearOptions();
         var options = new List<string>();
         foreach (GameManager.MapSize size in System.Enum.GetValues(typeof(GameManager.MapSize)))

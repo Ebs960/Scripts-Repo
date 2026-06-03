@@ -45,7 +45,7 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1089509960964769067}
   m_Enabled: 1
-  serializedVersion: 12
+  serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 8325.891
@@ -97,7 +97,7 @@ Light:
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
-  m_ShadowRadius: 0
+  m_ShapeRadius: 0
   m_ShadowAngle: 0
   m_LightUnit: 2
   m_LuxAtDistance: 1
@@ -125,6 +125,12 @@ MonoBehaviour:
   m_ShapeWidth: -1
   m_ShapeHeight: -1
   m_AspectRatio: -1
+  m_ShapeRadius: -1
+  m_Version: 15
+  m_ObsoleteShadowResolutionTier: 1
+  m_ObsoleteUseShadowQualitySettings: 0
+  m_ObsoleteCustomShadowResolution: 512
+  m_ObsoleteContactShadows: 0
   m_SpotIESCutoffPercent: 100
   m_LightDimmer: 1
   m_VolumetricDimmer: 1
@@ -133,7 +139,6 @@ MonoBehaviour:
   m_AffectDiffuse: 1
   m_AffectSpecular: 1
   m_NonLightmappedOnly: 0
-  m_ShapeRadius: 0.025
   m_SoftnessScale: 1
   m_UseCustomSpotLightShadowCone: 0
   m_CustomSpotLightShadowCone: 30
@@ -171,7 +176,6 @@ MonoBehaviour:
   m_FilterTracedShadow: 1
   m_FilterSizeTraced: 16
   m_SunLightConeAngle: 0.5
-  m_LightShadowRadius: 0.5
   m_SemiTransparentShadow: 0
   m_ColorShadow: 1
   m_DistanceBasedFiltering: 0
@@ -239,11 +243,6 @@ MonoBehaviour:
   m_AreaLightEmissiveMeshShadowCastingMode: 0
   m_AreaLightEmissiveMeshMotionVectorGenerationMode: 0
   m_AreaLightEmissiveMeshLayer: -1
-  m_Version: 14
-  m_ObsoleteShadowResolutionTier: 1
-  m_ObsoleteUseShadowQualitySettings: 0
-  m_ObsoleteCustomShadowResolution: 512
-  m_ObsoleteContactShadows: 0
 --- !u!1 &3422204533714289333
 GameObject:
   m_ObjectHideFlags: 0
@@ -452,11 +451,11 @@ MonoBehaviour:
   waterwayDetailTexture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
   oceanNormalTexture: {fileID: 2800000, guid: c8c45d4316adf8b4fa3cc48c52de0dcf, type: 3}
   oceanSmoothnessTexture: {fileID: 2800000, guid: b8a40d5040227c340a00398f1d2f3171, type: 3}
-  volcanicSurfaceSmoothnessTexture: {fileID: 0}
-  volcanicRockTexture: {fileID: 0}
-  lavaCrackTexture: {fileID: 0}
-  lavaEmissiveTexture: {fileID: 0}
-  ashDetailTexture: {fileID: 0}
+  volcanicSurfaceSmoothnessTexture: {fileID: 2800000, guid: bf9a458637bac3d46a338002c118b29e, type: 3}
+  volcanicRockTexture: {fileID: 2800000, guid: 7c5c28ec954c4d245a84ca339db1896d, type: 3}
+  lavaCrackTexture: {fileID: 2800000, guid: 80a8b41f7e71738449b3f8c8f6d71e6a, type: 3}
+  lavaEmissiveTexture: {fileID: 2800000, guid: a026c19334f0a1c48ad7278e195985a9, type: 3}
+  ashDetailTexture: {fileID: 2800000, guid: fb80efb9d328b96418b6c6c32722820a, type: 3}
   cloudNoiseTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
   volcanicRockStrength: 0.35
   lavaCrackStrength: 0.65
@@ -473,8 +472,8 @@ MonoBehaviour:
   jungleAlbedoTexture: {fileID: 2800000, guid: af2ac35d9104d134db2e55497851e636, type: 3}
   desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
   savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
-  temperateGrassAlbedoTexture: {fileID: 0}
-  temperateForestAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
+  temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
+  temperateForestAlbedoTexture: {fileID: 2800000, guid: b7b93bc82e56b0d4c8db7239264d3d3c, type: 3}
   taigaAlbedoTexture: {fileID: 0}
   tundraAlbedoTexture: {fileID: 0}
   polarAlbedoTexture: {fileID: 0}
@@ -482,8 +481,8 @@ MonoBehaviour:
   jungleNormalTexture: {fileID: 2800000, guid: a67b2c87acf346445bea1eeaf05bfd3e, type: 3}
   desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
   savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
-  temperateGrassNormalTexture: {fileID: 0}
-  temperateForestNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
+  temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
+  temperateForestNormalTexture: {fileID: 2800000, guid: 1ff32eadede37e24687fac9129b633bf, type: 3}
   taigaNormalTexture: {fileID: 0}
   tundraNormalTexture: {fileID: 0}
   polarNormalTexture: {fileID: 0}
@@ -491,7 +490,7 @@ MonoBehaviour:
   jungleSmoothnessTexture: {fileID: 2800000, guid: 046df90e7a8f3434f9e524b2ef43db16, type: 3}
   desertSmoothnessTexture: {fileID: 2800000, guid: 7e92ceab8b302e7478121a2b408c5635, type: 3}
   savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
-  temperateGrassSmoothnessTexture: {fileID: 0}
+  temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   taigaSmoothnessTexture: {fileID: 0}
   tundraSmoothnessTexture: {fileID: 0}
@@ -622,7 +621,6 @@ MonoBehaviour:
   debugHillStrength: 0.08
   debugMountainStrength: 0.18
   debugOceanDepth: 0.01
-  useGpuCoastlinePreview: 1
   menuPlanetPreviewCoastlineCompute: {fileID: 7200000, guid: 0f14491f071e92040b7a3da3d2f65f7a, type: 3}
   useGpuHeightPreview: 1
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: c02f76a0820ece643bcb29cdf1334f95, type: 3}
@@ -1056,6 +1054,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23c1ce4fb46143f46bc5cb5224c934f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.HighDefinition.Runtime::UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData
+  m_Version: 9
+  m_ObsoleteRenderingPath: 0
+  m_ObsoleteFrameSettings:
+    overrides: 0
+    enableShadow: 0
+    enableContactShadows: 0
+    enableShadowMask: 0
+    enableSSR: 0
+    enableSSAO: 0
+    enableSubsurfaceScattering: 0
+    enableTransmission: 0
+    enableAtmosphericScattering: 0
+    enableVolumetrics: 0
+    enableReprojectionForVolumetrics: 0
+    enableLightLayers: 0
+    enableExposureControl: 1
+    diffuseGlobalDimmer: 0
+    specularGlobalDimmer: 0
+    shaderLitMode: 0
+    enableDepthPrepassWithDeferredRendering: 0
+    enableTransparentPrepass: 0
+    enableMotionVectors: 0
+    enableObjectMotionVectors: 0
+    enableDecals: 0
+    enableRoughRefraction: 0
+    enableTransparentPostpass: 0
+    enableDistortion: 0
+    enablePostprocess: 0
+    enableOpaqueObjects: 0
+    enableTransparentObjects: 0
+    enableRealtimePlanarReflection: 0
+    enableMSAA: 0
+    enableAsyncCompute: 0
+    runLightListAsync: 0
+    runSSRAsync: 0
+    runSSAOAsync: 0
+    runContactShadowsAsync: 0
+    runVolumeVoxelizationAsync: 0
+    lightLoopSettings:
+      overrides: 0
+      enableDeferredTileAndCluster: 0
+      enableComputeLightEvaluation: 0
+      enableComputeLightVariants: 0
+      enableComputeMaterialVariants: 0
+      enableFptlForForwardOpaque: 0
+      enableBigTilePrepass: 0
+      isFptlEnabled: 0
   clearColorMode: 1
   backgroundColorHDR: {r: 0, g: 0, b: 0, a: 1}
   clearDepth: 1
@@ -1136,50 +1181,3 @@ MonoBehaviour:
       data1: 0
       data2: 0
   defaultFrameSettings: 0
-  m_Version: 9
-  m_ObsoleteRenderingPath: 0
-  m_ObsoleteFrameSettings:
-    overrides: 0
-    enableShadow: 0
-    enableContactShadows: 0
-    enableShadowMask: 0
-    enableSSR: 0
-    enableSSAO: 0
-    enableSubsurfaceScattering: 0
-    enableTransmission: 0
-    enableAtmosphericScattering: 0
-    enableVolumetrics: 0
-    enableReprojectionForVolumetrics: 0
-    enableLightLayers: 0
-    enableExposureControl: 1
-    diffuseGlobalDimmer: 0
-    specularGlobalDimmer: 0
-    shaderLitMode: 0
-    enableDepthPrepassWithDeferredRendering: 0
-    enableTransparentPrepass: 0
-    enableMotionVectors: 0
-    enableObjectMotionVectors: 0
-    enableDecals: 0
-    enableRoughRefraction: 0
-    enableTransparentPostpass: 0
-    enableDistortion: 0
-    enablePostprocess: 0
-    enableOpaqueObjects: 0
-    enableTransparentObjects: 0
-    enableRealtimePlanarReflection: 0
-    enableMSAA: 0
-    enableAsyncCompute: 0
-    runLightListAsync: 0
-    runSSRAsync: 0
-    runSSAOAsync: 0
-    runContactShadowsAsync: 0
-    runVolumeVoxelizationAsync: 0
-    lightLoopSettings:
-      overrides: 0
-      enableDeferredTileAndCluster: 0
-      enableComputeLightEvaluation: 0
-      enableComputeLightVariants: 0
-      enableComputeMaterialVariants: 0
-      enableFptlForForwardOpaque: 0
-      enableBigTilePrepass: 0
-      isFptlEnabled: 0
