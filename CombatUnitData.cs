@@ -3,13 +3,36 @@ using UnityEngine;
 
 public enum CombatCategory
 {
-    Spearman, Swordsman, Axeman, Clubman, Artillery,
-    Archer, Crossbowman, SpearThrower, Spaceship, Aircraft,
-    Submarine, Ship, Boat, SeaCrawler,
-    Gunman, Robot, Mutant, Cyborg,
-    Driller, LavaSwimmer, Tank,
-    Cavalry, HeavyCavalry, RangedCavalry,
-    Dragoon, Animal
+    Spearman = 0,
+    Swordsman = 1,
+    Axeman = 2,
+    Clubman = 3,
+    Artillery = 4,
+    Archer = 5,
+    Crossbowman = 6,
+    SpearThrower = 7,
+    Spaceship = 8,
+    Aircraft = 9,
+    Submarine = 10,
+    // Preserve original 'Ship' numeric index (11) by using HeavyShip here.
+    HeavyShip = 11,
+    Boat = 12,
+    SeaCrawler = 13,
+    Gunman = 14,
+    Robot = 15,
+    Mutant = 16,
+    Cyborg = 17,
+    Driller = 18,
+    LavaSwimmer = 19,
+    Tank = 20,
+    Cavalry = 21,
+    HeavyCavalry = 22,
+    RangedCavalry = 23,
+    Dragoon = 24,
+    Animal = 25,
+    // New ship specializations (added with high explicit values to avoid shifting existing indices)
+    LightShip = 26,
+    TorpedoShip = 27
 }
 
 public enum TravelCapability
@@ -215,6 +238,143 @@ public class CombatUnitData : ScriptableObject
     public bool canAttackUnderwater = false;
     [Tooltip("Whether this unit can perform a counter-attack when attacked")]
     public bool canCounterAttack = false;
+    
+    [System.Serializable]
+    public struct CategoryBonus
+    {
+        public CombatCategory targetCategory;
+        [Tooltip("Flat attack bonus against this category (added to attack)")]
+        public int attackBonus;
+        [Tooltip("Percent attack bonus (0.2 = +20%) applied multiplicatively")]
+        public float attackPercent;
+        [Tooltip("Flat defense bonus when attacking this category (applied to defender's defense calculation)")]
+        public int defenseBonus;
+        [Tooltip("Percent defense bonus (0.1 = +10%)")]
+        public float defensePercent;
+    }
+
+    [System.Serializable]
+    public struct SpecificUnitBonus
+    {
+        public CombatUnitData targetUnit;
+        public int attackBonus;
+        public float attackPercent;
+        public int defenseBonus;
+        public float defensePercent;
+    }
+
+    [Header("Bonuses Against")]
+    [Tooltip("Flat/percent bonuses that apply when this unit attacks units of a specific category.")]
+    public CategoryBonus[] bonusesAgainstCategories;
+
+    [Tooltip("Flat/percent bonuses that apply when this unit attacks a specific unit type (CombatUnitData reference).")]
+    public SpecificUnitBonus[] bonusesAgainstUnits;
+
+    /// <summary>
+    /// Returns true if the given category is considered a naval-type (ships, boats, subs, crawlers).
+    /// Use this to preserve previous logic that treated 'Ship' specially.
+    /// </summary>
+    public static bool IsNavalCategory(CombatCategory cat)
+    {
+        return cat == CombatCategory.HeavyShip
+               || cat == CombatCategory.LightShip
+               || cat == CombatCategory.TorpedoShip
+               || cat == CombatCategory.Boat
+               || cat == CombatCategory.Submarine
+               || cat == CombatCategory.SeaCrawler;
+    }
+
+    public int GetFlatAttackBonusAgainst(CombatUnitData defender)
+    {
+        if (defender == null) return 0;
+        int bonus = 0;
+        if (bonusesAgainstCategories != null)
+        {
+            for (int i = 0; i < bonusesAgainstCategories.Length; i++)
+            {
+                if (bonusesAgainstCategories[i].targetCategory == defender.unitType)
+                    bonus += bonusesAgainstCategories[i].attackBonus;
+            }
+        }
+        if (bonusesAgainstUnits != null)
+        {
+            for (int i = 0; i < bonusesAgainstUnits.Length; i++)
+            {
+                if (bonusesAgainstUnits[i].targetUnit == defender)
+                    bonus += bonusesAgainstUnits[i].attackBonus;
+            }
+        }
+        return bonus;
+    }
+
+    public float GetPercentAttackBonusAgainst(CombatUnitData defender)
+    {
+        if (defender == null) return 0f;
+        float pct = 0f;
+        if (bonusesAgainstCategories != null)
+        {
+            for (int i = 0; i < bonusesAgainstCategories.Length; i++)
+            {
+                if (bonusesAgainstCategories[i].targetCategory == defender.unitType)
+                    pct += bonusesAgainstCategories[i].attackPercent;
+            }
+        }
+        if (bonusesAgainstUnits != null)
+        {
+            for (int i = 0; i < bonusesAgainstUnits.Length; i++)
+            {
+                if (bonusesAgainstUnits[i].targetUnit == defender)
+                    pct += bonusesAgainstUnits[i].attackPercent;
+            }
+        }
+        return pct;
+    }
+
+    public int GetFlatDefenseBonusAgainst(CombatUnitData defender)
+    {
+        if (defender == null) return 0;
+        int bonus = 0;
+        if (bonusesAgainstCategories != null)
+        {
+            for (int i = 0; i < bonusesAgainstCategories.Length; i++)
+            {
+                if (bonusesAgainstCategories[i].targetCategory == defender.unitType)
+                    bonus += bonusesAgainstCategories[i].defenseBonus;
+            }
+        }
+        if (bonusesAgainstUnits != null)
+        {
+            for (int i = 0; i < bonusesAgainstUnits.Length; i++)
+            {
+                if (bonusesAgainstUnits[i].targetUnit == defender)
+                    bonus += bonusesAgainstUnits[i].defenseBonus;
+            }
+        }
+        return bonus;
+    }
+
+    public float GetPercentDefenseBonusAgainst(CombatUnitData defender)
+    {
+        if (defender == null) return 0f;
+        float pct = 0f;
+        if (bonusesAgainstCategories != null)
+        {
+            for (int i = 0; i < bonusesAgainstCategories.Length; i++)
+            {
+                if (bonusesAgainstCategories[i].targetCategory == defender.unitType)
+                    pct += bonusesAgainstCategories[i].defensePercent;
+            }
+        }
+        if (bonusesAgainstUnits != null)
+        {
+            for (int i = 0; i < bonusesAgainstUnits.Length; i++)
+            {
+                if (bonusesAgainstUnits[i].targetUnit == defender)
+                    pct += bonusesAgainstUnits[i].defensePercent;
+            }
+        }
+        return pct;
+    }
     
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]

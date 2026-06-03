@@ -597,10 +597,7 @@ public class UnitMovementController : MonoBehaviour
                 if (!tileData.isLand)
                 {
                     bool isNaval = combatUnit != null && combatUnit.data != null &&
-                        (combatUnit.data.unitType == CombatCategory.Ship ||
-                         combatUnit.data.unitType == CombatCategory.Boat ||
-                         combatUnit.data.unitType == CombatCategory.Submarine ||
-                         combatUnit.data.unitType == CombatCategory.SeaCrawler);
+                        CombatUnitData.IsNavalCategory(combatUnit.data.unitType);
                     if (!isNaval && !(workerUnit != null))
                     {
                         breakReason = $"water tile {targetTile} but unit is not naval/worker at step {stepIndex}";

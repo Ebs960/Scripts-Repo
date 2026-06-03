@@ -309,7 +309,9 @@ public class ImprovementManager : MonoBehaviour
         switch (unit.unitType)
         {
             case CombatCategory.Boat:
-            case CombatCategory.Ship:
+            case CombatCategory.HeavyShip:
+            case CombatCategory.LightShip:
+            case CombatCategory.TorpedoShip:
             case CombatCategory.Submarine:
             case CombatCategory.SeaCrawler:
                 return true;

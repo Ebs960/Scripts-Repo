@@ -166,7 +166,9 @@ public static class AIScorer
             {
                 case CombatCategory.Animal:
                 case CombatCategory.Aircraft:
-                case CombatCategory.Ship:
+                case CombatCategory.HeavyShip:
+                case CombatCategory.LightShip:
+                case CombatCategory.TorpedoShip:
                 case CombatCategory.Boat:
                 case CombatCategory.SeaCrawler:
                 case CombatCategory.Submarine:

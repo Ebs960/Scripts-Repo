@@ -596,7 +596,9 @@ public static class BiomeHelper {
                     {
                         switch (combatUnit.data != null ? combatUnit.data.unitType : CombatCategory.Spearman)
                         {
-                            case CombatCategory.Ship:
+                            case CombatCategory.HeavyShip:
+                            case CombatCategory.LightShip:
+                            case CombatCategory.TorpedoShip:
                             case CombatCategory.Boat:
                             case CombatCategory.Submarine:
                             case CombatCategory.SeaCrawler:

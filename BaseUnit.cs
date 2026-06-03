@@ -2270,10 +2270,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (!td.isLand)
         {
             bool isNaval = cu != null && cu.data != null &&
-                (cu.data.unitType == CombatCategory.Ship ||
-                 cu.data.unitType == CombatCategory.Boat ||
-                 cu.data.unitType == CombatCategory.Submarine ||
-                 cu.data.unitType == CombatCategory.SeaCrawler);
+                CombatUnitData.IsNavalCategory(cu.data.unitType);
             if (!isNaval)
             {
                 if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: requires naval unit unit={name} tile={tileIndex}");
@@ -2335,10 +2332,7 @@ public abstract class BaseUnit : MonoBehaviour
         {
             // Only specific naval CombatUnit types may enter water
             bool isNaval = cu != null && cu.data != null &&
-                (cu.data.unitType == CombatCategory.Ship ||
-                 cu.data.unitType == CombatCategory.Boat ||
-                 cu.data.unitType == CombatCategory.Submarine ||
-                 cu.data.unitType == CombatCategory.SeaCrawler);
+                CombatUnitData.IsNavalCategory(cu.data.unitType);
             if (!isNaval)
             {
                 if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: requires naval unit unit={name} tile={tileIndex}");
@@ -2856,7 +2850,9 @@ public abstract class BaseUnit : MonoBehaviour
                 {
                     case CombatCategory.Animal:
                     case CombatCategory.Aircraft:
-                    case CombatCategory.Ship:
+                    case CombatCategory.HeavyShip:
+                    case CombatCategory.LightShip:
+                    case CombatCategory.TorpedoShip:
                     case CombatCategory.Boat:
                     case CombatCategory.SeaCrawler:
                     case CombatCategory.Submarine:
