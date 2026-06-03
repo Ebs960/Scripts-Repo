@@ -1322,16 +1322,8 @@ Shader "Custom/BiomeTerrainHDRP"
                     finalColor = lerp(finalColor, _HexGridColor.rgb, mask * _HexGridColor.a);
                 }
 
-<<<<<<< ours
-<<<<<<< ours
                 return float4(albedo, 1.0);
                 return float4(finalColor, 1.0);
-=======
-                return float4(saturate(finalColor), 1.0);
->>>>>>> theirs
-=======
-                return float4(saturate(finalColor), 1.0);
->>>>>>> theirs
             }
             ENDHLSL
         }
