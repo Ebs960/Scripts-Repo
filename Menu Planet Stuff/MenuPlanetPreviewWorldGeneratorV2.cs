@@ -379,7 +379,29 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public void RefreshGpuHydrologyOnly(MenuPlanetPreviewWorldInputs updatedInputs)
     {
         inputs = updatedInputs;
+
+        if (!HasHydrologyInputTextures())
+        {
+            Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Hydrology refresh requested before tectonic/height textures were ready. Scheduling full tectonics rebuild instead.");
+            RequestRebuild(PreviewWorldRebuildScope.Tectonics, false);
+            return;
+        }
+
         DispatchGpuHydrology();
+    }
+
+    public bool HasGeneratedWorldTextures()
+    {
+        return HasHydrologyInputTextures()
+            && gpuHydrologyTexture != null && gpuHydrologyTexture.IsCreated()
+            && gpuHydrologyDepthTexture != null && gpuHydrologyDepthTexture.IsCreated();
+    }
+
+    private bool HasHydrologyInputTextures()
+    {
+        return gpuTectonicSurfaceTexture != null && gpuTectonicSurfaceTexture.IsCreated()
+            && gpuHeightTexture != null && gpuHeightTexture.IsCreated()
+            && gpuDisplacementTexture != null && gpuDisplacementTexture.IsCreated();
     }
     public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
         pending |= ExpandDependencies(scope);
@@ -1191,6 +1213,12 @@ if (!useGpuHydrologyPreview) return;
     if (menuPlanetPreviewHydrologyCompute == null) return;
 
     EnsureGpuHydrologyResources();
+
+    if (!HasHydrologyInputTextures())
+    {
+        Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] DispatchGpuHydrology skipped because required input textures are missing.");
+        return;
+    }
     
 
     int analysisWidth = Mathf.Max(32, mapWidth / 4);
