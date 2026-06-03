@@ -37,12 +37,9 @@ Shader "Custom/SG_WaterTile"
         [Header(Freeze)]
         _FreezeProgress ("Freeze Progress", Range(0, 1)) = 0
         _FreezeOpaqueThreshold ("Freeze Opaque Threshold", Range(0.5, 1)) = 0.9
-        _LakeIceAlbedoArray ("Lake Ice Albedo Array", 2DArray) = "" {}
-        _LakeIceNormalArray ("Lake Ice Normal Array", 2DArray) = "" {}
-        _RiverIceAlbedoArray ("River Ice Albedo Array", 2DArray) = "" {}
-        _RiverIceNormalArray ("River Ice Normal Array", 2DArray) = "" {}
-        _LakeIceSliceCount ("Lake Ice Slice Count", Float) = 0
-        _RiverIceSliceCount ("River Ice Slice Count", Float) = 0
+        _IceAlbedoArray ("Ice Albedo Array", 2DArray) = "" {}
+        _IceNormalArray ("Ice Normal Array", 2DArray) = "" {}
+        _IceSliceCount ("Ice Slice Count", Float) = 0
         _LakeIceTint ("Lake Ice Tint", Color) = (1, 1, 1, 1)
         _RiverIceTint ("River Ice Tint", Color) = (1, 1, 1, 1)
         _LakeIceTiling ("Lake Ice Tiling", Float) = 8
@@ -104,14 +101,10 @@ Shader "Custom/SG_WaterTile"
             SAMPLER(sampler_NormalMapB);
             TEXTURE2D(_CausticsTex);
             SAMPLER(sampler_CausticsTex);
-            TEXTURE2D_ARRAY(_LakeIceAlbedoArray);
-            SAMPLER(sampler_LakeIceAlbedoArray);
-            TEXTURE2D_ARRAY(_LakeIceNormalArray);
-            SAMPLER(sampler_LakeIceNormalArray);
-            TEXTURE2D_ARRAY(_RiverIceAlbedoArray);
-            SAMPLER(sampler_RiverIceAlbedoArray);
-            TEXTURE2D_ARRAY(_RiverIceNormalArray);
-            SAMPLER(sampler_RiverIceNormalArray);
+            TEXTURE2D_ARRAY(_IceAlbedoArray);
+            SAMPLER(sampler_IceAlbedoArray);
+            TEXTURE2D_ARRAY(_IceNormalArray);
+            SAMPLER(sampler_IceNormalArray);
 
             float4 _ShallowColor;
             float4 _DeepColor;
@@ -130,8 +123,7 @@ Shader "Custom/SG_WaterTile"
             float4 _RiverDeepColor;
             float _FreezeProgress;
             float _FreezeOpaqueThreshold;
-            float _LakeIceSliceCount;
-            float _RiverIceSliceCount;
+            float _IceSliceCount;
             float4 _LakeIceTint;
             float4 _RiverIceTint;
             float _LakeIceTiling;
@@ -238,22 +230,17 @@ Shader "Custom/SG_WaterTile"
                 float3 viewDir = normalize(input.viewDirWS);
                 float3 worldNormal = normalize(input.normalWS + float3(blendedNormal.x, 0, blendedNormal.y));
 
-                if (!isLava && (isRiver || isLake) && freezeAmount > 0.001
-                    && ((isRiver && _RiverIceSliceCount > 0.5) || (isLake && _LakeIceSliceCount > 0.5)))
+                if (!isLava && (isRiver || isLake) && freezeAmount > 0.001 && _IceSliceCount > 0.5)
                 {
                     bool useRiverIce = isRiver;
-                    float sliceCount = useRiverIce ? _RiverIceSliceCount : _LakeIceSliceCount;
-                    float slice = max(0.0, floor(freezeVariant * max(sliceCount, 1.0)));
-                    slice = min(slice, max(sliceCount - 1.0, 0.0));
+                    float slice = max(0.0, floor(freezeVariant * max(_IceSliceCount, 1.0)));
+                    slice = min(slice, max(_IceSliceCount - 1.0, 0.0));
                     float tiling = max(useRiverIce ? _RiverIceTiling : _LakeIceTiling, 0.01);
                     float2 iceUV = input.positionWS.xz * tiling;
+                    float3 tint = useRiverIce ? _RiverIceTint.rgb : _LakeIceTint.rgb;
 
-                    float3 iceAlbedo = useRiverIce
-                        ? SAMPLE_TEXTURE2D_ARRAY(_RiverIceAlbedoArray, sampler_RiverIceAlbedoArray, iceUV, slice).rgb * _RiverIceTint.rgb
-                        : SAMPLE_TEXTURE2D_ARRAY(_LakeIceAlbedoArray, sampler_LakeIceAlbedoArray, iceUV, slice).rgb * _LakeIceTint.rgb;
-                    float3 iceNormalTS = useRiverIce
-                        ? SampleIceNormal(TEXTURE2D_ARRAY_ARGS(_RiverIceNormalArray, sampler_RiverIceNormalArray), iceUV, slice)
-                        : SampleIceNormal(TEXTURE2D_ARRAY_ARGS(_LakeIceNormalArray, sampler_LakeIceNormalArray), iceUV, slice);
+                    float3 iceAlbedo = SAMPLE_TEXTURE2D_ARRAY(_IceAlbedoArray, sampler_IceAlbedoArray, iceUV, slice).rgb * tint;
+                    float3 iceNormalTS = SampleIceNormal(TEXTURE2D_ARRAY_ARGS(_IceNormalArray, sampler_IceNormalArray), iceUV, slice);
                     float3 iceWorldNormal = normalize(input.normalWS + float3(iceNormalTS.x, 0, iceNormalTS.y));
 
                     float finalFreezeBlend = saturate(max(freezeAmount, solidIceBlend));

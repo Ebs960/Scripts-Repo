@@ -25,20 +25,15 @@ Shader "Custom/BiomeTerrainHDRP"
         _FreezeMaskTex ("Freeze Mask (R=freeze,G=lake,B=river)", 2D) = "black" {}
         _FreezeMask_ST ("Freeze Mask ST", Vector) = (1,1,0,0)
         _FreezeProgress ("Freeze Progress", Range(0, 1)) = 0
-        _LakeIceAlbedoArray ("Lake Ice Albedo Array", 2DArray) = "" {}
-        _LakeIceNormalArray ("Lake Ice Normal Array", 2DArray) = "" {}
-        _LakeIceMaskArray ("Lake Ice Mask Array", 2DArray) = "" {}
-        _LakeIceHeightArray ("Lake Ice Height Array", 2DArray) = "" {}
-        _RiverIceAlbedoArray ("River Ice Albedo Array", 2DArray) = "" {}
-        _RiverIceNormalArray ("River Ice Normal Array", 2DArray) = "" {}
-        _RiverIceMaskArray ("River Ice Mask Array", 2DArray) = "" {}
-        _RiverIceHeightArray ("River Ice Height Array", 2DArray) = "" {}
+        _IceAlbedoArray ("Ice Albedo Array", 2DArray) = "" {}
+        _IceNormalArray ("Ice Normal Array", 2DArray) = "" {}
+        _IceMaskArray ("Ice Mask Array", 2DArray) = "" {}
+        _IceHeightArray ("Ice Height Array", 2DArray) = "" {}
         _LakeIceTint ("Lake Ice Tint", Color) = (1,1,1,1)
         _RiverIceTint ("River Ice Tint", Color) = (1,1,1,1)
         _LakeIceTiling ("Lake Ice Tiling", Range(0.01, 200)) = 8.0
         _RiverIceTiling ("River Ice Tiling", Range(0.01, 200)) = 12.0
-        _LakeIceSliceCount ("Lake Ice Slice Count", Float) = 0
-        _RiverIceSliceCount ("River Ice Slice Count", Float) = 0
+        _IceSliceCount ("Ice Slice Count", Float) = 0
         _IceNormalStrength ("Ice Normal Strength", Range(0, 3)) = 1.0
         _IceSmoothness ("Ice Smoothness", Range(0, 1)) = 0.85
         _IceMetallic ("Ice Metallic", Range(0, 1)) = 0.0
@@ -93,14 +88,6 @@ Shader "Custom/BiomeTerrainHDRP"
 
         // ============== NEW PROPERTIES ==============
 
-        [Header(Micro Detail)]
-        _DetailAlbedoMap ("Detail Albedo Map", 2D) = "gray" {}
-        _DetailNormalMap ("Detail Normal Map", 2D) = "bump" {}
-        _DetailTiling ("Detail Tiling", Range(1, 100)) = 20.0
-        _DetailStrength ("Detail Albedo Strength", Range(0, 10)) = 0.3
-        _DetailNormalStrength ("Detail Normal Strength", Range(0, 20)) = 0.5
-        _DetailFadeStart ("Detail Fade Start Distance", Range(0, 200)) = 5.0
-        _DetailFadeEnd ("Detail Fade End Distance", Range(0, 500)) = 50.0
         _SurfaceHeightScale ("Surface Height Scale", Range(0, 2)) = 0.05
 
         
@@ -163,14 +150,10 @@ Shader "Custom/BiomeTerrainHDRP"
         TEXTURE2D_ARRAY(_BiomeHeightArray);    SAMPLER(sampler_BiomeHeightArray);
         TEXTURE2D_ARRAY(_CliffAlbedoArray);    SAMPLER(sampler_CliffAlbedoArray);
         TEXTURE2D_ARRAY(_CliffNormalArray);    SAMPLER(sampler_CliffNormalArray);
-        TEXTURE2D_ARRAY(_LakeIceAlbedoArray);  SAMPLER(sampler_LakeIceAlbedoArray);
-        TEXTURE2D_ARRAY(_LakeIceNormalArray);  SAMPLER(sampler_LakeIceNormalArray);
-        TEXTURE2D_ARRAY(_LakeIceMaskArray);    SAMPLER(sampler_LakeIceMaskArray);
-        TEXTURE2D_ARRAY(_LakeIceHeightArray);  SAMPLER(sampler_LakeIceHeightArray);
-        TEXTURE2D_ARRAY(_RiverIceAlbedoArray); SAMPLER(sampler_RiverIceAlbedoArray);
-        TEXTURE2D_ARRAY(_RiverIceNormalArray); SAMPLER(sampler_RiverIceNormalArray);
-        TEXTURE2D_ARRAY(_RiverIceMaskArray);   SAMPLER(sampler_RiverIceMaskArray);
-        TEXTURE2D_ARRAY(_RiverIceHeightArray); SAMPLER(sampler_RiverIceHeightArray);
+        TEXTURE2D_ARRAY(_IceAlbedoArray);      SAMPLER(sampler_IceAlbedoArray);
+        TEXTURE2D_ARRAY(_IceNormalArray);      SAMPLER(sampler_IceNormalArray);
+        TEXTURE2D_ARRAY(_IceMaskArray);        SAMPLER(sampler_IceMaskArray);
+        TEXTURE2D_ARRAY(_IceHeightArray);      SAMPLER(sampler_IceHeightArray);
     TEXTURE2D(_CliffAlbedoPreview);
     TEXTURE2D(_CliffNormalPreview);
 
@@ -184,8 +167,6 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D(_FogMask);
     TEXTURE2D(_OwnershipOverlay);
     TEXTURE2D(_SliceToBiomeMap);
-    TEXTURE2D(_DetailAlbedoMap);     SAMPLER(sampler_DetailAlbedoMap);
-    TEXTURE2D(_DetailNormalMap);     SAMPLER(sampler_DetailNormalMap);
 
     // ===================== Uniforms =====================
 
@@ -217,11 +198,6 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _HighlightColor;
 
     // New uniforms
-    float _DetailTiling;
-    float _DetailStrength;
-    float _DetailNormalStrength;
-    float _DetailFadeStart;
-    float _DetailFadeEnd;
     float4 _TileSeasonMask_TexSize;
     float4 _TileSeasonMask_ST;
     float4 _FreezeMask_ST;
@@ -230,8 +206,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _RiverIceTint;
     float _LakeIceTiling;
     float _RiverIceTiling;
-    float _LakeIceSliceCount;
-    float _RiverIceSliceCount;
+    float _IceSliceCount;
     float _IceNormalStrength;
     float _IceSmoothness;
     float _IceMetallic;
@@ -757,13 +732,7 @@ Shader "Custom/BiomeTerrainHDRP"
             }
 
             BiomeSample SampleIceSurface(
-                TEXTURE2D_ARRAY_PARAM(albedoTex, albedoSampler),
-                TEXTURE2D_ARRAY_PARAM(normalTex, normalSampler),
-                TEXTURE2D_ARRAY_PARAM(maskTex, maskSampler),
-                TEXTURE2D_ARRAY_PARAM(heightTex, heightSampler),
-                float sliceCount,
-                float4 tint,
-                float tiling,
+                bool isRiver,
                 float3 worldPos,
                 float3 displacedNormal,
                 float3 triWeights,
@@ -775,23 +744,25 @@ Shader "Custom/BiomeTerrainHDRP"
                 s.normalWS = displacedNormal;
                 s.mask = float4(0, 1, 0, _IceSmoothness);
 
-                if (sliceCount <= 0.0)
+                if (_IceSliceCount <= 0.0)
                     return s;
 
-                float sliceIndex = SelectIceSlice(worldPos, sliceCount);
+                float4 tint = isRiver ? _RiverIceTint : _LakeIceTint;
+                float tiling = isRiver ? _RiverIceTiling : _LakeIceTiling;
+                float sliceIndex = SelectIceSlice(worldPos, _IceSliceCount);
                 float effectiveTiling = max(tiling, 0.01);
 
                 float4 albedoRaw = SampleBiomeTexture(
-                    TEXTURE2D_ARRAY_ARGS(albedoTex, albedoSampler),
+                    TEXTURE2D_ARRAY_ARGS(_IceAlbedoArray, sampler_IceAlbedoArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 float3 normalRaw = SampleBiomeNormal(
-                    TEXTURE2D_ARRAY_ARGS(normalTex, normalSampler),
+                    TEXTURE2D_ARRAY_ARGS(_IceNormalArray, sampler_IceNormalArray),
                     worldPos, displacedNormal, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 float4 maskRaw = SampleBiomeTexture(
-                    TEXTURE2D_ARRAY_ARGS(maskTex, maskSampler),
+                    TEXTURE2D_ARRAY_ARGS(_IceMaskArray, sampler_IceMaskArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 float4 heightRaw = SampleBiomeTexture(
-                    TEXTURE2D_ARRAY_ARGS(heightTex, heightSampler),
+                    TEXTURE2D_ARRAY_ARGS(_IceHeightArray, sampler_IceHeightArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
 
                 s.albedo = albedoRaw.rgb * tint.rgb;
@@ -1004,33 +975,6 @@ Shader "Custom/BiomeTerrainHDRP"
                 float smoothness = saturate(mask.a * _SmoothnessMultiplier - roughnessOffset);
 
                 // ==========================================================
-                // MICRO-DETAIL LAYER (#5)
-                // Distance-faded detail texture for close-range visual crunch
-                // ==========================================================
-                float detailFade = 1.0 - saturate((camDist - _DetailFadeStart) /
-                    max(_DetailFadeEnd - _DetailFadeStart, 0.01));
-                if (detailFade > 0.01)
-                {
-                    float2 detailUV = worldPos.xz * _DetailTiling;
-                    float4 detailAlbedo = SAMPLE_TEXTURE2D(_DetailAlbedoMap, sampler_DetailAlbedoMap, detailUV);
-                    float3 detailNorm = UnpackNormal(SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailNormalMap, detailUV));
-
-                    // Modulate albedo (detail map centered around 0.5 gray = no change)
-                    float detailMod = lerp(1.0, detailAlbedo.r * 2.0, _DetailStrength * detailFade);
-                    albedo *= detailMod;
-
-                    // Blend detail normal into surface normal
-                    // Modulate detail normal strength by blended per-surface height so
-                    // surfaces with more height show stronger micro-relief.
-                    float dnStr = _DetailNormalStrength * detailFade * (1.0 + blendedHeight * _SurfaceHeightScale);
-                    normalWS = normalize(float3(
-                        normalWS.x + detailNorm.x * dnStr,
-                        normalWS.y,
-                        normalWS.z + detailNorm.y * dnStr
-                    ));
-                }
-
-                // ==========================================================
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
                 // ==========================================================
                 float biomeWinterSnow = biomeParams.y;
@@ -1117,13 +1061,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (freezeAmount > 0.001 && (lakeMask > 0.001 || riverMask > 0.001))
                 {
                     BiomeSample lakeIce = SampleIceSurface(
-                        TEXTURE2D_ARRAY_ARGS(_LakeIceAlbedoArray, sampler_LakeIceAlbedoArray),
-                        TEXTURE2D_ARRAY_ARGS(_LakeIceNormalArray, sampler_LakeIceNormalArray),
-                        TEXTURE2D_ARRAY_ARGS(_LakeIceMaskArray, sampler_LakeIceMaskArray),
-                        TEXTURE2D_ARRAY_ARGS(_LakeIceHeightArray, sampler_LakeIceHeightArray),
-                        _LakeIceSliceCount,
-                        _LakeIceTint,
-                        _LakeIceTiling,
+                        false,
                         worldPos,
                         displacedNormal,
                         triWeights,
@@ -1131,13 +1069,7 @@ Shader "Custom/BiomeTerrainHDRP"
                         uv);
 
                     BiomeSample riverIce = SampleIceSurface(
-                        TEXTURE2D_ARRAY_ARGS(_RiverIceAlbedoArray, sampler_RiverIceAlbedoArray),
-                        TEXTURE2D_ARRAY_ARGS(_RiverIceNormalArray, sampler_RiverIceNormalArray),
-                        TEXTURE2D_ARRAY_ARGS(_RiverIceMaskArray, sampler_RiverIceMaskArray),
-                        TEXTURE2D_ARRAY_ARGS(_RiverIceHeightArray, sampler_RiverIceHeightArray),
-                        _RiverIceSliceCount,
-                        _RiverIceTint,
-                        _RiverIceTiling,
+                        true,
                         worldPos,
                         displacedNormal,
                         triWeights,

@@ -162,22 +162,6 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel--;
         }
 
-        // ===================== Micro Detail =====================
-        if (Foldout("MicroDetail", "Micro Detail", false))
-        {
-            EditorGUI.indentLevel++;
-
-            materialEditor.TexturePropertySingleLine(new GUIContent("Detail Albedo"), Find(properties, "_DetailAlbedoMap"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Detail Normal"), Find(properties, "_DetailNormalMap"));
-            materialEditor.ShaderProperty(Find(properties, "_DetailTiling"), "Detail Tiling");
-            materialEditor.ShaderProperty(Find(properties, "_DetailStrength"), "Albedo Strength");
-            materialEditor.ShaderProperty(Find(properties, "_DetailNormalStrength"), "Normal Strength");
-            materialEditor.ShaderProperty(Find(properties, "_DetailFadeStart"), "Fade Start Distance");
-            materialEditor.ShaderProperty(Find(properties, "_DetailFadeEnd"), "Fade End Distance");
-
-            EditorGUI.indentLevel--;
-        }
-
         // ===================== Cliffs =====================
         if (Foldout("Cliffs", "Cliffs", false))
         {

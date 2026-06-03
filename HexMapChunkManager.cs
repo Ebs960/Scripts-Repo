@@ -179,25 +179,6 @@ public class HexMapChunkManager : MonoBehaviour
     [Range(0.01f, 10f)]
     [SerializeField] private float biomeBlendSharpness = 3f;
 
-    [Header("Micro Detail (Detail Maps)")]
-    [Tooltip("Detail albedo (tileable) sampled on top of biome albedo")]
-    [SerializeField] private Texture2D detailAlbedoMap = null;
-    [Tooltip("Detail normal map (tangent-space). Mark as Normal Map in importer")]
-    [SerializeField] private Texture2D detailNormalMap = null;
-    [Tooltip("Tiling for the detail textures (independent of triplanar tiling)")]
-    [Range(1f, 100f)]
-    [SerializeField] private float detailTiling = 20f;
-    [Tooltip("Strength of detail albedo modulation")]
-    [Range(0f, 10f)]
-    [SerializeField] private float detailStrength = 0.3f;
-    [Tooltip("Strength of detail normal perturbation")]
-    [Range(0f, 10f)]
-    [SerializeField] private float detailNormalStrength = 0.5f;
-    [Tooltip("Camera distance where detail begins to fade (meters)")]
-    [SerializeField] private float detailFadeStart = 5f;
-    [Tooltip("Camera distance where detail is fully faded out (meters)")]
-    [SerializeField] private float detailFadeEnd = 50f;
-    
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
     [Tooltip("Buffer zone before wrap triggers (fraction of column width).")]
@@ -1234,9 +1215,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (!IsFreezableWater(tile) || iceSurfaceDatabase == null)
             return false;
 
-        return tile.waterType == TileWaterType.River
-            ? iceSurfaceDatabase.riverIceAlbedoArray != null
-            : iceSurfaceDatabase.lakeIceAlbedoArray != null;
+        return iceSurfaceDatabase.iceAlbedoArray != null;
     }
 
     private static float HashToUnitFloat(int value)
@@ -1957,17 +1936,6 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
         sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
         sharedMaterial.SetFloat("_UseTriplanar", useTriplanar ? 1f : 0f);
-        // Detail maps (micro-detail)
-        if (detailAlbedoMap != null)
-            sharedMaterial.SetTexture("_DetailAlbedoMap", detailAlbedoMap);
-        if (detailNormalMap != null)
-            sharedMaterial.SetTexture("_DetailNormalMap", detailNormalMap);
-        sharedMaterial.SetFloat("_DetailTiling", detailTiling);
-        sharedMaterial.SetFloat("_DetailStrength", detailStrength);
-        sharedMaterial.SetFloat("_DetailNormalStrength", detailNormalStrength);
-        sharedMaterial.SetFloat("_DetailFadeStart", detailFadeStart);
-        sharedMaterial.SetFloat("_DetailFadeEnd", detailFadeEnd);
-        
         // Slice-to-biome reverse map (for per-biome tint/params lookup in shader)
         if (sliceToBiomeMap != null)
         {
@@ -2060,19 +2028,14 @@ public class HexMapChunkManager : MonoBehaviour
         {
             if (material == sharedMaterial)
             {
-                Debug.Log($"[HexMapChunkManager] Binding ice textures. Lake albedo={iceSurfaceDatabase.lakeIceAlbedoArray != null}, River albedo={iceSurfaceDatabase.riverIceAlbedoArray != null}");
+                Debug.Log($"[HexMapChunkManager] Binding shared ice textures. Albedo={iceSurfaceDatabase.iceAlbedoArray != null}");
             }
 
-            if (iceSurfaceDatabase.lakeIceAlbedoArray != null)  material.SetTexture("_LakeIceAlbedoArray",  iceSurfaceDatabase.lakeIceAlbedoArray);
-            if (iceSurfaceDatabase.lakeIceNormalArray != null)  material.SetTexture("_LakeIceNormalArray",  iceSurfaceDatabase.lakeIceNormalArray);
-            if (iceSurfaceDatabase.lakeIceMaskArray != null)    material.SetTexture("_LakeIceMaskArray",    iceSurfaceDatabase.lakeIceMaskArray);
-            if (iceSurfaceDatabase.lakeIceHeightArray != null)  material.SetTexture("_LakeIceHeightArray",  iceSurfaceDatabase.lakeIceHeightArray);
-            if (iceSurfaceDatabase.riverIceAlbedoArray != null) material.SetTexture("_RiverIceAlbedoArray", iceSurfaceDatabase.riverIceAlbedoArray);
-            if (iceSurfaceDatabase.riverIceNormalArray != null) material.SetTexture("_RiverIceNormalArray", iceSurfaceDatabase.riverIceNormalArray);
-            if (iceSurfaceDatabase.riverIceMaskArray != null)   material.SetTexture("_RiverIceMaskArray",   iceSurfaceDatabase.riverIceMaskArray);
-            if (iceSurfaceDatabase.riverIceHeightArray != null) material.SetTexture("_RiverIceHeightArray", iceSurfaceDatabase.riverIceHeightArray);
-            material.SetFloat("_LakeIceSliceCount",  iceSurfaceDatabase.lakeIceAlbedoArray != null ? iceSurfaceDatabase.lakeIceAlbedoArray.depth : 0f);
-            material.SetFloat("_RiverIceSliceCount", iceSurfaceDatabase.riverIceAlbedoArray != null ? iceSurfaceDatabase.riverIceAlbedoArray.depth : 0f);
+            if (iceSurfaceDatabase.iceAlbedoArray != null) material.SetTexture("_IceAlbedoArray", iceSurfaceDatabase.iceAlbedoArray);
+            if (iceSurfaceDatabase.iceNormalArray != null) material.SetTexture("_IceNormalArray", iceSurfaceDatabase.iceNormalArray);
+            if (iceSurfaceDatabase.iceMaskArray != null) material.SetTexture("_IceMaskArray", iceSurfaceDatabase.iceMaskArray);
+            if (iceSurfaceDatabase.iceHeightArray != null) material.SetTexture("_IceHeightArray", iceSurfaceDatabase.iceHeightArray);
+            material.SetFloat("_IceSliceCount", iceSurfaceDatabase.iceAlbedoArray != null ? iceSurfaceDatabase.iceAlbedoArray.depth : 0f);
             material.SetColor("_LakeIceTint",    iceSurfaceDatabase.lakeIceTint);
             material.SetFloat("_LakeIceTiling",  iceSurfaceDatabase.lakeIceTiling);
             material.SetColor("_RiverIceTint",   iceSurfaceDatabase.riverIceTint);
@@ -2087,8 +2050,7 @@ public class HexMapChunkManager : MonoBehaviour
             if (material == sharedMaterial)
                 Debug.LogWarning("[HexMapChunkManager] iceSurfaceDatabase is NULL — no ice textures bound! Assign it in the Inspector.");
 
-            material.SetFloat("_LakeIceSliceCount", 0f);
-            material.SetFloat("_RiverIceSliceCount", 0f);
+            material.SetFloat("_IceSliceCount", 0f);
         }
 
         float freezeProgress = 0f;

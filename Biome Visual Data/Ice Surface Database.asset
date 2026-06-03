@@ -12,16 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e45ef05c3388e6e4ca8956f97085ea6b, type: 3}
   m_Name: Ice Surface Database
   m_EditorClassIdentifier: Assembly-CSharp::IceSurfaceDatabase
-  lakeIceAlbedoArray: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
-  lakeIceNormalArray: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
-  lakeIceMaskArray: {fileID: 18700000, guid: 3cf989ee1baa2d64aa7a597a942c7574, type: 3}
-  lakeIceHeightArray: {fileID: 18700000, guid: 012b27f877c065f47bc7d845226edccb, type: 3}
+  iceAlbedoArray: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
+  iceNormalArray: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
+  iceMaskArray: {fileID: 18700000, guid: 3cf989ee1baa2d64aa7a597a942c7574, type: 3}
+  iceHeightArray: {fileID: 18700000, guid: 012b27f877c065f47bc7d845226edccb, type: 3}
   lakeIceTint: {r: 1, g: 1, b: 1, a: 1}
   lakeIceTiling: 8
-  riverIceAlbedoArray: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
-  riverIceNormalArray: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
-  riverIceMaskArray: {fileID: 18700000, guid: 3cf989ee1baa2d64aa7a597a942c7574, type: 3}
-  riverIceHeightArray: {fileID: 18700000, guid: 012b27f877c065f47bc7d845226edccb, type: 3}
   riverIceTint: {r: 1, g: 1, b: 1, a: 1}
   riverIceTiling: 12
   iceNormalStrength: 1
