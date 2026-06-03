@@ -131,6 +131,12 @@ Shader "Custom/BiomeTerrainHDRP"
         _CliffStepBlend ("Cliff Step Blend (texel units)", Range(0,10)) = 0.08
         _CliffSliceCount ("Cliff Slice Count", Float) = 1
 
+        [Header(Fallback Lighting)]
+        _FallbackSunDirectionWS ("Fallback Sun Direction WS", Vector) = (0.35, 0.85, 0.25, 0)
+        _FallbackSunColor ("Fallback Sun Color", Color) = (1, 1, 1, 1)
+        _FallbackSunIntensity ("Fallback Sun Intensity", Float) = 1
+        _FallbackAmbient ("Fallback Ambient", Range(0, 1)) = 0.35
+
         [Header(Debug)]
         _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
     }
@@ -239,6 +245,10 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _HexGridColor;
     float _HexGridWidth;
     float _HexGridFadeDistance;
+    float4 _FallbackSunDirectionWS;
+    float4 _FallbackSunColor;
+    float _FallbackSunIntensity;
+    float _FallbackAmbient;
 
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeTints[64];
@@ -1184,11 +1194,19 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // 3. Let HDRP compute lighting
                 float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
-                PositionInputs posInput = GetPositionInput((uint2)input.positionCS.xy, _ScreenSize.zw, input.positionCS.z, input.positionCS.w, input.positionWS, normalizedNormalWS);
+                uint2 pixelCoord = (uint2)input.positionCS.xy;
+                PositionInputs posInput = GetPositionInput(
+                    pixelCoord,
+                    _ScreenSize.zw,
+                    input.positionCS.z,
+                    input.positionCS.w,
+                    input.positionWS,
+                    pixelCoord);
                 BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionCS.xy, surfaceData);
                 PreLightData preLightData = GetPreLightData(viewDirWS, posInput, bsdfData);
                 uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE;
                 LightLoopOutput lightLoopOutput;
+                ZERO_INITIALIZE(LightLoopOutput, lightLoopOutput);
                 LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
 
                 float3 hdrpLit =
@@ -1205,9 +1223,10 @@ Shader "Custom/BiomeTerrainHDRP"
                     return float4(saturate(hdrpLit), 1.0);
                 }
 
-                float3 fallbackLightDir = normalize(float3(0.35, 0.85, 0.25));
+                float3 fallbackLightDir = normalize(_FallbackSunDirectionWS.xyz);
                 float fallbackNdotL = saturate(dot(normalizedNormalWS, fallbackLightDir));
-                float3 fallbackLit = albedo * lerp(0.35, 1.0, fallbackNdotL);
+                float3 fallbackDirect = _FallbackSunColor.rgb * _FallbackSunIntensity * fallbackNdotL;
+                float3 fallbackLit = albedo * (saturate(_FallbackAmbient) + fallbackDirect);
 
                 if (_TerrainDebugMode > 5.5 && _TerrainDebugMode < 6.5)
                 {
@@ -1254,7 +1273,6 @@ Shader "Custom/BiomeTerrainHDRP"
                     finalColor = lerp(finalColor, _HexGridColor.rgb, mask * _HexGridColor.a);
                 }
 
-                return float4(albedo, 1.0);
                 return float4(finalColor, 1.0);
             }
             ENDHLSL
