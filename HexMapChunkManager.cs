@@ -1852,8 +1852,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
         else
         {
-            sharedMaterial.SetTexture("_CliffAlbedoArray", null);
-            sharedMaterial.SetTexture("_CliffNormalArray", null);
+            sharedMaterial.SetFloat("_CliffSliceCount", 0f);
         }
         
         if (biomeTintArray != null)
@@ -5812,8 +5811,7 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_BiomeEmissiveMapTex", null);
             sharedMaterial.SetTexture("_LUT", null);
             sharedMaterial.SetTexture("_SliceToBiomeMap", null);
-            sharedMaterial.SetTexture("_CliffAlbedoArray", null);
-            sharedMaterial.SetTexture("_CliffNormalArray", null);
+            sharedMaterial.SetFloat("_CliffSliceCount", 0f);
         }
 
         // Destroy Texture2DArray / Texture2D resources
