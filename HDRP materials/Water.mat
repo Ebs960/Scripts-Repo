@@ -74,11 +74,11 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _LakeIceAlbedoArray:
+    - _IceAlbedoArray:
         m_Texture: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _LakeIceNormalArray:
+    - _IceNormalArray:
         m_Texture: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -104,14 +104,6 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _NormalMapOS:
         m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _RiverIceAlbedoArray:
-        m_Texture: {fileID: 18700000, guid: a4a7d491b1b0bf448ba91156d5352dab, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _RiverIceNormalArray:
-        m_Texture: {fileID: 18700000, guid: f5177bc23b39ac14c91b74c4e234fb0b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecularColorMap:
@@ -220,7 +212,7 @@ Material:
     - _Ior: 1.5
     - _IridescenceMask: 1
     - _IridescenceThickness: 1
-    - _LakeIceSliceCount: 1
+    - _IceSliceCount: 1
     - _LakeIceTiling: 8
     - _LinkDetailsWithBase: 1
     - _MaterialID: 1
@@ -243,7 +235,6 @@ Material:
     - _ReceivesSSR: 1
     - _ReceivesSSRTransparent: 0
     - _RefractionModel: 0
-    - _RiverIceSliceCount: 1
     - _RiverIceTiling: 12
     - _Smoothness: 0.5
     - _SmoothnessRemapMax: 1

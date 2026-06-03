@@ -8,28 +8,32 @@ using UnityEngine;
 ///
 /// Design mirrors BiomeVisualDatabase: drop an instance in the project, fill the texture
 /// slots, assign it to ClimateManager in the Inspector, and the freeze system will
-/// automatically pick up the albedo/normal/mask maps for lakes and rivers.
+/// automatically pick up the shared albedo/normal/mask maps for lakes and rivers.
 /// </summary>
 [CreateAssetMenu(menuName = "Terrain/Ice Surface Database")]
 public class IceSurfaceDatabase : ScriptableObject
 {
     // ─────────────────────────────────────────────────────────────
+    // Shared Ice Surface
+    // ─────────────────────────────────────────────────────────────
+    [Header("Shared Ice Surface")]
+    [Tooltip("Texture array for frozen water albedo variants shared by lakes and rivers.")]
+    public Texture2DArray iceAlbedoArray;
+
+    [Tooltip("Texture array for frozen water normal variants shared by lakes and rivers.")]
+    public Texture2DArray iceNormalArray;
+
+    [Tooltip("Texture array for frozen water mask variants shared by lakes and rivers.")]
+    public Texture2DArray iceMaskArray;
+
+    [Tooltip("Texture array for frozen water height variants shared by lakes and rivers.")]
+    public Texture2DArray iceHeightArray;
+
+    // ─────────────────────────────────────────────────────────────
     // Lake Ice
     // ─────────────────────────────────────────────────────────────
     [Header("Lake Ice Surface")]
-    [Tooltip("Texture array for frozen lake albedo variants.")]
-    public Texture2DArray lakeIceAlbedoArray;
-
-    [Tooltip("Texture array for frozen lake normal variants.")]
-    public Texture2DArray lakeIceNormalArray;
-
-    [Tooltip("Texture array for frozen lake mask variants.")]
-    public Texture2DArray lakeIceMaskArray;
-
-    [Tooltip("Texture array for frozen lake height variants.")]
-    public Texture2DArray lakeIceHeightArray;
-
-    [Tooltip("Tint colour multiplied on top of lakeIceAlbedo.")]
+    [Tooltip("Tint colour multiplied on top of shared ice albedo for lakes.")]
     public Color lakeIceTint = Color.white;
 
     [Tooltip("UV tiling for lake ice textures (world-space density).")]
@@ -40,19 +44,7 @@ public class IceSurfaceDatabase : ScriptableObject
     // River Ice
     // ─────────────────────────────────────────────────────────────
     [Header("River Ice Surface")]
-    [Tooltip("Texture array for frozen river albedo variants.")]
-    public Texture2DArray riverIceAlbedoArray;
-
-    [Tooltip("Texture array for frozen river normal variants.")]
-    public Texture2DArray riverIceNormalArray;
-
-    [Tooltip("Texture array for frozen river mask variants.")]
-    public Texture2DArray riverIceMaskArray;
-
-    [Tooltip("Texture array for frozen river height variants.")]
-    public Texture2DArray riverIceHeightArray;
-
-    [Tooltip("Tint colour multiplied on top of riverIceAlbedo.")]
+    [Tooltip("Tint colour multiplied on top of shared ice albedo for rivers.")]
     public Color riverIceTint = Color.white;
 
     [Tooltip("UV tiling for river ice textures.")]
