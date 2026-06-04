@@ -72,6 +72,33 @@ struct EncodeLUTTextureJob : IJobParallelFor
     }
 }
 
+public enum TerrainDebugMode
+{
+    [InspectorName("Off - Normal Terrain Rendering")]
+    Off = 0,
+
+    [InspectorName("1 - Raw Albedo Before HDRP Lighting")]
+    RawAlbedo = 1,
+
+    [InspectorName("2 - Surface Slice / Biome Index")]
+    SliceAndBiomeIndex = 2,
+
+    [InspectorName("3 - World Normal")]
+    WorldNormal = 3,
+
+    [InspectorName("4 - Mask Map RGB")]
+    MaskMap = 4,
+
+    [InspectorName("5 - HDRP Lit With Exposure")]
+    HdrpLitWithExposure = 5,
+
+    [InspectorName("6 - Fallback Lit")]
+    FallbackLit = 6,
+
+    [InspectorName("7 - HDRP Lit Without Exposure")]
+    HdrpLitNoExposure = 7
+}
+
 /// <summary>
 /// Manages all hex map chunks and handles seamless world wrapping.
 /// Replaces FlatMapTextureRenderer with a chunk-based approach that enables:
@@ -193,6 +220,24 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float debugLogCooldownSeconds = 0.5f;
     private float _lastDebugLogTime = -999f;
     private int _wrapTeleportEvents = 0;
+
+    [Header("Terrain Shader Debug")]
+    [SerializeField]
+    [Tooltip(
+        "Controls _TerrainDebugMode on the runtime terrain material.\n\n" +
+        "Off: Normal terrain rendering.\n" +
+        "Raw Albedo: Shows terrain texture color before HDRP lighting/exposure.\n" +
+        "Slice/Biome Index: Shows debug colors for texture slice and biome index.\n" +
+        "World Normal: Shows world-space normals as colors.\n" +
+        "Mask Map: Shows mask map RGB channels.\n" +
+        "HDRP Lit With Exposure: Shows HDRP lighting multiplied by exposure.\n" +
+        "Fallback Lit: Shows the shader fallback lighting path.\n" +
+        "HDRP Lit Without Exposure: Shows HDRP lighting before exposure."
+    )]
+    private TerrainDebugMode terrainDebugMode = TerrainDebugMode.Off;
+
+    private TerrainDebugMode _lastTerrainDebugMode = (TerrainDebugMode)(-999);
+
     private float _targetGlobalSnowAmount = 0f;
     private float _currentGlobalSnowAmount = 0f;
     private static readonly int _GlobalSnowAmountID = Shader.PropertyToID("_GlobalSnowAmount");
@@ -551,6 +596,12 @@ public class HexMapChunkManager : MonoBehaviour
         if (_lastUseTriplanar != useTriplanar)
         {
             _lastUseTriplanar = useTriplanar;
+            applied = true;
+        }
+
+        if (_lastTerrainDebugMode != terrainDebugMode)
+        {
+            _lastTerrainDebugMode = terrainDebugMode;
             applied = true;
         }
 
@@ -1908,6 +1959,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
+        sharedMaterial.SetFloat("_TerrainDebugMode", (float)terrainDebugMode);
         sharedMaterial.SetFloat("_MetallicMultiplier", metallicMultiplier);
         sharedMaterial.SetFloat("_AOIntensity", aoIntensity);
         sharedMaterial.SetFloat("_SmoothnessMultiplier", smoothnessMultiplier);
@@ -1954,6 +2006,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             try
             {
+                Debug.Log($"[HexMapChunkManager] TerrainDebugMode={terrainDebugMode} ({(float)terrainDebugMode})");
+
                 // Dump first several tint entries to help diagnose why tinting appears as white
                 int dumpN = Mathf.Min(16, biomeCount);
                 var parts = new System.Text.StringBuilder();
