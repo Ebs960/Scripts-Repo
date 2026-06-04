@@ -12,17 +12,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Pluto Cryo
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 32
+  springResponse:
+    snow: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  summerResponse:
+    snow: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  autumnResponse:
+    snow: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  winterResponse:
+    snow: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  biome: 33
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f2b52ef11c5b234a97da2f06f3baf89, type: 2}
   forcedVariant: -1
-  albedo: {fileID: 0}
-  normal: {fileID: 0}
-  maskMap: {fileID: 0}
   tiling: 1
   tint: {r: 0.7377358, g: 1, b: 0.98872143, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0
-  wetnessResponse: 0
+  inherentWetness: 0
   isWaterBiome: 0
