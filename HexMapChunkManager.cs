@@ -2471,6 +2471,7 @@ public class HexMapChunkManager : MonoBehaviour
         int[] lut = bakeResult.lut;
         bool useSimpleColors = bakedTerrainUseSimpleBiomeColors;
 
+        int successfulAlbedoSamplePixelCount = 0;
         int fallbackPixelCount = 0;
         var warnedFallbackKeys = new HashSet<string>();
         var sampleLogs = new List<string>(10);
@@ -2526,8 +2527,10 @@ public class HexMapChunkManager : MonoBehaviour
 
             int sourceWidth = Mathf.Max(1, biomeAlbedoArray.width);
             int sourceHeight = Mathf.Max(1, biomeAlbedoArray.height);
-            float sampleX = Mathf.Repeat(u, 1f) * (sourceWidth - 1);
-            float sampleY = Mathf.Repeat(v, 1f) * (sourceHeight - 1);
+            float surfaceU = Mathf.Repeat(u * 8f, 1f);
+            float surfaceV = Mathf.Repeat(v * 8f, 1f);
+            float sampleX = surfaceU * (sourceWidth - 1);
+            float sampleY = surfaceV * (sourceHeight - 1);
             int x0 = Mathf.Clamp(Mathf.FloorToInt(sampleX), 0, sourceWidth - 1);
             int y0 = Mathf.Clamp(Mathf.FloorToInt(sampleY), 0, sourceHeight - 1);
             int x1 = Mathf.Min(x0 + 1, sourceWidth - 1);
@@ -2588,9 +2591,10 @@ public class HexMapChunkManager : MonoBehaviour
                             int biomeIndex = ResolveRenderedBiomeIndex(tile);
                             int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
                             int surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile.isMountain);
+                            string visualName = visual != null ? visual.name : "<null>";
                             string visualBiome = visual != null ? visual.biome.ToString() : "<null>";
                             string familyName = visual != null && visual.surfaceFamily != null ? visual.surfaceFamily.name : "<null>";
-                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tile={tileIndex} tileBiome={tile.biome} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} slice={sliceIndex} family={familyName}");
+                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tileIndex={tileIndex} biome={tile.biome} visual={visualName} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} sliceIndex={sliceIndex} family={familyName}");
                         }
                     }
                     else
@@ -2602,12 +2606,17 @@ public class HexMapChunkManager : MonoBehaviour
 
                         if (sampleLogs.Count < 10)
                         {
+                            string visualName = visual != null ? visual.name : "<null>";
                             string visualBiome = visual != null ? visual.biome.ToString() : "<null>";
                             string familyName = visual != null && visual.surfaceFamily != null ? visual.surfaceFamily.name : "<null>";
-                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tile={tileIndex} tileBiome={tile.biome} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} slice={sliceIndex} family={familyName}");
+                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tileIndex={tileIndex} biome={tile.biome} visual={visualName} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} sliceIndex={sliceIndex} family={familyName}");
                         }
 
-                        if (!TrySampleAlbedoSlice(sliceIndex, u, v, out color, out var failureReason))
+                        if (TrySampleAlbedoSlice(sliceIndex, u, v, out color, out var failureReason))
+                        {
+                            successfulAlbedoSamplePixelCount++;
+                        }
+                        else
                         {
                             color = BiomeColorHelper.GetMinimapColor(tile.biome);
                             fallbackPixelCount++;
@@ -2637,8 +2646,8 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         string bakeMode = useSimpleColors ? "simple biome colors" : "surface albedo textures";
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, mode={bakeMode}, readable={keepBakedTerrainTexturesReadable}, fallbackPixels={fallbackPixelCount}");
-        Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit BaseColor bake used {(useSimpleColors ? "simple biome colors" : "real albedo textures")}. Fallback color pixels={fallbackPixelCount}.");
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, mode={bakeMode}, bakedTerrainUseSimpleBiomeColors={useSimpleColors}, readable={keepBakedTerrainTexturesReadable}");
+        Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit BaseColor bake sampledRealAlbedoPixels={successfulAlbedoSamplePixelCount}, fallbackBiomeColorPixels={fallbackPixelCount}.");
         if (sampleLogs.Count > 0)
             Debug.Log($"[HexMapChunkManager] First resolved baked HDRP/Lit terrain samples:\n  {string.Join("\n  ", sampleLogs)}");
     }
