@@ -37,7 +37,9 @@ public enum CombatCategory
     // New air specializations (added without shifting existing indices)
     Fighter = 28,
     Bomber = 29,
-    GroundAttack = 30
+    GroundAttack = 30,
+    // New ground specialization
+    MachineGun = 31
 }
 
 public enum CombatTargetDomain
