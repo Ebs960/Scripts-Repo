@@ -811,10 +811,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Below 0.5 gray: 2*base*tint (darkens). Above 0.5: 1-2*(1-base)*(1-tint) (lightens).
                 float3 base = albedoRaw.rgb;
                 float3 tint = biomeTint.rgb;
+                float tintStrength = saturate(biomeTint.a);
                 float3 overlayR = (base < 0.5)
                     ? 2.0 * base * tint
                     : 1.0 - 2.0 * (1.0 - base) * (1.0 - tint);
-                s.albedo = overlayR;
+                s.albedo = lerp(base, overlayR, tintStrength);
 
                 // Emissive
                 float4 emissiveParams = SAMPLE_TEXTURE2D_LOD(_BiomeEmissiveMapTex, sampler_BiomeIndexMap,
