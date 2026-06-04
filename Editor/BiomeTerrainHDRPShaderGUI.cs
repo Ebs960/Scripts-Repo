@@ -51,6 +51,30 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         if (condition) EditorGUILayout.HelpBox(message, type);
     }
 
+    private static void DrawShaderProperty(MaterialEditor materialEditor, MaterialProperty property, string label)
+    {
+        if (property != null)
+            materialEditor.ShaderProperty(property, label);
+    }
+
+    private static void DrawColorProperty(MaterialEditor materialEditor, MaterialProperty property, string label)
+    {
+        if (property != null)
+            materialEditor.ColorProperty(property, label);
+    }
+
+    private static void DrawVectorProperty(MaterialEditor materialEditor, MaterialProperty property, string label)
+    {
+        if (property != null)
+            materialEditor.VectorProperty(property, label);
+    }
+
+    private static void DrawTextureProperty(MaterialEditor materialEditor, MaterialProperty property, GUIContent label)
+    {
+        if (property != null)
+            materialEditor.TexturePropertySingleLine(label, property);
+    }
+
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
         if (materialEditor == null) return;
@@ -78,9 +102,20 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             var heightmap = Find(properties, "_Heightmap");
             var lut = Find(properties, "_LUT");
 
-            materialEditor.TexturePropertySingleLine(new GUIContent("Biome Index Map", "R = texture array slice index per tile/pixel"), biomeIndexMap);
-            materialEditor.TexturePropertySingleLine(new GUIContent("Heightmap", "R = elevation (scaled by _ElevationScale)"), heightmap);
-            materialEditor.TexturePropertySingleLine(new GUIContent("Tile LUT", "Used for tile highlight / decoding"), lut);
+            DrawTextureProperty(materialEditor, biomeIndexMap, new GUIContent("Biome Index Map", "R = texture array slice index per tile/pixel"));
+            DrawTextureProperty(materialEditor, heightmap, new GUIContent("Heightmap", "R = elevation (scaled by _ElevationScale)"));
+            DrawTextureProperty(materialEditor, lut, new GUIContent("Tile LUT", "Used for tile highlight / decoding"));
+
+            Header("Tile Season Mask");
+            DrawTextureProperty(materialEditor, Find(properties, "_TileSeasonMask"), new GUIContent("Tile Season Mask", "R=snow, G=wet, B=dry"));
+            DrawVectorProperty(materialEditor, Find(properties, "_TileSeasonMask_TexSize"), "Tile Season Mask TexSize");
+            DrawVectorProperty(materialEditor, Find(properties, "_TileSeasonMask_ST"), "Tile Season Mask ST");
+
+            Header("Map Dimensions");
+            DrawShaderProperty(materialEditor, Find(properties, "_MapWidth"), "Map Width");
+            DrawShaderProperty(materialEditor, Find(properties, "_MapHeight"), "Map Height");
+            DrawShaderProperty(materialEditor, Find(properties, "_BiomeCount"), "Biome Count");
+            DrawShaderProperty(materialEditor, Find(properties, "_TotalSlices"), "Total Texture Slices");
 
             EditorGUI.indentLevel--;
         }
@@ -90,10 +125,11 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         {
             EditorGUI.indentLevel++;
 
-            materialEditor.TexturePropertySingleLine(new GUIContent("Albedo Array"), Find(properties, "_BiomeAlbedoArray"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Normal Array"), Find(properties, "_BiomeNormalArray"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Mask Array", "R=metallic, G=AO, B=height (optional), A=smoothness"), Find(properties, "_BiomeMaskArray"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Emissive Array"), Find(properties, "_SurfaceEmissiveArray"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeAlbedoArray"), new GUIContent("Albedo Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeNormalArray"), new GUIContent("Normal Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeMaskArray"), new GUIContent("Mask Array", "R=metallic, G=AO, B=height (optional), A=smoothness"));
+            DrawTextureProperty(materialEditor, Find(properties, "_SurfaceEmissiveArray"), new GUIContent("Emissive Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeHeightArray"), new GUIContent("Height Array"));
 
             EditorGUI.indentLevel--;
         }
@@ -103,9 +139,9 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         {
             EditorGUI.indentLevel++;
 
-            materialEditor.TexturePropertySingleLine(new GUIContent("Slice→Biome Map"), Find(properties, "_SliceToBiomeMap"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Biome Surface Map"), Find(properties, "_BiomeSurfaceMapTex"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Biome Emissive Map"), Find(properties, "_BiomeEmissiveMapTex"));
+            DrawTextureProperty(materialEditor, Find(properties, "_SliceToBiomeMap"), new GUIContent("Slice→Biome Map"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeSurfaceMapTex"), new GUIContent("Biome Surface Map"));
+            DrawTextureProperty(materialEditor, Find(properties, "_BiomeEmissiveMapTex"), new GUIContent("Biome Emissive Map"));
 
             // Note: _BiomeTints and _BiomeParams are vector arrays set from C# (HexMapChunkManager).
             EditorGUILayout.HelpBox("Per-biome tint/params are driven by C# via SetVectorArray (_BiomeTints/_BiomeParams).", MessageType.Info);
@@ -117,10 +153,11 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         if (Foldout("Displacement", "Displacement & Height-Normals", true))
         {
             EditorGUI.indentLevel++;
-            materialEditor.ShaderProperty(Find(properties, "_ElevationScale"), "Elevation Scale");
-            materialEditor.ShaderProperty(Find(properties, "_NormalStrength"), "Heightmap Normal Strength");
-            materialEditor.ShaderProperty(Find(properties, "_BiomeNormalStrength"), "Biome Normal Strength");
-            materialEditor.ShaderProperty(Find(properties, "_NormalSampleRadius"), "Normal Sample Radius (texels)");
+            DrawShaderProperty(materialEditor, Find(properties, "_ElevationScale"), "Elevation Scale");
+            DrawShaderProperty(materialEditor, Find(properties, "_SurfaceHeightScale"), "Surface Height Scale");
+            DrawShaderProperty(materialEditor, Find(properties, "_NormalStrength"), "Heightmap Normal Strength");
+            DrawShaderProperty(materialEditor, Find(properties, "_BiomeNormalStrength"), "Biome Normal Strength");
+            DrawShaderProperty(materialEditor, Find(properties, "_NormalSampleRadius"), "Normal Sample Radius (texels)");
             EditorGUI.indentLevel--;
         }
 
@@ -143,12 +180,32 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel--;
         }
 
-        // ===================== Anti-Tiling =====================
-        if (Foldout("AntiTiling", "Anti-Tiling", false))
+        // ===================== Frozen Water =====================
+        if (Foldout("FrozenWater", "Frozen Water", false))
         {
             EditorGUI.indentLevel++;
-            materialEditor.ShaderProperty(Find(properties, "_AntiTileStrength"), "Anti-Tile Strength");
-            EditorGUILayout.HelpBox("Anti-tiling breaks large-scale repetition but costs extra texture samples. If performance drops, reduce Anti-Tile Strength or push Triplanar LOD closer.", MessageType.None);
+
+            DrawTextureProperty(materialEditor, Find(properties, "_FreezeMaskTex"), new GUIContent("Freeze Mask", "R=freeze, G=lake, B=river"));
+            DrawVectorProperty(materialEditor, Find(properties, "_FreezeMask_ST"), "Freeze Mask ST");
+            DrawShaderProperty(materialEditor, Find(properties, "_FreezeProgress"), "Freeze Progress");
+
+            Header("Ice Texture Arrays");
+            DrawTextureProperty(materialEditor, Find(properties, "_IceAlbedoArray"), new GUIContent("Ice Albedo Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_IceNormalArray"), new GUIContent("Ice Normal Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_IceMaskArray"), new GUIContent("Ice Mask Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_IceHeightArray"), new GUIContent("Ice Height Array"));
+
+            Header("Ice Material");
+            DrawColorProperty(materialEditor, Find(properties, "_LakeIceTint"), "Lake Ice Tint");
+            DrawColorProperty(materialEditor, Find(properties, "_RiverIceTint"), "River Ice Tint");
+            DrawShaderProperty(materialEditor, Find(properties, "_LakeIceTiling"), "Lake Ice Tiling");
+            DrawShaderProperty(materialEditor, Find(properties, "_RiverIceTiling"), "River Ice Tiling");
+            DrawShaderProperty(materialEditor, Find(properties, "_IceSliceCount"), "Ice Slice Count");
+            DrawShaderProperty(materialEditor, Find(properties, "_IceNormalStrength"), "Ice Normal Strength");
+            DrawShaderProperty(materialEditor, Find(properties, "_IceSmoothness"), "Ice Smoothness");
+            DrawShaderProperty(materialEditor, Find(properties, "_IceMetallic"), "Ice Metallic");
+            DrawShaderProperty(materialEditor, Find(properties, "_FreezeOpaqueThreshold"), "Freeze Opaque Threshold");
+
             EditorGUI.indentLevel--;
         }
 
@@ -167,14 +224,17 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         {
             EditorGUI.indentLevel++;
 
-            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Albedo Array"), Find(properties, "_CliffAlbedoArray"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Normal Array"), Find(properties, "_CliffNormalArray"));
-            materialEditor.ShaderProperty(Find(properties, "_CliffTiling"), "Cliff Tiling");
-            materialEditor.ShaderProperty(Find(properties, "_CliffStrength"), "Cliff Strength");
-            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeThreshold"), "Slope Threshold");
-            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeBlend"), "Slope Blend");
-            materialEditor.ShaderProperty(Find(properties, "_CliffStepThreshold"), "Step Threshold");
-            materialEditor.ShaderProperty(Find(properties, "_CliffStepBlend"), "Step Blend");
+            DrawTextureProperty(materialEditor, Find(properties, "_CliffAlbedoArray"), new GUIContent("Cliff Albedo Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_CliffNormalArray"), new GUIContent("Cliff Normal Array"));
+            DrawTextureProperty(materialEditor, Find(properties, "_CliffAlbedoPreview"), new GUIContent("Cliff Albedo Preview (fallback)"));
+            DrawTextureProperty(materialEditor, Find(properties, "_CliffNormalPreview"), new GUIContent("Cliff Normal Preview (fallback)"));
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffTiling"), "Cliff Tiling");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffStrength"), "Cliff Strength");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffSlopeThreshold"), "Slope Threshold");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffSlopeBlend"), "Slope Blend");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffStepThreshold"), "Step Threshold");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffStepBlend"), "Step Blend");
+            DrawShaderProperty(materialEditor, Find(properties, "_CliffSliceCount"), "Cliff Slice Count");
 
             EditorGUI.indentLevel--;
         }
@@ -201,7 +261,11 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             }
 
             Header("Global Wetness");
-            materialEditor.ShaderProperty(Find(properties, "_GlobalWetness"), "Global Wetness");
+            DrawShaderProperty(materialEditor, Find(properties, "_GlobalWetness"), "Global Wetness");
+            DrawShaderProperty(materialEditor, Find(properties, "_WetNormalStrength"), "Wet Normal Strength");
+            DrawShaderProperty(materialEditor, Find(properties, "_WetNormalTiling"), "Wet Normal Tiling");
+            DrawShaderProperty(materialEditor, Find(properties, "_WetSmoothnessBoost"), "Wet Smoothness Boost");
+            DrawShaderProperty(materialEditor, Find(properties, "_WetAlbedoDarken"), "Wet Albedo Darken");
 
             EditorGUI.indentLevel--;
         }
@@ -222,22 +286,33 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel++;
 
             Header("Fog Overlay");
-            materialEditor.TexturePropertySingleLine(new GUIContent("Fog Mask"), Find(properties, "_FogMask"));
-            materialEditor.ShaderProperty(Find(properties, "_EnableFog"), "Enable Fog Overlay");
-            materialEditor.ColorProperty(Find(properties, "_TerrainFogColor"), "Fog Color");
+            DrawTextureProperty(materialEditor, Find(properties, "_FogMask"), new GUIContent("Fog Mask"));
+            DrawShaderProperty(materialEditor, Find(properties, "_EnableFog"), "Enable Fog Overlay");
+            DrawColorProperty(materialEditor, Find(properties, "_TerrainFogColor"), "Fog Color");
 
             Header("Ownership Overlay");
-            materialEditor.TexturePropertySingleLine(new GUIContent("Ownership Overlay"), Find(properties, "_OwnershipOverlay"));
-            materialEditor.ShaderProperty(Find(properties, "_EnableOwnership"), "Enable Ownership Overlay");
-            materialEditor.ShaderProperty(Find(properties, "_OwnershipAlpha"), "Ownership Alpha");
+            DrawTextureProperty(materialEditor, Find(properties, "_OwnershipOverlay"), new GUIContent("Ownership Overlay"));
+            DrawShaderProperty(materialEditor, Find(properties, "_EnableOwnership"), "Enable Ownership Overlay");
+            DrawShaderProperty(materialEditor, Find(properties, "_OwnershipAlpha"), "Ownership Alpha");
 
             EditorGUILayout.Space(4);
             Header("Hex Grid Overlay");
-            materialEditor.ShaderProperty(Find(properties, "_ShowHexGrid"), "Show Hex Grid");
-            materialEditor.ColorProperty(Find(properties, "_HexGridColor"), "Hex Grid Color");
-            materialEditor.ShaderProperty(Find(properties, "_HexGridWidth"), "Hex Grid Width (texels)");
-            materialEditor.ShaderProperty(Find(properties, "_HexGridFadeDistance"), "Hex Grid Fade Distance");
+            DrawShaderProperty(materialEditor, Find(properties, "_ShowHexGrid"), "Show Hex Grid");
+            DrawColorProperty(materialEditor, Find(properties, "_HexGridColor"), "Hex Grid Color");
+            DrawShaderProperty(materialEditor, Find(properties, "_HexGridWidth"), "Hex Grid Width (texels)");
+            DrawShaderProperty(materialEditor, Find(properties, "_HexGridFadeDistance"), "Hex Grid Fade Distance");
 
+            EditorGUI.indentLevel--;
+        }
+
+        // ===================== Tessellation =====================
+        if (Foldout("Tessellation", "Tessellation", false))
+        {
+            EditorGUI.indentLevel++;
+            DrawShaderProperty(materialEditor, Find(properties, "_EnableTessellation"), "Enable Tessellation");
+            DrawShaderProperty(materialEditor, Find(properties, "_TessellationFactor"), "Tessellation Factor");
+            DrawShaderProperty(materialEditor, Find(properties, "_TessellationFadeStart"), "Tessellation Fade Start");
+            DrawShaderProperty(materialEditor, Find(properties, "_TessellationFadeEnd"), "Tessellation Fade End");
             EditorGUI.indentLevel--;
         }
 
@@ -246,13 +321,10 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         {
             EditorGUI.indentLevel++;
 
-            materialEditor.VectorProperty(Find(properties, "_SunDir"), "Sun Direction");
-            materialEditor.ColorProperty(Find(properties, "_SunColor"), "Sun Color");
-            materialEditor.ShaderProperty(Find(properties, "_SunIntensity"), "Sun Intensity");
-
-            materialEditor.ColorProperty(Find(properties, "_AmbientSkyColor"), "Ambient Sky");
-            materialEditor.ColorProperty(Find(properties, "_AmbientGroundColor"), "Ambient Ground");
-            materialEditor.ShaderProperty(Find(properties, "_AmbientIntensity"), "Ambient Intensity");
+            DrawVectorProperty(materialEditor, Find(properties, "_FallbackSunDirectionWS"), "Fallback Sun Direction WS");
+            DrawColorProperty(materialEditor, Find(properties, "_FallbackSunColor"), "Fallback Sun Color");
+            DrawShaderProperty(materialEditor, Find(properties, "_FallbackSunIntensity"), "Fallback Sun Intensity");
+            DrawShaderProperty(materialEditor, Find(properties, "_FallbackAmbient"), "Fallback Ambient");
 
             EditorGUI.indentLevel--;
         }
@@ -261,8 +333,9 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
         if (Foldout("Debug", "Debug / Highlight", false))
         {
             EditorGUI.indentLevel++;
-            materialEditor.ShaderProperty(Find(properties, "_HighlightTileIndex"), "Highlight Tile Index");
-            materialEditor.ColorProperty(Find(properties, "_HighlightColor"), "Highlight Color");
+            DrawShaderProperty(materialEditor, Find(properties, "_TerrainDebugMode"), "Terrain Debug Mode");
+            DrawShaderProperty(materialEditor, Find(properties, "_HighlightTileIndex"), "Highlight Tile Index");
+            DrawColorProperty(materialEditor, Find(properties, "_HighlightColor"), "Highlight Color");
             EditorGUI.indentLevel--;
         }
 
