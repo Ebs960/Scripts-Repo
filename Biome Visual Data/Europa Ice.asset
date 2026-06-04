@@ -14,35 +14,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   springResponse:
     snow: 0
-    wet: 0.169
     dry: 0
     tint: {r: 0, g: 0, b: 0, a: 0.3019608}
   summerResponse:
     snow: 0
-    wet: 0
     dry: 0.437
     tint: {r: 0, g: 0, b: 0, a: 0}
   autumnResponse:
     snow: 0
-    wet: 0
     dry: 0
     tint: {r: 0.9245283, g: 0.5938017, b: 0.06803123, a: 1}
   winterResponse:
     snow: 0.47
-    wet: 0.055
     dry: 0
     tint: {r: 0, g: 0, b: 0, a: 0}
-  biome: 36
+  biome: 37
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f2b52ef11c5b234a97da2f06f3baf89, type: 2}
   forcedVariant: -1
-  albedo: {fileID: 0}
-  normal: {fileID: 0}
-  maskMap: {fileID: 0}
   tiling: 1
   tint: {r: 0.9924528, g: 0.9916891, b: 0.6347953, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.166
-  wetnessResponse: 0
+  inherentWetness: 0
   isWaterBiome: 0
