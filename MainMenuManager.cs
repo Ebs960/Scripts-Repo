@@ -551,11 +551,11 @@ public class MainMenuManager : MonoBehaviour
 
     private void Update()
     {
-        // On first frame where preview is ready, update the map type and preview
-        if (!_previewInitializedOnce && planetPreview != null)
+        // On first frame where preview textures are ready, update the map type and preview
+        if (!_previewInitializedOnce && planetPreview != null && planetPreview.HasGeneratedWorldTextures)
         {
             _previewInitializedOnce = true;
-            Debug.Log("[MainMenuManager] Planet preview is ready - calling UpdateMapTypeName...");
+            Debug.Log("[MainMenuManager] Planet preview textures are ready - calling UpdateMapTypeName.");
             try
             {
                 UpdateMapTypeName();

@@ -39,6 +39,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Shader atmosphereShader;
     [SerializeField] private MenuPlanetPreviewWorldGeneratorV2 worldGenerator;
 
+    public bool HasGeneratedWorldTextures =>
+        worldGenerator != null && worldGenerator.HasGeneratedWorldTextures();
+
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
     [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
