@@ -173,7 +173,7 @@ public class HexMapChunkManager : MonoBehaviour
     private int bakedTerrainTextureHeight = 1024;
 
     [SerializeField]
-    [Tooltip("When true, bakes only simple biome colors. This is the first proof mode.")]
+    [Tooltip("When true, bakes simple biome/minimap colors. Disable to bake BaseColorMap from resolved surface-family albedo texture slices.")]
     private bool bakedTerrainUseSimpleBiomeColors = true;
 
     [SerializeField]
@@ -2469,6 +2469,97 @@ public class HexMapChunkManager : MonoBehaviour
         int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
         int[] lut = bakeResult.lut;
+        bool useSimpleColors = bakedTerrainUseSimpleBiomeColors;
+
+        int fallbackPixelCount = 0;
+        var warnedFallbackKeys = new HashSet<string>();
+        var sampleLogs = new List<string>(10);
+        const int maxReadableSliceCacheCount = 8;
+        var readableSliceCache = new Dictionary<int, Color[]>();
+        var failedSliceSampleReasons = new Dictionary<int, string>();
+
+        bool TrySampleAlbedoSlice(int sliceIndex, float u, float v, out Color sampled, out string failureReason)
+        {
+            sampled = Color.magenta;
+            failureReason = null;
+
+            if (biomeAlbedoArray == null)
+            {
+                failureReason = "missing biomeAlbedoArray";
+                return false;
+            }
+
+            if (sliceIndex < 0 || sliceIndex >= biomeAlbedoArray.depth)
+            {
+                failureReason = $"slice {sliceIndex} outside albedo depth {biomeAlbedoArray.depth}";
+                return false;
+            }
+
+            if (failedSliceSampleReasons.TryGetValue(sliceIndex, out failureReason))
+                return false;
+
+            if (!readableSliceCache.TryGetValue(sliceIndex, out var slicePixels))
+            {
+                try
+                {
+                    slicePixels = biomeAlbedoArray.GetPixels(sliceIndex, 0);
+                }
+                catch (System.Exception ex)
+                {
+                    failureReason = $"slice {sliceIndex} is not CPU-readable ({ex.GetType().Name}: {ex.Message})";
+                    failedSliceSampleReasons[sliceIndex] = failureReason;
+                    return false;
+                }
+
+                if (slicePixels == null || slicePixels.Length == 0)
+                {
+                    failureReason = $"slice {sliceIndex} returned no pixels";
+                    failedSliceSampleReasons[sliceIndex] = failureReason;
+                    return false;
+                }
+
+                if (readableSliceCache.Count >= maxReadableSliceCacheCount)
+                    readableSliceCache.Clear();
+
+                readableSliceCache[sliceIndex] = slicePixels;
+            }
+
+            int sourceWidth = Mathf.Max(1, biomeAlbedoArray.width);
+            int sourceHeight = Mathf.Max(1, biomeAlbedoArray.height);
+            float sampleX = Mathf.Repeat(u, 1f) * (sourceWidth - 1);
+            float sampleY = Mathf.Repeat(v, 1f) * (sourceHeight - 1);
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(sampleX), 0, sourceWidth - 1);
+            int y0 = Mathf.Clamp(Mathf.FloorToInt(sampleY), 0, sourceHeight - 1);
+            int x1 = Mathf.Min(x0 + 1, sourceWidth - 1);
+            int y1 = Mathf.Min(y0 + 1, sourceHeight - 1);
+            float tx = sampleX - x0;
+            float ty = sampleY - y0;
+
+            int maxIndex = slicePixels.Length - 1;
+            Color c00 = slicePixels[Mathf.Min(y0 * sourceWidth + x0, maxIndex)];
+            Color c10 = slicePixels[Mathf.Min(y0 * sourceWidth + x1, maxIndex)];
+            Color c01 = slicePixels[Mathf.Min(y1 * sourceWidth + x0, maxIndex)];
+            Color c11 = slicePixels[Mathf.Min(y1 * sourceWidth + x1, maxIndex)];
+            sampled = Color.Lerp(Color.Lerp(c00, c10, tx), Color.Lerp(c01, c11, tx), ty);
+            sampled.a = 1f;
+            return true;
+        }
+
+        int ResolveSurfaceIndex(int biomeIndex, bool isMountain)
+        {
+            Vector4[] sourceMapArray = biomeSurfaceMapArray;
+            if (isMountain && biomeMountainSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeMountainSurfaceMapArray.Length)
+            {
+                var mountainMap = biomeMountainSurfaceMapArray[biomeIndex];
+                if (Mathf.RoundToInt(mountainMap.y) > 0)
+                    sourceMapArray = biomeMountainSurfaceMapArray;
+            }
+
+            if (sourceMapArray != null && biomeIndex >= 0 && biomeIndex < sourceMapArray.Length)
+                return Mathf.RoundToInt(sourceMapArray[biomeIndex].z);
+
+            return -1;
+        }
 
         for (int y = 0; y < height; y++)
         {
@@ -2487,10 +2578,47 @@ public class HexMapChunkManager : MonoBehaviour
 
                 if (tileIndex >= 0 && planetGenerator != null && planetGenerator.data.TryGetValue(tileIndex, out var tile))
                 {
-                    if (bakedTerrainUseSimpleBiomeColors)
+                    if (useSimpleColors)
+                    {
                         color = BiomeColorHelper.GetMinimapColor(tile.biome);
+
+                        if (sampleLogs.Count < 10)
+                        {
+                            BiomeVisualData visual = ResolveRenderedVisual(tile);
+                            int biomeIndex = ResolveRenderedBiomeIndex(tile);
+                            int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
+                            int surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile.isMountain);
+                            string visualBiome = visual != null ? visual.biome.ToString() : "<null>";
+                            string familyName = visual != null && visual.surfaceFamily != null ? visual.surfaceFamily.name : "<null>";
+                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tile={tileIndex} tileBiome={tile.biome} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} slice={sliceIndex} family={familyName}");
+                        }
+                    }
                     else
-                        color = BiomeColorHelper.GetMinimapColor(tile.biome);
+                    {
+                        BiomeVisualData visual = ResolveRenderedVisual(tile);
+                        int biomeIndex = ResolveRenderedBiomeIndex(tile);
+                        int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
+                        int surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile.isMountain);
+
+                        if (sampleLogs.Count < 10)
+                        {
+                            string visualBiome = visual != null ? visual.biome.ToString() : "<null>";
+                            string familyName = visual != null && visual.surfaceFamily != null ? visual.surfaceFamily.name : "<null>";
+                            sampleLogs.Add($"pixel=({x},{y}) uv=({u:F4},{v:F4}) tile={tileIndex} tileBiome={tile.biome} renderedBiome={visualBiome} biomeIndex={biomeIndex} surface={surfaceIndex} slice={sliceIndex} family={familyName}");
+                        }
+
+                        if (!TrySampleAlbedoSlice(sliceIndex, u, v, out color, out var failureReason))
+                        {
+                            color = BiomeColorHelper.GetMinimapColor(tile.biome);
+                            fallbackPixelCount++;
+
+                            string fallbackKey = $"surface={surfaceIndex}|slice={sliceIndex}|reason={failureReason}";
+                            if (warnedFallbackKeys.Add(fallbackKey))
+                            {
+                                Debug.LogWarning($"[HexMapChunkManager] Baked HDRP/Lit albedo sampling failed for surface={surfaceIndex}, slice={sliceIndex}, biome={tile.biome}; using minimap fallback. Reason: {failureReason}");
+                            }
+                        }
+                    }
                 }
 
                 pixels[y * width + x] = color;
@@ -2508,7 +2636,11 @@ public class HexMapChunkManager : MonoBehaviour
                 Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _BaseColorMap property.");
         }
 
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, readable={keepBakedTerrainTexturesReadable}");
+        string bakeMode = useSimpleColors ? "simple biome colors" : "surface albedo textures";
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, mode={bakeMode}, readable={keepBakedTerrainTexturesReadable}, fallbackPixels={fallbackPixelCount}");
+        Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit BaseColor bake used {(useSimpleColors ? "simple biome colors" : "real albedo textures")}. Fallback color pixels={fallbackPixelCount}.");
+        if (sampleLogs.Count > 0)
+            Debug.Log($"[HexMapChunkManager] First resolved baked HDRP/Lit terrain samples:\n  {string.Join("\n  ", sampleLogs)}");
     }
 
     private void BuildNeutralBakedMaskMap()
