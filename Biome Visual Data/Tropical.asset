@@ -15,7 +15,7 @@ MonoBehaviour:
   springResponse:
     snow: 0
     dry: 0
-    tint: {r: 0, g: 0, b: 0, a: 0.40784314}
+    tint: {r: 0, g: 0, b: 0, a: 0}
   summerResponse:
     snow: 0
     dry: 0
@@ -32,12 +32,9 @@ MonoBehaviour:
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: d2536777d4fb9fb4a9dbe9989a33da67, type: 2}
   forcedVariant: -1
-  albedo: {fileID: 0}
-  normal: {fileID: 0}
-  maskMap: {fileID: 0}
   tiling: 2
-  tint: {r: 1, g: 1, b: 1, a: 1}
-  emissiveTint: {r: 1, g: 1, b: 1, a: 1}
+  tint: {r: 1, g: 1, b: 1, a: 0}
+  emissiveTint: {r: 1, g: 1, b: 1, a: 0}
   emissiveIntensity: 0
   inherentWetness: 0
   isWaterBiome: 0
