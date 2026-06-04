@@ -156,21 +156,11 @@ public class TransportUIManager : MonoBehaviour
         if (!isInLoadMode || selectedTransport == null)
             return;
             
-        // Find unit on this tile
-        GameObject unitObj = null;
-        
-        // Centralized lookup (multi-planet-aware)
-        int pIndex = selectedTransport.planetIndex;
-        unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, selectedTransport.currentLayer, pIndex);
-        
-        if (unitObj != null)
+        CombatUnit unit = FindLoadableUnitOnTile(tileIndex);
+        if (unit != null)
         {
-            CombatUnit unit = unitObj.GetComponent<CombatUnit>();
-            if (unit != null && unit != selectedTransport)
-            {
-                // Attempt to load the unit
-                selectedTransport.LoadUnit(unit);
-            }
+            // Attempt to load/base the unit.
+            selectedTransport.LoadUnit(unit);
         }
         
         // Exit load mode
@@ -209,8 +199,8 @@ public class TransportUIManager : MonoBehaviour
             }
         }
         
-        // Check if the unit can move to this tile
-        if (canDeploy && selectedUnitToUnload.CanMoveTo(tileIndex))
+        // Check if the carrier can deploy this unit to this tile.
+        if (canDeploy && selectedTransport.CanUnloadUnitTo(selectedUnitToUnload, tileIndex))
         {
             // Attempt to deploy
             selectedTransport.UnloadUnit(selectedUnitToUnload, tileIndex);
@@ -301,20 +291,42 @@ public class TransportUIManager : MonoBehaviour
         // Highlight tiles with units
         foreach (int tileIndex in tilesToCheck)
         {
-            GameObject unitObj = null;
-            // Layer-aware lookup (centralized)
-            unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, selectedTransport.currentLayer, pIndex);
-            
-            if (unitObj != null)
+            CombatUnit unit = FindLoadableUnitOnTile(tileIndex);
+            if (unit != null)
             {
-                CombatUnit unit = unitObj.GetComponent<CombatUnit>();
-                if (unit != null && unit != selectedTransport && unit.owner == selectedTransport.owner)
-                {
-                    // Highlight this tile as valid for loading
-                    HighlightTile(tileIndex, validDeployTileColor);
-                }
+                // Highlight this tile as valid for loading/basing.
+                HighlightTile(tileIndex, validDeployTileColor);
             }
         }
+    }
+
+    private CombatUnit FindLoadableUnitOnTile(int tileIndex)
+    {
+        if (selectedTransport == null)
+            return null;
+
+        int pIndex = selectedTransport.planetIndex;
+        var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null)
+            return null;
+
+        TileLayer[] layers = { TileLayer.Surface, TileLayer.Underwater, TileLayer.Atmosphere, TileLayer.Orbit };
+        for (int i = 0; i < layers.Length; i++)
+        {
+            List<int> occupantIds = occ.GetAllOccupantIds(tileIndex, layers[i]);
+            for (int j = 0; j < occupantIds.Count; j++)
+            {
+                GameObject unitObj = UnitRegistry.GetObject(occupantIds[j]);
+                if (unitObj == null)
+                    continue;
+
+                CombatUnit unit = unitObj.GetComponent<CombatUnit>();
+                if (unit != null && selectedTransport.CanLoadUnit(unit))
+                    return unit;
+            }
+        }
+
+        return null;
     }
 
     private void HighlightValidDeploymentTiles(CombatUnit unitToUnload)
@@ -339,7 +351,7 @@ public class TransportUIManager : MonoBehaviour
         // Highlight valid deployment tiles
         foreach (int tileIndex in tilesToCheck)
         {
-            bool canDeploy = unitToUnload.CanMoveTo(tileIndex);
+            bool canDeploy = selectedTransport.CanUnloadUnitTo(unitToUnload, tileIndex);
             Color highlightColor = canDeploy ? validDeployTileColor : invalidDeployTileColor;
             HighlightTile(tileIndex, highlightColor);
         }
@@ -409,6 +421,7 @@ public class TransportUIManager : MonoBehaviour
     {
         // Update UI
         UpdateCapacityText();
+        ClearTransportedUnitsList();
         PopulateTransportedUnitsList();
     }
 
