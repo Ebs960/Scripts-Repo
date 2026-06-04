@@ -841,6 +841,10 @@ Shader "Custom/BiomeTerrainHDRP"
             float4 frag(Varyings input) : SV_Target
             {
                 float2 uv = input.uv;
+                // Treat the material's float debug property as an integer mode so
+                // values 8-15 selected from HexMapChunkManager reliably hit the
+                // custom forward path branches below.
+                int terrainDebugMode = (int)round(_TerrainDebugMode);
                 // Convert to absolute WS so triplanar UVs are world-anchored (no camera swimming).
                 float3 worldPos = GetAbsolutePositionWS(input.positionWS);
                 float3 V = normalize(_WorldSpaceCameraPos - worldPos);
@@ -978,39 +982,22 @@ Shader "Custom/BiomeTerrainHDRP"
                 }
 
                 // Unpack mask: R=Metallic, G=AO, B=Height (used above), A=Smoothness
-                float metallic = saturate(mask.r * _MetallicMultiplier);
-                float ao = saturate(mask.g * _AOIntensity);
+                // Keep the raw sampled mask channels available for debug modes even
+                // after the custom path applies snow, wetness, ice, fog, and highlight
+                // adjustments below. Mask convention: R=Metallic, G=AO, B=Height,
+                // A=Smoothness.
+                float rawMetallicChannel = saturate(mask.r);
+                float rawAOChannel = saturate(mask.g);
+                float rawSmoothnessChannel = saturate(mask.a);
+
+                float metallic = saturate(rawMetallicChannel * _MetallicMultiplier);
+                float ao = saturate(rawAOChannel * _AOIntensity);
                 // Apply per-biome roughness offset from SurfaceFamilyData
                 // (packed 4 per float4; blend between primary/secondary at boundaries)
                 int roIdxP = centerBiome >> 2;  // Bitwise shift = faster than division by 4
                 int roCompP = centerBiome & 3;  // Bitwise AND = faster than modulus 4
                 float roughnessOffset = _BiomeRoughnessOffsets[roIdxP][roCompP];
-                float smoothness = saturate(mask.a * _SmoothnessMultiplier - roughnessOffset);
-
-                // Debug 8: Raw metallic channel
-                if (_TerrainDebugMode > 7.5 && _TerrainDebugMode < 8.5)
-                {
-                    return float4(mask.r.xxx, 1.0);
-                }
-
-                // Debug 9: Raw AO channel
-                if (_TerrainDebugMode > 8.5 && _TerrainDebugMode < 9.5)
-                {
-                    return float4(mask.g.xxx, 1.0);
-                }
-
-                // Debug 10: Raw smoothness channel
-                if (_TerrainDebugMode > 9.5 && _TerrainDebugMode < 10.5)
-                {
-                    return float4(mask.a.xxx, 1.0);
-                }
-
-                // Debug 11: Computed PBR values
-                // R = metallic, G = AO/spec occlusion, B = smoothness
-                if (_TerrainDebugMode > 10.5 && _TerrainDebugMode < 11.5)
-                {
-                    return float4(metallic, ao, smoothness, 1.0);
-                }
+                float smoothness = saturate(rawSmoothnessChannel * _SmoothnessMultiplier - roughnessOffset);
 
                 // ==========================================================
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
@@ -1172,24 +1159,52 @@ Shader "Custom/BiomeTerrainHDRP"
                     }
                 }
 
-                if (_TerrainDebugMode > 0.5 && _TerrainDebugMode < 1.5)
+                // Debug 8-11 are intentionally evaluated after the full custom
+                // surface path above so those modes are visibly connected to the
+                // runtime shader branch rather than bypassing it early.
+                // Debug 8: raw metallic mask channel.
+                if (terrainDebugMode == 8)
+                {
+                    return float4(rawMetallicChannel.xxx, 1.0);
+                }
+
+                // Debug 9: raw ambient-occlusion mask channel.
+                if (terrainDebugMode == 9)
+                {
+                    return float4(rawAOChannel.xxx, 1.0);
+                }
+
+                // Debug 10: raw smoothness mask channel.
+                if (terrainDebugMode == 10)
+                {
+                    return float4(rawSmoothnessChannel.xxx, 1.0);
+                }
+
+                // Debug 11: final computed PBR values after custom overlays.
+                // R = metallic, G = AO/spec occlusion, B = smoothness.
+                if (terrainDebugMode == 11)
+                {
+                    return float4(metallic, ao, smoothness, 1.0);
+                }
+
+                if (terrainDebugMode == 1)
                 {
                     return float4(saturate(albedo), 1.0);
                 }
 
-                if (_TerrainDebugMode > 1.5 && _TerrainDebugMode < 2.5)
+                if (terrainDebugMode == 2)
                 {
                     float sliceDebug = centerSlice / max(_TotalSlices, 1.0);
                     float biomeDebug = centerBiome / max(_BiomeCount, 1.0);
                     return float4(sliceDebug, biomeDebug, 0.0, 1.0);
                 }
 
-                if (_TerrainDebugMode > 2.5 && _TerrainDebugMode < 3.5)
+                if (terrainDebugMode == 3)
                 {
                     return float4(normalize(normalWS) * 0.5 + 0.5, 1.0);
                 }
 
-                if (_TerrainDebugMode > 3.5 && _TerrainDebugMode < 4.5)
+                if (terrainDebugMode == 4)
                 {
                     return float4(saturate(mask.rgb), 1.0);
                 }
@@ -1245,36 +1260,36 @@ Shader "Custom/BiomeTerrainHDRP"
                     lightLoopOutput.diffuseLighting +
                     lightLoopOutput.specularLighting;
 
-                if (_TerrainDebugMode > 4.5 && _TerrainDebugMode < 5.5)
+                if (terrainDebugMode == 5)
                 {
                     return float4(saturate(hdrpLit * GetCurrentExposureMultiplier()), 1.0);
                 }
 
-                if (_TerrainDebugMode > 6.5 && _TerrainDebugMode < 7.5)
+                if (terrainDebugMode == 7)
                 {
                     return float4(saturate(hdrpLit), 1.0);
                 }
 
                 // Debug 12: HDRP diffuse only
-                if (_TerrainDebugMode > 11.5 && _TerrainDebugMode < 12.5)
+                if (terrainDebugMode == 12)
                 {
                     return float4(saturate(lightLoopOutput.diffuseLighting), 1.0);
                 }
 
                 // Debug 13: HDRP specular only
-                if (_TerrainDebugMode > 12.5 && _TerrainDebugMode < 13.5)
+                if (terrainDebugMode == 13)
                 {
                     return float4(saturate(lightLoopOutput.specularLighting), 1.0);
                 }
 
                 // Debug 14: Baked diffuse / SH contribution
-                if (_TerrainDebugMode > 13.5 && _TerrainDebugMode < 14.5)
+                if (terrainDebugMode == 14)
                 {
                     return float4(saturate(builtinData.bakeDiffuseLighting), 1.0);
                 }
 
                 // Debug 15: Exposure multiplier as grayscale
-                if (_TerrainDebugMode > 14.5 && _TerrainDebugMode < 15.5)
+                if (terrainDebugMode == 15)
                 {
                     float e = saturate(GetCurrentExposureMultiplier() / 4.0);
                     return float4(e, e, e, 1.0);
@@ -1285,7 +1300,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 fallbackDirect = _FallbackSunColor.rgb * _FallbackSunIntensity * fallbackNdotL;
                 float3 fallbackLit = albedo * (saturate(_FallbackAmbient) + fallbackDirect);
 
-                if (_TerrainDebugMode > 5.5 && _TerrainDebugMode < 6.5)
+                if (terrainDebugMode == 6)
                 {
                     return float4(saturate(fallbackLit + emission), 1.0);
                 }
