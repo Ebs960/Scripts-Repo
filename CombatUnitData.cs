@@ -228,6 +228,12 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Maximum number of units this transport can carry")]
     [Range(1, 10)]
     public int transportCapacity = 3;
+    [Tooltip("Whether this transport can carry regular land/naval combat units. Disable this for pure aircraft or spaceship carriers.")]
+    public bool canTransportCombatUnits = true;
+    [Tooltip("Whether this transport can act as an aircraft carrier and base Aircraft/Fighter/Bomber/GroundAttack units.")]
+    public bool canBaseAircraft = false;
+    [Tooltip("Whether this transport can act as a spacecraft carrier and base Spaceship units.")]
+    public bool canBaseSpaceships = false;
     [Tooltip("Whether this transport can travel to the moon (only spaceships)")]
     public bool canTravelToMoon = false;
 
@@ -329,6 +335,29 @@ public class CombatUnitData : ScriptableObject
                || cat == CombatCategory.Fighter
                || cat == CombatCategory.Bomber
                || cat == CombatCategory.GroundAttack;
+    }
+
+    /// <summary>
+    /// Returns true if the category represents a space-capable combat unit.
+    /// </summary>
+    public static bool IsSpaceCategory(CombatCategory cat)
+    {
+        return cat == CombatCategory.Spaceship;
+    }
+
+    /// <summary>
+    /// Returns true when this transport can carry/base a unit in the requested category.
+    /// Aircraft and spaceships require explicit carrier-basing flags; all other combat
+    /// units use the legacy transport flag unless regular combat transport is disabled.
+    /// </summary>
+    public bool CanCarryUnitCategory(CombatCategory passengerCategory)
+    {
+        if (!isTransport) return false;
+
+        if (IsAirCategory(passengerCategory)) return canBaseAircraft;
+        if (IsSpaceCategory(passengerCategory)) return canBaseSpaceships;
+
+        return canTransportCombatUnits;
     }
 
     public int GetFlatAttackBonusAgainst(CombatUnitData defender)

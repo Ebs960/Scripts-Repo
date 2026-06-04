@@ -2072,143 +2072,201 @@ public class CombatUnit : BaseUnit
     // Transport System Methods
 
     /// <summary>
-    /// Attempts to load a unit into this transport.
+    /// Attempts to load a unit into this transport/carrier.
     /// </summary>
     /// <param name="unit">The unit to load</param>
     /// <returns>True if successful, false otherwise</returns>
     public bool LoadUnit(CombatUnit unit)
     {
-        // Check if this unit is a transport
-        if (!data.isTransport)
+        if (!CanLoadUnit(unit))
             return false;
-            
-        // Check if transport is at capacity
-        if (transportedUnits.Count >= data.transportCapacity)
-            return false;
-            
-        // Check if unit belongs to same owner
-        if (unit.owner != owner)
-            return false;
-            
-        // Check if unit is adjacent or on same tile
-        bool isAdjacent = false;
-        if (unit.currentTileIndex == currentTileIndex)
-        {
-            isAdjacent = true;
-        }
-        else
-        {
-            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            int[] neighbors = ts != null ? ts.GetNeighbors(currentTileIndex) : null;
-            foreach (int neighbor in neighbors)
-            {
-                if (unit.currentTileIndex == neighbor)
-                {
-                    isAdjacent = true;
-                    break;
-                }
-            }
-        }
-        
-        if (!isAdjacent)
-            return false;
-            
-        // Load the unit
+
         transportedUnits.Add(unit);
-        
-        // Update the loaded unit's state
+
+        // Remove the passenger from the map layer it used before becoming based on
+        // the transport. Otherwise a hidden aircraft/spaceship can still block tiles.
+        var occ = TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance;
+        try { occ?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId()); } catch { }
+
+        // Update the loaded unit's state and keep it logically co-located with the carrier.
+        unit.currentTileIndex = currentTileIndex;
+        unit.planetIndex = planetIndex;
+        unit.currentLayer = currentLayer;
         unit.IsTransported = true;
         unit.TransportingUnit = this;
         unit.OnLoadedIntoTransport.Invoke(this);
-        
-        // Hide the unit visually
+
+        // Hide the unit visually while it is based inside the carrier/transport.
         unit.gameObject.SetActive(false);
-        
+
         // Fire event for UI updates
         OnUnitLoaded.Invoke(unit);
-        
+
         return true;
     }
-    
+
     /// <summary>
-    /// Unloads a transported unit to a specific tile.
+    /// Returns true if this transport/carrier is allowed to load the given unit right now.
+    /// </summary>
+    public bool CanLoadUnit(CombatUnit unit)
+    {
+        if (unit == null || unit == this || data == null || unit.data == null)
+            return false;
+
+        if (!data.isTransport || !data.CanCarryUnitCategory(unit.data.unitType))
+            return false;
+
+        if (unit.IsTransported || unit.TransportingUnit != null)
+            return false;
+
+        if (transportedUnits.Count >= data.transportCapacity)
+            return false;
+
+        if (unit.owner != owner)
+            return false;
+
+        if (unit.planetIndex != planetIndex)
+            return false;
+
+        // Units may load from the carrier's tile or an adjacent tile. Aircraft and
+        // spaceships may occupy a different map layer than the carrier, so layer is
+        // intentionally not part of the adjacency check.
+        if (!IsSameOrAdjacentTile(unit.currentTileIndex))
+            return false;
+
+        return true;
+    }
+
+    private bool IsSameOrAdjacentTile(int tileIndex)
+    {
+        if (tileIndex == currentTileIndex)
+            return true;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        int[] neighbors = ts != null ? ts.GetNeighbors(currentTileIndex) : null;
+        if (neighbors == null)
+            return false;
+
+        foreach (int neighbor in neighbors)
+        {
+            if (tileIndex == neighbor)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Unloads a transported/based unit to a specific tile.
     /// </summary>
     /// <param name="unit">The unit to unload</param>
     /// <param name="targetTileIndex">The tile to unload to</param>
     /// <returns>True if successful, false otherwise</returns>
     public bool UnloadUnit(CombatUnit unit, int targetTileIndex)
     {
-        // Check if the unit is being transported by this transport
-        if (!transportedUnits.Contains(unit))
+        if (!CanUnloadUnitTo(unit, targetTileIndex))
             return false;
-            
-        // Check if target tile is adjacent or the same tile
-        bool isValidTile = false;
-        if (targetTileIndex == currentTileIndex)
-        {
-            isValidTile = true;
-        }
-        else
-        {
-            var tsCheck = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            int[] neighbors = tsCheck != null ? tsCheck.GetNeighbors(currentTileIndex) : null;
-            if (neighbors != null)
-            {
-                foreach (int neighbor in neighbors)
-                {
-                    if (targetTileIndex == neighbor)
-                    {
-                        isValidTile = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        if (!isValidTile)
-            return false;
-            
-        // Check if the unit can move to the target tile
-        if (!unit.CanMoveTo(targetTileIndex))
-            return false;
-            
+
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        if (ts == null) {
+        if (ts == null)
+        {
             Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
             return false;
         }
 
-        // Update tile occupancy using layered occupancy manager
+        TileLayer deployLayer = GetPassengerDeploymentLayer(unit);
+
+        // Update tile occupancy using layered occupancy manager before making the unit visible.
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         try
         {
-            if (occ != null && !occ.TrySetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer))
+            if (occ != null && !occ.TrySetOccupant(targetTileIndex, unit.gameObject, deployLayer))
                 return false;
         }
         catch { return false; }
 
         // Remove from transport only after the destination claim succeeds.
         transportedUnits.Remove(unit);
-        
+
         // Update the unloaded unit's state
         unit.IsTransported = false;
         unit.TransportingUnit = null;
+        unit.currentTileIndex = targetTileIndex;
+        unit.planetIndex = planetIndex;
+        unit.currentLayer = deployLayer;
         unit.OnUnloadedFromTransport.Invoke(this);
-        
+
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
         unit.transform.position = ts.GetTileSurfacePosition(targetTileIndex);
-        unit.currentTileIndex = targetTileIndex;
 
-    // Trigger trap if unloading onto a trapped tile
-    ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
-        
+        // Trigger trap if unloading onto a trapped tile
+        ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
+
         // Fire event for UI updates
         OnUnitUnloaded.Invoke(unit);
-        
+
         return true;
     }
-    
+
+    /// <summary>
+    /// Returns true if a transported/based unit can deploy to the requested tile.
+    /// </summary>
+    public bool CanUnloadUnitTo(CombatUnit unit, int targetTileIndex)
+    {
+        if (unit == null || !transportedUnits.Contains(unit))
+            return false;
+
+        if (!IsSameOrAdjacentTile(targetTileIndex))
+            return false;
+
+        TileLayer originalLayer = unit.currentLayer;
+        int originalPlanet = unit.planetIndex;
+        int originalTile = unit.currentTileIndex;
+
+        try
+        {
+            unit.planetIndex = planetIndex;
+            unit.currentTileIndex = currentTileIndex;
+            unit.currentLayer = GetPassengerDeploymentLayer(unit);
+            return unit.CanMoveTo(targetTileIndex);
+        }
+        finally
+        {
+            unit.currentLayer = originalLayer;
+            unit.planetIndex = originalPlanet;
+            unit.currentTileIndex = originalTile;
+        }
+    }
+
+    private TileLayer GetPassengerDeploymentLayer(CombatUnit unit)
+    {
+        if (unit != null && unit.data != null)
+        {
+            if (CombatUnitData.IsAirCategory(unit.data.unitType))
+                return TileLayer.Atmosphere;
+
+            if (CombatUnitData.IsSpaceCategory(unit.data.unitType))
+                return TileLayer.Orbit;
+        }
+
+        return currentLayer;
+    }
+
+    private void SyncTransportedUnitsToCarrier()
+    {
+        for (int i = 0; i < transportedUnits.Count; i++)
+        {
+            CombatUnit unit = transportedUnits[i];
+            if (unit == null)
+                continue;
+
+            unit.currentTileIndex = currentTileIndex;
+            unit.planetIndex = planetIndex;
+            unit.currentLayer = currentLayer;
+        }
+    }
+
     /// <summary>
     /// Gets a list of all units currently transported.
     /// </summary>
@@ -2644,6 +2702,7 @@ public class CombatUnit : BaseUnit
         {
             // Safety net: ensure walking animation stops when movement completes
             isMoving = false;
+            SyncTransportedUnitsToCarrier();
         }
     }
 
