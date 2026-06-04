@@ -373,6 +373,18 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     public void RefreshGpuHeightOnly(MenuPlanetPreviewWorldInputs updatedInputs)
     {
         inputs = updatedInputs;
+
+        if (!HasHeightInputTextures())
+        {
+            Debug.LogWarning(
+                "[MenuPlanetPreviewWorldGeneratorV2] Height refresh requested before tectonic textures were ready. " +
+                "Scheduling full tectonics rebuild instead."
+            );
+
+            RequestRebuild(PreviewWorldRebuildScope.Tectonics, false);
+            return;
+        }
+
         DispatchGpuHeight();
     }
 
@@ -402,6 +414,13 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         return gpuTectonicSurfaceTexture != null && gpuTectonicSurfaceTexture.IsCreated()
             && gpuHeightTexture != null && gpuHeightTexture.IsCreated()
             && gpuDisplacementTexture != null && gpuDisplacementTexture.IsCreated();
+    }
+
+    private bool HasHeightInputTextures()
+    {
+        return gpuTectonicSurfaceTexture != null && gpuTectonicSurfaceTexture.IsCreated()
+            && gpuLandMaskTexture != null && gpuLandMaskTexture.IsCreated()
+            && gpuTectonicCrustTexture != null && gpuTectonicCrustTexture.IsCreated();
     }
     public void RequestRebuild(PreviewWorldRebuildScope scope, bool immediate = false) {
         pending |= ExpandDependencies(scope);
@@ -830,12 +849,28 @@ private int ComputeExperimentalTerrainProfileHash()
         menuPlanetPreviewHeightCompute.SetFloat("_InlandBasinScale", expProfile.inlandBasinScale);
         menuPlanetPreviewHeightCompute.SetFloat("_WatershedRidgeStrength", expProfile.watershedRidgeStrength);
 
-        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+        Texture tectonicSurface = TectonicSurfaceTexture;
         Texture landMaskSource = gpuLandMaskTexture != null && gpuLandMaskTexture.IsCreated()
             ? (Texture)gpuLandMaskTexture
-            : TectonicSurfaceTexture;
+            : tectonicSurface;
+        Texture tectonicCrust = TectonicCrustTexture;
+
+        if (tectonicSurface == null || landMaskSource == null || tectonicCrust == null)
+        {
+            Debug.LogWarning(
+                $"[MenuPlanetPreviewWorldGeneratorV2] DispatchGpuHeight skipped because input textures are missing. " +
+                $"Surface={(tectonicSurface != null ? tectonicSurface.name : "NULL")} " +
+                $"LandMask={(landMaskSource != null ? landMaskSource.name : "NULL")} " +
+                $"Crust={(tectonicCrust != null ? tectonicCrust.name : "NULL")}"
+            );
+
+            RequestRebuild(PreviewWorldRebuildScope.Tectonics, false);
+            return;
+        }
+
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicSurfaceTex", tectonicSurface);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_LandMaskTex", landMaskSource);
-        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", TectonicCrustTexture);
+        menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_TectonicCrustTex", tectonicCrust);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuHeightTex", gpuHeightTexture);
         menuPlanetPreviewHeightCompute.SetTexture(gpuHeightKernel, "_GpuDisplacementTex", gpuDisplacementTexture);
 
