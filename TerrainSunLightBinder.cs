@@ -30,7 +30,7 @@ public class TerrainSunLightBinder : MonoBehaviour
     {
         if (chunkManager == null)
         {
-            chunkManager = FindObjectOfType<HexMapChunkManager>();
+            chunkManager = FindAnyObjectByType<HexMapChunkManager>();
         }
 
         if (directionalLight == null || directionalLight.type != LightType.Directional)
@@ -53,7 +53,7 @@ public class TerrainSunLightBinder : MonoBehaviour
 
     private static Light FindDirectionalLight()
     {
-        Light[] lights = FindObjectsOfType<Light>();
+        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
         for (int i = 0; i < lights.Length; i++)
         {
             Light light = lights[i];

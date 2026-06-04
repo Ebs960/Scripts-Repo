@@ -249,6 +249,9 @@ public class MainMenuManager : MonoBehaviour
     private int lastPreviewParsedSeed = int.MinValue;
     private bool? lastPreviewRandomSeed = null;
     private float lastPreviewMapStyle = float.NaN;
+    
+    // Flag to prevent UpdatePlanetPreview during early initialization
+    private bool _previewInitializedOnce = false;
 
     [Header("References")]
     private GameManager gameManager; // Reference to GameManager
@@ -510,7 +513,10 @@ public class MainMenuManager : MonoBehaviour
             animalPrevalenceDropdown.AddOptions(new List<string> { "Dead", "Sparse", "Scarce", "Normal", "Lively", "Bustling" });
             animalPrevalenceDropdown.value = selectedAnimalPrevalence;
             animalPrevalenceDropdown.onValueChanged.AddListener(OnAnimalPrevalenceChanged);
+            Debug.Log("[MainMenuManager] Animal prevalence dropdown initialized");
         }
+        else
+            Debug.LogError("[MainMenuManager] animalPrevalenceDropdown is NULL!");
 
         // Initialize map size dropdown
         Debug.Log("[MainMenuManager] Initializing map size dropdown...");
@@ -541,6 +547,25 @@ public class MainMenuManager : MonoBehaviour
         ValidateDropdown("Map Size", mapSizeDropdown, 3);
         
         Debug.Log("[MainMenuManager] Start() completed successfully");
+    }
+
+    private void Update()
+    {
+        // On first frame where preview is ready, update the map type and preview
+        if (!_previewInitializedOnce && planetPreview != null)
+        {
+            _previewInitializedOnce = true;
+            Debug.Log("[MainMenuManager] Planet preview is ready - calling UpdateMapTypeName...");
+            try
+            {
+                UpdateMapTypeName();
+                Debug.Log("[MainMenuManager] UpdateMapTypeName completed successfully");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in deferred UpdateMapTypeName: {ex}");
+            }
+        }
     }
 
     private void SafeUpdateMapTypeName()
@@ -582,6 +607,8 @@ public class MainMenuManager : MonoBehaviour
     
     private void InitializeControls()
     {
+        Debug.Log("[MainMenuManager] InitializeControls() called");
+        
         // Initialize AI count dropdown (0-8)
         if (aiCountDropdown != null)
         {
@@ -591,7 +618,10 @@ public class MainMenuManager : MonoBehaviour
             aiCountDropdown.AddOptions(opts);
             aiCountDropdown.value = Mathf.Clamp(aiCount, 0, 8);
             aiCountDropdown.onValueChanged.AddListener(OnAICountChanged);
+            Debug.Log("[MainMenuManager] AI count dropdown initialized");
         }
+        else
+            Debug.LogError("[MainMenuManager] aiCountDropdown is NULL in InitializeControls!");
 
         // Initialize city-state count dropdown (0-6)
         if (cityStateCountDropdown != null)
@@ -602,7 +632,11 @@ public class MainMenuManager : MonoBehaviour
             cityStateCountDropdown.AddOptions(opts);
             cityStateCountDropdown.value = Mathf.Clamp(cityStateCount, 0, 6);
             cityStateCountDropdown.onValueChanged.AddListener(OnCityStateCountChanged);
+            Debug.Log("[MainMenuManager] City state count dropdown initialized");
         }
+        else
+            Debug.LogError("[MainMenuManager] cityStateCountDropdown is NULL in InitializeControls!");
+            
         UpdateCityStateCountText();
 
         // Initialize tribe count dropdown (0-6)
@@ -614,19 +648,22 @@ public class MainMenuManager : MonoBehaviour
             tribeCountDropdown.AddOptions(opts);
             tribeCountDropdown.value = Mathf.Clamp(tribeCount, 0, 6);
             tribeCountDropdown.onValueChanged.AddListener(OnTribeCountChanged);
+            Debug.Log("[MainMenuManager] Tribe count dropdown initialized");
         }
+        else
+            Debug.LogError("[MainMenuManager] tribeCountDropdown is NULL in InitializeControls!");
+            
         UpdateTribeCountText();
 
-
-
+        Debug.Log("[MainMenuManager] NOT calling UpdateMapTypeName during InitializeControls - will call after preview is ready");
         
         // River UI removed (deprecated). River count still determined by moisture preset.
         
-        // Update the map type display
-        UpdateMapTypeName();
-        
-        // Update preset icons
+        // Update preset icons ONLY (no preview update yet)
+        Debug.Log("[MainMenuManager] Updating preset icons (no preview yet)...");
         UpdatePresetIcons();
+        
+        Debug.Log("[MainMenuManager] InitializeControls() completed");
     }
     
     #region Value Change Handlers and Text Updates
@@ -668,8 +705,10 @@ public class MainMenuManager : MonoBehaviour
     // Map Settings
     private void OnMapSizeChanged(int value)
     {
+        Debug.Log($"[MainMenuManager] OnMapSizeChanged called with value: {value}");
         GameManager.MapSize selectedSize = (GameManager.MapSize)value;
         GameSetupData.mapSize = selectedSize;
+        Debug.Log($"[MainMenuManager] Map size set to {selectedSize}");
         UpdatePlanetSizeText();
         UpdatePlanetPreview();
     }
@@ -817,7 +856,12 @@ public class MainMenuManager : MonoBehaviour
     /// </summary>
     private void UpdatePlanetPreview()
     {
-        if (planetPreview == null) return;
+        // SAFETY: Skip if preview not ready yet (still initializing GPU resources)
+        if (planetPreview == null)
+        {
+            Debug.LogWarning("[MainMenuManager] UpdatePlanetPreview: planetPreview is NULL - skipping");
+            return;
+        }
 
         // Land shape: map selectedLandPreset to scale/threshold.
         //  
@@ -826,8 +870,15 @@ public class MainMenuManager : MonoBehaviour
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
         if (lastPreviewLandPreset != selectedLandPreset)
         {
-            planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx], landIdx);
-            lastPreviewLandPreset = selectedLandPreset;
+            try
+            {
+                planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx], landIdx);
+                lastPreviewLandPreset = selectedLandPreset;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetLandPreset: {ex}");
+            }
         }
 
         // Temperature: map selectedClimatePreset (0-5) to 0–1
@@ -835,8 +886,15 @@ public class MainMenuManager : MonoBehaviour
         float temp = Mathf.Clamp01(selectedClimatePreset / 5f);
         if (lastPreviewClimatePreset != selectedClimatePreset)
         {
-            planetPreview.SetTemperature(temp);
-            lastPreviewClimatePreset = selectedClimatePreset;
+            try
+            {
+                planetPreview.SetTemperature(temp);
+                lastPreviewClimatePreset = selectedClimatePreset;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetTemperature: {ex}");
+            }
         }
 
         // Moisture: map selectedMoisturePreset (0-5) to 0–1
@@ -844,14 +902,28 @@ public class MainMenuManager : MonoBehaviour
         float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);
         if (lastPreviewMoisturePreset != selectedMoisturePreset)
         {
-            planetPreview.SetMoisture(moist);
-            lastPreviewMoisturePreset = selectedMoisturePreset;
+            try
+            {
+                planetPreview.SetMoisture(moist);
+                lastPreviewMoisturePreset = selectedMoisturePreset;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetMoisture: {ex}");
+            }
         }
 
         if (lastPreviewWaterwaysPreset != selectedWaterwaysPreset)
         {
-            planetPreview.SetWaterwaysPreset(selectedWaterwaysPreset);
-            lastPreviewWaterwaysPreset = selectedWaterwaysPreset;
+            try
+            {
+                planetPreview.SetWaterwaysPreset(selectedWaterwaysPreset);
+                lastPreviewWaterwaysPreset = selectedWaterwaysPreset;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetWaterwaysPreset: {ex}");
+            }
         }
 
         // Elevation: map terrain roughness preset directly to preserve five distinct categories.
@@ -867,9 +939,16 @@ public class MainMenuManager : MonoBehaviour
         };
         if (lastPreviewTerrainPreset != selectedTerrainPreset)
         {
-            planetPreview.SetTerrainRoughnessPreset(selectedTerrainPreset);
-            planetPreview.SetElevation(elev);
-            lastPreviewTerrainPreset = selectedTerrainPreset;
+            try
+            {
+                planetPreview.SetTerrainRoughnessPreset(selectedTerrainPreset);
+                planetPreview.SetElevation(elev);
+                lastPreviewTerrainPreset = selectedTerrainPreset;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetElevation: {ex}");
+            }
         }
 
         // Map style: 0 = normal, 0.5 = infernal, 1.0 = demonic
@@ -885,8 +964,15 @@ public class MainMenuManager : MonoBehaviour
 
         if (float.IsNaN(lastPreviewMapStyle) || !Mathf.Approximately(lastPreviewMapStyle, mapStyleVal))
         {
-            planetPreview.SetMapStyle(mapStyleVal);
-            lastPreviewMapStyle = mapStyleVal;
+            try
+            {
+                planetPreview.SetMapStyle(mapStyleVal);
+                lastPreviewMapStyle = mapStyleVal;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetMapStyle: {ex}");
+            }
         }
 
         float sizeScale = GameSetupData.mapSize == GameManager.MapSize.Small ? 0.86f :
@@ -894,8 +980,15 @@ public class MainMenuManager : MonoBehaviour
         int currentMapSizeValue = (int)GameSetupData.mapSize;
         if (lastPreviewMapSize != currentMapSizeValue)
         {
-            planetPreview.SetPlanetScaleMultiplier(sizeScale);
-            lastPreviewMapSize = currentMapSizeValue;
+            try
+            {
+                planetPreview.SetPlanetScaleMultiplier(sizeScale);
+                lastPreviewMapSize = currentMapSizeValue;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetPlanetScaleMultiplier: {ex}");
+            }
         }
 
         bool randomSeed = randomWorldSeedToggle == null || randomWorldSeedToggle.isOn;
@@ -907,9 +1000,16 @@ public class MainMenuManager : MonoBehaviour
 
         if (seedModeChanged || seedValueChanged)
         {
-            planetPreview.SetWorldSeed(parsedSeed, randomSeed);
-            lastPreviewRandomSeed = randomSeed;
-            lastPreviewParsedSeed = parsedSeed;
+            try
+            {
+                planetPreview.SetWorldSeed(parsedSeed, randomSeed);
+                lastPreviewRandomSeed = randomSeed;
+                lastPreviewParsedSeed = parsedSeed;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[MainMenuManager] Exception in SetWorldSeed: {ex}");
+            }
         }
     }
 
@@ -1384,8 +1484,10 @@ public class MainMenuManager : MonoBehaviour
     // Animal settings
     private void OnAnimalPrevalenceChanged(int value)
     {
+        Debug.Log($"[MainMenuManager] OnAnimalPrevalenceChanged called with value: {value}");
         selectedAnimalPrevalence = value;
         GameSetupData.animalPrevalence = selectedAnimalPrevalence;  // Immediately save to GameSetupData
+        Debug.Log($"[MainMenuManager] Animal prevalence set to {selectedAnimalPrevalence}");
         UpdateMapTypeName();
     }
 
@@ -1526,7 +1628,13 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeMapSizeDropdown()
     {
-        if (mapSizeDropdown == null) return;
+        Debug.Log("[MainMenuManager] InitializeMapSizeDropdown() called");
+        
+        if (mapSizeDropdown == null)
+        {
+            Debug.LogError("[MainMenuManager] mapSizeDropdown is NULL in InitializeMapSizeDropdown!");
+            return;
+        }
         
         mapSizeDropdown.ClearOptions();
         var options = new List<string>();
@@ -1538,6 +1646,8 @@ public class MainMenuManager : MonoBehaviour
         mapSizeDropdown.value = (int)GameSetupData.mapSize;
         mapSizeDropdown.onValueChanged.AddListener(OnMapSizeChanged);
         UpdatePlanetSizeText();
+        
+        Debug.Log($"[MainMenuManager] Map size dropdown initialized with {options.Count} options, value set to {mapSizeDropdown.value}");
     }
 
     private void InitializeNewWorldControls()
