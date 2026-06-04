@@ -139,6 +139,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Debug)]
         _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
+        _DisableHDRPBakedDiffuse ("Disable HDRP Baked Diffuse Test", Float) = 0
     }
 
     HLSLINCLUDE
@@ -237,6 +238,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _CliffStepBlend;
     float _CliffSliceCount;
     float _TerrainDebugMode;
+    float _DisableHDRPBakedDiffuse;
     float _SurfaceHeightScale;
     float _TessellationFactor;
     float _TessellationFadeStart;
@@ -1174,12 +1176,13 @@ Shader "Custom/BiomeTerrainHDRP"
                 ZERO_INITIALIZE(SurfaceData, surfaceData);
                 surfaceData.baseColor = saturate(albedo);
                 surfaceData.normalWS = normalizedNormalWS;
+                surfaceData.geomNormalWS = normalizedNormalWS;
                 surfaceData.perceptualSmoothness = saturate(smoothness);
                 surfaceData.metallic = saturate(metallic);
                 surfaceData.ambientOcclusion = saturate(ao);
                 surfaceData.specularOcclusion = saturate(ao);
                 surfaceData.specularColor = float3(0.04, 0.04, 0.04);
-                surfaceData.materialFeatures = 0;
+                surfaceData.materialFeatures = MATERIALFEATUREFLAGS_LIT_STANDARD;
                 surfaceData.diffusionProfileHash = 0;
 
                 // 2. Build BuiltinData (required by HDRP)
@@ -1187,7 +1190,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 ZERO_INITIALIZE(BuiltinData, builtinData);
                 builtinData.opacity = 1.0;
                 builtinData.emissiveColor = emission;
-                builtinData.bakeDiffuseLighting = SampleSH(normalizedNormalWS);
+                builtinData.bakeDiffuseLighting = (_DisableHDRPBakedDiffuse > 0.5)
+                    ? 0.0
+                    : SampleSH(normalizedNormalWS);
 
                 #ifdef LIGHT_LAYERS
                     builtinData.renderingLayers = GetMeshRenderingLayer();
@@ -1196,16 +1201,17 @@ Shader "Custom/BiomeTerrainHDRP"
                 // 3. Let HDRP compute lighting
                 float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
                 uint2 pixelCoord = (uint2)input.positionCS.xy;
+                uint2 tileCoord = pixelCoord / max(GetTileSize(), 1u);
                 PositionInputs posInput = GetPositionInput(
                     pixelCoord,
                     _ScreenSize.zw,
                     input.positionCS.z,
                     input.positionCS.w,
                     input.positionWS,
-                    pixelCoord);
+                    tileCoord);
                 BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionCS.xy, surfaceData);
                 PreLightData preLightData = GetPreLightData(viewDirWS, posInput, bsdfData);
-                uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE;
+                uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE | MATERIALFEATUREFLAGS_LIT_STANDARD;
                 LightLoopOutput lightLoopOutput;
                 ZERO_INITIALIZE(LightLoopOutput, lightLoopOutput);
                 LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
