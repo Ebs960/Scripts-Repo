@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Burst job that fills a BiomeIndexMap texture (RGFloat) from pre-computed tile-to-slice
@@ -96,7 +97,31 @@ public enum TerrainDebugMode
     FallbackLit = 6,
 
     [InspectorName("7 - HDRP Lit Without Exposure")]
-    HdrpLitNoExposure = 7
+    HdrpLitNoExposure = 7,
+
+    [InspectorName("8 - Raw Metallic Channel")]
+    RawMetallic = 8,
+
+    [InspectorName("9 - Raw AO Channel")]
+    RawAO = 9,
+
+    [InspectorName("10 - Raw Smoothness Channel")]
+    RawSmoothness = 10,
+
+    [InspectorName("11 - Computed PBR Values")]
+    ComputedPBR = 11,
+
+    [InspectorName("12 - HDRP Diffuse Only")]
+    HdrpDiffuseOnly = 12,
+
+    [InspectorName("13 - HDRP Specular Only")]
+    HdrpSpecularOnly = 13,
+
+    [InspectorName("14 - Baked Diffuse / SH")]
+    BakedDiffuseSH = 14,
+
+    [InspectorName("15 - Exposure Multiplier")]
+    ExposureMultiplier = 15
 }
 
 /// <summary>
@@ -232,9 +257,20 @@ public class HexMapChunkManager : MonoBehaviour
         "Mask Map: Shows mask map RGB channels.\n" +
         "HDRP Lit With Exposure: Shows HDRP lighting multiplied by exposure.\n" +
         "Fallback Lit: Shows the shader fallback lighting path.\n" +
-        "HDRP Lit Without Exposure: Shows HDRP lighting before exposure."
+        "HDRP Lit Without Exposure: Shows HDRP lighting before exposure.\n" +
+        "Raw Metallic/AO/Smoothness: Shows individual mask-map PBR channels.\n" +
+        "Computed PBR Values: R=metallic, G=AO/spec occlusion, B=smoothness.\n" +
+        "HDRP Diffuse/Specular/Baked/Exposure: Splits HDRP lighting contributions."
     )]
     private TerrainDebugMode terrainDebugMode = TerrainDebugMode.Off;
+
+    [Header("Terrain Surface Probe")]
+    [SerializeField]
+    [Tooltip("When enabled, pressing the probe key logs the terrain tile under the cursor, its resolved surface family/slice, material multipliers, computed PBR values, and an AsyncGPUReadback sample of the runtime mask array slice at the exact rendered UV.")]
+    private bool enableTerrainSurfaceProbe = false;
+    [SerializeField]
+    [Tooltip("Key used when Terrain Surface Probe is enabled to log the currently hovered terrain tile.")]
+    private KeyCode terrainSurfaceProbeKey = KeyCode.P;
 
     private TerrainDebugMode _lastTerrainDebugMode = (TerrainDebugMode)(-999);
 
@@ -579,6 +615,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         UpdateSnow();
+        UpdateTerrainSurfaceProbe();
 
         // Detect changes made in the inspector at runtime and apply them immediately.
         bool applied = false;
@@ -622,6 +659,148 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
     
+    private void UpdateTerrainSurfaceProbe()
+    {
+        if (!enableTerrainSurfaceProbe) return;
+        if (!Application.isPlaying) return;
+        if (!Input.GetKeyDown(terrainSurfaceProbeKey)) return;
+
+        LogTerrainSurfaceProbeUnderCursor();
+    }
+
+    private void LogTerrainSurfaceProbeUnderCursor()
+    {
+        if (Camera.main == null)
+        {
+            Debug.LogWarning("[Terrain Probe] Cannot probe terrain: Camera.main is NULL.");
+            return;
+        }
+
+        if (pickingCollider == null)
+        {
+            Debug.LogWarning("[Terrain Probe] Cannot probe terrain: picking collider is NULL.");
+            return;
+        }
+
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (!pickingCollider.Raycast(ray, out RaycastHit hit, 10000f))
+        {
+            Debug.LogWarning($"[Terrain Probe] No terrain hit under cursor at screen={Input.mousePosition}.");
+            return;
+        }
+
+        float u = Mathf.Repeat(hit.textureCoord.x, 1f);
+        float v = Mathf.Clamp01(hit.textureCoord.y);
+        int tileIndex = GetTileIndexAtUV(u, v);
+        if (tileIndex < 0 || planetGenerator == null || planetGenerator.data == null || !planetGenerator.data.TryGetValue(tileIndex, out var tile))
+        {
+            Debug.LogWarning($"[Terrain Probe] No tile data for uv=({u:F5},{v:F5}) tile={tileIndex}.");
+            return;
+        }
+
+        BiomeVisualData visual = ResolveRenderedVisual(tile);
+        int biomeIndex = ResolveRenderedBiomeIndex(tile);
+        int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
+        SurfaceFamilyData surfaceFamily = visual != null ? visual.surfaceFamily : null;
+        float roughnessOffset = surfaceFamily != null ? surfaceFamily.roughnessOffset : 0f;
+        float metallicMultiplierValue = GetMaterialFloat(sharedMaterial, "_MetallicMultiplier", metallicMultiplier);
+        float aoIntensityValue = GetMaterialFloat(sharedMaterial, "_AOIntensity", aoIntensity);
+        float smoothnessMultiplierValue = GetMaterialFloat(sharedMaterial, "_SmoothnessMultiplier", smoothnessMultiplier);
+
+        Debug.Log(
+            $"[Terrain Probe] tile={tileIndex} " +
+            $"uv=({u:F5},{v:F5}) " +
+            $"biome={tile.biome} " +
+            $"visual={(visual != null ? visual.name : "NULL")} " +
+            $"visual.biome={(visual != null ? visual.biome.ToString() : "NULL")} " +
+            $"surfaceFamily={(surfaceFamily != null ? surfaceFamily.name : "NULL")} " +
+            $"slice={sliceIndex} " +
+            $"isMountain={tile.isMountain} " +
+            $"isRiver={tile.isRiver} isLake={tile.isLake} " +
+            $"waterType={tile.waterType} " +
+            $"globalSnow={GetMaterialFloat(sharedMaterial, "_GlobalSnowAmount", globalSnowAmount):F3} " +
+            $"AOIntensity={aoIntensityValue:F3} " +
+            $"MetallicMult={metallicMultiplierValue:F3} " +
+            $"SmoothnessMult={smoothnessMultiplierValue:F3} " +
+            $"roughnessOffset={roughnessOffset:F3}"
+        );
+
+        RequestTerrainMaskProbe(u, v, tileIndex, sliceIndex, metallicMultiplierValue, aoIntensityValue, smoothnessMultiplierValue, roughnessOffset);
+    }
+
+    private static float GetMaterialFloat(Material material, string propertyName, float fallback)
+    {
+        if (material == null) return fallback;
+        if (!material.HasProperty(propertyName)) return fallback;
+        return material.GetFloat(propertyName);
+    }
+
+    private void RequestTerrainMaskProbe(
+        float u,
+        float v,
+        int tileIndex,
+        int sliceIndex,
+        float metallicMultiplierValue,
+        float aoIntensityValue,
+        float smoothnessMultiplierValue,
+        float roughnessOffset)
+    {
+        if (biomeMaskArray == null)
+        {
+            Debug.LogWarning($"[Terrain Probe] Cannot sample mask array: biomeMaskArray is NULL for tile={tileIndex} slice={sliceIndex}.");
+            return;
+        }
+
+        if (sliceIndex < 0 || sliceIndex >= biomeMaskArray.depth)
+        {
+            Debug.LogWarning($"[Terrain Probe] Cannot sample mask array: slice={sliceIndex} outside depth={biomeMaskArray.depth} for tile={tileIndex}.");
+            return;
+        }
+
+        int maskWidth = Mathf.Max(1, biomeMaskArray.width);
+        int maskHeight = Mathf.Max(1, biomeMaskArray.height);
+        int x = Mathf.Clamp(Mathf.FloorToInt(Mathf.Repeat(u, 1f) * maskWidth), 0, maskWidth - 1);
+        int y = Mathf.Clamp(Mathf.FloorToInt(Mathf.Clamp01(v) * maskHeight), 0, maskHeight - 1);
+
+        AsyncGPUReadback.Request(
+            biomeMaskArray,
+            0,
+            x,
+            1,
+            y,
+            1,
+            sliceIndex,
+            1,
+            TextureFormat.RGBAFloat,
+            request =>
+            {
+                if (request.hasError)
+                {
+                    Debug.LogWarning($"[Terrain Probe] AsyncGPUReadback failed for tile={tileIndex} slice={sliceIndex} pixel=({x},{y}).");
+                    return;
+                }
+
+                var data = request.GetData<Color>();
+                if (data.Length <= 0)
+                {
+                    Debug.LogWarning($"[Terrain Probe] AsyncGPUReadback returned no data for tile={tileIndex} slice={sliceIndex} pixel=({x},{y}).");
+                    return;
+                }
+
+                Color maskSample = data[0];
+                float metallicValue = Mathf.Clamp01(maskSample.r * metallicMultiplierValue);
+                float aoValue = Mathf.Clamp01(maskSample.g * aoIntensityValue);
+                float smoothnessValue = Mathf.Clamp01(maskSample.a * smoothnessMultiplierValue - roughnessOffset);
+
+                Debug.Log(
+                    $"[Terrain Probe] maskSample tile={tileIndex} slice={sliceIndex} " +
+                    $"uv=({u:F5},{v:F5}) pixel=({x},{y}) " +
+                    $"rawRGBA=({maskSample.r:F4},{maskSample.g:F4},{maskSample.b:F4},{maskSample.a:F4}) " +
+                    $"computedPBR=(metallic={metallicValue:F4}, ao={aoValue:F4}, smoothness={smoothnessValue:F4})"
+                );
+            });
+    }
+
     #region Event Handlers
     
     private void HandlePlanetReady(int planetIndex)
