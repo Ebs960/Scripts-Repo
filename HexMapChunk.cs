@@ -412,18 +412,27 @@ public class HexMapChunk : MonoBehaviour
                 float tx = (float)x / subdivisionsX;
                 float tz = (float)z / subdivisionsZ;
                 
-                // Local position (Y will be displaced by GPU shader via heightmap)
-                vertices[idx] = new Vector3(
-                    localMinX + tx * width,
-                    0f,
-                    localMinZ + tz * height
-                );
-                
                 // UV for main texture (interpolate within our region of the baked texture)
-                uvs[idx] = new Vector2(
+                Vector2 uv = new Vector2(
                     Mathf.Lerp(uvMin.x, uvMax.x, tx),
                     Mathf.Lerp(uvMin.y, uvMax.y, tz)
                 );
+
+                float y = 0f;
+                if (manager != null && manager.UseBakedHdrpLit)
+                {
+                    // SampleTerrainSurfaceYAtUV returns world-space surface Y (flatY + elevation). This mesh is
+                    // parented under the terrain column at flatY, so store only the local offset here.
+                    y = manager.SampleTerrainSurfaceYAtUV(uv) - manager.FlatY;
+                }
+
+                vertices[idx] = new Vector3(
+                    localMinX + tx * width,
+                    y,
+                    localMinZ + tz * height
+                );
+                
+                uvs[idx] = uv;
                 
                 normals[idx] = Vector3.up;
                 tangents[idx] = new Vector4(1f, 0f, 0f, 1f);
@@ -463,7 +472,17 @@ public class HexMapChunk : MonoBehaviour
         mesh.normals = normals;
         mesh.tangents = tangents;
         mesh.triangles = triangles;
-        mesh.RecalculateBounds();
+
+        if (manager != null && manager.UseBakedHdrpLit)
+        {
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+        }
+        else
+        {
+            mesh.RecalculateBounds();
+        }
 
         // IMPORTANT (HDRP / GPU displacement):
         // This mesh is a flat plane in CPU vertex data; actual terrain relief is applied in the shader via heightmap displacement.

@@ -137,6 +137,12 @@ public enum TerrainDebugMode
 /// - Uses HDRP terrain shader for heightmap displacement and overlays
 /// - Subscribes to OnSurfaceGenerated to wait for proper map generation
 /// </summary>
+public enum TerrainRenderPath
+{
+    CustomBiomeShader,
+    BakedHdrpLit
+}
+
 public class HexMapChunkManager : MonoBehaviour
 {
     [Header("References")]
@@ -151,6 +157,34 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Ice surface texture database (albedos, normals, tints, tiling) for lake and river freeze visuals. " +
              "Must match the IceSurfaceDatabase assigned to ClimateManager.")]
     private IceSurfaceDatabase iceSurfaceDatabase;
+
+    [Header("Terrain Render Path")]
+    [SerializeField] private TerrainRenderPath terrainRenderPath = TerrainRenderPath.BakedHdrpLit;
+
+    [Header("Baked HDRP Lit Terrain")]
+    [SerializeField] private Material bakedLitTerrainMaterialTemplate;
+
+    [SerializeField]
+    [Tooltip("Resolution width for baked HDRP/Lit terrain maps. Use 2048 initially; can be reduced for testing.")]
+    private int bakedTerrainTextureWidth = 2048;
+
+    [SerializeField]
+    [Tooltip("Resolution height for baked HDRP/Lit terrain maps. Use 1024 or 2048 initially.")]
+    private int bakedTerrainTextureHeight = 1024;
+
+    [SerializeField]
+    [Tooltip("When true, bakes only simple biome colors. This is the first proof mode.")]
+    private bool bakedTerrainUseSimpleBiomeColors = true;
+
+    [SerializeField]
+    [Tooltip("If true, keeps baked textures CPU-readable for debugging. Disable for production to save memory.")]
+    private bool keepBakedTerrainTexturesReadable = false;
+
+    [SerializeField] private bool forceRebakeBakedLitTerrain;
+
+    private Material bakedLitTerrainMaterial;
+    private Texture2D bakedTerrainBaseColor;
+    private Texture2D bakedTerrainMaskMap;
 
     [Header("Orbit Overlay")]
     [Tooltip("Shader used for the transparent orbit highlight overlay mesh (auto-found if null).")]
@@ -501,6 +535,8 @@ public class HexMapChunkManager : MonoBehaviour
     public int LUTWidth => bakeResult.width;
     public int LUTHeight => bakeResult.height;
     public Material SharedMaterial => sharedMaterial;
+    public TerrainRenderPath RenderPath => terrainRenderPath;
+    public bool UseBakedHdrpLit => terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
     public float FlatY => flatY;
     public bool WrapEnabled => enableWrap;
     
@@ -617,6 +653,16 @@ public class HexMapChunkManager : MonoBehaviour
         UpdateSnow();
         UpdateTerrainSurfaceProbe();
 
+        if (forceRebakeBakedLitTerrain)
+        {
+            forceRebakeBakedLitTerrain = false;
+            if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
+            {
+                BuildBakedHdrpLitTerrainMaps();
+                BuildNeutralBakedMaskMap();
+            }
+        }
+
         // Detect changes made in the inspector at runtime and apply them immediately.
         bool applied = false;
 
@@ -653,7 +699,7 @@ public class HexMapChunkManager : MonoBehaviour
             applied = true;
         }
 
-        if (applied)
+        if (applied && terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
         {
             ApplyBiomeMaterialSettings();
         }
@@ -2325,8 +2371,200 @@ public class HexMapChunkManager : MonoBehaviour
         return td.elevation;
     }
     
+    // Follow-up: make TileSystem.GetTileSurfacePosition(tileIndex) consume this same rendered
+    // elevation source (or a shared terrain height provider) so units and path preview markers
+    // remain aligned with the CPU-displaced BakedHdrpLit terrain.
+    public float SampleTerrainSurfaceYAtUV(Vector2 uv)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
+            return flatY;
+
+        int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
+        int x = Mathf.Clamp(Mathf.FloorToInt(Mathf.Repeat(uv.x, 1f) * width), 0, width - 1);
+        int y = Mathf.Clamp(Mathf.FloorToInt(Mathf.Clamp01(uv.y) * height), 0, height - 1);
+        int lutIndex = y * width + x;
+
+        if (lutIndex < 0 || lutIndex >= bakeResult.lut.Length)
+            return flatY;
+
+        int tileIndex = bakeResult.lut[lutIndex];
+        if (tileIndex < 0)
+            return flatY;
+
+        return flatY + GetRenderedElevation(tileIndex) * displacementStrength;
+    }
+
+    private void CreateBakedLitMaterial()
+    {
+        if (bakedLitTerrainMaterial != null)
+            DestroyImmediate(bakedLitTerrainMaterial);
+
+        if (bakedLitTerrainMaterialTemplate != null)
+        {
+            bakedLitTerrainMaterial = new Material(bakedLitTerrainMaterialTemplate);
+        }
+        else
+        {
+            Shader litShader = Shader.Find("HDRP/Lit");
+            if (litShader == null)
+            {
+                Debug.LogError("[HexMapChunkManager] Could not find HDRP/Lit shader. Assign bakedLitTerrainMaterialTemplate.");
+                return;
+            }
+
+            bakedLitTerrainMaterial = new Material(litShader);
+        }
+
+        bakedLitTerrainMaterial.name = "BakedTerrain_HDRP_Lit";
+
+        bool hasBaseColorMap = bakedLitTerrainMaterial.HasProperty("_BaseColorMap");
+        bool hasMaskMap = bakedLitTerrainMaterial.HasProperty("_MaskMap");
+        bool hasNormalMap = bakedLitTerrainMaterial.HasProperty("_NormalMap");
+        bool hasBaseColor = bakedLitTerrainMaterial.HasProperty("_BaseColor");
+        bool hasMetallic = bakedLitTerrainMaterial.HasProperty("_Metallic");
+        bool hasSmoothness = bakedLitTerrainMaterial.HasProperty("_Smoothness");
+
+        if (hasBaseColor)
+            bakedLitTerrainMaterial.SetColor("_BaseColor", Color.white);
+
+        if (hasMetallic)
+            bakedLitTerrainMaterial.SetFloat("_Metallic", 0f);
+
+        if (hasSmoothness)
+            bakedLitTerrainMaterial.SetFloat("_Smoothness", 0.35f);
+
+        Debug.Log($"[HexMapChunkManager] Created baked HDRP/Lit terrain material. shader={bakedLitTerrainMaterial.shader.name}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColorMap={hasBaseColorMap}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _MaskMap={hasMaskMap}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _NormalMap={hasNormalMap}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColor={hasBaseColor}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _Metallic={hasMetallic}");
+        Debug.Log($"[HexMapChunkManager] BakedLit Has _Smoothness={hasSmoothness}");
+    }
+
+    private void BuildBakedHdrpLitTerrainMaps()
+    {
+        int width = Mathf.Max(1, bakedTerrainTextureWidth);
+        int height = Mathf.Max(1, bakedTerrainTextureHeight);
+
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
+        {
+            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit terrain maps: bakeResult.lut is missing.");
+            return;
+        }
+
+        if (bakedTerrainBaseColor != null)
+            DestroyImmediate(bakedTerrainBaseColor);
+
+        bakedTerrainBaseColor = new Texture2D(width, height, TextureFormat.RGBA32, true, false);
+        bakedTerrainBaseColor.name = "BakedTerrain_BaseColor";
+        bakedTerrainBaseColor.wrapMode = TextureWrapMode.Repeat;
+        bakedTerrainBaseColor.filterMode = FilterMode.Bilinear;
+        bakedTerrainBaseColor.anisoLevel = 4;
+
+        Color[] pixels = new Color[width * height];
+
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        int[] lut = bakeResult.lut;
+
+        for (int y = 0; y < height; y++)
+        {
+            float v = (height <= 1) ? 0f : (float)y / (height - 1);
+            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (width <= 1) ? 0f : (float)x / (width - 1);
+                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
+
+                int lutIndex = lutY * lutWidth + lutX;
+                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
+
+                Color color = Color.magenta;
+
+                if (tileIndex >= 0 && planetGenerator != null && planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                {
+                    if (bakedTerrainUseSimpleBiomeColors)
+                        color = BiomeColorHelper.GetMinimapColor(tile.biome);
+                    else
+                        color = BiomeColorHelper.GetMinimapColor(tile.biome);
+                }
+
+                pixels[y * width + x] = color;
+            }
+        }
+
+        bakedTerrainBaseColor.SetPixels(pixels);
+        bakedTerrainBaseColor.Apply(true, !keepBakedTerrainTexturesReadable);
+
+        if (bakedLitTerrainMaterial != null)
+        {
+            if (bakedLitTerrainMaterial.HasProperty("_BaseColorMap"))
+                bakedLitTerrainMaterial.SetTexture("_BaseColorMap", bakedTerrainBaseColor);
+            else
+                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _BaseColorMap property.");
+        }
+
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, readable={keepBakedTerrainTexturesReadable}");
+    }
+
+    private void BuildNeutralBakedMaskMap()
+    {
+        // Keep this neutral mask tiny for the first HDRP/Lit proof path. Real per-pixel mask baking
+        // should be added only after the BaseColor-only path is validated.
+        int width = 1;
+        int height = 1;
+
+        if (bakedTerrainMaskMap != null)
+            DestroyImmediate(bakedTerrainMaskMap);
+
+        bakedTerrainMaskMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
+        bakedTerrainMaskMap.name = "BakedTerrain_NeutralMask";
+        bakedTerrainMaskMap.wrapMode = TextureWrapMode.Repeat;
+        bakedTerrainMaskMap.filterMode = FilterMode.Bilinear;
+
+        Color neutral = new Color(0f, 1f, 0f, 0.35f);
+        Color[] pixels = new Color[width * height];
+        for (int i = 0; i < pixels.Length; i++)
+            pixels[i] = neutral;
+
+        bakedTerrainMaskMap.SetPixels(pixels);
+        bakedTerrainMaskMap.Apply(true, !keepBakedTerrainTexturesReadable);
+
+        if (bakedLitTerrainMaterial != null)
+        {
+            if (bakedLitTerrainMaterial.HasProperty("_MaskMap"))
+                bakedLitTerrainMaterial.SetTexture("_MaskMap", bakedTerrainMaskMap);
+            else
+                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _MaskMap property.");
+        }
+
+        Debug.Log($"[HexMapChunkManager] Built neutral baked HDRP/Lit MaskMap {width}x{height}, readable={keepBakedTerrainTexturesReadable}");
+    }
+
     private void CreateSharedMaterial()
     {
+        Debug.Log($"[HexMapChunkManager] TerrainRenderPath={terrainRenderPath}");
+
+        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
+        {
+            CreateBakedLitMaterial();
+            BuildBakedHdrpLitTerrainMaps();
+            BuildNeutralBakedMaskMap();
+            sharedMaterial = bakedLitTerrainMaterial;
+            Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
+            Debug.Log($"[HexMapChunkManager] BakedBaseColor={bakedTerrainBaseColor != null} size={bakedTerrainTextureWidth}x{bakedTerrainTextureHeight}");
+            if (bakedLitTerrainMaterial != null)
+            {
+                Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColorMap={bakedLitTerrainMaterial.HasProperty("_BaseColorMap")}");
+                Debug.Log($"[HexMapChunkManager] BakedLit Has _MaskMap={bakedLitTerrainMaterial.HasProperty("_MaskMap")}");
+            }
+            return;
+        }
+
         bool ShaderSupportsBiomeTerrain(Shader s)
         {
             if (s == null) return false;
@@ -2379,6 +2617,8 @@ public class HexMapChunkManager : MonoBehaviour
         
         // Create and apply LUT texture for tile highlighting
         CreateAndApplyLUTTexture();
+
+        Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
     }
     
     /// <summary>
@@ -2725,7 +2965,10 @@ public class HexMapChunkManager : MonoBehaviour
         float halfW = mapWidth * 0.5f;
         float halfH = mapHeight * 0.5f;
         
-        // Check if the heightmap is available for CPU-side displacement
+        // Baked HDRP/Lit visible chunks use SampleTerrainSurfaceYAtUV; use the same source here so picking matches.
+        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
+
+        // Check if the heightmap is available for CPU-side displacement in the custom shader path.
         bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
         int hmW = hasHeightmap ? heightmapTexture.width : 0;
         int hmH = hasHeightmap ? heightmapTexture.height : 0;
@@ -2744,9 +2987,14 @@ public class HexMapChunkManager : MonoBehaviour
                 float posX = -halfW + u * mapWidth;
                 float posZ = -halfH + v * mapHeight;
                 
-                // Sample the heightmap and apply the same displacement the GPU shader uses
+                // Sample the same surface height as the visible terrain. The collider object already sits at flatY,
+                // so convert the world-space sampled terrain Y back into collider-local Y.
                 float posY = 0f;
-                if (hasHeightmap)
+                if (useBakedHeightSampler)
+                {
+                    posY = SampleTerrainSurfaceYAtUV(new Vector2(u, v)) - flatY;
+                }
+                else if (hasHeightmap)
                 {
                     int px = Mathf.Clamp(Mathf.FloorToInt(u * hmW), 0, hmW - 1);
                     int py = Mathf.Clamp(Mathf.FloorToInt(v * hmH), 0, hmH - 1);
@@ -5495,16 +5743,27 @@ public class HexMapChunkManager : MonoBehaviour
     private void HandlePlanetSeasonChanged(int planetIndex, Season season)
     {
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
-        ApplyBiomeMaterialSettings();
+        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
+        {
+            BuildBakedHdrpLitTerrainMaps();
+            BuildNeutralBakedMaskMap();
+        }
+        else
+        {
+            ApplyBiomeMaterialSettings();
+        }
         // Ensure season masks are enabled when winter begins so the per-tile
         // snow/wet/dry masks are applied by the terrain shader. This covers
         // cases where global snow amount is already 1 and enableSeasonMasks
         // remained false (eg. forced season change without a prior toggle).
-        if (season == Season.Winter && !enableSeasonMasks)
+        if (terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
         {
-            enableSeasonMasks = true;
+            if (season == Season.Winter && !enableSeasonMasks)
+            {
+                enableSeasonMasks = true;
+            }
+            UpdateSeasonMasksBatched(season, chunksPerBatch);
         }
-        UpdateSeasonMasksBatched(season, chunksPerBatch);
 
         SyncFrozenWaterTerrainOverrides();
 
@@ -5683,7 +5942,7 @@ public class HexMapChunkManager : MonoBehaviour
         bool targetChanged = !Mathf.Approximately(newTarget, _targetGlobalSnowAmount);
         _targetGlobalSnowAmount = newTarget;
 
-        if (targetChanged && newTarget > 0f && !enableSeasonMasks)
+        if (targetChanged && newTarget > 0f && !enableSeasonMasks && terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
         {
             enableSeasonMasks = true;
             UpdateSeasonMasksBatched(season, chunksPerBatch);
@@ -5709,6 +5968,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void UpdateSeasonMasksForCurrentSeason()
     {
+        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null) return;
         var climateManager = GameManager.Instance != null
@@ -5721,6 +5981,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void UpdateSeasonMasksForSeason(Season season)
     {
+        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
         if (seasonMaskWidth <= 0 || seasonMaskHeight <= 0) return;
@@ -5760,6 +6021,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     public void UpdateSeasonMasksBatched(Season season, int chunksPerFrame = 2)
     {
+        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
 
@@ -6011,8 +6273,11 @@ public class HexMapChunkManager : MonoBehaviour
         
         if (sharedMaterial != null)
         {
+            bool sharedWasBakedMaterial = ReferenceEquals(bakedLitTerrainMaterial, sharedMaterial);
             DestroyImmediate(sharedMaterial);
             sharedMaterial = null;
+            if (sharedWasBakedMaterial)
+                bakedLitTerrainMaterial = null;
         }
         
         tileToChunk.Clear();
@@ -6064,6 +6329,8 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
         if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }
         if (sliceToBiomeMap != null) { UnityEngine.Object.DestroyImmediate(sliceToBiomeMap); sliceToBiomeMap = null; }
+        if (bakedTerrainBaseColor != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainBaseColor); bakedTerrainBaseColor = null; }
+        if (bakedTerrainMaskMap != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainMaskMap); bakedTerrainMaskMap = null; }
         if (orbitOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayMaterial); orbitOverlayMaterial = null; }
         if (orbitOverlayObj != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayObj); orbitOverlayObj = null; }
         if (waterSurfaceOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(waterSurfaceOverlayMaterial); waterSurfaceOverlayMaterial = null; }
