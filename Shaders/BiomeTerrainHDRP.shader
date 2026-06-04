@@ -987,6 +987,31 @@ Shader "Custom/BiomeTerrainHDRP"
                 float roughnessOffset = _BiomeRoughnessOffsets[roIdxP][roCompP];
                 float smoothness = saturate(mask.a * _SmoothnessMultiplier - roughnessOffset);
 
+                // Debug 8: Raw metallic channel
+                if (_TerrainDebugMode > 7.5 && _TerrainDebugMode < 8.5)
+                {
+                    return float4(mask.r.xxx, 1.0);
+                }
+
+                // Debug 9: Raw AO channel
+                if (_TerrainDebugMode > 8.5 && _TerrainDebugMode < 9.5)
+                {
+                    return float4(mask.g.xxx, 1.0);
+                }
+
+                // Debug 10: Raw smoothness channel
+                if (_TerrainDebugMode > 9.5 && _TerrainDebugMode < 10.5)
+                {
+                    return float4(mask.a.xxx, 1.0);
+                }
+
+                // Debug 11: Computed PBR values
+                // R = metallic, G = AO/spec occlusion, B = smoothness
+                if (_TerrainDebugMode > 10.5 && _TerrainDebugMode < 11.5)
+                {
+                    return float4(metallic, ao, smoothness, 1.0);
+                }
+
                 // ==========================================================
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
                 // ==========================================================
@@ -1228,6 +1253,31 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (_TerrainDebugMode > 6.5 && _TerrainDebugMode < 7.5)
                 {
                     return float4(saturate(hdrpLit), 1.0);
+                }
+
+                // Debug 12: HDRP diffuse only
+                if (_TerrainDebugMode > 11.5 && _TerrainDebugMode < 12.5)
+                {
+                    return float4(saturate(lightLoopOutput.diffuseLighting), 1.0);
+                }
+
+                // Debug 13: HDRP specular only
+                if (_TerrainDebugMode > 12.5 && _TerrainDebugMode < 13.5)
+                {
+                    return float4(saturate(lightLoopOutput.specularLighting), 1.0);
+                }
+
+                // Debug 14: Baked diffuse / SH contribution
+                if (_TerrainDebugMode > 13.5 && _TerrainDebugMode < 14.5)
+                {
+                    return float4(saturate(builtinData.bakeDiffuseLighting), 1.0);
+                }
+
+                // Debug 15: Exposure multiplier as grayscale
+                if (_TerrainDebugMode > 14.5 && _TerrainDebugMode < 15.5)
+                {
+                    float e = saturate(GetCurrentExposureMultiplier() / 4.0);
+                    return float4(e, e, e, 1.0);
                 }
 
                 float3 fallbackLightDir = normalize(_FallbackSunDirectionWS.xyz);
