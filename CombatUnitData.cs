@@ -40,6 +40,16 @@ public enum CombatCategory
     GroundAttack = 30
 }
 
+public enum CombatTargetDomain
+{
+    Ground,
+    NavalSurface,
+    Underwater,
+    Air,
+    Space,
+    City
+}
+
 public enum TravelCapability
 {
     OrbitOnly,          // Can only enter orbit around current planet
@@ -235,11 +245,13 @@ public class CombatUnitData : ScriptableObject
     public bool requiresHarbor = false;
 
     [Header("Combat System")]
-    [Tooltip("Whether this unit can attack air units (Aircraft)")]
+    [Tooltip("Whether this unit can attack air units (Aircraft/Fighter/Bomber/GroundAttack)")]
     public bool canAttackAir = false;
-    [Tooltip("Whether this unit can attack space units (Spaceship)")]
+    [Tooltip("Whether this unit can attack space units (Spaceship or units in Orbit)")]
     public bool canAttackSpace = false;
-    [Tooltip("Whether this unit can attack underwater units (Submarine/SeaCrawler)")]
+    [Tooltip("Whether this unit can attack naval surface units (boats/ships). Separate from underwater attack capability.")]
+    public bool canAttackNavalSurface = true;
+    [Tooltip("Whether this unit can attack underwater units/targets (Submarine/SeaCrawler/undersea targets). Separate from naval surface attack capability.")]
     public bool canAttackUnderwater = false;
     [Tooltip("Whether this unit can perform a counter-attack when attacked")]
     public bool canCounterAttack = false;
@@ -281,11 +293,28 @@ public class CombatUnitData : ScriptableObject
     /// </summary>
     public static bool IsNavalCategory(CombatCategory cat)
     {
+        return IsNavalSurfaceCategory(cat) || IsUnderwaterCategory(cat);
+    }
+
+    /// <summary>
+    /// Returns true if the category represents a ship/boat on the sea surface.
+    /// Keep this separate from underwater categories so aircraft/naval weapons can
+    /// distinguish surface naval attacks from anti-sub/undersea attacks.
+    /// </summary>
+    public static bool IsNavalSurfaceCategory(CombatCategory cat)
+    {
         return cat == CombatCategory.HeavyShip
                || cat == CombatCategory.LightShip
                || cat == CombatCategory.TorpedoShip
-               || cat == CombatCategory.Boat
-               || cat == CombatCategory.Submarine
+               || cat == CombatCategory.Boat;
+    }
+
+    /// <summary>
+    /// Returns true if the category represents an underwater unit/target.
+    /// </summary>
+    public static bool IsUnderwaterCategory(CombatCategory cat)
+    {
+        return cat == CombatCategory.Submarine
                || cat == CombatCategory.SeaCrawler;
     }
 
@@ -429,6 +458,16 @@ public class CombatUnitData : ScriptableObject
     public int baseRangedAttack;
     [Tooltip("Base city attack value for this combat unit.")]
     public int baseCityAttack;
+    [Tooltip("Base attack value against land/surface ground units. Leave 0 to fall back to this unit's weapon-style attack.")]
+    public int baseGroundAttack;
+    [Tooltip("Base attack value against naval surface units such as boats and ships. Leave 0 to fall back to this unit's weapon-style attack.")]
+    public int baseNavalAttack;
+    [Tooltip("Base attack value against underwater targets such as submarines, sea crawlers, or undersea bases. Leave 0 to fall back to this unit's weapon-style attack.")]
+    public int baseUnderwaterAttack;
+    [Tooltip("Base attack value against air units. Leave 0 to fall back to this unit's weapon-style attack.")]
+    public int baseAirAttack;
+    [Tooltip("Base attack value against space/orbit units. Leave 0 to fall back to this unit's weapon-style attack.")]
+    public int baseSpaceAttack;
     [Tooltip("Base movement points for this combat unit (per turn). Set to 0 to opt-out of turn-based movement.)")]
     public int baseMovePoints = 0;
     public int baseDefense;

@@ -12,6 +12,11 @@ public class CombatUnit : BaseUnit
     [SerializeField] private int meleeAttack = 0;
     [SerializeField] private int rangedAttack = 0;
     [SerializeField] private int cityAttack = 0;
+    [SerializeField] private int groundAttack = 0;
+    [SerializeField] private int navalAttack = 0;
+    [SerializeField] private int underwaterAttack = 0;
+    [SerializeField] private int airAttack = 0;
+    [SerializeField] private int spaceAttack = 0;
     [SerializeField] private int defense = 0;
     [SerializeField] private int health = 0; 
     [SerializeField] private float range = 0;
@@ -34,6 +39,11 @@ public class CombatUnit : BaseUnit
     public override int BaseMeleeAttack => useOverrideStats && meleeAttack > 0 ? meleeAttack : (data?.baseMeleeAttack ?? 0);
     public override int BaseRangedAttack => useOverrideStats && rangedAttack > 0 ? rangedAttack : (data?.baseRangedAttack ?? 0);
     public override int BaseCityAttack => useOverrideStats && cityAttack > 0 ? cityAttack : (data?.baseCityAttack ?? 0);
+    public override int BaseGroundAttack => useOverrideStats && groundAttack > 0 ? groundAttack : (data?.baseGroundAttack ?? 0);
+    public override int BaseNavalAttack => useOverrideStats && navalAttack > 0 ? navalAttack : (data?.baseNavalAttack ?? 0);
+    public override int BaseUnderwaterAttack => useOverrideStats && underwaterAttack > 0 ? underwaterAttack : (data?.baseUnderwaterAttack ?? 0);
+    public override int BaseAirAttack => useOverrideStats && airAttack > 0 ? airAttack : (data?.baseAirAttack ?? 0);
+    public override int BaseSpaceAttack => useOverrideStats && spaceAttack > 0 ? spaceAttack : (data?.baseSpaceAttack ?? 0);
     public override int BaseDefense => useOverrideStats && defense > 0 ? defense : (data?.baseDefense ?? 0);
     public override int BaseHealth => useOverrideStats && health > 0 ? health : (data?.baseHealth ?? 0);
     public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);
@@ -375,8 +385,8 @@ public class CombatUnit : BaseUnit
 
     // Combined stats - UPDATED to include all ability modifiers
     // Local aggregation structs
-    private struct UnitAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
-    private struct EquipAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
+    private struct UnitAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, groundAttackAdd, navalAttackAdd, underwaterAttackAdd, airAttackAdd, spaceAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, navalAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
+    private struct EquipAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, groundAttackAdd, navalAttackAdd, underwaterAttackAdd, airAttackAdd, spaceAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, navalAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
 
     private static bool MatchesRequirement(BoolRequirement requirement, bool value)
     {
@@ -464,9 +474,9 @@ public class CombatUnit : BaseUnit
                 if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
                     continue;
 
-                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
                 a.rangeAdd += b.rangeAdd;
-                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
                 a.rangePct += b.rangePct;
             }
         }
@@ -518,9 +528,9 @@ public class CombatUnit : BaseUnit
                 if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     continue;
 
-                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd;
+                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd;
                 a.defenseAdd += b.defenseAdd;
-                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct;
+                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct;
                 a.defensePct += b.defensePct;
             }
         }
@@ -621,6 +631,44 @@ public class CombatUnit : BaseUnit
         return total;
     }
 
+    public int GetSituationalAttackAddAgainst(BaseUnit target, CombatTargetDomain targetDomain, AttackType legacyFallbackType, bool includeLegacyTypedBonuses)
+    {
+        if (owner == null || data == null || target == null) return 0;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        float scratchPct = 0f;
+        AddDomainBonuses(unitBonuses, targetDomain, ref total, ref scratchPct);
+        AddDomainBonuses(equipmentBonuses, targetDomain, ref total, ref scratchPct);
+        if (includeLegacyTypedBonuses)
+        {
+            scratchPct = 0f;
+            AddLegacyTypedUnitBonuses(unitBonuses, legacyFallbackType, ref total, ref scratchPct);
+            AddLegacyTypedEquipBonuses(equipmentBonuses, legacyFallbackType, ref total, ref scratchPct);
+        }
+        return Mathf.RoundToInt(total);
+    }
+
+    public float GetSituationalAttackPctAgainst(BaseUnit target, CombatTargetDomain targetDomain, AttackType legacyFallbackType, bool includeLegacyTypedBonuses)
+    {
+        if (owner == null || data == null || target == null) return 0f;
+        var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
+        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
+        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
+        float total = unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+        float scratchAdd = 0f;
+        AddDomainBonuses(unitBonuses, targetDomain, ref scratchAdd, ref total);
+        AddDomainBonuses(equipmentBonuses, targetDomain, ref scratchAdd, ref total);
+        if (includeLegacyTypedBonuses)
+        {
+            scratchAdd = 0f;
+            AddLegacyTypedUnitBonuses(unitBonuses, legacyFallbackType, ref scratchAdd, ref total);
+            AddLegacyTypedEquipBonuses(equipmentBonuses, legacyFallbackType, ref scratchAdd, ref total);
+        }
+        return total;
+    }
+
     public override int GetSituationalDefenseAddAgainst(BaseUnit attacker)
     {
         if (owner == null || data == null || attacker == null) return 0;
@@ -652,8 +700,8 @@ public class CombatUnit : BaseUnit
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
-                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
-                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
+                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
                         }
                         a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
@@ -670,8 +718,8 @@ public class CombatUnit : BaseUnit
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
-                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
-                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
+                            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
                         }
                         a.healthAdd += b.healthAdd;
                         a.rangeAdd += b.rangeAdd;
@@ -694,8 +742,8 @@ public class CombatUnit : BaseUnit
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
-                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
-                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
+                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
                     }
             }
         if (civ.researchedCultures != null)
@@ -707,8 +755,8 @@ public class CombatUnit : BaseUnit
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
-                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.defenseAdd += b.defenseAdd;
-                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.defensePct += b.defensePct;
+                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
                     }
             }
         return a;
@@ -724,9 +772,9 @@ public class CombatUnit : BaseUnit
         {
             if (it == null) continue;
             var e = AggregateEquipBonusesLocal(civ, it);
-            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
+            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.groundAttackAdd += e.groundAttackAdd; total.navalAttackAdd += e.navalAttackAdd; total.underwaterAttackAdd += e.underwaterAttackAdd; total.airAttackAdd += e.airAttackAdd; total.spaceAttackAdd += e.spaceAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
             total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
-            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
+            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.groundAttackPct += e.groundAttackPct; total.navalAttackPct += e.navalAttackPct; total.underwaterAttackPct += e.underwaterAttackPct; total.airAttackPct += e.airAttackPct; total.spaceAttackPct += e.spaceAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
             total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
         }
         return total;
@@ -742,9 +790,9 @@ public class CombatUnit : BaseUnit
         {
             if (it == null) continue;
             var e = AggregateTargetedEquipBonuses(civ, it, opponent);
-            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
+            total.attackAdd += e.attackAdd; total.meleeAttackAdd += e.meleeAttackAdd; total.rangedAttackAdd += e.rangedAttackAdd; total.cityAttackAdd += e.cityAttackAdd; total.groundAttackAdd += e.groundAttackAdd; total.navalAttackAdd += e.navalAttackAdd; total.underwaterAttackAdd += e.underwaterAttackAdd; total.airAttackAdd += e.airAttackAdd; total.spaceAttackAdd += e.spaceAttackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
             total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
-            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
+            total.attackPct += e.attackPct; total.meleeAttackPct += e.meleeAttackPct; total.rangedAttackPct += e.rangedAttackPct; total.cityAttackPct += e.cityAttackPct; total.groundAttackPct += e.groundAttackPct; total.navalAttackPct += e.navalAttackPct; total.underwaterAttackPct += e.underwaterAttackPct; total.airAttackPct += e.airAttackPct; total.spaceAttackPct += e.spaceAttackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
             total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
         }
         return total;
@@ -840,18 +888,192 @@ public class CombatUnit : BaseUnit
         return valF * (1f + attackPct);
     }
 
-    private float GetBaseAttackFloat(AttackType attackType)
+
+    private float GetAttackTypeBaseValue(AttackType attackType)
     {
-        float baseValue = attackType switch
+        return attackType switch
         {
             AttackType.Melee => BaseMeleeAttack,
             AttackType.Ranged => BaseRangedAttack,
             AttackType.City => BaseCityAttack,
             _ => BaseAttack,
         };
+    }
+
+    private float GetDomainBaseAttackValue(CombatTargetDomain targetDomain)
+    {
+        return targetDomain switch
+        {
+            CombatTargetDomain.Ground => BaseGroundAttack,
+            CombatTargetDomain.NavalSurface => BaseNavalAttack,
+            CombatTargetDomain.Underwater => BaseUnderwaterAttack,
+            CombatTargetDomain.Air => BaseAirAttack,
+            CombatTargetDomain.Space => BaseSpaceAttack,
+            CombatTargetDomain.City => BaseCityAttack,
+            _ => BaseAttack,
+        };
+    }
+
+    private float AddDomainEquipmentAttackBonus(float valF, CombatTargetDomain targetDomain)
+    {
+        return targetDomain switch
+        {
+            CombatTargetDomain.Ground => valF + EquipmentGroundAttackBonus,
+            CombatTargetDomain.NavalSurface => valF + EquipmentNavalAttackBonus,
+            CombatTargetDomain.Underwater => valF + EquipmentUnderwaterAttackBonus,
+            CombatTargetDomain.Air => valF + EquipmentAirAttackBonus,
+            CombatTargetDomain.Space => valF + EquipmentSpaceAttackBonus,
+            CombatTargetDomain.City => valF + EquipmentCityAttackBonus,
+            _ => valF,
+        };
+    }
+
+    private void AddDomainBonuses(UnitAgg bonuses, CombatTargetDomain targetDomain, ref float attackAdd, ref float attackPct)
+    {
+        switch (targetDomain)
+        {
+            case CombatTargetDomain.Ground:
+                attackAdd += bonuses.groundAttackAdd;
+                attackPct += bonuses.groundAttackPct;
+                break;
+            case CombatTargetDomain.NavalSurface:
+                attackAdd += bonuses.navalAttackAdd;
+                attackPct += bonuses.navalAttackPct;
+                break;
+            case CombatTargetDomain.Underwater:
+                attackAdd += bonuses.underwaterAttackAdd;
+                attackPct += bonuses.underwaterAttackPct;
+                break;
+            case CombatTargetDomain.Air:
+                attackAdd += bonuses.airAttackAdd;
+                attackPct += bonuses.airAttackPct;
+                break;
+            case CombatTargetDomain.Space:
+                attackAdd += bonuses.spaceAttackAdd;
+                attackPct += bonuses.spaceAttackPct;
+                break;
+            case CombatTargetDomain.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
+    }
+
+    private void AddDomainBonuses(EquipAgg bonuses, CombatTargetDomain targetDomain, ref float attackAdd, ref float attackPct)
+    {
+        switch (targetDomain)
+        {
+            case CombatTargetDomain.Ground:
+                attackAdd += bonuses.groundAttackAdd;
+                attackPct += bonuses.groundAttackPct;
+                break;
+            case CombatTargetDomain.NavalSurface:
+                attackAdd += bonuses.navalAttackAdd;
+                attackPct += bonuses.navalAttackPct;
+                break;
+            case CombatTargetDomain.Underwater:
+                attackAdd += bonuses.underwaterAttackAdd;
+                attackPct += bonuses.underwaterAttackPct;
+                break;
+            case CombatTargetDomain.Air:
+                attackAdd += bonuses.airAttackAdd;
+                attackPct += bonuses.airAttackPct;
+                break;
+            case CombatTargetDomain.Space:
+                attackAdd += bonuses.spaceAttackAdd;
+                attackPct += bonuses.spaceAttackPct;
+                break;
+            case CombatTargetDomain.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
+    }
+
+    private float ApplyTargetDomainAttackBonuses(float valF, CombatTargetDomain targetDomain, AttackType legacyFallbackType, bool includeLegacyTypedBonuses)
+    {
+        if (owner != null && data != null)
+        {
+            var u = AggregateUnitBonusesLocal(owner, data);
+            float attackAdd = u.attackAdd;
+            float attackPct = u.attackPct;
+            AddDomainBonuses(u, targetDomain, ref attackAdd, ref attackPct);
+            if (includeLegacyTypedBonuses)
+                AddLegacyTypedUnitBonuses(u, legacyFallbackType, ref attackAdd, ref attackPct);
+            valF = (valF + attackAdd) * (1f + attackPct);
+        }
+
+        if (owner != null)
+        {
+            var e = AggregateAllEquippedBonusesLocal(owner);
+            float attackAdd = e.attackAdd;
+            float attackPct = e.attackPct;
+            AddDomainBonuses(e, targetDomain, ref attackAdd, ref attackPct);
+            if (includeLegacyTypedBonuses)
+                AddLegacyTypedEquipBonuses(e, legacyFallbackType, ref attackAdd, ref attackPct);
+            valF = (valF + attackAdd) * (1f + attackPct);
+        }
+
+        return valF;
+    }
+
+    private void AddLegacyTypedUnitBonuses(UnitAgg bonuses, AttackType attackType, ref float attackAdd, ref float attackPct)
+    {
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                attackAdd += bonuses.meleeAttackAdd;
+                attackPct += bonuses.meleeAttackPct;
+                break;
+            case AttackType.Ranged:
+                attackAdd += bonuses.rangedAttackAdd;
+                attackPct += bonuses.rangedAttackPct;
+                break;
+            case AttackType.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
+    }
+
+    private void AddLegacyTypedEquipBonuses(EquipAgg bonuses, AttackType attackType, ref float attackAdd, ref float attackPct)
+    {
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                attackAdd += bonuses.meleeAttackAdd;
+                attackPct += bonuses.meleeAttackPct;
+                break;
+            case AttackType.Ranged:
+                attackAdd += bonuses.rangedAttackAdd;
+                attackPct += bonuses.rangedAttackPct;
+                break;
+            case AttackType.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
+    }
+
+    private float GetBaseAttackFloat(AttackType attackType)
+    {
+        float baseValue = GetAttackTypeBaseValue(attackType);
 
         float valF = baseValue + EquipmentAttackBonus + GetAbilityAttackModifier();
         valF = AddTypedEquipmentAttackBonus(valF, attackType);
+        return valF;
+    }
+
+    private float GetBaseAttackFloat(CombatTargetDomain targetDomain, AttackType legacyFallbackType, out bool usingLegacyTypedFallback)
+    {
+        float domainBaseValue = GetDomainBaseAttackValue(targetDomain);
+        usingLegacyTypedFallback = domainBaseValue <= 0f && targetDomain != CombatTargetDomain.City;
+        float baseValue = usingLegacyTypedFallback ? GetAttackTypeBaseValue(legacyFallbackType) : domainBaseValue;
+
+        float valF = baseValue + EquipmentAttackBonus + GetAbilityAttackModifier();
+        valF = AddDomainEquipmentAttackBonus(valF, targetDomain);
+        if (usingLegacyTypedFallback)
+            valF = AddTypedEquipmentAttackBonus(valF, legacyFallbackType);
         return valF;
     }
 
@@ -893,6 +1115,22 @@ public class CombatUnit : BaseUnit
             return Mathf.RoundToInt(valF);
         }
     }
+
+    private int GetCurrentTargetDomainAttack(CombatTargetDomain targetDomain)
+    {
+        float valF = GetBaseAttackFloat(targetDomain, AttackType.Generic, out bool usingLegacyTypedFallback);
+        valF = ApplyTargetDomainAttackBonuses(valF, targetDomain, AttackType.Generic, usingLegacyTypedFallback);
+        valF = ApplyOwnerAttackBonuses(valF, AttackType.Generic);
+        valF *= FatigueMultiplier;
+        valF = ApplyResourceUpkeepToStat(valF);
+        return Mathf.RoundToInt(valF);
+    }
+
+    public override int CurrentGroundAttack => GetCurrentTargetDomainAttack(CombatTargetDomain.Ground);
+    public override int CurrentNavalAttack => GetCurrentTargetDomainAttack(CombatTargetDomain.NavalSurface);
+    public override int CurrentUnderwaterAttack => GetCurrentTargetDomainAttack(CombatTargetDomain.Underwater);
+    public override int CurrentAirAttack => GetCurrentTargetDomainAttack(CombatTargetDomain.Air);
+    public override int CurrentSpaceAttack => GetCurrentTargetDomainAttack(CombatTargetDomain.Space);
 
     public override int CurrentAttack
     {
@@ -989,20 +1227,64 @@ public class CombatUnit : BaseUnit
 
     // MoveAlongPath removed -- all movement now goes through UnitMovementController.ExecuteMovement
 
+    private static CombatTargetDomain GetTargetDomainForCombatUnit(CombatUnit target)
+    {
+        if (target == null || target.data == null)
+            return CombatTargetDomain.Ground;
+
+        CombatCategory category = target.data.unitType;
+        if (CombatUnitData.IsAirCategory(category) || target.currentLayer == TileLayer.Atmosphere)
+            return CombatTargetDomain.Air;
+        if (category == CombatCategory.Spaceship || target.currentLayer == TileLayer.Orbit)
+            return CombatTargetDomain.Space;
+        if (CombatUnitData.IsUnderwaterCategory(category))
+            return CombatTargetDomain.Underwater;
+        if (CombatUnitData.IsNavalSurfaceCategory(category))
+            return CombatTargetDomain.NavalSurface;
+        if (target.currentLayer == TileLayer.Underwater)
+            return CombatTargetDomain.Underwater;
+        return CombatTargetDomain.Ground;
+    }
+
+    private static CombatTargetDomain GetTargetDomainForWorker(WorkerUnit target)
+    {
+        if (target == null)
+            return CombatTargetDomain.Ground;
+        if (target.currentLayer == TileLayer.Orbit)
+            return CombatTargetDomain.Space;
+        if (target.currentLayer == TileLayer.Atmosphere)
+            return CombatTargetDomain.Air;
+        if (target.currentLayer == TileLayer.Underwater)
+            return CombatTargetDomain.Underwater;
+        return CombatTargetDomain.Ground;
+    }
+
+    private bool CanAttackTargetDomain(CombatTargetDomain targetDomain)
+    {
+        if (data == null) return false;
+        switch (targetDomain)
+        {
+            case CombatTargetDomain.Air:
+                return data.canAttackAir;
+            case CombatTargetDomain.Space:
+                return data.canAttackSpace;
+            case CombatTargetDomain.NavalSurface:
+                return data.canAttackNavalSurface;
+            case CombatTargetDomain.Underwater:
+                return data.canAttackUnderwater;
+            default:
+                return true;
+        }
+    }
+
     // ===== COMBAT UNIT VS COMBAT UNIT =====
     
     public bool CanAttack(CombatUnit target)
     {
-        // Target category checks
-    bool targetIsAir = target != null && target.data != null && CombatUnitData.IsAirCategory(target.data.unitType);
-    bool targetIsSpace = target != null && target.data != null && target.data.unitType == CombatCategory.Spaceship;
-    bool targetIsUnderwater = target.data.unitType == CombatCategory.Submarine || 
-                 target.data.unitType == CombatCategory.SeaCrawler;
+        if (target == null || target.data == null || data == null) return false;
 
-        // Check specific attack capabilities
-        if (targetIsAir && !data.canAttackAir) return false;
-        if (targetIsSpace && !data.canAttackSpace) return false;
-        if (targetIsUnderwater && !data.canAttackUnderwater) return false;
+        CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(target);
+        if (!CanAttackTargetDomain(targetDomain)) return false;
 
         // Orbit layer interaction rules
         bool attackerInOrbit = currentLayer == TileLayer.Orbit;
@@ -1065,7 +1347,10 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public bool CanAttack(WorkerUnit target)
     {
-        if (target == null) return false;
+        if (target == null || data == null) return false;
+
+        CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
+        if (!CanAttackTargetDomain(targetDomain)) return false;
         
         // Orbit-to-surface: must have canBombardSurface to attack ground targets
         if (currentLayer == TileLayer.Orbit && target.currentLayer != TileLayer.Orbit)
@@ -1208,8 +1493,9 @@ public class CombatUnit : BaseUnit
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target);
 
         AttackType attackType = activeWeapon != null && IsProjectileWeapon(activeWeapon) ? AttackType.Ranged : AttackType.Melee;
-        float attackerValue = GetBaseAttackFloat(attackType);
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, attackType)) * (1f + GetSituationalAttackPctAgainst(target, attackType));
+        CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(target);
+        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
         float defenderValue = target.GetBaseDefenseFloat();
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
 
@@ -1312,8 +1598,9 @@ public class CombatUnit : BaseUnit
         int combatBonus = 2;
         
         AttackType attackType = isRangedAttack ? AttackType.Ranged : AttackType.Melee;
-        float attackerValue = GetBaseAttackFloat(attackType) + combatBonus;
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, attackType)) * (1f + GetSituationalAttackPctAgainst(target, attackType));
+        CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
+        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback) + combatBonus;
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
         float defenderValue = target.CurrentDefense;
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
         
@@ -1447,8 +1734,9 @@ public class CombatUnit : BaseUnit
 
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(attacker);
         AttackType attackType = AttackType.Melee;
-        float attackerValue = GetBaseAttackFloat(attackType);
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker, attackType)) * (1f + GetSituationalAttackPctAgainst(attacker, attackType));
+        CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(attacker);
+        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
+        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback));
         float defenderValue = attacker.GetBaseDefenseFloat();
         defenderValue = (defenderValue + attacker.GetSituationalDefenseAddAgainst(this)) * (1f + attacker.GetSituationalDefensePctAgainst(this));
 

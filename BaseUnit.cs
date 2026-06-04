@@ -850,6 +850,36 @@ public abstract class BaseUnit : MonoBehaviour
         (_equippedArmor?.cityAttackBonus ?? 0f) +
         (_equippedMiscellaneous?.cityAttackBonus ?? 0f);
 
+    public float EquipmentGroundAttackBonus =>
+        (_equippedWeapon?.groundAttackBonus ?? 0f) +
+        (_equippedShield?.groundAttackBonus ?? 0f) +
+        (_equippedArmor?.groundAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.groundAttackBonus ?? 0f);
+
+    public float EquipmentNavalAttackBonus =>
+        (_equippedWeapon?.navalAttackBonus ?? 0f) +
+        (_equippedShield?.navalAttackBonus ?? 0f) +
+        (_equippedArmor?.navalAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.navalAttackBonus ?? 0f);
+
+    public float EquipmentUnderwaterAttackBonus =>
+        (_equippedWeapon?.underwaterAttackBonus ?? 0f) +
+        (_equippedShield?.underwaterAttackBonus ?? 0f) +
+        (_equippedArmor?.underwaterAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.underwaterAttackBonus ?? 0f);
+
+    public float EquipmentAirAttackBonus =>
+        (_equippedWeapon?.airAttackBonus ?? 0f) +
+        (_equippedShield?.airAttackBonus ?? 0f) +
+        (_equippedArmor?.airAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.airAttackBonus ?? 0f);
+
+    public float EquipmentSpaceAttackBonus =>
+        (_equippedWeapon?.spaceAttackBonus ?? 0f) +
+        (_equippedShield?.spaceAttackBonus ?? 0f) +
+        (_equippedArmor?.spaceAttackBonus ?? 0f) +
+        (_equippedMiscellaneous?.spaceAttackBonus ?? 0f);
+
     public float EquipmentDefenseBonus =>
         (_equippedWeapon?.defenseBonus ?? 0f) +
         (_equippedShield?.defenseBonus ?? 0f) +
@@ -1065,10 +1095,20 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual int BaseMeleeAttack => BaseAttack;
     public virtual int BaseRangedAttack => BaseAttack;
     public virtual int BaseCityAttack => BaseAttack;
+    public virtual int BaseGroundAttack => BaseAttack;
+    public virtual int BaseNavalAttack => BaseAttack;
+    public virtual int BaseUnderwaterAttack => BaseAttack;
+    public virtual int BaseAirAttack => BaseAttack;
+    public virtual int BaseSpaceAttack => BaseAttack;
 
     public virtual int CurrentMeleeAttack => CurrentAttack;
     public virtual int CurrentRangedAttack => CurrentAttack;
     public virtual int CurrentCityAttack => CurrentAttack;
+    public virtual int CurrentGroundAttack => CurrentAttack;
+    public virtual int CurrentNavalAttack => CurrentAttack;
+    public virtual int CurrentUnderwaterAttack => CurrentAttack;
+    public virtual int CurrentAirAttack => CurrentAttack;
+    public virtual int CurrentSpaceAttack => CurrentAttack;
 
     public virtual int CurrentAttack
     {
