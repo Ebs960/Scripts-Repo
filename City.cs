@@ -936,7 +936,8 @@ if (UIManager.Instance != null)
     }
 
     /// <summary>
-    /// Quick lookup of coastal tiles this city controls
+    /// Quick lookup of coastal/accessible water tiles this city controls.
+    /// Lakes and rivers count as valid coastal access for unit/building requirements.
     /// </summary>
     private bool ControlsCoast()
     {
@@ -949,7 +950,9 @@ if (UIManager.Instance != null)
             var tileData = ts.GetTileData(idx);
             if (tileData == null) continue;
             var biome = tileData.biome;
-            if (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean)
+            if (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.River)
+                return true;
+            if (tileData.waterType == TileWaterType.Lake || tileData.waterType == TileWaterType.River)
                 return true;
         }
         return false;

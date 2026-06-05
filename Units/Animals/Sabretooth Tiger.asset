@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
+  m_Name: Sabretooth Tiger
+  m_EditorClassIdentifier: 
+  unitName: Sabretooth
+  unitType: 25
+  selectSound: {fileID: 8300000, guid: 033fea8b9b72fc54eb11b71dd91f8bc7, type: 3}
+  selectPitchVariation: 0.08
+  _iconDirect: {fileID: 21300000, guid: ba7d6d21798f2654099f6d203f304693, type: 3}
+  addressableAddress: Assets/Units/Animals/Models/Sabretooth Tiger.prefab
+  requiresAirport: 0
+  requiresSpaceport: 0
+  animalBehavior: 1
+  animalMovePoints: 2
+  travelCapability: 1
+  spaceAUPerTurn: 0
+  spaceSpeedMultiplier: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
+  orbitExitCost: 1
+  orbitMovementCost: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
+  orbitVisionBonus: 3
+  isTransport: 0
+  transportCapacity: 3
+  canTravelToMoon: 0
+  requiresCoastalCity: 0
+  requiresHarbor: 0
+  canAttackAir: 0
+  canAttackSpace: 0
+  canAttackUnderwater: 0
+  canCounterAttack: 0
+  isRangedUnit: 0
+  maxAmmo: 30
+  canSwitchToMelee: 1
+  outOfAmmoMeleePenalty: 0.5
+  takesWeatherDamage: 0
+  immuneToMosquitoes: 0
+  attackPointsPerTurn: 1
+  productionCost: 0
+  goldCost: 0
+  requiredResources: []
+  requiredTerrains: 
+  buildableByWorker: 0
+  workerWorkCost: 40
+  baseAttack: 6
+  baseMovePoints: 2
+  baseDefense: 2
+  baseHealth: 15
+  baseRange: 1
+  sightRange: 2
+  xpToNextLevel: 
+  abilitiesByLevel: []
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments: []
+  requiredPolicies: []
+  unitLimit: -1
+  limitCategory: 
+  defaultWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  foodOnKill: 8
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  captureable: 0
+  captureHerdCount: 0
+  captureSpecies: 4
+  foodConsumptionPerTurn: 0
+  soldierCount: 3
+  formationType: 1
+  soldierVariants: []
+  formationSpacing: 1.01
+  civVisualOverrides: []
