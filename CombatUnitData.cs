@@ -44,7 +44,9 @@ public enum CombatCategory
     AircraftCarrier = 32,
     SpaceCarrier = 33,
     // Anti-air specialization
-    AntiAircraft = 34
+    AntiAircraft = 34,
+
+    Helicopter = 35
 }
 
 public enum CombatTargetDomain
