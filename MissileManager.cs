@@ -20,6 +20,10 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
     public event Action<int, MissileData, int> OnMissileLaunched;
     /// <summary>Fired when a missile impacts its target tile (targetTile, data, planetIndex).</summary>
     public event Action<int, MissileData, int> OnMissileDetonated;
+    /// <summary>Fired when a missile is destroyed by defensive fire before impact (sourceTile, targetTile, data, defender, planetIndex).</summary>
+    public event Action<int, int, MissileData, CombatUnit, int> OnMissileIntercepted;
+    /// <summary>Fired whenever defensive fire hits or misses an incoming missile (sourceTile, targetTile, data, defender, damage, destroyed, planetIndex).</summary>
+    public event Action<int, int, MissileData, CombatUnit, int, bool, int> OnMissileDefended;
 
     // ─── Silo Missile Inventory ───────────────────────────────────────────────
     // Key = compound of (planetIndex, tileIndex); stored separately from City/Unit because
@@ -94,8 +98,9 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
         }
         var ts = TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
         Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : city.transform.position;
-        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, city.planetIndex));
         OnMissileLaunched?.Invoke(city.centerTileIndex, missile, city.planetIndex);
+        if (TryInterceptMissile(city.owner, city.centerTileIndex, targetTileIndex, city.planetIndex, missile)) return;
+        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, city.planetIndex));
     }
 
     /// <summary>Launch a missile from a combat unit's storedMissiles inventory.</summary>
@@ -109,8 +114,9 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
         }
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(unit.currentTileIndex) : unit.transform.position;
-        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, unit.planetIndex));
         OnMissileLaunched?.Invoke(unit.currentTileIndex, missile, unit.planetIndex);
+        if (TryInterceptMissile(unit.owner, unit.currentTileIndex, targetTileIndex, unit.planetIndex, missile)) return;
+        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, unit.planetIndex));
     }
 
     /// <summary>Launch a missile from a silo improvement on the given tile.</summary>
@@ -124,8 +130,85 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
         }
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(siloTileIndex) : Vector3.zero;
-        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, planetIndex));
+        Civilization sourceOwner = ResolveTileOwner(planetIndex, siloTileIndex);
         OnMissileLaunched?.Invoke(siloTileIndex, missile, planetIndex);
+        if (TryInterceptMissile(sourceOwner, siloTileIndex, targetTileIndex, planetIndex, missile)) return;
+        StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, planetIndex));
+    }
+
+
+    // ─── Interception Helpers ───────────────────────────────────────────────
+    private bool TryInterceptMissile(Civilization sourceOwner, int sourceTile, int targetTile, int planetIndex, MissileData missile)
+    {
+        if (missile == null || !missile.canBeIntercepted) return false;
+
+        CombatUnit defender = FindBestMissileInterceptor(sourceOwner, targetTile, planetIndex, missile);
+        if (defender == null || defender.data == null) return false;
+
+        bool hit = RollMissileDefensiveFire(defender, missile);
+        int damage = 0;
+        bool destroyed = false;
+        if (hit)
+        {
+            int configuredDamage = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
+            damage = Mathf.Max(1, configuredDamage);
+            destroyed = damage >= Mathf.Max(1, missile.interceptionHitPoints);
+        }
+
+        defender.TryConsumeAttackPoint();
+        OnMissileDefended?.Invoke(sourceTile, targetTile, missile, defender, damage, destroyed, planetIndex);
+
+        if (destroyed)
+        {
+            OnMissileIntercepted?.Invoke(sourceTile, targetTile, missile, defender, planetIndex);
+            if ((defender.owner != null && defender.owner.isPlayerControlled) || (sourceOwner != null && sourceOwner.isPlayerControlled))
+                UIManager.Instance?.ShowNotification($"{defender.UnitName} destroyed incoming missile {missile.missileName} for {damage} damage.");
+            return true;
+        }
+
+        if ((defender.owner != null && defender.owner.isPlayerControlled) || (sourceOwner != null && sourceOwner.isPlayerControlled))
+        {
+            string outcome = hit ? $"damaged incoming missile {missile.missileName} for {damage} damage" : $"missed incoming missile {missile.missileName}";
+            UIManager.Instance?.ShowNotification($"{defender.UnitName} {outcome}; missile continues toward target.");
+        }
+        return false;
+    }
+
+    private static CombatUnit FindBestMissileInterceptor(Civilization sourceOwner, int targetTile, int planetIndex, MissileData missile)
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        CombatUnit best = null;
+        float bestScore = float.MinValue;
+        foreach (CombatUnit candidate in UnitRegistry.GetCombatUnits())
+        {
+            if (!AircraftMissionManager.IsValidAntiAir(candidate) || candidate.planetIndex != planetIndex) continue;
+            if (!AircraftMissionManager.IsHostile(candidate.owner, sourceOwner)) continue;
+            if (candidate.data.antiAirRange < missile.minimumInterceptorRange) continue;
+
+            int distance = Mathf.RoundToInt(ts.GetTileDistance(candidate.currentTileIndex, targetTile));
+            if (distance > candidate.data.antiAirRange) continue;
+
+            float score = candidate.CurrentAirAttack + candidate.CurrentDefense - distance;
+            if (score > bestScore) { best = candidate; bestScore = score; }
+        }
+        return best;
+    }
+
+    private static bool RollMissileDefensiveFire(CombatUnit defender, MissileData missile)
+    {
+        float baseChance = defender?.data != null ? defender.data.antiAirInterceptionChance : 0f;
+        float statBonus = defender != null ? Mathf.Clamp01(defender.CurrentAirAttack / 100f) * 0.35f : 0f;
+        float hitChance = Mathf.Clamp01(baseChance + statBonus - missile.interceptionEvasion);
+        return UnityEngine.Random.value <= hitChance;
+    }
+
+    private static Civilization ResolveTileOwner(int planetIndex, int tileIndex)
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null ? ts.GetTileData(tileIndex) : null;
+        return tile != null ? tile.owner : null;
     }
 
     // ─── Flight Coroutine ────────────────────────────────────────────────────

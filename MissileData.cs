@@ -51,6 +51,17 @@ public class MissileData : ScriptableObject
     [Range(0f, 1f)]
     public float pollutionYieldPenalty = 0.5f;
 
+
+    [Header("Interception & Defense")]
+    [Tooltip("If true, gated anti-air / missile-defense units can fire on this missile before impact.")]
+    public bool canBeIntercepted = true;
+    [Tooltip("Damage this missile can absorb before it is destroyed by defensive fire.")]
+    [Min(1)] public int interceptionHitPoints = 50;
+    [Tooltip("Flat penalty applied to defender hit chance. Higher values make this missile harder to hit.")]
+    [Range(0f, 1f)] public float interceptionEvasion = 0f;
+    [Tooltip("Minimum anti-air range needed to engage this missile. Use 0 to allow any gated anti-air defender in range.")]
+    public int minimumInterceptorRange = 0;
+
     [Header("Animation")]
     [Tooltip("How long the missile takes to travel from launch point to impact (seconds).")]
     public float flightDuration = 3f;
