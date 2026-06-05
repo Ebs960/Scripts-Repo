@@ -59,7 +59,7 @@ MonoBehaviour:
   airMissionDamage: 0
   cityAirMissionDamage: 0
   interceptionRange: 3
-  antiAirRange: 2
+  antiAirRange: 0
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
   antiAirDamage: 0

@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Stealth Fighter
+  m_Name: Drone Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Stealth Fighter
-  unitType: 28
+  unitName: Drone Bomber
+  unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 1d5cba9d7f0f31749a71dd3e68de34a6, type: 3}
+  _iconDirect: {fileID: 21300000, guid: ebc70e8852b39a045b0188ae2bb8874d, type: 3}
   addressableAddress: 
   requiresAirport: 1
   requiresSpaceport: 0
@@ -51,25 +51,25 @@ MonoBehaviour:
   canLaunchAirMissions: 1
   canAirStrike: 1
   canBombardCitiesFromAir: 1
-  canReconAirMission: 1
-  canAirPatrol: 1
-  canInterceptAirMissions: 1
+  canReconAirMission: 0
+  canAirPatrol: 0
+  canInterceptAirMissions: 0
   canProvideAntiAir: 0
-  airMissionRange: 25
-  airMissionDamage: 55
-  cityAirMissionDamage: 35
-  interceptionRange: 20
+  airMissionRange: 35
+  airMissionDamage: 80
+  cityAirMissionDamage: 150
+  interceptionRange: 3
   antiAirRange: 2
-  interceptionChance: 0.85
+  interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
-  antiAirDamage: 90
+  antiAirDamage: 60
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 1
   canAttackSpace: 0
   canAttackNavalSurface: 1
   canAttackUnderwater: 0
-  canCounterAttack: 0
+  canCounterAttack: 1
   bonusesAgainstCategories: []
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
@@ -77,8 +77,8 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 1700
-  goldCost: 2500
+  productionCost: 2600
+  goldCost: 4700
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
@@ -86,15 +86,15 @@ MonoBehaviour:
   baseAttack: 0
   baseMeleeAttack: 0
   baseRangedAttack: 0
-  baseCityAttack: 35
-  baseGroundAttack: 55
-  baseNavalAttack: 55
+  baseCityAttack: 150
+  baseGroundAttack: 80
+  baseNavalAttack: 80
   baseUnderwaterAttack: 0
-  baseAirAttack: 90
+  baseAirAttack: 60
   baseSpaceAttack: 0
   baseMovePoints: 1
-  baseDefense: 35
-  baseHealth: 150
+  baseDefense: 70
+  baseHealth: 210
   baseRange: 2
   sightRange: 3
   xpToNextLevel: 
@@ -124,9 +124,9 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 5
-  soldierCount: 3
-  formationType: 1
+  foodConsumptionPerTurn: 10
+  soldierCount: 1
+  formationType: 0
   soldierVariants: []
   formationSpacing: 0.5
   civVisualOverrides: []
