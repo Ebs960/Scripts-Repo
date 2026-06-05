@@ -763,6 +763,13 @@ public class GameManager : MonoBehaviour
             reinforcementManagerGO.AddComponent<UnitReinforcementManager>();
         }
 
+        // Create SpaceMissionManager if it doesn't exist so orbital combat/interception APIs are usable.
+        if (SpaceMissionManager.Instance == null)
+        {
+            GameObject spaceMissionManagerGO = new GameObject("SpaceMissionManager");
+            spaceMissionManagerGO.AddComponent<SpaceMissionManager>();
+        }
+
         diplomacyManager = foundManagers.diplomacyManager;
 
         // Find or create TurnManager
