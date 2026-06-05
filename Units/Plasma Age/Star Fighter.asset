@@ -65,7 +65,6 @@ MonoBehaviour:
   canAirStrike: 1
   canBombardCitiesFromAir: 1
   canReconAirMission: 1
-  canAirPatrol: 1
   canInterceptAirMissions: 1
   canProvideAntiAir: 0
   airMissionRange: 40
@@ -78,7 +77,6 @@ MonoBehaviour:
   canSpaceStrike: 1
   canBombardCitiesFromSpace: 1
   canReconSpaceMission: 1
-  canSpacePatrol: 1
   canInterceptSpaceMissions: 1
   canProvideAntiSpace: 0
   spaceMissionRange: 0

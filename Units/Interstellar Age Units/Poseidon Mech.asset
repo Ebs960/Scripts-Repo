@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Mega Space Battleship
+  m_Name: Poseidon Mech
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Mega Space Battleship
-  unitType: 8
+  unitName: Poseidon Mech
+  unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: aaba81057e184914d88a6ab2eb5592d8, type: 3}
+  _iconDirect: {fileID: 21300000, guid: 9cfa9fe0e8fea2f4ba63ca509a937d97, type: 3}
   addressableAddress: 
   requiresAirport: 0
-  requiresSpaceport: 1
-  nativeLayer: 0
-  allowedLayers: 8
-  spawnLayers: -1
+  requiresSpaceport: 0
+  nativeLayer: 1
+  allowedLayers: 2
+  spawnLayers: 2
   canTransitionSurfaceUnderwater: 0
-  canTransitionSurfaceAtmosphere: 1
+  canTransitionSurfaceAtmosphere: 0
   canAirJump: 0
   airJumpRange: 0
   airJumpConsumesAction: 1
@@ -45,79 +45,114 @@ MonoBehaviour:
   travelCapability: 2
   spaceAUPerTurn: 0
   spaceSpeedMultiplier: 1
-  orbitEntryCost: 1
-  canEnterOrbit: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
   orbitExitCost: 1
   orbitMovementCost: 1
-  requiresSpaceportToLand: 1
-  canBombardSurface: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
   orbitVisionBonus: 3
   isTransport: 0
   transportCapacity: 3
   canTransportCombatUnits: 0
   canBaseAircraft: 0
   canBaseSpaceships: 0
-  canTravelToMoon: 1
+  canTravelToMoon: 0
   canStoreMissiles: 0
-  maxMissileStorage: 1
+  maxMissileStorage: 0
   allowedMissileTypes: []
   canLaunchAirMissions: 0
   canAirStrike: 0
   canBombardCitiesFromAir: 0
   canReconAirMission: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 1
-  airMissionRange: 50
-  interceptionRange: 25
-  antiAirRange: 10
-  interceptionChance: 0.9
-  antiAirInterceptionChance: 0.8
-  antiAirDamage: 200
-  canLaunchSpaceMissions: 1
-  canSpaceStrike: 1
-  canBombardCitiesFromSpace: 1
+  canProvideAntiAir: 0
+  airMissionRange: 0
+  interceptionRange: 3
+  antiAirRange: 2
+  interceptionChance: 0.45
+  antiAirInterceptionChance: 1
+  antiAirDamage: 180
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
   canInterceptSpaceMissions: 0
-  canProvideAntiSpace: 1
-  spaceMissionRange: 50
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
   spaceInterceptionRange: 3
-  antiSpaceRange: 10
-  spaceInterceptionChance: 0.897
-  antiSpaceInterceptionChance: 0.801
-  antiSpaceDamage: 250
-  requiresCoastalCity: 0
-  requiresHarbor: 0
-  canAttackAir: 1
-  canAttackSpace: 1
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 1
+  antiSpaceDamage: 180
+  requiresCoastalCity: 1
+  requiresHarbor: 1
+  canAttackAir: 0
+  canAttackSpace: 0
   canAttackNavalSurface: 1
-  canAttackUnderwater: 0
+  canAttackUnderwater: 1
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 20
+    attackBonus: 0
+    attackPercent: 0.1
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 17
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.4
+  - targetCategory: 15
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.4
+  - targetCategory: 29
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.4
+  - targetCategory: 28
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.4
+  - targetCategory: 36
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.4
+  - targetCategory: 13
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.4
   bonusesAgainstUnits: []
   takesWeatherDamage: 0
-  immuneToMosquitoes: 0
-  immuneToLava: 0
+  immuneToMosquitoes: 1
+  immuneToLava: 1
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 7500
-  goldCost: 10000
+  productionCost: 7000
+  goldCost: 11000
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 0
-  baseRangedAttack: 250
-  baseCityAttack: 120
-  baseGroundAttack: 120
-  baseNavalAttack: 120
-  baseUnderwaterAttack: 0
-  baseAirAttack: 250
-  baseSpaceAttack: 250
-  baseMovePoints: 14
-  baseDefense: 140
-  baseHealth: 370
-  baseRange: 4
+  baseMeleeAttack: 180
+  baseRangedAttack: 180
+  baseCityAttack: 100
+  baseGroundAttack: 0
+  baseNavalAttack: 180
+  baseUnderwaterAttack: 180
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 4
+  baseDefense: 80
+  baseHealth: 250
+  baseRange: 2
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []

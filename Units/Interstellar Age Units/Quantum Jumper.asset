@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Mega Space Battleship
+  m_Name: Quantum Jumper
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Mega Space Battleship
-  unitType: 8
+  unitName: Quantum Jumper
+  unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: aaba81057e184914d88a6ab2eb5592d8, type: 3}
+  _iconDirect: {fileID: 21300000, guid: b8765ac5820c8cb41927eaab47d0e2f0, type: 3}
   addressableAddress: 
   requiresAirport: 0
-  requiresSpaceport: 1
+  requiresSpaceport: 0
   nativeLayer: 0
-  allowedLayers: 8
-  spawnLayers: -1
+  allowedLayers: 0
+  spawnLayers: 0
   canTransitionSurfaceUnderwater: 0
-  canTransitionSurfaceAtmosphere: 1
-  canAirJump: 0
-  airJumpRange: 0
-  airJumpConsumesAction: 1
-  airJumpDropHeight: 12
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 1
+  airJumpRange: 21
+  airJumpConsumesAction: 0
+  airJumpDropHeight: 41.3
   airJumpAnimationDuration: 0.8
   airJumpLaunchVFX: {fileID: 0}
   airJumpLandingVFX: {fileID: 0}
@@ -45,79 +45,99 @@ MonoBehaviour:
   travelCapability: 2
   spaceAUPerTurn: 0
   spaceSpeedMultiplier: 1
-  orbitEntryCost: 1
-  canEnterOrbit: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
   orbitExitCost: 1
   orbitMovementCost: 1
-  requiresSpaceportToLand: 1
-  canBombardSurface: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
   orbitVisionBonus: 3
   isTransport: 0
   transportCapacity: 3
   canTransportCombatUnits: 0
   canBaseAircraft: 0
   canBaseSpaceships: 0
-  canTravelToMoon: 1
+  canTravelToMoon: 0
   canStoreMissiles: 0
-  maxMissileStorage: 1
+  maxMissileStorage: 0
   allowedMissileTypes: []
   canLaunchAirMissions: 0
   canAirStrike: 0
   canBombardCitiesFromAir: 0
   canReconAirMission: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 1
-  airMissionRange: 50
-  interceptionRange: 25
-  antiAirRange: 10
-  interceptionChance: 0.9
-  antiAirInterceptionChance: 0.8
-  antiAirDamage: 200
-  canLaunchSpaceMissions: 1
-  canSpaceStrike: 1
-  canBombardCitiesFromSpace: 1
+  canProvideAntiAir: 0
+  airMissionRange: 0
+  interceptionRange: 3
+  antiAirRange: 2
+  interceptionChance: 0.45
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
   canInterceptSpaceMissions: 0
-  canProvideAntiSpace: 1
-  spaceMissionRange: 50
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
   spaceInterceptionRange: 3
-  antiSpaceRange: 10
-  spaceInterceptionChance: 0.897
-  antiSpaceInterceptionChance: 0.801
-  antiSpaceDamage: 250
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
-  canAttackAir: 1
-  canAttackSpace: 1
-  canAttackNavalSurface: 1
+  canAttackAir: 0
+  canAttackSpace: 0
+  canAttackNavalSurface: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 16
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.2
+  - targetCategory: 28
+    attackBonus: 0
+    attackPercent: 0
+    defenseBonus: 0
+    defensePercent: 0.3
+  - targetCategory: 29
+    attackBonus: 0
+    attackPercent: 0
+    defenseBonus: 0
+    defensePercent: 0.3
+  - targetCategory: 30
+    attackBonus: 0
+    attackPercent: 0
+    defenseBonus: 0
+    defensePercent: 0.3
   bonusesAgainstUnits: []
   takesWeatherDamage: 0
-  immuneToMosquitoes: 0
-  immuneToLava: 0
+  immuneToMosquitoes: 1
+  immuneToLava: 1
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 7500
-  goldCost: 10000
+  productionCost: 3500
+  goldCost: 5500
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 0
-  baseRangedAttack: 250
-  baseCityAttack: 120
-  baseGroundAttack: 120
-  baseNavalAttack: 120
+  baseMeleeAttack: 130
+  baseRangedAttack: 150
+  baseCityAttack: 60
+  baseGroundAttack: 0
+  baseNavalAttack: 0
   baseUnderwaterAttack: 0
-  baseAirAttack: 250
-  baseSpaceAttack: 250
-  baseMovePoints: 14
-  baseDefense: 140
-  baseHealth: 370
-  baseRange: 4
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 3
+  baseDefense: 95
+  baseHealth: 210
+  baseRange: 2
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
@@ -146,8 +166,8 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 10
-  soldierCount: 1
+  foodConsumptionPerTurn: 8
+  soldierCount: 5
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5

@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Mega Space Battleship
+  m_Name: FTL Star Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Mega Space Battleship
-  unitType: 8
+  unitName: FTL Star Fighter
+  unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: aaba81057e184914d88a6ab2eb5592d8, type: 3}
+  _iconDirect: {fileID: 21300000, guid: af1e3d47e86a69c4493db8a7b21c077e, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 1
@@ -45,7 +45,7 @@ MonoBehaviour:
   travelCapability: 2
   spaceAUPerTurn: 0
   spaceSpeedMultiplier: 1
-  orbitEntryCost: 1
+  orbitEntryCost: 2
   canEnterOrbit: 1
   orbitExitCost: 1
   orbitMovementCost: 1
@@ -57,34 +57,34 @@ MonoBehaviour:
   canTransportCombatUnits: 0
   canBaseAircraft: 0
   canBaseSpaceships: 0
-  canTravelToMoon: 1
+  canTravelToMoon: 0
   canStoreMissiles: 0
-  maxMissileStorage: 1
+  maxMissileStorage: 0
   allowedMissileTypes: []
-  canLaunchAirMissions: 0
-  canAirStrike: 0
-  canBombardCitiesFromAir: 0
-  canReconAirMission: 0
-  canInterceptAirMissions: 0
-  canProvideAntiAir: 1
-  airMissionRange: 50
+  canLaunchAirMissions: 1
+  canAirStrike: 1
+  canBombardCitiesFromAir: 1
+  canReconAirMission: 1
+  canInterceptAirMissions: 1
+  canProvideAntiAir: 0
+  airMissionRange: 40
   interceptionRange: 25
-  antiAirRange: 10
-  interceptionChance: 0.9
-  antiAirInterceptionChance: 0.8
-  antiAirDamage: 200
+  antiAirRange: 2
+  interceptionChance: 0.85
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 180
   canLaunchSpaceMissions: 1
   canSpaceStrike: 1
   canBombardCitiesFromSpace: 1
-  canReconSpaceMission: 0
-  canInterceptSpaceMissions: 0
-  canProvideAntiSpace: 1
+  canReconSpaceMission: 1
+  canInterceptSpaceMissions: 1
+  canProvideAntiSpace: 0
   spaceMissionRange: 50
-  spaceInterceptionRange: 3
-  antiSpaceRange: 10
-  spaceInterceptionChance: 0.897
-  antiSpaceInterceptionChance: 0.801
-  antiSpaceDamage: 250
+  spaceInterceptionRange: 25
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.85
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 180
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 1
@@ -99,25 +99,25 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 7500
-  goldCost: 10000
+  productionCost: 3500
+  goldCost: 4500
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
   baseMeleeAttack: 0
-  baseRangedAttack: 250
-  baseCityAttack: 120
-  baseGroundAttack: 120
-  baseNavalAttack: 120
+  baseRangedAttack: 0
+  baseCityAttack: 100
+  baseGroundAttack: 100
+  baseNavalAttack: 100
   baseUnderwaterAttack: 0
-  baseAirAttack: 250
-  baseSpaceAttack: 250
-  baseMovePoints: 14
-  baseDefense: 140
-  baseHealth: 370
-  baseRange: 4
+  baseAirAttack: 180
+  baseSpaceAttack: 180
+  baseMovePoints: 5
+  baseDefense: 85
+  baseHealth: 215
+  baseRange: 2
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
@@ -146,9 +146,9 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 10
-  soldierCount: 1
-  formationType: 0
+  foodConsumptionPerTurn: 5
+  soldierCount: 3
+  formationType: 1
   soldierVariants: []
   formationSpacing: 0.5
   civVisualOverrides: []
