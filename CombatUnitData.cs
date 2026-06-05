@@ -177,6 +177,26 @@ public class CombatUnitData : ScriptableObject
     [Header("Category & Deployment")]
     public bool requiresAirport;
     public bool requiresSpaceport;
+
+    [Header("Air Jump Deployment")]
+    [Tooltip("Allow this combat unit to redeploy by air drop to another surface tile on the same planet.")]
+    public bool canAirJump = false;
+    [Tooltip("Maximum tile distance for air-jump/paratrooper deployment.")]
+    [Range(0, 50)] public int airJumpRange = 0;
+    [Tooltip("Whether air-jump deployment consumes this unit's action for the turn.")]
+    public bool airJumpConsumesAction = true;
+    [Tooltip("Vertical height used for the air-drop animation arc.")]
+    [Range(0f, 50f)] public float airJumpDropHeight = 12f;
+    [Tooltip("Seconds used for the air-drop animation.")]
+    [Range(0f, 5f)] public float airJumpAnimationDuration = 0.8f;
+    [Tooltip("Optional visual effect spawned at the pickup/start tile when air jump begins.")]
+    public GameObject airJumpLaunchVFX;
+    [Tooltip("Optional visual effect spawned at the destination tile when the unit lands.")]
+    public GameObject airJumpLandingVFX;
+
+    [Header("Regeneration")]
+    [Tooltip("Guaranteed healing at the start of this unit's turn, as a percent of max HP. This applies even if the unit moved or attacked last turn.")]
+    [Range(0f, 100f)] public float guaranteedRegenPercentPerTurn = 0f;
     [Header("Animal Behavior")]
     [Tooltip("Defines how this animal behaves towards civilization units (only applies to Animal category units)")]
     public AnimalBehaviorType animalBehavior = AnimalBehaviorType.Neutral;
@@ -281,6 +301,34 @@ public class CombatUnitData : ScriptableObject
     [Range(0f, 1f)] public float antiAirInterceptionChance = 0.25f;
     [Tooltip("Flat damage dealt by passive anti-air. If 0, CurrentAirAttack is used.")]
     public int antiAirDamage = 0;
+
+    [Header("Space Missions & Space Defense")]
+    [Tooltip("Whether this unit can launch space/orbital missions through SpaceMissionManager. Space-category units and units in orbit are also accepted by default.")]
+    public bool canLaunchSpaceMissions = false;
+    [Tooltip("Allow this unit to attack units on a target tile from space/orbit.")]
+    public bool canSpaceStrike = false;
+    [Tooltip("Allow this unit to bombard city defenses from space/orbit.")]
+    public bool canBombardCitiesFromSpace = false;
+    [Tooltip("Allow this unit to perform space recon sweeps without dealing damage.")]
+    public bool canReconSpaceMission = false;
+    [Tooltip("Allow this unit to establish a space patrol and use interceptor defensive fire against hostile space missions.")]
+    public bool canSpacePatrol = false;
+    [Tooltip("Allow this unit to scramble and fire on hostile space missions within spaceInterceptionRange.")]
+    public bool canInterceptSpaceMissions = false;
+    [Tooltip("Allow this unit to provide gated passive anti-space / orbital-defense fire within antiSpaceRange.")]
+    public bool canProvideAntiSpace = false;
+    [Tooltip("Maximum tile distance for launched space missions. If 0, CurrentRange is used as a fallback.")]
+    [Range(0, 50)] public int spaceMissionRange = 0;
+    [Tooltip("Maximum tile distance at which this unit can intercept hostile space missions.")]
+    [Range(0, 25)] public int spaceInterceptionRange = 3;
+    [Tooltip("Maximum tile distance at which this unit provides anti-space/orbital defense.")]
+    [Range(0, 25)] public int antiSpaceRange = 2;
+    [Tooltip("Base chance for space interceptor defensive fire to hit before combat modifiers. A hit damages the spacecraft; only lethal damage stops the mission.")]
+    [Range(0f, 1f)] public float spaceInterceptionChance = 0.45f;
+    [Tooltip("Base chance for local anti-space/orbital-defense fire to hit before combat modifiers. A hit damages the target; only lethal damage stops it.")]
+    [Range(0f, 1f)] public float antiSpaceInterceptionChance = 0.25f;
+    [Tooltip("Flat damage dealt by passive anti-space defense. If 0, CurrentSpaceAttack is used.")]
+    public int antiSpaceDamage = 0;
 
     [Header("Naval Requirements")]
     [Tooltip("Must control at least one coastal tile (coast, seas, ocean)")]

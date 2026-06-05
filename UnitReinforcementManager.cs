@@ -147,7 +147,9 @@ public class UnitReinforcementManager : MonoBehaviour
         if (unit == null || unit.data == null) return;
         if (unit.currentHealth >= unit.MaxHealth) return; // Already at max
         
-        // Determine reinforcement rate based on location
+        // Determine reinforcement rate based on location. Normal reinforcement is rest-based:
+        // units that moved/attacked last turn skip this location healing, while guaranteed
+        // unit regeneration below still applies.
         float reinforcementRate = 0f;
 
         if (unit.isGarrisonedInCity)
@@ -187,12 +189,14 @@ public class UnitReinforcementManager : MonoBehaviour
             if (ts2 != null) { var td = ts2.GetTileData(unit.currentTileIndex); if (td != null) cityContext = td.controllingCity; }
         }
 
-        // Apply civilization/unit-specific healing modifiers
+        // Apply civilization/unit-specific healing modifiers. Normal location reinforcement
+        // only happens when the unit rested last turn; guaranteed unit regen always applies.
         float extraPct = unit.owner != null ? unit.owner.GetUnitHealingPct(unit, cityContext) : 0f;
-        float effectiveRate = reinforcementRate * (1f + extraPct);
+        float effectiveRate = unit.actedLastTurn ? 0f : reinforcementRate * (1f + extraPct);
+        float guaranteedRate = Mathf.Max(0f, unit.data.guaranteedRegenPercentPerTurn);
 
         // Calculate healing amount (percentage of max HP)
-        int healAmount = Mathf.RoundToInt(unit.MaxHealth * (effectiveRate / 100f));
+        int healAmount = Mathf.RoundToInt(unit.MaxHealth * ((effectiveRate + guaranteedRate) / 100f));
 
         // Apply healing
         int oldHealth = unit.currentHealth;
@@ -200,7 +204,7 @@ public class UnitReinforcementManager : MonoBehaviour
         
         if (unit.currentHealth > oldHealth)
         {
-}
+        }
     }
     
     /// <summary>

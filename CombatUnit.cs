@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -115,6 +116,12 @@ public class CombatUnit : BaseUnit
     /// Prevents further movement or attacks this turn.
     /// </summary>
     public bool hasActedThisTurn { get; private set; }
+
+    /// <summary>Whether this unit performed any movement/attack/action during its previous turn.</summary>
+    public bool actedLastTurn { get; private set; }
+
+    /// <summary>Tracks any action this turn for rest-based reinforcement without changing turn-consuming action semantics.</summary>
+    public bool performedActionThisTurn { get; private set; }
     
     /// <summary>
     /// Whether this unit is currently stationed in a friendly city.
@@ -145,6 +152,139 @@ public class CombatUnit : BaseUnit
     public void ClearAirPatrol()
     {
         AircraftMissionManager.Instance?.ClearPatrol(this);
+    }
+
+    /// <summary>Launches a space/orbital mission through the central space mission manager.</summary>
+    public SpaceMissionResult LaunchSpaceMission(SpaceMissionKind missionKind, int targetTileIndex)
+    {
+        if (SpaceMissionManager.Instance == null)
+        {
+            Debug.LogWarning($"[CombatUnit] Cannot launch {missionKind}: no SpaceMissionManager in scene.");
+            return SpaceMissionResult.Invalid;
+        }
+        return SpaceMissionManager.Instance.LaunchMission(this, missionKind, targetTileIndex);
+    }
+
+    /// <summary>Convenience wrapper for assigning this spacecraft/orbital unit to space patrol/interception duty.</summary>
+    public SpaceMissionResult StartSpacePatrol(int patrolAnchorTileIndex = -1)
+    {
+        int anchor = patrolAnchorTileIndex >= 0 ? patrolAnchorTileIndex : currentTileIndex;
+        return LaunchSpaceMission(SpaceMissionKind.Patrol, anchor);
+    }
+
+    /// <summary>Removes this spacecraft/orbital unit from the active space patrol/interception screen.</summary>
+    public void ClearSpacePatrol()
+    {
+        SpaceMissionManager.Instance?.ClearPatrol(this);
+    }
+
+    /// <summary>True when this unit can perform air-jump/paratrooper deployment.</summary>
+    public bool CanAirJump => data != null && data.canAirJump && data.airJumpRange > 0;
+
+    /// <summary>Validate an air-jump/paratrooper deployment target.</summary>
+    public bool CanAirJumpTo(int targetTileIndex, out string reason)
+    {
+        reason = null;
+        if (data == null) { reason = "missing unit data"; return false; }
+        if (!data.canAirJump) { reason = $"{UnitName} cannot air jump"; return false; }
+        if (targetTileIndex < 0) { reason = "invalid target tile"; return false; }
+        if (targetTileIndex == currentTileIndex) { reason = "target tile is the current tile"; return false; }
+        if (IsTransported || isStored) { reason = $"{UnitName} is currently loaded or stored"; return false; }
+        if (currentLayer != TileLayer.Surface) { reason = $"{UnitName} must start on the surface"; return false; }
+        if (data.airJumpConsumesAction && hasActedThisTurn) { reason = $"{UnitName} has already acted this turn"; return false; }
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) { reason = "no tile system"; return false; }
+        var tile = ts.GetTileData(targetTileIndex);
+        if (tile == null || !tile.isPassable) { reason = "target tile is not passable"; return false; }
+        if (!tile.isLand) { reason = "air jump must land on land"; return false; }
+
+        int range = Mathf.Max(0, data.airJumpRange);
+        int distance = Mathf.RoundToInt(ts.GetTileDistance(currentTileIndex, targetTileIndex));
+        if (distance > range) { reason = $"target is out of air-jump range ({distance}>{range})"; return false; }
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null) { reason = "no occupancy manager"; return false; }
+        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+        if (!occ.CanJoinStack(targetTileIndex, TileLayer.Surface, maxStack))
+        {
+            reason = "target tile has no available surface stack slot";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Perform an air-jump/paratrooper deployment to a target tile on the same planet.</summary>
+    public bool AirJumpTo(int targetTileIndex)
+    {
+        if (!CanAirJumpTo(targetTileIndex, out string reason))
+        {
+            Debug.LogWarning($"[CombatUnit] Air jump rejected: {reason}");
+            return false;
+        }
+
+        moveOrderPath = null;
+        moveOrderNextStep = 0;
+        try { UnitMovementController.Instance?.StopMoveForUnit(this); } catch { }
+        ClearFortify();
+        StartCoroutine(AirJumpRoutine(targetTileIndex));
+        return true;
+    }
+
+    private IEnumerator AirJumpRoutine(int targetTileIndex)
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (ts == null || occ == null) yield break;
+
+        int oldTile = currentTileIndex;
+        Vector3 start = transform.position;
+        Vector3 landing = ts.GetTileSurfacePosition(targetTileIndex);
+        float height = data != null ? data.airJumpDropHeight : 12f;
+        float duration = data != null ? Mathf.Max(0.01f, data.airJumpAnimationDuration) : 0.8f;
+
+        if (data != null && data.airJumpLaunchVFX != null)
+            Instantiate(data.airJumpLaunchVFX, start, Quaternion.identity);
+
+        UpdateWalkingState(false);
+        Vector3 apex = (start + landing) * 0.5f + Vector3.up * height;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            Vector3 a = Vector3.Lerp(start, apex, t);
+            Vector3 b = Vector3.Lerp(apex, landing, t);
+            transform.position = Vector3.Lerp(a, b, t);
+            yield return null;
+        }
+
+        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+        int newSlot = occ.TryAddToStack(targetTileIndex, TileLayer.Surface, gameObject, maxStack);
+        if (newSlot < 0)
+        {
+            Debug.LogWarning($"[CombatUnit] Air jump landing failed: tile {targetTileIndex} became occupied.");
+            PositionUnitOnSurface(oldTile);
+            yield break;
+        }
+
+        try { occ.ClearOccupantById(oldTile, currentLayer, gameObject.GetRuntimeId()); } catch { }
+        currentTileIndex = targetTileIndex;
+        currentLayer = TileLayer.Surface;
+        stackSlot = newSlot;
+        transform.position = landing;
+
+        if (data != null && data.airJumpLandingVFX != null)
+            Instantiate(data.airJumpLandingVFX, landing, Quaternion.identity);
+
+        if (data == null || data.airJumpConsumesAction)
+            ConsumeAction();
+        else
+            RecordTurnAction();
+        AddFatigue(6f);
+        TriggerMovementComplete();
+        try { ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, this); } catch { }
     }
 
     /// <summary>
@@ -2022,6 +2162,8 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public override void ResetForNewTurn()
     {
+        actedLastTurn = performedActionThisTurn || hasActedThisTurn;
+        performedActionThisTurn = false;
         hasActedThisTurn = false;
 
         // Base resets (move points, AP, winter penalties)
@@ -2078,9 +2220,21 @@ public class CombatUnit : BaseUnit
     /// Mark this unit as having consumed its action for the turn.
     /// Called by orbit entry/exit and similar turn-consuming actions.
     /// </summary>
+    public void RecordTurnAction()
+    {
+        performedActionThisTurn = true;
+    }
+
     public void ConsumeAction()
     {
+        RecordTurnAction();
         hasActedThisTurn = true;
+    }
+
+    public override void DeductMovePoints(int amount)
+    {
+        base.DeductMovePoints(amount);
+        if (amount > 0) RecordTurnAction();
     }
 
     /// <summary>

@@ -229,10 +229,11 @@ public abstract class BaseUnit : MonoBehaviour
         int oldAttackPoints = currentAttackPoints;
         if (currentAttackPoints <= 0) return false;
         currentAttackPoints = Mathf.Max(0, currentAttackPoints - 1);
-        if (currentAttackPoints <= 0)
+        var cu = this as CombatUnit;
+        if (cu != null)
         {
-            var cu = this as CombatUnit;
-            if (cu != null) cu.ConsumeAction();
+            cu.RecordTurnAction();
+            if (currentAttackPoints <= 0) cu.ConsumeAction();
         }
         try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
         return true;
