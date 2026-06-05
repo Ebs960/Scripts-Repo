@@ -582,11 +582,17 @@ public static class BiomeHelper {
         int baseCost = GetMovementCost(tile.biome);
         bool canTraverseLava = unit != null && tile.biome == Biome.Lava && CanUnitTraverseLava(unit);
 
+        if (unit is BaseUnit layerUnit)
+        {
+            if (!UnitLayerRules.CanUnitUseTileOnCurrentLayer(layerUnit, tile)) return 99;
+            if (layerUnit.currentLayer == TileLayer.Orbit || layerUnit.currentLayer == TileLayer.Atmosphere) return 1;
+        }
+
         if (unit != null)
         {
-            if (unit is WorkerUnit)
+            if (unit is WorkerUnit workerUnit)
             {
-                if (!tile.isLand && !canTraverseLava) return 99;
+                if (workerUnit.currentLayer != TileLayer.Underwater && !tile.isLand && !canTraverseLava) return 99;
             }
             else if (unit is CombatUnit combatUnit)
             {
@@ -602,6 +608,7 @@ public static class BiomeHelper {
                             case CombatCategory.Boat:
                             case CombatCategory.Submarine:
                             case CombatCategory.SeaCrawler:
+                            case CombatCategory.SeaPlane:
                                 break;
                             default:
                                 return 99;
