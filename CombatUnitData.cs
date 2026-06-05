@@ -46,7 +46,9 @@ public enum CombatCategory
     // Anti-air specialization
     AntiAircraft = 34,
 
-    Helicopter = 35
+    Helicopter = 35,
+    // Amphibious aircraft that can use air systems while being allowed to base/spawn from water-surface tiles.
+    SeaPlane = 36
 }
 
 public enum CombatTargetDomain
@@ -178,6 +180,18 @@ public class CombatUnitData : ScriptableObject
     public bool requiresAirport;
     public bool requiresSpaceport;
 
+    [Header("Layer Operation")]
+    [Tooltip("Usual gameplay layer for this unit. If layer masks below are left as None, legacy category-based defaults are inferred.")]
+    public TileLayer nativeLayer = TileLayer.Surface;
+    [Tooltip("Layers this unit is allowed to occupy. None means infer from unit category for backwards compatibility.")]
+    public UnitLayerMask allowedLayers = UnitLayerMask.None;
+    [Tooltip("Layers this unit may be born/placed on. None means infer from unit category and tile type.")]
+    public UnitLayerMask spawnLayers = UnitLayerMask.None;
+    [Tooltip("Allow explicit layer transitions between surface water and underwater, e.g. submarines diving/surfacing.")]
+    public bool canTransitionSurfaceUnderwater = false;
+    [Tooltip("Allow explicit layer transitions between surface and atmosphere, e.g. aircraft launching/landing.")]
+    public bool canTransitionSurfaceAtmosphere = false;
+
     [Header("Air Jump Deployment")]
     [Tooltip("Allow this combat unit to redeploy by air drop to another surface tile on the same planet.")]
     public bool canAirJump = false;
@@ -257,7 +271,7 @@ public class CombatUnitData : ScriptableObject
     public int transportCapacity = 3;
     [Tooltip("Whether this transport can carry regular land/naval combat units. Disable this for pure aircraft or spaceship carriers.")]
     public bool canTransportCombatUnits = true;
-    [Tooltip("Whether this transport can act as an aircraft carrier and base Aircraft/Fighter/Bomber/GroundAttack units.")]
+    [Tooltip("Whether this transport can act as an aircraft carrier and base Aircraft/Fighter/Bomber/GroundAttack/Helicopter/SeaPlane units.")]
     public bool canBaseAircraft = false;
     [Tooltip("Whether this transport can act as a spacecraft carrier and base Spaceship units.")]
     public bool canBaseSpaceships = false;
@@ -337,7 +351,7 @@ public class CombatUnitData : ScriptableObject
     public bool requiresHarbor = false;
 
     [Header("Combat System")]
-    [Tooltip("Whether this unit can attack air units (Aircraft/Fighter/Bomber/GroundAttack)")]
+    [Tooltip("Whether this unit can attack air units (Aircraft/Fighter/Bomber/GroundAttack/Helicopter/SeaPlane)")]
     public bool canAttackAir = false;
     [Tooltip("Whether this unit can attack space units (Spaceship or units in Orbit)")]
     public bool canAttackSpace = false;
@@ -411,14 +425,83 @@ public class CombatUnitData : ScriptableObject
     }
 
     /// <summary>
-    /// Returns true if the given category is an air-type (aircraft/fighter/bomber/ground-attack)
+    /// Returns true if the given category is an air-type (aircraft/fighter/bomber/ground-attack/helicopter/sea-plane)
     /// </summary>
     public static bool IsAirCategory(CombatCategory cat)
     {
         return cat == CombatCategory.Aircraft
                || cat == CombatCategory.Fighter
                || cat == CombatCategory.Bomber
-               || cat == CombatCategory.GroundAttack;
+               || cat == CombatCategory.GroundAttack
+               || cat == CombatCategory.Helicopter
+               || cat == CombatCategory.SeaPlane;
+    }
+
+    public static UnitLayerMask GetDefaultAllowedLayersForCategory(CombatCategory cat)
+    {
+        if (cat == CombatCategory.Submarine)
+            return UnitLayerMask.Surface | UnitLayerMask.Underwater;
+        if (cat == CombatCategory.SeaCrawler)
+            return UnitLayerMask.Underwater;
+        if (cat == CombatCategory.SeaPlane)
+            return UnitLayerMask.Surface | UnitLayerMask.Atmosphere;
+        if (IsAirCategory(cat))
+            return UnitLayerMask.Atmosphere;
+        if (IsSpaceCategory(cat))
+            return UnitLayerMask.Surface | UnitLayerMask.Orbit;
+        return UnitLayerMask.Surface;
+    }
+
+    public static UnitLayerMask GetDefaultSpawnLayersForCategory(CombatCategory cat)
+    {
+        if (cat == CombatCategory.Submarine || cat == CombatCategory.SeaCrawler)
+            return UnitLayerMask.Underwater;
+        if (cat == CombatCategory.SeaPlane)
+            return UnitLayerMask.Surface;
+        if (IsAirCategory(cat))
+            return UnitLayerMask.Atmosphere;
+        if (IsSpaceCategory(cat))
+            return UnitLayerMask.Surface | UnitLayerMask.Orbit;
+        return UnitLayerMask.Surface;
+    }
+
+    public static TileLayer GetDefaultNativeLayerForCategory(CombatCategory cat)
+    {
+        if (cat == CombatCategory.Submarine || cat == CombatCategory.SeaCrawler)
+            return TileLayer.Underwater;
+        if (IsAirCategory(cat))
+            return TileLayer.Atmosphere;
+        if (IsSpaceCategory(cat))
+            return TileLayer.Orbit;
+        return TileLayer.Surface;
+    }
+
+    public UnitLayerMask EffectiveAllowedLayers => allowedLayers != UnitLayerMask.None ? allowedLayers : GetDefaultAllowedLayersForCategory(unitType);
+    public UnitLayerMask EffectiveSpawnLayers => spawnLayers != UnitLayerMask.None ? spawnLayers : GetDefaultSpawnLayersForCategory(unitType);
+    public TileLayer EffectiveNativeLayer
+    {
+        get
+        {
+            if (allowedLayers != UnitLayerMask.None || spawnLayers != UnitLayerMask.None)
+                return nativeLayer;
+            return GetDefaultNativeLayerForCategory(unitType);
+        }
+    }
+
+    public bool CanOccupyLayer(TileLayer layer) => LayerConversion.MaskContains(EffectiveAllowedLayers, layer);
+    public bool CanSpawnOnLayer(TileLayer layer) => LayerConversion.MaskContains(EffectiveSpawnLayers, layer) && CanOccupyLayer(layer);
+
+    public bool CanTransitionBetweenLayers(TileLayer from, TileLayer to)
+    {
+        if (from == to) return CanOccupyLayer(from);
+        if (!CanOccupyLayer(from) || !CanOccupyLayer(to)) return false;
+        if ((from == TileLayer.Surface && to == TileLayer.Underwater) || (from == TileLayer.Underwater && to == TileLayer.Surface))
+            return canTransitionSurfaceUnderwater || unitType == CombatCategory.Submarine;
+        if ((from == TileLayer.Surface && to == TileLayer.Atmosphere) || (from == TileLayer.Atmosphere && to == TileLayer.Surface))
+            return canTransitionSurfaceAtmosphere || IsAirCategory(unitType);
+        if ((from == TileLayer.Surface && to == TileLayer.Orbit) || (from == TileLayer.Orbit && to == TileLayer.Surface))
+            return canEnterOrbit || IsSpaceCategory(unitType);
+        return false;
     }
 
     /// <summary>

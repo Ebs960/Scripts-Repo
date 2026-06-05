@@ -1407,6 +1407,8 @@ if (UIManager.Instance != null)
         {
             unit.currentTileIndex = centerTileIndex;
         }
+        var unitTileData = TileSystem.GetForPlanet(planetIndex)?.GetTileData(unit.currentTileIndex) ?? TileSystem.Instance?.GetTileData(unit.currentTileIndex);
+        unit.currentLayer = UnitLayerRules.GetSpawnTileLayerForUnit(unit, unitTileData);
         // Register in the global unit registry, then register with occupancy manager so tile-based selection works
         try { unit.RegisterToRegistry(); } catch { }
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
@@ -1498,6 +1500,8 @@ if (UIManager.Instance != null)
                 {
                     unit.currentTileIndex = centerTileIndex;
                 }
+                var unitTileData = TileSystem.GetForPlanet(planetIndex)?.GetTileData(unit.currentTileIndex) ?? TileSystem.Instance?.GetTileData(unit.currentTileIndex);
+                unit.currentLayer = UnitLayerRules.GetSpawnTileLayerForUnit(unit, unitTileData);
                 var combatProgression = owner != null ? owner.GetNewCombatUnitProgressionBonuses(unit, this) : default;
                 unit.ApplyStartingProgression(combatProgression.experienceAdd, combatProgression.levelsAdd);
                 owner.RegisterTrainedCombatUnit(unit);
@@ -1534,6 +1538,8 @@ if (UIManager.Instance != null)
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);
                 worker.planetIndex = planetIndex;
+                var workerTileData = TileSystem.GetForPlanet(planetIndex)?.GetTileData(centerTileIndex) ?? TileSystem.Instance?.GetTileData(centerTileIndex);
+                worker.currentLayer = UnitLayerRules.GetSpawnTileLayerForUnit(worker, workerTileData);
                 var workerProgression = owner != null ? owner.GetNewWorkerUnitProgressionBonuses(worker, this) : default;
                 worker.ApplyStartingProgression(workerProgression.experienceAdd, workerProgression.levelsAdd);
                 owner.workerUnits.Add(worker);

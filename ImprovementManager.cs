@@ -314,6 +314,7 @@ public class ImprovementManager : MonoBehaviour
             case CombatCategory.TorpedoShip:
             case CombatCategory.Submarine:
             case CombatCategory.SeaCrawler:
+            case CombatCategory.SeaPlane:
                 return true;
             default:
                 return false;
@@ -336,7 +337,7 @@ public class ImprovementManager : MonoBehaviour
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
-        if (!tileData.isLand) return false;
+        if (!tileData.isLand && !unit.CanSpawnOnLayer(TileLayer.Underwater)) return false;
 
         workerJobs.Add(new WorkerJob(tileIndex, planetIndex, owner, unit));
         return true;

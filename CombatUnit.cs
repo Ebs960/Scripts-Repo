@@ -2066,6 +2066,8 @@ public class CombatUnit : BaseUnit
 
         if (grid != null)
         {
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            currentLayer = UnitLayerRules.GetSpawnTileLayerForUnit(this, ts != null ? ts.GetTileData(tileIndex) : null);
             PositionUnitOnSurface(grid, tileIndex);
             currentTileIndex = tileIndex; // Make sure to set the currentTileIndex
         }
