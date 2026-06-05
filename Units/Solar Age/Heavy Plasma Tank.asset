@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: AI Anti Aircraft Battery
+  m_Name: Heavy Plasma Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: AI Anti Aircraft Battery
-  unitType: 34
+  unitName: Heavy Plasma Tank
+  unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 399ca091c275bcd41a029dcf7a9e42f2, type: 3}
+  _iconDirect: {fileID: 21300000, guid: 2b8058cb88d339e498fc1ac1a2d4de9f, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -46,7 +46,7 @@ MonoBehaviour:
   canBaseSpaceships: 0
   canTravelToMoon: 0
   canStoreMissiles: 0
-  maxMissileStorage: 2
+  maxMissileStorage: 0
   allowedMissileTypes: []
   canLaunchAirMissions: 0
   canAirStrike: 0
@@ -54,47 +54,62 @@ MonoBehaviour:
   canReconAirMission: 0
   canAirPatrol: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 1
+  canProvideAntiAir: 0
   airMissionRange: 0
-  interceptionRange: 7
-  antiAirRange: 15
+  interceptionRange: 3
+  antiAirRange: 2
   interceptionChance: 0.45
-  antiAirInterceptionChance: 0.95
-  antiAirDamage: 140
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
-  canAttackAir: 1
-  canAttackSpace: 1
+  canAttackAir: 0
+  canAttackSpace: 0
   canAttackNavalSurface: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 14
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 15
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 16
+    attackBonus: 0
+    attackPercent: 0.32
+    defenseBonus: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 2300
-  goldCost: 3100
+  productionCost: 3900
+  goldCost: 5500
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 0
-  baseRangedAttack: 0
-  baseCityAttack: 0
+  baseMeleeAttack: 160
+  baseRangedAttack: 160
+  baseCityAttack: 70
   baseGroundAttack: 0
   baseNavalAttack: 0
   baseUnderwaterAttack: 0
-  baseAirAttack: 140
-  baseSpaceAttack: 45
-  baseMovePoints: 2
-  baseDefense: 55
-  baseHealth: 150
-  baseRange: 4
-  sightRange: 3
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 3
+  baseDefense: 100
+  baseHealth: 250
+  baseRange: 2
+  sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []
@@ -122,7 +137,7 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 5
+  foodConsumptionPerTurn: 8
   soldierCount: 1
   formationType: 0
   soldierVariants: []

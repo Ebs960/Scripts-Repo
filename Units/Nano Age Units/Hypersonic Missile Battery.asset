@@ -56,12 +56,10 @@ MonoBehaviour:
   canInterceptAirMissions: 0
   canProvideAntiAir: 1
   airMissionRange: 0
-  airMissionDamage: 0
-  cityAirMissionDamage: 0
   interceptionRange: 7
   antiAirRange: 8
   interceptionChance: 0.45
-  antiAirInterceptionChance: 0.8
+  antiAirInterceptionChance: 0.75
   antiAirDamage: 95
   requiresCoastalCity: 0
   requiresHarbor: 0
