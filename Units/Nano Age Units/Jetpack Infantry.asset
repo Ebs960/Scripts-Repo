@@ -20,6 +20,14 @@ MonoBehaviour:
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  canAirJump: 1
+  airJumpRange: 6
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 29.5
+  airJumpAnimationDuration: 1.9
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
   animalBehavior: 0
   animalMovePoints: 1
   canSpawnInOldWorld: 1
@@ -56,13 +64,24 @@ MonoBehaviour:
   canInterceptAirMissions: 0
   canProvideAntiAir: 0
   airMissionRange: 0
-  airMissionDamage: 0
-  cityAirMissionDamage: 0
   interceptionRange: 3
   antiAirRange: 2
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
   antiAirDamage: 0
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canSpacePatrol: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
+  spaceInterceptionRange: 3
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 0

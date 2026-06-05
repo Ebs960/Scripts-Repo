@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Mutant Infantry
+  m_Name: Sea Crawler
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Mutant Infantry
-  unitType: 16
+  unitName: Sea Crawler
+  unitType: 13
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 41d6394b17f4f384fbae3849c9805e65, type: 3}
+  _iconDirect: {fileID: 21300000, guid: 9fa7da6dbed4adc4684e2b8100301886, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   airJumpAnimationDuration: 0.8
   airJumpLaunchVFX: {fileID: 0}
   airJumpLandingVFX: {fileID: 0}
-  guaranteedRegenPercentPerTurn: 15
+  guaranteedRegenPercentPerTurn: 0
   animalBehavior: 0
   animalMovePoints: 1
   canSpawnInOldWorld: 1
@@ -47,9 +47,9 @@ MonoBehaviour:
   requiresSpaceportToLand: 0
   canBombardSurface: 0
   orbitVisionBonus: 3
-  isTransport: 0
-  transportCapacity: 3
-  canTransportCombatUnits: 0
+  isTransport: 1
+  transportCapacity: 4
+  canTransportCombatUnits: 1
   canBaseAircraft: 0
   canBaseSpaceships: 0
   canTravelToMoon: 0
@@ -62,13 +62,13 @@ MonoBehaviour:
   canReconAirMission: 0
   canAirPatrol: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 0
+  canProvideAntiAir: 1
   airMissionRange: 0
   interceptionRange: 3
   antiAirRange: 2
   interceptionChance: 0.45
-  antiAirInterceptionChance: 0.25
-  antiAirDamage: 0
+  antiAirInterceptionChance: 0.65
+  antiAirDamage: 90
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
   canBombardCitiesFromSpace: 0
@@ -82,55 +82,55 @@ MonoBehaviour:
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.25
   antiSpaceDamage: 0
-  requiresCoastalCity: 0
-  requiresHarbor: 0
-  canAttackAir: 0
+  requiresCoastalCity: 1
+  requiresHarbor: 1
+  canAttackAir: 1
   canAttackSpace: 0
-  canAttackNavalSurface: 0
-  canAttackUnderwater: 0
+  canAttackNavalSurface: 1
+  canAttackUnderwater: 1
   canCounterAttack: 0
   bonusesAgainstCategories:
-  - targetCategory: 4
-    attackBonus: 0
-    attackPercent: 0.1
-    defenseBonus: 0
-    defensePercent: 0.2
-  - targetCategory: 14
-    attackBonus: 0
-    attackPercent: 0.2
-    defenseBonus: 0
-    defensePercent: 0.2
-  - targetCategory: 15
+  - targetCategory: 28
     attackBonus: 0
     attackPercent: 0.25
     defenseBonus: 0
-    defensePercent: 0.4
+    defensePercent: 0.1
+  - targetCategory: 29
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 10
+    attackBonus: 0
+    attackPercent: 0.32
+    defenseBonus: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 0
-  immuneToMosquitoes: 1
-  immuneToLava: 1
+  immuneToMosquitoes: 0
+  immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 2000
-  goldCost: 2800
+  productionCost: 4200
+  goldCost: 5700
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 100
-  baseRangedAttack: 100
-  baseCityAttack: 55
+  baseMeleeAttack: 140
+  baseRangedAttack: 140
+  baseCityAttack: 70
   baseGroundAttack: 0
   baseNavalAttack: 0
-  baseUnderwaterAttack: 0
-  baseAirAttack: 0
+  baseUnderwaterAttack: 140
+  baseAirAttack: 90
   baseSpaceAttack: 0
-  baseMovePoints: 2
-  baseDefense: 50
-  baseHealth: 160
+  baseMovePoints: 4
+  baseDefense: 90
+  baseHealth: 220
   baseRange: 2
-  sightRange: 2
+  sightRange: 4
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []
@@ -159,7 +159,7 @@ MonoBehaviour:
   captureHerdCount: 0
   captureSpecies: 7
   foodConsumptionPerTurn: 8
-  soldierCount: 4
+  soldierCount: 1
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5
