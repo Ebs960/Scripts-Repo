@@ -20,8 +20,10 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
     public event Action<int, MissileData, int> OnMissileLaunched;
     /// <summary>Fired when a missile impacts its target tile (targetTile, data, planetIndex).</summary>
     public event Action<int, MissileData, int> OnMissileDetonated;
-    /// <summary>Fired when a missile is intercepted before impact (sourceTile, targetTile, data, defender, planetIndex).</summary>
+    /// <summary>Fired when a missile is destroyed by defensive fire before impact (sourceTile, targetTile, data, defender, planetIndex).</summary>
     public event Action<int, int, MissileData, CombatUnit, int> OnMissileIntercepted;
+    /// <summary>Fired whenever defensive fire hits or misses an incoming missile (sourceTile, targetTile, data, defender, damage, destroyed, planetIndex).</summary>
+    public event Action<int, int, MissileData, CombatUnit, int, bool, int> OnMissileDefended;
 
     // ─── Silo Missile Inventory ───────────────────────────────────────────────
     // Key = compound of (planetIndex, tileIndex); stored separately from City/Unit because
@@ -143,15 +145,33 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
         CombatUnit defender = FindBestMissileInterceptor(sourceOwner, targetTile, planetIndex, missile);
         if (defender == null || defender.data == null) return false;
 
-        float chance = CalculateMissileInterceptionChance(defender, missile);
-        bool intercepted = UnityEngine.Random.value <= chance;
-        if (!intercepted) return false;
+        bool hit = RollMissileDefensiveFire(defender, missile);
+        int damage = 0;
+        bool destroyed = false;
+        if (hit)
+        {
+            int configuredDamage = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
+            damage = Mathf.Max(1, configuredDamage);
+            destroyed = damage >= Mathf.Max(1, missile.interceptionHitPoints);
+        }
 
         defender.TryConsumeAttackPoint();
-        OnMissileIntercepted?.Invoke(sourceTile, targetTile, missile, defender, planetIndex);
+        OnMissileDefended?.Invoke(sourceTile, targetTile, missile, defender, damage, destroyed, planetIndex);
+
+        if (destroyed)
+        {
+            OnMissileIntercepted?.Invoke(sourceTile, targetTile, missile, defender, planetIndex);
+            if ((defender.owner != null && defender.owner.isPlayerControlled) || (sourceOwner != null && sourceOwner.isPlayerControlled))
+                UIManager.Instance?.ShowNotification($"{defender.UnitName} destroyed incoming missile {missile.missileName} for {damage} damage.");
+            return true;
+        }
+
         if ((defender.owner != null && defender.owner.isPlayerControlled) || (sourceOwner != null && sourceOwner.isPlayerControlled))
-            UIManager.Instance?.ShowNotification($"{defender.UnitName} intercepted incoming missile {missile.missileName}.");
-        return true;
+        {
+            string outcome = hit ? $"damaged incoming missile {missile.missileName} for {damage} damage" : $"missed incoming missile {missile.missileName}";
+            UIManager.Instance?.ShowNotification($"{defender.UnitName} {outcome}; missile continues toward target.");
+        }
+        return false;
     }
 
     private static CombatUnit FindBestMissileInterceptor(Civilization sourceOwner, int targetTile, int planetIndex, MissileData missile)
@@ -176,11 +196,12 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
         return best;
     }
 
-    private static float CalculateMissileInterceptionChance(CombatUnit defender, MissileData missile)
+    private static bool RollMissileDefensiveFire(CombatUnit defender, MissileData missile)
     {
         float baseChance = defender?.data != null ? defender.data.antiAirInterceptionChance : 0f;
         float statBonus = defender != null ? Mathf.Clamp01(defender.CurrentAirAttack / 100f) * 0.35f : 0f;
-        return Mathf.Clamp01(baseChance + statBonus - missile.interceptionEvasion);
+        float hitChance = Mathf.Clamp01(baseChance + statBonus - missile.interceptionEvasion);
+        return UnityEngine.Random.value <= hitChance;
     }
 
     private static Civilization ResolveTileOwner(int planetIndex, int tileIndex)

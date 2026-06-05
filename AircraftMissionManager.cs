@@ -31,7 +31,9 @@ public class AircraftMissionManager : MonoBehaviour
 
     public event Action<CombatUnit, AircraftMissionKind, int, int> OnAircraftMissionLaunched;
     public event Action<CombatUnit, AircraftMissionKind, int, AircraftMissionResult> OnAircraftMissionResolved;
+    /// <summary>Fired when an interceptor fires on an aircraft; bool is true only when the aircraft was destroyed and the mission stopped.</summary>
     public event Action<CombatUnit, CombatUnit, int, bool> OnAircraftIntercepted;
+    /// <summary>Fired when local anti-air fires on an aircraft; bool is true only when the aircraft was destroyed and the mission stopped.</summary>
     public event Action<CombatUnit, CombatUnit, int, bool> OnAntiAirEngaged;
 
     private readonly HashSet<CombatUnit> activePatrols = new HashSet<CombatUnit>();
@@ -90,6 +92,12 @@ public class AircraftMissionManager : MonoBehaviour
 
         CombatUnit antiAir = FindBestAntiAirDefender(aircraft.owner, planetIndex, targetTileIndex);
         if (ResolveAntiAir(antiAir, aircraft, targetTileIndex))
+        {
+            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Aborted);
+            return AircraftMissionResult.Aborted;
+        }
+
+        if (aircraft.currentHealth <= 0)
         {
             OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Aborted);
             return AircraftMissionResult.Aborted;
@@ -175,29 +183,39 @@ public class AircraftMissionManager : MonoBehaviour
     {
         if (interceptor == null || aircraft == null || interceptor.data == null) return false;
 
-        float chance = CalculateEngagementChance(interceptor, aircraft, interceptor.data.interceptionChance);
-        bool stopped = UnityEngine.Random.value <= chance;
-        int damage = Mathf.Max(1, Mathf.RoundToInt(interceptor.CurrentAirAttack * (stopped ? 1f : 0.35f)));
-        aircraft.ApplyDamage(damage, interceptor, false);
+        bool hit = RollDefensiveFire(interceptor, aircraft, interceptor.data.interceptionChance);
+        bool aircraftDestroyed = false;
+        int damage = 0;
+        if (hit)
+        {
+            damage = Mathf.Max(1, interceptor.CurrentAirAttack);
+            aircraftDestroyed = aircraft.ApplyDamage(damage, interceptor, false);
+        }
+
         interceptor.TryConsumeAttackPoint();
-        if (!stopped && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
-        OnAircraftIntercepted?.Invoke(interceptor, aircraft, targetTile, stopped);
-        NotifyAirEvent(interceptor, aircraft, stopped ? "intercepted" : "engaged", damage);
-        return stopped;
+        if (!aircraftDestroyed && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
+        OnAircraftIntercepted?.Invoke(interceptor, aircraft, targetTile, aircraftDestroyed);
+        NotifyAirEvent(interceptor, aircraft, aircraftDestroyed ? "destroyed" : (hit ? "damaged" : "missed"), damage);
+        return aircraftDestroyed;
     }
 
     public bool ResolveAntiAir(CombatUnit defender, CombatUnit aircraft, int targetTile)
     {
         if (defender == null || aircraft == null || defender.data == null) return false;
 
-        float chance = CalculateEngagementChance(defender, aircraft, defender.data.antiAirInterceptionChance);
-        bool stopped = UnityEngine.Random.value <= chance;
-        int configuredDamage = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
-        int damage = Mathf.Max(1, Mathf.RoundToInt(configuredDamage * (stopped ? 1f : 0.5f)));
-        aircraft.ApplyDamage(damage, defender, false);
-        OnAntiAirEngaged?.Invoke(defender, aircraft, targetTile, stopped);
-        NotifyAirEvent(defender, aircraft, stopped ? "shot down" : "damaged", damage);
-        return stopped;
+        bool hit = RollDefensiveFire(defender, aircraft, defender.data.antiAirInterceptionChance);
+        bool aircraftDestroyed = false;
+        int damage = 0;
+        if (hit)
+        {
+            int configuredDamage = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
+            damage = Mathf.Max(1, configuredDamage);
+            aircraftDestroyed = aircraft.ApplyDamage(damage, defender, false);
+        }
+
+        OnAntiAirEngaged?.Invoke(defender, aircraft, targetTile, aircraftDestroyed);
+        NotifyAirEvent(defender, aircraft, aircraftDestroyed ? "shot down" : (hit ? "damaged" : "missed"), damage);
+        return aircraftDestroyed;
     }
 
     public static bool IsHostile(Civilization defender, Civilization attacker)
@@ -220,14 +238,14 @@ public class AircraftMissionManager : MonoBehaviour
     public static bool IsValidAntiAir(CombatUnit unit)
     {
         return unit != null && unit.data != null && unit.currentHealth > 0
-               && unit.data.canAttackAir && (unit.data.canProvideAntiAir || unit.data.antiAirRange > 0 || unit.CurrentAirAttack > 0);
+               && unit.data.canAttackAir && unit.data.canProvideAntiAir;
     }
 
     public static bool IsValidInterceptor(CombatUnit unit)
     {
         return unit != null && unit.data != null && unit.currentHealth > 0 && unit.HasAttackPoints()
                && unit.data.canAttackAir
-               && (unit.data.canInterceptAirMissions || unit.data.canAirPatrol || CombatUnitData.IsAirCategory(unit.data.unitType));
+               && (unit.data.canInterceptAirMissions || unit.data.canAirPatrol);
     }
 
     private static bool SupportsMission(CombatUnitData data, AircraftMissionKind missionKind)
@@ -239,17 +257,18 @@ public class AircraftMissionManager : MonoBehaviour
             case AircraftMissionKind.CityBombardment: return data.canBombardCitiesFromAir || data.unitType == CombatCategory.Bomber;
             case AircraftMissionKind.Recon: return data.canReconAirMission || isAir;
             case AircraftMissionKind.Patrol:
-            case AircraftMissionKind.Interception: return data.canAirPatrol || data.canInterceptAirMissions || data.unitType == CombatCategory.Fighter;
+            case AircraftMissionKind.Interception: return data.canAirPatrol || data.canInterceptAirMissions;
             default: return false;
         }
     }
 
-    private static float CalculateEngagementChance(CombatUnit defender, CombatUnit aircraft, float baseChance)
+    private static bool RollDefensiveFire(CombatUnit defender, CombatUnit aircraft, float baseChance)
     {
         float attack = Mathf.Max(1f, defender.CurrentAirAttack);
         float defense = Mathf.Max(1f, aircraft.CurrentDefense);
         float statFactor = attack / (attack + defense);
-        return Mathf.Clamp01(baseChance + (statFactor - 0.5f));
+        float hitChance = Mathf.Clamp01(baseChance + (statFactor - 0.5f));
+        return UnityEngine.Random.value <= hitChance;
     }
 
     private static void ResolveMissionEffect(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTile)
@@ -307,6 +326,9 @@ public class AircraftMissionManager : MonoBehaviour
     {
         if (defender == null || aircraft == null) return;
         if ((defender.owner != null && defender.owner.isPlayerControlled) || (aircraft.owner != null && aircraft.owner.isPlayerControlled))
-            UIManager.Instance?.ShowNotification($"{defender.UnitName} {verb} {aircraft.UnitName} for {damage} damage.");
+        {
+            string damageText = damage > 0 ? $" for {damage} damage" : string.Empty;
+            UIManager.Instance?.ShowNotification($"{defender.UnitName} {verb} {aircraft.UnitName}{damageText}.");
+        }
     }
 }

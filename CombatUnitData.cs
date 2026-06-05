@@ -263,11 +263,11 @@ public class CombatUnitData : ScriptableObject
     public bool canBombardCitiesFromAir = false;
     [Tooltip("Allow this aircraft to perform recon sweeps without dealing damage.")]
     public bool canReconAirMission = false;
-    [Tooltip("Allow this aircraft to establish a combat air patrol and intercept hostile aircraft missions.")]
+    [Tooltip("Allow this aircraft to establish a combat air patrol and use interceptor defensive fire against hostile aircraft missions.")]
     public bool canAirPatrol = false;
-    [Tooltip("Allow this unit to scramble against hostile aircraft missions within interceptionRange.")]
+    [Tooltip("Allow this unit to scramble and fire on hostile aircraft missions within interceptionRange.")]
     public bool canInterceptAirMissions = false;
-    [Tooltip("Allow this unit to provide passive anti-air fire against hostile aircraft/missiles within antiAirRange.")]
+    [Tooltip("Allow this unit to provide gated passive anti-air / missile-defense fire within antiAirRange.")]
     public bool canProvideAntiAir = false;
     [Tooltip("Maximum tile distance for launched aircraft missions. If 0, CurrentRange is used as a fallback.")]
     [Range(0, 50)] public int airMissionRange = 0;
@@ -279,9 +279,9 @@ public class CombatUnitData : ScriptableObject
     [Range(0, 25)] public int interceptionRange = 3;
     [Tooltip("Maximum tile distance at which this unit provides anti-air or missile defense.")]
     [Range(0, 25)] public int antiAirRange = 2;
-    [Tooltip("Base chance for an interceptor to stop an incoming aircraft mission before combat modifiers.")]
+    [Tooltip("Base chance for interceptor defensive fire to hit incoming aircraft before combat modifiers. A hit damages the aircraft; only lethal damage stops the mission.")]
     [Range(0f, 1f)] public float interceptionChance = 0.45f;
-    [Tooltip("Base chance for local anti-air to disrupt aircraft missions or shoot down incoming missiles before combat modifiers.")]
+    [Tooltip("Base chance for local anti-air / missile-defense fire to hit before combat modifiers. A hit damages the target; only lethal damage stops it.")]
     [Range(0f, 1f)] public float antiAirInterceptionChance = 0.25f;
     [Tooltip("Flat damage dealt by passive anti-air. If 0, CurrentAirAttack is used.")]
     public int antiAirDamage = 0;
