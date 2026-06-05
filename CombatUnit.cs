@@ -122,6 +122,31 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public bool isGarrisonedInCity { get; set; }
 
+
+    /// <summary>Launches an aircraft mission through the central aircraft mission manager.</summary>
+    public AircraftMissionResult LaunchAircraftMission(AircraftMissionKind missionKind, int targetTileIndex)
+    {
+        if (AircraftMissionManager.Instance == null)
+        {
+            Debug.LogWarning($"[CombatUnit] Cannot launch {missionKind}: no AircraftMissionManager in scene.");
+            return AircraftMissionResult.Invalid;
+        }
+        return AircraftMissionManager.Instance.LaunchMission(this, missionKind, targetTileIndex);
+    }
+
+    /// <summary>Convenience wrapper for assigning this aircraft to combat air patrol/interception duty.</summary>
+    public AircraftMissionResult StartAirPatrol(int patrolAnchorTileIndex = -1)
+    {
+        int anchor = patrolAnchorTileIndex >= 0 ? patrolAnchorTileIndex : currentTileIndex;
+        return LaunchAircraftMission(AircraftMissionKind.Patrol, anchor);
+    }
+
+    /// <summary>Removes this aircraft from the active patrol/interception screen if it is currently registered.</summary>
+    public void ClearAirPatrol()
+    {
+        AircraftMissionManager.Instance?.ClearPatrol(this);
+    }
+
     /// <summary>
     /// Missiles currently carried by this unit (missile submarines, missile cruisers, MLRS, etc.).
     /// Only populated when <see cref="CombatUnitData.canStoreMissiles"/> is true.
@@ -1700,6 +1725,7 @@ public class CombatUnit : BaseUnit
     protected override void Die()
     {
         StopAllCoroutines();
+        ClearAirPatrol();
         
         // Clear walking/idle state when dead
         UpdateWalkingState(false);
