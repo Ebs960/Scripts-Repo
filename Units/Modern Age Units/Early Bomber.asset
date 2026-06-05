@@ -56,8 +56,6 @@ MonoBehaviour:
   canInterceptAirMissions: 0
   canProvideAntiAir: 0
   airMissionRange: 10
-  airMissionDamage: 30
-  cityAirMissionDamage: 50
   interceptionRange: 3
   antiAirRange: 2
   interceptionChance: 0.45
