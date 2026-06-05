@@ -1,15 +1,12 @@
 // Assets/Scripts Repo/AircraftMissionManager.cs
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 public enum AircraftMissionKind
 {
     AirStrike,
     CityBombardment,
-    Recon,
-    Patrol,
-    Interception
+    Recon
 }
 
 public enum AircraftMissionResult
@@ -22,7 +19,7 @@ public enum AircraftMissionResult
 }
 
 /// <summary>
-/// Runtime coordinator for aircraft missions, combat air patrol interception, and local anti-air fire.
+/// Runtime coordinator for aircraft missions, automatic interceptor defensive fire, and local anti-air fire.
 /// Designers enable capabilities on CombatUnitData; UI/AI can call LaunchMission to resolve the full chain.
 /// </summary>
 public class AircraftMissionManager : MonoBehaviour
@@ -36,8 +33,6 @@ public class AircraftMissionManager : MonoBehaviour
     /// <summary>Fired when local anti-air fires on an aircraft; bool is true only when the aircraft was destroyed and the mission stopped.</summary>
     public event Action<CombatUnit, CombatUnit, int, bool> OnAntiAirEngaged;
 
-    private readonly HashSet<CombatUnit> activePatrols = new HashSet<CombatUnit>();
-
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -47,21 +42,6 @@ public class AircraftMissionManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
-    }
-
-    public void RegisterPatrol(CombatUnit aircraft)
-    {
-        if (IsValidInterceptor(aircraft)) activePatrols.Add(aircraft);
-    }
-
-    public void ClearPatrol(CombatUnit aircraft)
-    {
-        if (aircraft != null) activePatrols.Remove(aircraft);
-    }
-
-    public void ClearAllPatrolsForOwner(Civilization owner)
-    {
-        activePatrols.RemoveWhere(unit => unit == null || unit.owner == owner);
     }
 
     public AircraftMissionResult LaunchMission(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTileIndex)
@@ -74,14 +54,6 @@ public class AircraftMissionManager : MonoBehaviour
 
         int planetIndex = aircraft.planetIndex;
         OnAircraftMissionLaunched?.Invoke(aircraft, missionKind, targetTileIndex, planetIndex);
-
-        if (missionKind == AircraftMissionKind.Patrol || missionKind == AircraftMissionKind.Interception)
-        {
-            RegisterPatrol(aircraft);
-            aircraft.TryConsumeAttackPoint();
-            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Completed);
-            return AircraftMissionResult.Completed;
-        }
 
         CombatUnit interceptor = FindBestInterceptor(aircraft.owner, planetIndex, aircraft.currentTileIndex, targetTileIndex);
         if (ResolveInterception(interceptor, aircraft, targetTileIndex))
@@ -149,8 +121,7 @@ public class AircraftMissionManager : MonoBehaviour
             int sourceDistance = sourceTile >= 0 ? Mathf.RoundToInt(ts.GetTileDistance(candidate.currentTileIndex, sourceTile)) : int.MaxValue;
             if (targetDistance > range && sourceDistance > range) continue;
 
-            float patrolBonus = activePatrols.Contains(candidate) ? 1000f : 0f;
-            float score = patrolBonus + candidate.CurrentAirAttack + candidate.CurrentRange - Mathf.Min(targetDistance, sourceDistance);
+            float score = candidate.CurrentAirAttack + candidate.CurrentRange - Mathf.Min(targetDistance, sourceDistance);
             if (score > bestScore) { best = candidate; bestScore = score; }
         }
 
@@ -203,7 +174,6 @@ public class AircraftMissionManager : MonoBehaviour
         }
 
         interceptor.TryConsumeAttackPoint();
-        if ((!aircraftDestroyed || interceptorDestroyed) && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
         OnAircraftIntercepted?.Invoke(interceptor, aircraft, targetTile, aircraftDestroyed);
         NotifyAirEvent(interceptor, aircraft, aircraftDestroyed ? "destroyed" : (hit ? "damaged" : "missed"), damage);
         if (returnDamage > 0)
@@ -257,7 +227,7 @@ public class AircraftMissionManager : MonoBehaviour
     {
         return unit != null && unit.data != null && unit.currentHealth > 0 && unit.HasAttackPoints()
                && unit.data.canAttackAir
-               && (unit.data.canInterceptAirMissions || unit.data.canAirPatrol);
+               && unit.data.canInterceptAirMissions;
     }
 
     private static bool SupportsMission(CombatUnitData data, AircraftMissionKind missionKind)
@@ -268,8 +238,6 @@ public class AircraftMissionManager : MonoBehaviour
             case AircraftMissionKind.AirStrike: return data.canAirStrike || isAir;
             case AircraftMissionKind.CityBombardment: return data.canBombardCitiesFromAir || data.unitType == CombatCategory.Bomber;
             case AircraftMissionKind.Recon: return data.canReconAirMission || isAir;
-            case AircraftMissionKind.Patrol:
-            case AircraftMissionKind.Interception: return data.canAirPatrol || data.canInterceptAirMissions;
             default: return false;
         }
     }

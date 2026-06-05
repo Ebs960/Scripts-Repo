@@ -1,14 +1,11 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 public enum SpaceMissionKind
 {
     SpaceStrike,
     CityBombardment,
-    Recon,
-    Patrol,
-    Interception
+    Recon
 }
 
 public enum SpaceMissionResult
@@ -21,7 +18,7 @@ public enum SpaceMissionResult
 }
 
 /// <summary>
-/// Runtime coordinator for space/orbital missions, space patrol interception, and local anti-space fire.
+/// Runtime coordinator for space/orbital missions, automatic interceptor defensive fire, and local anti-space fire.
 /// Designers enable capabilities on CombatUnitData; UI/AI can call LaunchMission to resolve the full chain.
 /// Mirrors the aircraft mission flow for space combat, interception, and gated passive defenses.
 /// </summary>
@@ -36,8 +33,6 @@ public class SpaceMissionManager : MonoBehaviour
     /// <summary>Fired when local anti-space defense fires; bool is true only when the spacecraft was destroyed and the mission stopped.</summary>
     public event Action<CombatUnit, CombatUnit, int, bool> OnAntiSpaceEngaged;
 
-    private readonly HashSet<CombatUnit> activePatrols = new HashSet<CombatUnit>();
-
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -47,21 +42,6 @@ public class SpaceMissionManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
-    }
-
-    public void RegisterPatrol(CombatUnit spacecraft)
-    {
-        if (IsValidInterceptor(spacecraft)) activePatrols.Add(spacecraft);
-    }
-
-    public void ClearPatrol(CombatUnit spacecraft)
-    {
-        if (spacecraft != null) activePatrols.Remove(spacecraft);
-    }
-
-    public void ClearAllPatrolsForOwner(Civilization owner)
-    {
-        activePatrols.RemoveWhere(unit => unit == null || unit.owner == owner);
     }
 
     public SpaceMissionResult LaunchMission(CombatUnit spacecraft, SpaceMissionKind missionKind, int targetTileIndex)
@@ -74,14 +54,6 @@ public class SpaceMissionManager : MonoBehaviour
 
         int planetIndex = spacecraft.planetIndex;
         OnSpaceMissionLaunched?.Invoke(spacecraft, missionKind, targetTileIndex, planetIndex);
-
-        if (missionKind == SpaceMissionKind.Patrol || missionKind == SpaceMissionKind.Interception)
-        {
-            RegisterPatrol(spacecraft);
-            spacecraft.TryConsumeAttackPoint();
-            OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, SpaceMissionResult.Completed);
-            return SpaceMissionResult.Completed;
-        }
 
         CombatUnit interceptor = FindBestInterceptor(spacecraft.owner, planetIndex, spacecraft.currentTileIndex, targetTileIndex);
         if (ResolveInterception(interceptor, spacecraft, targetTileIndex))
@@ -150,8 +122,7 @@ public class SpaceMissionManager : MonoBehaviour
             int sourceDistance = sourceTile >= 0 ? Mathf.RoundToInt(ts.GetTileDistance(candidate.currentTileIndex, sourceTile)) : int.MaxValue;
             if (targetDistance > range && sourceDistance > range) continue;
 
-            float patrolBonus = activePatrols.Contains(candidate) ? 1000f : 0f;
-            float score = patrolBonus + candidate.CurrentSpaceAttack + candidate.CurrentRange - Mathf.Min(targetDistance, sourceDistance);
+            float score = candidate.CurrentSpaceAttack + candidate.CurrentRange - Mathf.Min(targetDistance, sourceDistance);
             if (score > bestScore) { best = candidate; bestScore = score; }
         }
 
@@ -204,7 +175,6 @@ public class SpaceMissionManager : MonoBehaviour
         }
 
         interceptor.TryConsumeAttackPoint();
-        if ((!spacecraftDestroyed || interceptorDestroyed) && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
         OnSpaceIntercepted?.Invoke(interceptor, spacecraft, targetTile, spacecraftDestroyed);
         NotifySpaceEvent(interceptor, spacecraft, spacecraftDestroyed ? "destroyed" : (hit ? "damaged" : "missed"), damage);
         if (returnDamage > 0)
@@ -248,7 +218,7 @@ public class SpaceMissionManager : MonoBehaviour
     {
         return unit != null && unit.data != null && unit.currentHealth > 0 && unit.HasAttackPoints()
                && unit.data.canAttackSpace
-               && (unit.data.canInterceptSpaceMissions || unit.data.canSpacePatrol);
+               && unit.data.canInterceptSpaceMissions;
     }
 
     private static bool SupportsMission(CombatUnitData data, bool isInOrbit, SpaceMissionKind missionKind)
@@ -259,8 +229,6 @@ public class SpaceMissionManager : MonoBehaviour
             case SpaceMissionKind.SpaceStrike: return data.canSpaceStrike || isSpace;
             case SpaceMissionKind.CityBombardment: return data.canBombardCitiesFromSpace || data.canBombardSurface || isInOrbit;
             case SpaceMissionKind.Recon: return data.canReconSpaceMission || isSpace;
-            case SpaceMissionKind.Patrol:
-            case SpaceMissionKind.Interception: return data.canSpacePatrol || data.canInterceptSpaceMissions;
             default: return false;
         }
     }

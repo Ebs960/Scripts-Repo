@@ -297,8 +297,6 @@ public class CombatUnitData : ScriptableObject
     public bool canBombardCitiesFromAir = false;
     [Tooltip("Allow this aircraft to perform recon sweeps without dealing damage.")]
     public bool canReconAirMission = false;
-    [Tooltip("Allow this aircraft to establish a combat air patrol and use interceptor defensive fire against hostile aircraft missions.")]
-    public bool canAirPatrol = false;
     [Tooltip("Allow this unit to scramble and fire on hostile aircraft missions within interceptionRange.")]
     public bool canInterceptAirMissions = false;
     [Tooltip("Allow this unit to provide gated passive anti-air / missile-defense fire within antiAirRange.")]
@@ -325,8 +323,6 @@ public class CombatUnitData : ScriptableObject
     public bool canBombardCitiesFromSpace = false;
     [Tooltip("Allow this unit to perform space recon sweeps without dealing damage.")]
     public bool canReconSpaceMission = false;
-    [Tooltip("Allow this unit to establish a space patrol and use interceptor defensive fire against hostile space missions.")]
-    public bool canSpacePatrol = false;
     [Tooltip("Allow this unit to scramble and fire on hostile space missions within spaceInterceptionRange.")]
     public bool canInterceptSpaceMissions = false;
     [Tooltip("Allow this unit to provide gated passive anti-space / orbital-defense fire within antiSpaceRange.")]
