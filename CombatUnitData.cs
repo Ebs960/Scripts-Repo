@@ -42,7 +42,9 @@ public enum CombatCategory
     MachineGun = 31,
     // Carrier specializations
     AircraftCarrier = 32,
-    SpaceCarrier = 33
+    SpaceCarrier = 33,
+    // Anti-air specialization
+    AntiAircraft = 34
 }
 
 public enum CombatTargetDomain
