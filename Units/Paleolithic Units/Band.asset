@@ -1,0 +1,314 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 459a6776fa777ce4d9c54db48a35884c, type: 3}
+  m_Name: Band
+  m_EditorClassIdentifier: 
+  defaultWeapon: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  unitName: Band
+  icon: {fileID: 21300000, guid: 3115485b89b2b064fb333507fc530884, type: 3}
+  prefab: {fileID: 3076081410584474018, guid: 90a0dc12a7c50a44389726ee18d0ea55, type: 3}
+  addressableAddress: 
+  selectSound: {fileID: 8300000, guid: 1ff291a4d59df464e8803b509d348e9e, type: 3}
+  selectPitchVariation: 0.08
+  baseWorkPoints: 2
+  canEnterOrbit: 0
+  baseMovePoints: 2
+  baseHealth: 40
+  baseAttack: 4
+  baseDefense: 1
+  canFoundCity: 1
+  xpToNextLevel: 
+  fallbackXpPerLevel: 10
+  attackPerLevel: 0
+  defensePerLevel: 0
+  healthPerLevel: 0
+  workPointsPerLevel: 0
+  movePointsPerLevel: 0
+  rangePerLevel: 0
+  experiencePerWorkPoint: 1
+  forageExperience: 5
+  experiencePerCombatDamage: 1
+  killExperience: 5
+  chargeBonusPercent: 0
+  attackPointsPerTurn: 2
+  sightRange: 2
+  canHarvestSpecialResources: 0
+  canForage: 1
+  takesWeatherDamage: 1
+  immuneToMosquitoes: 0
+  immuneToLava: 0
+  productionCost: 15
+  goldCost: 20
+  requiredResources: []
+  requiredTerrains: 
+  requiresCoastalCity: 0
+  requiresHarbor: 0
+  buildableByWorker: 1
+  workerWorkCost: 15
+  foodPerTurn: 0
+  foodOnKill: 10
+  goldPerTurn: 1
+  sciencePerTurn: 2
+  culturePerTurn: 2
+  policyPointsPerTurn: 1
+  faithPerTurn: 0
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  foodConsumptionPerTurn: 2
+  captureable: 0
+  captureHerdCount: 0
+  captureSpecies: 4
+  soldierCount: 4
+  formationType: 1
+  formationSpacing: 1
+  soldierVariants: []
+  civVisualOverrides:
+  - civ: {fileID: 11400000, guid: 46b9be47a06809e4baf66e0dca03588b, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 7972659436259785572, guid: c7f0711908df45b43837462eec547bf5, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 1
+    soldierVariants:
+    - modelPrefab: {fileID: 7972659436259785572, guid: c7f0711908df45b43837462eec547bf5, type: 3}
+      weight: 1.22
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 1.22
+    formationSpacing: 1
+  - civ: {fileID: 11400000, guid: e1dc68799771f004ba736d9c23ecca7a, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1
+  - civ: {fileID: 11400000, guid: f26bd0858db1b4649942db951f2293bc, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 40b53e88121ea6345aaf1cead21953a0, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 6
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: c8e126a91ef83e449b94bad32dc06bbc, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 616044bb37c77984cb61b75e569f6c1d, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 07843d53afd7edb4ab65b0c1e61c2140, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 1
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 35c253e6569830548918c1c8136c50a3, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 1
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 89d2129ed9cca354db64ad8655e81c0d, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: aafb245f3dc21a94fa68262b40dd804d, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: bf976d55bf40ed5479a4fa1673152a73, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: fd36916eea3132848948206c912faf09, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: f05123cc0a1460f4cbfcdffdfa3200e9, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 1
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: bf976d55bf40ed5479a4fa1673152a73, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/European Band.prefab
+    prefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 5389487749592297673, guid: 56a43783ec1d6534883f8dd52366920b, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 301a6892b8ad50c4e90e5244e555991b, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/African Band.prefab
+    prefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 3bbd49bd0f67c124ba85fee23e0ba118, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/African Band.prefab
+    prefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 39129248f5e9fdc4d954bad65646a4b9, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/African Band.prefab
+    prefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 226923064373233694, guid: f595449bef3068f4cab725593d222dcd, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/Asian Band.prefab
+    prefab: {fileID: 6882447856326097984, guid: 9656f307ce63c4f4981a312663ed132c, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 6882447856326097984, guid: 9656f307ce63c4f4981a312663ed132c, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  - civ: {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
+    addressableAddress: Assets/Units/Paleolithic Units/Asian Band.prefab
+    prefab: {fileID: 6882447856326097984, guid: 9656f307ce63c4f4981a312663ed132c, type: 3}
+    overrideSoldierDisplay: 0
+    soldierCount: 4
+    formationType: 0
+    soldierVariants:
+    - modelPrefab: {fileID: 6882447856326097984, guid: 9656f307ce63c4f4981a312663ed132c, type: 3}
+      weight: 1
+    - modelPrefab: {fileID: 549235745977523292, guid: df1b6dd1c66889243ac4f19a675a39ca, type: 3}
+      weight: 0.67
+    formationSpacing: 1.5
+  buildableRoutes: 00000000
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments: []
+  requiredPolicies: []
+  unitLimit: 1
+  limitCategory: 

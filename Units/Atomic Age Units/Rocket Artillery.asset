@@ -1,0 +1,132 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
+  m_Name: Rocket Artillery
+  m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
+  unitName: Rocket Artillery
+  unitType: 4
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.08
+  _iconDirect: {fileID: 21300000, guid: b43308d1d7dc5594d9c92de0cda76874, type: 3}
+  addressableAddress: 
+  requiresAirport: 0
+  requiresSpaceport: 0
+  animalBehavior: 0
+  animalMovePoints: 1
+  canSpawnInOldWorld: 1
+  canSpawnInNewWorld: 1
+  canSpawnInNewWorldSecondary: 1
+  canSpawnOnStandardMaps: 1
+  canSpawnOnFrozenMaps: 1
+  canSpawnOnDemonicMaps: 1
+  canSpawnOnInfernalMaps: 1
+  travelCapability: 2
+  spaceAUPerTurn: 0
+  spaceSpeedMultiplier: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
+  orbitExitCost: 1
+  orbitMovementCost: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
+  orbitVisionBonus: 3
+  isTransport: 0
+  transportCapacity: 3
+  canTransportCombatUnits: 1
+  canBaseAircraft: 0
+  canBaseSpaceships: 0
+  canTravelToMoon: 0
+  canStoreMissiles: 1
+  maxMissileStorage: 2
+  allowedMissileTypes: []
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
+  canReconAirMission: 0
+  canAirPatrol: 0
+  canInterceptAirMissions: 0
+  canProvideAntiAir: 0
+  airMissionRange: 0
+  airMissionDamage: 0
+  cityAirMissionDamage: 0
+  interceptionRange: 3
+  antiAirRange: 2
+  interceptionChance: 0.45
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
+  requiresCoastalCity: 0
+  requiresHarbor: 0
+  canAttackAir: 0
+  canAttackSpace: 0
+  canAttackNavalSurface: 1
+  canAttackUnderwater: 0
+  canCounterAttack: 0
+  bonusesAgainstCategories: []
+  bonusesAgainstUnits: []
+  takesWeatherDamage: 1
+  immuneToMosquitoes: 0
+  immuneToLava: 0
+  attackPointsPerTurn: 1
+  chargeBonusPercent: 0
+  productionCost: 1000
+  goldCost: 1900
+  requiredResources: []
+  requiredTerrains: 
+  buildableByWorker: 0
+  workerWorkCost: 40
+  baseAttack: 0
+  baseMeleeAttack: 90
+  baseRangedAttack: 90
+  baseCityAttack: 180
+  baseGroundAttack: 0
+  baseNavalAttack: 90
+  baseUnderwaterAttack: 0
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 2
+  baseDefense: 25
+  baseHealth: 115
+  baseRange: 3
+  sightRange: 2
+  xpToNextLevel: 
+  abilitiesByLevel: []
+  requiredTechs: []
+  requiredCultures: []
+  requiredPantheons: []
+  requiredGovernments: []
+  requiredPolicies: []
+  unitLimit: -1
+  limitCategory: 
+  defaultWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  foodOnKill: 0
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  captureable: 0
+  captureHerdCount: 0
+  captureSpecies: 7
+  foodConsumptionPerTurn: 5
+  soldierCount: 1
+  formationType: 0
+  soldierVariants: []
+  formationSpacing: 0.5
+  civVisualOverrides: []

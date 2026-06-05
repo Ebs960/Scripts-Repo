@@ -39,7 +39,14 @@ public enum CombatCategory
     Bomber = 29,
     GroundAttack = 30,
     // New ground specialization
-    MachineGun = 31
+    MachineGun = 31,
+    // Carrier specializations
+    AircraftCarrier = 32,
+    SpaceCarrier = 33,
+    // Anti-air specialization
+    AntiAircraft = 34,
+
+    Helicopter = 35
 }
 
 public enum CombatTargetDomain

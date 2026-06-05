@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Bronze Helmet
+  m_EditorClassIdentifier: 
+  equipmentName: Bronze Helmet
+  icon: {fileID: 0}
+  equipmentPrefab: {fileID: 0}
+  equipmentType: 2
+  category: 5
+  projectileData: {fileID: 0}
+  projectileCategory: 0
+  usesProjectiles: 0
+  projectileSpawnName: ProjectileSpawn
+  useEquipmentProjectileSpawn: 0
+  isTwoHanded: 0
+  targetUnit: 0
+  attackBonusAgainst: []
+  defenseBonusAgainst:
+  - unitType: 1
+    value: 1
+  - unitType: 21
+    value: 1
+  - unitType: 22
+    value: 1
+  combatModifiersAgainst: []
+  workPointsBonus: 0
+  allowedUnitTypes: 0000000001000000020000001500000016000000
+  minimumLevel: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: 3fef47af97cb53d4db5e07d8a63a3dca, type: 2}
+  requiredCultures: []
+  productionCost: 20
+  attackBonus: 0
+  defenseBonus: 1
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 0
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0

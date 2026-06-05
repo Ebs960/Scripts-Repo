@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 873ec6a558a92af4bb6aa5013ffe4c48, type: 3}
+  m_Name: Imp
+  m_EditorClassIdentifier: 
+  unitName: Imp
+  unitType: 0
+  icon: {fileID: 21300000, guid: b2a80e13ca76a1d438e21ab4acc04ce3, type: 3}
+  addressableAddress: Assets/Units/Demons/Imp.prefab
+  formationSize: 9
+  formationShape: 0
+  formationSpacing: 1.5
+  requiresAirport: 0
+  requiresSpaceport: 0
+  animalBehavior: 0
+  travelCapability: 2
+  spaceAUPerTurn: 0
+  spaceSpeedMultiplier: 1
+  isTransport: 0
+  transportCapacity: 3
+  canTravelToMoon: 0
+  requiresCoastalCity: 0
+  requiresHarbor: 0
+  canAttackAir: 0
+  canAttackSpace: 0
+  canAttackUnderwater: 0
+  canCounterAttack: 0
+  baseMorale: 100
+  moraleLostPerHealth: 1
+  moraleGainOnKill: 10
+  chargeBonusMultiplier: 1.5
+  fatigueRateMoving: 0.25
+  fatigueRateFighting: 0.5
+  fatigueRecoveryRate: 10
+  fatigueAttackPenalty: 0.5
+  fatigueDefensePenalty: 0.5
+  fatigueSpeedPenalty: 0.5
+  chargeInstantFatigue: 25
+  isRangedUnit: 0
+  maxAmmo: 30
+  canSwitchToMelee: 1
+  outOfAmmoMeleePenalty: 0.5
+  takesWeatherDamage: 1
+  productionCost: 0
+  goldCost: 0
+  requiredResources: []
+  requiredTerrains: 
+  buildableByWorker: 0
+  workerWorkCost: 40
+  baseAttack: 6
+  baseDefense: 2
+  baseHealth: 15
+  baseRange: 1
+  xpToNextLevel: 
+  abilitiesByLevel: []
+  requiredTechs: []
+  requiredCultures: []
+  unitLimit: -1
+  limitCategory: 
+  defaultWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  meleeEngageDuration: 8
+  foodOnKill: 3
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  foodConsumptionPerTurn: 2
+  demonicBiomeDamageBonus: 0.5
+  demonicBiomeDefenseBonus: 0.3
+  canCrossLava: 1
+  canCrossWater: 0

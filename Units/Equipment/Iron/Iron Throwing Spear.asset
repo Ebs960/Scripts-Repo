@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Iron Throwing Spear
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  equipmentName: Iron Throwing Spear
+  icon: {fileID: 0}
+  equipmentPrefab: {fileID: 0}
+  equipmentType: 0
+  category: 5
+  projectileData: {fileID: 0}
+  projectileCategory: 0
+  usesProjectiles: 0
+  projectileSpawnName: ProjectileSpawn
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 0
+  targetUnit: 0
+  attackBonusAgainst:
+  - unitType: 25
+    value: 1
+  defenseBonusAgainst: []
+  combatModifiersAgainst: []
+  workPointsBonus: 0
+  allowedUnitTypes: 07000000
+  minimumLevel: 1
+  requiredTechs: []
+  requiredCultures: []
+  productionCost: 8
+  attackBonus: 4
+  defenseBonus: 0
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 0
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
