@@ -12,14 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
   m_Name: Neo Dreadnought
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Railgun Battleship
+  unitName: Neo Dreadnought
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: d26fffdd52cc878488ef4ec09299eb3e, type: 3}
+  _iconDirect: {fileID: 21300000, guid: f868e666124890e4ba102eec922f7ab3, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 2
+  spawnLayers: -1
+  canTransitionSurfaceUnderwater: 1
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 0
+  airJumpRange: 0
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 12
+  airJumpAnimationDuration: 0.8
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
   animalBehavior: 0
   animalMovePoints: 1
   canSpawnInOldWorld: 1
@@ -40,7 +53,7 @@ MonoBehaviour:
   canBombardSurface: 0
   orbitVisionBonus: 3
   isTransport: 1
-  transportCapacity: 2
+  transportCapacity: 3
   canTransportCombatUnits: 1
   canBaseAircraft: 0
   canBaseSpaceships: 0
@@ -55,19 +68,29 @@ MonoBehaviour:
   canInterceptAirMissions: 0
   canProvideAntiAir: 0
   airMissionRange: 0
-  airMissionDamage: 0
-  cityAirMissionDamage: 0
   interceptionRange: 3
   antiAirRange: 2
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
   antiAirDamage: 0
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
+  spaceInterceptionRange: 3
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
   requiresCoastalCity: 1
   requiresHarbor: 1
   canAttackAir: 0
   canAttackSpace: 0
   canAttackNavalSurface: 1
-  canAttackUnderwater: 0
+  canAttackUnderwater: 1
   canCounterAttack: 0
   bonusesAgainstCategories: []
   bonusesAgainstUnits: []
@@ -76,26 +99,26 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 2800
-  goldCost: 4500
+  productionCost: 6500
+  goldCost: 12000
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 150
-  baseRangedAttack: 150
-  baseCityAttack: 70
+  baseMeleeAttack: 210
+  baseRangedAttack: 210
+  baseCityAttack: 130
   baseGroundAttack: 0
-  baseNavalAttack: 0
-  baseUnderwaterAttack: 0
+  baseNavalAttack: 210
+  baseUnderwaterAttack: 210
   baseAirAttack: 0
   baseSpaceAttack: 0
-  baseMovePoints: 6
-  baseDefense: 100
-  baseHealth: 250
-  baseRange: 3
-  sightRange: 2
+  baseMovePoints: 7
+  baseDefense: 150
+  baseHealth: 285
+  baseRange: 4
+  sightRange: 4
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []

@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Sea Crawler
+  m_Name: Space Troopers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Sea Crawler
-  unitType: 13
+  unitName: Space Troopers
+  unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 9fa7da6dbed4adc4684e2b8100301886, type: 3}
+  _iconDirect: {fileID: 21300000, guid: 0600e856ae9d1c2489d13c806f1e1dbd, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
-  nativeLayer: 1
-  allowedLayers: 2
-  spawnLayers: 2
+  nativeLayer: 0
+  allowedLayers: 8
+  spawnLayers: -1
   canTransitionSurfaceUnderwater: 0
-  canTransitionSurfaceAtmosphere: 0
-  canAirJump: 0
-  airJumpRange: 0
-  airJumpConsumesAction: 1
-  airJumpDropHeight: 12
+  canTransitionSurfaceAtmosphere: 1
+  canAirJump: 1
+  airJumpRange: 31
+  airJumpConsumesAction: 0
+  airJumpDropHeight: 47.7
   airJumpAnimationDuration: 0.8
   airJumpLaunchVFX: {fileID: 0}
   airJumpLandingVFX: {fileID: 0}
@@ -46,15 +46,15 @@ MonoBehaviour:
   spaceAUPerTurn: 0
   spaceSpeedMultiplier: 1
   orbitEntryCost: 2
-  canEnterOrbit: 0
+  canEnterOrbit: 1
   orbitExitCost: 1
   orbitMovementCost: 1
-  requiresSpaceportToLand: 0
+  requiresSpaceportToLand: 1
   canBombardSurface: 0
-  orbitVisionBonus: 3
-  isTransport: 1
-  transportCapacity: 4
-  canTransportCombatUnits: 1
+  orbitVisionBonus: 1
+  isTransport: 0
+  transportCapacity: 3
+  canTransportCombatUnits: 0
   canBaseAircraft: 0
   canBaseSpaceships: 0
   canTravelToMoon: 0
@@ -71,8 +71,8 @@ MonoBehaviour:
   interceptionRange: 3
   antiAirRange: 2
   interceptionChance: 0.45
-  antiAirInterceptionChance: 0.65
-  antiAirDamage: 90
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
   canBombardCitiesFromSpace: 0
@@ -85,55 +85,60 @@ MonoBehaviour:
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.25
   antiSpaceDamage: 0
-  requiresCoastalCity: 1
-  requiresHarbor: 1
+  requiresCoastalCity: 0
+  requiresHarbor: 0
   canAttackAir: 0
-  canAttackSpace: 0
-  canAttackNavalSurface: 1
-  canAttackUnderwater: 1
+  canAttackSpace: 1
+  canAttackNavalSurface: 0
+  canAttackUnderwater: 0
   canCounterAttack: 0
   bonusesAgainstCategories:
-  - targetCategory: 26
+  - targetCategory: 16
     attackBonus: 0
-    attackPercent: 0.25
+    attackPercent: 0.2
     defenseBonus: 0
-    defensePercent: 0.1
-  - targetCategory: 36
+    defensePercent: 0.2
+  - targetCategory: 28
     attackBonus: 0
-    attackPercent: 0.25
+    attackPercent: 0
     defenseBonus: 0
-    defensePercent: 0.1
-  - targetCategory: 10
+    defensePercent: 0.3
+  - targetCategory: 29
     attackBonus: 0
-    attackPercent: 0.32
+    attackPercent: 0
     defenseBonus: 0
-    defensePercent: 0.1
+    defensePercent: 0.3
+  - targetCategory: 30
+    attackBonus: 0
+    attackPercent: 0
+    defenseBonus: 0
+    defensePercent: 0.3
   bonusesAgainstUnits: []
   takesWeatherDamage: 0
-  immuneToMosquitoes: 0
-  immuneToLava: 0
+  immuneToMosquitoes: 1
+  immuneToLava: 1
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 3800
-  goldCost: 5700
+  productionCost: 4500
+  goldCost: 8000
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
   baseMeleeAttack: 140
-  baseRangedAttack: 140
-  baseCityAttack: 70
+  baseRangedAttack: 160
+  baseCityAttack: 100
   baseGroundAttack: 0
   baseNavalAttack: 0
-  baseUnderwaterAttack: 140
-  baseAirAttack: 90
-  baseSpaceAttack: 0
-  baseMovePoints: 4
-  baseDefense: 90
-  baseHealth: 220
+  baseUnderwaterAttack: 0
+  baseAirAttack: 0
+  baseSpaceAttack: 170
+  baseMovePoints: 3
+  baseDefense: 110
+  baseHealth: 230
   baseRange: 2
-  sightRange: 4
+  sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []
@@ -162,7 +167,7 @@ MonoBehaviour:
   captureHerdCount: 0
   captureSpecies: 7
   foodConsumptionPerTurn: 8
-  soldierCount: 1
+  soldierCount: 5
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5
