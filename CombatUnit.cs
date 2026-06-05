@@ -141,19 +141,6 @@ public class CombatUnit : BaseUnit
         return AircraftMissionManager.Instance.LaunchMission(this, missionKind, targetTileIndex);
     }
 
-    /// <summary>Convenience wrapper for assigning this aircraft to combat air patrol/interception duty.</summary>
-    public AircraftMissionResult StartAirPatrol(int patrolAnchorTileIndex = -1)
-    {
-        int anchor = patrolAnchorTileIndex >= 0 ? patrolAnchorTileIndex : currentTileIndex;
-        return LaunchAircraftMission(AircraftMissionKind.Patrol, anchor);
-    }
-
-    /// <summary>Removes this aircraft from the active patrol/interception screen if it is currently registered.</summary>
-    public void ClearAirPatrol()
-    {
-        AircraftMissionManager.Instance?.ClearPatrol(this);
-    }
-
     /// <summary>Launches a space/orbital mission through the central space mission manager.</summary>
     public SpaceMissionResult LaunchSpaceMission(SpaceMissionKind missionKind, int targetTileIndex)
     {
@@ -163,19 +150,6 @@ public class CombatUnit : BaseUnit
             return SpaceMissionResult.Invalid;
         }
         return SpaceMissionManager.Instance.LaunchMission(this, missionKind, targetTileIndex);
-    }
-
-    /// <summary>Convenience wrapper for assigning this spacecraft/orbital unit to space patrol/interception duty.</summary>
-    public SpaceMissionResult StartSpacePatrol(int patrolAnchorTileIndex = -1)
-    {
-        int anchor = patrolAnchorTileIndex >= 0 ? patrolAnchorTileIndex : currentTileIndex;
-        return LaunchSpaceMission(SpaceMissionKind.Patrol, anchor);
-    }
-
-    /// <summary>Removes this spacecraft/orbital unit from the active space patrol/interception screen.</summary>
-    public void ClearSpacePatrol()
-    {
-        SpaceMissionManager.Instance?.ClearPatrol(this);
     }
 
     /// <summary>True when this unit can perform air-jump/paratrooper deployment.</summary>
@@ -1865,8 +1839,6 @@ public class CombatUnit : BaseUnit
     protected override void Die()
     {
         StopAllCoroutines();
-        ClearAirPatrol();
-        
         // Clear walking/idle state when dead
         UpdateWalkingState(false);
         
