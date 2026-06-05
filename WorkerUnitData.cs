@@ -58,6 +58,19 @@ public class WorkerUnitData : ScriptableObject
     [Header("Stats")] public int baseWorkPoints;
     [Tooltip("Whether this worker unit can enter orbit (landing/launch).")]
     public bool canEnterOrbit = false;
+
+    [Header("Layer Operation")]
+    [Tooltip("Usual gameplay layer for this worker. If layer masks below are left as None, legacy defaults are inferred.")]
+    public TileLayer nativeLayer = TileLayer.Surface;
+    [Tooltip("Layers this worker is allowed to occupy. None means Surface, plus Orbit when canEnterOrbit is true.")]
+    public UnitLayerMask allowedLayers = UnitLayerMask.None;
+    [Tooltip("Layers this worker may be born/placed on. None means Surface for backwards compatibility.")]
+    public UnitLayerMask spawnLayers = UnitLayerMask.None;
+    [Tooltip("Allow explicit layer transitions between surface water and underwater, e.g. divers/undersea builders.")]
+    public bool canTransitionSurfaceUnderwater = false;
+    [Tooltip("Allow explicit layer transitions between surface and atmosphere.")]
+    public bool canTransitionSurfaceAtmosphere = false;
+
     public int baseMovePoints;
     public int baseHealth;
     public int baseAttack = 0;
@@ -201,6 +214,38 @@ public class WorkerUnitData : ScriptableObject
     public int unitLimit = -1;
     [Tooltip("Unique identifier for units that share the same limit (leave empty for individual limits)")]
     public string limitCategory = "";
+
+    public UnitLayerMask EffectiveAllowedLayers => allowedLayers != UnitLayerMask.None
+        ? allowedLayers
+        : (canEnterOrbit ? UnitLayerMask.Surface | UnitLayerMask.Orbit : UnitLayerMask.Surface);
+
+    public UnitLayerMask EffectiveSpawnLayers => spawnLayers != UnitLayerMask.None ? spawnLayers : UnitLayerMask.Surface;
+
+    public TileLayer EffectiveNativeLayer
+    {
+        get
+        {
+            if (allowedLayers != UnitLayerMask.None || spawnLayers != UnitLayerMask.None)
+                return nativeLayer;
+            return TileLayer.Surface;
+        }
+    }
+
+    public bool CanOccupyLayer(TileLayer layer) => LayerConversion.MaskContains(EffectiveAllowedLayers, layer);
+    public bool CanSpawnOnLayer(TileLayer layer) => LayerConversion.MaskContains(EffectiveSpawnLayers, layer) && CanOccupyLayer(layer);
+
+    public bool CanTransitionBetweenLayers(TileLayer from, TileLayer to)
+    {
+        if (from == to) return CanOccupyLayer(from);
+        if (!CanOccupyLayer(from) || !CanOccupyLayer(to)) return false;
+        if ((from == TileLayer.Surface && to == TileLayer.Underwater) || (from == TileLayer.Underwater && to == TileLayer.Surface))
+            return canTransitionSurfaceUnderwater;
+        if ((from == TileLayer.Surface && to == TileLayer.Atmosphere) || (from == TileLayer.Atmosphere && to == TileLayer.Surface))
+            return canTransitionSurfaceAtmosphere;
+        if ((from == TileLayer.Surface && to == TileLayer.Orbit) || (from == TileLayer.Orbit && to == TileLayer.Surface))
+            return canEnterOrbit;
+        return false;
+    }
 
     /// <summary>
     /// Checks if all requirements (techs, cultures) are met for this unit

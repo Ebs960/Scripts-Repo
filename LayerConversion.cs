@@ -50,5 +50,22 @@ public static class LayerConversion
                 return false;
         }
     }
+
+    public static UnitLayerMask ToMask(TileLayer tileLayer)
+    {
+        switch (tileLayer)
+        {
+            case TileLayer.Surface: return UnitLayerMask.Surface;
+            case TileLayer.Underwater: return UnitLayerMask.Underwater;
+            case TileLayer.Atmosphere: return UnitLayerMask.Atmosphere;
+            case TileLayer.Orbit: return UnitLayerMask.Orbit;
+            default: return UnitLayerMask.None;
+        }
+    }
+
+    public static bool MaskContains(UnitLayerMask mask, TileLayer tileLayer)
+    {
+        return (mask & ToMask(tileLayer)) != 0;
+    }
 }
 

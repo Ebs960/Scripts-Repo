@@ -263,6 +263,8 @@ public class WorkerUnit : BaseUnit
         level = 1;
     experience = 0;
         currentTileIndex = startTileIndex;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        currentLayer = UnitLayerRules.GetSpawnTileLayerForUnit(this, ts != null ? ts.GetTileData(startTileIndex) : null);
 
         var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
         currentHealth = MaxHealth;

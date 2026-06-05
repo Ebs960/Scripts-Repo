@@ -2299,6 +2299,12 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
+        if (!UnitLayerRules.CanUnitUseTileOnCurrentLayer(this, td))
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: unit={name} cannot use layer={currentLayer} on tile={tileIndex}");
+            return false;
+        }
+
         if (currentLayer == TileLayer.Orbit) return true;
 
         int moveCost = BiomeHelper.GetMovementCost(td, this);
@@ -2308,10 +2314,10 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
-        if (!td.isLand)
+        if (currentLayer == TileLayer.Surface && !td.isLand)
         {
             bool isNaval = cu != null && cu.data != null &&
-                CombatUnitData.IsNavalCategory(cu.data.unitType);
+                (CombatUnitData.IsNavalCategory(cu.data.unitType) || cu.data.unitType == CombatCategory.SeaPlane);
             if (!isNaval)
             {
                 if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: requires naval unit unit={name} tile={tileIndex}");
@@ -2346,6 +2352,12 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
+        if (!UnitLayerRules.CanUnitUseTileOnCurrentLayer(this, td))
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: unit={name} cannot use layer={currentLayer} on tile={tileIndex}");
+            return false;
+        }
+
         // Orbit units: skip terrain rules, only check orbit-layer occupancy
         if (currentLayer == TileLayer.Orbit)
         {
@@ -2369,11 +2381,11 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Land / water rules
         bool canTraverseLava = td.biome == Biome.Lava && BiomeHelper.CanUnitTraverseLava(this);
-        if (!td.isLand && !canTraverseLava)
+        if (currentLayer == TileLayer.Surface && !td.isLand && !canTraverseLava)
         {
             // Only specific naval CombatUnit types may enter water
             bool isNaval = cu != null && cu.data != null &&
-                CombatUnitData.IsNavalCategory(cu.data.unitType);
+                (CombatUnitData.IsNavalCategory(cu.data.unitType) || cu.data.unitType == CombatCategory.SeaPlane);
             if (!isNaval)
             {
                 if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: requires naval unit unit={name} tile={tileIndex}");
@@ -2561,6 +2573,76 @@ public abstract class BaseUnit : MonoBehaviour
             }
         }
         catch (System.Exception ex) { Debug.LogWarning($"[BaseUnit] RegisterOccupancy failed for {name}: {ex.Message}"); }
+    }
+
+
+    public bool CanTransitionToLayer(TileLayer targetLayer, out string reason)
+    {
+        reason = string.Empty;
+        if (currentTileIndex < 0) { reason = "unit is not on a tile"; return false; }
+        if (targetLayer == currentLayer) return true;
+        if (!UnitLayerRules.CanUnitTransitionBetweenLayers(this, currentLayer, targetLayer))
+        {
+            reason = $"{UnitName} cannot transition from {currentLayer} to {targetLayer}";
+            return false;
+        }
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
+        if (!UnitLayerRules.CanUnitUseTileOnLayer(this, tileData, targetLayer))
+        {
+            reason = $"target layer {targetLayer} is not valid on this tile";
+            return false;
+        }
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
+        {
+            int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+            if (!occ.CanJoinStack(currentTileIndex, targetLayer, maxStack))
+            {
+                reason = $"no available {targetLayer} stack slot";
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool TryTransitionToLayer(TileLayer targetLayer)
+    {
+        if (!CanTransitionToLayer(targetLayer, out var reason))
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] Layer transition failed for {name}: {reason}");
+            return false;
+        }
+
+        if (targetLayer == currentLayer) return true;
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        TileLayer oldLayer = currentLayer;
+        int newSlot = -1;
+        if (occ != null)
+        {
+            int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
+            newSlot = occ.TryAddToStack(currentTileIndex, targetLayer, gameObject, maxStack);
+            if (newSlot < 0) return false;
+            try { occ.ClearOccupantById(currentTileIndex, oldLayer, gameObject.GetRuntimeId()); } catch { }
+        }
+
+        currentLayer = targetLayer;
+        if (newSlot >= 0) stackSlot = newSlot;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts != null)
+        {
+            Vector3 pos = ts.GetTileSurfacePosition(currentTileIndex);
+            if (targetLayer == TileLayer.Orbit) pos += Vector3.up * PlanetGenerator.GetOrbitHeight(planetIndex);
+            transform.position = pos;
+            ApplyStackOffset();
+        }
+
+        return true;
     }
 
     #endregion
