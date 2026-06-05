@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: SAM
+  m_Name: Attack Helicopter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: SAM
-  unitType: 34
+  unitName: Attack Helicopter
+  unitType: 35
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: a1ed7364a99b30b499dddede4c0ef877, type: 3}
+  _iconDirect: {fileID: 21300000, guid: b3f5ba22583c8444e840b8694728533d, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -39,9 +39,9 @@ MonoBehaviour:
   requiresSpaceportToLand: 0
   canBombardSurface: 0
   orbitVisionBonus: 3
-  isTransport: 0
-  transportCapacity: 3
-  canTransportCombatUnits: 0
+  isTransport: 1
+  transportCapacity: 2
+  canTransportCombatUnits: 1
   canBaseAircraft: 0
   canBaseSpaceships: 0
   canTravelToMoon: 0
@@ -54,48 +54,58 @@ MonoBehaviour:
   canReconAirMission: 0
   canAirPatrol: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 1
+  canProvideAntiAir: 0
   airMissionRange: 0
   airMissionDamage: 0
   cityAirMissionDamage: 0
-  interceptionRange: 7
-  antiAirRange: 3
+  interceptionRange: 3
+  antiAirRange: 2
   interceptionChance: 0.45
-  antiAirInterceptionChance: 0.75
-  antiAirDamage: 95
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
-  canAttackAir: 1
-  canAttackSpace: 1
+  canAttackAir: 0
+  canAttackSpace: 0
   canAttackNavalSurface: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 14
+    attackBonus: 0
+    attackPercent: 0.2
+    defenseBonus: 0
+    defensePercent: 0.2
+  - targetCategory: 20
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.5
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 1650
-  goldCost: 2400
+  productionCost: 1800
+  goldCost: 2800
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 0
-  baseRangedAttack: 0
-  baseCityAttack: 0
+  baseMeleeAttack: 85
+  baseRangedAttack: 85
+  baseCityAttack: 45
   baseGroundAttack: 0
   baseNavalAttack: 0
   baseUnderwaterAttack: 0
-  baseAirAttack: 95
-  baseSpaceAttack: 20
-  baseMovePoints: 2
-  baseDefense: 35
-  baseHealth: 120
-  baseRange: 7
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 5
+  baseDefense: 37
+  baseHealth: 145
+  baseRange: 2
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
@@ -124,7 +134,7 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 5
+  foodConsumptionPerTurn: 10
   soldierCount: 1
   formationType: 0
   soldierVariants: []
