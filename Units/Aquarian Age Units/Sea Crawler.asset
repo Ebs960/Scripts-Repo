@@ -20,6 +20,11 @@ MonoBehaviour:
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  nativeLayer: 1
+  allowedLayers: 2
+  spawnLayers: 2
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
   canAirJump: 0
   airJumpRange: 0
   airJumpConsumesAction: 1
@@ -111,7 +116,7 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 4200
+  productionCost: 3800
   goldCost: 5700
   requiredResources: []
   requiredTerrains: 

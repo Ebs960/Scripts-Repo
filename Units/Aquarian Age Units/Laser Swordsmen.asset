@@ -20,6 +20,11 @@ MonoBehaviour:
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 0
+  spawnLayers: 1
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
   canAirJump: 0
   airJumpRange: 0
   airJumpConsumesAction: 1
