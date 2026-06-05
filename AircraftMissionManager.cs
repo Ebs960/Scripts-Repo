@@ -185,17 +185,29 @@ public class AircraftMissionManager : MonoBehaviour
 
         bool hit = RollDefensiveFire(interceptor, aircraft, interceptor.data.interceptionChance);
         bool aircraftDestroyed = false;
+        bool interceptorDestroyed = false;
         int damage = 0;
+        int returnDamage = 0;
         if (hit)
         {
-            damage = Mathf.Max(1, interceptor.CurrentAirAttack);
-            aircraftDestroyed = aircraft.ApplyDamage(damage, interceptor, false);
+            int interceptorAttack = interceptor.CurrentAirAttack;
+            int aircraftAttack = aircraft.CurrentAirAttack;
+            int interceptorDefense = interceptor.CurrentDefense;
+            int aircraftDefense = aircraft.CurrentDefense;
+
+            damage = CalculateAirCombatDamage(interceptorAttack, aircraftDefense);
+            returnDamage = aircraftAttack > 0 ? CalculateAirCombatDamage(aircraftAttack, interceptorDefense) : 0;
+
+            aircraftDestroyed = damage > 0 && aircraft.ApplyDamage(damage, interceptor, false);
+            interceptorDestroyed = returnDamage > 0 && interceptor.ApplyDamage(returnDamage, aircraft, false);
         }
 
         interceptor.TryConsumeAttackPoint();
-        if (!aircraftDestroyed && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
+        if ((!aircraftDestroyed || interceptorDestroyed) && activePatrols.Contains(interceptor)) activePatrols.Remove(interceptor);
         OnAircraftIntercepted?.Invoke(interceptor, aircraft, targetTile, aircraftDestroyed);
         NotifyAirEvent(interceptor, aircraft, aircraftDestroyed ? "destroyed" : (hit ? "damaged" : "missed"), damage);
+        if (returnDamage > 0)
+            NotifyAirEvent(aircraft, interceptor, interceptorDestroyed ? "destroyed" : "damaged", returnDamage);
         return aircraftDestroyed;
     }
 
@@ -208,9 +220,9 @@ public class AircraftMissionManager : MonoBehaviour
         int damage = 0;
         if (hit)
         {
-            int configuredDamage = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
-            damage = Mathf.Max(1, configuredDamage);
-            aircraftDestroyed = aircraft.ApplyDamage(damage, defender, false);
+            int attack = defender.data.antiAirDamage > 0 ? defender.data.antiAirDamage : defender.CurrentAirAttack;
+            damage = CalculateAirCombatDamage(attack, aircraft.CurrentDefense);
+            aircraftDestroyed = damage > 0 && aircraft.ApplyDamage(damage, defender, false);
         }
 
         OnAntiAirEngaged?.Invoke(defender, aircraft, targetTile, aircraftDestroyed);
@@ -273,14 +285,13 @@ public class AircraftMissionManager : MonoBehaviour
 
     private static void ResolveMissionEffect(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTile)
     {
-        int damage = aircraft.data.airMissionDamage > 0 ? aircraft.data.airMissionDamage : aircraft.CurrentAirAttack;
         switch (missionKind)
         {
             case AircraftMissionKind.AirStrike:
-                DamageUnitsOnTile(targetTile, aircraft.planetIndex, damage, aircraft.owner);
+                DamageUnitsOnTile(targetTile, aircraft.planetIndex, aircraft);
                 break;
             case AircraftMissionKind.CityBombardment:
-                DamageCityOnTile(targetTile, aircraft.planetIndex, aircraft, damage);
+                DamageCityOnTile(targetTile, aircraft.planetIndex, aircraft);
                 break;
             case AircraftMissionKind.Recon:
                 UIManager.Instance?.ShowNotification($"{aircraft.UnitName} completed an aerial reconnaissance mission.");
@@ -288,9 +299,9 @@ public class AircraftMissionManager : MonoBehaviour
         }
     }
 
-    private static void DamageUnitsOnTile(int tileIndex, int planetIndex, int damage, Civilization attackerOwner)
+    private static void DamageUnitsOnTile(int tileIndex, int planetIndex, CombatUnit aircraft)
     {
-        if (damage <= 0) return;
+        if (aircraft == null) return;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) return;
 
@@ -301,25 +312,45 @@ public class AircraftMissionManager : MonoBehaviour
             {
                 if (go == null) continue;
                 var combat = go.GetComponent<CombatUnit>();
-                if (combat != null && IsHostile(combat.owner, attackerOwner)) { combat.ApplyDamage(damage); continue; }
+                if (combat != null && IsHostile(combat.owner, aircraft.owner))
+                {
+                    int damage = CalculateStrikeDamage(aircraft.CurrentGroundAttack, combat.CurrentDefense);
+                    if (damage > 0) combat.ApplyDamage(damage, aircraft, false);
+                    continue;
+                }
                 var worker = go.GetComponent<WorkerUnit>();
-                if (worker != null && IsHostile(worker.owner, attackerOwner)) worker.ApplyDamage(damage);
+                if (worker != null && IsHostile(worker.owner, aircraft.owner))
+                {
+                    int damage = CalculateStrikeDamage(aircraft.CurrentGroundAttack, worker.CurrentDefense);
+                    if (damage > 0) worker.ApplyDamage(damage, aircraft, false);
+                }
             }
         }
     }
 
-    private static void DamageCityOnTile(int tileIndex, int planetIndex, CombatUnit aircraft, int fallbackDamage)
+    private static void DamageCityOnTile(int tileIndex, int planetIndex, CombatUnit aircraft)
     {
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tile = ts != null ? ts.GetTileData(tileIndex) : null;
         var city = tile != null ? tile.controllingCity : null;
-        if (city == null || !IsHostile(city.owner, aircraft.owner)) return;
+        if (city == null || aircraft == null || !IsHostile(city.owner, aircraft.owner)) return;
 
-        int configured = aircraft.data.cityAirMissionDamage > 0
-            ? aircraft.data.cityAirMissionDamage
-            : Mathf.Max(1, Mathf.RoundToInt(fallbackDamage * 0.5f));
-        city.defenseRating = Mathf.Max(0, city.defenseRating - configured);
+        int damage = Mathf.Max(0, aircraft.CurrentCityAttack);
+        if (damage <= 0) return;
+
+        city.defenseRating = Mathf.Max(0, city.defenseRating - damage);
         UIManager.Instance?.ShowNotification($"{city.cityName} was bombed from the air! Defense: {city.defenseRating}/{city.maxDefense}");
+    }
+
+
+    private static int CalculateStrikeDamage(int attack, int defense)
+    {
+        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+    }
+
+    private static int CalculateAirCombatDamage(int attack, int defense)
+    {
+        return Mathf.Max(0, attack - Mathf.Max(0, defense));
     }
 
     private static void NotifyAirEvent(CombatUnit defender, CombatUnit aircraft, string verb, int damage)

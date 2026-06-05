@@ -271,10 +271,6 @@ public class CombatUnitData : ScriptableObject
     public bool canProvideAntiAir = false;
     [Tooltip("Maximum tile distance for launched aircraft missions. If 0, CurrentRange is used as a fallback.")]
     [Range(0, 50)] public int airMissionRange = 0;
-    [Tooltip("Damage dealt by aircraft strike missions to units on the target tile. If 0, CurrentAirAttack is used.")]
-    public int airMissionDamage = 0;
-    [Tooltip("Damage dealt by air bombardment missions to city defense. If 0, half of airMissionDamage/CurrentAirAttack is used.")]
-    public int cityAirMissionDamage = 0;
     [Tooltip("Maximum tile distance at which this unit can intercept hostile aircraft missions.")]
     [Range(0, 25)] public int interceptionRange = 3;
     [Tooltip("Maximum tile distance at which this unit provides anti-air or missile defense.")]
