@@ -7,6 +7,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Burst job that fills a BiomeIndexMap texture (RGFloat) from pre-computed tile-to-slice
@@ -304,7 +305,7 @@ public class HexMapChunkManager : MonoBehaviour
     private bool enableTerrainSurfaceProbe = false;
     [SerializeField]
     [Tooltip("Key used when Terrain Surface Probe is enabled to log the currently hovered terrain tile.")]
-    private KeyCode terrainSurfaceProbeKey = KeyCode.P;
+    private Key terrainSurfaceProbeKey = Key.P;
 
     private TerrainDebugMode _lastTerrainDebugMode = (TerrainDebugMode)(-999);
 
@@ -709,7 +710,7 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (!enableTerrainSurfaceProbe) return;
         if (!Application.isPlaying) return;
-        if (!Input.GetKeyDown(terrainSurfaceProbeKey)) return;
+        if (Keyboard.current == null || !Keyboard.current[terrainSurfaceProbeKey].wasPressedThisFrame) return;
 
         LogTerrainSurfaceProbeUnderCursor();
     }
@@ -728,10 +729,11 @@ public class HexMapChunkManager : MonoBehaviour
             return;
         }
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Vector2 pointerPosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+        Ray ray = Camera.main.ScreenPointToRay(pointerPosition);
         if (!pickingCollider.Raycast(ray, out RaycastHit hit, 10000f))
         {
-            Debug.LogWarning($"[Terrain Probe] No terrain hit under cursor at screen={Input.mousePosition}.");
+            Debug.LogWarning($"[Terrain Probe] No terrain hit under cursor at screen={pointerPosition}.");
             return;
         }
 
