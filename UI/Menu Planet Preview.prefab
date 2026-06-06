@@ -470,8 +470,8 @@ MonoBehaviour:
   iceNormalStrength: 0.22
   textureDetailScale: 8
   jungleAlbedoTexture: {fileID: 2800000, guid: af2ac35d9104d134db2e55497851e636, type: 3}
-  desertAlbedoTexture: {fileID: 2800000, guid: 1bdebdf0e9e1f8c45b1a499091818032, type: 3}
-  savannaAlbedoTexture: {fileID: 2800000, guid: 3551a01d9954d384abd208565b362bb2, type: 3}
+  desertAlbedoTexture: {fileID: 2800000, guid: 46feb9fb996ab2d4590ff7828cc3cf7b, type: 3}
+  savannaAlbedoTexture: {fileID: 2800000, guid: f0bfde0ee9836d4458b055686c8abcc8, type: 3}
   temperateGrassAlbedoTexture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   temperateForestAlbedoTexture: {fileID: 2800000, guid: b7b93bc82e56b0d4c8db7239264d3d3c, type: 3}
   taigaAlbedoTexture: {fileID: 2800000, guid: 8f8033729ffd0a349a2818bb1b1e85df, type: 3}
@@ -479,7 +479,7 @@ MonoBehaviour:
   polarAlbedoTexture: {fileID: 2800000, guid: 9f2bdc699da018648a2f3889ec2c6263, type: 3}
   marshAlbedoTexture: {fileID: 2800000, guid: 2a84a8312b0f0454d8dd88e86ed5c40b, type: 3}
   jungleNormalTexture: {fileID: 2800000, guid: a67b2c87acf346445bea1eeaf05bfd3e, type: 3}
-  desertNormalTexture: {fileID: 2800000, guid: 3808ed383fe681441a8e04b35b350721, type: 3}
+  desertNormalTexture: {fileID: 2800000, guid: d74effb05e9c1ab428e479aff89dbfcd, type: 3}
   savannaNormalTexture: {fileID: 2800000, guid: 7137433fda1fd744eaaca70386cf4d9d, type: 3}
   temperateGrassNormalTexture: {fileID: 2800000, guid: 6107e9b990bbe5347ba366eae1e0d1d1, type: 3}
   temperateForestNormalTexture: {fileID: 2800000, guid: 1ff32eadede37e24687fac9129b633bf, type: 3}
@@ -488,7 +488,7 @@ MonoBehaviour:
   polarNormalTexture: {fileID: 2800000, guid: 6a2f223f438c7f94f8243135b4f1a17c, type: 3}
   marshNormalTexture: {fileID: 2800000, guid: 1aae1862a6aff0b4590caacf2c278b92, type: 3}
   jungleSmoothnessTexture: {fileID: 2800000, guid: 046df90e7a8f3434f9e524b2ef43db16, type: 3}
-  desertSmoothnessTexture: {fileID: 2800000, guid: 7e92ceab8b302e7478121a2b408c5635, type: 3}
+  desertSmoothnessTexture: {fileID: 2800000, guid: 9a900570af368b2488901f1b836dcce2, type: 3}
   savannaSmoothnessTexture: {fileID: 2800000, guid: c3072f444fa8d014684d5baeba95c78e, type: 3}
   temperateGrassSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
   temperateForestSmoothnessTexture: {fileID: 2800000, guid: 5e436296197df0344b48d28bcbfc2dcb, type: 3}
