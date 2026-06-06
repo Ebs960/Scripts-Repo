@@ -99,6 +99,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("When enabled, diagnostics from systems will only run for the first created planet (planet index 0). Disable to allow diagnostics on all planets.")]
     public bool restrictDiagnosticsToFirstPlanet = true;
     private List<string> realBodies;
+    private List<PlanetConfig> activePlanetConfigs = new List<PlanetConfig>();
     private int totalPlanets;
 
     public int currentPlanetIndex = 0;
@@ -322,7 +323,7 @@ public class GameManager : MonoBehaviour
     // Manager references
     public TurnManager turnManager;
     [Header("Planet Configs")]
-    [Tooltip("Optional per-planet ScriptableObject configs. If provided, the matching config's supportedLayers will be copied into runtime PlanetData by name.")]
+    [Tooltip("Planet ScriptableObjects to spawn, in order. The number of assigned configs is the number of generated planets.")]
     public PlanetConfig[] planetConfigs = new PlanetConfig[0];
 
     [Header("UI Prefabs")]
@@ -1502,6 +1503,37 @@ public class GameManager : MonoBehaviour
         
     }
 
+
+    private string GetPlanetConfigDisplayName(PlanetConfig config)
+    {
+        if (config == null)
+            return string.Empty;
+
+        return string.IsNullOrWhiteSpace(config.planetName) ? config.name : config.planetName.Trim();
+    }
+
+    private void ApplyPlanetConfigToPlanetData(PlanetConfig config, PlanetData planet)
+    {
+        if (config == null || planet == null)
+            return;
+
+        planet.supportedLayers = new List<PlanetLayerConfig>();
+        if (config.supportedLayers != null)
+        {
+            foreach (var layer in config.supportedLayers)
+            {
+                planet.supportedLayers.Add(new PlanetLayerConfig
+                {
+                    layerType = layer,
+                    hasTiles = (layer == PlanetLayerType.Surface || layer == PlanetLayerType.Underwater),
+                    isPlayable = (layer == PlanetLayerType.Surface)
+                });
+            }
+        }
+
+        planet.hasAtmosphere = planet.supportedLayers.Exists(l => l.layerType == PlanetLayerType.Atmosphere);
+    }
+
     private void ApplyRealPlanetIdentity(PlanetGenerator g, string bodyName)
     {
         g.planetType = global::PlanetType.Earth;
@@ -1535,33 +1567,28 @@ public class GameManager : MonoBehaviour
         // Update loading progress - Starting multi-planet system
         UpdateLoadingProgress(0.05f, "Initializing solar system...");
 
-        
-        
-        if (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
+        activePlanetConfigs = planetConfigs != null
+            ? planetConfigs.Where(c => c != null).ToList()
+            : new List<PlanetConfig>();
+
+        realBodies = activePlanetConfigs
+            .Select(GetPlanetConfigDisplayName)
+            .ToList();
+        totalPlanets = activePlanetConfigs.Count;
+
+        if (totalPlanets == 0)
         {
-            realBodies = new List<string>
-            {
-                "Earth",
-                "Luna",
-                "Mars", "Venus", "Mercury",
-                "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-                "Europa", "Titan"
-            };
-            totalPlanets = realBodies.Count;
-        }
-        else
-        {
-            // Procedural system with basic planets
-            realBodies = new List<string> { "Earth", "Mars", "Venus" };
-            totalPlanets = realBodies.Count;
+            Debug.LogError("[GameManager] No PlanetConfig assets assigned. Assign Planet Configs in the GameManager inspector to choose which planets spawn.");
+            UpdateLoadingProgress(0.70f, "No planets assigned!");
+            yield break;
         }
 
         planetData.Clear();
         for (int i = 0; i < totalPlanets; i++)
         {
-            string name = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
-                ? realBodies[i]
-                : $"Planet {i + 1}";
+            PlanetConfig cfg = activePlanetConfigs[i];
+            string name = realBodies[i];
+            Vector3 position = GetPlanetPosition(i, name);
 
             PlanetData planet = new PlanetData
             {
@@ -1573,6 +1600,8 @@ public class GameManager : MonoBehaviour
                     : CelestialBodyType.Planet,
                 planetSize = GetPlanetSize(name),
                 isHomeWorld = (i == 0),
+                worldPosition = position,
+                distanceFromHome = Vector3.Distance(Vector3.zero, position),
                 distanceFromStar = GetDistanceFromStar(name),
                 orbitalPeriod = GetOrbitalPeriod(name),
                 averageTemperature = GetAverageTemperature(name),
@@ -1582,39 +1611,7 @@ public class GameManager : MonoBehaviour
             if (name == "Earth")
                 planet.moonNames.Add("Luna");
 
-            // If a matching PlanetConfig ScriptableObject exists (by name), copy its supported layers
-            if (planetConfigs != null && planetConfigs.Length > 0)
-            {
-                try
-                {
-                    var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == planet.planetName);
-                    if (cfg != null)
-                    {
-                        // Map authoritative cfg.supportedLayers (enum list) into runtime PlanetLayerConfig entries
-                        planet.supportedLayers = new List<PlanetLayerConfig>();
-                        if (cfg.supportedLayers != null)
-                        {
-                            foreach (var layer in cfg.supportedLayers)
-                            {
-                                var plc = new PlanetLayerConfig
-                                {
-                                    layerType = layer,
-                                    hasTiles = (layer == PlanetLayerType.Surface || layer == PlanetLayerType.Underwater),
-                                    isPlayable = (layer == PlanetLayerType.Surface)
-                                };
-                                planet.supportedLayers.Add(plc);
-                            }
-                        }
-
-                        // Optional convenience: set hasAtmosphere flag from layers
-                        planet.hasAtmosphere = planet.supportedLayers.Exists(l => l.layerType == PlanetLayerType.Atmosphere);
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[GameManager] Failed to apply PlanetConfig for {planet.planetName}: {ex.Message}");
-                }
-            }
+            ApplyPlanetConfigToPlanetData(cfg, planet);
 
             planet.isGenerated = planet.isExplored;
             planetData[i] = planet;
@@ -1628,11 +1625,10 @@ public class GameManager : MonoBehaviour
             
             // Update loading progress for planet generation
             float planetProgress = 0.1f + (0.6f * i / totalPlanets); // 10% to 70% for planet generation
-            string planetName = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
-                ? realBodies[i] : $"Planet {i + 1}";
+            string planetName = realBodies[i];
             UpdateLoadingProgress(planetProgress, $"Generating {planetName}...");
             
-            Vector3 position = GetPlanetPosition(i, realBodies[i]);
+            Vector3 position = planetData.TryGetValue(i, out var data) ? data.worldPosition : GetPlanetPosition(i, planetName);
             yield return StartCoroutine(GenerateMultiPlanet(i, position));
             
             
@@ -1911,10 +1907,13 @@ public class GameManager : MonoBehaviour
     {
         
 
-        // Determine which prefab to use based on planet type
-        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
-            ? realBodies[planetIndex]
-            : (planetIndex == 0 ? "Earth" : "Mars");
+        // Determine which prefab to use from the assigned PlanetConfig list.
+        PlanetConfig assignedConfig = planetIndex >= 0 && planetIndex < activePlanetConfigs.Count
+            ? activePlanetConfigs[planetIndex]
+            : null;
+        string body = assignedConfig != null
+            ? GetPlanetConfigDisplayName(assignedConfig)
+            : (realBodies != null && planetIndex >= 0 && planetIndex < realBodies.Count ? realBodies[planetIndex] : $"Planet {planetIndex + 1}");
 
         GameObject prefabToUse = null;
         
@@ -1960,25 +1959,16 @@ public class GameManager : MonoBehaviour
         }
         generator.planetIndex = planetIndex;
 
-        // Assign authoritative PlanetConfig (if available) to the generated PlanetGenerator
-        if (planetConfigs != null && planetConfigs.Length > 0)
-        {
-            try
-            {
-                var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == body);
-                if (cfg != null)
-                {
-                    generator.planetConfig = cfg;
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[GameManager] Failed to assign PlanetConfig for {body}: {ex.Message}");
-            }
-        }
+        // Assign the exact ScriptableObject entry that requested this planet.
+        if (assignedConfig != null)
+            generator.planetConfig = assignedConfig;
 
         if (planetData.ContainsKey(planetIndex))
+        {
             planetData[planetIndex].planetName = body;
+            planetData[planetIndex].worldPosition = position;
+            planetData[planetIndex].distanceFromHome = Vector3.Distance(Vector3.zero, position);
+        }
 
         // Only apply planet identity settings for non-Earth planets
         // Earth should keep its original prefab settings
