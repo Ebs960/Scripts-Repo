@@ -145,6 +145,25 @@ public enum TerrainRenderPath
     BakedHdrpLit
 }
 
+public enum BakedSurfaceUVMode
+{
+    GlobalMapUV,
+    WorldPlanar,
+    TileStableOffsetWorldPlanar
+}
+
+public enum BakedTerrainDebugBakeMode
+{
+    Final,
+    AlbedoOnly,
+    NormalOnlyVisualized,
+    MaskSmoothnessVisualized,
+    MaskAOVisualized,
+    SurfaceFamilyColor,
+    SurfaceSliceColor,
+    TilingVisualized
+}
+
 public class HexMapChunkManager : MonoBehaviour
 {
     [Header("References")]
@@ -185,6 +204,22 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool bakedTerrainBakeMaskMap = false;
     [SerializeField] private bool bakedTerrainBakeNormalMap = false;
     [SerializeField] private bool bakedTerrainBakeCliffs = false;
+
+    [SerializeField] private BakedSurfaceUVMode bakedSurfaceUVMode = BakedSurfaceUVMode.TileStableOffsetWorldPlanar;
+
+    [SerializeField]
+    [Tooltip("Global multiplier applied after biome/family tiling. Keep near 1. Old hardcoded behavior was effectively 8.")]
+    private float bakedSurfaceGlobalTilingMultiplier = 1f;
+
+    [SerializeField]
+    [Tooltip("Small random UV offset per tile/variant so repeated surfaces don't line up perfectly.")]
+    private float bakedSurfaceTileUVJitter = 0.25f;
+
+    [SerializeField]
+    [Tooltip("If enabled, cliffs are only applied to mountain/steep tiles instead of broad lowland slopes.")]
+    private bool bakedCliffsPreferMountainsAndSteepSteps = true;
+
+    [SerializeField] private BakedTerrainDebugBakeMode bakedTerrainDebugBakeMode = BakedTerrainDebugBakeMode.Final;
 
     [SerializeField]
     [Tooltip("For natural terrain, keep metallic at zero even if source mask R contains data.")]
@@ -2605,6 +2640,26 @@ public class HexMapChunkManager : MonoBehaviour
         else Debug.Log(result);
     }
 
+    private struct BakedSurfaceProfile
+    {
+        public BiomeVisualData visual;
+        public SurfaceFamilyData family;
+
+        public Biome biome;
+        public int biomeIndex;
+        public int surfaceIndex;
+        public int sliceIndex;
+        public int forcedVariant;
+
+        public float tiling;
+        public float normalStrength;
+        public float roughnessOffset;
+        public float inherentWetness;
+        public bool isWaterBiome;
+
+        public bool isMountain;
+    }
+
     private struct ResolvedTerrainSurfaceSample
     {
         public int tileIndex;
@@ -2623,6 +2678,7 @@ public class HexMapChunkManager : MonoBehaviour
         public int surfaceIndex;
         public int sliceIndex;
         public int forcedVariant;
+        public BakedSurfaceProfile profile;
 
         public Vector2 mapUV;
         public Vector2 surfaceUV;
@@ -2686,6 +2742,71 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
+    private BakedSurfaceProfile BuildBakedSurfaceProfile(
+        HexTileData tile,
+        int tileIndex,
+        BiomeVisualData visual,
+        int biomeIndex,
+        int sliceIndex)
+    {
+        SurfaceFamilyData family = visual != null ? visual.surfaceFamily : null;
+        float tiling = visual != null ? visual.tiling : 1f;
+        if (tiling <= 0f && family != null)
+            tiling = family.defaultTiling;
+        if (tiling <= 0f)
+            tiling = 1f;
+
+        float familyNormalStrength = family != null ? family.normalStrength : 1f;
+
+        return new BakedSurfaceProfile
+        {
+            visual = visual,
+            family = family,
+            biome = visual != null ? visual.biome : (tile != null ? tile.biome : Biome.Plains),
+            biomeIndex = biomeIndex,
+            surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile != null && tile.isMountain),
+            sliceIndex = sliceIndex,
+            forcedVariant = GetForcedVariant(biomeIndex, tile != null && tile.isMountain),
+            tiling = tiling,
+            normalStrength = familyNormalStrength * biomeNormalStrength * bakedTerrainNormalStrength,
+            roughnessOffset = family != null ? family.roughnessOffset : 0f,
+            inherentWetness = visual != null ? visual.inherentWetness : 0f,
+            isWaterBiome = visual != null && visual.isWaterBiome,
+            isMountain = tile != null && tile.isMountain
+        };
+    }
+
+    private Vector2 ComputeBakedSurfaceUV(float u, float v, int tileIndex, BakedSurfaceProfile profile)
+    {
+        float tiling = Mathf.Max(0.001f, profile.tiling * bakedSurfaceGlobalTilingMultiplier);
+
+        Vector2 baseUV;
+
+        switch (bakedSurfaceUVMode)
+        {
+            case BakedSurfaceUVMode.WorldPlanar:
+                baseUV = new Vector2(u * mapWidth, v * mapHeight);
+                break;
+
+            case BakedSurfaceUVMode.TileStableOffsetWorldPlanar:
+                baseUV = new Vector2(u * mapWidth, v * mapHeight);
+
+                float jx = HashToUnitFloat(tileIndex * 17 + profile.sliceIndex * 31) - 0.5f;
+                float jy = HashToUnitFloat(tileIndex * 37 + profile.sliceIndex * 53) - 0.5f;
+                baseUV += new Vector2(jx, jy) * bakedSurfaceTileUVJitter;
+                break;
+
+            default:
+                baseUV = new Vector2(u, v);
+                break;
+        }
+
+        return new Vector2(
+            Mathf.Repeat(baseUV.x * tiling, 1f),
+            Mathf.Repeat(baseUV.y * tiling, 1f)
+        );
+    }
+
     private bool TryResolveTerrainSurfaceSample(int tileIndex, float u, float v, out ResolvedTerrainSurfaceSample sample)
     {
         sample = new ResolvedTerrainSurfaceSample
@@ -2696,7 +2817,7 @@ public class HexMapChunkManager : MonoBehaviour
             sliceIndex = 0,
             forcedVariant = -1,
             mapUV = new Vector2(u, v),
-            surfaceUV = new Vector2(Mathf.Repeat(u * 8f, 1f), Mathf.Repeat(v * 8f, 1f)),
+            surfaceUV = new Vector2(u, v),
             sampledAlbedo = Color.magenta
         };
 
@@ -2715,6 +2836,7 @@ public class HexMapChunkManager : MonoBehaviour
         int surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile.isMountain);
         SurfaceFamilyData surfaceFamily = visual != null ? visual.surfaceFamily : null;
         int forcedVariant = GetForcedVariant(biomeIndex, tile.isMountain);
+        BakedSurfaceProfile profile = BuildBakedSurfaceProfile(tile, tileIndex, visual, biomeIndex, sliceIndex);
 
         sample.tileBiome = tile.biome;
         sample.renderedBiome = visual != null ? visual.biome : tile.biome;
@@ -2730,6 +2852,8 @@ public class HexMapChunkManager : MonoBehaviour
         sample.surfaceIndex = surfaceIndex;
         sample.sliceIndex = sliceIndex;
         sample.forcedVariant = forcedVariant;
+        sample.profile = profile;
+        sample.surfaceUV = ComputeBakedSurfaceUV(u, v, tileIndex, profile);
 
         if (!bakedTerrainUseSimpleBiomeColors)
         {
@@ -2856,6 +2980,86 @@ public class HexMapChunkManager : MonoBehaviour
         return -1;
     }
 
+    private static float HashStringToUnitFloat(string value, int salt)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u ^ (uint)salt;
+            if (!string.IsNullOrEmpty(value))
+            {
+                for (int i = 0; i < value.Length; i++)
+                {
+                    hash ^= value[i];
+                    hash *= 16777619u;
+                }
+            }
+            return (hash & 0x00FFFFFFu) / 16777215f;
+        }
+    }
+
+    private static Color DeterministicDebugColor(string key, int fallbackSeed)
+    {
+        if (string.IsNullOrEmpty(key))
+            key = fallbackSeed.ToString();
+
+        return Color.HSVToRGB(
+            HashStringToUnitFloat(key, fallbackSeed),
+            0.65f + HashStringToUnitFloat(key, fallbackSeed + 101) * 0.25f,
+            0.75f + HashStringToUnitFloat(key, fallbackSeed + 211) * 0.2f);
+    }
+
+    private Color ComputeBakedTerrainDebugBaseColor(
+        ResolvedTerrainSurfaceSample sample,
+        Color baseColor,
+        Dictionary<int, Color[]> normalSliceCache,
+        Dictionary<int, Color[]> maskSliceCache)
+    {
+        switch (bakedTerrainDebugBakeMode)
+        {
+            case BakedTerrainDebugBakeMode.NormalOnlyVisualized:
+                if (TrySampleTextureArraySlice(biomeNormalArray, sample.sliceIndex, sample.surfaceUV, normalSliceCache, out var normal, out _))
+                    return new Color(normal.r, normal.g, normal.b, 1f);
+                return new Color(0.5f, 0.5f, 1f, 1f);
+
+            case BakedTerrainDebugBakeMode.MaskSmoothnessVisualized:
+                if (TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var smoothMask, out _))
+                {
+                    float rawSmoothness = Mathf.Clamp01(smoothMask.a);
+                    float smoothness = Mathf.Clamp(rawSmoothness - sample.profile.roughnessOffset, 0f, bakedTerrainMaxSmoothness);
+                    return new Color(smoothness, smoothness, smoothness, 1f);
+                }
+                return Color.black;
+
+            case BakedTerrainDebugBakeMode.MaskAOVisualized:
+                if (TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var aoMask, out _))
+                {
+                    float ao = Mathf.Clamp(aoMask.g, bakedTerrainMinAO, 1f);
+                    return new Color(ao, ao, ao, 1f);
+                }
+                return Color.black;
+
+            case BakedTerrainDebugBakeMode.SurfaceFamilyColor:
+                string familyKey = sample.profile.family != null
+                    ? (!string.IsNullOrEmpty(sample.profile.family.familyName) ? sample.profile.family.familyName : sample.profile.family.name)
+                    : $"surface-{sample.surfaceIndex}";
+                return DeterministicDebugColor(familyKey, sample.surfaceIndex);
+
+            case BakedTerrainDebugBakeMode.SurfaceSliceColor:
+                return DeterministicDebugColor($"slice-{sample.sliceIndex}", sample.sliceIndex);
+
+            case BakedTerrainDebugBakeMode.TilingVisualized:
+                float cx = Mathf.Floor(sample.surfaceUV.x * 8f);
+                float cy = Mathf.Floor(sample.surfaceUV.y * 8f);
+                bool checker = (((int)cx + (int)cy) & 1) == 0;
+                return checker ? Color.white : Color.black;
+
+            case BakedTerrainDebugBakeMode.AlbedoOnly:
+            case BakedTerrainDebugBakeMode.Final:
+            default:
+                return baseColor;
+        }
+    }
+
     private static string FormatColorRgb(Color c)
     {
         return $"({c.r:F3},{c.g:F3},{c.b:F3})";
@@ -2876,6 +3080,8 @@ public class HexMapChunkManager : MonoBehaviour
                $"waterType={sample.waterType} isMountain={sample.isMountain} isRiver={sample.isRiver} isLake={sample.isLake} isSolidFrozenWater={sample.isSolidFrozenWater} " +
                $"visual.name={visualName} visual.biome={visualBiome} surfaceFamily.asset={familyAssetName} surfaceFamily.familyName={familyName} " +
                $"biomeIndex={sample.biomeIndex} surfaceIndex={sample.surfaceIndex} sliceIndex={sample.sliceIndex} forcedVariant={sample.forcedVariant} " +
+               $"profile.tiling={sample.profile.tiling:F3} profile.normalStrength={sample.profile.normalStrength:F3} profile.roughnessOffset={sample.profile.roughnessOffset:F3} " +
+               $"profile.inherentWetness={sample.profile.inherentWetness:F3} profile.isWaterBiome={sample.profile.isWaterBiome} " +
                $"mapUV={FormatVector2(sample.mapUV)} surfaceUV={FormatVector2(sample.surfaceUV)} sampledAlbedo={FormatColorRgb(sample.sampledAlbedo)}";
     }
 
@@ -3075,7 +3281,7 @@ public class HexMapChunkManager : MonoBehaviour
         return Mathf.Clamp01((elevation - _heightmapMin) / range);
     }
 
-    private float ComputeBakedCliffMask(float u, float v)
+    private float ComputeBakedCliffMask(float u, float v, ResolvedTerrainSurfaceSample sample)
     {
         if (!bakedTerrainBakeCliffs)
             return 0f;
@@ -3095,7 +3301,23 @@ public class HexMapChunkManager : MonoBehaviour
         float step = Mathf.Max(center - left, center - right, center - down, center - up, 0f);
         float slopeMask = Mathf.SmoothStep(cliffSlopeThreshold, Mathf.Clamp01(cliffSlopeThreshold + Mathf.Max(0.0001f, cliffSlopeBlend)), slope);
         float stepMask = Mathf.SmoothStep(cliffStepThreshold, Mathf.Clamp01(cliffStepThreshold + Mathf.Max(0.0001f, cliffStepBlend)), step);
-        return Mathf.Clamp01(Mathf.Max(slopeMask, stepMask) * cliffStrength);
+        float cliffMask = Mathf.Clamp01(Mathf.Max(slopeMask, stepMask) * cliffStrength);
+
+        bool waterOrCoast = sample.profile.isWaterBiome
+            || sample.waterType != TileWaterType.None
+            || sample.isRiver
+            || sample.isLake
+            || sample.renderedBiome == Biome.Coast
+            || sample.tileBiome == Biome.Coast;
+
+        if (waterOrCoast)
+            cliffMask *= 0.05f;
+        else if (bakedCliffsPreferMountainsAndSteepSteps && !sample.profile.isMountain)
+            cliffMask *= 0.35f;
+        else if (sample.profile.isMountain)
+            cliffMask = Mathf.Clamp01(cliffMask * 1.15f);
+
+        return Mathf.Clamp01(cliffMask);
     }
 
     private void ExportBakedTerrainDebugPng(Texture2D texture, string fileName, string label)
@@ -3155,6 +3377,8 @@ public class HexMapChunkManager : MonoBehaviour
         bakedTerrainReadableSliceCache = new Dictionary<int, Color[]>();
         bakedTerrainFailedSliceSampleReasons = new Dictionary<int, string>();
         var cliffAlbedoSliceCache = new Dictionary<int, Color[]>();
+        var debugNormalSliceCache = new Dictionary<int, Color[]>();
+        var debugMaskSliceCache = new Dictionary<int, Color[]>();
         if (bakedTerrainBakeCliffs)
             EnsureBakedTerrainHeightRangeForCliffs();
         bakedTerrainLastCliffMaskPixels = bakedTerrainBakeCliffs ? new Color[width * height] : null;
@@ -3178,8 +3402,9 @@ public class HexMapChunkManager : MonoBehaviour
                 int lutIndex = lutY * lutWidth + lutX;
                 int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
                 Color color = Color.magenta;
+                bool resolvedSample = TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample);
 
-                if (TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample))
+                if (resolvedSample)
                 {
                     bool sampleFallback = !useSimpleColors && !lastResolvedTerrainAlbedoSampleSucceeded;
                     color = sample.sampledAlbedo;
@@ -3232,14 +3457,17 @@ public class HexMapChunkManager : MonoBehaviour
                         }
                     }
 
+                    if (bakedTerrainDebugBakeMode != BakedTerrainDebugBakeMode.Final)
+                        color = ComputeBakedTerrainDebugBaseColor(sample, color, debugNormalSliceCache, debugMaskSliceCache);
+
                     if (exportProblemBiomeSlices && !useSimpleColors && BakedTerrainSliceExportBiomes.Contains(sample.renderedBiome) && exportedProblemBiomeSlices.Add(sample.renderedBiome))
                         ExportRuntimeAlbedoSliceDebug(sample.sliceIndex, sample.renderedBiome.ToString());
                 }
 
                 float cliffMask = 0f;
-                if (bakedTerrainBakeCliffs)
+                if (bakedTerrainBakeCliffs && resolvedSample && bakedTerrainDebugBakeMode == BakedTerrainDebugBakeMode.Final)
                 {
-                    cliffMask = ComputeBakedCliffMask(u, v);
+                    cliffMask = ComputeBakedCliffMask(u, v, sample);
                     bakedTerrainLastCliffMaskPixels[y * width + x] = new Color(cliffMask, cliffMask, cliffMask, 1f);
                     cliffMaskSum += cliffMask;
                     if (cliffMask > cliffMaskMax) cliffMaskMax = cliffMask;
@@ -3364,6 +3592,13 @@ public class HexMapChunkManager : MonoBehaviour
         public int pixelCount;
         public double sumSmoothness;
         public double sumAO;
+        public double sumRoughnessOffset;
+    }
+
+    private class BakedTerrainNormalBiomeStats
+    {
+        public int pixelCount;
+        public double sumNormalStrength;
     }
 
     private void BuildBakedHdrpLitMaskMap()
@@ -3398,6 +3633,7 @@ public class HexMapChunkManager : MonoBehaviour
         double metallicSum = 0d;
         double aoSum = 0d;
         double smoothnessSum = 0d;
+        double roughnessOffsetSum = 0d;
         float maxSmoothness = 0f;
         int highSmoothnessCount = 0;
         int highMetallicCount = 0;
@@ -3419,24 +3655,27 @@ public class HexMapChunkManager : MonoBehaviour
                 float metallic = 0f;
                 float ao = 1f;
                 float smoothness = bakedTerrainDefaultSmoothness;
+                float roughnessOffset = 0f;
                 Biome renderedBiome = Biome.Plains;
+                bool resolvedSample = TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample);
 
-                if (TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample) &&
-                    TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var rawMask, out _))
+                if (resolvedSample && TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var rawMask, out _))
                 {
                     renderedBiome = sample.renderedBiome;
                     metallic = bakedTerrainForceMetallicZero ? 0f : Mathf.Clamp01(rawMask.r);
                     ao = Mathf.Clamp(rawMask.g, bakedTerrainMinAO, 1f);
-                    smoothness = Mathf.Clamp(rawMask.a, 0f, bakedTerrainMaxSmoothness);
+                    float rawSmoothness = Mathf.Clamp01(rawMask.a);
+                    roughnessOffset = sample.profile.roughnessOffset;
+                    smoothness = Mathf.Clamp(rawSmoothness - roughnessOffset, 0f, bakedTerrainMaxSmoothness);
                 }
                 else
                 {
                     fallbackCount++;
                 }
 
-                if (bakedTerrainBakeCliffs)
+                if (bakedTerrainBakeCliffs && resolvedSample)
                 {
-                    float cliffMask = ComputeBakedCliffMask(u, v) * bakedCliffMaskStrength;
+                    float cliffMask = ComputeBakedCliffMask(u, v, sample) * bakedCliffMaskStrength;
                     if (cliffMask > 0f)
                     {
                         metallic = 0f;
@@ -3449,6 +3688,7 @@ public class HexMapChunkManager : MonoBehaviour
                 metallicSum += metallic;
                 aoSum += ao;
                 smoothnessSum += smoothness;
+                roughnessOffsetSum += roughnessOffset;
                 if (smoothness > maxSmoothness) maxSmoothness = smoothness;
                 if (smoothness > 0.5f) highSmoothnessCount++;
                 if (metallic > 0.05f) highMetallicCount++;
@@ -3464,6 +3704,7 @@ public class HexMapChunkManager : MonoBehaviour
                     stats.pixelCount++;
                     stats.sumSmoothness += smoothness;
                     stats.sumAO += ao;
+                    stats.sumRoughnessOffset += roughnessOffset;
                 }
             }
         }
@@ -3490,12 +3731,12 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         int pixelCount = Mathf.Max(1, width * height);
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit MaskMap {width}x{height}, fallbackPixels={fallbackCount}, avgMetallic={metallicSum / pixelCount:F4}, avgAO={aoSum / pixelCount:F4}, avgSmoothness={smoothnessSum / pixelCount:F4}, maxSmoothness={maxSmoothness:F4}, smoothnessGt0.5={highSmoothnessCount}, metallicGt0.05={highMetallicCount}, readable={keepReadableForDebugExport}.");
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit MaskMap {width}x{height}, fallbackPixels={fallbackCount}, avgMetallic={metallicSum / pixelCount:F4}, avgAO={aoSum / pixelCount:F4}, avgSmoothness={smoothnessSum / pixelCount:F4}, avgRoughnessOffset={roughnessOffsetSum / pixelCount:F4}, maxSmoothness={maxSmoothness:F4}, smoothnessGt0.5={highSmoothnessCount}, metallicGt0.05={highMetallicCount}, readable={keepReadableForDebugExport}.");
         foreach (var kvp in biomeStats.OrderBy(k => k.Key.ToString()))
         {
             var stats = kvp.Value;
             if (stats.pixelCount <= 0) continue;
-            Debug.Log($"[BakedTerrainMaskStats] {kvp.Key} pixels={stats.pixelCount} avgSmoothness={stats.sumSmoothness / stats.pixelCount:F4} avgAO={stats.sumAO / stats.pixelCount:F4}");
+            Debug.Log($"[BakedTerrainMaskStats] {kvp.Key} pixels={stats.pixelCount} avgRoughnessOffset={stats.sumRoughnessOffset / stats.pixelCount:F4} avgSmoothness={stats.sumSmoothness / stats.pixelCount:F4} avgAO={stats.sumAO / stats.pixelCount:F4}");
         }
     }
 
@@ -3533,6 +3774,9 @@ public class HexMapChunkManager : MonoBehaviour
         double sumR = 0d;
         double sumG = 0d;
         double sumB = 0d;
+        double normalStrengthSum = 0d;
+        int nearFlatNormalCount = 0;
+        var normalStatsByBiome = new Dictionary<Biome, BakedTerrainNormalBiomeStats>();
         Color flatNormal = new Color(0.5f, 0.5f, 1f, 1f);
 
         for (int y = 0; y < height; y++)
@@ -3552,14 +3796,15 @@ public class HexMapChunkManager : MonoBehaviour
                     TrySampleTextureArraySlice(biomeNormalArray, sample.sliceIndex, sample.surfaceUV, normalSliceCache, out var raw, out _))
                 {
                     Vector3 n = new Vector3(raw.r * 2f - 1f, raw.g * 2f - 1f, raw.b * 2f - 1f);
-                    n.x *= bakedTerrainNormalStrength;
-                    n.y *= bakedTerrainNormalStrength;
+                    float normalStrength = Mathf.Max(0f, sample.profile.normalStrength);
+                    n.x *= normalStrength;
+                    n.y *= normalStrength;
                     n.z = Mathf.Sqrt(Mathf.Max(0.0001f, 1f - Mathf.Clamp01(n.x * n.x + n.y * n.y)));
                     n.Normalize();
 
                     if (bakedTerrainBakeCliffs && cliffNormalArray != null && cliffNormalArray.depth > 0)
                     {
-                        float cliffMask = ComputeBakedCliffMask(u, v) * bakedCliffNormalStrength;
+                        float cliffMask = ComputeBakedCliffMask(u, v, sample) * bakedCliffNormalStrength;
                         int cliffSlice = Mathf.Abs(tileIndex) % cliffNormalArray.depth;
                         Vector2 cliffUV = new Vector2(Mathf.Repeat(u * cliffTiling, 1f), Mathf.Repeat(v * cliffTiling, 1f));
                         if (cliffMask > 0f && TrySampleTextureArraySlice(cliffNormalArray, cliffSlice, cliffUV, cliffNormalSliceCache, out var cliffRaw, out _))
@@ -3572,6 +3817,18 @@ public class HexMapChunkManager : MonoBehaviour
                     }
 
                     packed = new Color(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f, 1f);
+                    normalStrengthSum += normalStrength;
+                    if (BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) || BakedTerrainWatchedBiomes.Contains(sample.tileBiome))
+                    {
+                        Biome key = BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) ? sample.renderedBiome : sample.tileBiome;
+                        if (!normalStatsByBiome.TryGetValue(key, out var normalStats))
+                        {
+                            normalStats = new BakedTerrainNormalBiomeStats();
+                            normalStatsByBiome[key] = normalStats;
+                        }
+                        normalStats.pixelCount++;
+                        normalStats.sumNormalStrength += normalStrength;
+                    }
                     sampleCount++;
                 }
                 else
@@ -3580,6 +3837,8 @@ public class HexMapChunkManager : MonoBehaviour
                 }
 
                 pixels[y * width + x] = packed;
+                if (Mathf.Abs(packed.r - 0.5f) < 0.02f && Mathf.Abs(packed.g - 0.5f) < 0.02f)
+                    nearFlatNormalCount++;
                 sumR += packed.r;
                 sumG += packed.g;
                 sumB += packed.b;
@@ -3610,7 +3869,13 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         int pixelCount = Mathf.Max(1, width * height);
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit NormalMap {width}x{height}, samples={sampleCount}, fallbackPixels={fallbackCount}, avgRGB=({sumR / pixelCount:F4},{sumG / pixelCount:F4},{sumB / pixelCount:F4}), readable={keepReadableForDebugExport}.");
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit NormalMap {width}x{height}, samples={sampleCount}, fallbackPixels={fallbackCount}, avgNormalStrength={(sampleCount > 0 ? normalStrengthSum / sampleCount : 0d):F4}, nearFlatNormals={nearFlatNormalCount} ({(nearFlatNormalCount * 100d / pixelCount):F2}%), avgRGB=({sumR / pixelCount:F4},{sumG / pixelCount:F4},{sumB / pixelCount:F4}), readable={keepReadableForDebugExport}.");
+        foreach (var kvp in normalStatsByBiome.OrderBy(k => k.Key.ToString()))
+        {
+            var stats = kvp.Value;
+            if (stats.pixelCount <= 0) continue;
+            Debug.Log($"[BakedTerrainNormalStats] {kvp.Key} pixels={stats.pixelCount} avgNormalStrength={stats.sumNormalStrength / stats.pixelCount:F4}");
+        }
     }
 
     private void CreateSharedMaterial()
