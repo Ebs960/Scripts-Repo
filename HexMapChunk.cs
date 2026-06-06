@@ -419,7 +419,7 @@ public class HexMapChunk : MonoBehaviour
                 );
 
                 float y = 0f;
-                if (manager != null && manager.UseBakedHdrpLit)
+                if (manager != null && manager.UseCpuDisplacedTerrainMesh)
                 {
                     // SampleTerrainSurfaceYAtUV returns world-space surface Y (flatY + elevation). This mesh is
                     // parented under the terrain column at flatY, so store only the local offset here.
@@ -473,7 +473,7 @@ public class HexMapChunk : MonoBehaviour
         mesh.tangents = tangents;
         mesh.triangles = triangles;
 
-        if (manager != null && manager.UseBakedHdrpLit)
+        if (manager != null && manager.UseCpuDisplacedTerrainMesh)
         {
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();

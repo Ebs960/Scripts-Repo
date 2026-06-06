@@ -142,7 +142,8 @@ public enum TerrainDebugMode
 public enum TerrainRenderPath
 {
     CustomBiomeShader,
-    BakedHdrpLit
+    BakedHdrpLit,
+    HdrpLitBiomeShaderGraph
 }
 
 public enum BakedSurfaceUVMode
@@ -184,6 +185,11 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Baked HDRP Lit Terrain")]
     [SerializeField] private Material bakedLitTerrainMaterialTemplate;
+
+    [Header("HDRP Lit Biome Shader Graph Terrain")]
+    [SerializeField]
+    [Tooltip("Shader Graph HDRP/Lit material template for the live biome/surface-family texture-array terrain path. Required when Terrain Render Path is HdrpLitBiomeShaderGraph.")]
+    private Material hdrpLitBiomeTerrainMaterialTemplate;
 
     [SerializeField]
     [Tooltip("Resolution width for baked HDRP/Lit terrain maps. Use 2048 initially; can be reduced for testing.")]
@@ -258,6 +264,7 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool clearSurfaceLibraryCacheBeforeBuild = true;
 
     private Material bakedLitTerrainMaterial;
+    private Material hdrpLitBiomeTerrainMaterial;
     private Texture2D bakedTerrainBaseColor;
     private Texture2D bakedTerrainMaskMap;
     private Texture2D bakedTerrainNormalMap;
@@ -616,6 +623,8 @@ public class HexMapChunkManager : MonoBehaviour
     public Material SharedMaterial => sharedMaterial;
     public TerrainRenderPath RenderPath => terrainRenderPath;
     public bool UseBakedHdrpLit => terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
+    public bool UseCpuDisplacedTerrainMesh => terrainRenderPath == TerrainRenderPath.BakedHdrpLit
+        || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
     public float FlatY => flatY;
     public bool WrapEnabled => enableWrap;
     
@@ -777,9 +786,10 @@ public class HexMapChunkManager : MonoBehaviour
             applied = true;
         }
 
-        if (applied && terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
+        if (applied && (terrainRenderPath == TerrainRenderPath.CustomBiomeShader
+            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph))
         {
-            ApplyBiomeMaterialSettings();
+            ApplyActiveBiomeTerrainMaterialSettings();
         }
     }
     
@@ -2174,6 +2184,14 @@ public class HexMapChunkManager : MonoBehaviour
         return tex;
     }
 
+    private void ApplyActiveBiomeTerrainMaterialSettings()
+    {
+        if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph)
+            ApplyHdrpLitBiomeMaterialSettings();
+        else
+            ApplyBiomeMaterialSettings();
+    }
+
     public void ApplyBiomeMaterialSettings()
     {
         if (sharedMaterial == null) return;
@@ -2524,6 +2542,93 @@ public class HexMapChunkManager : MonoBehaviour
         Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColor={hasBaseColor}");
         Debug.Log($"[HexMapChunkManager] BakedLit Has _Metallic={hasMetallic}");
         Debug.Log($"[HexMapChunkManager] BakedLit Has _Smoothness={hasSmoothness}");
+    }
+
+
+    private void CreateHdrpLitBiomeMaterial()
+    {
+        if (hdrpLitBiomeTerrainMaterial != null)
+            DestroyImmediate(hdrpLitBiomeTerrainMaterial);
+
+        if (hdrpLitBiomeTerrainMaterialTemplate == null)
+        {
+            Debug.LogError("[HexMapChunkManager] HdrpLitBiomeShaderGraph requires hdrpLitBiomeTerrainMaterialTemplate to be assigned to a Shader Graph material with an HDRP Lit target. Assign material 'M_HDRP_Lit_BiomeTerrain' (or a derived Shader Graph material) before selecting this render path.");
+            return;
+        }
+
+        if (hdrpLitBiomeTerrainMaterialTemplate.shader != null
+            && hdrpLitBiomeTerrainMaterialTemplate.shader.name == "Custom/BiomeTerrainHDRP")
+        {
+            Debug.LogError("[HexMapChunkManager] HdrpLitBiomeShaderGraph must use an HDRP Lit Shader Graph material, not Custom/BiomeTerrainHDRP. Assign M_HDRP_Lit_BiomeTerrain or another Shader Graph HDRP/Lit material.");
+            return;
+        }
+
+        hdrpLitBiomeTerrainMaterial = new Material(hdrpLitBiomeTerrainMaterialTemplate)
+        {
+            name = "HDRP_Lit_BiomeTerrain_Runtime"
+        };
+
+        Debug.Log($"[HexMapChunkManager] Created HDRP Lit biome Shader Graph terrain material. shader={hdrpLitBiomeTerrainMaterial.shader?.name}");
+    }
+
+    private void ApplyHdrpLitBiomeMaterialSettings()
+    {
+        Material mat = hdrpLitBiomeTerrainMaterial;
+        if (mat == null)
+        {
+            Debug.LogError("[HexMapChunkManager] Cannot apply HdrpLitBiomeShaderGraph settings because the runtime material is null.");
+            return;
+        }
+
+        Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph active terrain render path={terrainRenderPath}");
+        Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph shader={mat.shader?.name}");
+
+        void BindTexture(string propertyName, Texture texture, bool required)
+        {
+            bool hasProperty = mat.HasProperty(propertyName);
+            bool hasTexture = texture != null;
+            Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph property {propertyName}: exists={hasProperty}, textureNonNull={hasTexture}, required={required}");
+
+            if (hasProperty && hasTexture)
+                mat.SetTexture(propertyName, texture);
+            else if (required && !hasProperty)
+                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph material '{mat.name}' is missing required texture property {propertyName}.");
+            else if (required && !hasTexture)
+                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph required texture for {propertyName} is null.");
+        }
+
+        void BindFloat(string propertyName, float value, bool required = true)
+        {
+            bool hasProperty = mat.HasProperty(propertyName);
+            Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph property {propertyName}: exists={hasProperty}, scalarValue={value}, required={required}");
+
+            if (hasProperty)
+                mat.SetFloat(propertyName, value);
+            else if (required)
+                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph material '{mat.name}' is missing required scalar property {propertyName}.");
+        }
+
+        BindTexture("_BiomeIndexMap", biomeIndexMap, true);
+        BindTexture("_Heightmap", heightmapTexture, true);
+        BindTexture("_BiomeAlbedoArray", biomeAlbedoArray, true);
+        BindTexture("_BiomeNormalArray", biomeNormalArray, true);
+        BindTexture("_BiomeMaskArray", biomeMaskArray, true);
+        BindTexture("_BiomeSurfaceMapTex", biomeSurfaceMapTexture, true);
+        BindTexture("_BiomeEmissiveMapTex", biomeEmissiveMapTexture, false);
+        BindTexture("_TileSeasonMask", null, false);
+        BindTexture("_CliffAlbedoArray", cliffAlbedoArray, true);
+        BindTexture("_CliffNormalArray", cliffNormalArray, true);
+
+        BindFloat("_MapWidth", mapWidth);
+        BindFloat("_MapHeight", mapHeight);
+        BindFloat("_BiomeNormalStrength", biomeNormalStrength);
+        BindFloat("_CliffTiling", cliffTiling);
+        BindFloat("_CliffStrength", cliffStrength);
+        BindFloat("_CliffSlopeThreshold", cliffSlopeThreshold);
+        BindFloat("_CliffSlopeBlend", cliffSlopeBlend);
+        BindFloat("_CliffStepThreshold", cliffStepThreshold);
+        BindFloat("_CliffStepBlend", cliffStepBlend);
+        BindFloat("_GlobalSnowAmount", globalSnowAmount);
     }
 
     [ContextMenu("Validate Baked Terrain Inputs")]
@@ -3897,6 +4002,15 @@ public class HexMapChunkManager : MonoBehaviour
             return;
         }
 
+        if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph)
+        {
+            CreateHdrpLitBiomeMaterial();
+            ApplyHdrpLitBiomeMaterialSettings();
+            sharedMaterial = hdrpLitBiomeTerrainMaterial;
+            Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
+            return;
+        }
+
         bool ShaderSupportsBiomeTerrain(Shader s)
         {
             if (s == null) return false;
@@ -4297,8 +4411,9 @@ public class HexMapChunkManager : MonoBehaviour
         float halfW = mapWidth * 0.5f;
         float halfH = mapHeight * 0.5f;
         
-        // Baked HDRP/Lit visible chunks use SampleTerrainSurfaceYAtUV; use the same source here so picking matches.
-        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
+        // CPU-displaced visible chunks use SampleTerrainSurfaceYAtUV; use the same source here so picking matches.
+        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit
+            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
 
         // Check if the heightmap is available for CPU-side displacement in the custom shader path.
         bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
@@ -7081,7 +7196,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
         else
         {
-            ApplyBiomeMaterialSettings();
+            ApplyActiveBiomeTerrainMaterialSettings();
         }
         // Ensure season masks are enabled when winter begins so the per-tile
         // snow/wet/dry masks are applied by the terrain shader. This covers
@@ -7537,7 +7652,7 @@ public class HexMapChunkManager : MonoBehaviour
         BakeTexture();
         BuildBiomeVisualMaps();
         
-        ApplyBiomeMaterialSettings();
+        ApplyActiveBiomeTerrainMaterialSettings();
     }
     
     /// <summary>
@@ -7605,10 +7720,13 @@ public class HexMapChunkManager : MonoBehaviour
         if (sharedMaterial != null)
         {
             bool sharedWasBakedMaterial = ReferenceEquals(bakedLitTerrainMaterial, sharedMaterial);
+            bool sharedWasHdrpLitBiomeMaterial = ReferenceEquals(hdrpLitBiomeTerrainMaterial, sharedMaterial);
             DestroyImmediate(sharedMaterial);
             sharedMaterial = null;
             if (sharedWasBakedMaterial)
                 bakedLitTerrainMaterial = null;
+            if (sharedWasHdrpLitBiomeMaterial)
+                hdrpLitBiomeTerrainMaterial = null;
         }
         
         tileToChunk.Clear();
