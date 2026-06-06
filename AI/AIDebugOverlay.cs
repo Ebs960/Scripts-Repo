@@ -1,5 +1,6 @@
 using System.Text;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Debug overlay for AI systems. Renders an on-screen panel showing:
@@ -16,7 +17,7 @@ public class AIDebugOverlay : MonoBehaviour
     public static AIDebugOverlay Instance { get; private set; }
 
     [Header("Settings")]
-    [SerializeField] private KeyCode toggleKey = KeyCode.F9;
+    [SerializeField] private Key toggleKey = Key.F9;
     [SerializeField] private bool showByDefault = false;
 
     private bool isVisible;
@@ -39,7 +40,7 @@ public class AIDebugOverlay : MonoBehaviour
     void Update()
     {
         if (!Debug.isDebugBuild) return;
-        if (Input.GetKeyDown(toggleKey)) isVisible = !isVisible;
+        if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame) isVisible = !isVisible;
         if (isVisible) RefreshDisplay();
     }
 
@@ -82,8 +83,8 @@ public class AIDebugOverlay : MonoBehaviour
         if (allCivs == null || allCivs.Count == 0) { displayText = sb.ToString(); return; }
 
         // Cycle through civs with PageUp/PageDown
-        if (Input.GetKeyDown(KeyCode.PageUp)) selectedCivIndex = Mathf.Max(0, selectedCivIndex - 1);
-        if (Input.GetKeyDown(KeyCode.PageDown)) selectedCivIndex = Mathf.Min(allCivs.Count - 1, selectedCivIndex + 1);
+        if (Keyboard.current != null && Keyboard.current.pageUpKey.wasPressedThisFrame) selectedCivIndex = Mathf.Max(0, selectedCivIndex - 1);
+        if (Keyboard.current != null && Keyboard.current.pageDownKey.wasPressedThisFrame) selectedCivIndex = Mathf.Min(allCivs.Count - 1, selectedCivIndex + 1);
         selectedCivIndex = Mathf.Clamp(selectedCivIndex, 0, allCivs.Count - 1);
 
         var civ = allCivs[selectedCivIndex];
