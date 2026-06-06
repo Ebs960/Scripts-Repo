@@ -182,6 +182,35 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("If true, keeps baked textures CPU-readable for debugging. Disable for production to save memory.")]
     private bool keepBakedTerrainTexturesReadable = false;
 
+    [SerializeField] private bool bakedTerrainBakeMaskMap = false;
+    [SerializeField] private bool bakedTerrainBakeNormalMap = false;
+    [SerializeField] private bool bakedTerrainBakeCliffs = false;
+
+    [SerializeField]
+    [Tooltip("For natural terrain, keep metallic at zero even if source mask R contains data.")]
+    private bool bakedTerrainForceMetallicZero = true;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedTerrainDefaultSmoothness = 0.25f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedTerrainMaxSmoothness = 0.45f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedTerrainMinAO = 0.35f;
+
+    [SerializeField, Range(0f, 2f)]
+    private float bakedTerrainNormalStrength = 1f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedCliffAlbedoStrength = 0.8f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedCliffNormalStrength = 0.8f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float bakedCliffMaskStrength = 0.5f;
+
     [SerializeField] private bool forceRebakeBakedLitTerrain;
 
     [Header("Baked HDRP Lit Terrain Diagnostics")]
@@ -196,6 +225,10 @@ public class HexMapChunkManager : MonoBehaviour
     private Material bakedLitTerrainMaterial;
     private Texture2D bakedTerrainBaseColor;
     private Texture2D bakedTerrainMaskMap;
+    private Texture2D bakedTerrainNormalMap;
+    private Color[] bakedTerrainLastCliffMaskPixels;
+    private int bakedTerrainLastCliffMaskWidth;
+    private int bakedTerrainLastCliffMaskHeight;
 
     [Header("Orbit Overlay")]
     [Tooltip("Shader used for the transparent orbit highlight overlay mesh (auto-found if null).")]
@@ -669,8 +702,7 @@ public class HexMapChunkManager : MonoBehaviour
             forceRebakeBakedLitTerrain = false;
             if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
             {
-                BuildBakedHdrpLitTerrainMaps();
-                BuildNeutralBakedMaskMap();
+                RebuildBakedHdrpLitMaterialMaps();
             }
         }
 
@@ -2448,7 +2480,7 @@ public class HexMapChunkManager : MonoBehaviour
             bakedLitTerrainMaterial.SetFloat("_Metallic", 0f);
 
         if (hasSmoothness)
-            bakedLitTerrainMaterial.SetFloat("_Smoothness", 0.35f);
+            bakedLitTerrainMaterial.SetFloat("_Smoothness", bakedTerrainDefaultSmoothness);
 
         Debug.Log($"[HexMapChunkManager] Created baked HDRP/Lit terrain material. shader={bakedLitTerrainMaterial.shader.name}");
         Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColorMap={hasBaseColorMap}");
@@ -2912,6 +2944,180 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
+    private void RebuildBakedHdrpLitMaterialMaps()
+    {
+        BuildBakedHdrpLitTerrainMaps();
+
+        if (bakedTerrainBakeMaskMap)
+            BuildBakedHdrpLitMaskMap();
+        else
+            BuildNeutralBakedMaskMap();
+
+        if (bakedTerrainBakeNormalMap)
+            BuildBakedHdrpLitNormalMap();
+        else if (bakedLitTerrainMaterial != null)
+        {
+            if (bakedLitTerrainMaterial.HasProperty("_NormalMap"))
+                bakedLitTerrainMaterial.SetTexture("_NormalMap", null);
+            bakedLitTerrainMaterial.DisableKeyword("_NORMALMAP");
+        }
+    }
+
+    private bool TrySampleTextureArraySlice(Texture2DArray array, int sliceIndex, Vector2 uv, Dictionary<int, Color[]> sliceCache, out Color sampled, out string failureReason)
+    {
+        sampled = Color.clear;
+        failureReason = null;
+
+        if (array == null)
+        {
+            failureReason = "missing texture array";
+            return false;
+        }
+
+        if (sliceIndex < 0 || sliceIndex >= array.depth)
+        {
+            failureReason = $"slice {sliceIndex} outside depth {array.depth}";
+            return false;
+        }
+
+        if (sliceCache == null)
+        {
+            failureReason = "missing slice cache";
+            return false;
+        }
+
+        if (!sliceCache.TryGetValue(sliceIndex, out var slicePixels))
+        {
+            try
+            {
+                slicePixels = array.GetPixels(sliceIndex, 0);
+            }
+            catch (System.Exception ex)
+            {
+                failureReason = $"slice {sliceIndex} is not CPU-readable ({ex.GetType().Name}: {ex.Message})";
+                return false;
+            }
+
+            if (slicePixels == null || slicePixels.Length == 0)
+            {
+                failureReason = $"slice {sliceIndex} returned no pixels";
+                return false;
+            }
+
+            if (sliceCache.Count >= BakedTerrainReadableSliceCacheLimit)
+                sliceCache.Clear();
+
+            sliceCache[sliceIndex] = slicePixels;
+        }
+
+        int sourceWidth = Mathf.Max(1, array.width);
+        int sourceHeight = Mathf.Max(1, array.height);
+        float sampleX = Mathf.Repeat(uv.x, 1f) * (sourceWidth - 1);
+        float sampleY = Mathf.Repeat(uv.y, 1f) * (sourceHeight - 1);
+        int x0 = Mathf.Clamp(Mathf.FloorToInt(sampleX), 0, sourceWidth - 1);
+        int y0 = Mathf.Clamp(Mathf.FloorToInt(sampleY), 0, sourceHeight - 1);
+        int x1 = Mathf.Min(x0 + 1, sourceWidth - 1);
+        int y1 = Mathf.Min(y0 + 1, sourceHeight - 1);
+        float tx = sampleX - x0;
+        float ty = sampleY - y0;
+
+        int maxIndex = slicePixels.Length - 1;
+        Color c00 = slicePixels[Mathf.Min(y0 * sourceWidth + x0, maxIndex)];
+        Color c10 = slicePixels[Mathf.Min(y0 * sourceWidth + x1, maxIndex)];
+        Color c01 = slicePixels[Mathf.Min(y1 * sourceWidth + x0, maxIndex)];
+        Color c11 = slicePixels[Mathf.Min(y1 * sourceWidth + x1, maxIndex)];
+        sampled = Color.Lerp(Color.Lerp(c00, c10, tx), Color.Lerp(c01, c11, tx), ty);
+        return true;
+    }
+
+    private int GetBakedTerrainTileIndexAtUV(float u, float v)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
+            return -1;
+
+        int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        int x = Mathf.Clamp(Mathf.FloorToInt(Mathf.Repeat(u, 1f) * width), 0, width - 1);
+        int y = Mathf.Clamp(Mathf.FloorToInt(Mathf.Clamp01(v) * height), 0, height - 1);
+        int lutIndex = y * width + x;
+        return (lutIndex >= 0 && lutIndex < bakeResult.lut.Length) ? bakeResult.lut[lutIndex] : -1;
+    }
+
+    private void EnsureBakedTerrainHeightRangeForCliffs()
+    {
+        if (_heightmapMax > _heightmapMin + 0.0001f)
+            return;
+
+        if (planetGenerator == null || planetGenerator.data == null || planetGenerator.data.Count == 0)
+            return;
+
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        foreach (int tileIndex in planetGenerator.data.Keys)
+        {
+            float elevation = GetRenderedElevation(tileIndex);
+            if (elevation < min) min = elevation;
+            if (elevation > max) max = elevation;
+        }
+
+        if (min != float.MaxValue && max != float.MinValue)
+        {
+            _heightmapMin = min;
+            _heightmapMax = max;
+        }
+    }
+
+    private float SampleBakedTerrainElevation01(float u, float v)
+    {
+        int tileIndex = GetBakedTerrainTileIndexAtUV(u, v);
+        float elevation = tileIndex >= 0 ? GetRenderedElevation(tileIndex) : 0f;
+        float range = Mathf.Max(0.0001f, _heightmapMax - _heightmapMin);
+        return Mathf.Clamp01((elevation - _heightmapMin) / range);
+    }
+
+    private float ComputeBakedCliffMask(float u, float v)
+    {
+        if (!bakedTerrainBakeCliffs)
+            return 0f;
+
+        int width = Mathf.Max(1, bakedTerrainTextureWidth);
+        int height = Mathf.Max(1, bakedTerrainTextureHeight);
+        float du = 1f / Mathf.Max(1, width - 1);
+        float dv = 1f / Mathf.Max(1, height - 1);
+
+        float center = SampleBakedTerrainElevation01(u, v);
+        float left = SampleBakedTerrainElevation01(u - du, v);
+        float right = SampleBakedTerrainElevation01(u + du, v);
+        float down = SampleBakedTerrainElevation01(u, v - dv);
+        float up = SampleBakedTerrainElevation01(u, v + dv);
+
+        float slope = Mathf.Max(Mathf.Abs(center - left), Mathf.Abs(center - right), Mathf.Abs(center - down), Mathf.Abs(center - up));
+        float step = Mathf.Max(center - left, center - right, center - down, center - up, 0f);
+        float slopeMask = Mathf.SmoothStep(cliffSlopeThreshold, Mathf.Clamp01(cliffSlopeThreshold + Mathf.Max(0.0001f, cliffSlopeBlend)), slope);
+        float stepMask = Mathf.SmoothStep(cliffStepThreshold, Mathf.Clamp01(cliffStepThreshold + Mathf.Max(0.0001f, cliffStepBlend)), step);
+        return Mathf.Clamp01(Mathf.Max(slopeMask, stepMask) * cliffStrength);
+    }
+
+    private void ExportBakedTerrainDebugPng(Texture2D texture, string fileName, string label)
+    {
+        if (texture == null) return;
+
+        try
+        {
+            Directory.CreateDirectory(bakedTerrainDebugExportFolder);
+            string path = Path.Combine(bakedTerrainDebugExportFolder, fileName);
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            Debug.Log($"[HexMapChunkManager] Exported baked terrain {label} debug PNG: {path}");
+#if UNITY_EDITOR
+            UnityEditor.AssetDatabase.Refresh();
+#endif
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[HexMapChunkManager] Failed to export baked terrain {label} debug PNG: {ex.Message}");
+        }
+    }
+
     private void BuildBakedHdrpLitTerrainMaps()
     {
         int width = Mathf.Max(1, bakedTerrainTextureWidth);
@@ -2948,6 +3154,16 @@ public class HexMapChunkManager : MonoBehaviour
         var statsByBiome = new Dictionary<Biome, BakedTerrainBiomeStats>();
         bakedTerrainReadableSliceCache = new Dictionary<int, Color[]>();
         bakedTerrainFailedSliceSampleReasons = new Dictionary<int, string>();
+        var cliffAlbedoSliceCache = new Dictionary<int, Color[]>();
+        if (bakedTerrainBakeCliffs)
+            EnsureBakedTerrainHeightRangeForCliffs();
+        bakedTerrainLastCliffMaskPixels = bakedTerrainBakeCliffs ? new Color[width * height] : null;
+        bakedTerrainLastCliffMaskWidth = bakedTerrainBakeCliffs ? width : 0;
+        bakedTerrainLastCliffMaskHeight = bakedTerrainBakeCliffs ? height : 0;
+        double cliffMaskSum = 0d;
+        float cliffMaskMax = 0f;
+        int strongCliffMaskPixelCount = 0;
+        int cliffSampleFailureCount = 0;
 
         for (int y = 0; y < height; y++)
         {
@@ -3020,6 +3236,32 @@ public class HexMapChunkManager : MonoBehaviour
                         ExportRuntimeAlbedoSliceDebug(sample.sliceIndex, sample.renderedBiome.ToString());
                 }
 
+                float cliffMask = 0f;
+                if (bakedTerrainBakeCliffs)
+                {
+                    cliffMask = ComputeBakedCliffMask(u, v);
+                    bakedTerrainLastCliffMaskPixels[y * width + x] = new Color(cliffMask, cliffMask, cliffMask, 1f);
+                    cliffMaskSum += cliffMask;
+                    if (cliffMask > cliffMaskMax) cliffMaskMax = cliffMask;
+                    if (cliffMask > 0.5f) strongCliffMaskPixelCount++;
+
+                    float albedoCliffMask = cliffMask * bakedCliffAlbedoStrength;
+                    if (albedoCliffMask > 0f && cliffAlbedoArray != null && cliffAlbedoArray.depth > 0)
+                    {
+                        int cliffSlice = Mathf.Abs(tileIndex) % cliffAlbedoArray.depth;
+                        Vector2 cliffUV = new Vector2(Mathf.Repeat(u * cliffTiling, 1f), Mathf.Repeat(v * cliffTiling, 1f));
+                        if (TrySampleTextureArraySlice(cliffAlbedoArray, cliffSlice, cliffUV, cliffAlbedoSliceCache, out var cliffColor, out _))
+                        {
+                            cliffColor.a = color.a;
+                            color = Color.Lerp(color, cliffColor, Mathf.Clamp01(albedoCliffMask));
+                        }
+                        else
+                        {
+                            cliffSampleFailureCount++;
+                        }
+                    }
+                }
+
                 pixels[y * width + x] = color;
             }
         }
@@ -3029,7 +3271,20 @@ public class HexMapChunkManager : MonoBehaviour
         bakedTerrainBaseColor.Apply(true, !keepReadableForDebugExport);
 
         if (exportBakedTerrainDebugPng)
+        {
             ExportBakedTerrainBaseColorDebugPng();
+            if (bakedTerrainBakeCliffs && bakedTerrainLastCliffMaskPixels != null)
+            {
+                var cliffMaskTexture = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
+                {
+                    name = "BakedTerrain_CliffMask"
+                };
+                cliffMaskTexture.SetPixels(bakedTerrainLastCliffMaskPixels);
+                cliffMaskTexture.Apply(false, false);
+                ExportBakedTerrainDebugPng(cliffMaskTexture, "BakedTerrain_CliffMask.png", "CliffMask");
+                DestroyImmediate(cliffMaskTexture);
+            }
+        }
 
         if (bakedLitTerrainMaterial != null)
         {
@@ -3042,6 +3297,8 @@ public class HexMapChunkManager : MonoBehaviour
         string bakeMode = useSimpleColors ? "simple biome colors" : "surface albedo textures";
         Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, mode={bakeMode}, bakedTerrainUseSimpleBiomeColors={useSimpleColors}, readable={keepReadableForDebugExport}");
         Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit BaseColor bake sampledRealAlbedoPixels={successfulAlbedoSamplePixelCount}, fallbackBiomeColorPixels={fallbackPixelCount}.");
+        if (bakedTerrainBakeCliffs)
+            Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit cliff BaseColor overlay avgMask={(width * height > 0 ? cliffMaskSum / (width * height) : 0d):F4}, maxMask={cliffMaskMax:F4}, pixelsMaskGt0.5={strongCliffMaskPixelCount}, cliffAlbedoArray={(cliffAlbedoArray != null ? cliffAlbedoArray.depth.ToString() : "NULL")}, sampleFailures={cliffSampleFailureCount}.");
         if (sampleLogs.Count > 0)
             Debug.Log($"[HexMapChunkManager] First resolved baked HDRP/Lit terrain samples:\n  {string.Join("\n  ", sampleLogs)}");
 
@@ -3081,8 +3338,9 @@ public class HexMapChunkManager : MonoBehaviour
         bakedTerrainMaskMap.name = "BakedTerrain_NeutralMask";
         bakedTerrainMaskMap.wrapMode = TextureWrapMode.Repeat;
         bakedTerrainMaskMap.filterMode = FilterMode.Bilinear;
+        bakedTerrainMaskMap.anisoLevel = 4;
 
-        Color neutral = new Color(0f, 1f, 0f, 0.35f);
+        Color neutral = new Color(0f, 1f, 0f, bakedTerrainDefaultSmoothness);
         Color[] pixels = new Color[width * height];
         for (int i = 0; i < pixels.Length; i++)
             pixels[i] = neutral;
@@ -3101,6 +3359,260 @@ public class HexMapChunkManager : MonoBehaviour
         Debug.Log($"[HexMapChunkManager] Built neutral baked HDRP/Lit MaskMap {width}x{height}, readable={keepBakedTerrainTexturesReadable}");
     }
 
+    private class BakedTerrainMaskBiomeStats
+    {
+        public int pixelCount;
+        public double sumSmoothness;
+        public double sumAO;
+    }
+
+    private void BuildBakedHdrpLitMaskMap()
+    {
+        int width = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.width : Mathf.Max(1, bakedTerrainTextureWidth);
+        int height = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.height : Mathf.Max(1, bakedTerrainTextureHeight);
+
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
+        {
+            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit MaskMap: bakeResult.lut is missing.");
+            return;
+        }
+
+        if (bakedTerrainBakeCliffs)
+            EnsureBakedTerrainHeightRangeForCliffs();
+
+        if (bakedTerrainMaskMap != null)
+            DestroyImmediate(bakedTerrainMaskMap);
+
+        bakedTerrainMaskMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
+        bakedTerrainMaskMap.name = "BakedTerrain_MaskMap";
+        bakedTerrainMaskMap.wrapMode = TextureWrapMode.Repeat;
+        bakedTerrainMaskMap.filterMode = FilterMode.Bilinear;
+        bakedTerrainMaskMap.anisoLevel = 4;
+
+        Color[] pixels = new Color[width * height];
+        var maskSliceCache = new Dictionary<int, Color[]>();
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        int[] lut = bakeResult.lut;
+        int fallbackCount = 0;
+        double metallicSum = 0d;
+        double aoSum = 0d;
+        double smoothnessSum = 0d;
+        float maxSmoothness = 0f;
+        int highSmoothnessCount = 0;
+        int highMetallicCount = 0;
+        var biomeStats = new Dictionary<Biome, BakedTerrainMaskBiomeStats>();
+        var watchedBiomes = new HashSet<Biome> { Biome.Desert, Biome.Savannah, Biome.Plains, Biome.Temperate, Biome.Glacier };
+
+        for (int y = 0; y < height; y++)
+        {
+            float v = (height <= 1) ? 0f : (float)y / (height - 1);
+            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (width <= 1) ? 0f : (float)x / (width - 1);
+                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
+                int lutIndex = lutY * lutWidth + lutX;
+                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
+
+                float metallic = 0f;
+                float ao = 1f;
+                float smoothness = bakedTerrainDefaultSmoothness;
+                Biome renderedBiome = Biome.Plains;
+
+                if (TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample) &&
+                    TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var rawMask, out _))
+                {
+                    renderedBiome = sample.renderedBiome;
+                    metallic = bakedTerrainForceMetallicZero ? 0f : Mathf.Clamp01(rawMask.r);
+                    ao = Mathf.Clamp(rawMask.g, bakedTerrainMinAO, 1f);
+                    smoothness = Mathf.Clamp(rawMask.a, 0f, bakedTerrainMaxSmoothness);
+                }
+                else
+                {
+                    fallbackCount++;
+                }
+
+                if (bakedTerrainBakeCliffs)
+                {
+                    float cliffMask = ComputeBakedCliffMask(u, v) * bakedCliffMaskStrength;
+                    if (cliffMask > 0f)
+                    {
+                        metallic = 0f;
+                        ao = Mathf.Lerp(ao, Mathf.Min(ao, 0.75f), cliffMask);
+                        smoothness = Mathf.Lerp(smoothness, Mathf.Min(smoothness, 0.35f), cliffMask);
+                    }
+                }
+
+                pixels[y * width + x] = new Color(metallic, ao, 0f, smoothness);
+                metallicSum += metallic;
+                aoSum += ao;
+                smoothnessSum += smoothness;
+                if (smoothness > maxSmoothness) maxSmoothness = smoothness;
+                if (smoothness > 0.5f) highSmoothnessCount++;
+                if (metallic > 0.05f) highMetallicCount++;
+
+                if (watchedBiomes.Contains(renderedBiome))
+                {
+                    if (!biomeStats.TryGetValue(renderedBiome, out var stats))
+                    {
+                        stats = new BakedTerrainMaskBiomeStats();
+                        biomeStats[renderedBiome] = stats;
+                    }
+
+                    stats.pixelCount++;
+                    stats.sumSmoothness += smoothness;
+                    stats.sumAO += ao;
+                }
+            }
+        }
+
+        bakedTerrainMaskMap.SetPixels(pixels);
+        bool keepReadableForDebugExport = keepBakedTerrainTexturesReadable || exportBakedTerrainDebugPng;
+        bakedTerrainMaskMap.Apply(true, !keepReadableForDebugExport);
+
+        if (exportBakedTerrainDebugPng)
+            ExportBakedTerrainDebugPng(bakedTerrainMaskMap, "BakedTerrain_MaskMap.png", "MaskMap");
+
+        if (bakedLitTerrainMaterial != null)
+        {
+            if (bakedLitTerrainMaterial.HasProperty("_MaskMap"))
+                bakedLitTerrainMaterial.SetTexture("_MaskMap", bakedTerrainMaskMap);
+            else
+                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _MaskMap property.");
+
+            if (bakedLitTerrainMaterial.HasProperty("_Metallic"))
+                bakedLitTerrainMaterial.SetFloat("_Metallic", 0f);
+
+            if (bakedLitTerrainMaterial.HasProperty("_Smoothness"))
+                bakedLitTerrainMaterial.SetFloat("_Smoothness", bakedTerrainDefaultSmoothness);
+        }
+
+        int pixelCount = Mathf.Max(1, width * height);
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit MaskMap {width}x{height}, fallbackPixels={fallbackCount}, avgMetallic={metallicSum / pixelCount:F4}, avgAO={aoSum / pixelCount:F4}, avgSmoothness={smoothnessSum / pixelCount:F4}, maxSmoothness={maxSmoothness:F4}, smoothnessGt0.5={highSmoothnessCount}, metallicGt0.05={highMetallicCount}, readable={keepReadableForDebugExport}.");
+        foreach (var kvp in biomeStats.OrderBy(k => k.Key.ToString()))
+        {
+            var stats = kvp.Value;
+            if (stats.pixelCount <= 0) continue;
+            Debug.Log($"[BakedTerrainMaskStats] {kvp.Key} pixels={stats.pixelCount} avgSmoothness={stats.sumSmoothness / stats.pixelCount:F4} avgAO={stats.sumAO / stats.pixelCount:F4}");
+        }
+    }
+
+    private void BuildBakedHdrpLitNormalMap()
+    {
+        int width = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.width : Mathf.Max(1, bakedTerrainTextureWidth);
+        int height = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.height : Mathf.Max(1, bakedTerrainTextureHeight);
+
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
+        {
+            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit NormalMap: bakeResult.lut is missing.");
+            return;
+        }
+
+        if (bakedTerrainBakeCliffs)
+            EnsureBakedTerrainHeightRangeForCliffs();
+
+        if (bakedTerrainNormalMap != null)
+            DestroyImmediate(bakedTerrainNormalMap);
+
+        bakedTerrainNormalMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
+        bakedTerrainNormalMap.name = "BakedTerrain_NormalMap";
+        bakedTerrainNormalMap.wrapMode = TextureWrapMode.Repeat;
+        bakedTerrainNormalMap.filterMode = FilterMode.Bilinear;
+        bakedTerrainNormalMap.anisoLevel = 4;
+
+        Color[] pixels = new Color[width * height];
+        var normalSliceCache = new Dictionary<int, Color[]>();
+        var cliffNormalSliceCache = new Dictionary<int, Color[]>();
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        int[] lut = bakeResult.lut;
+        int sampleCount = 0;
+        int fallbackCount = 0;
+        double sumR = 0d;
+        double sumG = 0d;
+        double sumB = 0d;
+        Color flatNormal = new Color(0.5f, 0.5f, 1f, 1f);
+
+        for (int y = 0; y < height; y++)
+        {
+            float v = (height <= 1) ? 0f : (float)y / (height - 1);
+            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (width <= 1) ? 0f : (float)x / (width - 1);
+                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
+                int lutIndex = lutY * lutWidth + lutX;
+                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
+                Color packed = flatNormal;
+
+                if (TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample) &&
+                    TrySampleTextureArraySlice(biomeNormalArray, sample.sliceIndex, sample.surfaceUV, normalSliceCache, out var raw, out _))
+                {
+                    Vector3 n = new Vector3(raw.r * 2f - 1f, raw.g * 2f - 1f, raw.b * 2f - 1f);
+                    n.x *= bakedTerrainNormalStrength;
+                    n.y *= bakedTerrainNormalStrength;
+                    n.z = Mathf.Sqrt(Mathf.Max(0.0001f, 1f - Mathf.Clamp01(n.x * n.x + n.y * n.y)));
+                    n.Normalize();
+
+                    if (bakedTerrainBakeCliffs && cliffNormalArray != null && cliffNormalArray.depth > 0)
+                    {
+                        float cliffMask = ComputeBakedCliffMask(u, v) * bakedCliffNormalStrength;
+                        int cliffSlice = Mathf.Abs(tileIndex) % cliffNormalArray.depth;
+                        Vector2 cliffUV = new Vector2(Mathf.Repeat(u * cliffTiling, 1f), Mathf.Repeat(v * cliffTiling, 1f));
+                        if (cliffMask > 0f && TrySampleTextureArraySlice(cliffNormalArray, cliffSlice, cliffUV, cliffNormalSliceCache, out var cliffRaw, out _))
+                        {
+                            Vector3 cliffN = new Vector3(cliffRaw.r * 2f - 1f, cliffRaw.g * 2f - 1f, cliffRaw.b * 2f - 1f);
+                            cliffN.Normalize();
+                            n = Vector3.Lerp(n, cliffN, Mathf.Clamp01(cliffMask));
+                            n.Normalize();
+                        }
+                    }
+
+                    packed = new Color(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f, 1f);
+                    sampleCount++;
+                }
+                else
+                {
+                    fallbackCount++;
+                }
+
+                pixels[y * width + x] = packed;
+                sumR += packed.r;
+                sumG += packed.g;
+                sumB += packed.b;
+            }
+        }
+
+        bakedTerrainNormalMap.SetPixels(pixels);
+        bool keepReadableForDebugExport = keepBakedTerrainTexturesReadable || exportBakedTerrainDebugPng;
+        bakedTerrainNormalMap.Apply(true, !keepReadableForDebugExport);
+
+        if (exportBakedTerrainDebugPng)
+        {
+            ExportBakedTerrainDebugPng(bakedTerrainNormalMap, "BakedTerrain_NormalMap.png", "NormalMap");
+            ExportBakedTerrainDebugPng(bakedTerrainNormalMap, "BakedTerrain_Normal.png", "Normal");
+        }
+
+        if (bakedLitTerrainMaterial != null)
+        {
+            if (bakedLitTerrainMaterial.HasProperty("_NormalMap"))
+                bakedLitTerrainMaterial.SetTexture("_NormalMap", bakedTerrainNormalMap);
+            else
+                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _NormalMap property.");
+
+            if (bakedLitTerrainMaterial.HasProperty("_NormalScale"))
+                bakedLitTerrainMaterial.SetFloat("_NormalScale", 1f);
+
+            bakedLitTerrainMaterial.EnableKeyword("_NORMALMAP");
+        }
+
+        int pixelCount = Mathf.Max(1, width * height);
+        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit NormalMap {width}x{height}, samples={sampleCount}, fallbackPixels={fallbackCount}, avgRGB=({sumR / pixelCount:F4},{sumG / pixelCount:F4},{sumB / pixelCount:F4}), readable={keepReadableForDebugExport}.");
+    }
+
     private void CreateSharedMaterial()
     {
         Debug.Log($"[HexMapChunkManager] TerrainRenderPath={terrainRenderPath}");
@@ -3108,8 +3620,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
         {
             CreateBakedLitMaterial();
-            BuildBakedHdrpLitTerrainMaps();
-            BuildNeutralBakedMaskMap();
+            RebuildBakedHdrpLitMaterialMaps();
             sharedMaterial = bakedLitTerrainMaterial;
             Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
             Debug.Log($"[HexMapChunkManager] BakedBaseColor={bakedTerrainBaseColor != null} size={bakedTerrainTextureWidth}x{bakedTerrainTextureHeight}");
@@ -6301,8 +6812,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
         if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
         {
-            BuildBakedHdrpLitTerrainMaps();
-            BuildNeutralBakedMaskMap();
+            RebuildBakedHdrpLitMaterialMaps();
         }
         else
         {
@@ -6887,6 +7397,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (sliceToBiomeMap != null) { UnityEngine.Object.DestroyImmediate(sliceToBiomeMap); sliceToBiomeMap = null; }
         if (bakedTerrainBaseColor != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainBaseColor); bakedTerrainBaseColor = null; }
         if (bakedTerrainMaskMap != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainMaskMap); bakedTerrainMaskMap = null; }
+        if (bakedTerrainNormalMap != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainNormalMap); bakedTerrainNormalMap = null; }
         if (orbitOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayMaterial); orbitOverlayMaterial = null; }
         if (orbitOverlayObj != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayObj); orbitOverlayObj = null; }
         if (waterSurfaceOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(waterSurfaceOverlayMaterial); waterSurfaceOverlayMaterial = null; }
