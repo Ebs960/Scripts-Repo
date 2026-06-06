@@ -16,7 +16,7 @@ public class SpaceMapButton : MonoBehaviour
     
     [Header("Button Settings")]
     public string buttonText = "Space Map";
-    public KeyCode hotkey = KeyCode.M; // Press M to open space map
+    public Key hotkey = Key.M; // Press M to open space map
 
     [Header("Feature Buttons")]
     public Button tradeButton;
@@ -74,7 +74,7 @@ foreach (var ui in allSpaceMapUIs)
     void Update()
     {
         // Handle hotkey
-        if (Keyboard.current != null && Keyboard.current[Key.M].wasPressedThisFrame)
+        if (Keyboard.current != null && Keyboard.current[hotkey].wasPressedThisFrame)
         {
             // Respect UI blocking and input priority (UI-level allowed)
             if (InputManager.Instance != null)

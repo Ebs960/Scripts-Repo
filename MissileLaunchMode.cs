@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Singleton that manages the "launch mode" input state for missiles.
@@ -52,7 +53,7 @@ public class MissileLaunchMode : MonoBehaviour
     {
         if (!_active) return;
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             Cancel();
             return;
@@ -60,7 +61,7 @@ public class MissileLaunchMode : MonoBehaviour
 
         RefreshTargetOverlay();
 
-        if (Input.GetMouseButtonDown(1))
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
             TryFire();
     }
 
