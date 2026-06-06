@@ -58,6 +58,7 @@ public static class ResourceCache
     public static ReligionDatabase GetReligionDatabase() => _religionDatabase;
 
     private static bool _initialized = false;
+    private const string CombatUnitAssetFolder = "Assets/Scripts Repo/Units";
     
     // Cached resource arrays - loaded lazily on first access
     private static CombatUnitData[] _allCombatUnits;
@@ -212,7 +213,7 @@ public static class ResourceCache
         
 #if UNITY_EDITOR
         // In editor: Use AssetDatabase to get names without loading full assets
-        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CombatUnitData", new[] { "Assets/Units" });
+        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CombatUnitData", new[] { CombatUnitAssetFolder });
         foreach (string guid in guids)
         {
             string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
@@ -253,7 +254,7 @@ public static class ResourceCache
         
 #if UNITY_EDITOR
         // In editor: Load just the specific unit
-        string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:CombatUnitData {unitName}", new[] { "Assets/Units" });
+        string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:CombatUnitData {unitName}", new[] { CombatUnitAssetFolder });
         foreach (string guid in guids)
         {
             string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
@@ -275,11 +276,11 @@ public static class ResourceCache
     {
         if (!_combatUnitsLoaded)
         {
-            // Load ScriptableObjects from Assets/Units/ (not Resources folder)
+            // Load ScriptableObjects from Assets/Scripts Repo/Units/ (not Resources folder)
             
 #if UNITY_EDITOR
-            // In editor: Use AssetDatabase to load from Assets/Units/
-            string[] guids = AssetDatabase.FindAssets("t:CombatUnitData", new[] { "Assets/Units" });
+            // In editor: Use AssetDatabase to load from Assets/Scripts Repo/Units/
+            string[] guids = AssetDatabase.FindAssets("t:CombatUnitData", new[] { CombatUnitAssetFolder });
             List<CombatUnitData> units = new List<CombatUnitData>();
             
             foreach (string guid in guids)
@@ -328,8 +329,8 @@ public static class ResourceCache
             
             if (count == 0)
             {
-                Debug.LogError("[ResourceCache] WARNING: No CombatUnitData found in Assets/Units/ folder! " +
-                    "Make sure your ScriptableObjects are in Assets/Units/");
+                Debug.LogError("[ResourceCache] WARNING: No CombatUnitData found in Assets/Scripts Repo/Units/ folder! " +
+                    "Make sure your ScriptableObjects are in Assets/Scripts Repo/Units/");
             }
         }
     }

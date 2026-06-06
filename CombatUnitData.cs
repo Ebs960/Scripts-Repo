@@ -1,4 +1,4 @@
-// Assets/Units/CombatUnitData.cs
+// Assets/Scripts Repo/CombatUnitData.cs
 using UnityEngine;
 
 public enum CombatCategory
@@ -164,7 +164,7 @@ public class CombatUnitData : ScriptableObject
     
     [Header("Unit Prefab (Addressables)")]
     [Tooltip("The Addressable address for the unit prefab. If empty, uses unitName. " +
-             "Check Addressables Groups window to see/set the address (e.g., 'Assets/Units/Monument Units/Bow Warrior').")]
+             "Check Addressables Groups window to see/set the address (e.g., 'Assets/Scripts Repo/Units/Monument Units/Bow Warrior').")]
     public string addressableAddress;
     
     /// <summary>
