@@ -359,13 +359,59 @@ public class BiomeVisualDatabase : ScriptableObject
             return null;
         }
 
-        // Cache lookup: include formats + mip counts so we don't reuse incompatible caches.
+        // Cache lookup: include every assignment/input that can affect flattened slice layout.
+        // This prevents stale Texture2DArrays after changing biome-to-family assignments, source assets,
+        // forced variants, mountain overrides, or texture dimensions.
         int dbId = this.GetRuntimeId();
-        string signature =
-            $"{name}|biomes={biomes.Count}|families={families.Count}|size={targetW}x{targetH}|totalSlices={total}" +
-            $"|A={albedoFmt}/{albedoMipCount}|N={normalFmt}/{normalMipCount}|M={maskFmt}/{maskMipCount}" +
-            $"|Mt={string.Join(",", mountainVariantCounts)}" +
-            (includeEmissive ? $"|E={emissiveFmt}/{emissiveMipCount}" : "|E=none");
+        var signatureBuilder = new System.Text.StringBuilder(1024);
+        signatureBuilder.Append(name)
+            .Append("|dbId=").Append(dbId)
+            .Append("|biomes=").Append(biomes.Count)
+            .Append("|families=").Append(families.Count)
+            .Append("|size=").Append(targetW).Append('x').Append(targetH)
+            .Append("|totalSlices=").Append(total)
+            .Append("|A=").Append(albedoFmt).Append('/').Append(albedoMipCount)
+            .Append("|N=").Append(normalFmt).Append('/').Append(normalMipCount)
+            .Append("|M=").Append(maskFmt).Append('/').Append(maskMipCount)
+            .Append("|H=").Append(includeHeight ? $"{heightFmt}/{heightMipCount}" : "none")
+            .Append("|E=").Append(includeEmissive ? $"{emissiveFmt}/{emissiveMipCount}" : "none");
+
+        for (int i = 0; i < biomes.Count; i++)
+        {
+            var visual = biomes[i];
+            var family = visual != null ? visual.surfaceFamily : null;
+            signatureBuilder.Append("|B").Append(i)
+                .Append(":visual=").Append(visual != null ? visual.GetRuntimeId() : 0)
+                .Append(":biome=").Append(visual != null ? visual.biome.ToString() : "null")
+                .Append(":family=").Append(family != null ? family.GetRuntimeId() : 0)
+                .Append(":forced=").Append(visual != null ? visual.forcedVariant : -1);
+        }
+
+        for (int i = 0; i < families.Count; i++)
+        {
+            var sf = families[i];
+            signatureBuilder.Append("|F").Append(i)
+                .Append(":family=").Append(sf != null ? sf.GetRuntimeId() : 0)
+                .Append(":variants=").Append(i < variantCounts.Length ? variantCounts[i] : 0)
+                .Append(":mountainVariants=").Append(i < mountainVariantCounts.Length ? mountainVariantCounts[i] : 0);
+
+            if (sf != null)
+            {
+                signatureBuilder
+                    .Append(":albedo=").Append(sf.albedoArray != null ? sf.albedoArray.GetRuntimeId() : 0)
+                    .Append(":normal=").Append(sf.normalArray != null ? sf.normalArray.GetRuntimeId() : 0)
+                    .Append(":mask=").Append(sf.maskArray != null ? sf.maskArray.GetRuntimeId() : 0)
+                    .Append(":height=").Append(sf.heightArray != null ? sf.heightArray.GetRuntimeId() : 0)
+                    .Append(":emissive=").Append(sf.emissiveArray != null ? sf.emissiveArray.GetRuntimeId() : 0)
+                    .Append(":mountainAlbedo=").Append(sf.mountainAlbedoArray != null ? sf.mountainAlbedoArray.GetRuntimeId() : 0)
+                    .Append(":mountainNormal=").Append(sf.mountainNormalArray != null ? sf.mountainNormalArray.GetRuntimeId() : 0)
+                    .Append(":mountainMask=").Append(sf.mountainMaskArray != null ? sf.mountainMaskArray.GetRuntimeId() : 0)
+                    .Append(":mountainHeight=").Append(sf.mountainHeightArray != null ? sf.mountainHeightArray.GetRuntimeId() : 0)
+                    .Append(":mountainEmissive=").Append(sf.mountainEmissiveArray != null ? sf.mountainEmissiveArray.GetRuntimeId() : 0);
+            }
+        }
+
+        string signature = signatureBuilder.ToString();
 
         if (_surfaceLibraryCacheByDb.TryGetValue(dbId, out var cached) &&
             cached.library != null &&
