@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Earth Wall
+  m_Name: Market
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Earth Wall
+  buildingName: 
   icon: {fileID: 0}
-  description: +8 Defense, +2 Happiness, +2 Policy Points
+  description: 
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: 9adfa226cdc6ed547bbdad4d25836a52, type: 2}
-  productionCost: 100
-  goldCost: 150
+  replacesBuilding: {fileID: 0}
+  productionCost: 0
+  goldCost: 0
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -36,9 +36,9 @@ MonoBehaviour:
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
-  isPerimeterWall: 1
-  requiredTechs:
-  - {fileID: 11400000, guid: d734e90d29c111e46a2779c15f77f4a1, type: 2}
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs: []
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -51,14 +51,14 @@ MonoBehaviour:
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 2
+  policyPointsPerTurn: 0
   faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 8
-  happinessBonus: 2
+  defenseBonus: 0
+  happinessBonus: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []
