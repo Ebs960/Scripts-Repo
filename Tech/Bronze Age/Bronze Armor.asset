@@ -15,7 +15,7 @@ MonoBehaviour:
   techName: Bronze Armor
   techAge: 3
   description: We have a harder matel. Lets make harder armor!
-  techIcon: {fileID: 21300000, guid: e234df73edf98bb4ca2ed88a1cb6d513, type: 3}
+  techIcon: {fileID: 21300000, guid: ccecc5a7f51d81144b1c62ecb21dab66, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
@@ -30,6 +30,9 @@ MonoBehaviour:
   unlockedLeaders: []
   unlocksReligion: 0
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 1
   movementBonus: 0
   foodModifier: 0

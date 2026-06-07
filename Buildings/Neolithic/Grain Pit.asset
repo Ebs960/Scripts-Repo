@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Foraging Camp
+  m_Name: Grain Pit
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Grain Pit
   icon: {fileID: 0}
   description: 
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 40
+  goldCost: 65
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,17 +27,18 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 65
   dismantleResourceRefunds: []
   equipmentProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
-  isFoodBuilding: 0
+  isFoodBuilding: 1
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 90afd5701f1e98f48b83b1222d80f73f, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -45,7 +46,7 @@ MonoBehaviour:
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 0
+  foodPerTurn: 3
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -57,7 +58,7 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 1
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Elder Hut
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Elder Hut
+  icon: {fileID: 0}
+  description: +2 Culture, +2 Policy Points
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 0}
+  productionCost: 48
+  goldCost: 75
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains: 
+  allowedBiomes: 
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  providesHarbor: 0
+  isScienceBuilding: 0
+  isFoodBuilding: 0
+  isProductionBuilding: 0
+  isGoldBuilding: 0
+  isCultureBuilding: 1
+  isPerimeterWall: 0
+  requiredTechs: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f86da6138de743f4bbb67c4c59e4dd81, type: 2}
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory: 
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

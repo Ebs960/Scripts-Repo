@@ -9,26 +9,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: City Walls
-  m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
+  m_Name: Polytheism
+  m_EditorClassIdentifier: Assembly-CSharp::CultureData
+  cultureName: Polytheism
+  cultureAge: 3
   description: 
-  techIcon: {fileID: 21300000, guid: d86d9ca932efe394f81140c24a44799d, type: 3}
+  cultureIcon: {fileID: 21300000, guid: 7af68408d584438418533ea210c28d2d, type: 3}
   positionHint: 0
-  category: 0
-  techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies:
-  - {fileID: 11400000, guid: 188af3f1ce878c54fa5ee698cd89b50a, type: 2}
+  category: 4
+  cultureColor: {r: 1, g: 1, b: 1, a: 1}
+  enablesTradeSystem: 0
+  cultureCost: 0
+  requiredTechnologies: []
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
   unlockedReligions: []
   unlockedLeaders: []
-  unlocksReligion: 0
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -41,12 +40,17 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  unlocksPantheon: 0
+  unlocksReligion: 0
   flatFoodBonus: 0
   flatProductionBonus: 0
   flatGoldBonus: 0
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  enablesGovernors: 0
   unitBonuses: []
   unitYieldBonuses: []
   workerBonuses: []
@@ -61,13 +65,9 @@ MonoBehaviour:
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  enablesHerding: 0
-  preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
-  unitLimitModifiers: []
-  buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
-  unlocksUnitStacking: 0
-  unitStackSizeGranted: 2
+  unlocksPantheons: []
+  unlocksBeliefs: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []

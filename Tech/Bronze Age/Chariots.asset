@@ -15,12 +15,13 @@ MonoBehaviour:
   techName: 
   techAge: 0
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: cd3379ae558c24a49936cfbeeec192b4, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
   scienceCost: 0
-  requiredTechnologies: []
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 263bea14437566e439619ca1da46ac15, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -29,6 +30,9 @@ MonoBehaviour:
   unlockedLeaders: []
   unlocksReligion: 0
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -52,10 +56,18 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  enablesHerding: 0
+  preventsMosquitoDamage: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
+  unlocksUnitStacking: 0
+  unitStackSizeGranted: 2
