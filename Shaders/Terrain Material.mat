@@ -8,18 +8,19 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Terrain Material
-  m_Shader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 30f9a2dcd6cef034ab2cea01d62fd841, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords:
+  m_ValidKeywords:
   - _DISABLE_SSR_TRANSPARENT
+  m_InvalidKeywords:
   - _NORMALMAP_TANGENT_SPACE
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 2225
+  stringTagMap:
+    MotionVector: User
   disabledShaderPasses:
   - TransparentDepthPrepass
   - TransparentDepthPostpass
@@ -47,10 +48,14 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BiomeAlbedoArray:
-        m_Texture: {fileID: 18700000, guid: 208e5e2b59d2cdc4b8d7ad3356bd5c54, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BiomeEmissiveMapTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _BiomeHeightArray:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -70,6 +75,22 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _CliffAlbedoArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CliffAlbedoPreview:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CliffNormalArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CliffNormalPreview:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _CoatMaskMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -86,11 +107,31 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _FreezeMaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _HeightMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Heightmap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _IceAlbedoArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _IceHeightArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _IceMaskArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _IceNormalArray:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -154,6 +195,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _TileSeasonMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _TransmissionMaskMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -176,6 +221,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AOIntensity: 1
     - _AORemapMax: 1
     - _AORemapMin: 0
     - _ATDistance: 1
@@ -195,9 +241,18 @@ Material:
     - _AntiTileStrength: 1
     - _BiomeBlendRadius: 4
     - _BiomeBlendSharpness: 3
-    - _BiomeCount: 32
+    - _BiomeCount: 36
+    - _BiomeNormalStrength: 1
     - _BlendMode: 0
+    - _CliffSliceCount: 1
+    - _CliffSlopeBlend: 0.2
+    - _CliffSlopeThreshold: 0.5
+    - _CliffStepBlend: 0.08
+    - _CliffStepThreshold: 0.15
+    - _CliffStrength: 1
+    - _CliffTiling: 12
     - _CoatMask: 0
+    - _ConservativeDepthOffsetEnable: 0
     - _CullMode: 2
     - _CullModeForward: 2
     - _Cutoff: 0.5
@@ -207,6 +262,7 @@ Material:
     - _DetailSmoothnessScale: 1
     - _DiffusionProfile: 0
     - _DiffusionProfileHash: 0
+    - _DisableHDRPBakedDiffuse: 0
     - _DisplacementLockObjectScale: 1
     - _DisplacementLockTilingScale: 1
     - _DisplacementMode: 0
@@ -225,7 +281,13 @@ Material:
     - _EnableFogOnTransparent: 1
     - _EnableGeometricSpecularAA: 0
     - _EnableOwnership: 0
+    - _EnableTessellation: 0
     - _EnergyConservingSpecularColor: 1
+    - _ExcludeFromTUAndAA: 0
+    - _FallbackAmbient: 0.35
+    - _FallbackSunIntensity: 1
+    - _FreezeOpaqueThreshold: 0.9
+    - _FreezeProgress: 0
     - _GlobalSnowAmount: 0
     - _GlobalWetness: 0
     - _HeightAmplitude: 0.02
@@ -237,16 +299,25 @@ Material:
     - _HeightPoMAmplitude: 2
     - _HeightTessAmplitude: 2
     - _HeightTessCenter: 0.5
+    - _HexGridFadeDistance: 200
+    - _HexGridWidth: 1
     - _HighlightTileIndex: -1
+    - _IceMetallic: 0
+    - _IceNormalStrength: 1
+    - _IceSliceCount: 0
+    - _IceSmoothness: 0.85
     - _InvTilingScale: 1
     - _Ior: 1.5
     - _IridescenceMask: 1
     - _IridescenceThickness: 1
+    - _LakeIceTiling: 8
     - _LinkDetailsWithBase: 1
     - _MapHeight: 100
     - _MapWidth: 100
     - _MaterialID: 1
+    - _MaterialTypeMask: 2
     - _Metallic: 0
+    - _MetallicMultiplier: 1
     - _MetallicRemapMax: 1
     - _MetallicRemapMin: 0
     - _NormalMapSpace: 0
@@ -267,7 +338,12 @@ Material:
     - _ReceivesSSR: 1
     - _ReceivesSSRTransparent: 0
     - _RefractionModel: 0
+    - _RenderQueueType: 1
+    - _RequireSplitLighting: 0
+    - _RiverIceTiling: 12
+    - _ShowHexGrid: 0
     - _Smoothness: 0.5
+    - _SmoothnessMultiplier: 1
     - _SmoothnessRemapMax: 1
     - _SmoothnessRemapMin: 0
     - _SnowNormalStrength: 0.5
@@ -280,22 +356,27 @@ Material:
     - _SrcBlend: 1
     - _StencilRef: 0
     - _StencilRefDepth: 8
+    - _StencilRefDistortionVec: 4
     - _StencilRefGBuffer: 10
     - _StencilRefMV: 40
     - _StencilWriteMask: 6
     - _StencilWriteMaskDepth: 9
+    - _StencilWriteMaskDistortionVec: 4
     - _StencilWriteMaskGBuffer: 15
     - _StencilWriteMaskMV: 41
     - _SubsurfaceMask: 1
     - _SunIntensity: 1.5
     - _SupportDecals: 1
+    - _SurfaceHeightScale: 0.05
     - _SurfaceType: 0
+    - _TerrainDebugMode: 0
     - _TessellationFactor: 1
     - _TessellationFadeEnd: 100
     - _TessellationFadeStart: 10
     - _TexWorldScale: 1
     - _TexWorldScaleEmissive: 1
     - _Thickness: 1
+    - _TotalSlices: 32
     - _TransmissionEnable: 1
     - _TransmissionMask: 1
     - _TransparentBackfaceEnable: 0
@@ -306,7 +387,7 @@ Material:
     - _TransparentWritingMotionVec: 0
     - _TransparentZWrite: 0
     - _TriBlend: 6
-    - _TriTiling: 0.15
+    - _TriTiling: 0.1
     - _TriplanarLODEnd: 150
     - _TriplanarLODStart: 50
     - _UVBase: 0
@@ -314,6 +395,11 @@ Material:
     - _UVEmissive: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
+    - _UseTriplanar: 1
+    - _WetAlbedoDarken: 0.5
+    - _WetNormalStrength: 0.35
+    - _WetNormalTiling: 8
+    - _WetSmoothnessBoost: 0.5
     - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
     - _ZTestTransparent: 4
@@ -328,15 +414,22 @@ Material:
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
     - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
+    - _FallbackSunColor: {r: 1, g: 1, b: 1, a: 1}
+    - _FallbackSunDirectionWS: {r: 0.35, g: 0.85, b: 0.25, a: 0}
+    - _FreezeMask_ST: {r: 1, g: 1, b: 0, a: 0}
+    - _HexGridColor: {r: 0, g: 0, b: 0, a: 1}
     - _HighlightColor: {r: 1, g: 1, b: 0, a: 0.3}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
+    - _LakeIceTint: {r: 1, g: 1, b: 1, a: 1}
+    - _RiverIceTint: {r: 1, g: 1, b: 1, a: 1}
     - _SnowColor: {r: 0.92, g: 0.93, b: 0.96, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _SunColor: {r: 1, g: 0.95, b: 0.85, a: 1}
     - _SunDir: {r: 0.3, g: -0.8, b: 0.5, a: 0}
     - _TerrainFogColor: {r: 0.14999998, g: 0.14999998, b: 0.19999996, a: 0.85}
     - _ThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
+    - _TileSeasonMask_TexSize: {r: 0, g: 0, b: 0, a: 0}
     - _TransmittanceColor: {r: 1, g: 1, b: 1, a: 1}
     - _UVDetailsMappingMask: {r: 1, g: 0, b: 0, a: 0}
     - _UVMappingMask: {r: 1, g: 0, b: 0, a: 0}
