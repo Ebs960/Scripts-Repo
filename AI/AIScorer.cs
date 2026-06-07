@@ -518,7 +518,7 @@ public static class AIScorer
         if (upgrade == null) return float.MinValue;
         float score = 0f;
         score += upgrade.additionalFood * W_FORAGE_FOOD * 0.5f;
-        score += (upgrade.additionalProduction + upgrade.additionalGold) * W_UPGRADE_VALUE * 0.3f;
+        score += (upgrade.additionalProduction + upgrade.additionalGold + upgrade.additionalPolicyPoints) * W_UPGRADE_VALUE * 0.3f;
         score += (upgrade.defenseAdd + upgrade.defensePct * 10f) * W_TERRAIN_DEFENSE;
         score += upgrade.additionalShelterCapacity * W_SHELTER_URGENCY * 0.3f;
         return score;
