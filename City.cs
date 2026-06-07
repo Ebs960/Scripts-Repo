@@ -1692,6 +1692,37 @@ Destroy(oldTuple.instance);
                 }
             }
         }
+
+        // Handle projectile production the same way as equipment production.
+        if (b.projectileProduction != null && b.projectileProduction.Length > 0 && owner != null)
+        {
+            foreach (var production in b.projectileProduction)
+            {
+                if (production.projectile != null && production.quantity > 0)
+                {
+                    if (production.produceImmediately)
+                    {
+                        bool ok = owner.ProduceProjectile(production.projectile, production.quantity);
+                        if (!ok)
+                            Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.projectile.projectileName} to {owner.civData.civName}");
+                    }
+                    else
+                    {
+                        int prodCost = production.productionCostOverride > 0 ? production.productionCostOverride : production.projectile.productionCost;
+                        int goldCost = production.goldCostOverride > 0 ? production.goldCostOverride : 0;
+                        for (int i = 0; i < production.quantity; i++)
+                        {
+                            if (!production.projectile.CanBeProducedBy(owner))
+                            {
+                                Debug.LogWarning($"Building {b.buildingName} could not enqueue {production.projectile.projectileName} production in {cityName} - requirements not met");
+                                break;
+                            }
+                            productionQueue.Add(new ProdEntry(production.projectile, prodCost, goldCost, production.projectile.requiredResources, null, false, false, ProdEntry.Type.Projectile));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public bool DismantleBuilding(BuildingData building)

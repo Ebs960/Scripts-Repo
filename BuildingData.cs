@@ -53,6 +53,10 @@ public class BuildingData : ScriptableObject
     [Tooltip("Equipment produced when this building is completed (one-time, not recurring)")]
     public EquipmentProduction[] equipmentProduction;
 
+    [Header("Projectile Production")]
+    [Tooltip("Projectiles produced when this building is completed (one-time, not recurring)")]
+    public ProjectileProduction[] projectileProduction;
+
     [Header("Special Flags")]
     [Tooltip("Grants harbor functionality (lets city build ships/subs)")]
     public bool providesHarbor;
@@ -273,5 +277,24 @@ public class EquipmentProduction
     public int goldCostOverride = 0;
     
     [Tooltip("If true, this equipment is granted to the civilization immediately when the building completes instead of being enqueued in the city's production queue.")]
+    public bool produceImmediately = false;
+}
+
+[System.Serializable]
+public class ProjectileProduction
+{
+    [Tooltip("The type of projectile produced")]
+    public GameCombat.ProjectileData projectile;
+
+    [Tooltip("The quantity produced when the building is completed")]
+    public int quantity = 1;
+
+    [Tooltip("Optional override of production cost (production points) for this building's produced projectiles. If 0, uses ProjectileData.productionCost.")]
+    public int productionCostOverride = 0;
+
+    [Tooltip("Optional override of gold cost for instant buy of this produced projectile. If 0, no gold cost is applied.")]
+    public int goldCostOverride = 0;
+
+    [Tooltip("If true, these projectiles are granted to the civilization immediately when the building completes instead of being enqueued in the city's production queue.")]
     public bool produceImmediately = false;
 }
