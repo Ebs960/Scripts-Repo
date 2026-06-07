@@ -457,6 +457,7 @@ public class HexTileData
                 y.Gold += found.additionalGold;
                 y.Science += found.additionalScience;
                 y.Culture += found.additionalCulture;
+                y.Policy += found.additionalPolicyPoints;
                 y.Faith += found.additionalFaith;
             }
         }

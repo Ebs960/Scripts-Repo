@@ -40,6 +40,8 @@ public class ImprovementUpgradeData
     public int additionalGold;
     public int additionalScience;
     public int additionalCulture;
+    [Tooltip("Additional policy points this upgrade provides per turn")]
+    public int additionalPolicyPoints;
     public int additionalFaith;
     [Tooltip("Increase to shelter capacity when this upgrade is applied (adds to ImprovementData.shelterCapacity)")]
     public int additionalShelterCapacity = 0;
