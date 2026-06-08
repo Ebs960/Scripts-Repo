@@ -10,17 +10,13 @@ public enum TechAge
     BronzeAge,
     IronAge,
     ClassicalAge,
-    AxialAge,
     DarkAge,
     FeudalAge,
     CastleAge,
     RenaissanceAge,
     ColonialAge,
-    ReformationAge,
     EnlightenmentAge,
-    RevolutionAge,
     SteamAge,
-    RailroadAge,
     ImperialAge,
     ModernAge,
     AtomicAge,
@@ -42,7 +38,8 @@ public enum TechCategory
     Cultural,
     Religious,
     Scientific,
-    Infrastructure
+    Infrastructure,
+    Political
 }
 
 [CreateAssetMenu(fileName = "NewTechData", menuName = "Data/Technology Data")]
@@ -78,7 +75,6 @@ public class TechData : ScriptableObject
     // Building availability: BuildingData.requiredTechs  
     // Unit availability: CombatUnitData.requiredTechs / WorkerUnitData.requiredTechs
     // Improvement availability: ImprovementData.requiredTechs
-    // REMOVED: unlockedPolicies
     // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public GovernmentData[] unlockedGovernments;
     public ReligionData[] unlockedReligions;
@@ -113,7 +109,8 @@ public class TechData : ScriptableObject
     public int flatCultureBonus;
     [Tooltip("Flat faith bonus per turn (e.g. +1 faith per turn)")]
     public int flatFaithBonus;
-    [Tooltip("Flat policy point bonus per turn (e.g. +1 policy point per turn)")]
+
+    [Tooltip("Flat policy points bonus per turn (e.g. +1 policy point per turn)")]
     public int flatPolicyPointsBonus;
 
     [Header("Targeted Bonuses")]

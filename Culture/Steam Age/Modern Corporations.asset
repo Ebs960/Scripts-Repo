@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Modern Corporations
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: 
-  cultureAge: 0
+  cultureAge: 12
   description: 
   cultureIcon: {fileID: 0}
   positionHint: 0
@@ -40,6 +40,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -48,6 +49,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

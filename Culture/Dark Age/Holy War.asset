@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Holy War
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Holy War
-  cultureAge: 7
+  cultureAge: 6
   description: 
   cultureIcon: {fileID: 21300000, guid: b054c4f58873135449fc2d69a66f8cf5, type: 3}
   positionHint: 0
@@ -42,6 +42,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -50,6 +51,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Manifest Destiny
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Manifest Destiny
-  cultureAge: 15
+  cultureAge: 12
   description: 
   cultureIcon: {fileID: 21300000, guid: 29e576e1c162d3740bc525f556a8acfe, type: 3}
   positionHint: 0
@@ -23,7 +23,7 @@ MonoBehaviour:
   cultureCost: 1500
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: dfc17cf7505494b4eb57b551af845e10, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -41,6 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -49,6 +50,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

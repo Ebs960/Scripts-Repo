@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bishops
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Bishops
-  cultureAge: 8
+  cultureAge: 7
   description: 
   cultureIcon: {fileID: 21300000, guid: dd8556c9e05585a4786d1654df3e55cf, type: 3}
   positionHint: 0
@@ -41,6 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -49,6 +50,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stained Glass
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Stained Glass
-  cultureAge: 9
+  cultureAge: 8
   description: 
   cultureIcon: {fileID: 21300000, guid: a9f081744a0c2094d9eeb7a349b1a3be, type: 3}
   positionHint: 0
@@ -42,6 +42,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -50,6 +51,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

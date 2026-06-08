@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Syncretism
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Syncretism
-  cultureAge: 8
+  cultureAge: 7
   description: 
   cultureIcon: {fileID: 21300000, guid: 9cb5ea5d18bce1a43b49324973f912cd, type: 3}
   positionHint: 0
@@ -41,6 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -49,6 +50,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

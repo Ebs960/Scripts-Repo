@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Exploration
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Exploration
-  cultureAge: 10
+  cultureAge: 9
   description: 
   cultureIcon: {fileID: 21300000, guid: 7155a4a5fb8ce314f8a1c6d02e741c51, type: 3}
   positionHint: 0
@@ -41,6 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -49,6 +50,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

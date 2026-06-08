@@ -13,16 +13,18 @@ MonoBehaviour:
   m_Name: Dialectics
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Dialectics
-  cultureAge: 15
+  cultureAge: 13
   description: 
   cultureIcon: {fileID: 0}
   positionHint: 0
-  category: 3
+  category: 5
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 2200
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: de36cf3abc1a3bd409215a742b5f18bd, type: 2}
+  - {fileID: 11400000, guid: cfb45940f093e0e478137ed7a77279b2, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -40,6 +42,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -48,6 +51,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0

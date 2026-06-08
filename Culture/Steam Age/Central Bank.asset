@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Central Bank
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Central Bank
+  cultureAge: 12
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 20091c5669c73dc43bdff9a350ef8855, type: 3}
   positionHint: 0
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 1500
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 60e37a6438aedfb44b5e4a824c976280, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -40,6 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -48,6 +50,7 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0
