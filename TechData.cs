@@ -98,6 +98,7 @@ public class TechData : ScriptableObject
     public float scienceModifier;               // Percentage modifier (e.g. 0.1 = +10%)
     public float cultureModifier;               // Percentage modifier (e.g. 0.1 = +10%)
     public float faithModifier;                 // Percentage modifier (e.g. 0.1 = +10%)
+    public float policyPointsModifier;          // Percentage modifier (e.g. 0.1 = +10%)
 
     [Header("Flat Bonuses")]
     [Tooltip("Flat food bonus per turn (e.g. +2 food per turn)")]
@@ -112,6 +113,8 @@ public class TechData : ScriptableObject
     public int flatCultureBonus;
     [Tooltip("Flat faith bonus per turn (e.g. +1 faith per turn)")]
     public int flatFaithBonus;
+    [Tooltip("Flat policy point bonus per turn (e.g. +1 policy point per turn)")]
+    public int flatPolicyPointsBonus;
 
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this technology.")]

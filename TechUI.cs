@@ -654,6 +654,8 @@ public class TechUI : MonoBehaviour
         AddFlat(tech.flatCultureBonus, "Culture");
         AddPct(tech.faithModifier, "Faith");
         AddFlat(tech.flatFaithBonus, "Faith");
+        AddPct(tech.policyPointsModifier, "Policy Points");
+        AddFlat(tech.flatPolicyPointsBonus, "Policy Points");
 
         if (parts.Count == 0) return string.Empty;
         return "Yields: " + string.Join(", ", parts);
@@ -710,18 +712,21 @@ public class TechUI : MonoBehaviour
         int currentCulture = GetTotalCulturePerTurn(playerCiv);
         int currentFaith = GetTotalFaithPerTurn(playerCiv);
         int currentFood = GetTotalFoodPerTurn(playerCiv);
+        int currentPolicy = GetTotalPolicyPerTurn(playerCiv);
 
         int projectedGold = Mathf.RoundToInt(currentGold * (1f + tech.goldModifier)) + tech.flatGoldBonus;
         int projectedScience = Mathf.RoundToInt(currentScience * (1f + tech.scienceModifier)) + tech.flatScienceBonus;
         int projectedCulture = Mathf.RoundToInt(currentCulture * (1f + tech.cultureModifier)) + tech.flatCultureBonus;
         int projectedFaith = Mathf.RoundToInt(currentFaith * (1f + tech.faithModifier)) + tech.flatFaithBonus;
         int projectedFood = Mathf.RoundToInt(currentFood * (1f + tech.foodModifier)) + tech.flatFoodBonus;
+        int projectedPolicy = Mathf.RoundToInt(currentPolicy * (1f + tech.policyPointsModifier)) + tech.flatPolicyPointsBonus;
 
         int goldDiff = projectedGold - currentGold;
         int scienceDiff = projectedScience - currentScience;
         int cultureDiff = projectedCulture - currentCulture;
         int faithDiff = projectedFaith - currentFaith;
         int foodDiff = projectedFood - currentFood;
+        int policyDiff = projectedPolicy - currentPolicy;
 
         if (selectedTechEconomicImpactText != null)
         {
@@ -731,6 +736,7 @@ public class TechUI : MonoBehaviour
             if (cultureDiff != 0) impactSummary += $"\n<color=magenta>Culture:</color> {currentCulture} → {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
             if (faithDiff != 0) impactSummary += $"\n<color=white>Faith:</color> {currentFaith} → {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
             if (foodDiff != 0) impactSummary += $"\n<color=green>Food:</color> {currentFood} → {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
+            if (policyDiff != 0) impactSummary += $"\n<color=#FFA500>Policy:</color> {currentPolicy} → {projectedPolicy} ({(policyDiff > 0 ? "+" : "")}{policyDiff})";
             
             if (!string.IsNullOrEmpty(impactSummary))
                 selectedTechEconomicImpactText.text = "<b>Economic Impact:</b>" + impactSummary;
@@ -815,6 +821,25 @@ public class TechUI : MonoBehaviour
             foreach (var h in civ.herds)
                 if (h != null) food += h.GetAnimalYields().Food;
         return food;
+    }
+
+    private int GetTotalPolicyPerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int policy = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) policy += city.GetPolicyPointPerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) policy += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).policy;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) policy += civ.ComputeWorkerPerTurnYield(w.data).policy;
+        if (civ.herds != null)
+            foreach (var h in civ.herds)
+                if (h != null) policy += h.GetAnimalYields().Policy;
+        return policy;
     }
 
     private static void AddUniqueUnlock(List<string> list, string value)
