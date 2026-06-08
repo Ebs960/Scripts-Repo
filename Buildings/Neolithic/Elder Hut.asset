@@ -27,15 +27,17 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 75
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 1
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
@@ -50,8 +52,8 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 0
-  policyPointsPerTurn: 0
+  culturePerTurn: 2
+  policyPointsPerTurn: 2
   faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []

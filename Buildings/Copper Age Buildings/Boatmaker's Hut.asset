@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Boatmaker's Hut
   icon: {fileID: 0}
-  description: +2 Gold, +2 Food
+  description: +2 Gold, +2 Food. Allows production of Ships
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -30,12 +30,14 @@ MonoBehaviour:
   dismantleGoldRefund: 120
   dismantleResourceRefunds: []
   equipmentProduction: []
-  providesHarbor: 0
+  projectileProduction: []
+  providesHarbor: 1
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 6fc41f5a28dcdbc4ca00f6ac677dd39c, type: 2}

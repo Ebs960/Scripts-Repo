@@ -12,36 +12,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Bronze Armory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Bronze Foundry
+  buildingName: Bronze Armory
   icon: {fileID: 0}
-  description: +5 Production, +2 Science. Can produce Bronze Spears, Bronze Axes,
-    and Bronze Swords
+  description: '+2 Production, +2 Gold. Can produce Bronze Armor, Bronze Arrows,
+    and Bronze Shields. '
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: 7672c1e920afbd64ba74403eb535c133, type: 2}
-  productionCost: 110
+  replacesBuilding: {fileID: 0}
+  productionCost: 90
   goldCost: 200
   buildGoldCost: 0
   buildResourceCosts:
-  - resource: {fileID: 11400000, guid: 02bfde88801f77b40b6214f047fddf07, type: 2}
+  - resource: {fileID: 11400000, guid: 6fcdf91c811ca584db361e6685f5c349, type: 2}
     amount: 1
   requiresAdjacentTile: 0
   requiredResources: []
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 200
   dismantleResourceRefunds: []
-  equipmentProduction: []
+  equipmentProduction:
+  - equipment: {fileID: 11400000, guid: bc8163e6ef349094eae977cd7a2e313a, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  - equipment: {fileID: 11400000, guid: cb1fdcc6da71e0843ad34ef0898a5d67, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  - equipment: {fileID: 11400000, guid: 913192bf21f467d4f8d99e244b14a629, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 0
+  isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
+  - {fileID: 11400000, guid: 3fef47af97cb53d4db5e07d8a63a3dca, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []

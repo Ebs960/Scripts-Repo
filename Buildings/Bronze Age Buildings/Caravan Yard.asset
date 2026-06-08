@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Caravan Yard
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Caravan Yard
   icon: {fileID: 0}
-  description: 
+  description: +3 Gold, +2 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 105
+  goldCost: 200
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -30,15 +30,17 @@ MonoBehaviour:
   dismantleGoldRefund: 0
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
-  isGoldBuilding: 0
+  isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: acf6f3baba4deee4d91d35628d75e9bf, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []

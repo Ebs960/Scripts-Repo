@@ -20,7 +20,7 @@ MonoBehaviour:
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 60
+  cultureCost: 85
   requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 6dbe0dc7b19e6eb4eb574b775082f1e6, type: 2}
@@ -31,6 +31,9 @@ MonoBehaviour:
   unlockedReligions: []
   unlockedLeaders: []
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -60,6 +63,8 @@ MonoBehaviour:
   improvementBonuses: []
   buildingBonuses:
   - building: {fileID: 11400000, guid: a610375e334c67f4eac2f9fa57b5ab2b, type: 2}
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -75,6 +80,8 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - building: {fileID: 11400000, guid: e0d635fb32e29cf44a36f8466086629c, type: 2}
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -90,6 +97,8 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - building: {fileID: 11400000, guid: cda92fd9cbf87af41a6cdaee3088ce8b, type: 2}
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -104,7 +113,11 @@ MonoBehaviour:
     culturePct: 0
     faithPct: 0
     policyPointsPct: 0
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
   cityCapIncrease: 0
   pantheonCapIncrease: 1
   unlocksPantheons: []

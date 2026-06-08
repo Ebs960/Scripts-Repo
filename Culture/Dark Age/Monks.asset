@@ -22,7 +22,8 @@ MonoBehaviour:
   enablesTradeSystem: 0
   cultureCost: 440
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: e52ce2919838e8b47a92a76cf216512d, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []

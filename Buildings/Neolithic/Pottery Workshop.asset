@@ -30,12 +30,14 @@ MonoBehaviour:
   dismantleGoldRefund: 80
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 0
+  isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: faa3bafd4063a024fb5c7215c37fb9ea, type: 2}

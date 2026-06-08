@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Foundry
   icon: {fileID: 0}
-  description: +5 Production, +2 Science. Can produce Bronze Spears, Bronze Axes,
-    and Bronze Swords
+  description: +5 Production, +2 Science. Produces 2 Bronze per turn. Can produce
+    Bronze Weapons
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 7672c1e920afbd64ba74403eb535c133, type: 2}
@@ -30,15 +30,37 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 200
   dismantleResourceRefunds: []
-  equipmentProduction: []
+  equipmentProduction:
+  - equipment: {fileID: 11400000, guid: 70f2aed3083ad7949977f83ef34fa9c8, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  - equipment: {fileID: 11400000, guid: 9cd1d1d2a276a59438ff4ebc84f1459d, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  - equipment: {fileID: 11400000, guid: ae6ef6a0711a70f4593b3ab1b48f106d, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  - equipment: {fileID: 11400000, guid: 521184d78745c2847ad2e22ecbeeaf69, type: 2}
+    quantity: 1
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 0
+  isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
@@ -58,7 +80,7 @@ MonoBehaviour:
   faithPerTurn: 0
   resourceProductionPerTurn:
   - resource: {fileID: 11400000, guid: 6fcdf91c811ca584db361e6685f5c349, type: 2}
-    amount: 1
+    amount: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

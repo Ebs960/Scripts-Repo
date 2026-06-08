@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Temple
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Temple
   icon: {fileID: 0}
-  description: 
+  description: +5 Faith, +2 Culture, +1 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  replacesBuilding: {fileID: 11400000, guid: 88addffa231542043a5e6dd3788c740f, type: 2}
+  productionCost: 120
+  goldCost: 235
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,19 +27,21 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 235
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
-  isFaithBuilding: 0
+  isFaithBuilding: 1
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b2d415dc646c4454e8085f731563a023, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
@@ -50,15 +52,15 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 2
   policyPointsPerTurn: 0
-  faithPerTurn: 0
+  faithPerTurn: 5
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 1
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

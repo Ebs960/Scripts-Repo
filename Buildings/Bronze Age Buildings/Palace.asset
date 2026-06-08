@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Palace
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Palace
   icon: {fileID: 0}
-  description: 
+  description: +10 Policy Points, +4 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 250
+  goldCost: 400
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -30,6 +30,7 @@ MonoBehaviour:
   dismantleGoldRefund: 0
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
@@ -39,11 +40,12 @@ MonoBehaviour:
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 21c867f9d21637248853c1f72467a9db, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
-  buildingLimit: -1
+  buildingLimit: 1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
@@ -51,14 +53,14 @@ MonoBehaviour:
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 0
+  policyPointsPerTurn: 10
   faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 4
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

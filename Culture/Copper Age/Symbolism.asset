@@ -20,7 +20,7 @@ MonoBehaviour:
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 50
+  cultureCost: 100
   requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 5f49e549ed14af64e8590b50a00961bd, type: 2}
@@ -30,6 +30,9 @@ MonoBehaviour:
   unlockedReligions: []
   unlockedLeaders: []
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -59,6 +62,8 @@ MonoBehaviour:
   improvementBonuses: []
   buildingBonuses:
   - building: {fileID: 11400000, guid: 6f03ece84a0c57a44aec36cc85cd6082, type: 2}
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -74,6 +79,8 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - building: {fileID: 11400000, guid: e0d635fb32e29cf44a36f8466086629c, type: 2}
+    useSeasonFilter: 0
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -88,7 +95,11 @@ MonoBehaviour:
     culturePct: 0
     faithPct: 0
     policyPointsPct: 0
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
   unlocksPantheons: []

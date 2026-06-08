@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Surveying Office
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Surveying Office
   icon: {fileID: 0}
-  description: 
+  description: +3 Science, +2 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 100
+  goldCost: 190
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,19 +27,20 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 190
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
-  isScienceBuilding: 0
+  isScienceBuilding: 1
   isFoodBuilding: 0
-  isProductionBuilding: 0
+  isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 5f3e0d72a1f67af4c8915a7a5f4ceebd, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -48,9 +49,9 @@ MonoBehaviour:
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 0
+  productionPerTurn: 2
   goldPerTurn: 0
-  sciencePerTurn: 0
+  sciencePerTurn: 3
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0

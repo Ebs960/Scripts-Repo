@@ -13,22 +13,26 @@ MonoBehaviour:
   m_Name: Language
   m_EditorClassIdentifier: 
   cultureName: Language
+  cultureAge: 0
   description: Speak. Talk. SAY SOMETHING
   cultureIcon: {fileID: 21300000, guid: 9ed37c66adbf0fe458f4856ffd43a297, type: 3}
+  positionHint: 0
+  category: 3
+  cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 25
+  cultureCost: 18
+  requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 5d9d8d7121f5eec4d97d2dc8c5b5a7d6, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlocksPolicies: []
-  unlockedUnits: []
-  unlockedWorkerUnits: []
-  unlockedBuildings: []
-  unlockedAbilities: []
   unlockedGovernments: []
   unlockedReligions: []
+  unlockedLeaders: []
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -57,7 +61,12 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  cityCapIncrease: 0
   pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []

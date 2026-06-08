@@ -12,34 +12,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Stables
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Stables
   icon: {fileID: 0}
-  description: 
+  description: +3 Food, +2 Gold, +2 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 125
+  goldCost: 180
   buildGoldCost: 0
-  buildResourceCosts: []
+  buildResourceCosts:
+  - resource: {fileID: 11400000, guid: 13c36b88eb99b1741b9d6259234c154e, type: 2}
+    amount: 1
   requiresAdjacentTile: 0
   requiredResources: []
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 180
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
-  isFoodBuilding: 0
-  isProductionBuilding: 0
-  isGoldBuilding: 0
+  isFoodBuilding: 1
+  isProductionBuilding: 1
+  isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 263bea14437566e439619ca1da46ac15, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -47,9 +50,9 @@ MonoBehaviour:
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 0
+  foodPerTurn: 3
+  productionPerTurn: 2
+  goldPerTurn: 2
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
@@ -64,7 +67,25 @@ MonoBehaviour:
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
-  herdStarvationPercentReduction: 0
-  herdYieldBonuses: []
-  buildableByHerd: 0
-  herdStorageBonus: 0
+  herdStarvationPercentReduction: 0.2
+  herdYieldBonuses:
+  - useSpeciesFilter: 0
+    species: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0.1
+    productionPct: 0.15
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  buildableByHerd: 1
+  herdStorageBonus: 100

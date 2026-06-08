@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Shrine
   icon: {fileID: 0}
-  description: +3 Faith, +2 Culture. +1 Policy Points
+  description: +3 Faith
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -30,12 +30,14 @@ MonoBehaviour:
   dismantleGoldRefund: 75
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 1
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
@@ -50,8 +52,8 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 2
-  policyPointsPerTurn: 1
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
   faithPerTurn: 3
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []

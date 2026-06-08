@@ -12,34 +12,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Dock
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Dock
   icon: {fileID: 0}
-  description: 
+  description: +4 Food, +4 Gold. Allows production of ships
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 150
+  goldCost: 210
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains: 
+  requiredTerrains: 000000000c0000000b0000000a00000001000000
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 210
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
-  providesHarbor: 0
+  providesHarbor: 1
   isScienceBuilding: 0
-  isFoodBuilding: 0
+  isFoodBuilding: 1
   isProductionBuilding: 0
-  isGoldBuilding: 0
+  isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: acf6f3baba4deee4d91d35628d75e9bf, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -47,9 +48,9 @@ MonoBehaviour:
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 0
+  foodPerTurn: 4
   productionPerTurn: 0
-  goldPerTurn: 0
+  goldPerTurn: 4
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
