@@ -2251,7 +2251,7 @@ public class Civilization : MonoBehaviour
                 {
                     int cityGold = Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
                     int cityFood = Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
-                    int cityPolicy = city.GetPolicyPointPerTurn();
+                    int cityPolicy = Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier));
                     int cityFaith = Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
                     gold         += cityGold;
                     food         += cityFood;
@@ -2330,11 +2330,12 @@ public class Civilization : MonoBehaviour
             totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            policyPoints += addPol; // no global modifier currently
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            policyPoints += modifiedPolicy;
             totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
             totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
             totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            totalPolicyThisTurn += addPol;
+            totalPolicyThisTurn += modifiedPolicy;
         }
 
         // 3.7) Per-unit yields (workers)
@@ -2358,11 +2359,12 @@ public class Civilization : MonoBehaviour
             totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            policyPoints += addPol;
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            policyPoints += modifiedPolicy;
             totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
             totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
             totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            totalPolicyThisTurn += addPol;
+            totalPolicyThisTurn += modifiedPolicy;
         }
 
         // 3.75) Herd yields & grazing
@@ -2401,7 +2403,7 @@ public class Civilization : MonoBehaviour
                     int herdSci = Mathf.RoundToInt((ay.Science + hb.scienceAdd) * (1 + scienceModifier + hb.sciencePct));
                     int herdCul = Mathf.RoundToInt((ay.Culture + hb.cultureAdd) * (1 + cultureModifier + hb.culturePct));
                     int herdProd = Mathf.RoundToInt((ay.Production + hb.productionAdd) * (1 + hb.productionPct));
-                    int herdPol = ay.Policy + hb.policyPointsAdd;
+                    int herdPol = Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + hb.policyPointsPct));
                     gold += herdGold;
                     food += herdFood;
                     totalScienceThisTurn += herdSci;
@@ -2502,6 +2504,11 @@ public class Civilization : MonoBehaviour
         {
             faith += globalBonuses.flatFaithBonus;
             totalFaithThisTurn += globalBonuses.flatFaithBonus;
+        }
+        if (globalBonuses.flatPolicyPointsBonus != 0)
+        {
+            policyPoints += globalBonuses.flatPolicyPointsBonus;
+            totalPolicyThisTurn += globalBonuses.flatPolicyPointsBonus;
         }
 
         // Commit computed per-turn science & culture yields into their fields (do not accumulate across turns)
@@ -3774,7 +3781,7 @@ return true;
                 totalFoodThisTurn += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
                 totalScienceThisTurn += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
                 totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
-                totalPolicyThisTurn += city.GetPolicyPointPerTurn();
+                totalPolicyThisTurn += Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier));
                 totalFaithThisTurn += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
             }
         }
@@ -3824,7 +3831,7 @@ return true;
             totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
             totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
             totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
-            totalPolicyThisTurn += addPol;
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
         }
 
         if (workerUnits != null)
@@ -3847,7 +3854,7 @@ return true;
             totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
             totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
             totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
-            totalPolicyThisTurn += addPol;
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
         }
 
         if (herds != null)
@@ -3856,12 +3863,13 @@ return true;
             {
                 if (h == null) continue;
                 var ay = h.GetAnimalYields();
+                var hb = AggregateHerdYieldBonuses(h, h.planetIndex);
                 totalGoldThisTurn += Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
                 totalFoodThisTurn += Mathf.RoundToInt(ay.Food * (1 + foodModifier));
                 totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
                 totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
                 totalFaithThisTurn += Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
-                totalPolicyThisTurn += ay.Policy;
+                totalPolicyThisTurn += Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + hb.policyPointsPct));
             }
         }
 
@@ -3870,6 +3878,7 @@ return true;
         totalScienceThisTurn += globalBonuses.flatScienceBonus;
         totalCultureThisTurn += globalBonuses.flatCultureBonus;
         totalFaithThisTurn += globalBonuses.flatFaithBonus;
+        totalPolicyThisTurn += globalBonuses.flatPolicyPointsBonus;
 
         int totalFoodConsumption = 0;
         if (combatUnits != null)
@@ -5322,6 +5331,7 @@ return true;
         public float scienceModifier;
         public float cultureModifier;
         public float faithModifier;
+        public float policyPointsModifier;
         public float attackBonus;
         public float meleeAttackBonus;
         public float rangedAttackBonus;
@@ -5335,6 +5345,7 @@ return true;
         public int flatScienceBonus;
         public int flatCultureBonus;
         public int flatFaithBonus;
+        public int flatPolicyPointsBonus;
 
         public int additionalGovernorSlots;
 
@@ -5356,6 +5367,7 @@ return true;
             result.scienceModifier += tech.scienceModifier;
             result.cultureModifier += tech.cultureModifier;
             result.faithModifier += tech.faithModifier;
+            result.policyPointsModifier += tech.policyPointsModifier;
             result.attackBonus += tech.attackBonus;
             result.meleeAttackBonus += tech.meleeAttackBonus;
             result.rangedAttackBonus += tech.rangedAttackBonus;
@@ -5369,6 +5381,7 @@ return true;
             result.flatScienceBonus += tech.flatScienceBonus;
             result.flatCultureBonus += tech.flatCultureBonus;
             result.flatFaithBonus += tech.flatFaithBonus;
+            result.flatPolicyPointsBonus += tech.flatPolicyPointsBonus;
 
             result.additionalGovernorSlots += tech.additionalGovernorSlots;
 
@@ -5399,6 +5412,7 @@ return true;
             result.scienceModifier += culture.scienceModifier;
             result.cultureModifier += culture.cultureModifier;
             result.faithModifier += culture.faithModifier;
+            result.policyPointsModifier += culture.policyPointsModifier;
             result.attackBonus += culture.attackBonus;
             result.meleeAttackBonus += culture.meleeAttackBonus;
             result.rangedAttackBonus += culture.rangedAttackBonus;
@@ -5412,6 +5426,7 @@ return true;
             result.flatScienceBonus += culture.flatScienceBonus;
             result.flatCultureBonus += culture.flatCultureBonus;
             result.flatFaithBonus += culture.flatFaithBonus;
+            result.flatPolicyPointsBonus += culture.flatPolicyPointsBonus;
 
             result.additionalGovernorSlots += culture.additionalGovernorSlots;
 
@@ -5444,6 +5459,7 @@ return true;
         result.scienceModifier = bonuses1.scienceModifier + bonuses2.scienceModifier;
         result.cultureModifier = bonuses1.cultureModifier + bonuses2.cultureModifier;
         result.faithModifier = bonuses1.faithModifier + bonuses2.faithModifier;
+        result.policyPointsModifier = bonuses1.policyPointsModifier + bonuses2.policyPointsModifier;
         result.attackBonus = bonuses1.attackBonus + bonuses2.attackBonus;
         result.meleeAttackBonus = bonuses1.meleeAttackBonus + bonuses2.meleeAttackBonus;
         result.rangedAttackBonus = bonuses1.rangedAttackBonus + bonuses2.rangedAttackBonus;
@@ -5457,6 +5473,7 @@ return true;
         result.flatScienceBonus = bonuses1.flatScienceBonus + bonuses2.flatScienceBonus;
         result.flatCultureBonus = bonuses1.flatCultureBonus + bonuses2.flatCultureBonus;
         result.flatFaithBonus = bonuses1.flatFaithBonus + bonuses2.flatFaithBonus;
+        result.flatPolicyPointsBonus = bonuses1.flatPolicyPointsBonus + bonuses2.flatPolicyPointsBonus;
 
         result.additionalGovernorSlots = bonuses1.additionalGovernorSlots + bonuses2.additionalGovernorSlots;
 

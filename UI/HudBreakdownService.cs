@@ -93,6 +93,7 @@ public class HudBreakdownService : MonoBehaviour
         policyProviders.Add(new UnitPolicyYieldProvider());
         policyProviders.Add(new WorkerPolicyYieldProvider());
         policyProviders.Add(new HerdPolicyYieldProvider());
+        policyProviders.Add(new FlatPolicyBonusProvider());
 
         // Science / Culture / Faith currently use total-per-turn fallback rows.
     }
@@ -563,6 +564,29 @@ public class FlatGoldBonusProvider : IYieldProvider
     }
 }
 
+
+public class FlatPolicyBonusProvider : IYieldProvider
+{
+    public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
+    {
+        var items = new List<HudBreakdownService.BreakdownItem>();
+        if (civ == null) return items;
+
+        var totalBonuses = civ.CalculateTotalBonuses(civ.researchedTechs, civ.researchedCultures);
+        if (totalBonuses.flatPolicyPointsBonus != 0)
+        {
+            items.Add(new HudBreakdownService.BreakdownItem
+            {
+                source = "Flat Policy Point Bonuses",
+                amount = totalBonuses.flatPolicyPointsBonus,
+                category = "Global Bonuses"
+            });
+        }
+
+        return items;
+    }
+}
+
 public class CityPolicyProvider : IYieldProvider
 {
     public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
@@ -574,7 +598,8 @@ public class CityPolicyProvider : IYieldProvider
         {
             if (city == null) continue;
 
-            int policyProduction = city.GetPolicyPointPerTurn();
+            var totalBonuses = civ.CalculateTotalBonuses(civ.researchedTechs, civ.researchedCultures);
+            int policyProduction = Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1f + totalBonuses.policyPointsModifier));
             if (policyProduction == 0) continue;
 
             items.Add(new HudBreakdownService.BreakdownItem
@@ -600,7 +625,9 @@ public class UnitPolicyYieldProvider : IYieldProvider
         {
             if (unit?.data == null) continue;
             var yields = BreakdownProviderHelpers.ComputeCombatUnitYield(civ, unit);
-            BreakdownProviderHelpers.AddItem(items, $"Unit: {unit.UnitName}", yields.policy, "Unit Yields");
+            var totalBonuses = civ.CalculateTotalBonuses(civ.researchedTechs, civ.researchedCultures);
+            int policy = Mathf.RoundToInt(yields.policy * (1f + totalBonuses.policyPointsModifier));
+            BreakdownProviderHelpers.AddItem(items, $"Unit: {unit.UnitName}", policy, "Unit Yields");
         }
 
         return items;
@@ -618,8 +645,10 @@ public class WorkerPolicyYieldProvider : IYieldProvider
         {
             if (unit?.data == null) continue;
             var yields = civ.ComputeWorkerPerTurnYield(unit.data, unit.planetIndex);
+            var totalBonuses = civ.CalculateTotalBonuses(civ.researchedTechs, civ.researchedCultures);
+            int policy = Mathf.RoundToInt(yields.policy * (1f + totalBonuses.policyPointsModifier));
 
-            BreakdownProviderHelpers.AddItem(items, $"Worker: {unit.UnitName}", yields.policy, "Worker Yields");
+            BreakdownProviderHelpers.AddItem(items, $"Worker: {unit.UnitName}", policy, "Worker Yields");
         }
 
         return items;
@@ -638,7 +667,8 @@ public class HerdPolicyYieldProvider : IYieldProvider
             if (herd == null) continue;
             var yields = herd.GetAnimalYields();
             var bonuses = civ.AggregateHerdYieldBonuses(herd, herd.planetIndex);
-            int policy = yields.Policy + bonuses.policyPointsAdd;
+            var totalBonuses = civ.CalculateTotalBonuses(civ.researchedTechs, civ.researchedCultures);
+            int policy = Mathf.RoundToInt((yields.Policy + bonuses.policyPointsAdd) * (1f + totalBonuses.policyPointsModifier + bonuses.policyPointsPct));
 
             if (policy == 0) continue;
             items.Add(new HudBreakdownService.BreakdownItem

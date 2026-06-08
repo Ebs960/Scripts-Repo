@@ -55,6 +55,7 @@ public class CultureData : ScriptableObject
     public float scienceModifier;               // Percentage modifier (e.g. 0.1 = +10%)
     public float cultureModifier;               // Percentage modifier (e.g. 0.1 = +10%)
     public float faithModifier;                 // Percentage modifier (e.g. 0.1 = +10%)
+    public float policyPointsModifier;          // Percentage modifier (e.g. 0.1 = +10%)
 
     [Header("Religion Unlocks")]
     [Tooltip("If true, adopting this culture allows the civ to found pantheons (e.g., spirits).")]
@@ -75,6 +76,8 @@ public class CultureData : ScriptableObject
     public int flatCultureBonus;
     [Tooltip("Flat faith bonus per turn (e.g. +1 faith per turn)")]
     public int flatFaithBonus;
+    [Tooltip("Flat policy point bonus per turn (e.g. +1 policy point per turn)")]
+    public int flatPolicyPointsBonus;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
