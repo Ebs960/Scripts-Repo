@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
-  m_Name: Exploration
+  m_Name: Manifest Destiny
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Exploration
-  cultureAge: 10
+  cultureName: Manifest Destiny
+  cultureAge: 15
   description: 
-  cultureIcon: {fileID: 21300000, guid: 7155a4a5fb8ce314f8a1c6d02e741c51, type: 3}
+  cultureIcon: {fileID: 21300000, guid: 29e576e1c162d3740bc525f556a8acfe, type: 3}
   positionHint: 0
-  category: 2
+  category: 6
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 690
+  cultureCost: 1500
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 11400000, guid: d43a01c8056b2014db4dc9de7dc45f98, type: 2}
+  - {fileID: 0}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []

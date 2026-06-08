@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
-  m_Name: Exploration
+  m_Name: Reformation
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Exploration
-  cultureAge: 10
+  cultureName: Reformation
+  cultureAge: 11
   description: 
-  cultureIcon: {fileID: 21300000, guid: 7155a4a5fb8ce314f8a1c6d02e741c51, type: 3}
+  cultureIcon: {fileID: 21300000, guid: 303e746eaa519354487d04d0b15c76de, type: 3}
   positionHint: 0
-  category: 2
+  category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 690
+  cultureCost: 920
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 11400000, guid: d43a01c8056b2014db4dc9de7dc45f98, type: 2}
+  - {fileID: 11400000, guid: c98a2a603aaa32b458dc084d2e044c63, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
