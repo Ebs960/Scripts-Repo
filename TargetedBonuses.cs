@@ -369,6 +369,12 @@ public class BuildingYieldBonus
     public int faithAdd;
     public int policyPointsAdd;
 
+    [Header("City Stat Add")]
+    [Tooltip("Flat defense added to the matching building.")]
+    public int defenseAdd;
+    [Tooltip("Flat happiness/morale added to the matching building.")]
+    public int happinessAdd;
+
     [Header("Yield % (per turn)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float foodPct;
@@ -378,6 +384,12 @@ public class BuildingYieldBonus
     public float culturePct;
     public float faithPct;
     public float policyPointsPct;
+
+    [Header("City Stat %")]
+    [Tooltip("Percent defense increase as 0.10 = +10%.")]
+    public float defensePct;
+    [Tooltip("Percent happiness/morale increase as 0.10 = +10%.")]
+    public float happinessPct;
 }
 
 [System.Serializable]
@@ -435,6 +447,12 @@ public class CityYieldBonus
     public int faithAdd;
     public int policyPointsAdd;
 
+    [Header("City Stat Add")]
+    [Tooltip("Flat defense added to each matching city.")]
+    public int defenseAdd;
+    [Tooltip("Flat happiness/morale added to each matching city.")]
+    public int happinessAdd;
+
     [Header("Yield % (per city per turn)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float foodPct;
@@ -444,6 +462,12 @@ public class CityYieldBonus
     public float culturePct;
     public float faithPct;
     public float policyPointsPct;
+
+    [Header("City Stat %")]
+    [Tooltip("Percent defense increase as 0.10 = +10%.")]
+    public float defensePct;
+    [Tooltip("Percent happiness/morale increase as 0.10 = +10%.")]
+    public float happinessPct;
 }
 
 [System.Serializable]
