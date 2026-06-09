@@ -81,6 +81,11 @@ public class LeaderData : ScriptableObject
     public float meleeAttackBonus = 0f;        // Percentage boost to melee attacks
     public float rangedAttackBonus = 0f;       // Percentage boost to ranged attacks
     public float cityAttackBonus = 0f;         // Percentage boost to city attacks
+
+    [Header("Tile Yield Bonuses")]
+    [Tooltip("Per-tile yield bonuses granted by this leader to matching worked city tiles.")]
+    public TileYieldBonus[] tileYieldBonuses;
+
     [Tooltip("Per-herd per-turn yield bonuses granted by this leader (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
     

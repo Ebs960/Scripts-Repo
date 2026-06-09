@@ -23,6 +23,10 @@ public class GovernorTrait : ScriptableObject
     public int faithBonusModifier;
     public int combatBonusModifier;
     public int cityDefenseBonusModifier;
+
+    [Header("Tile Yield Bonuses")]
+    [Tooltip("Per-tile yield bonuses this governor trait grants to matching worked tiles in assigned cities.")]
+    public TileYieldBonus[] tileYieldBonuses;
     
     [Header("Special Effects")]
     [Tooltip("Special abilities this trait provides")]

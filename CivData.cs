@@ -62,6 +62,10 @@ public class CivData : ScriptableObject
     public float cultureModifier;           // New
     public float faithModifier;             // New
 
+    [Header("Tile Yield Bonuses")]
+    [Tooltip("Innate per-tile yield bonuses granted by this civilization to matching worked city tiles.")]
+    public TileYieldBonus[] tileYieldBonuses;
+
     [Header("Unit Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;

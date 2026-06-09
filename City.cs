@@ -2294,12 +2294,52 @@ Destroy(oldTuple.instance);
                     AddTileBonus(ref agg, bonus, kind);
         }
 
+        if (owner.hasFoundedReligion && owner.foundedReligion?.tileYieldBonuses != null)
+        {
+            foreach (var bonus in owner.foundedReligion.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
             if (belief?.tileYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var bonus in belief.tileYieldBonuses)
                 if (MatchesTileYieldBonus(tile, bonus))
                     AddTileBonus(ref agg, bonus, kind);
+        }
+
+        return agg;
+    }
+
+    private CityYieldAgg AggregateCivLeaderGovernorTileBonuses(HexTileData tile, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null || tile == null) return agg;
+
+        if (owner.civData?.tileYieldBonuses != null)
+        {
+            foreach (var bonus in owner.civData.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
+        if (owner.leader?.tileYieldBonuses != null)
+        {
+            foreach (var bonus in owner.leader.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
+        if (governor?.Traits != null)
+        {
+            foreach (var trait in governor.Traits)
+            {
+                if (trait?.tileYieldBonuses == null) continue;
+                foreach (var bonus in trait.tileYieldBonuses)
+                    if (MatchesTileYieldBonus(tile, bonus))
+                        AddTileBonus(ref agg, bonus, kind);
+            }
         }
 
         return agg;
@@ -2627,6 +2667,9 @@ Destroy(oldTuple.instance);
 
                     int baseTileYield = selector(maybe);
                     int effectiveTileYield = baseTileYield;
+
+                    var civLeaderGovernorTileAgg = AggregateCivLeaderGovernorTileBonuses(maybe, yieldKind);
+                    effectiveTileYield = Mathf.RoundToInt((effectiveTileYield + civLeaderGovernorTileAgg.add) * (1f + civLeaderGovernorTileAgg.pct));
 
                     var techCulturePolicyTileAgg = AggregateTechCulturePolicyTileBonuses(maybe, yieldKind);
                     effectiveTileYield = Mathf.RoundToInt((effectiveTileYield + techCulturePolicyTileAgg.add) * (1f + techCulturePolicyTileAgg.pct));
