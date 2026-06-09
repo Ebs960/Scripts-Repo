@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: City Walls
+  m_Name: Roads
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: City Walls
-  techAge: 3
+  techName: Roads
+  techAge: 4
   description: 
-  techIcon: {fileID: 21300000, guid: d86d9ca932efe394f81140c24a44799d, type: 3}
+  techIcon: {fileID: 21300000, guid: 4e7d24e0ae5767349bbb753f741382a7, type: 3}
   positionHint: 0
-  category: 0
+  category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 50
+  scienceCost: 90
   requiredTechnologies:
-  - {fileID: 11400000, guid: 188af3f1ce878c54fa5ee698cd89b50a, type: 2}
+  - {fileID: 11400000, guid: be4ee38bd4a3a5e45a6a48dfb6a3c422, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -37,7 +37,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: 0.05
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
@@ -53,7 +53,7 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 2
   equipmentBonuses: []
   equipmentYieldBonuses: []
   improvementBonuses: []
@@ -69,7 +69,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 1
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

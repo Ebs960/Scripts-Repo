@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: City Walls
+  m_Name: Forts
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: City Walls
-  techAge: 3
+  techName: Forts
+  techAge: 4
   description: 
-  techIcon: {fileID: 21300000, guid: d86d9ca932efe394f81140c24a44799d, type: 3}
+  techIcon: {fileID: 21300000, guid: 5d65e95e15a24f64fa66fe21e2099427, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 50
+  scienceCost: 110
   requiredTechnologies:
-  - {fileID: 11400000, guid: 188af3f1ce878c54fa5ee698cd89b50a, type: 2}
+  - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -57,7 +57,24 @@ MonoBehaviour:
   equipmentBonuses: []
   equipmentYieldBonuses: []
   improvementBonuses: []
-  buildingBonuses: []
+  buildingBonuses:
+  - building: {fileID: 11400000, guid: a51d839a5d0bda740ba9b04259fafeea, type: 2}
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
@@ -65,7 +82,7 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []

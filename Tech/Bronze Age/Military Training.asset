@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Military Training
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Military Training
+  techAge: 3
   description: 
   techIcon: {fileID: 0}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
+  scienceCost: 60
   requiredTechnologies: []
   requiredCultures: []
   requiredCityCount: 0

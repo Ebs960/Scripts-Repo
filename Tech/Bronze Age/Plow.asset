@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Plow
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Chariots
+  techName: Plow
   techAge: 3
   description: 
-  techIcon: {fileID: 21300000, guid: cd3379ae558c24a49936cfbeeec192b4, type: 3}
+  techIcon: {fileID: 0}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 120
+  scienceCost: 55
   requiredTechnologies:
   - {fileID: 11400000, guid: 263bea14437566e439619ca1da46ac15, type: 2}
   requiredCultures: []
@@ -56,13 +56,46 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
-  improvementBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: 2823855e26bf105458d2aaccee47361a, type: 2}
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   buildingBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
-  herdYieldBonuses: []
+  herdYieldBonuses:
+  - useSpeciesFilter: 1
+    species: 1
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 4
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   enablesHerding: 0
   preventsMosquitoDamage: 0
   additionalGovernorSlots: 0

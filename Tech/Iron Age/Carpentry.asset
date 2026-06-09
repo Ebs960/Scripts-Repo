@@ -17,10 +17,11 @@ MonoBehaviour:
   description: 
   techIcon: {fileID: 21300000, guid: e316a7783148b7b44824730cf487a92d, type: 3}
   positionHint: 0
-  category: 0
+  category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 110
-  requiredTechnologies: []
+  scienceCost: 90
+  requiredTechnologies:
+  - {fileID: 11400000, guid: be4ee38bd4a3a5e45a6a48dfb6a3c422, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -29,6 +30,9 @@ MonoBehaviour:
   unlockedLeaders: []
   unlocksReligion: 0
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -37,12 +41,14 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   flatFoodBonus: 0
   flatProductionBonus: 2
   flatGoldBonus: 0
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   unitBonuses: []
   unitYieldBonuses: []
   workerBonuses: []

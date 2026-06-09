@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: City Walls
+  m_Name: Calendar
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: City Walls
-  techAge: 3
+  techName: Calendar
+  techAge: 4
   description: 
-  techIcon: {fileID: 21300000, guid: d86d9ca932efe394f81140c24a44799d, type: 3}
+  techIcon: {fileID: 21300000, guid: 4d0dfeec12ab12d4e9ada9ea79c5c574, type: 3}
   positionHint: 0
-  category: 0
+  category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 50
+  scienceCost: 110
   requiredTechnologies:
-  - {fileID: 11400000, guid: 188af3f1ce878c54fa5ee698cd89b50a, type: 2}
+  - {fileID: 11400000, guid: 360fc4062730d6d48a13e3bd2885df2b, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 

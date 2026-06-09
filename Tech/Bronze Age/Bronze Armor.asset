@@ -19,7 +19,7 @@ MonoBehaviour:
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 40
+  scienceCost: 65
   requiredTechnologies:
   - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
   requiredCultures: []
@@ -41,12 +41,14 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   flatFoodBonus: 0
   flatProductionBonus: 0
   flatGoldBonus: 0
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   unitBonuses: []
   unitYieldBonuses: []
   workerBonuses: []
