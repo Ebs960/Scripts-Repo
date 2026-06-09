@@ -133,6 +133,8 @@ public class TechData : ScriptableObject
     public EquipmentStatBonus[] equipmentBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this technology (applies when equipped).")]
     public EquipmentYieldBonus[] equipmentYieldBonuses;
+    [Tooltip("Per-tile yield bonuses granted by this technology. Filters can target terrain, resources, improvements, and more.")]
+    public TileYieldBonus[] tileYieldBonuses;
     [Tooltip("Per-improvement yield bonuses granted by this technology.")]
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this technology.")]

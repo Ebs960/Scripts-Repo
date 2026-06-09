@@ -400,6 +400,20 @@ public class TileYieldBonus
     public Biome biome;
     public BoolRequirement hillRequirement;
     public BoolRequirement mountainRequirement;
+    [Tooltip("Require the tile to be land or non-land/water. Ignore leaves either valid.")]
+    public BoolRequirement landRequirement;
+    [Tooltip("Require the tile to be any water tile (ocean, lake, river, or underwater). Ignore leaves either valid.")]
+    public BoolRequirement waterRequirement;
+    [Tooltip("Require the tile to have or not have any improvement. Ignore leaves either valid.")]
+    public BoolRequirement improvementRequirement;
+    [Tooltip("Require the tile to have or not have any district. Ignore leaves either valid.")]
+    public BoolRequirement districtRequirement;
+    [Tooltip("Require a specific improvement on the tile (enable with useImprovementFilter).")]
+    public bool useImprovementFilter;
+    public ImprovementData improvement;
+    [Tooltip("Require a specific district on the tile (enable with useDistrictFilter).")]
+    public bool useDistrictFilter;
+    public DistrictData district;
     [Header("Season Filter")]
     [Tooltip("If enabled, this bonus applies only during the selected seasons on the tile.")]
     public bool useSeasonFilter = false;

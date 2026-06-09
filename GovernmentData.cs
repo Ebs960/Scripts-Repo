@@ -31,6 +31,10 @@ public class GovernmentData : ScriptableObject
     public float cultureModifier;       // New
     public float faithModifier;         // New
 
+    [Header("Tile Yield Bonuses")]
+    [Tooltip("Per-tile yield bonuses granted by this government while active. Filters can target terrain, resources, improvements, and more.")]
+    public TileYieldBonus[] tileYieldBonuses;
+
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this government while active.")]
     public UnitYieldBonus[] unitYieldBonuses;
