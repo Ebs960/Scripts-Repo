@@ -1972,6 +1972,20 @@ Destroy(oldTuple.instance);
         if (bonus.useBiomeFilter && tile.biome != bonus.biome) return false;
         if (!MatchesRequirement(bonus.hillRequirement, tile.isHill)) return false;
         if (!MatchesRequirement(bonus.mountainRequirement, tile.isMountain)) return false;
+        if (!MatchesRequirement(bonus.landRequirement, tile.isLand)) return false;
+        if (!MatchesRequirement(bonus.waterRequirement, tile.IsWaterTile)) return false;
+        if (!MatchesRequirement(bonus.improvementRequirement, tile.HasImprovement)) return false;
+        if (!MatchesRequirement(bonus.districtRequirement, tile.HasDistrict)) return false;
+        if (bonus.useImprovementFilter)
+        {
+            if (tile.improvement == null) return false;
+            if (tile.improvement != bonus.improvement) return false;
+        }
+        if (bonus.useDistrictFilter)
+        {
+            if (tile.district == null) return false;
+            if (tile.district != bonus.district) return false;
+        }
         if (bonus.useResourceFilter)
         {
             if (tile.resource == null) return false;
@@ -1981,7 +1995,7 @@ Destroy(oldTuple.instance);
         {
             if (bonus.seasons == null || bonus.seasons.Length == 0) return false;
             bool matched = false;
-            foreach (var s in bonus.seasons) { if (s == tile.season) { matched = true; break; } }
+            foreach (var season in bonus.seasons) { if (season == tile.season) { matched = true; break; } }
             if (!matched) return false;
         }
         return true;
@@ -2030,6 +2044,15 @@ Destroy(oldTuple.instance);
             case BuildingYieldType.Faith: agg.add += bonus.faithAdd; agg.pct += bonus.faithPct; break;
             case BuildingYieldType.PolicyPoints: agg.add += bonus.policyPointsAdd; agg.pct += bonus.policyPointsPct; break;
         }
+    }
+
+    private static void AddTileBonusScaled(ref CityYieldAgg agg, TileYieldBonus bonus, BuildingYieldType kind, float scale)
+    {
+        if (bonus == null || Mathf.Approximately(scale, 0f)) return;
+        CityYieldAgg scaled = default;
+        AddTileBonus(ref scaled, bonus, kind);
+        agg.add += Mathf.RoundToInt(scaled.add * scale);
+        agg.pct += scaled.pct * scale;
     }
 
     private bool MatchesBuildingYieldBonus(BuildingYieldBonus bonus)
@@ -2277,6 +2300,70 @@ Destroy(oldTuple.instance);
             foreach (var bonus in belief.tileYieldBonuses)
                 if (MatchesTileYieldBonus(tile, bonus))
                     AddTileBonus(ref agg, bonus, kind);
+        }
+
+        return agg;
+    }
+
+    private CityYieldAgg AggregateTechCulturePolicyTileBonuses(HexTileData tile, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null || tile == null) return agg;
+
+        if (owner.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+            {
+                if (tech?.tileYieldBonuses == null) continue;
+                foreach (var bonus in tech.tileYieldBonuses)
+                    if (MatchesTileYieldBonus(tile, bonus))
+                        AddTileBonus(ref agg, bonus, kind);
+            }
+        }
+
+        if (owner.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+            {
+                if (culture?.tileYieldBonuses == null) continue;
+                foreach (var bonus in culture.tileYieldBonuses)
+                    if (MatchesTileYieldBonus(tile, bonus))
+                        AddTileBonus(ref agg, bonus, kind);
+            }
+        }
+
+        if (owner.currentGovernment?.tileYieldBonuses != null)
+        {
+            foreach (var bonus in owner.currentGovernment.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonus(ref agg, bonus, kind);
+        }
+
+        if (owner.activePolicies != null)
+        {
+            foreach (var policy in owner.activePolicies)
+            {
+                if (policy?.tileYieldBonuses == null) continue;
+                foreach (var bonus in policy.tileYieldBonuses)
+                    if (MatchesTileYieldBonus(tile, bonus))
+                        AddTileBonus(ref agg, bonus, kind);
+            }
+        }
+
+        return agg;
+    }
+
+    private CityYieldAgg AggregateBuildingTileYieldBonuses(HexTileData tile, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (tile == null) return agg;
+
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+        {
+            if (data?.tileYieldBonuses == null) continue;
+            foreach (var bonus in data.tileYieldBonuses)
+                if (MatchesTileYieldBonus(tile, bonus))
+                    AddTileBonusScaled(ref agg, bonus, kind, upkeepMultiplier);
         }
 
         return agg;
@@ -2531,16 +2618,26 @@ Destroy(oldTuple.instance);
                 var maybe = ts.GetTileData(idx);
                 if (maybe != null)
                 {
-                    total += selector(maybe);
-
-                    var tileBonusAgg = AggregateReligionTileBonuses(maybe, kind: testResult == 1000 ? BuildingYieldType.Food :
+                    BuildingYieldType yieldKind = testResult == 1000 ? BuildingYieldType.Food :
                         testResult == 2000 ? BuildingYieldType.Production :
                         testResult == 3000 ? BuildingYieldType.Gold :
                         testResult == 4000 ? BuildingYieldType.Science :
                         testResult == 5000 ? BuildingYieldType.Culture :
-                        testResult == 6000 ? BuildingYieldType.Faith : BuildingYieldType.PolicyPoints);
+                        testResult == 6000 ? BuildingYieldType.Faith : BuildingYieldType.PolicyPoints;
+
                     int baseTileYield = selector(maybe);
-                    total += Mathf.RoundToInt((baseTileYield + tileBonusAgg.add) * (1f + tileBonusAgg.pct)) - baseTileYield;
+                    int effectiveTileYield = baseTileYield;
+
+                    var techCulturePolicyTileAgg = AggregateTechCulturePolicyTileBonuses(maybe, yieldKind);
+                    effectiveTileYield = Mathf.RoundToInt((effectiveTileYield + techCulturePolicyTileAgg.add) * (1f + techCulturePolicyTileAgg.pct));
+
+                    var buildingTileAgg = AggregateBuildingTileYieldBonuses(maybe, yieldKind);
+                    effectiveTileYield = Mathf.RoundToInt((effectiveTileYield + buildingTileAgg.add) * (1f + buildingTileAgg.pct));
+
+                    var tileBonusAgg = AggregateReligionTileBonuses(maybe, yieldKind);
+                    effectiveTileYield = Mathf.RoundToInt((effectiveTileYield + tileBonusAgg.add) * (1f + tileBonusAgg.pct));
+
+                    total += effectiveTileYield;
 
                     // Underwater biome bonus yields: when an ocean tile has a non-default
                     // underwaterBiome AND an underwater improvement or district, grant the

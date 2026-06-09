@@ -104,6 +104,8 @@ public class CultureData : ScriptableObject
     public EquipmentStatBonus[] equipmentBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this culture (applies when equipped).")]
     public EquipmentYieldBonus[] equipmentYieldBonuses;
+    [Tooltip("Per-tile yield bonuses granted by this culture. Filters can target terrain, resources, improvements, and more.")]
+    public TileYieldBonus[] tileYieldBonuses;
     [Tooltip("Per-improvement yield bonuses granted by this culture.")]
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this culture.")]
