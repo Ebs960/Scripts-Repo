@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Cavalry
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Cavalry
+  techAge: 4
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: a02e34a447d5ee940b6a8101f64f5583, type: 3}
   positionHint: 0
-  category: 0
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies: []
+  scienceCost: 120
+  requiredTechnologies:
+  - {fileID: 11400000, guid: fe70958f84586714690d5fca12608d8f, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -55,12 +56,28 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
-  improvementBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: b97a16c3f18c59f4686a0ac125583f82, type: 2}
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 1
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
-  herdStarvationPercentReduction: 0
+  herdStarvationPercentReduction: 0.1
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0

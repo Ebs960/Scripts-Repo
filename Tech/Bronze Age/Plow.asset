@@ -15,7 +15,7 @@ MonoBehaviour:
   techName: Plow
   techAge: 3
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: a87458de1bd690240a1abb31188e6943, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
@@ -73,6 +73,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []

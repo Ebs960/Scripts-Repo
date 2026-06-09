@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Astronomy
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Calendar
+  techName: Astronomy
   techAge: 4
   description: 
-  techIcon: {fileID: 21300000, guid: 4d0dfeec12ab12d4e9ada9ea79c5c574, type: 3}
+  techIcon: {fileID: 21300000, guid: 282d51da5350457408fa439105a86356, type: 3}
   positionHint: 0
   category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
@@ -46,7 +46,7 @@ MonoBehaviour:
   flatProductionBonus: 0
   flatGoldBonus: 0
   flatScienceBonus: 0
-  flatCultureBonus: 0
+  flatCultureBonus: 7
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
   unitBonuses: []
@@ -58,6 +58,7 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
