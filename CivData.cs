@@ -66,6 +66,10 @@ public class CivData : ScriptableObject
     [Tooltip("Innate per-tile yield bonuses granted by this civilization to matching worked city tiles.")]
     public TileYieldBonus[] tileYieldBonuses;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Innate per-building yield/stat bonuses granted by this civilization. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Header("Unit Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;
