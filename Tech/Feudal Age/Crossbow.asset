@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Tactics
+  m_Name: Crossbow
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Tactics
-  techAge: 5
+  techName: Crossbow
+  techAge: 7
   description: 
-  techIcon: {fileID: 21300000, guid: d84864d0369f6f44ab72b2e4013b5a95, type: 3}
+  techIcon: {fileID: 21300000, guid: 52c2c5b4c840c894e91293b520e25353, type: 3}
   positionHint: 0
-  category: 0
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 155
+  scienceCost: 330
   requiredTechnologies:
-  - {fileID: 11400000, guid: 2163442045cc28047bc4793bfe76c04c, type: 2}
+  - {fileID: 11400000, guid: 15a50e67da515d240972652d531bb9fc, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -61,12 +61,7 @@ MonoBehaviour:
   buildingBonuses: []
   cityBonuses: []
   diseaseBonuses: []
-  attritionBonuses:
-  - useSeasonFilter: 0
-    seasons: 
-    winterDamageReductionPct: 0
-    famineDamageReductionPct: 0
-    biomeDamageReductionPct: 0.05
+  attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
@@ -78,5 +73,5 @@ MonoBehaviour:
   buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
-  unlocksUnitStacking: 1
+  unlocksUnitStacking: 0
   unitStackSizeGranted: 2

@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Lighthouses
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Lighthouses
+  techAge: 5
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: a0a621c1cf0b7a847aa226aa19199f6b, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
+  scienceCost: 165
   requiredTechnologies: []
   requiredCultures: []
   requiredCityCount: 0
@@ -55,6 +55,7 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
   cityBonuses: []

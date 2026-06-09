@@ -10,18 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Tactics
+  m_Name: Heavy Plow
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Tactics
-  techAge: 5
+  techName: Heavy Plow
+  techAge: 6
   description: 
-  techIcon: {fileID: 21300000, guid: d84864d0369f6f44ab72b2e4013b5a95, type: 3}
+  techIcon: {fileID: 21300000, guid: 36ecf1d6f579efe43bd5e2f76d7fbcc1, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 155
+  scienceCost: 200
   requiredTechnologies:
-  - {fileID: 11400000, guid: 2163442045cc28047bc4793bfe76c04c, type: 2}
+  - {fileID: 11400000, guid: a3d0f2ef7b39f9a4a8f018614da0d917, type: 2}
+  - {fileID: 11400000, guid: 6e755b419b540af499f6e68ca6343410, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -31,11 +32,11 @@ MonoBehaviour:
   unlocksReligion: 0
   attackBonus: 0
   meleeAttackBonus: 0
-  rangedAttackBonus: 1
+  rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0
+  foodModifier: 0.1
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
@@ -53,23 +54,51 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 3
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
-  improvementBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: 2823855e26bf105458d2aaccee47361a, type: 2}
+    foodAdd: 2
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   buildingBonuses: []
   cityBonuses: []
   diseaseBonuses: []
-  attritionBonuses:
-  - useSeasonFilter: 0
-    seasons: 
-    winterDamageReductionPct: 0
-    famineDamageReductionPct: 0
-    biomeDamageReductionPct: 0.05
+  attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
-  herdYieldBonuses: []
+  herdYieldBonuses:
+  - useSpeciesFilter: 0
+    species: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 8
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   enablesHerding: 0
   preventsMosquitoDamage: 0
   additionalGovernorSlots: 0
@@ -78,5 +107,5 @@ MonoBehaviour:
   buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
-  unlocksUnitStacking: 1
+  unlocksUnitStacking: 0
   unitStackSizeGranted: 2

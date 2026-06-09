@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Tactics
+  m_Name: Castles
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Tactics
-  techAge: 5
+  techName: Castles
+  techAge: 7
   description: 
-  techIcon: {fileID: 21300000, guid: d84864d0369f6f44ab72b2e4013b5a95, type: 3}
+  techIcon: {fileID: 21300000, guid: 4ed5e5e511401b14f95dd2839cb8f927, type: 3}
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 155
+  scienceCost: 365
   requiredTechnologies:
-  - {fileID: 11400000, guid: 2163442045cc28047bc4793bfe76c04c, type: 2}
+  - {fileID: 11400000, guid: 04b1e02603ebfe74db93253b98618943, type: 2}
+  - {fileID: 11400000, guid: 2776d4919ae2c3641b4903f7e03f0c0e, type: 2}
+  - {fileID: 11400000, guid: 024f0e0799c277347b4acb9a07166585, type: 2}
+  - {fileID: 11400000, guid: b6bde9e102207a0468f2cd6141db14f8, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -31,7 +34,7 @@ MonoBehaviour:
   unlocksReligion: 0
   attackBonus: 0
   meleeAttackBonus: 0
-  rangedAttackBonus: 1
+  rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
@@ -61,22 +64,17 @@ MonoBehaviour:
   buildingBonuses: []
   cityBonuses: []
   diseaseBonuses: []
-  attritionBonuses:
-  - useSeasonFilter: 0
-    seasons: 
-    winterDamageReductionPct: 0
-    famineDamageReductionPct: 0
-    biomeDamageReductionPct: 0.05
+  attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 0
   pantheonCapIncrease: 0
-  unlocksUnitStacking: 1
+  unlocksUnitStacking: 0
   unitStackSizeGranted: 2
