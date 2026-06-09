@@ -25,6 +25,18 @@ public enum UnitTerritoryRequirement
     Unowned,
 }
 
+public enum BuildingCategory
+{
+    Food,
+    Production,
+    Gold,
+    Science,
+    Culture,
+    Faith,
+    Harbor,
+    PerimeterWall,
+}
+
 [System.Serializable]
 public struct CombatTargetedModifier
 {
@@ -353,7 +365,12 @@ public class ImprovementYieldBonus
 [System.Serializable]
 public class BuildingYieldBonus
 {
+    [Header("Building Filters")]
+    [Tooltip("Optional exact building target. Leave empty to target every building, or combine with the category filter.")]
     public BuildingData building;
+    [Tooltip("If enabled, this bonus only applies to buildings in the selected category (for example IsFoodBuilding).")]
+    public bool useBuildingCategoryFilter = false;
+    public BuildingCategory buildingCategory;
 
     [Header("Season Filter")]
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]

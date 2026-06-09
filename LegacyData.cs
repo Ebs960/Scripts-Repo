@@ -50,6 +50,10 @@ public class LegacyData : ScriptableObject
     public float cultureModifier;
     public float faithModifier;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Per-building yield/stat bonuses granted while this legacy is promoted. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Header("Governor & Vassal Influence")]
     [Tooltip("How this legacy shifts opinions on specific policies")]
     public PolicyBias[] policyBiases;

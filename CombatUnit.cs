@@ -81,6 +81,18 @@ public class CombatUnit : BaseUnit
     private const float MELEE_ENGAGEMENT_RANGE = 2.5f; // Distance to consider "in melee range"
 
     [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
+    [System.NonSerialized] private bool goldMaintenanceSatisfied = true;
+    public bool IsGoldMaintenanceSatisfied => goldMaintenanceSatisfied;
+
+    public void SetGoldMaintenanceState(bool satisfied)
+    {
+        goldMaintenanceSatisfied = satisfied;
+    }
+
+    private float ApplyGoldMaintenanceToCombatStat(float value)
+    {
+        return goldMaintenanceSatisfied ? value : value * 0.5f;
+    }
     // owner, currentHealth are inherited from BaseUnit
 
     // Remove old events and use GameEventManager instead
@@ -1225,6 +1237,7 @@ public class CombatUnit : BaseUnit
             valF = ApplyOwnerAttackBonuses(valF, AttackType.Melee);
             valF *= FatigueMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
+            valF = ApplyGoldMaintenanceToCombatStat(valF);
             return Mathf.RoundToInt(valF);
         }
     }
@@ -1238,6 +1251,7 @@ public class CombatUnit : BaseUnit
             valF = ApplyOwnerAttackBonuses(valF, AttackType.Ranged);
             valF *= FatigueMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
+            valF = ApplyGoldMaintenanceToCombatStat(valF);
             return Mathf.RoundToInt(valF);
         }
     }
@@ -1251,6 +1265,7 @@ public class CombatUnit : BaseUnit
             valF = ApplyOwnerAttackBonuses(valF, AttackType.City);
             valF *= FatigueMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
+            valF = ApplyGoldMaintenanceToCombatStat(valF);
             return Mathf.RoundToInt(valF);
         }
     }
@@ -1262,6 +1277,7 @@ public class CombatUnit : BaseUnit
         valF = ApplyOwnerAttackBonuses(valF, AttackType.Generic);
         valF *= FatigueMultiplier;
         valF = ApplyResourceUpkeepToStat(valF);
+        valF = ApplyGoldMaintenanceToCombatStat(valF);
         return Mathf.RoundToInt(valF);
     }
 
@@ -1295,6 +1311,7 @@ public class CombatUnit : BaseUnit
             valF = ApplyResourceUpkeepToStat(valF);
             
             // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
+            valF = ApplyGoldMaintenanceToCombatStat(valF);
             return Mathf.RoundToInt(valF);
         }
     }
@@ -1302,7 +1319,7 @@ public class CombatUnit : BaseUnit
     {
         get
         {
-            return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
+            return Mathf.RoundToInt(ApplyGoldMaintenanceToCombatStat(GetCurrentDefenseValueFloat()));
         }
     }
 
@@ -1635,8 +1652,10 @@ public class CombatUnit : BaseUnit
         CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(target);
         float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
         attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
+        attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = target.GetBaseDefenseFloat();
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
+        defenderValue = target.ApplyGoldMaintenanceToCombatStat(defenderValue);
 
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
 
@@ -1740,6 +1759,7 @@ public class CombatUnit : BaseUnit
         CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
         float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback) + combatBonus;
         attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
+        attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = target.CurrentDefense;
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
         
@@ -1875,8 +1895,10 @@ public class CombatUnit : BaseUnit
         CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(attacker);
         float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
         attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback));
+        attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = attacker.GetBaseDefenseFloat();
         defenderValue = (defenderValue + attacker.GetSituationalDefenseAddAgainst(this)) * (1f + attacker.GetSituationalDefensePctAgainst(this));
+        defenderValue = attacker.ApplyGoldMaintenanceToCombatStat(defenderValue);
 
         float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
         int damage = Mathf.RoundToInt(rawF * dmgMul);

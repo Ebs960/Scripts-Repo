@@ -721,6 +721,10 @@ public class CombatUnitData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("Gold Maintenance (per turn)")]
+    [Tooltip("Gold this unit consumes from the civilization treasury each turn. If unpaid, combat attack/defense stats are halved for the turn.")]
+    public int goldMaintenancePerTurn = 2;
+
     [Header("Resource Upkeep (per turn)")]
     [Tooltip("Resources this unit consumes from the civilization stockpile each turn.")]
     public ResourceCost[] resourceUpkeepPerTurn;

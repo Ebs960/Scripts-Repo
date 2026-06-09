@@ -34,6 +34,10 @@ public class PolicyData : ScriptableObject
     [Tooltip("Per-tile yield bonuses granted by this policy. Filters can target terrain, resources, improvements, and more.")]
     public TileYieldBonus[] tileYieldBonuses;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Per-building yield/stat bonuses granted by this policy while active. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this policy.")]
     public UnitYieldBonus[] unitYieldBonuses;
