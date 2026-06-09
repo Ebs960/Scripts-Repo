@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: Horology
+  m_EditorClassIdentifier: Assembly-CSharp::TechData
+  techName: Horology
+  techAge: 10
+  description: 
+  techIcon: {fileID: 21300000, guid: a37ddca997417cb48b86d6b9ff0a982c, type: 3}
+  positionHint: 0
+  category: 1
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 700
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 39ff8601bf201a043afb61da15676d64, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  meleeAttackBonus: 3
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 2
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  policyPointsModifier: 0
+  flatFoodBonus: 0
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  tileYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 6
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
+  diseaseBonuses: []
+  attritionBonuses: []
+  genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  enablesHerding: 0
+  preventsMosquitoDamage: 0
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 0
+  unlocksUnitStacking: 0
+  unitStackSizeGranted: 2
