@@ -108,6 +108,8 @@ public class CultureData : ScriptableObject
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this culture.")]
     public BuildingYieldBonus[] buildingBonuses;
+    [Tooltip("Per-city yield, defense, and happiness bonuses granted by this culture.")]
+    public CityYieldBonus[] cityBonuses;
     [Tooltip("Disease modifiers granted by this culture.")]
     public DiseaseModifierBonus[] diseaseBonuses;
     [Tooltip("Attrition modifiers granted by this culture.")]

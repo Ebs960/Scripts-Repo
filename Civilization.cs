@@ -2802,6 +2802,16 @@ public class Civilization : MonoBehaviour
         }
     }
 
+    private void RefreshCityDefenseAndHappinessBonuses()
+    {
+        if (cities == null) return;
+        foreach (var city in cities)
+        {
+            if (city != null)
+                city.RefreshCityDefenseAndHappinessBonuses();
+        }
+    }
+
     private void ApplyTechBonuses(TechData tech)
     {
         // Store old age to check if we advanced
@@ -2840,6 +2850,8 @@ public class Civilization : MonoBehaviour
             }
         }
         
+        RefreshCityDefenseAndHappinessBonuses();
+
         // Check if we advanced to a new age and update city models
         TechAge newAge = GetCurrentAge();
         if (newAge != oldAge)
@@ -2913,6 +2925,8 @@ public class Civilization : MonoBehaviour
         {
             IncreaseGovernorCount(cult.additionalGovernorSlots);
 }
+
+        RefreshCityDefenseAndHappinessBonuses();
 
         if (cult.unlockedGovernorTraits != null)
         {

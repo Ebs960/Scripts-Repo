@@ -68,8 +68,12 @@ public class City : MonoBehaviour
     public int foodConsumptionPerPopulation = 1;
 
     [Header("Defense & Morale")]
+    [Tooltip("Base maximum city defense before building, technology, culture, pantheon, and belief bonuses.")]
+    public int baseMaxDefense = 100;
     public int defenseRating = 100;
     public int maxDefense = 100;
+    [Tooltip("Base maximum city happiness/morale before building, technology, culture, pantheon, and belief bonuses.")]
+    public int baseMaxHappiness = 100;
     public int moraleRating = 100;
     public int maxMorale = 100;
     public int moraleDropPerTurn = 1;
@@ -205,6 +209,7 @@ public class City : MonoBehaviour
                    ?? GameManager.Instance?.GetPlanetGenerator(planetIndex)
                    ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator != null) planetIndex = planetGenerator.planetIndex;
+        RefreshCityDefenseAndHappinessBonuses();
     }
 
     /// <summary>
@@ -337,6 +342,7 @@ public class City : MonoBehaviour
         }
 
         builtBuildings.Clear();
+        RefreshCityDefenseAndHappinessBonuses();
         defenseRating = maxDefense;
         moraleRating = maxMorale;
 
@@ -512,6 +518,8 @@ if (UIManager.Instance != null)
     /// </summary>
     public void ProcessCityTurn()
     {
+        RefreshCityDefenseAndHappinessBonuses();
+
         // 1) Collect yields (handled in Civilization)
         // Cache per-turn yields for collection by civilization
         cachedGold = GetGoldPerTurn();
@@ -1796,9 +1804,7 @@ Destroy(oldTuple.instance);
     /// </summary>
     private void ApplyBuildingEffects(BuildingData building)
     {
-
-        defenseRating = Mathf.Min(maxDefense, defenseRating + 10); // example defense bonus
-        moraleRating = Mathf.Min(maxMorale, moraleRating + 5); // example morale bonus
+        RefreshCityDefenseAndHappinessBonuses();
     }
 
     void ProcessGrowth()
@@ -1834,7 +1840,7 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseFood += bonuses.food;
         }
-        return ApplyCityScopedReligionBonuses(baseFood, BuildingYieldType.Food);
+        return ApplyCityScopedYieldBonuses(baseFood, BuildingYieldType.Food);
     }
 
     enum BuildingYieldType { Food, Production, Gold, Science, Culture, Faith, PolicyPoints }
@@ -1842,6 +1848,14 @@ Destroy(oldTuple.instance);
     {
         public int add;
         public float pct;
+    }
+
+    struct CityStatAgg
+    {
+        public int defenseAdd;
+        public float defensePct;
+        public int happinessAdd;
+        public float happinessPct;
     }
 
     private void EnsureBuildingUpkeepState()
@@ -2046,6 +2060,180 @@ Destroy(oldTuple.instance);
         return true;
     }
 
+
+    private static void AddBuildingStatBonus(ref CityStatAgg agg, BuildingYieldBonus bonus)
+    {
+        if (bonus == null) return;
+        agg.defenseAdd += bonus.defenseAdd;
+        agg.defensePct += bonus.defensePct;
+        agg.happinessAdd += bonus.happinessAdd;
+        agg.happinessPct += bonus.happinessPct;
+    }
+
+    private static void AddCityStatBonus(ref CityStatAgg agg, CityYieldBonus bonus)
+    {
+        if (bonus == null) return;
+        agg.defenseAdd += bonus.defenseAdd;
+        agg.defensePct += bonus.defensePct;
+        agg.happinessAdd += bonus.happinessAdd;
+        agg.happinessPct += bonus.happinessPct;
+    }
+
+    private CityStatAgg AggregateBuildingStatBonuses(BuildingData data)
+    {
+        CityStatAgg agg = default;
+        if (data == null) return agg;
+
+        agg.defenseAdd += Mathf.RoundToInt(data.defenseBonus);
+        agg.happinessAdd += Mathf.RoundToInt(data.happinessBonus);
+
+        if (owner?.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+            {
+                if (tech?.buildingBonuses == null) continue;
+                foreach (var bonus in tech.buildingBonuses)
+                {
+                    if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
+                        AddBuildingStatBonus(ref agg, bonus);
+                }
+            }
+        }
+
+        if (owner?.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+            {
+                if (culture?.buildingBonuses == null) continue;
+                foreach (var bonus in culture.buildingBonuses)
+                {
+                    if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
+                        AddBuildingStatBonus(ref agg, bonus);
+                }
+            }
+        }
+
+        return agg;
+    }
+
+    private CityStatAgg AggregateCityStatBonuses()
+    {
+        CityStatAgg agg = default;
+        if (owner == null) return agg;
+
+        if (owner.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+            {
+                if (tech?.cityBonuses == null) continue;
+                foreach (var bonus in tech.cityBonuses)
+                {
+                    if (MatchesCityYieldBonus(bonus))
+                        AddCityStatBonus(ref agg, bonus);
+                }
+            }
+        }
+
+        if (owner.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+            {
+                if (culture?.cityBonuses == null) continue;
+                foreach (var bonus in culture.cityBonuses)
+                {
+                    if (MatchesCityYieldBonus(bonus))
+                        AddCityStatBonus(ref agg, bonus);
+                }
+            }
+        }
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+        {
+            if (pantheonBonuses?.cityYieldBonuses == null) continue;
+            foreach (var bonus in pantheonBonuses.cityYieldBonuses)
+            {
+                if (MatchesCityYieldBonus(bonus))
+                    AddCityStatBonus(ref agg, bonus);
+            }
+        }
+
+        foreach (var belief in owner.EnumerateActiveBeliefs())
+        {
+            if (belief?.cityYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
+            foreach (var bonus in belief.cityYieldBonuses)
+            {
+                if (MatchesCityYieldBonus(bonus))
+                    AddCityStatBonus(ref agg, bonus);
+            }
+        }
+
+        return agg;
+    }
+
+    private CityStatAgg AggregateAllCityStatBonuses()
+    {
+        CityStatAgg agg = AggregateCityStatBonuses();
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+        {
+            if (data == null) continue;
+            CityStatAgg buildingAgg = AggregateBuildingStatBonuses(data);
+            agg.defenseAdd += Mathf.RoundToInt(buildingAgg.defenseAdd * upkeepMultiplier);
+            agg.defensePct += buildingAgg.defensePct * upkeepMultiplier;
+            agg.happinessAdd += Mathf.RoundToInt(buildingAgg.happinessAdd * upkeepMultiplier);
+            agg.happinessPct += buildingAgg.happinessPct * upkeepMultiplier;
+        }
+        return agg;
+    }
+
+    public void RefreshCityDefenseAndHappinessBonuses()
+    {
+        int oldMaxDefense = Mathf.Max(1, maxDefense);
+        int oldMaxMorale = Mathf.Max(1, maxMorale);
+        CityStatAgg agg = AggregateAllCityStatBonuses();
+
+        int newMaxDefense = Mathf.Max(1, Mathf.RoundToInt((baseMaxDefense + agg.defenseAdd) * (1f + agg.defensePct)));
+        int newMaxMorale = Mathf.Max(1, Mathf.RoundToInt((baseMaxHappiness + agg.happinessAdd) * (1f + agg.happinessPct)));
+
+        bool defenseWasFull = defenseRating >= oldMaxDefense;
+        bool moraleWasFull = moraleRating >= oldMaxMorale;
+
+        maxDefense = newMaxDefense;
+        maxMorale = newMaxMorale;
+
+        defenseRating = defenseWasFull ? maxDefense : Mathf.Clamp(defenseRating, 0, maxDefense);
+        moraleRating = moraleWasFull ? maxMorale : Mathf.Clamp(moraleRating, 0, maxMorale);
+    }
+
+    private CityYieldAgg AggregateTechCultureBuildingBonuses(BuildingData data, BuildingYieldType kind)
+    {
+        CityYieldAgg agg = default;
+        if (owner == null || data == null) return agg;
+
+        if (owner.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+            {
+                if (tech?.buildingBonuses == null) continue;
+                foreach (var bonus in tech.buildingBonuses)
+                    if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
+                        AddBuildingBonus(ref agg, bonus, kind);
+            }
+        }
+
+        if (owner.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+            {
+                if (culture?.buildingBonuses == null) continue;
+                foreach (var bonus in culture.buildingBonuses)
+                    if (bonus != null && bonus.building == data && MatchesBuildingYieldBonus(bonus))
+                        AddBuildingBonus(ref agg, bonus, kind);
+            }
+        }
+
+        return agg;
+    }
+
     private CityYieldAgg AggregateReligionBuildingBonuses(BuildingData data, BuildingYieldType kind)
     {
         CityYieldAgg agg = default;
@@ -2094,10 +2282,36 @@ Destroy(oldTuple.instance);
         return agg;
     }
 
-    private CityYieldAgg AggregateReligionCityBonuses(BuildingYieldType kind)
+    private CityYieldAgg AggregateCityScopedYieldBonuses(BuildingYieldType kind)
     {
         CityYieldAgg agg = default;
         if (owner == null) return agg;
+
+        if (owner.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+            {
+                if (tech?.cityBonuses == null) continue;
+                foreach (var bonus in tech.cityBonuses)
+                {
+                    if (!MatchesCityYieldBonus(bonus)) continue;
+                    AddCityBonus(ref agg, bonus, kind);
+                }
+            }
+        }
+
+        if (owner.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+            {
+                if (culture?.cityBonuses == null) continue;
+                foreach (var bonus in culture.cityBonuses)
+                {
+                    if (!MatchesCityYieldBonus(bonus)) continue;
+                    AddCityBonus(ref agg, bonus, kind);
+                }
+            }
+        }
 
         foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
         {
@@ -2122,9 +2336,9 @@ Destroy(oldTuple.instance);
         return agg;
     }
 
-    private int ApplyCityScopedReligionBonuses(int value, BuildingYieldType kind)
+    private int ApplyCityScopedYieldBonuses(int value, BuildingYieldType kind)
     {
-        var agg = AggregateReligionCityBonuses(kind);
+        var agg = AggregateCityScopedYieldBonuses(kind);
         return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct));
     }
 
@@ -2134,6 +2348,7 @@ Destroy(oldTuple.instance);
         foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
             if (data == null) continue;
+
             int baseVal = 0;
             switch (kind)
             {
@@ -2145,48 +2360,20 @@ Destroy(oldTuple.instance);
                 case BuildingYieldType.Faith: baseVal = data.faithPerTurn; break;
                 case BuildingYieldType.PolicyPoints: baseVal = data.policyPointsPerTurn; break;
             }
+
             if (owner != null)
             {
-                // Local aggregate through techs/cultures
-                var agg = new { foodAdd = 0, prodAdd = 0, goldAdd = 0, scienceAdd = 0, cultureAdd = 0, faithAdd = 0, policyAdd = 0, foodPct = 0f, prodPct = 0f, goldPct = 0f, sciencePct = 0f, culturePct = 0f, faithPct = 0f, policyPct = 0f };
-                if (owner.researchedTechs != null)
-                    foreach (var t in owner.researchedTechs)
-                    {
-                        if (t?.buildingBonuses == null) continue;
-                        foreach (var b in t.buildingBonuses)
-                            if (b != null && b.building == data)
-                            {
-                                agg = new { foodAdd = agg.foodAdd + b.foodAdd, prodAdd = agg.prodAdd + b.productionAdd, goldAdd = agg.goldAdd + b.goldAdd, scienceAdd = agg.scienceAdd + b.scienceAdd, cultureAdd = agg.cultureAdd + b.cultureAdd, faithAdd = agg.faithAdd + b.faithAdd, policyAdd = agg.policyAdd + b.policyPointsAdd, foodPct = agg.foodPct + b.foodPct, prodPct = agg.prodPct + b.productionPct, goldPct = agg.goldPct + b.goldPct, sciencePct = agg.sciencePct + b.sciencePct, culturePct = agg.culturePct + b.culturePct, faithPct = agg.faithPct + b.faithPct, policyPct = agg.policyPct + b.policyPointsPct };
-                            }
-                    }
-                if (owner.researchedCultures != null)
-                    foreach (var c in owner.researchedCultures)
-                    {
-                        if (c?.buildingBonuses == null) continue;
-                        foreach (var b in c.buildingBonuses)
-                            if (b != null && b.building == data)
-                            {
-                                agg = new { foodAdd = agg.foodAdd + b.foodAdd, prodAdd = agg.prodAdd + b.productionAdd, goldAdd = agg.goldAdd + b.goldAdd, scienceAdd = agg.scienceAdd + b.scienceAdd, cultureAdd = agg.cultureAdd + b.cultureAdd, faithAdd = agg.faithAdd + b.faithAdd, policyAdd = agg.policyAdd + b.policyPointsAdd, foodPct = agg.foodPct + b.foodPct, prodPct = agg.prodPct + b.productionPct, goldPct = agg.goldPct + b.goldPct, sciencePct = agg.sciencePct + b.sciencePct, culturePct = agg.culturePct + b.culturePct, faithPct = agg.faithPct + b.faithPct, policyPct = agg.policyPct + b.policyPointsPct };
-                            }
-                    }
-                int add = 0; float pct = 0f;
-                switch (kind)
-                {
-                    case BuildingYieldType.Food: add = agg.foodAdd; pct = agg.foodPct; break;
-                    case BuildingYieldType.Production: add = agg.prodAdd; pct = agg.prodPct; break;
-                    case BuildingYieldType.Gold: add = agg.goldAdd; pct = agg.goldPct; break;
-                    case BuildingYieldType.Science: add = agg.scienceAdd; pct = agg.sciencePct; break;
-                    case BuildingYieldType.Culture: add = agg.cultureAdd; pct = agg.culturePct; break;
-                    case BuildingYieldType.Faith: add = agg.faithAdd; pct = agg.faithPct; break;
-                    case BuildingYieldType.PolicyPoints: add = agg.policyAdd; pct = agg.policyPct; break;
-                }
-                baseVal = Mathf.RoundToInt((baseVal + add) * (1f + pct));
-                var religionAgg = AggregateReligionBuildingBonuses(data, kind);
+                CityYieldAgg techCultureAgg = AggregateTechCultureBuildingBonuses(data, kind);
+                baseVal = Mathf.RoundToInt((baseVal + techCultureAgg.add) * (1f + techCultureAgg.pct));
+
+                CityYieldAgg religionAgg = AggregateReligionBuildingBonuses(data, kind);
                 baseVal = Mathf.RoundToInt((baseVal + religionAgg.add) * (1f + religionAgg.pct));
             }
+
             baseVal = Mathf.RoundToInt(baseVal * upkeepMultiplier);
             total += baseVal;
         }
+
         return total;
     }
     
@@ -2198,7 +2385,7 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseGold += bonuses.gold;
         }
-        return ApplyCityScopedReligionBonuses(baseGold, BuildingYieldType.Gold);
+        return ApplyCityScopedYieldBonuses(baseGold, BuildingYieldType.Gold);
     }
 
     public int GetProductionPerTurn()
@@ -2209,7 +2396,7 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseProd += bonuses.production;
         }
-        return ApplyCityScopedReligionBonuses(baseProd, BuildingYieldType.Production);
+        return ApplyCityScopedYieldBonuses(baseProd, BuildingYieldType.Production);
     }
     
     public int GetSciencePerTurn()
@@ -2220,7 +2407,7 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseScience += bonuses.science;
         }
-        return ApplyCityScopedReligionBonuses(baseScience, BuildingYieldType.Science);
+        return ApplyCityScopedYieldBonuses(baseScience, BuildingYieldType.Science);
     }
     
     public int GetCulturePerTurn()
@@ -2231,7 +2418,7 @@ Destroy(oldTuple.instance);
             var bonuses = governor.GetTotalBonuses();
             baseCulture += bonuses.culture;
         }
-        return ApplyCityScopedReligionBonuses(baseCulture, BuildingYieldType.Culture);
+        return ApplyCityScopedYieldBonuses(baseCulture, BuildingYieldType.Culture);
     }
     
     public int GetPolicyPointPerTurn()
@@ -2240,7 +2427,7 @@ Destroy(oldTuple.instance);
         
         // Governors don't have base policy point bonuses, but traits might add them in the future
         
-        return ApplyCityScopedReligionBonuses(basePolicyPoints, BuildingYieldType.PolicyPoints);
+        return ApplyCityScopedYieldBonuses(basePolicyPoints, BuildingYieldType.PolicyPoints);
     }
 
     public void AddBuildingResourceProductionTo(Dictionary<ResourceData, int> totals)
@@ -2600,7 +2787,7 @@ Destroy(oldTuple.instance);
                     : ts.GetDominantReligion(tileIndex);
             }
         }
-        return ApplyCityScopedReligionBonuses(faith, BuildingYieldType.Faith);
+        return ApplyCityScopedYieldBonuses(faith, BuildingYieldType.Faith);
     }
 
     /// <summary>
