@@ -162,6 +162,25 @@ public class Civilization : MonoBehaviour
         }
     }
 
+    private void ApplyPerTurnGoldMaintenance()
+    {
+        if (combatUnits == null)
+            return;
+
+        foreach (var unit in combatUnits)
+        {
+            if (unit == null)
+                continue;
+
+            int maintenance = Mathf.Max(0, unit.data != null ? unit.data.goldMaintenancePerTurn : 2);
+            bool satisfied = maintenance <= 0 || gold >= maintenance;
+            if (satisfied && maintenance > 0)
+                gold -= maintenance;
+
+            unit.SetGoldMaintenanceState(satisfied);
+        }
+    }
+
     private void EnsureBiomeAggregateArrays()
     {
         if (_biomeEnumCount <= 0)
@@ -2193,6 +2212,7 @@ public class Civilization : MonoBehaviour
             turnCount = round;
 
             ApplyPerTurnResourceUpkeep();
+            ApplyPerTurnGoldMaintenance();
 
             // 1) Reset units (iterate a snapshot to avoid collection-modified exceptions)
             if (combatUnits != null)

@@ -109,6 +109,10 @@ public class BuildingData : ScriptableObject
     [Tooltip("Per-tile yield bonuses applied to matching tiles worked by this city while this building is operational.")]
     public TileYieldBonus[] tileYieldBonuses;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Per-building yield/stat bonuses this building grants while operational. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Header("Resource Production (per turn)")]
     [Tooltip("Resources this building adds to the civilization stockpile each turn while present in a city.")]
     public ResourceCost[] resourceProductionPerTurn;

@@ -35,6 +35,10 @@ public class GovernmentData : ScriptableObject
     [Tooltip("Per-tile yield bonuses granted by this government while active. Filters can target terrain, resources, improvements, and more.")]
     public TileYieldBonus[] tileYieldBonuses;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Per-building yield/stat bonuses granted by this government while active. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this government while active.")]
     public UnitYieldBonus[] unitYieldBonuses;

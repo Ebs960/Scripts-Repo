@@ -86,6 +86,10 @@ public class LeaderData : ScriptableObject
     [Tooltip("Per-tile yield bonuses granted by this leader to matching worked city tiles.")]
     public TileYieldBonus[] tileYieldBonuses;
 
+    [Header("Building Yield Bonuses")]
+    [Tooltip("Per-building yield/stat bonuses granted by this leader. Can target exact buildings or building categories.")]
+    public BuildingYieldBonus[] buildingBonuses;
+
     [Tooltip("Per-herd per-turn yield bonuses granted by this leader (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
     
