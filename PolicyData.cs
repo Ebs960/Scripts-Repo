@@ -30,6 +30,10 @@ public class PolicyData : ScriptableObject
     public float cultureModifier;       // New
     public float faithModifier;         // New
 
+    [Header("Tile Yield Bonuses")]
+    [Tooltip("Per-tile yield bonuses granted by this policy. Filters can target terrain, resources, improvements, and more.")]
+    public TileYieldBonus[] tileYieldBonuses;
+
     [Header("Unit Yield Bonuses")]
     [Tooltip("Per-unit per-turn yield bonuses granted by this policy.")]
     public UnitYieldBonus[] unitYieldBonuses;

@@ -179,6 +179,7 @@ public class HexTileData
     public bool HasDistrict => district != null;
     public bool HasHolySite => HasDistrict && district.isHolySite;
     public bool HasContinent => continentId >= 0 && !string.IsNullOrWhiteSpace(continentName);
+    public bool IsWaterTile => !isLand || isLake || isRiver || waterType != TileWaterType.None;
 
     /// <summary>
     /// True when this tile is an ocean/seas tile that has a meaningful underwater floor biome
@@ -228,6 +229,20 @@ public class HexTileData
         if (bonus.useBiomeFilter && tile.biome != bonus.biome) return false;
         if (!MatchesRequirement(bonus.hillRequirement, tile.isHill)) return false;
         if (!MatchesRequirement(bonus.mountainRequirement, tile.isMountain)) return false;
+        if (!MatchesRequirement(bonus.landRequirement, tile.isLand)) return false;
+        if (!MatchesRequirement(bonus.waterRequirement, tile.IsWaterTile)) return false;
+        if (!MatchesRequirement(bonus.improvementRequirement, tile.HasImprovement)) return false;
+        if (!MatchesRequirement(bonus.districtRequirement, tile.HasDistrict)) return false;
+        if (bonus.useImprovementFilter)
+        {
+            if (tile.improvement == null) return false;
+            if (tile.improvement != bonus.improvement) return false;
+        }
+        if (bonus.useDistrictFilter)
+        {
+            if (tile.district == null) return false;
+            if (tile.district != bonus.district) return false;
+        }
         if (bonus.useResourceFilter)
         {
             if (tile.resource == null) return false;
