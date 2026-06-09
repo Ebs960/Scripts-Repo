@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Harbor
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Harbor
+  icon: {fileID: 0}
+  description: +5 Food, +5 Gold, +2 Production
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 11400000, guid: a6124b620bfa230448bb93874185f53e, type: 2}
+  productionCost: 200
+  goldCost: 270
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains: 00000000010000000a0000000b0000000c000000
+  allowedBiomes: 
+  canBeDismantled: 1
+  dismantleGoldRefund: 270
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 1
+  isScienceBuilding: 0
+  isFoodBuilding: 1
+  isProductionBuilding: 0
+  isGoldBuilding: 1
+  isCultureBuilding: 0
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: e84b207bfb98de342a421ab91f3b1162, type: 2}
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory: 
+  perCityLimit: 1
+  foodPerTurn: 5
+  productionPerTurn: 2
+  goldPerTurn: 5
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0
