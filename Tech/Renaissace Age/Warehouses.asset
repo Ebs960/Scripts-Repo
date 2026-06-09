@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Longbow
+  m_Name: Warehouses
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Longbow
+  techName: Warehouses
   techAge: 8
   description: 
-  techIcon: {fileID: 21300000, guid: 09a06affc308aa343a81d02e4748108b, type: 3}
+  techIcon: {fileID: 21300000, guid: 13834109f321b334f82c2381fd0871f1, type: 3}
   positionHint: 0
-  category: 1
+  category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 480
+  scienceCost: 550
   requiredTechnologies:
-  - {fileID: 11400000, guid: 9f0f12163dd66f34fb84dfa373767080, type: 2}
+  - {fileID: 11400000, guid: f9150b193940d3d4aabb48a6e96c086d, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -53,11 +53,26 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 2
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
-  improvementBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: 2823855e26bf105458d2aaccee47361a, type: 2}
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   buildingBonuses: []
   cityBonuses: []
   diseaseBonuses: []

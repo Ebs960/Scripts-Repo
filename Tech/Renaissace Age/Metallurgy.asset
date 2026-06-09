@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Longbow
+  m_Name: Metallurgy
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Longbow
-  techAge: 8
+  techName: Metallurgy
+  techAge: 9
   description: 
-  techIcon: {fileID: 21300000, guid: 09a06affc308aa343a81d02e4748108b, type: 3}
+  techIcon: {fileID: 21300000, guid: b5187aafe355fc940a874c7227977c9a, type: 3}
   positionHint: 0
   category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 480
+  scienceCost: 500
   requiredTechnologies:
-  - {fileID: 11400000, guid: 9f0f12163dd66f34fb84dfa373767080, type: 2}
+  - {fileID: 11400000, guid: aa2a1819cf87a2c4bae774495eec0d98, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -30,10 +30,10 @@ MonoBehaviour:
   unlockedLeaders: []
   unlocksReligion: 0
   attackBonus: 0
-  meleeAttackBonus: 0
+  meleeAttackBonus: 1
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0
+  defenseBonus: 1
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
@@ -53,13 +53,49 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 2
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
-  improvementBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: baa987abbf64f72479c31b11c3e4b8e8, type: 2}
+    foodAdd: 0
+    productionAdd: 1
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 5
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
