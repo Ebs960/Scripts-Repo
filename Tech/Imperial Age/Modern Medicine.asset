@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Modern Medicine
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Modern Medicine
+  techAge: 13
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: 4feb7205d1d028046bfb186f5a5be872, type: 3}
   positionHint: 0
-  category: 0
+  category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies: []
+  scienceCost: 1600
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 74a95bf44433f5b49b79a54eba976db5, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -34,7 +35,7 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0
+  foodModifier: 0.25
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
@@ -70,7 +71,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

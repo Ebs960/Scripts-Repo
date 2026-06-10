@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Motion Picture
+  m_Name: Computers
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Motion Pictures
-  techAge: 14
+  techName: Computers
+  techAge: 15
   description: 
-  techIcon: {fileID: 21300000, guid: bd93ccc1e662aac4fa1634d1e0a35ce1, type: 3}
+  techIcon: {fileID: 21300000, guid: 6f99d0b07b404fc4fa1bc2eaa7d51ba1, type: 3}
   positionHint: 0
   category: 3
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 2200
+  scienceCost: 2800
   requiredTechnologies:
-  - {fileID: 11400000, guid: d262cc121f225a04c810849f0ecb056d, type: 2}
+  - {fileID: 11400000, guid: fbba5d699f6ebbd4b9f39824dffaca9b, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -37,9 +37,9 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: 0.15
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.2
   faithModifier: 0
   policyPointsModifier: 0
   flatFoodBonus: 0
@@ -53,7 +53,7 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 5
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
@@ -67,11 +67,11 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 1
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

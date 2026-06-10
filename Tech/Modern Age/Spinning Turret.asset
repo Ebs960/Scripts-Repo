@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Spinning Turret
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Spinning Turret
+  techAge: 14
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: a906b1f960f11d2478d8ee781469305c, type: 3}
   positionHint: 0
-  category: 0
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies: []
+  scienceCost: 2100
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 9535f89c8c04b1143847742c73f4efec, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 

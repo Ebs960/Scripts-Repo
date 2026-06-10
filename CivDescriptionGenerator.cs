@@ -155,13 +155,9 @@ public static class CivDescriptionGenerator
         { TechAge.SteamAge, "They roar into the Steam Age, engines churning and cities rising." },
         { TechAge.ImperialAge, "They dominate in the Imperial Age, their banners flying over distant lands." },
         { TechAge.ModernAge, "They innovate in the Modern Age, where progress is relentless." },
-        { TechAge.AtomicAge, "They wield the power of the atom in the Atomic Age, for good or ill." },
         { TechAge.InformationAge, "They thrive in the Information Age, where data is the new gold." },
         { TechAge.NanoAge, "They manipulate the very fabric of matter in the Nano Age." },
-        { TechAge.MutantAge, "They adapt in the Mutant Age, where change is the only constant." },
         { TechAge.SolarAge, "They harness the stars in the Solar Age, basking in endless energy." },
-        { TechAge.AquarianAge, "They explore the depths in the Aquarian Age, mastering water and wave." },
-        { TechAge.PlasmaAge, "They command the Plasma Age, where science borders on magic." },
         { TechAge.InterstellarAge, "They voyage in the Interstellar Age, reaching for distant suns." },
         { TechAge.GalacticAge, "They reign in the Galactic Age, their influence spanning the stars." }
     };

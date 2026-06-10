@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Motion Picture
+  m_Name: Cell Phones
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Motion Pictures
-  techAge: 14
+  techName: Cell Phones
+  techAge: 15
   description: 
-  techIcon: {fileID: 21300000, guid: bd93ccc1e662aac4fa1634d1e0a35ce1, type: 3}
+  techIcon: {fileID: 21300000, guid: d1defc8335d15d947a4c12c8d67772ba, type: 3}
   positionHint: 0
-  category: 3
+  category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 2200
+  scienceCost: 3300
   requiredTechnologies:
-  - {fileID: 11400000, guid: d262cc121f225a04c810849f0ecb056d, type: 2}
+  - {fileID: 11400000, guid: a5f333afdb8295e46818d671c848f819, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -53,13 +53,34 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 0
+  allWorkersWorkPoints: 6
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 5
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0.1
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
@@ -71,7 +92,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 1
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

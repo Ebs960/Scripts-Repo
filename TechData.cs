@@ -19,13 +19,9 @@ public enum TechAge
     SteamAge,
     ImperialAge,
     ModernAge,
-    AtomicAge,
     InformationAge,
     NanoAge,
-    MutantAge,
     SolarAge,
-    AquarianAge,
-    PlasmaAge,
     InterstellarAge,
     GalacticAge
 }
