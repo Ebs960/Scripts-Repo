@@ -115,6 +115,8 @@ public class EquipmentData : ScriptableObject
     public float movementBonus;
     [Tooltip("Flat range bonus provided by this equipment (can be fractional)")]
     public float rangeBonus;
+    [Tooltip("Flat sight/vision range provided by this equipment while equipped (can be fractional).")]
+    public float sightRangeBonus;
 
     [Header("Per-Turn Yields (optional)")]
     [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]
