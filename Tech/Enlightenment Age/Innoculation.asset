@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Black Powder
+  m_Name: Innoculation
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Black Powder
-  techAge: 10
+  techName: Innoculation
+  techAge: 11
   description: 
-  techIcon: {fileID: 21300000, guid: 94a30d368035c7444a3eef26ba440b0c, type: 3}
+  techIcon: {fileID: 21300000, guid: cb602503f2c52644fb8c99c4fec4f277, type: 3}
   positionHint: 0
-  category: 1
+  category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 770
+  scienceCost: 950
   requiredTechnologies:
-  - {fileID: 11400000, guid: e93ca663b3fa87b47ae7e63c5fe3aa13, type: 2}
+  - {fileID: 11400000, guid: 693a48909f61c9b408fc02b47c554add, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -53,30 +53,34 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 4
+  allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
-  improvementBonuses:
-  - improvement: {fileID: 11400000, guid: baa987abbf64f72479c31b11c3e4b8e8, type: 2}
-    foodAdd: 0
-    productionAdd: 2
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
+  improvementBonuses: []
   buildingBonuses: []
   cityBonuses: []
-  diseaseBonuses: []
-  attritionBonuses: []
+  diseaseBonuses:
+  - disease: {fileID: 0}
+    affectsAllDiseases: 1
+    useSeasonFilter: 0
+    seasons: 
+    grantsImmunity: 0
+    infectionChancePct: -0.4
+    spreadChancePct: -0.4
+    durationPct: -0.4
+    cityPopulationLossPct: -0.65
+    cityYieldPenaltyPct: 0
+    cityMoralePenaltyPct: 0
+    cityLoyaltyPenaltyPct: 0
+    herdMortalityPct: -0.5
+    herdForagePenaltyPct: -0.5
+  attritionBonuses:
+  - useSeasonFilter: 0
+    seasons: 
+    winterDamageReductionPct: 0
+    famineDamageReductionPct: 0.4
+    biomeDamageReductionPct: 0
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
@@ -86,7 +90,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Black Powder
+  m_Name: Chemistry
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Black Powder
-  techAge: 10
+  techName: Chemistry
+  techAge: 11
   description: 
-  techIcon: {fileID: 21300000, guid: 94a30d368035c7444a3eef26ba440b0c, type: 3}
+  techIcon: {fileID: 21300000, guid: d10612cb21d079c4091e75e68680ee71, type: 3}
   positionHint: 0
-  category: 1
+  category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 770
+  scienceCost: 850
   requiredTechnologies:
-  - {fileID: 11400000, guid: e93ca663b3fa87b47ae7e63c5fe3aa13, type: 2}
+  - {fileID: 11400000, guid: 4133759f8be0e4a468356d9e51a2fe8a, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -49,30 +49,59 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
-  unitBonuses: []
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 0
+    unitCategory: 4
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 10
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 4
+  allWorkersWorkPoints: 5
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
-  improvementBonuses:
-  - improvement: {fileID: 11400000, guid: baa987abbf64f72479c31b11c3e4b8e8, type: 2}
-    foodAdd: 0
-    productionAdd: 2
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
+  improvementBonuses: []
   buildingBonuses: []
   cityBonuses: []
   diseaseBonuses: []
@@ -82,7 +111,7 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []

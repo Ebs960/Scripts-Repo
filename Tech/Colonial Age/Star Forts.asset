@@ -17,7 +17,7 @@ MonoBehaviour:
   description: 
   techIcon: {fileID: 21300000, guid: e90597a047bbe8f48b8ede4254d9a768, type: 3}
   positionHint: 0
-  category: 0
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
   scienceCost: 750
   requiredTechnologies:
