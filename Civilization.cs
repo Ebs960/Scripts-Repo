@@ -2050,6 +2050,7 @@ public class Civilization : MonoBehaviour
             AddFaith(-faithCost);
 
         UpdateFaithYieldModifier();
+        RefreshVisionFromChangedSightBonuses();
         return true;
     }
 
@@ -2071,7 +2072,10 @@ public class Civilization : MonoBehaviour
             {
                 customAssignedBeliefs.RemoveAt(i);
                 if (updateModifiers)
+                {
                     UpdateFaithYieldModifier();
+                    RefreshVisionFromChangedSightBonuses();
+                }
                 return true;
             }
         }
@@ -3605,6 +3609,7 @@ return false;
         // Recompute belief/faith modifiers and notify
         UpdateFaithYieldModifier();
         OnPantheonFounded?.Invoke(this, pantheon);
+        RefreshVisionFromChangedSightBonuses();
         return true;
     }
     
@@ -3658,6 +3663,7 @@ return false;
         {
             city.UpdateAvailableBuildings();
         }
+        RefreshVisionFromChangedSightBonuses();
 return true;
     }
 
@@ -3680,6 +3686,7 @@ return true;
 
         // Recompute belief-based modifiers
         UpdateFaithYieldModifier();
+        RefreshVisionFromChangedSightBonuses();
         return true;
     }
     
@@ -3996,6 +4003,8 @@ return true;
         // Ensure flat all-workers work point bonuses are applied to already-spawned workers
         ApplyAllWorkersWorkPointsToExisting();
 
+        RefreshVisionFromChangedSightBonuses();
+
         RecalculateCachedYieldRates();
 
         // Invoke the event after caches are refreshed so the HUD shows updated rates immediately.
@@ -4141,6 +4150,8 @@ return true;
         // Ensure flat all-workers work point bonuses are applied to already-spawned workers
         ApplyAllWorkersWorkPointsToExisting();
 
+        RefreshVisionFromChangedSightBonuses();
+
         RecalculateCachedYieldRates();
 
         // Trigger the event for other systems (like UI) after caches are refreshed.
@@ -4166,6 +4177,14 @@ return true;
         {
             pantheonCapFromBonuses = Mathf.Max(0, pantheonCapFromBonuses + cult.pantheonCapIncrease);
         }
+    }
+
+    private void RefreshVisionFromChangedSightBonuses()
+    {
+        if (UnitVisionManager.Instance == null)
+            return;
+
+        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(this));
     }
 
     // --- NEW: Equipment Inventory Methods ---

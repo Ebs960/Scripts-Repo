@@ -73,6 +73,7 @@ public abstract class BaseUnit : MonoBehaviour
     protected void RaiseEquipmentChanged()
     {
         OnEquipmentChanged?.Invoke();
+        RefreshVisionAfterEquipmentChanged();
     }
 
     #endregion
@@ -739,6 +740,14 @@ public abstract class BaseUnit : MonoBehaviour
     /// <summary>Returns the target equipment type this unit accepts</summary>
     protected abstract EquipmentTarget AcceptedEquipmentTarget { get; }
 
+    private void RefreshVisionAfterEquipmentChanged()
+    {
+        if (UnitVisionManager.Instance == null || owner == null)
+            return;
+
+        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(owner));
+    }
+
     #endregion
 
     #region Equipment Properties
@@ -929,6 +938,11 @@ public abstract class BaseUnit : MonoBehaviour
             yield return _equippedArmor;
         if (_equippedMiscellaneous != null)
             yield return _equippedMiscellaneous;
+    }
+
+    public IEnumerable<EquipmentData> EnumerateEquippedItemsForVision()
+    {
+        return EnumerateEquippedItems();
     }
 
     protected static bool AbilityHasCombatTargetFilter(Ability ability)
@@ -1500,7 +1514,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (changed)
         {
             UpdateEquipmentVisuals();
-            OnEquipmentChanged?.Invoke();
+            RaiseEquipmentChanged();
         }
     }
 

@@ -182,7 +182,18 @@ public class UnitVisionManager : MonoBehaviour
             AddVisibleTilesInRange(unit.currentTileIndex, sightRange, tempVisibleSet);
         }
 
-        // Worker units\n        foreach (var worker in UnitRegistry.GetWorkerUnits())\n        {\n            if (worker == null || worker.owner == null) continue;\n            if (civ != null && worker.owner != civ) continue;\n            if (worker.planetIndex != planetIndex) continue;\n            if (worker.currentTileIndex < 0) continue;\n\n            int sightRange = GetUnitSightRange(worker);\n            if (IsOnHill(worker.currentTileIndex)) sightRange += hillSightBonus;\n            AddVisibleTilesInRange(worker.currentTileIndex, sightRange, tempVisibleSet);\n        }
+        // Worker units
+        foreach (var worker in UnitRegistry.GetWorkerUnits())
+        {
+            if (worker == null || worker.owner == null) continue;
+            if (civ != null && worker.owner != civ) continue;
+            if (worker.planetIndex != planetIndex) continue;
+            if (worker.currentTileIndex < 0) continue;
+
+            int sightRange = GetUnitSightRange(worker);
+            if (IsOnHill(worker.currentTileIndex)) sightRange += hillSightBonus;
+            AddVisibleTilesInRange(worker.currentTileIndex, sightRange, tempVisibleSet);
+        }
 
         // Cities
         if (civ != null && civ.cities != null)
@@ -266,33 +277,312 @@ public class UnitVisionManager : MonoBehaviour
         return new HashSet<int>();
     }
     
+    private struct SightRangeBonusAgg
+    {
+        public float add;
+        public float pct;
+    }
+
     private int GetUnitSightRange(BaseUnit unit)
     {
+        if (unit == null)
+            return defaultSightRange;
+
+        float range = defaultSightRange;
+        int orbitBonus = 0;
+
         // Try CombatUnit
         var combatUnit = unit as CombatUnit;
         if (combatUnit != null && combatUnit.data != null)
         {
-            int range = combatUnit.data.sightRange;
+            range = combatUnit.data.sightRange;
 
             // Orbit vision bonus: units in orbit see much further (planetary scanning)
             if (unit.IsInOrbit)
             {
-                range += combatUnit.data.orbitVisionBonus;
+                orbitBonus = combatUnit.data.orbitVisionBonus;
+            }
+        }
+        else
+        {
+            // Try WorkerUnit
+            var workerUnit = unit as WorkerUnit;
+            if (workerUnit != null && workerUnit.data != null)
+            {
+                range = workerUnit.data.sightRange;
+            }
+        }
+
+        var bonuses = AggregateSightRangeBonuses(unit);
+        range = (range + bonuses.add) * (1f + bonuses.pct);
+        range += orbitBonus;
+
+        return Mathf.Max(0, Mathf.RoundToInt(range));
+    }
+
+    private SightRangeBonusAgg AggregateSightRangeBonuses(BaseUnit unit)
+    {
+        SightRangeBonusAgg agg = new SightRangeBonusAgg();
+        if (unit == null)
+            return agg;
+
+        var civ = unit.owner;
+        if (civ == null)
+            return agg;
+
+        var combatUnit = unit as CombatUnit;
+        var workerUnit = unit as WorkerUnit;
+        var combatData = combatUnit != null ? combatUnit.data : null;
+        var workerData = workerUnit != null ? workerUnit.data : null;
+
+        void AddUnitBonuses(UnitStatBonus[] bonuses)
+        {
+            if (bonuses == null || combatData == null) return;
+            foreach (var bonus in bonuses)
+            {
+                if (!MatchesSightBonusTarget(combatData, bonus) || !MatchesUnitSightBonusLocation(unit, bonus))
+                    continue;
+
+                agg.add += bonus.sightRangeAdd;
+                agg.pct += bonus.sightRangePct;
+            }
+        }
+
+        void AddWorkerBonuses(WorkerUnitStatBonus[] bonuses)
+        {
+            if (bonuses == null || workerData == null) return;
+            foreach (var bonus in bonuses)
+            {
+                if (!MatchesWorkerSightBonusTarget(workerData, bonus) || !MatchesWorkerSightBonusLocation(unit, bonus))
+                    continue;
+
+                agg.add += bonus.sightRangeAdd;
+                agg.pct += bonus.sightRangePct;
+            }
+        }
+
+        void AddEquipmentBonuses(EquipmentStatBonus[] bonuses, EquipmentData equipped)
+        {
+            if (bonuses == null || equipped == null) return;
+            foreach (var bonus in bonuses)
+            {
+                if (bonus == null || bonus.equipment != equipped)
+                    continue;
+                if (Civilization.HasCombatBonusOpponentFilter(bonus.targetUnit, bonus.targetWorker, bonus.useTargetUnitCategoryFilter))
+                    continue;
+
+                agg.add += bonus.sightRangeAdd;
+                agg.pct += bonus.sightRangePct;
+            }
+        }
+
+        AddUnitBonuses(civ.civData?.unitBonuses);
+        AddWorkerBonuses(civ.civData?.workerBonuses);
+
+        if (civ.researchedTechs != null)
+        {
+            foreach (var tech in civ.researchedTechs)
+            {
+                AddUnitBonuses(tech?.unitBonuses);
+                AddWorkerBonuses(tech?.workerBonuses);
+            }
+        }
+
+        if (civ.researchedCultures != null)
+        {
+            foreach (var culture in civ.researchedCultures)
+            {
+                AddUnitBonuses(culture?.unitBonuses);
+                AddWorkerBonuses(culture?.workerBonuses);
+            }
+        }
+
+        AddUnitBonuses(civ.currentGovernment?.unitBonuses);
+        AddWorkerBonuses(civ.currentGovernment?.workerBonuses);
+
+        if (civ.activePolicies != null)
+        {
+            foreach (var policy in civ.activePolicies)
+            {
+                AddUnitBonuses(policy?.unitBonuses);
+                AddWorkerBonuses(policy?.workerBonuses);
+            }
+        }
+
+        foreach (var pantheonBonuses in civ.EnumeratePantheonBonuses())
+        {
+            AddUnitBonuses(pantheonBonuses?.unitBonuses);
+            AddWorkerBonuses(pantheonBonuses?.workerBonuses);
+        }
+
+        foreach (var belief in civ.EnumerateActiveBeliefs())
+        {
+            if (!civ.IsBeliefSeasonActive(belief, planetIndex))
+                continue;
+
+            AddUnitBonuses(belief?.unitBonuses);
+            AddWorkerBonuses(belief?.workerBonuses);
+        }
+
+        if (civ.foundedReligion != null)
+        {
+            AddUnitBonuses(civ.foundedReligion.unitBonuses);
+            AddWorkerBonuses(civ.foundedReligion.workerBonuses);
+        }
+
+        var cityContext = GetUnitCityContext(unit);
+        if (cityContext != null)
+        {
+            foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
+            {
+                AddUnitBonuses(building?.unitBonuses);
+                AddWorkerBonuses(building?.workerBonuses);
+            }
+        }
+
+        foreach (var equipment in unit.EnumerateEquippedItemsForVision())
+        {
+            if (equipment == null) continue;
+
+            agg.add += equipment.sightRangeBonus;
+
+            if (civ.researchedTechs != null)
+            {
+                foreach (var tech in civ.researchedTechs)
+                    AddEquipmentBonuses(tech?.equipmentBonuses, equipment);
             }
 
-            return range;
+            if (civ.researchedCultures != null)
+            {
+                foreach (var culture in civ.researchedCultures)
+                    AddEquipmentBonuses(culture?.equipmentBonuses, equipment);
+            }
         }
-        
-        // Try WorkerUnit
-        var workerUnit = unit as WorkerUnit;
-        if (workerUnit != null && workerUnit.data != null)
-        {
-            return workerUnit.data.sightRange;
-        }
-        
-        return defaultSightRange;
+
+        return agg;
     }
     
+
+    private bool MatchesSightBonusTarget(CombatUnitData combatData, UnitStatBonus bonus)
+    {
+        if (combatData == null || bonus == null)
+            return false;
+
+        if (bonus.targetUnit != null || bonus.targetWorker != null || bonus.useTargetUnitCategoryFilter)
+            return false;
+
+        bool hasSpecificUnitTarget = bonus.unit != null;
+        if (hasSpecificUnitTarget && bonus.unit != combatData)
+            return false;
+
+        if (bonus.useUnitCategoryFilter && combatData.unitType != bonus.unitCategory)
+            return false;
+
+        // For vision only, an empty unit filter means "all combat units".
+        return true;
+    }
+
+    private bool MatchesWorkerSightBonusTarget(WorkerUnitData workerData, WorkerUnitStatBonus bonus)
+    {
+        if (workerData == null || bonus == null)
+            return false;
+
+        if (bonus.targetUnit != null || bonus.targetWorker != null || bonus.useTargetUnitCategoryFilter)
+            return false;
+
+        // For vision only, an empty worker filter means "all worker units".
+        return bonus.worker == null || bonus.worker == workerData;
+    }
+
+    private bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private bool MatchesTerritoryRequirement(HexTileData tile, Civilization civ, UnitTerritoryRequirement requirement)
+    {
+        if (requirement == UnitTerritoryRequirement.Any)
+            return true;
+        if (tile == null || civ == null)
+            return false;
+
+        var tileOwner = tile.owner;
+        switch (requirement)
+        {
+            case UnitTerritoryRequirement.Owned:
+                return tileOwner == civ;
+            case UnitTerritoryRequirement.Unowned:
+                return tileOwner == null;
+            case UnitTerritoryRequirement.Enemy:
+                return tileOwner != null && tileOwner != civ && DiplomacyManager.Instance != null
+                    ? DiplomacyManager.Instance.GetRelationship(civ, tileOwner) == DiplomaticState.War
+                    : tileOwner != null && tileOwner != civ && civ.relations.TryGetValue(tileOwner, out var enemyState) && enemyState == DiplomaticState.War;
+            case UnitTerritoryRequirement.Friendly:
+                if (tileOwner == null || tileOwner == civ) return false;
+                if (DiplomacyManager.Instance != null)
+                    return DiplomacyManager.Instance.GetRelationship(civ, tileOwner) != DiplomaticState.War;
+                return !civ.relations.TryGetValue(tileOwner, out var friendlyState) || friendlyState != DiplomaticState.War;
+            default:
+                return true;
+        }
+    }
+
+    private bool MatchesUnitSightBonusLocation(BaseUnit unit, UnitStatBonus bonus)
+    {
+        if (unit == null || bonus == null)
+            return false;
+
+        var civ = unit.owner;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? tileSystem ?? TileSystem.Instance;
+        var tile = ts != null && unit.currentTileIndex >= 0 ? ts.GetTileData(unit.currentTileIndex) : null;
+        bool isCityTile = tile?.controllingCity != null;
+
+        if (!MatchesRequirement(bonus.cityRequirement, isCityTile)) return false;
+        if (bonus.useBiomeFilter && (tile == null || tile.biome != bonus.biome)) return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile != null && tile.isHill)) return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain)) return false;
+        if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
+        if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement)) return false;
+        if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, unit.planetIndex)) return false;
+
+        return true;
+    }
+
+    private bool MatchesWorkerSightBonusLocation(BaseUnit unit, WorkerUnitStatBonus bonus)
+    {
+        if (unit == null || bonus == null)
+            return false;
+
+        var civ = unit.owner;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? tileSystem ?? TileSystem.Instance;
+        var tile = ts != null && unit.currentTileIndex >= 0 ? ts.GetTileData(unit.currentTileIndex) : null;
+        bool isCityTile = tile?.controllingCity != null;
+
+        if (!MatchesRequirement(bonus.cityRequirement, isCityTile)) return false;
+        if (bonus.useBiomeFilter && (tile == null || tile.biome != bonus.biome)) return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile != null && tile.isHill)) return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain)) return false;
+        if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
+        if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement)) return false;
+        if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, unit.planetIndex)) return false;
+
+        return true;
+    }
+
+    private City GetUnitCityContext(BaseUnit unit)
+    {
+        if (unit == null)
+            return null;
+
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? tileSystem ?? TileSystem.Instance;
+        var tile = ts != null && unit.currentTileIndex >= 0 ? ts.GetTileData(unit.currentTileIndex) : null;
+        return tile?.controllingCity;
+    }
     private int GetUnitTileIndex(BaseUnit unit)
     {
         if (unit == null) return -1;

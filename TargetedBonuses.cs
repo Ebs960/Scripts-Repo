@@ -107,6 +107,8 @@ public class UnitStatBonus
     public int defenseAdd;
     public int healthAdd;
     public int rangeAdd;
+    [Tooltip("Flat sight/vision range added to matching units when vision is calculated.")]
+    public int sightRangeAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -122,6 +124,8 @@ public class UnitStatBonus
     public float defensePct;
     public float healthPct;
     public float rangePct;
+    [Tooltip("Percent sight/vision range increase as 0.10 = +10%.")]
+    public float sightRangePct;
     [Header("Healing")]
     [Tooltip("Percent faster healing/reinforcement rate for this unit (0.10 = +10% faster).")]
     public float healingRatePct = 0f;
@@ -214,6 +218,8 @@ public class WorkerUnitStatBonus
     public int movePointsAdd;
     public int healthAdd;
     public int rangeAdd;
+    [Tooltip("Flat sight/vision range added to matching workers when vision is calculated.")]
+    public int sightRangeAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -231,6 +237,8 @@ public class WorkerUnitStatBonus
     public float movePointsPct;
     public float healthPct;
     public float rangePct;
+    [Tooltip("Percent sight/vision range increase as 0.10 = +10%.")]
+    public float sightRangePct;
     [Header("Healing")]
     [Tooltip("Percent faster healing/reinforcement rate for this worker (0.10 = +10% faster).")]
     public float healingRatePct = 0f;
@@ -296,6 +304,8 @@ public class EquipmentStatBonus
     public int defenseAdd;
     public int healthAdd;
     public int rangeAdd;
+    [Tooltip("Flat sight/vision range added to units using matching equipment when vision is calculated.")]
+    public int sightRangeAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -311,6 +321,8 @@ public class EquipmentStatBonus
     public float defensePct;
     public float healthPct;
     public float rangePct;
+    [Tooltip("Percent sight/vision range increase as 0.10 = +10%.")]
+    public float sightRangePct;
 }
 
 [System.Serializable]
