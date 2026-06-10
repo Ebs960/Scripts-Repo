@@ -1,0 +1,319 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: Assembly Line
+  m_EditorClassIdentifier: Assembly-CSharp::TechData
+  techName: Assembly Line
+  techAge: 13
+  description: 
+  techIcon: {fileID: 21300000, guid: a47d8f3954a421c4abccacb1bc40c009, type: 3}
+  positionHint: 0
+  category: 6
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 1500
+  requiredTechnologies:
+  - {fileID: 11400000, guid: c0affabca4e086c42bcf9ba1f60d7311, type: 2}
+  - {fileID: 11400000, guid: 7fac73a8cab290d4da9dc084ea21310c, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  policyPointsModifier: 0
+  flatFoodBonus: 0
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 14
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 20
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 26
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 3
+    healthAdd: 20
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 11
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 3
+    healthAdd: 20
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 4
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 3
+    healthAdd: 20
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 31
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 3
+    healthAdd: 20
+    rangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 7
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  tileYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 0
+    foodPct: 0
+    productionPct: 0.25
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
+  diseaseBonuses: []
+  attritionBonuses: []
+  genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  enablesHerding: 0
+  preventsMosquitoDamage: 0
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 0
+  unlocksUnitStacking: 0
+  unitStackSizeGranted: 2

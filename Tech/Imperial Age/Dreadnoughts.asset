@@ -10,18 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Innoculation
+  m_Name: Dreadnoughts
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Innoculation
-  techAge: 11
+  techName: Dreadnoughts
+  techAge: 13
   description: 
-  techIcon: {fileID: 21300000, guid: cb602503f2c52644fb8c99c4fec4f277, type: 3}
+  techIcon: {fileID: 21300000, guid: 3d16b4df4ae19ab42ad379c12829140b, type: 3}
   positionHint: 0
-  category: 5
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 950
+  scienceCost: 1550
   requiredTechnologies:
-  - {fileID: 11400000, guid: 693a48909f61c9b408fc02b47c554add, type: 2}
+  - {fileID: 11400000, guid: 7fac73a8cab290d4da9dc084ea21310c, type: 2}
+  - {fileID: 11400000, guid: 5d596df946ae51b46be365ee8474367d, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -60,27 +61,8 @@ MonoBehaviour:
   improvementBonuses: []
   buildingBonuses: []
   cityBonuses: []
-  diseaseBonuses:
-  - disease: {fileID: 0}
-    affectsAllDiseases: 1
-    useSeasonFilter: 0
-    seasons: 
-    grantsImmunity: 0
-    infectionChancePct: -0.4
-    spreadChancePct: -0.4
-    durationPct: -0.4
-    cityPopulationLossPct: -0.65
-    cityYieldPenaltyPct: 0
-    cityMoralePenaltyPct: 0
-    cityLoyaltyPenaltyPct: 0
-    herdMortalityPct: -0.5
-    herdForagePenaltyPct: -0.5
-  attritionBonuses:
-  - useSeasonFilter: 0
-    seasons: 
-    winterDamageReductionPct: 0
-    famineDamageReductionPct: 0.4
-    biomeDamageReductionPct: 0
+  diseaseBonuses: []
+  attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
@@ -90,7 +72,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 2
+  cityCapIncrease: 0
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2
