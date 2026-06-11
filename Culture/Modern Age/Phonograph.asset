@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
-  m_Name: Modern Music
+  m_Name: Phonograph
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Modern Music
   cultureAge: 14
@@ -23,7 +23,7 @@ MonoBehaviour:
   cultureCost: 3300
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 11400000, guid: f458eb43e48746c44a624cb0dd606c0a, type: 2}
+  - {fileID: 11400000, guid: 16b36461eb2f7f94fa9f607c4cd292dd, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -61,8 +61,10 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
