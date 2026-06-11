@@ -21,8 +21,7 @@ MonoBehaviour:
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
   cultureCost: 4000
-  requiredTechnologies:
-  - {fileID: 0}
+  requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 04b7613232889bd459d21fb9b6af990e, type: 2}
   - {fileID: 11400000, guid: d784a68c06ade584aaccc84474629913, type: 2}
