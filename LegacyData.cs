@@ -54,6 +54,14 @@ public class LegacyData : ScriptableObject
     [Tooltip("Per-building yield/stat bonuses granted while this legacy is promoted. Can target exact buildings or building categories.")]
     public BuildingYieldBonus[] buildingBonuses;
 
+    [Header("City Bonuses")]
+    [Tooltip("Per-city yield, defense, and happiness bonuses granted while this legacy is promoted.")]
+    public CityYieldBonus[] cityBonuses;
+
+    [Header("Religion Unhappiness")]
+    [Tooltip("Legacy modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
+
     [Header("Governor & Vassal Influence")]
     [Tooltip("How this legacy shifts opinions on specific policies")]
     public PolicyBias[] policyBiases;

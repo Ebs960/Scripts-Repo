@@ -55,6 +55,8 @@ public class PantheonBonuses
     public HerdYieldBonus[] herdYieldBonuses;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
+    [Tooltip("Pantheon modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
 }
 
 [CreateAssetMenu(menuName="CivGame/Religion/Pantheon")]

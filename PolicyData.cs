@@ -52,6 +52,10 @@ public class PolicyData : ScriptableObject
     [Tooltip("Disease modifiers granted by this policy.")]
     public DiseaseModifierBonus[] diseaseBonuses;
     public AttritionModifierBonus[] attritionBonuses;
+    [Tooltip("Per-city yield, defense, and happiness bonuses granted by this policy while active.")]
+    public CityYieldBonus[] cityBonuses;
+    [Tooltip("Policy modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
 
     [Header("Herd Modifiers")]
     [Tooltip("Reduces the percent of herd animals lost to starvation (e.g. 0.05 = -5 percentage points)")]

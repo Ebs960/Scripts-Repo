@@ -412,7 +412,7 @@ public class WorkerUnit : BaseUnit
     {
         if (!CanFoundCityOnCurrentTile()) return;
         SetAnimatorTriggerForFormation(foundCityHash);
-        owner?.FoundNewCity(currentTileIndex, grid, planet);
+        owner?.FoundNewCity(currentTileIndex, grid, planet, GetCityFoundingLayer());
         Die();
     }
 
@@ -421,8 +421,15 @@ public class WorkerUnit : BaseUnit
     {
         if (!CanFoundCityAt(tileIndex)) return;
         SetAnimatorTriggerForFormation(foundCityHash);
-        owner?.FoundNewCity(tileIndex, grid, planet);
+        owner?.FoundNewCity(tileIndex, grid, planet, GetCityFoundingLayer());
         Die();
+    }
+
+    private GameManager.PlanetLayerType GetCityFoundingLayer()
+    {
+        return LayerConversion.TryToPlanetLayerType(currentLayer, out var planetLayer)
+            ? planetLayer
+            : GameManager.PlanetLayerType.Surface;
     }
 
     public bool CanFoundCityOnCurrentTile()
