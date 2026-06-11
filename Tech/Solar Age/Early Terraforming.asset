@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Deep Sea Mining
+  m_Name: Early Terraforming
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Deep Sea Mining
-  techAge: 16
+  techName: Early Terraforming
+  techAge: 17
   description: 
-  techIcon: {fileID: 21300000, guid: 21efebeda37cd7f4297089e4b02b2013, type: 3}
+  techIcon: {fileID: 21300000, guid: e9a7fabd93b66f84fa8456aad9db6e3a, type: 3}
   positionHint: 0
   category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4500
+  scienceCost: 5500
   requiredTechnologies:
-  - {fileID: 11400000, guid: ca3aae63b6533874c9d3e8ffbd3bafb4, type: 2}
+  - {fileID: 11400000, guid: 552b8c68ef24beb4692df6d40e7cf5d7, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -58,7 +58,7 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   tileYieldBonuses:
   - useBiomeFilter: 1
-    biome: 0
+    biome: 22
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -73,11 +73,11 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
     faithAdd: 0
     policyPointsAdd: 0
     foodPct: 0
@@ -88,7 +88,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 1
+    biome: 23
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -103,11 +103,11 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
     faithAdd: 0
     policyPointsAdd: 0
     foodPct: 0
@@ -118,7 +118,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 34
+    biome: 24
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -133,11 +133,11 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
     faithAdd: 0
     policyPointsAdd: 0
     foodPct: 0
@@ -148,7 +148,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 10
+    biome: 26
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -163,11 +163,11 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
     faithAdd: 0
     policyPointsAdd: 0
     foodPct: 0
@@ -178,7 +178,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 37
+    biome: 25
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -193,11 +193,41 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  - useBiomeFilter: 1
+    biome: 25
+    hillRequirement: 0
+    mountainRequirement: 0
+    landRequirement: 0
+    waterRequirement: 0
+    improvementRequirement: 0
+    districtRequirement: 0
+    useImprovementFilter: 0
+    improvement: {fileID: 0}
+    useDistrictFilter: 0
+    district: {fileID: 0}
+    useSeasonFilter: 0
+    seasons: 
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    foodAdd: 1
+    productionAdd: 1
+    goldAdd: 1
+    scienceAdd: 1
+    cultureAdd: 1
     faithAdd: 0
     policyPointsAdd: 0
     foodPct: 0
@@ -217,11 +247,11 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

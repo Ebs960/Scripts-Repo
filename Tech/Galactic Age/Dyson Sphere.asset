@@ -10,19 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Large Language Model
+  m_Name: Dyson Sphere
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Large Language Model
-  techAge: 16
+  techName: Dyson Sphere
+  techAge: 19
   description: 
-  techIcon: {fileID: 21300000, guid: 220e0a3677949ef4ca823b6ee0492909, type: 3}
+  techIcon: {fileID: 21300000, guid: ec37e3eecd51d134f8760ea9d9635bb8, type: 3}
   positionHint: 0
-  category: 5
+  category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4000
+  scienceCost: 11000
   requiredTechnologies:
-  - {fileID: 11400000, guid: b6ce78791027b9f458b6d41ba625cdd4, type: 2}
-  - {fileID: 11400000, guid: a0f55710d67f747458f14d136a9d7af3, type: 2}
+  - {fileID: 11400000, guid: c672bb3ecbde10341a2aefdbe0f00f66, type: 2}
+  - {fileID: 11400000, guid: a5383b114f1a31c4591813a960f5f10c, type: 2}
+  - {fileID: 11400000, guid: e470ef089ab320f41a3ee4b8df248a23, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -39,7 +40,7 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0.4
+  scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   policyPointsModifier: 0
@@ -54,13 +55,34 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 9
+  allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 30
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 10
+    foodPct: 0
+    productionPct: 0.5
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
@@ -68,7 +90,7 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []

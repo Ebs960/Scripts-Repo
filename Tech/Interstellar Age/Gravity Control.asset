@@ -10,19 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Large Language Model
+  m_Name: Gravity Control
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Large Language Model
-  techAge: 16
+  techName: Gravity Control
+  techAge: 18
   description: 
-  techIcon: {fileID: 21300000, guid: 220e0a3677949ef4ca823b6ee0492909, type: 3}
+  techIcon: {fileID: 21300000, guid: 93a0f991c41da3e46802636e02cb3d28, type: 3}
   positionHint: 0
   category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4000
+  scienceCost: 8000
   requiredTechnologies:
-  - {fileID: 11400000, guid: b6ce78791027b9f458b6d41ba625cdd4, type: 2}
-  - {fileID: 11400000, guid: a0f55710d67f747458f14d136a9d7af3, type: 2}
+  - {fileID: 11400000, guid: 2d6841bb5f9cd0d428562089855eac36, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -35,11 +34,11 @@ MonoBehaviour:
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
-  movementBonus: 0
+  movementBonus: 1
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0.4
+  scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   policyPointsModifier: 0
@@ -54,13 +53,34 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 9
+  allWorkersWorkPoints: 10
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 0
+    foodPct: 0
+    productionPct: 0.1
+    goldPct: 0
+    sciencePct: 0.1
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []

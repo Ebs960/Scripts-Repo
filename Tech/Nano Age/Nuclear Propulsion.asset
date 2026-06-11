@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Nuclear Propulsion
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Nuclear Propulsion
+  techAge: 16
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: 1d70638238514c742853fbe6e516863e, type: 3}
   positionHint: 0
-  category: 0
+  category: 5
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies: []
+  scienceCost: 5000
+  requiredTechnologies:
+  - {fileID: 11400000, guid: c78528338966d324282ebc7f392ddec8, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 

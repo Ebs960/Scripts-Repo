@@ -10,19 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Large Language Model
+  m_Name: Plasma Engine
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Large Language Model
-  techAge: 16
+  techName: Plasma Engine
+  techAge: 17
   description: 
-  techIcon: {fileID: 21300000, guid: 220e0a3677949ef4ca823b6ee0492909, type: 3}
+  techIcon: {fileID: 21300000, guid: 06825eefdea3d6f459edfad7f4992d62, type: 3}
   positionHint: 0
-  category: 5
+  category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4000
+  scienceCost: 6000
   requiredTechnologies:
-  - {fileID: 11400000, guid: b6ce78791027b9f458b6d41ba625cdd4, type: 2}
-  - {fileID: 11400000, guid: a0f55710d67f747458f14d136a9d7af3, type: 2}
+  - {fileID: 11400000, guid: 1ac708420e8ac6741aa4de8bc93c0ebd, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -35,11 +34,11 @@ MonoBehaviour:
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
-  movementBonus: 0
+  movementBonus: 1
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0.4
+  scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   policyPointsModifier: 0
@@ -50,11 +49,57 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
-  unitBonuses: []
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 33
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 10
+    healthAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0.05
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 9
+  allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
@@ -68,7 +113,7 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []

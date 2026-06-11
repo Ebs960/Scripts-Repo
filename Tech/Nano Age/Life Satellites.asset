@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
   m_Name: Life Satellites
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: 
-  techAge: 0
+  techName: Life Satellites
+  techAge: 16
   description: 
-  techIcon: {fileID: 0}
+  techIcon: {fileID: 21300000, guid: f1830fe9264ee364dbc8a31658e9f964, type: 3}
   positionHint: 0
-  category: 0
+  category: 2
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 0
-  requiredTechnologies: []
+  scienceCost: 4500
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 0f56b5c583f87164a9f83b1ca376ed59, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -40,7 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  policyPointsModifier: 0
+  policyPointsModifier: 0.1
   flatFoodBonus: 0
   flatProductionBonus: 0
   flatGoldBonus: 0
@@ -66,11 +67,11 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 2
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

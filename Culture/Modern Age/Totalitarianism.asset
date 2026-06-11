@@ -15,7 +15,7 @@ MonoBehaviour:
   cultureName: Totalitarianism
   cultureAge: 14
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 207f663e291fa4142b9b4f33ed9b2862, type: 3}
   positionHint: 0
   category: 1
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
@@ -61,8 +61,10 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []

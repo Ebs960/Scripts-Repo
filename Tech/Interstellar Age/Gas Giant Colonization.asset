@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Deep Sea Mining
+  m_Name: Gas Giant Colonization
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Deep Sea Mining
-  techAge: 16
+  techName: Gas Giant Colonization
+  techAge: 18
   description: 
-  techIcon: {fileID: 21300000, guid: 21efebeda37cd7f4297089e4b02b2013, type: 3}
+  techIcon: {fileID: 21300000, guid: c31a6e82a4edf0546989b0aa3b7085e1, type: 3}
   positionHint: 0
   category: 6
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4500
+  scienceCost: 8000
   requiredTechnologies:
-  - {fileID: 11400000, guid: ca3aae63b6533874c9d3e8ffbd3bafb4, type: 2}
+  - {fileID: 11400000, guid: 35f4b91c5736820488c64397d709427c, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -58,7 +58,7 @@ MonoBehaviour:
   equipmentYieldBonuses: []
   tileYieldBonuses:
   - useBiomeFilter: 1
-    biome: 0
+    biome: 29
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -73,10 +73,10 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
+    foodAdd: 4
+    productionAdd: 4
+    goldAdd: 4
+    scienceAdd: 2
     cultureAdd: 0
     faithAdd: 0
     policyPointsAdd: 0
@@ -88,7 +88,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 1
+    biome: 30
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -103,10 +103,10 @@ MonoBehaviour:
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
+    foodAdd: 4
+    productionAdd: 4
+    goldAdd: 4
+    scienceAdd: 2
     cultureAdd: 0
     faithAdd: 0
     policyPointsAdd: 0
@@ -118,7 +118,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 34
+    biome: 31
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -127,16 +127,16 @@ MonoBehaviour:
     districtRequirement: 0
     useImprovementFilter: 0
     improvement: {fileID: 0}
-    useDistrictFilter: 0
+    useDistrictFilter: 1
     district: {fileID: 0}
     useSeasonFilter: 0
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
+    foodAdd: 4
+    productionAdd: 4
+    goldAdd: 4
+    scienceAdd: 2
     cultureAdd: 0
     faithAdd: 0
     policyPointsAdd: 0
@@ -148,7 +148,7 @@ MonoBehaviour:
     faithPct: 0
     policyPointsPct: 0
   - useBiomeFilter: 1
-    biome: 10
+    biome: 32
     hillRequirement: 0
     mountainRequirement: 0
     landRequirement: 0
@@ -157,46 +157,16 @@ MonoBehaviour:
     districtRequirement: 0
     useImprovementFilter: 0
     improvement: {fileID: 0}
-    useDistrictFilter: 0
+    useDistrictFilter: 1
     district: {fileID: 0}
     useSeasonFilter: 0
     seasons: 
     useResourceFilter: 0
     resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
-  - useBiomeFilter: 1
-    biome: 37
-    hillRequirement: 0
-    mountainRequirement: 0
-    landRequirement: 0
-    waterRequirement: 0
-    improvementRequirement: 0
-    districtRequirement: 0
-    useImprovementFilter: 0
-    improvement: {fileID: 0}
-    useDistrictFilter: 0
-    district: {fileID: 0}
-    useSeasonFilter: 0
-    seasons: 
-    useResourceFilter: 0
-    resource: {fileID: 0}
-    foodAdd: 0
-    productionAdd: 3
-    goldAdd: 0
-    scienceAdd: 0
+    foodAdd: 4
+    productionAdd: 4
+    goldAdd: 4
+    scienceAdd: 2
     cultureAdd: 0
     faithAdd: 0
     policyPointsAdd: 0
@@ -217,11 +187,11 @@ MonoBehaviour:
   herdYieldBonuses: []
   enablesHerding: 0
   preventsMosquitoDamage: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 2
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2

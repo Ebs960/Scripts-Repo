@@ -10,19 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
-  m_Name: Large Language Model
+  m_Name: Orbital Fortifications
   m_EditorClassIdentifier: Assembly-CSharp::TechData
-  techName: Large Language Model
-  techAge: 16
+  techName: Orbital Fortifications
+  techAge: 17
   description: 
-  techIcon: {fileID: 21300000, guid: 220e0a3677949ef4ca823b6ee0492909, type: 3}
+  techIcon: {fileID: 21300000, guid: 021828229bff5b445ad7946d000222ee, type: 3}
   positionHint: 0
-  category: 5
+  category: 1
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 4000
+  scienceCost: 6200
   requiredTechnologies:
-  - {fileID: 11400000, guid: b6ce78791027b9f458b6d41ba625cdd4, type: 2}
-  - {fileID: 11400000, guid: a0f55710d67f747458f14d136a9d7af3, type: 2}
+  - {fileID: 11400000, guid: 01e13a10e4a29ad4cafb5a5ab1678722, type: 2}
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
@@ -39,7 +38,7 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0.4
+  scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   policyPointsModifier: 0
@@ -54,7 +53,7 @@ MonoBehaviour:
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
-  allWorkersWorkPoints: 9
+  allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
   tileYieldBonuses: []
@@ -72,7 +71,7 @@ MonoBehaviour:
   unlockedGovernorTraits: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
-  cityCapIncrease: 1
+  cityCapIncrease: 0
   pantheonCapIncrease: 0
   unlocksUnitStacking: 0
   unitStackSizeGranted: 2
