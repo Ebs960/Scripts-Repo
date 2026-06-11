@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Composite Bow
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  equipmentName: Composite Bow
+  icon: {fileID: 21300000, guid: 74bba4e8ff80b5a488454837b42977de, type: 3}
+  equipmentPrefab: {fileID: 6699692670475189323, guid: 07da1c7efa8a8bb4c9d30115bf9279ff, type: 3}
+  equipmentType: 0
+  category: 5
+  projectileData: {fileID: 11400000, guid: f19d4d4ada5b2005f718aa4d9688b74a, type: 2}
+  projectileCategory: 0
+  usesProjectiles: 1
+  projectileSpawnName: Projectile Spawn
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 1
+  targetUnit: 0
+  attackBonusAgainst: []
+  defenseBonusAgainst: []
+  combatModifiersAgainst: []
+  workPointsBonus: 0
+  allowedUnitTypes: 04000000
+  minimumLevel: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: 2163442045cc28047bc4793bfe76c04c, type: 2}
+  requiredCultures: []
+  productionCost: 24
+  attackBonus: 3
+  meleeAttackBonus: 0
+  rangedAttackBonus: 1
+  cityAttackBonus: 0
+  defenseBonus: 0
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 1
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
