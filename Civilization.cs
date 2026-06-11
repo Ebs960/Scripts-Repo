@@ -1461,6 +1461,11 @@ public class Civilization : MonoBehaviour
             foreach (var b in civData.unitBonuses)
                 if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
+        // Leader
+        if (leader?.unitBonuses != null)
+            foreach (var b in leader.unitBonuses)
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+
         // Techs
         if (researchedTechs != null)
             foreach (var t in researchedTechs)
@@ -1517,6 +1522,9 @@ public class Civilization : MonoBehaviour
 
         if (civData?.workerBonuses != null)
             foreach (var b in civData.workerBonuses)
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+        if (leader?.workerBonuses != null)
+            foreach (var b in leader.workerBonuses)
                 if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (researchedTechs != null)
@@ -1594,6 +1602,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.unitBonuses);
+        Accumulate(leader?.unitBonuses);
 
         if (researchedTechs != null)
             foreach (var tech in researchedTechs)
@@ -1653,6 +1662,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.workerBonuses);
+        Accumulate(leader?.workerBonuses);
 
         if (researchedTechs != null)
             foreach (var tech in researchedTechs)

@@ -15,6 +15,10 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
+    public Civilization WinningCivilization { get; private set; }
+    public TechData VictoryTechnology { get; private set; }
+    public string VictoryReason { get; private set; }
+
     [Header("Generator Prefabs")]
     [Tooltip("PlanetGenerator prefab to instantiate - assign 'New Map Shit/Earth.prefab'")]
     public GameObject planetGeneratorPrefab;
@@ -2355,6 +2359,29 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void EndGame()
     {
+        EndGame(null, null, null);
+    }
+
+    /// <summary>
+    /// Ends the game with optional victory context that UI/save systems can inspect before the scene changes.
+    /// </summary>
+    public void EndGame(Civilization winner, TechData victoryTech, string reason = null)
+    {
+        WinningCivilization = winner;
+        VictoryTechnology = victoryTech;
+        VictoryReason = reason;
+
+        if (winner != null)
+        {
+            string civName = winner.civData != null ? winner.civData.civName : "A civilization";
+            string techName = victoryTech != null ? victoryTech.techName : "a victory technology";
+            string message = string.IsNullOrWhiteSpace(reason)
+                ? $"{civName} wins by researching {techName}!"
+                : reason;
+            Debug.Log($"[GameManager] Game ended with winner: {civName}. {message}");
+            UIManager.Instance?.ShowNotification(message);
+        }
+
         gameInProgress = false;
         gamePaused = false;
         Time.timeScale = 1f;

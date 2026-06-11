@@ -106,6 +106,8 @@ public class UnitStatBonus
     public int spaceAttackAdd;
     public int defenseAdd;
     public int healthAdd;
+    [Tooltip("Flat movement points added to matching combat units at the start of each turn.")]
+    public int movePointsAdd;
     public int rangeAdd;
     [Tooltip("Flat sight/vision range added to matching units when vision is calculated.")]
     public int sightRangeAdd;
@@ -123,6 +125,8 @@ public class UnitStatBonus
     public float spaceAttackPct;
     public float defensePct;
     public float healthPct;
+    [Tooltip("Percent movement point increase as 0.10 = +10%.")]
+    public float movePointsPct;
     public float rangePct;
     [Tooltip("Percent sight/vision range increase as 0.10 = +10%.")]
     public float sightRangePct;

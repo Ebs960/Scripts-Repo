@@ -378,6 +378,8 @@ public class UnitVisionManager : MonoBehaviour
 
         AddUnitBonuses(civ.civData?.unitBonuses);
         AddWorkerBonuses(civ.civData?.workerBonuses);
+        AddUnitBonuses(civ.leader?.unitBonuses);
+        AddWorkerBonuses(civ.leader?.workerBonuses);
 
         if (civ.researchedTechs != null)
         {

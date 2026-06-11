@@ -695,6 +695,7 @@ public class WorkerUnit : BaseUnit
         }
 
         Accumulate(civ.civData?.workerBonuses);
+        Accumulate(civ.leader?.workerBonuses);
 
         if (civ.researchedTechs != null)
         {
@@ -768,6 +769,7 @@ public class WorkerUnit : BaseUnit
         }
 
         Accumulate(civ.civData?.workerBonuses);
+        Accumulate(civ.leader?.workerBonuses);
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
                 Accumulate(t?.workerBonuses);

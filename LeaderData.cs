@@ -90,6 +90,12 @@ public class LeaderData : ScriptableObject
     [Tooltip("Per-building yield/stat bonuses granted by this leader. Can target exact buildings or building categories.")]
     public BuildingYieldBonus[] buildingBonuses;
 
+    [Header("Unit Bonuses")]
+    [Tooltip("Per-unit stat bonuses granted by this leader.")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this leader.")]
+    public WorkerUnitStatBonus[] workerBonuses;
+
     [Tooltip("Per-herd per-turn yield bonuses granted by this leader (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
     
