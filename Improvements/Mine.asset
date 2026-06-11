@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Mine
+  m_EditorClassIdentifier: 
+  improvementName: Mine
+  icon: {fileID: 21300000, guid: d4d23d52d0ef4a945b97336bf43f1764, type: 3}
+  description: Getting metal
+  workCost: 20
+  buildGoldCost: 0
+  buildResourceCosts: []
+  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
+  completePrefab: {fileID: 1087995095692571578, guid: 05e79084495901043973eeb25bb2b8e3, type: 3}
+  destroyedPrefab: {fileID: 1087995095692571578, guid: 05e79084495901043973eeb25bb2b8e3, type: 3}
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
+  isShelter: 0
+  shelterCapacity: 0
+  needsCity: 0
+  requiresControlledTerritory: 1
+  canBuildInNeutralTerritory: 0
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 04000000030000000a0000000f000000090000000c000000
+  allowedUnderwaterBiomes: 
+  requiredResources:
+  - {fileID: 11400000, guid: 02bfde88801f77b40b6214f047fddf07, type: 2}
+  - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
+  requiredTechs:
+  - {fileID: 11400000, guid: ce0094a785550a148ba0c56fdbc6fc5e, type: 2}
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  isMissileSilo: 0
+  siloMissileCapacity: 5
+  allowedMissileTypes: []
+  foodPerTurn: 0
+  productionPerTurn: 3
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  movementSpeedBonus: 0
+  isRoad: 0
+  connectedGoldPerTurn: 0
+  connectedProductionPerTurn: 0
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  grantsZoneOfControl: 0
+  blocksZoneOfControl: 0
+  replacesImprovements: []
+  availableUpgrades: []

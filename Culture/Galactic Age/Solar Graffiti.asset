@@ -37,7 +37,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: 1
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

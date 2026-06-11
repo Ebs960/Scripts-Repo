@@ -12,17 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Utopia
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Utopia
+  cultureAge: 19
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 032dc190f33919547a8f38531291de7a, type: 3}
   positionHint: 0
-  category: 3
+  category: 7
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 100000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6270cd47fadae0044940a2e8ef69eb10, type: 2}
+  - {fileID: 11400000, guid: da80fa9a563dc674c9d53c11c503abc3, type: 2}
+  - {fileID: 11400000, guid: 936dc6a22529c0a4e8a57300b4eb65da, type: 2}
+  - {fileID: 11400000, guid: 40280140111ba5c4f97fa87ab0a908b4, type: 2}
+  - {fileID: 11400000, guid: 6115344f9c30e9f4eb5266a5c62a6644, type: 2}
+  - {fileID: 11400000, guid: 8cdef45e96f867342a0682d4f19f7979, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -34,13 +40,13 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0
-  productionModifier: 0
-  goldModifier: 0
-  scienceModifier: 0
-  cultureModifier: 0
-  faithModifier: 0
-  policyPointsModifier: 0
+  foodModifier: 1
+  productionModifier: 1
+  goldModifier: 1
+  scienceModifier: 1
+  cultureModifier: 1
+  faithModifier: 1
+  policyPointsModifier: 1
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -63,7 +69,30 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 0
+    layers: 
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 1000
+    happinessAdd: 1000
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 1
+    happinessPct: 1
   nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []

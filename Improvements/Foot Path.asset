@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Foot Path
+  m_EditorClassIdentifier: 
+  improvementName: Foot Path
+  icon: {fileID: 21300000, guid: 4e7d24e0ae5767349bbb753f741382a7, type: 3}
+  description: SPEED
+  workCost: 15
+  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
+  completePrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
+  destroyedPrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
+  isShelter: 0
+  shelterCapacity: 0
+  needsCity: 0
+  requiresControlledTerritory: 0
+  canBuildInNeutralTerritory: 1
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  requiredResources: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 716d06ba0110413489e9cc881ff82cce, type: 2}
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  movementSpeedBonus: 1
+  isRoad: 1
+  connectedGoldPerTurn: 1
+  connectedProductionPerTurn: 1
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  replacesImprovements: []
+  availableUpgrades: []

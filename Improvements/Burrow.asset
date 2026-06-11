@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Burrow
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: Burrow
+  icon: {fileID: 21300000, guid: 9b2512ff1f9663b4eabd69c2e2443a64, type: 3}
+  description: Home sweet Home
+  workCost: 6
+  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
+  completePrefab: {fileID: 5175277235030608562, guid: 2196337510766a0408c197a4f8aed57c, type: 3}
+  destroyedPrefab: {fileID: 5175277235030608562, guid: 2196337510766a0408c197a4f8aed57c, type: 3}
+  isShelter: 1
+  shelterCapacity: 2
+  needsCity: 0
+  requiresControlledTerritory: 0
+  canBuildInNeutralTerritory: 1
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  requiredResources: []
+  requiredTechs:
+  - {fileID: 11400000, guid: cadd255d81a7ae94da84b507e2fb7a7a, type: 2}
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  movementSpeedBonus: 0
+  isRoad: 0
+  connectedGoldPerTurn: 0
+  connectedProductionPerTurn: 0
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  replacesImprovements: []
+  availableUpgrades:
+  - upgradeName: Burrow Fire
+    upgradeId: Burrow Fire
+    icon: {fileID: 21300000, guid: 7cbbce6381c43794f8cc2b0d140bf0ef, type: 3}
+    description: Fire AND burrows are an amazin mix
+    makesVisualChange: 1
+    attachPrefabs:
+    - {fileID: 919132149155446097, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+    attachLocalPositions:
+    - {x: -0.1, y: 0.3509441, z: 0.88}
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    requiredTech: {fileID: 11400000, guid: 4fdea5583da84344cbeedb421757bbbe, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 2
+    resourceCosts: []
+    additionalFood: 1
+    additionalProduction: 1
+    additionalGold: 0
+    additionalScience: 0
+    additionalCulture: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 1
+    defenseAdd: 0
+    defensePct: 0
+    uniqueUpgrade: 1

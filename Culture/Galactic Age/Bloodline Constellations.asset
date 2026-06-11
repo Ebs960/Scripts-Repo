@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Bloodline Constellations
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Solar Graffiti
+  cultureName: Bloodline Constellations
   cultureAge: 19
   description: 
-  cultureIcon: {fileID: 21300000, guid: d0245a55401f9c6418a75106f9f10892, type: 3}
+  cultureIcon: {fileID: 21300000, guid: bc02cb0f37cdf44458dd47bab27aed02, type: 3}
   positionHint: 0
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
@@ -39,7 +39,7 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 1
   faithModifier: 0
   policyPointsModifier: 0
   unlocksPantheon: 0

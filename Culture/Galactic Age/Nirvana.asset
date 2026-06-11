@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Nirvana
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Neural Carnivals
+  cultureName: Nirvana
   cultureAge: 19
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 82ec7d34e24ee364db93f3a4bc0ca7a2, type: 3}
   positionHint: 0
-  category: 3
+  category: 4
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 15000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 1d8603e8dd247f9479279ef4fb1ee6a0, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -39,7 +40,7 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0
+  faithModifier: 1
   policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
@@ -50,7 +51,7 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   enablesGovernors: 0
   unitBonuses: []
@@ -63,15 +64,38 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 0
+    layers: 
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 100
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 1
   nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  cityCapIncrease: 0
-  pantheonCapIncrease: 0
+  cityCapIncrease: 1
+  pantheonCapIncrease: 1
   unlocksPantheons: []
   unlocksBeliefs: []
   unitLimitModifiers: []
