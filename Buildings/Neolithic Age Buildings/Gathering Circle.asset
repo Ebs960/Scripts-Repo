@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Gathering Circle
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Gathering Circle
+  icon: {fileID: 0}
+  description: +2 Culture, +1 Policy Points, +1 Faith, +1 Happiness
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 0}
+  productionCost: 50
+  goldCost: 80
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 80
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 0
+  isScienceBuilding: 0
+  isFoodBuilding: 0
+  isProductionBuilding: 0
+  isGoldBuilding: 0
+  isCultureBuilding: 1
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a3258aa65bba0c346bfe32c0d0cc4ee2, type: 2}
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 2
+  policyPointsPerTurn: 1
+  faithPerTurn: 1
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 1
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

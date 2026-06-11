@@ -25,6 +25,8 @@ MonoBehaviour:
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 59493b307d2be5a01383ad19f90d62ee, type: 2}
   unlockedGovernments: []
   unlockedReligions: []
   unlockedLeaders: []
