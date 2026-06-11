@@ -65,6 +65,10 @@ public class TechData : ScriptableObject
     public int requiredCityCount;
     public Biome[] requiredControlledBiomes;
 
+    [Header("Victory")]
+    [Tooltip("If true, the civilization that researches this technology immediately wins and ends the game.")]
+    public bool IsVictoryTech = false;
+
     [Header("Unlocks & Bonuses")]
     // REMOVED: All unlocked arrays - availability now controlled ONLY by requiredTechs in the respective data classes
     // Equipment availability: EquipmentData.requiredTechs

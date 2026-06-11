@@ -144,6 +144,13 @@ return;
         // Trigger UI updates
         if (OnTechResearchCompleted != null)
             OnTechResearchCompleted(civ, tech);
+
+        if (tech.IsVictoryTech)
+        {
+            string civName = civ.civData != null ? civ.civData.civName : "A civilization";
+            string techName = !string.IsNullOrWhiteSpace(tech.techName) ? tech.techName : tech.name;
+            GameManager.Instance?.EndGame(civ, tech, $"{civName} wins by researching {techName}!");
+        }
     }
     
     /// <summary>

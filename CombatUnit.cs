@@ -626,13 +626,14 @@ public class CombatUnit : BaseUnit
                     continue;
 
                 a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.navalAttackAdd += b.navalAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                a.rangeAdd += b.rangeAdd;
+                a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd;
                 a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.navalAttackPct += b.navalAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                a.rangePct += b.rangePct;
+                a.movePct += b.movePointsPct; a.rangePct += b.rangePct;
             }
         }
 
         Accumulate(civ.civData?.unitBonuses);
+        Accumulate(civ.leader?.unitBonuses);
 
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
@@ -687,6 +688,7 @@ public class CombatUnit : BaseUnit
         }
 
         Accumulate(civ.civData?.unitBonuses);
+        Accumulate(civ.leader?.unitBonuses);
 
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
@@ -1337,6 +1339,28 @@ public class CombatUnit : BaseUnit
             valF = (valF + e.defenseAdd) * (1f + e.defensePct);
         }
         return valF;
+    }
+
+
+    public override int GetStartingMovePoints()
+    {
+        int baseMove = data != null ? data.baseMovePoints : 0;
+        if (baseMove <= 0 && data != null)
+            baseMove = data.animalMovePoints;
+
+        float move = baseMove;
+        if (owner != null && data != null)
+        {
+            var u = AggregateUnitBonusesLocal(owner, data);
+            move = (move + u.moveAdd) * (1f + u.movePct);
+        }
+        if (owner != null)
+        {
+            var e = AggregateAllEquippedBonusesLocal(owner);
+            move = (move + e.moveAdd) * (1f + e.movePct);
+        }
+
+        return Mathf.Max(0, Mathf.RoundToInt(move));
     }
 
     public override int MaxHealth
