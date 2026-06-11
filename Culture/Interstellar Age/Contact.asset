@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Contact
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Contact
+  cultureAge: 18
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: ada74dc935e0d7944804216476a0027e, type: 3}
   positionHint: 0
-  category: 3
+  category: 5
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 9000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 928872935c0448944a917c10dd8d044a, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -36,8 +37,8 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
-  scienceModifier: 0
+  goldModifier: 0.15
+  scienceModifier: 0.15
   cultureModifier: 0
   faithModifier: 0
   policyPointsModifier: 0

@@ -12,17 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Solar Fascism
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Solar Fascism
+  cultureAge: 18
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 4796a23706a72ba4cbb2436e3012c56f, type: 3}
   positionHint: 0
-  category: 3
+  category: 7
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 8000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: cf57b67d18912b944a5548255ce913b8, type: 2}
+  - {fileID: 11400000, guid: 3b6bc2842302cff49b651d47ccbc9820, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -50,7 +52,7 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   enablesGovernors: 0
   unitBonuses: []
@@ -63,14 +65,37 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 1
+    layers: 0400000002000000
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 15
+    productionAdd: 15
+    goldAdd: 5
+    scienceAdd: 2
+    cultureAdd: 2
+    faithAdd: 5
+    policyPointsAdd: 2
+    defenseAdd: 0
+    happinessAdd: 4
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  cityCapIncrease: 0
+  cityCapIncrease: 1
   pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []

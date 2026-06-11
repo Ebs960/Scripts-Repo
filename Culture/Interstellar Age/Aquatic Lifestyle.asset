@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Aquatic Lifestyle
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Aquatic Lifestyle
+  cultureAge: 18
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: e877976bad6450546b19350e3a24e71b, type: 3}
   positionHint: 0
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 9000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 928872935c0448944a917c10dd8d044a, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -63,7 +64,30 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 1
+    layers: 01000000
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 30
+    productionAdd: 20
+    goldAdd: 10
+    scienceAdd: 5
+    cultureAdd: 5
+    faithAdd: 4
+    policyPointsAdd: 2
+    defenseAdd: 20
+    happinessAdd: 6
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []

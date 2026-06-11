@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Mind Synchronization
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Mind Synchronization
+  cultureAge: 18
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 04197320c543cdb479730463ae3e6a37, type: 3}
   positionHint: 0
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 8600
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f38b7b46d5743e6499d29855ced7377a, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -63,7 +64,30 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 0
+    layers: 
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 0
+    happinessAdd: 7
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []

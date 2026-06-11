@@ -12,17 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Digital Mind Upload
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: 
-  cultureAge: 0
+  cultureName: Digital Mind Upload
+  cultureAge: 18
   description: 
-  cultureIcon: {fileID: 0}
+  cultureIcon: {fileID: 21300000, guid: 81f9cc1502493164c9ed7ae567fb2422, type: 3}
   positionHint: 0
-  category: 3
+  category: 5
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 0
+  cultureCost: 8000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b96ead9b383c48e43a243532885d75e6, type: 2}
+  - {fileID: 11400000, guid: 8b2ecb7bc4f7dd443ba097c1f84cc291, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -37,10 +39,10 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0
-  cultureModifier: 0
-  faithModifier: 0
-  policyPointsModifier: 0
+  scienceModifier: 0.05
+  cultureModifier: 0.05
+  faithModifier: 0.05
+  policyPointsModifier: 0.05
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -70,7 +72,7 @@ MonoBehaviour:
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  cityCapIncrease: 0
+  cityCapIncrease: 2
   pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []

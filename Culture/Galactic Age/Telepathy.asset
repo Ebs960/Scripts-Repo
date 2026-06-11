@@ -10,19 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
-  m_Name: New Gods
+  m_Name: Telepathy
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: New Gods
-  cultureAge: 18
+  cultureName: Telepathy
+  cultureAge: 19
   description: 
-  cultureIcon: {fileID: 21300000, guid: a0870253ea65f8f4fb9085c859dadc3d, type: 3}
+  cultureIcon: {fileID: 21300000, guid: b295471fb76a0404baea1b2d754661ef, type: 3}
   positionHint: 0
   category: 4
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 7500
+  cultureCost: 10000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6261e89d074e0bf4eb62c080a93eba0e, type: 2}
+  - {fileID: 11400000, guid: 7b59e66ffe49ed34bab74f4541be6689, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -38,9 +40,9 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
-  faithModifier: 0
-  policyPointsModifier: 0
+  cultureModifier: 0.3
+  faithModifier: 0.3
+  policyPointsModifier: 0.3
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -50,7 +52,7 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   flatPolicyPointsBonus: 0
-  additionalGovernorSlots: 1
+  additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0
   unitBonuses: []
@@ -71,7 +73,7 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   cityCapIncrease: 0
-  pantheonCapIncrease: 3
+  pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []
   unitLimitModifiers: []
