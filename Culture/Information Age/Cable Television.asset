@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
-  m_Name: Forensics
+  m_Name: Cable Television
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Forensics
-  cultureAge: 14
+  cultureName: Cable Television
+  cultureAge: 15
   description: 
-  cultureIcon: {fileID: 21300000, guid: cc7e2864651af1040a02e11f61cc119a, type: 3}
+  cultureIcon: {fileID: 21300000, guid: bdffe77f705b03148a5b9848518ea3c4, type: 3}
   positionHint: 0
-  category: 5
+  category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 3000
+  cultureCost: 4400
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 11400000, guid: eae1dbf5d5b5e5b4893d3587a20b199f, type: 2}
+  - {fileID: 11400000, guid: b92af652b3e5eb147a6a3d0cb8b8d69f, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -41,7 +41,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  policyPointsModifier: 0.15
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -64,28 +64,7 @@ MonoBehaviour:
   tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
-  cityBonuses:
-  - scope: 0
-    useSeasonFilter: 0
-    seasons: 
-    foodAdd: 0
-    productionAdd: 0
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    defenseAdd: 12
-    happinessAdd: 6
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
-    defensePct: 0
-    happinessPct: 0
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []

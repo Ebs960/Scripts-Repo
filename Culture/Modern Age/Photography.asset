@@ -20,9 +20,10 @@ MonoBehaviour:
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 3300
+  cultureCost: 3000
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8c06b4ff4e312e04e87bc664d3c44750, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -60,8 +61,10 @@ MonoBehaviour:
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []

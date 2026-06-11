@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
   m_Name: Phonograph
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
-  cultureName: Modern Music
+  cultureName: Phonograph
   cultureAge: 14
   description: 
   cultureIcon: {fileID: 21300000, guid: 031f1aa5234cfd64681f7287c6a74146, type: 3}
@@ -20,7 +20,7 @@ MonoBehaviour:
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 3300
+  cultureCost: 3600
   requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 16b36461eb2f7f94fa9f607c4cd292dd, type: 2}
