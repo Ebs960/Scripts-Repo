@@ -43,7 +43,7 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
-  buildingLimit: -1
+  buildingLimit: 1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
