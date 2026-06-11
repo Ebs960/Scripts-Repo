@@ -29,6 +29,7 @@ MonoBehaviour:
   unlockedWorkerUnits: []
   unlocksImprovements: []
   unlockedBuildings:
+  - {fileID: 11400000, guid: 561e54a2e6770fc59021384d2013a365, type: 2}
   - {fileID: 11400000, guid: 16b5afa2768512f49876c84841ab59ad, type: 2}
   unlockedEquipment: []
   unlockedPolicies: []
