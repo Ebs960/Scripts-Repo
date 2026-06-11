@@ -141,6 +141,8 @@ public class TechData : ScriptableObject
     public BuildingYieldBonus[] buildingBonuses;
     [Tooltip("Per-city yield, defense, and happiness bonuses granted by this technology.")]
     public CityYieldBonus[] cityBonuses;
+    [Tooltip("Modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
     [Tooltip("Disease modifiers granted by this technology.")]
     public DiseaseModifierBonus[] diseaseBonuses;
     [Tooltip("Attrition modifiers granted by this technology.")]

@@ -51,6 +51,8 @@ public class City : MonoBehaviour
     [Tooltip("Whether this city is the civilization's designated capital.")]
     public bool isCapital;
     public int centerTileIndex;
+    [Tooltip("Which planet gameplay layer this city belongs to. Used by city bonus layer filters.")]
+    public GameManager.PlanetLayerType cityLayer = GameManager.PlanetLayerType.Surface;
     [Tooltip("Which planet this city belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
     public Governor governor;
@@ -77,6 +79,8 @@ public class City : MonoBehaviour
     public int moraleRating = 100;
     public int maxMorale = 100;
     public int moraleDropPerTurn = 1;
+    [Tooltip("Last computed per-turn morale loss caused by citizens following non-state religions.")]
+    public int cachedNonStateReligionUnhappiness = 0;
 
     // Track the last civilization that attacked this city (for surrender/capture)
     private Civilization lastAttackingCiv = null;
@@ -549,7 +553,8 @@ if (UIManager.Instance != null)
         // 4) Growth
         ProcessGrowth();
         // 5) Morale decay
-        moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn);
+        cachedNonStateReligionUnhappiness = CalculateNonStateReligionUnhappinessPerTurn();
+        moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn - cachedNonStateReligionUnhappiness);
         // 5b) Apply disease morale/loyalty/population effects
         ApplyDiseaseTurnEffects();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
@@ -559,6 +564,75 @@ if (UIManager.Instance != null)
             HandleSurrender(lastAttackingCiv); // Use last attacking civ, or find from units on tile
         // 7) Update label
         UpdateLabel();
+    }
+
+    public float GetNonStateReligionFollowerCount()
+    {
+        if (owner == null || !owner.hasFoundedReligion || owner.foundedReligion == null)
+            return 0f;
+
+        var ts = TileSys;
+        if (ts == null || !ts.IsReady())
+            return 0f;
+
+        Dictionary<ReligionData, float> pressureByReligion = new Dictionary<ReligionData, float>();
+        Queue<(int tile, int distance)> queue = new Queue<(int tile, int distance)>();
+        HashSet<int> visited = new HashSet<int>();
+
+        queue.Enqueue((centerTileIndex, 0));
+        visited.Add(centerTileIndex);
+
+        while (queue.Count > 0)
+        {
+            var (tileIndex, distance) = queue.Dequeue();
+            var pressures = ts.GetReligionPressures(tileIndex);
+            if (pressures != null)
+            {
+                for (int i = 0; i < pressures.Count; i++)
+                {
+                    var entry = pressures[i];
+                    if (entry.religion == null || entry.pressure <= 0f) continue;
+                    if (!pressureByReligion.TryGetValue(entry.religion, out float current)) current = 0f;
+                    pressureByReligion[entry.religion] = current + entry.pressure;
+                }
+            }
+
+            if (distance >= TerritoryRadius) continue;
+            var neighbors = ts.GetNeighbors(tileIndex);
+            if (neighbors == null) continue;
+            foreach (int neighbor in neighbors)
+            {
+                if (visited.Add(neighbor))
+                    queue.Enqueue((neighbor, distance + 1));
+            }
+        }
+
+        float totalPressure = 0f;
+        float nonStatePressure = 0f;
+        foreach (var kvp in pressureByReligion)
+        {
+            totalPressure += kvp.Value;
+            if (kvp.Key != owner.foundedReligion)
+                nonStatePressure += kvp.Value;
+        }
+
+        if (totalPressure <= 0f || nonStatePressure <= 0f)
+            return 0f;
+
+        return Mathf.Max(0f, level) * Mathf.Clamp01(nonStatePressure / totalPressure);
+    }
+
+    public int CalculateNonStateReligionUnhappinessPerTurn()
+    {
+        if (owner == null || !owner.hasFoundedReligion || owner.foundedReligion == null)
+            return 0;
+
+        float nonStateFollowers = GetNonStateReligionFollowerCount();
+        if (nonStateFollowers <= 0f)
+            return 0;
+
+        float unhappinessPerFollower = owner.GetNonStateReligionUnhappinessPerFollower(planetIndex);
+        return Mathf.Max(0, Mathf.RoundToInt(nonStateFollowers * unhappinessPerFollower));
     }
 
     /// <summary>
@@ -2113,6 +2187,21 @@ Destroy(oldTuple.instance);
         if (bonus.scope == CityYieldScope.CapitalOnly && !owner.IsCapitalCity(this))
             return false;
 
+        if (bonus.useLayerFilter)
+        {
+            if (bonus.layers == null || bonus.layers.Length == 0) return false;
+            bool layerMatched = false;
+            foreach (var layer in bonus.layers)
+            {
+                if (layer == cityLayer)
+                {
+                    layerMatched = true;
+                    break;
+                }
+            }
+            if (!layerMatched) return false;
+        }
+
         return true;
     }
 
@@ -2212,50 +2301,45 @@ Destroy(oldTuple.instance);
         CityStatAgg agg = default;
         if (owner == null) return agg;
 
-        if (owner.researchedTechs != null)
+        void Scan(CityYieldBonus[] bonuses)
         {
-            foreach (var tech in owner.researchedTechs)
-            {
-                if (tech?.cityBonuses == null) continue;
-                foreach (var bonus in tech.cityBonuses)
-                {
-                    if (MatchesCityYieldBonus(bonus))
-                        AddCityStatBonus(ref agg, bonus);
-                }
-            }
-        }
-
-        if (owner.researchedCultures != null)
-        {
-            foreach (var culture in owner.researchedCultures)
-            {
-                if (culture?.cityBonuses == null) continue;
-                foreach (var bonus in culture.cityBonuses)
-                {
-                    if (MatchesCityYieldBonus(bonus))
-                        AddCityStatBonus(ref agg, bonus);
-                }
-            }
-        }
-
-        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
-        {
-            if (pantheonBonuses?.cityYieldBonuses == null) continue;
-            foreach (var bonus in pantheonBonuses.cityYieldBonuses)
-            {
+            if (bonuses == null) return;
+            foreach (var bonus in bonuses)
                 if (MatchesCityYieldBonus(bonus))
                     AddCityStatBonus(ref agg, bonus);
-            }
         }
+
+        Scan(owner.civData?.cityBonuses);
+        Scan(owner.leader?.cityBonuses);
+
+        if (owner.researchedTechs != null)
+            foreach (var tech in owner.researchedTechs)
+                Scan(tech?.cityBonuses);
+
+        if (owner.researchedCultures != null)
+            foreach (var culture in owner.researchedCultures)
+                Scan(culture?.cityBonuses);
+
+        Scan(owner.currentGovernment?.cityBonuses);
+
+        if (owner.activePolicies != null)
+            foreach (var policy in owner.activePolicies)
+                Scan(policy?.cityBonuses);
+
+        if (owner.activeLegacies != null)
+            foreach (var legacy in owner.activeLegacies)
+                Scan(legacy?.cityBonuses);
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+            Scan(pantheonBonuses?.cityYieldBonuses);
+
+        if (owner.hasFoundedReligion)
+            Scan(owner.foundedReligion?.cityBonuses);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
-            if (belief?.cityYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
-            foreach (var bonus in belief.cityYieldBonuses)
-            {
-                if (MatchesCityYieldBonus(bonus))
-                    AddCityStatBonus(ref agg, bonus);
-            }
+            if (belief == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
+            Scan(belief.cityYieldBonuses);
         }
 
         return agg;
@@ -2485,50 +2569,47 @@ Destroy(oldTuple.instance);
         CityYieldAgg agg = default;
         if (owner == null) return agg;
 
-        if (owner.researchedTechs != null)
+        void Scan(CityYieldBonus[] bonuses)
         {
-            foreach (var tech in owner.researchedTechs)
-            {
-                if (tech?.cityBonuses == null) continue;
-                foreach (var bonus in tech.cityBonuses)
-                {
-                    if (!MatchesCityYieldBonus(bonus)) continue;
-                    AddCityBonus(ref agg, bonus, kind);
-                }
-            }
-        }
-
-        if (owner.researchedCultures != null)
-        {
-            foreach (var culture in owner.researchedCultures)
-            {
-                if (culture?.cityBonuses == null) continue;
-                foreach (var bonus in culture.cityBonuses)
-                {
-                    if (!MatchesCityYieldBonus(bonus)) continue;
-                    AddCityBonus(ref agg, bonus, kind);
-                }
-            }
-        }
-
-        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
-        {
-            if (pantheonBonuses?.cityYieldBonuses == null) continue;
-            foreach (var bonus in pantheonBonuses.cityYieldBonuses)
+            if (bonuses == null) return;
+            foreach (var bonus in bonuses)
             {
                 if (!MatchesCityYieldBonus(bonus)) continue;
                 AddCityBonus(ref agg, bonus, kind);
             }
         }
+
+        Scan(owner.civData?.cityBonuses);
+        Scan(owner.leader?.cityBonuses);
+
+        if (owner.researchedTechs != null)
+            foreach (var tech in owner.researchedTechs)
+                Scan(tech?.cityBonuses);
+
+        if (owner.researchedCultures != null)
+            foreach (var culture in owner.researchedCultures)
+                Scan(culture?.cityBonuses);
+
+        Scan(owner.currentGovernment?.cityBonuses);
+
+        if (owner.activePolicies != null)
+            foreach (var policy in owner.activePolicies)
+                Scan(policy?.cityBonuses);
+
+        if (owner.activeLegacies != null)
+            foreach (var legacy in owner.activeLegacies)
+                Scan(legacy?.cityBonuses);
+
+        foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
+            Scan(pantheonBonuses?.cityYieldBonuses);
+
+        if (owner.hasFoundedReligion)
+            Scan(owner.foundedReligion?.cityBonuses);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
-            if (belief?.cityYieldBonuses == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
-            foreach (var bonus in belief.cityYieldBonuses)
-            {
-                if (!MatchesCityYieldBonus(bonus)) continue;
-                AddCityBonus(ref agg, bonus, kind);
-            }
+            if (belief == null || !owner.IsBeliefSeasonActive(belief, planetIndex)) continue;
+            Scan(belief.cityYieldBonuses);
         }
 
         return agg;
@@ -3228,6 +3309,8 @@ cityUI.ShowForCity(this);
         newCity.owner = this.owner;
         newCity.OriginalOwner = this.OriginalOwner != null ? this.OriginalOwner : this.owner;
         newCity.centerTileIndex = this.centerTileIndex;
+        newCity.cityLayer = this.cityLayer;
+        newCity.planetIndex = this.planetIndex;
         // Copy label prefab if needed
 
 

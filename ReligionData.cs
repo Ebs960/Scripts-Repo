@@ -28,6 +28,10 @@ public class ReligionData : ScriptableObject
     public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-worker stat bonuses granted by civilizations that have founded this religion.")]
     public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Per-city yield, defense, and happiness bonuses granted by civilizations that have founded this religion.")]
+    public CityYieldBonus[] cityBonuses;
+    [Tooltip("State-religion modifiers to per-turn city unhappiness caused by citizens following other religions.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
 
     // REMOVED: Unlocked Content arrays
     // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes

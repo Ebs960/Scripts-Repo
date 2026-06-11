@@ -492,6 +492,8 @@ public class Civilization : MonoBehaviour
     public List<PantheonData> foundedPantheons = new List<PantheonData>();
     public ReligionData foundedReligion;
     public bool hasFoundedReligion;
+    [Tooltip("Base per-turn morale loss per citizen following a religion other than this civilization's founded state religion.")]
+    public float baseNonStateReligionUnhappinessPerFollower = 1f;
     // Pantheons/beliefs unlocked by adopted cultures (in addition to global available list)
     public List<PantheonData> cultureUnlockedPantheons = new List<PantheonData>();
     public List<BeliefData> cultureUnlockedBeliefs = new List<BeliefData>();
@@ -1834,6 +1836,56 @@ public class Civilization : MonoBehaviour
         }
 
         return totals;
+    }
+
+    public float GetNonStateReligionUnhappinessPerFollower(int planetIndex = -1)
+    {
+        float add = Mathf.Max(0f, baseNonStateReligionUnhappinessPerFollower);
+        float pct = 0f;
+
+        void Accumulate(NonStateReligionUnhappinessModifier[] modifiers)
+        {
+            if (modifiers == null) return;
+            foreach (var modifier in modifiers)
+            {
+                if (modifier == null) continue;
+                add += modifier.unhappinessPerFollowerAdd;
+                pct += modifier.unhappinessPct;
+            }
+        }
+
+        Accumulate(civData?.nonStateReligionUnhappinessModifiers);
+        Accumulate(leader?.nonStateReligionUnhappinessModifiers);
+
+        if (researchedTechs != null)
+            foreach (var tech in researchedTechs)
+                Accumulate(tech?.nonStateReligionUnhappinessModifiers);
+
+        if (researchedCultures != null)
+            foreach (var culture in researchedCultures)
+                Accumulate(culture?.nonStateReligionUnhappinessModifiers);
+
+        Accumulate(currentGovernment?.nonStateReligionUnhappinessModifiers);
+
+        if (activePolicies != null)
+            foreach (var policy in activePolicies)
+                Accumulate(policy?.nonStateReligionUnhappinessModifiers);
+
+        if (activeLegacies != null)
+            foreach (var legacy in activeLegacies)
+                Accumulate(legacy?.nonStateReligionUnhappinessModifiers);
+
+        foreach (var pantheonBonuses in EnumeratePantheonBonuses())
+            Accumulate(pantheonBonuses?.nonStateReligionUnhappinessModifiers);
+
+        if (hasFoundedReligion)
+            Accumulate(foundedReligion?.nonStateReligionUnhappinessModifiers);
+
+        foreach (var belief in EnumerateActiveBeliefs())
+            if (belief != null && IsBeliefSeasonActive(belief, planetIndex))
+                Accumulate(belief.nonStateReligionUnhappinessModifiers);
+
+        return Mathf.Max(0f, add * Mathf.Max(0f, 1f + pct));
     }
 
     public float GetHerdStarvationPercentReduction(Herd herdContext = null)
@@ -4519,7 +4571,7 @@ return true;
     /// This is now the primary method for founding cities.
     /// </summary>
     /// <param name="tileIndex">The tile where the city will be founded.</param>
-    public void FoundNewCity(int tileIndex, HexGrid gridOverride = null, PlanetGenerator planetOverride = null)
+    public void FoundNewCity(int tileIndex, HexGrid gridOverride = null, PlanetGenerator planetOverride = null, GameManager.PlanetLayerType cityLayer = GameManager.PlanetLayerType.Surface)
     {
 // City-cap gating
         if (!CanFoundMoreCities())
@@ -4627,6 +4679,7 @@ return true;
             }
         }
         newCity.centerTileIndex = tileIndex;
+        newCity.cityLayer = cityLayer;
         // Multi-planet: persist which planet this city belongs to so it doesn't read/write the wrong TileSystem later.
         newCity.planetIndex = (planetToUse != null) ? planetToUse.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         newCity.Initialize(cityName, this);

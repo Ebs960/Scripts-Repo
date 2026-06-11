@@ -70,6 +70,14 @@ public class CivData : ScriptableObject
     [Tooltip("Innate per-building yield/stat bonuses granted by this civilization. Can target exact buildings or building categories.")]
     public BuildingYieldBonus[] buildingBonuses;
 
+    [Header("City Bonuses")]
+    [Tooltip("Innate per-city yield, defense, and happiness bonuses granted by this civilization.")]
+    public CityYieldBonus[] cityBonuses;
+
+    [Header("Religion Unhappiness")]
+    [Tooltip("Innate modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
+
     [Header("Unit Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;

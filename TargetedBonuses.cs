@@ -16,6 +16,16 @@ public enum CityYieldScope
     CapitalOnly,
 }
 
+[System.Serializable]
+public class NonStateReligionUnhappinessModifier
+{
+    [Tooltip("Flat unhappiness added per citizen following a religion other than the civilization state religion. Negative values reduce the penalty.")]
+    public float unhappinessPerFollowerAdd;
+
+    [Tooltip("Percent modifier to non-state-religion unhappiness. -0.25 = 25% less, 0.25 = 25% more.")]
+    public float unhappinessPct;
+}
+
 public enum UnitTerritoryRequirement
 {
     Any,
@@ -479,6 +489,12 @@ public class TileYieldBonus
 public class CityYieldBonus
 {
     public CityYieldScope scope = CityYieldScope.AllCities;
+
+    [Header("Layer Filter")]
+    [Tooltip("If enabled, this city bonus only applies to cities on one of the selected planet layers.")]
+    public bool useLayerFilter = false;
+    [Tooltip("Planet layers this city bonus applies to when Use Layer Filter is enabled.")]
+    public GameManager.PlanetLayerType[] layers;
 
     [Header("Season Filter")]
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]

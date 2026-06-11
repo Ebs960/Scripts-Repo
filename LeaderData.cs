@@ -89,6 +89,10 @@ public class LeaderData : ScriptableObject
     [Header("Building Yield Bonuses")]
     [Tooltip("Per-building yield/stat bonuses granted by this leader. Can target exact buildings or building categories.")]
     public BuildingYieldBonus[] buildingBonuses;
+    [Tooltip("Per-city yield, defense, and happiness bonuses granted by this leader.")]
+    public CityYieldBonus[] cityBonuses;
+    [Tooltip("Leader modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
 
     [Header("Unit Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this leader.")]

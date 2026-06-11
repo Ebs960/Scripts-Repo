@@ -84,6 +84,8 @@ public class BeliefData : ScriptableObject
     public HerdYieldBonus[] herdYieldBonuses;
     [Tooltip("Per-turn yield modifiers applied to all cities or just the capital.")]
     public CityYieldBonus[] cityYieldBonuses;
+    [Tooltip("Belief modifiers to per-turn city unhappiness caused by citizens following religions other than the state religion.")]
+    public NonStateReligionUnhappinessModifier[] nonStateReligionUnhappinessModifiers;
 } 
 
 public enum BeliefCategory
