@@ -66,6 +66,106 @@ public static class RoadConnectivityHelper
     }
 
     /// <summary>
+    /// Attempts to find an unbroken path of road improvements between two cities.
+    /// The path starts from any road tile adjacent to the source city and succeeds
+    /// when it reaches a road tile adjacent to, or controlled by, the destination city.
+    /// </summary>
+    public static bool TryFindRoadPath(City sourceCity, City destinationCity, int maxRoadTiles, out List<int> roadPath)
+    {
+        roadPath = new List<int>();
+        if (sourceCity == null || destinationCity == null) return false;
+        if (sourceCity == destinationCity) return false;
+        if (sourceCity.planetIndex != destinationCity.planetIndex) return false;
+        if (maxRoadTiles <= 0) return false;
+
+        var ts = TileSystem.GetForPlanet(sourceCity.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
+
+        var visited = new HashSet<int>();
+        var previous = new Dictionary<int, int>();
+        var distance = new Dictionary<int, int>();
+        var queue = new Queue<int>();
+
+        foreach (int tileIndex in ts.GetNeighbors(sourceCity.centerTileIndex))
+        {
+            if (!IsRoadTile(ts, tileIndex)) continue;
+
+            visited.Add(tileIndex);
+            previous[tileIndex] = -1;
+            distance[tileIndex] = 1;
+            queue.Enqueue(tileIndex);
+        }
+
+        while (queue.Count > 0)
+        {
+            int current = queue.Dequeue();
+            int currentDistance = distance[current];
+
+            if (IsRoadEndpointForCity(ts, current, destinationCity))
+            {
+                roadPath = ReconstructPath(current, previous);
+                return true;
+            }
+
+            if (currentDistance >= maxRoadTiles)
+                continue;
+
+            foreach (int neighbor in ts.GetNeighbors(current))
+            {
+                if (visited.Contains(neighbor)) continue;
+                if (!IsRoadTile(ts, neighbor)) continue;
+
+                visited.Add(neighbor);
+                previous[neighbor] = current;
+                distance[neighbor] = currentDistance + 1;
+                queue.Enqueue(neighbor);
+            }
+        }
+
+        return false;
+    }
+
+    public static bool AreCitiesConnectedByRoad(City sourceCity, City destinationCity, int maxRoadTiles)
+    {
+        return TryFindRoadPath(sourceCity, destinationCity, maxRoadTiles, out _);
+    }
+
+    private static bool IsRoadTile(TileSystem tileSystem, int tileIndex)
+    {
+        var tileData = tileSystem?.GetTileData(tileIndex);
+        return tileData != null && tileData.improvement != null && tileData.improvement.isRoad;
+    }
+
+    private static bool IsRoadEndpointForCity(TileSystem tileSystem, int roadTileIndex, City city)
+    {
+        var tileData = tileSystem?.GetTileData(roadTileIndex);
+        if (tileData == null || city == null) return false;
+        if (tileData.controllingCity == city) return true;
+
+        foreach (int neighbor in tileSystem.GetNeighbors(roadTileIndex))
+        {
+            if (neighbor == city.centerTileIndex)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static List<int> ReconstructPath(int endTile, Dictionary<int, int> previous)
+    {
+        var path = new List<int>();
+        int current = endTile;
+        while (current >= 0)
+        {
+            path.Add(current);
+            current = previous.TryGetValue(current, out int prev) ? prev : -1;
+        }
+
+        path.Reverse();
+        return path;
+    }
+
+    /// <summary>
     /// Aggregate the connected bonuses to apply to a city given all connecting road tiles between source and target.
     /// For simplicity, this sums the connected*PerTurn fields from the contiguous road tiles adjacent to the city.
     /// </summary>
