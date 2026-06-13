@@ -243,24 +243,34 @@ public class TradePanel : MonoBehaviour
         var cancelButton = item.transform.Find("CancelButton")?.GetComponent<Button>();
         
         if (sourceText != null)
-            sourceText.text = route.sourceCity.cityName;
+            sourceText.text = route.isInterplanetaryRoute ? $"Planet {route.originPlanetIndex + 1}" : route.sourceCity.cityName;
         if (destText != null)
-            destText.text = route.destinationCity.cityName;
+            destText.text = route.isInterplanetaryRoute ? $"Planet {route.destinationPlanetIndex + 1}" : route.destinationCity.cityName;
         if (benefitsText != null)
-            benefitsText.text = $"+{route.goldPerTurn}g, +{route.foodPerTurn}f, +{route.productionPerTurn}p";
+            benefitsText.text = route.isInterplanetaryRoute
+                ? $"+{route.goldPerTurn}g"
+                : $"+{route.goldPerTurn}g, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {route.routeDistance}/{TradeManager.CurrentMaxCityTradeRange}";
         
         // Setup cancel button
         if (cancelButton != null)
         {
             cancelButton.onClick.RemoveAllListeners();
-            cancelButton.onClick.AddListener(() => {
-                if (route.sourceCity.CancelTradeRoute(route.destinationCity))
-                {
-                    UpdateUIState();
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowNotification($"Trade route cancelled between {route.sourceCity.cityName} and {route.destinationCity.cityName}");
-                }
-            });
+            if (route.isInterplanetaryRoute)
+            {
+                cancelButton.interactable = false;
+            }
+            else
+            {
+                cancelButton.interactable = true;
+                cancelButton.onClick.AddListener(() => {
+                    if (route.sourceCity.CancelTradeRoute(route.destinationCity))
+                    {
+                        UpdateUIState();
+                        if (UIManager.Instance != null)
+                            UIManager.Instance.ShowNotification($"Trade route cancelled between {route.sourceCity.cityName} and {route.destinationCity.cityName}");
+                    }
+                });
+            }
         }
     }
     
@@ -320,14 +330,16 @@ public class TradePanel : MonoBehaviour
         City destCity = availableDestinationCities[index];
         
         // Calculate and display estimated trade route benefits
-        var benefits = TradeRoute.CalculateTradeRouteBenefits(sourceCity, destCity);
+        var simulatedRoute = new TradeRoute(sourceCity, destCity);
         
         if (routeBenefitsText != null)
         {
             routeBenefitsText.text = $"Estimated Benefits:\n" +
-                                    $"Gold: +{benefits.goldPerTurn}\n" +
-                                    $"Food: +{benefits.foodPerTurn}\n" +
-                                    $"Production: +{benefits.productionPerTurn}";
+                                    $"Gold: +{simulatedRoute.goldPerTurn}\n" +
+                                    $"Resources: {FormatTradeResources(simulatedRoute.resourcesPerTurn)}\n" +
+                                    $"Raid Chance: {Mathf.RoundToInt(simulatedRoute.raidChance * 100f)}%\n" +
+                                    $"Connection: {(simulatedRoute.usesRoadConnection ? "Road" : simulatedRoute.usesHarborConnection ? "Harbor" : "Invalid")}\n" +
+                                    $"Range: {simulatedRoute.routeDistance}/{TradeManager.CurrentMaxCityTradeRange}";
         }
         
         if (establishTradeRouteButton != null)
@@ -478,5 +490,20 @@ UpdateUIState();
         TradeRoute simulatedRoute = new TradeRoute(playerCiv, originIndex, destIndex);
         routeBenefitsText.text = $"Gold: +{simulatedRoute.goldPerTurn}/turn";
         establishTradeRouteButton.interactable = true;
+    }
+
+    private string FormatTradeResources(List<ResourceCost> resources)
+    {
+        if (resources == null || resources.Count == 0)
+            return "None";
+
+        List<string> names = new List<string>();
+        foreach (var resource in resources)
+        {
+            if (resource == null || resource.resource == null || resource.amount <= 0) continue;
+            names.Add($"{resource.amount} {resource.resource.resourceName}");
+        }
+
+        return names.Count > 0 ? string.Join(", ", names) : "None";
     }
 }

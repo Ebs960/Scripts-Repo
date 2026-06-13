@@ -3130,7 +3130,8 @@ Destroy(oldTuple.instance);
     /// </summary>
     public bool CanInitiateTradeRoute()
     {
-        return activeTradeRoutes.Count < MAX_TRADE_ROUTES;
+        bool tradeEnabled = owner != null && (owner.tradeEnabled || (TradeManager.Instance != null && TradeManager.Instance.IsTradeEnabledForCivilization(owner)));
+        return tradeEnabled && activeTradeRoutes.Count < MAX_TRADE_ROUTES;
     }
     
     /// <summary>
@@ -3139,7 +3140,7 @@ Destroy(oldTuple.instance);
     public List<City> GetCitiesInTradeRange()
     {
         List<City> citiesInRange = new List<City>();
-        int tradeRange = 10; // Default trade range, could be modified by technology/civics
+        int tradeRange = TradeManager.CurrentMaxCityTradeRange;
         
         // Get civilizations without scanning the scene if possible
         IReadOnlyList<Civilization> allCivs = CivilizationManager.Instance != null
@@ -3152,12 +3153,7 @@ Destroy(oldTuple.instance);
             {
                 if (city == this) continue; // Skip self
 
-                // Trade range is planet-local for now (no interplanetary trade distance here).
-                if (city == null || city.planetIndex != planetIndex) continue;
-                var ts = TileSys;
-                if (ts == null) continue;
-                int distance = Mathf.RoundToInt(ts.GetTileDistance(centerTileIndex, city.centerTileIndex));
-                if (distance <= tradeRange)
+                if (CanEstablishTradeRouteWith(city, tradeRange))
                 {
                     citiesInRange.Add(city);
                 }
@@ -3194,6 +3190,9 @@ Destroy(oldTuple.instance);
             
         if (HasTradeRouteWith(destinationCity))
             return false;
+
+        if (!CanEstablishTradeRouteWith(destinationCity, TradeManager.CurrentMaxCityTradeRange))
+            return false;
             
         var newRoute = new TradeRoute(this, destinationCity);
         activeTradeRoutes.Add(newRoute);
@@ -3209,6 +3208,67 @@ return true;
         {
             route.CalculateYields();
         }
+    }
+
+    public bool CanEstablishTradeRouteWith(City destinationCity, int maxRange = -1)
+    {
+        if (maxRange <= 0)
+            maxRange = TradeManager.CurrentMaxCityTradeRange;
+
+        if (destinationCity == null || destinationCity == this) return false;
+        if (planetIndex != destinationCity.planetIndex) return false;
+
+        bool roadConnected = RoadConnectivityHelper.AreCitiesConnectedByRoad(this, destinationCity, maxRange);
+        bool harborConnected = HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && GetTradeTileDistanceTo(destinationCity) <= maxRange;
+
+        return roadConnected || harborConnected;
+    }
+
+    public bool HasOperationalHarbor()
+    {
+        return HasOperationalBuilding(building => building != null && building.providesHarbor);
+    }
+
+    public int GetTradeTileDistanceTo(City destinationCity)
+    {
+        if (destinationCity == null || destinationCity.planetIndex != planetIndex)
+            return int.MaxValue;
+
+        var ts = TileSys;
+        if (ts == null) return int.MaxValue;
+        return Mathf.RoundToInt(ts.GetTileDistance(centerTileIndex, destinationCity.centerTileIndex));
+    }
+
+    public List<ResourceCost> GetTradeResourceExports()
+    {
+        var exports = new Dictionary<ResourceData, int>();
+
+        AddBuildingResourceProductionTo(exports);
+
+        var ts = TileSys;
+        if (ts != null && ts.IsReady())
+        {
+            int tileCount = ts.TileCount;
+            for (int i = 0; i < tileCount; i++)
+            {
+                var tileData = ts.GetTileData(i);
+                if (tileData == null || tileData.resource == null) continue;
+                if (tileData.controllingCity != this) continue;
+
+                if (!exports.ContainsKey(tileData.resource))
+                    exports[tileData.resource] = 0;
+                exports[tileData.resource] = Mathf.Max(exports[tileData.resource], 1);
+            }
+        }
+
+        var result = new List<ResourceCost>();
+        foreach (var kvp in exports)
+        {
+            if (kvp.Key == null || kvp.Value <= 0) continue;
+            result.Add(new ResourceCost { resource = kvp.Key, amount = 1 });
+        }
+
+        return result;
     }
 
     /// <summary>
