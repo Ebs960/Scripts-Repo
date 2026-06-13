@@ -2296,6 +2296,9 @@ public class Civilization : MonoBehaviour
                 }
             }
 
+            if (ImprovementManager.Instance != null)
+                ImprovementManager.Instance.ResetFortAttacksForCiv(this);
+
             // 2) Process each city (production, growth, morale, surrender, label)
             foreach (var city in cities)
             {
@@ -2363,6 +2366,50 @@ public class Civilization : MonoBehaviour
             foreach (var kvp in buildingResourcesThisTurn)
             {
                 AddResource(kvp.Key, kvp.Value);
+            }
+        }
+
+        // 3.4) Process city trade routes. Routes can be raided; raided routes provide no
+        // gold or copied resources for this turn.
+        foreach (var city in cities)
+        {
+            if (city == null) continue;
+
+            foreach (var tradeRoute in city.GetActiveTradeRoutes())
+            {
+                if (tradeRoute == null || tradeRoute.isInterplanetaryRoute) continue;
+                if (tradeRoute.sourceCity == null || tradeRoute.sourceCity.owner != this) continue;
+
+                bool routeStillValid = tradeRoute.sourceCity.CanEstablishTradeRouteWith(
+                    tradeRoute.destinationCity,
+                    TradeManager.CurrentMaxCityTradeRange);
+
+                if (!routeStillValid)
+                    continue;
+
+                if (tradeRoute.RollRaidForTurn())
+                    continue;
+
+                gold += tradeRoute.goldPerTurn;
+                food += tradeRoute.foodPerTurn;
+                totalScienceThisTurn += tradeRoute.sciencePerTurn;
+                totalCultureThisTurn += tradeRoute.culturePerTurn;
+                policyPoints += tradeRoute.policyPointsPerTurn;
+                faith += tradeRoute.faithPerTurn;
+
+                totalGoldThisTurn += tradeRoute.goldPerTurn;
+                totalFoodThisTurn += tradeRoute.foodPerTurn;
+                totalPolicyThisTurn += tradeRoute.policyPointsPerTurn;
+                totalFaithThisTurn += tradeRoute.faithPerTurn;
+
+                if (tradeRoute.resourcesPerTurn != null)
+                {
+                    foreach (var resource in tradeRoute.resourcesPerTurn)
+                    {
+                        if (resource == null || resource.resource == null || resource.amount <= 0) continue;
+                        AddResource(resource.resource, resource.amount);
+                    }
+                }
             }
         }
 
