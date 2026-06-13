@@ -48,13 +48,45 @@ MonoBehaviour:
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 5
-  productionPerTurn: 2
-  goldPerTurn: 5
+  foodPerTurn: 2
+  productionPerTurn: 4
+  goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses:
+  - useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    landRequirement: 0
+    waterRequirement: 1
+    improvementRequirement: 1
+    districtRequirement: 0
+    useImprovementFilter: 0
+    improvement: {fileID: 0}
+    useDistrictFilter: 0
+    district: {fileID: 0}
+    useSeasonFilter: 0
+    seasons: 
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

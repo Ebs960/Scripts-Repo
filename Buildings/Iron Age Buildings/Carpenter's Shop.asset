@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Carpenter's Shop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Carpenter's Guild
+  buildingName: Carpenter's Shop
   icon: {fileID: 0}
   description: +5 Production, +2 Gold
   buildingPrefab: {fileID: 0}
@@ -55,6 +55,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

@@ -49,12 +49,14 @@ MonoBehaviour:
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 0
+  productionPerTurn: 2
+  goldPerTurn: 3
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
