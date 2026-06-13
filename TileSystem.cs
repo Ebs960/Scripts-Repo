@@ -31,6 +31,7 @@ public class TileSystem : MonoBehaviour
 
     [Header("State Arrays (public read-only accessors)")]
     [SerializeField] private HexTileData[] tiles;              // Canonical tile data array (single planet scope for now)
+    public int TileCount => tiles != null ? tiles.Length : 0;
     [SerializeField] private int[] ownerByTile;                // -1 = neutral
     [SerializeField] private byte[][] fogByCiv;                // [civ][tile] 0/1/2
     [SerializeField] private byte[] mergedFog;                 // merged local+allies
