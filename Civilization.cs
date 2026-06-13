@@ -2296,6 +2296,9 @@ public class Civilization : MonoBehaviour
                 }
             }
 
+            if (ImprovementManager.Instance != null)
+                ImprovementManager.Instance.ResetFortAttacksForCiv(this);
+
             // 2) Process each city (production, growth, morale, surrender, label)
             foreach (var city in cities)
             {

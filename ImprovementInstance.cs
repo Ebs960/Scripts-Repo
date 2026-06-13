@@ -25,6 +25,11 @@ public class ImprovementInstance : MonoBehaviour
     // Runtime list of units stored inside this improvement (shelter)
     public List<BaseUnit> storedUnits = new List<BaseUnit>();
 
+    [Header("Fort Runtime")]
+    [SerializeField] private int currentFortHitPoints = -1;
+    [SerializeField] private bool fortNeutralized = false;
+    [SerializeField] private int fortAttacksRemainingThisTurn = -1;
+
     /// <summary>
     /// Returns true if this improvement (or any applied upgrade) grants Zone of Control on adjacent tiles.
     /// </summary>
@@ -83,6 +88,142 @@ public class ImprovementInstance : MonoBehaviour
         return Mathf.Max(0, cap);
     }
 
+    public bool IsFort => data != null && data.isFort;
+    public bool IsFortNeutralized => IsFort && fortNeutralized;
+    public int CurrentFortHitPoints => IsFort ? Mathf.Max(0, currentFortHitPoints) : 0;
+
+    public int GetFortMaxHitPoints()
+    {
+        if (!IsFort) return 0;
+        int hp = Mathf.Max(1, data.fortHitPoints);
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+            hp += upgrade.additionalFortHitPoints;
+        return Mathf.Max(1, hp);
+    }
+
+    public int GetFortAttack()
+    {
+        if (!IsFort || fortNeutralized) return 0;
+        float attack = Mathf.Max(0, data.fortAttack);
+        float pct = 0f;
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+        {
+            attack += upgrade.fortAttackAdd;
+            pct += upgrade.fortAttackPct;
+        }
+        return Mathf.Max(0, Mathf.RoundToInt(attack * (1f + pct)));
+    }
+
+    public int GetFortDefense()
+    {
+        if (!IsFort) return 0;
+        float defense = Mathf.Max(0, data.fortDefense);
+        float pct = 0f;
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+        {
+            defense += upgrade.fortDefenseAdd;
+            pct += upgrade.fortDefensePct;
+        }
+        return Mathf.Max(0, Mathf.RoundToInt(defense * (1f + pct)));
+    }
+
+    public bool CanFortFireAt(BaseUnit target)
+    {
+        if (!IsFort || fortNeutralized || target == null) return false;
+        if (owner != null && target.owner == owner) return false;
+        if (tileIndex < 0 || target.currentTileIndex < 0) return false;
+        if (target.planetIndex != planetIndex) return false;
+        if (GetFortAttack() <= 0) return false;
+
+        int attacksRemaining = fortAttacksRemainingThisTurn < 0 ? Mathf.Max(1, data.fortAttacksPerTurn) : fortAttacksRemainingThisTurn;
+        if (attacksRemaining <= 0) return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
+        int distance = ts.GetTileDistance(tileIndex, target.currentTileIndex);
+        return distance >= 0 && distance <= Mathf.Max(1, data.fortAttackRange);
+    }
+
+    public int FireFortAt(BaseUnit target)
+    {
+        if (!CanFortFireAt(target)) return 0;
+
+        int attack = GetFortAttack();
+        float defense = target.CurrentDefense;
+        defense = (defense + target.GetSituationalDefenseAddAgainst(null)) * (1f + target.GetSituationalDefensePctAgainst(null));
+        int damage = Mathf.Max(1, Mathf.RoundToInt(attack - defense));
+        target.ApplyDamage(damage);
+
+        if (fortAttacksRemainingThisTurn < 0)
+            fortAttacksRemainingThisTurn = Mathf.Max(1, data.fortAttacksPerTurn);
+        fortAttacksRemainingThisTurn = Mathf.Max(0, fortAttacksRemainingThisTurn - 1);
+        return damage;
+    }
+
+    public int ApplyFortDamage(int incomingDamage)
+    {
+        if (!IsFort || incomingDamage <= 0 || fortNeutralized) return 0;
+        EnsureFortRuntimeInitialized();
+        int mitigatedDamage = Mathf.Max(1, incomingDamage - GetFortDefense());
+        currentFortHitPoints = Mathf.Max(0, currentFortHitPoints - mitigatedDamage);
+        if (currentFortHitPoints <= 0)
+            NeutralizeFort();
+        return mitigatedDamage;
+    }
+
+    public void RepairFort(int amount)
+    {
+        if (!IsFort || amount <= 0) return;
+        EnsureFortRuntimeInitialized();
+        currentFortHitPoints = Mathf.Min(GetFortMaxHitPoints(), currentFortHitPoints + amount);
+        if (currentFortHitPoints > 0)
+            fortNeutralized = false;
+    }
+
+    public void ResetFortAttacksForTurn()
+    {
+        if (!IsFort) return;
+        fortAttacksRemainingThisTurn = fortNeutralized ? 0 : Mathf.Max(1, data.fortAttacksPerTurn);
+    }
+
+    private void NeutralizeFort()
+    {
+        fortNeutralized = true;
+        fortAttacksRemainingThisTurn = 0;
+        if (storedUnits == null || storedUnits.Count == 0) return;
+
+        var unitsToUnstore = storedUnits.ToArray();
+        foreach (var unit in unitsToUnstore)
+            TryUnstoreUnit(unit);
+    }
+
+    private void EnsureFortRuntimeInitialized()
+    {
+        if (!IsFort) return;
+        int maxHp = GetFortMaxHitPoints();
+        if (currentFortHitPoints < 0)
+            currentFortHitPoints = maxHp;
+        else if (currentFortHitPoints > maxHp)
+            currentFortHitPoints = maxHp;
+
+        if (fortAttacksRemainingThisTurn < 0)
+            ResetFortAttacksForTurn();
+    }
+
+    private IEnumerable<ImprovementUpgradeData> EnumerateAppliedUpgrades()
+    {
+        if (appliedUpgrades == null || data?.availableUpgrades == null)
+            yield break;
+
+        foreach (var upgrade in data.availableUpgrades)
+        {
+            if (upgrade == null) continue;
+            string key = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+            if (!string.IsNullOrEmpty(key) && appliedUpgrades.Contains(key))
+                yield return upgrade;
+        }
+    }
+
     // Runtime click handling / tile awareness (consolidated from ImprovementClickHandler)
     private int planetIndex = -1;
     private TileSystem eventTileSystem;
@@ -96,6 +237,7 @@ public class ImprovementInstance : MonoBehaviour
         this.tileIndex = tileIndex;
         this.data = data;
         this.planetIndex = planetIndex;
+        EnsureFortRuntimeInitialized();
         // Create a world-space label (icon) above the improvement if a prefab is configured
         try
         {
@@ -132,6 +274,7 @@ public class ImprovementInstance : MonoBehaviour
     public bool StoreUnit(BaseUnit unit)
     {
         if (unit == null || data == null || !data.isShelter) return false;
+        if (IsFortNeutralized) return false;
         // Only owner units may be stored
         if (this.owner != null && unit.owner != this.owner) return false;
         if (storedUnits == null) storedUnits = new List<BaseUnit>();

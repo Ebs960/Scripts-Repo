@@ -587,7 +587,30 @@ public class ImprovementManager : MonoBehaviour
     /// </summary>
     public void ProcessTurn(Civilization civ)
     {
+        ResetFortAttacksForCiv(civ);
         // Herd production is handled by Herd.ProcessProduction called from Civilization per-turn loop.
+    }
+
+    public void ResetFortAttacksForCiv(Civilization civ)
+    {
+        if (civ == null || GameManager.Instance == null) return;
+
+        var planetData = GameManager.Instance.GetPlanetData();
+        foreach (var kvp in planetData)
+        {
+            int planetIndex = kvp.Key;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            int tileCount = ts != null ? ts.TileCount : 0;
+            for (int tile = 0; tile < tileCount; tile++)
+            {
+                var tileData = ts.GetTileData(tile);
+                if (tileData?.improvementInstanceObject == null) continue;
+
+                var fort = tileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+                if (fort != null && fort.owner == civ)
+                    fort.ResetFortAttacksForTurn();
+            }
+        }
     }
 
     /// <summary>
@@ -1078,6 +1101,8 @@ public class ImprovementManager : MonoBehaviour
             }
         }
 
+        TryAutoFireFortAtUnit(tileIndex, unit);
+
         // After trap processing (or if no trap), attempt to auto-store unit if tile improvement is a shelter
         var tileDataStore = tileData;
         if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
@@ -1150,6 +1175,8 @@ public class ImprovementManager : MonoBehaviour
             }
         }
 
+        TryAutoFireFortAtUnit(tileIndex, worker);
+
         // After trap processing (or if no trap), attempt to auto-store worker if tile improvement is a shelter
         var tileDataStore = tileData;
         if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
@@ -1171,6 +1198,63 @@ public class ImprovementManager : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void TryAutoFireFortAtUnit(int enteredTile, BaseUnit unit)
+    {
+        if (enteredTile < 0 || unit == null) return;
+
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        if (unit.currentTileIndex >= 0)
+            enteredTile = unit.currentTileIndex;
+        int searchRange = GetLargestFortAutoFireRange(unit.planetIndex);
+        if (searchRange <= 0) return;
+
+        for (int tile = 0; tile < ts.TileCount; tile++)
+        {
+            var tileData = ts.GetTileData(tile);
+            if (tileData?.improvementInstanceObject == null) continue;
+
+            var fort = tileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+            if (fort == null || fort.data == null || !fort.data.fortAutoFireOnEnemyEntry) continue;
+            if (fort.owner != null && unit.owner == fort.owner) continue;
+
+            int distance = ts.GetTileDistance(tile, enteredTile);
+            if (distance < 0 || distance > searchRange) continue;
+            if (fort.CanFortFireAt(unit))
+                fort.FireFortAt(unit);
+        }
+    }
+
+    private int GetLargestFortAutoFireRange(int planetIndex)
+    {
+        int maxRange = 0;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return maxRange;
+
+        for (int tile = 0; tile < ts.TileCount; tile++)
+        {
+            var tileData = ts.GetTileData(tile);
+            if (tileData?.improvementInstanceObject == null) continue;
+            var fort = tileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+            if (fort?.data == null || !fort.IsFort || fort.IsFortNeutralized || !fort.data.fortAutoFireOnEnemyEntry) continue;
+            maxRange = Mathf.Max(maxRange, Mathf.Max(1, fort.data.fortAttackRange));
+        }
+
+        return maxRange;
+    }
+
+    public int DamageFort(int tileIndex, int damage, int planetIndex = -1)
+    {
+        if (damage <= 0) return 0;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        var fort = tileData?.improvementInstanceObject != null
+            ? tileData.improvementInstanceObject.GetComponent<ImprovementInstance>()
+            : null;
+        return fort != null ? fort.ApplyFortDamage(damage) : 0;
     }
 
     /// <summary>
