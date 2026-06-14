@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
+  m_Name: Vassal Oaths
+  m_EditorClassIdentifier: Assembly-CSharp::PolicyData
+  policyName: Vassal Oaths
+  icon: {fileID: 0}
+  description: Reinforces reciprocal obligations between ruler and vassals.
+  policyPointCost: 35
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
+  - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  requiredCityCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0.1
+  scienceModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  governorOpinionEffects:
+  - reason: Vassal Oaths
+    value: 20
+    durationTurns: 30
+    requiresAnyPersonality: []
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
