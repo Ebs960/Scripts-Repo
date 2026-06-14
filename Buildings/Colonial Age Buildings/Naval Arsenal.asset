@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Naval Arsenal
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Naval Arsenal
+  icon: {fileID: 0}
+  description: +10 Production, +8 Gold. Provides harbor functionality.
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 11400000, guid: 2c98525443244158b1d2d08b8f83b0f1, type: 2}
+  productionCost: 1050
+  goldCost: 1575
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 1575
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 1
+  isScienceBuilding: 0
+  isFoodBuilding: 0
+  isProductionBuilding: 1
+  isGoldBuilding: 1
+  isCultureBuilding: 0
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 2eb5946810d84b047b18f23dd50d6c96, type: 2}
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 10
+  goldPerTurn: 8
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

@@ -51,6 +51,16 @@ public class ImprovementUpgradeData
     public int defenseAdd = 0;
     [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to any unit on this tile")]
     public float defensePct = 0f;
+    [Tooltip("Flat attack added to this improvement if it is a fort.")]
+    public int fortAttackAdd = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative attack bonus applied to this improvement if it is a fort.")]
+    public float fortAttackPct = 0f;
+    [Tooltip("Flat defense added to this improvement if it is a fort.")]
+    public int fortDefenseAdd = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative defense bonus applied to this improvement if it is a fort.")]
+    public float fortDefensePct = 0f;
+    [Tooltip("Additional max hit points added to this improvement if it is a fort.")]
+    public int additionalFortHitPoints = 0;
     [Tooltip("If true, this upgrade causes the tile to exert Zone of Control on adjacent tiles (like a watchtower or fortified position)")]
     public bool grantsZoneOfControl = false;
     [Tooltip("If true, enemy Zone of Control does not apply to this tile (acts as a safe corridor or fortified road)")]
@@ -245,6 +255,22 @@ public class ImprovementData : ScriptableObject
 
     [Tooltip("If true, units from the builder's civ do not trigger this trap.")]
     public bool trapFriendlySafe = true;
+
+    [Header("Fort Settings")]
+    [Tooltip("If true, this improvement is a fortification that can attack nearby enemies and can be neutralized by damage.")]
+    public bool isFort = false;
+    [Tooltip("Base attack used when the fort fires at enemies.")]
+    public int fortAttack = 0;
+    [Tooltip("Base defense used when incoming damage is resolved against the fort.")]
+    public int fortDefense = 0;
+    [Tooltip("Maximum hit points before this fort is neutralized. Neutralized forts cannot fire or store/garrison units.")]
+    public int fortHitPoints = 100;
+    [Tooltip("Maximum tile range this fort can fire.")]
+    public int fortAttackRange = 1;
+    [Tooltip("If true, the fort automatically fires at enemy units that enter range.")]
+    public bool fortAutoFireOnEnemyEntry = true;
+    [Tooltip("How many times this fort can fire each turn.")]
+    public int fortAttacksPerTurn = 1;
 
     [Header("Zone of Control")]
     [Tooltip("If true, this improvement causes the tile to exert Zone of Control on all adjacent tiles (e.g., a fort or watchtower).")]
