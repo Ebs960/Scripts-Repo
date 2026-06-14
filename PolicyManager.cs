@@ -24,9 +24,9 @@ public class PolicyManager : MonoBehaviour
         var avail = new List<PolicyData>();
         foreach (var p in allPolicies)
         {
-            if (civ.activePolicies.Contains(p)) 
+            if (civ.activePolicies.Contains(p))
                 continue;
-            if (civ.policyPoints < p.policyPointCost) 
+            if (civ.policyPoints < p.policyPointCost)
                 continue;
             bool ok = true;
             foreach (var req in p.requiredTechs)
@@ -96,6 +96,8 @@ public class PolicyManager : MonoBehaviour
             }
             if (!ok) continue;
             if (civ.cities == null || civ.cities.Count < g.requiredCityCount) ok = false;
+            if (g.requiresStateReligion && civ.foundedReligion == null) ok = false;
+            if (g.requiredVassalCount > 0 && civ.ActiveVassalCount < g.requiredVassalCount) ok = false;
             if (ok) avail.Add(g);
         }
         return avail;
@@ -140,4 +142,4 @@ public class PolicyManager : MonoBehaviour
             }
         }
     }
-} 
+}

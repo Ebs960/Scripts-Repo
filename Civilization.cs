@@ -584,6 +584,10 @@ public class Civilization : MonoBehaviour
 
     public int GetCityCapBonusForSave() => cityCapFromBonuses;
 
+    public int ActiveVassalCount => SubjectManager.Instance != null
+        ? SubjectManager.Instance.GetSubjects(this).Count
+        : 0;
+
     public void RestoreProgressionState(
         List<TechData> restoredTechs,
         TechData restoredCurrentTech,
@@ -3360,6 +3364,7 @@ public class Civilization : MonoBehaviour
         scienceModifier += gov.scienceModifier;
         cultureModifier += gov.cultureModifier;
         faithModifier += gov.faithModifier;
+        cityCapFromBonuses += gov.cityCapModifier;
     }
 
     // New method to remove bonuses from a government
@@ -3378,6 +3383,7 @@ public class Civilization : MonoBehaviour
         scienceModifier -= gov.scienceModifier;
         cultureModifier -= gov.cultureModifier;
         faithModifier -= gov.faithModifier;
+        cityCapFromBonuses -= gov.cityCapModifier;
     }
 
     // --- Diplomacy ---

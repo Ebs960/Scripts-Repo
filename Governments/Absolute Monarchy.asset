@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
+  m_Name: Absolute Monarchy
+  m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  governmentName: Absolute Monarchy
+  leaderTitleSuffix: Sovereign
+  description: A centralized royal state that accelerates science and production while alienating powerful lords.
+  policyPointCost: 120
+  requiredTechs: []
+  requiredCultures: []
+  requiredCityCount: 0
+  requiresStateReligion: 0
+  requiredVassalCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0.2
+  goldModifier: 0
+  scienceModifier: 0.2
+  cultureModifier: 0
+  faithModifier: 0
+  cityCapModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  councilSeatCount: 1
+  councilVetoDomains: 0
+  governorOpinionEffects:
+  - reason: Absolute Monarchy Government
+    value: -30
+    durationTurns: -1
+    requiresAnyPersonality: []
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
