@@ -28,8 +28,8 @@ MonoBehaviour:
   defenseBonus: 0.08
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0.2
-  goldModifier: -0.15
+  productionModifier: 0.25
+  goldModifier: -0.2
   scienceModifier: 0.12
   cultureModifier: -0.15
   faithModifier: 0

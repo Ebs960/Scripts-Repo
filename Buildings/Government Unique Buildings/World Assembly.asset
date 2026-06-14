@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: World Assembly
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: World Assembly
+  icon: {fileID: 0}
+  description: A planetary assembly where member cities coordinate law, aid, peacekeeping, and international standards.
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 0}
+  productionCost: 540
+  goldCost: 810
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 810
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
+  isScienceBuilding: 1
+  isFoodBuilding: 0
+  isProductionBuilding: 0
+  isGoldBuilding: 1
+  isCultureBuilding: 1
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs: []
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments:
+  - {fileID: 11400000, guid: 4e4a003c86014ff09112c1ec0f0e2360, type: 2}
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 3
+  sciencePerTurn: 4
+  culturePerTurn: 8
+  policyPointsPerTurn: 4
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 6
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

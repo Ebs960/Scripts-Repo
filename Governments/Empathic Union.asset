@@ -25,13 +25,13 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0.08
+  defenseBonus: 0.12
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0.05
   scienceModifier: 0.08
-  cultureModifier: 0.15
+  cultureModifier: 0.18
   faithModifier: 0
   cityCapModifier: 0
   tileYieldBonuses: []
