@@ -2168,6 +2168,8 @@ Destroy(oldTuple.instance);
             BuildingCategory.Culture => data.isCultureBuilding,
             BuildingCategory.Faith => data.isFaithBuilding,
             BuildingCategory.Harbor => data.providesHarbor,
+            BuildingCategory.Airport => data.providesAirport,
+            BuildingCategory.Spaceport => data.providesSpaceport,
             BuildingCategory.PerimeterWall => data.isPerimeterWall,
             _ => false,
         };
@@ -3216,17 +3218,30 @@ return true;
             maxRange = TradeManager.CurrentMaxCityTradeRange;
 
         if (destinationCity == null || destinationCity == this) return false;
-        if (planetIndex != destinationCity.planetIndex) return false;
 
-        bool roadConnected = RoadConnectivityHelper.AreCitiesConnectedByRoad(this, destinationCity, maxRange);
-        bool harborConnected = HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && GetTradeTileDistanceTo(destinationCity) <= maxRange;
+        bool samePlanet = planetIndex == destinationCity.planetIndex;
+        int tileDistance = samePlanet ? GetTradeTileDistanceTo(destinationCity) : int.MaxValue;
+        bool roadConnected = samePlanet && RoadConnectivityHelper.AreCitiesConnectedByRoad(this, destinationCity, maxRange);
+        bool harborConnected = samePlanet && HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && tileDistance <= maxRange;
+        bool airportConnected = samePlanet && HasOperationalAirport() && destinationCity.HasOperationalAirport() && tileDistance <= TradeManager.CurrentMaxAirportTradeRange;
+        bool spaceportConnected = TradeManager.CanSpacePortTradeBetween(this, destinationCity);
 
-        return roadConnected || harborConnected;
+        return roadConnected || harborConnected || airportConnected || spaceportConnected;
     }
 
     public bool HasOperationalHarbor()
     {
         return HasOperationalBuilding(building => building != null && building.providesHarbor);
+    }
+
+    public bool HasOperationalAirport()
+    {
+        return HasOperationalBuilding(building => building != null && building.providesAirport);
+    }
+
+    public bool HasOperationalSpaceport()
+    {
+        return HasOperationalBuilding(building => building != null && building.providesSpaceport);
     }
 
     public int GetTradeTileDistanceTo(City destinationCity)

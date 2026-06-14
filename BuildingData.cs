@@ -60,6 +60,10 @@ public class BuildingData : ScriptableObject
     [Header("Special Flags")]
     [Tooltip("Grants harbor functionality (lets city build ships/subs)")]
     public bool providesHarbor;
+    [Tooltip("Grants airport functionality for long-distance air trade routes.")]
+    public bool providesAirport;
+    [Tooltip("Grants spaceport functionality for planet/moon/orbital/interplanetary trade routes.")]
+    public bool providesSpaceport;
 
     public bool isScienceBuilding;
 

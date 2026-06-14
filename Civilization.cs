@@ -3607,6 +3607,8 @@ public class Civilization : MonoBehaviour
     {
         if (route != null && route.isInterplanetaryRoute)
         {
+            if (!TradeManager.CanSpaceTradeBetweenPlanets(route.originPlanetIndex, route.destinationPlanetIndex))
+                return;
             interplanetaryTradeRoutes.Add(route);
         }
     }

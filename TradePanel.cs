@@ -249,7 +249,7 @@ public class TradePanel : MonoBehaviour
         if (benefitsText != null)
             benefitsText.text = route.isInterplanetaryRoute
                 ? $"+{route.goldPerTurn}g"
-                : $"+{route.goldPerTurn}g, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {route.routeDistance}/{TradeManager.CurrentMaxCityTradeRange}";
+                : $"+{route.goldPerTurn}g, {GetCityTradeConnectionLabel(route)}, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {GetCityTradeRangeLabel(route)}";
         
         // Setup cancel button
         if (cancelButton != null)
@@ -338,8 +338,8 @@ public class TradePanel : MonoBehaviour
                                     $"Gold: +{simulatedRoute.goldPerTurn}\n" +
                                     $"Resources: {FormatTradeResources(simulatedRoute.resourcesPerTurn)}\n" +
                                     $"Raid Chance: {Mathf.RoundToInt(simulatedRoute.raidChance * 100f)}%\n" +
-                                    $"Connection: {(simulatedRoute.usesRoadConnection ? "Road" : simulatedRoute.usesHarborConnection ? "Harbor" : "Invalid")}\n" +
-                                    $"Range: {simulatedRoute.routeDistance}/{TradeManager.CurrentMaxCityTradeRange}";
+                                    $"Connection: {GetCityTradeConnectionLabel(simulatedRoute)}\n" +
+                                    $"Range: {GetCityTradeRangeLabel(simulatedRoute)}";
         }
         
         if (establishTradeRouteButton != null)
@@ -363,6 +363,12 @@ public class TradePanel : MonoBehaviour
             if (originPlanet == destPlanet)
             {
 return;
+            }
+            if (!TradeManager.CanSpaceTradeBetweenPlanets(originPlanet, destPlanet))
+            {
+                if (UIManager.Instance != null)
+                    UIManager.Instance.ShowNotification("Space trade range is not unlocked for that destination yet.");
+                return;
             }
             
             // Create interplanetary trade route
@@ -485,11 +491,35 @@ UpdateUIState();
             establishTradeRouteButton.interactable = false;
             return;
         }
+        if (!TradeManager.CanSpaceTradeBetweenPlanets(originIndex, destIndex))
+        {
+            routeBenefitsText.text = $"Space trade range locked ({TradeManager.CurrentSpaceTradeRangeScope})";
+            establishTradeRouteButton.interactable = false;
+            return;
+        }
         
         // Calculate benefits for interplanetary trade
         TradeRoute simulatedRoute = new TradeRoute(playerCiv, originIndex, destIndex);
         routeBenefitsText.text = $"Gold: +{simulatedRoute.goldPerTurn}/turn";
         establishTradeRouteButton.interactable = true;
+    }
+
+    private string GetCityTradeConnectionLabel(TradeRoute route)
+    {
+        if (route == null) return "Invalid";
+        if (route.usesRoadConnection) return "Road";
+        if (route.usesHarborConnection) return "Harbor";
+        if (route.usesAirportConnection) return "Airport";
+        if (route.usesSpaceportConnection) return "Spaceport";
+        return "Invalid";
+    }
+
+    private string GetCityTradeRangeLabel(TradeRoute route)
+    {
+        if (route == null) return "Invalid";
+        if (route.usesSpaceportConnection) return TradeManager.CurrentSpaceTradeRangeScope.ToString();
+        int maxRange = route.usesAirportConnection ? TradeManager.CurrentMaxAirportTradeRange : TradeManager.CurrentMaxCityTradeRange;
+        return $"{route.routeDistance}/{maxRange}";
     }
 
     private string FormatTradeResources(List<ResourceCost> resources)

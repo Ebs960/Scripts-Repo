@@ -30,6 +30,8 @@ public class TradeRoute
     public int routeDistance;
     public bool usesRoadConnection;
     public bool usesHarborConnection;
+    public bool usesAirportConnection;
+    public bool usesSpaceportConnection;
     public float raidChance;
     public bool wasRaidedThisTurn;
     public List<ResourceCost> resourcesPerTurn = new List<ResourceCost>();
@@ -37,6 +39,7 @@ public class TradeRoute
     // Constants for trade route configuration
     public const int BASE_CITY_TRADE_GOLD_PER_TURN = 6;
     public const int DEFAULT_MAX_CITY_TRADE_RANGE = 25;
+    public const int DEFAULT_MAX_AIRPORT_TRADE_RANGE = 80;
     public const float DEFAULT_RAID_CHANCE = 0.10f;
     private const float DISTANCE_GOLD_MULTIPLIER = 0.5f; // More gold for longer routes
     
@@ -76,6 +79,9 @@ public class TradeRoute
         
         if (isInterplanetaryRoute)
         {
+            if (!TradeManager.CanSpaceTradeBetweenPlanets(originPlanetIndex, destinationPlanetIndex))
+                return;
+
             // Interplanetary trade calculation - much more profitable but longer distance
             int planetDistance = Mathf.Abs(destinationPlanetIndex - originPlanetIndex);
             
@@ -95,10 +101,15 @@ public class TradeRoute
         {
             routeDistance = CalculateTileDistance(sourceCity, destinationCity);
             int maxRange = TradeManager.CurrentMaxCityTradeRange;
-            usesHarborConnection = sourceCity.HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && routeDistance <= maxRange;
-            usesRoadConnection = RoadConnectivityHelper.TryFindRoadPath(sourceCity, destinationCity, maxRange, out var roadPath);
+            bool samePlanet = sourceCity.planetIndex == destinationCity.planetIndex;
+            usesHarborConnection = samePlanet && sourceCity.HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && routeDistance <= maxRange;
+            usesAirportConnection = samePlanet && sourceCity.HasOperationalAirport() && destinationCity.HasOperationalAirport() && routeDistance <= TradeManager.CurrentMaxAirportTradeRange;
+            usesSpaceportConnection = TradeManager.CanSpacePortTradeBetween(sourceCity, destinationCity);
+            usesRoadConnection = samePlanet && RoadConnectivityHelper.TryFindRoadPath(sourceCity, destinationCity, maxRange, out var roadPath);
             if (usesRoadConnection && roadPath != null && roadPath.Count > 0)
                 routeDistance = roadPath.Count;
+            else if (usesSpaceportConnection && !samePlanet)
+                routeDistance = Mathf.Abs(destinationCity.planetIndex - sourceCity.planetIndex);
 
             goldPerTurn = TradeManager.CurrentBaseCityTradeGold
                           + Mathf.Max(0, destinationCity.level)
@@ -141,6 +152,10 @@ public class TradeRoute
 
         if (usesHarborConnection && !usesRoadConnection)
             chance += 0.02f; // piracy risk until future naval/security systems reduce it
+        if (usesAirportConnection && !usesRoadConnection)
+            chance = Mathf.Max(0f, chance - 0.03f);
+        if (usesSpaceportConnection)
+            chance = Mathf.Max(0f, chance - 0.05f);
 
         if (usesRoadConnection && RoadConnectivityHelper.TryFindRoadPath(sourceCity, destinationCity, TradeManager.CurrentMaxCityTradeRange, out var path))
             chance -= CalculateImprovementRaidReduction(path);
