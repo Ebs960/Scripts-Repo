@@ -51,6 +51,16 @@ public class ImprovementUpgradeData
     public int defenseAdd = 0;
     [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to any unit on this tile")]
     public float defensePct = 0f;
+    [Tooltip("Flat attack added to this improvement if it is a fort.")]
+    public int fortAttackAdd = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative attack bonus applied to this improvement if it is a fort.")]
+    public float fortAttackPct = 0f;
+    [Tooltip("Flat defense added to this improvement if it is a fort.")]
+    public int fortDefenseAdd = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative defense bonus applied to this improvement if it is a fort.")]
+    public float fortDefensePct = 0f;
+    [Tooltip("Additional max hit points added to this improvement if it is a fort.")]
+    public int additionalFortHitPoints = 0;
     [Tooltip("If true, this upgrade causes the tile to exert Zone of Control on adjacent tiles (like a watchtower or fortified position)")]
     public bool grantsZoneOfControl = false;
     [Tooltip("If true, enemy Zone of Control does not apply to this tile (acts as a safe corridor or fortified road)")]
@@ -58,6 +68,31 @@ public class ImprovementUpgradeData
 
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;
+
+    [Header("Upgrade Pathing")]
+    [Tooltip("Optional slot/category for upgrade choices, such as farm_tools, farm_labor, or farm_addons.")]
+    public string upgradeSlot = "";
+    [Tooltip("Optional path within a slot, such as sickles or plows. Different paths in the same exclusive group lock each other out.")]
+    public string upgradePath = "";
+    [Tooltip("Optional exclusive group. Built upgrades in the same group but a different path prevent this upgrade from being built.")]
+    public string exclusiveGroupId = "";
+    [Tooltip("Tier/order within a path. Higher tiers can supersede lower tiers without requiring them first.")]
+    public int pathTier = 0;
+    [Tooltip("If true, multiple upgrades can coexist in this slot.")]
+    public bool allowMultipleInSlot = false;
+    [Tooltip("Maximum upgrades allowed in this slot when allowMultipleInSlot is true. 0 or lower means unlimited.")]
+    public int maxUpgradesInSlot = 0;
+    [Tooltip("If true, building this upgrade removes lower-tier upgrades in the same slot/path from active persisted effects.")]
+    public bool supersedesLowerTiersInPath = true;
+    [Tooltip("Specific upgrade ids/names that prevent this upgrade from being built when already present.")]
+    public string[] blockedByUpgradeIds;
+    [Tooltip("Specific upgrade ids/names that this upgrade blocks after being built.")]
+    public string[] blocksUpgradeIds;
+
+    public string GetUpgradeKey()
+    {
+        return !string.IsNullOrEmpty(upgradeId) ? upgradeId : upgradeName;
+    }
 
     /// <summary>
     /// Check if this upgrade can be built by the given civilization
@@ -245,6 +280,22 @@ public class ImprovementData : ScriptableObject
 
     [Tooltip("If true, units from the builder's civ do not trigger this trap.")]
     public bool trapFriendlySafe = true;
+
+    [Header("Fort Settings")]
+    [Tooltip("If true, this improvement is a fortification that can attack nearby enemies and can be neutralized by damage.")]
+    public bool isFort = false;
+    [Tooltip("Base attack used when the fort fires at enemies.")]
+    public int fortAttack = 0;
+    [Tooltip("Base defense used when incoming damage is resolved against the fort.")]
+    public int fortDefense = 0;
+    [Tooltip("Maximum hit points before this fort is neutralized. Neutralized forts cannot fire or store/garrison units.")]
+    public int fortHitPoints = 100;
+    [Tooltip("Maximum tile range this fort can fire.")]
+    public int fortAttackRange = 1;
+    [Tooltip("If true, the fort automatically fires at enemy units that enter range.")]
+    public bool fortAutoFireOnEnemyEntry = true;
+    [Tooltip("How many times this fort can fire each turn.")]
+    public int fortAttacksPerTurn = 1;
 
     [Header("Zone of Control")]
     [Tooltip("If true, this improvement causes the tile to exert Zone of Control on all adjacent tiles (e.g., a fort or watchtower).")]
