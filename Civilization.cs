@@ -584,6 +584,10 @@ public class Civilization : MonoBehaviour
 
     public int GetCityCapBonusForSave() => cityCapFromBonuses;
 
+    public int ActiveVassalCount => SubjectManager.Instance != null
+        ? SubjectManager.Instance.GetSubjects(this).Count
+        : 0;
+
     public void RestoreProgressionState(
         List<TechData> restoredTechs,
         TechData restoredCurrentTech,
@@ -2296,6 +2300,9 @@ public class Civilization : MonoBehaviour
                 }
             }
 
+            if (ImprovementManager.Instance != null)
+                ImprovementManager.Instance.ResetFortAttacksForCiv(this);
+
             // 2) Process each city (production, growth, morale, surrender, label)
             foreach (var city in cities)
             {
@@ -2363,6 +2370,50 @@ public class Civilization : MonoBehaviour
             foreach (var kvp in buildingResourcesThisTurn)
             {
                 AddResource(kvp.Key, kvp.Value);
+            }
+        }
+
+        // 3.4) Process city trade routes. Routes can be raided; raided routes provide no
+        // gold or copied resources for this turn.
+        foreach (var city in cities)
+        {
+            if (city == null) continue;
+
+            foreach (var tradeRoute in city.GetActiveTradeRoutes())
+            {
+                if (tradeRoute == null || tradeRoute.isInterplanetaryRoute) continue;
+                if (tradeRoute.sourceCity == null || tradeRoute.sourceCity.owner != this) continue;
+
+                bool routeStillValid = tradeRoute.sourceCity.CanEstablishTradeRouteWith(
+                    tradeRoute.destinationCity,
+                    TradeManager.CurrentMaxCityTradeRange);
+
+                if (!routeStillValid)
+                    continue;
+
+                if (tradeRoute.RollRaidForTurn())
+                    continue;
+
+                gold += tradeRoute.goldPerTurn;
+                food += tradeRoute.foodPerTurn;
+                totalScienceThisTurn += tradeRoute.sciencePerTurn;
+                totalCultureThisTurn += tradeRoute.culturePerTurn;
+                policyPoints += tradeRoute.policyPointsPerTurn;
+                faith += tradeRoute.faithPerTurn;
+
+                totalGoldThisTurn += tradeRoute.goldPerTurn;
+                totalFoodThisTurn += tradeRoute.foodPerTurn;
+                totalPolicyThisTurn += tradeRoute.policyPointsPerTurn;
+                totalFaithThisTurn += tradeRoute.faithPerTurn;
+
+                if (tradeRoute.resourcesPerTurn != null)
+                {
+                    foreach (var resource in tradeRoute.resourcesPerTurn)
+                    {
+                        if (resource == null || resource.resource == null || resource.amount <= 0) continue;
+                        AddResource(resource.resource, resource.amount);
+                    }
+                }
             }
         }
 
@@ -3313,6 +3364,7 @@ public class Civilization : MonoBehaviour
         scienceModifier += gov.scienceModifier;
         cultureModifier += gov.cultureModifier;
         faithModifier += gov.faithModifier;
+        cityCapFromBonuses += gov.cityCapModifier;
     }
 
     // New method to remove bonuses from a government
@@ -3331,6 +3383,7 @@ public class Civilization : MonoBehaviour
         scienceModifier -= gov.scienceModifier;
         cultureModifier -= gov.cultureModifier;
         faithModifier -= gov.faithModifier;
+        cityCapFromBonuses -= gov.cityCapModifier;
     }
 
     // --- Diplomacy ---
@@ -3560,6 +3613,8 @@ public class Civilization : MonoBehaviour
     {
         if (route != null && route.isInterplanetaryRoute)
         {
+            if (!TradeManager.CanSpaceTradeBetweenPlanets(route.originPlanetIndex, route.destinationPlanetIndex))
+                return;
             interplanetaryTradeRoutes.Add(route);
         }
     }

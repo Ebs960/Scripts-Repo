@@ -14,6 +14,10 @@ public class GovernmentData : ScriptableObject
     public TechData[] requiredTechs; // Changed from TechnologyData to TechData
     public CultureData[] requiredCultures;
     public int requiredCityCount;
+    [Tooltip("If true, this government requires the civilization to have founded or adopted a state religion.")]
+    public bool requiresStateReligion;
+    [Tooltip("Minimum number of active subject/vassal contracts required to adopt this government.")]
+    public int requiredVassalCount;
 
     [Header("Bonuses & Restrictions")]
     // REMOVED: unlocksPolicies
@@ -30,6 +34,8 @@ public class GovernmentData : ScriptableObject
     public float scienceModifier;       // New
     public float cultureModifier;       // New
     public float faithModifier;         // New
+    [Tooltip("Temporary city capacity modifier while this government is active.")]
+    public int cityCapModifier;
 
     [Header("Tile Yield Bonuses")]
     [Tooltip("Per-tile yield bonuses granted by this government while active. Filters can target terrain, resources, improvements, and more.")]
@@ -72,4 +78,4 @@ public class GovernmentData : ScriptableObject
     [Tooltip("Opinion reactions pushed to governors when this government is adopted. " +
              "Use negative values to anger ambitious/discontented lords.")]
     public GovernorOpinionEffect[] governorOpinionEffects;
-} 
+}

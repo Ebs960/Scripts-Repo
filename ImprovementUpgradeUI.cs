@@ -271,12 +271,17 @@ public class ImprovementUpgradeUI : MonoBehaviour
         if (currentImprovement == null || currentImprovement.availableUpgrades == null)
             return;
 
+        var tileData = GetCurrentTileData();
+
         foreach (var upgrade in currentImprovement.availableUpgrades)
         {
             if (upgrade == null) continue;
 
             // Check if already built (if unique)
             if (upgrade.uniqueUpgrade && HasUpgrade(upgrade))
+                continue;
+
+            if (!ImprovementUpgradeRules.CanShowInUpgradeList(currentImprovement, tileData, upgrade))
                 continue;
 
             CreateUpgradeButton(upgrade);
@@ -402,8 +407,11 @@ public class ImprovementUpgradeUI : MonoBehaviour
     {
         if (upgrade == null || currentCiv == null || currentTileIndex < 0) return;
 
-        if (!upgrade.CanBuild(currentCiv))
+        string reason;
+        if (!ImprovementUpgradeRules.CanApplyUpgrade(currentImprovement, GetCurrentTileData(), upgrade, currentCiv, out reason))
         {
+            if (!string.IsNullOrEmpty(reason) && UIManager.Instance != null)
+                UIManager.Instance.ShowNotification(reason);
 return;
         }
 
@@ -425,14 +433,14 @@ return;
         var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         GameObject instanceObj = tileData?.improvementInstanceObject;
 
+        var impInstance = instanceObj != null ? instanceObj.GetComponent<ImprovementInstance>() : null;
+        if (instanceObj != null && impInstance == null)
+            impInstance = instanceObj.AddComponent<ImprovementInstance>();
+
         if (upgrade.makesVisualChange && instanceObj != null)
         {
-            var impInstance = instanceObj.GetComponent<ImprovementInstance>();
-            if (impInstance == null)
-                impInstance = instanceObj.AddComponent<ImprovementInstance>();
-
             // Use upgradeId if provided, otherwise fallback to upgradeName
-            string upgradeKey = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+            string upgradeKey = ImprovementUpgradeRules.GetKey(upgrade);
 
             // If already applied on this runtime instance, skip
             if (!impInstance.HasApplied(upgradeKey))
@@ -514,12 +522,18 @@ return;
                 impInstance.MarkApplied(upgradeKey);
             }
         }
-        else
+        else if (instanceObj == null)
         {
             // No runtime improvement instance available to apply visuals to.
             // We no longer support spawning standalone upgrade prefabs; log and return.
             Debug.LogWarning($"Upgrade {upgrade.upgradeName} requires an instantiated improvement on tile {currentTileIndex} to apply visuals. No action taken.");
             return;
+        }
+        else
+        {
+            string upgradeKey = ImprovementUpgradeRules.GetKey(upgrade);
+            if (!string.IsNullOrEmpty(upgradeKey) && !impInstance.HasApplied(upgradeKey))
+                impInstance.MarkApplied(upgradeKey);
         }
 
         // Store upgrade in tile data for persistence
@@ -528,7 +542,10 @@ return;
             if (tileData.builtUpgrades == null)
                 tileData.builtUpgrades = new System.Collections.Generic.List<string>();
 
-            string keyToPersist = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+            foreach (string supersededKey in ImprovementUpgradeRules.GetSupersededUpgradeKeys(currentImprovement, tileData, upgrade))
+                tileData.builtUpgrades.Remove(supersededKey);
+
+            string keyToPersist = ImprovementUpgradeRules.GetKey(upgrade);
             if (!tileData.builtUpgrades.Contains(keyToPersist))
                 tileData.builtUpgrades.Add(keyToPersist);
             Debug.Log($"Applied improvement upgrade '{keyToPersist}' to tile {currentTileIndex}");
@@ -590,6 +607,13 @@ return;
 
         string key = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
         return tileData.builtUpgrades.Contains(key);
+    }
+
+    private HexTileData GetCurrentTileData()
+    {
+        if (currentPlanetIndex < 0) currentPlanetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
+        return ts != null ? ts.GetTileData(currentTileIndex) : null;
     }
 
     private void ClearUpgradeButtons()
