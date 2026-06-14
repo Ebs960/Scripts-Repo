@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
+  m_Name: Chartered Companies
+  m_EditorClassIdentifier: Assembly-CSharp::PolicyData
+  policyName: Chartered Companies
+  icon: {fileID: 0}
+  description: Creates state-backed commercial companies.
+  policyPointCost: 40
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}
+  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
+  requiredCityCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0.15
+  scienceModifier: 0
+  cultureModifier: -0.05
+  faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  governorOpinionEffects: []

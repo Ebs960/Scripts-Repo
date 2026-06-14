@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
+  m_Name: Citizen Assembly
+  m_EditorClassIdentifier: Assembly-CSharp::PolicyData
+  policyName: Citizen Assembly
+  icon: {fileID: 0}
+  description: Gives citizens a formal role in public decisions.
+  policyPointCost: 30
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
+  requiredCityCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: -0.05
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.15
+  faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 0
+    layers: []
+    useSeasonFilter: 0
+    seasons: []
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 1
+    defenseAdd: 0
+    happinessAdd: 5
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
+
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  governorOpinionEffects: []

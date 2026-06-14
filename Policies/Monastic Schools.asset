@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
+  m_Name: Monastic Schools
+  m_EditorClassIdentifier: Assembly-CSharp::PolicyData
+  policyName: Monastic Schools
+  icon: {fileID: 0}
+  description: Turns monasteries and clergy into centers of learning.
+  policyPointCost: 30
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}
+  - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
+  - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
+  requiredCityCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: -0.05
+  scienceModifier: 0.05
+  cultureModifier: 0.05
+  faithModifier: 0.05
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  governorOpinionEffects: []
