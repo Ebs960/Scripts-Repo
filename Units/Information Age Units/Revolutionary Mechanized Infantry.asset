@@ -1,0 +1,155 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
+  m_Name: Revolutionary Mechanized Infantry
+  m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
+  unitName: Revolutionary Mechanized Infantry
+  unitType: 20
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.08
+  _iconDirect: {fileID: 0}
+  addressableAddress:
+  requiresAirport: 0
+  requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 2
+  spawnLayers: -1
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 0
+  airJumpRange: 0
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 12
+  airJumpAnimationDuration: 0.8
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
+  animalBehavior: 0
+  animalMovePoints: 1
+  canSpawnInOldWorld: 1
+  canSpawnInNewWorld: 1
+  canSpawnInNewWorldSecondary: 1
+  canSpawnOnStandardMaps: 1
+  canSpawnOnFrozenMaps: 1
+  canSpawnOnDemonicMaps: 1
+  canSpawnOnInfernalMaps: 1
+  travelCapability: 2
+  spaceAUPerTurn: 0
+  spaceSpeedMultiplier: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
+  orbitExitCost: 1
+  orbitMovementCost: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
+  orbitVisionBonus: 3
+  isTransport: 0
+  transportCapacity: 3
+  canTransportCombatUnits: 0
+  canBaseAircraft: 0
+  canBaseSpaceships: 0
+  canTravelToMoon: 0
+  canStoreMissiles: 0
+  maxMissileStorage: 0
+  allowedMissileTypes: []
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
+  canReconAirMission: 0
+  canInterceptAirMissions: 0
+  canProvideAntiAir: 0
+  airMissionRange: 0
+  interceptionRange: 3
+  antiAirRange: 2
+  interceptionChance: 0.45
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
+  spaceInterceptionRange: 3
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
+  requiresCoastalCity: 0
+  requiresHarbor: 0
+  canAttackAir: 0
+  canAttackSpace: 0
+  canAttackNavalSurface: 0
+  canAttackUnderwater: 0
+  canCounterAttack: 0
+  bonusesAgainstCategories: []
+  bonusesAgainstUnits: []
+  takesWeatherDamage: 1
+  immuneToMosquitoes: 0
+  immuneToLava: 0
+  attackPointsPerTurn: 1
+  chargeBonusPercent: 0
+  productionCost: 1450
+  goldCost: 2200
+  requiredResources: []
+  requiredTerrains:
+  buildableByWorker: 0
+  workerWorkCost: 40
+  baseAttack: 0
+  baseMeleeAttack: 95
+  baseRangedAttack: 90
+  baseCityAttack: 55
+  baseGroundAttack: 0
+  baseNavalAttack: 0
+  baseUnderwaterAttack: 0
+  baseAirAttack: 0
+  baseSpaceAttack: 0
+  baseMovePoints: 3
+  baseDefense: 60
+  baseHealth: 170
+  baseRange: 2
+  sightRange: 3
+  xpToNextLevel:
+  abilitiesByLevel: []
+  requiredTechs: []
+  requiredCultures: []
+  requiredPantheons: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  requiredPolicies: []
+  unitLimit: -1
+  limitCategory:
+  defaultWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  foodOnKill: 0
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  captureable: 0
+  captureHerdCount: 0
+  captureSpecies: 7
+  foodConsumptionPerTurn: 5
+  soldierCount: 4
+  formationType: 0
+  soldierVariants: []
+  formationSpacing: 0.5
+  civVisualOverrides: []

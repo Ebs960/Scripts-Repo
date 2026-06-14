@@ -27,7 +27,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eeaca3e7b29798144aae9d6b2c8c7e4b, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlockedGovernments: []
+  unlockedGovernments:
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
   unlockedReligions: []
   unlockedLeaders: []
   attackBonus: 0
