@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Storehouse
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: 
+  buildingName: Storehouse
   icon: {fileID: 0}
   description: 
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 0
-  goldCost: 0
+  productionCost: 70
+  goldCost: 140
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,15 +27,17 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 0
+  dismantleGoldRefund: 140
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
   isScienceBuilding: 0
   isFoodBuilding: 1
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 895ff95f650b6d148a1e1a7eb766e2cc, type: 2}
@@ -53,6 +55,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
