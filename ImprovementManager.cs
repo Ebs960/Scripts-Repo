@@ -1455,7 +1455,10 @@ public class ImprovementManager : MonoBehaviour
         GameObject instanceObj = td.improvementInstanceObject;
         var impInstance = instanceObj.GetComponent<ImprovementInstance>();
         if (impInstance == null) impInstance = instanceObj.AddComponent<ImprovementInstance>();
-        string upgradeKey = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+        string reason;
+        if (!ImprovementUpgradeRules.PassesPathRules(td.improvement, td, upgrade, out reason)) return false;
+
+        string upgradeKey = ImprovementUpgradeRules.GetKey(upgrade);
         if (impInstance.HasApplied(upgradeKey)) return false;
         if (td.builtUpgrades != null && td.builtUpgrades.Contains(upgradeKey)) return false;
 
@@ -1519,6 +1522,8 @@ public class ImprovementManager : MonoBehaviour
         }
 
         if (td.builtUpgrades == null) td.builtUpgrades = new System.Collections.Generic.List<string>();
+        foreach (string supersededKey in ImprovementUpgradeRules.GetSupersededUpgradeKeys(td.improvement, td, upgrade))
+            td.builtUpgrades.Remove(supersededKey);
         if (!td.builtUpgrades.Contains(upgradeKey)) td.builtUpgrades.Add(upgradeKey);
         td.RecomputeImprovementDefenseAggregates();
         if (planetIndex >= 0 && ts != null) ts.SetTileDataOnPlanet(tileIndex, td, planetIndex);

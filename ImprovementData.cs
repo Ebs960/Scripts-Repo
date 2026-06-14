@@ -69,6 +69,31 @@ public class ImprovementUpgradeData
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;
 
+    [Header("Upgrade Pathing")]
+    [Tooltip("Optional slot/category for upgrade choices, such as farm_tools, farm_labor, or farm_addons.")]
+    public string upgradeSlot = "";
+    [Tooltip("Optional path within a slot, such as sickles or plows. Different paths in the same exclusive group lock each other out.")]
+    public string upgradePath = "";
+    [Tooltip("Optional exclusive group. Built upgrades in the same group but a different path prevent this upgrade from being built.")]
+    public string exclusiveGroupId = "";
+    [Tooltip("Tier/order within a path. Higher tiers can supersede lower tiers without requiring them first.")]
+    public int pathTier = 0;
+    [Tooltip("If true, multiple upgrades can coexist in this slot.")]
+    public bool allowMultipleInSlot = false;
+    [Tooltip("Maximum upgrades allowed in this slot when allowMultipleInSlot is true. 0 or lower means unlimited.")]
+    public int maxUpgradesInSlot = 0;
+    [Tooltip("If true, building this upgrade removes lower-tier upgrades in the same slot/path from active persisted effects.")]
+    public bool supersedesLowerTiersInPath = true;
+    [Tooltip("Specific upgrade ids/names that prevent this upgrade from being built when already present.")]
+    public string[] blockedByUpgradeIds;
+    [Tooltip("Specific upgrade ids/names that this upgrade blocks after being built.")]
+    public string[] blocksUpgradeIds;
+
+    public string GetUpgradeKey()
+    {
+        return !string.IsNullOrEmpty(upgradeId) ? upgradeId : upgradeName;
+    }
+
     /// <summary>
     /// Check if this upgrade can be built by the given civilization
     /// </summary>
