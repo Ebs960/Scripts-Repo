@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Warehouse
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Warehouse
+  icon: {fileID: 0}
+  description: +6 Gold, +5 Production
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 0}
+  productionCost: 660
+  goldCost: 990
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 990
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 0
+  isScienceBuilding: 0
+  isFoodBuilding: 0
+  isProductionBuilding: 1
+  isGoldBuilding: 1
+  isCultureBuilding: 0
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 610c259f16d96634780a8da781b6c6fc, type: 2}
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 5
+  goldPerTurn: 6
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

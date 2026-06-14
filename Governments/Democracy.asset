@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
+  m_Name: Democracy
+  m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  governmentName: Democracy
+  leaderTitleSuffix: Archon
+  description: A classical citizen government favoring debate, culture, and science at the cost of wide imperial administration.
+  policyPointCost: 55
+  requiredTechs: []
+  requiredCultures: []
+  requiredCityCount: 0
+  requiresStateReligion: 0
+  requiredVassalCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0.25
+  cultureModifier: 0.25
+  faithModifier: 0
+  cityCapModifier: -2
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  councilSeatCount: 3
+  councilVetoDomains: 1
+  governorOpinionEffects: []

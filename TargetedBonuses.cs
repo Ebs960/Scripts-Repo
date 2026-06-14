@@ -45,6 +45,8 @@ public enum BuildingCategory
     Faith,
     Harbor,
     PerimeterWall,
+    Airport,
+    Spaceport,
 }
 
 [System.Serializable]

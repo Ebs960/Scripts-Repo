@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Tailor's Workshop
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Tailor's Workshop
+  icon: {fileID: 0}
+  description: +7 Production, +7 Gold, +2 Culture
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 11400000, guid: 51b74007d34d94b5604b8804ac36109f, type: 2}
+  productionCost: 870
+  goldCost: 1305
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 1305
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 0
+  isScienceBuilding: 0
+  isFoodBuilding: 0
+  isProductionBuilding: 1
+  isGoldBuilding: 1
+  isCultureBuilding: 1
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 764501556dca6a64f984909f6ac53cad, type: 2}
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 7
+  goldPerTurn: 7
+  sciencePerTurn: 0
+  culturePerTurn: 2
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
+  m_Name: Parliamentary Democracy
+  m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  governmentName: Parliamentary Democracy
+  leaderTitleSuffix: Prime Minister
+  description: An Enlightenment parliamentary system that advances science and culture while slightly unsettling traditional lords.
+  policyPointCost: 140
+  requiredTechs: []
+  requiredCultures: []
+  requiredCityCount: 0
+  requiresStateReligion: 0
+  requiredVassalCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0.2
+  cultureModifier: 0.2
+  faithModifier: 0
+  cityCapModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  councilSeatCount: 4
+  councilVetoDomains: 3
+  governorOpinionEffects:
+  - reason: Parliamentary Democracy Government
+    value: -10
+    durationTurns: -1
+    requiresAnyPersonality: []
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
