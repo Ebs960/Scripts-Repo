@@ -29,9 +29,9 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.15
-  scienceModifier: 0.1
-  cultureModifier: 0.1
+  goldModifier: 0.1
+  scienceModifier: 0.08
+  cultureModifier: 0.08
   faithModifier: 0
   cityCapModifier: 0
   tileYieldBonuses: []
