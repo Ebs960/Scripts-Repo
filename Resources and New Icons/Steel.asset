@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Steel
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
   resourceName: Steel
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: fbaa7deb97b2d7749b03852c6ff6b27a, type: 3}
   prefab: {fileID: 0}
-  category: 3
+  category: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
   allowedBiomes: 
@@ -25,7 +25,7 @@ MonoBehaviour:
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 0
+  productionPerTurn: 6
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
@@ -33,7 +33,7 @@ MonoBehaviour:
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 0
+    production: 6
     gold: 0
     science: 0
     culture: 0

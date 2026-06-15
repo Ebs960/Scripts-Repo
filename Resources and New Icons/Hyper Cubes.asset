@@ -10,36 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Camels
+  m_Name: Hyper Cubes
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Camels
-  icon: {fileID: 21300000, guid: 56d97be9eb9c49f4dbd3b935bca17299, type: 3}
+  resourceName: Hyper Cubes
+  icon: {fileID: 21300000, guid: 3f5384e0e29131547a61307c85e6b88c, type: 3}
   prefab: {fileID: 0}
-  category: 1
+  category: 3
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 0200000003000000
+  allowedBiomes: 
   allowedUnderwaterBiomes: 
   spawnChance: 0
   isOrbitalResource: 0
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
-  foodPerTurn: 0
-  productionPerTurn: 1
-  goldPerTurn: 1
-  sciencePerTurn: 0
-  culturePerTurn: 0
-  policyPointsPerTurn: 0
-  faithPerTurn: 0
+  foodPerTurn: 15
+  productionPerTurn: 15
+  goldPerTurn: 15
+  sciencePerTurn: 15
+  culturePerTurn: 15
+  policyPointsPerTurn: 15
+  faithPerTurn: 15
   surplusYieldPerResource:
-    food: 0
-    production: 0
-    gold: 0
-    science: 0
-    culture: 0
-    policyPoints: 0
-    faith: 0
-    applyProductionToAllCities: 0
+    food: 15
+    production: 15
+    gold: 15
+    science: 15
+    culture: 15
+    policyPoints: 15
+    faith: 15
+    applyProductionToAllCities: 1
   happinessPerSurplusResource: 0
   forageFood: 0
   forageGold: 0

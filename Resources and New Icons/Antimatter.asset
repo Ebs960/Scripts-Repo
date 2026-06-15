@@ -10,32 +10,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Camels
+  m_Name: Antimatter
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Camels
-  icon: {fileID: 21300000, guid: 56d97be9eb9c49f4dbd3b935bca17299, type: 3}
+  resourceName: Antimatter
+  icon: {fileID: 21300000, guid: e01fbe8b208c7fd4db5b1ec4856b85aa, type: 3}
   prefab: {fileID: 0}
-  category: 1
+  category: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 0200000003000000
+  allowedBiomes: 
   allowedUnderwaterBiomes: 
   spawnChance: 0
-  isOrbitalResource: 0
-  requiredTechsToReveal: []
+  isOrbitalResource: 1
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: 41cb5be43043ef34491282c5a8693db4, type: 2}
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 1
-  goldPerTurn: 1
-  sciencePerTurn: 0
+  productionPerTurn: 10
+  goldPerTurn: 5
+  sciencePerTurn: 10
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 0
-    gold: 0
-    science: 0
+    production: 10
+    gold: 5
+    science: 10
     culture: 0
     policyPoints: 0
     faith: 0

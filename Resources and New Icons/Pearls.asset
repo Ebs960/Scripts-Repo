@@ -10,23 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Camels
+  m_Name: Pearls
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Camels
-  icon: {fileID: 21300000, guid: 56d97be9eb9c49f4dbd3b935bca17299, type: 3}
+  resourceName: Pearls
+  icon: {fileID: 21300000, guid: 6c010ed415b909642b397020f8db9738, type: 3}
   prefab: {fileID: 0}
-  category: 1
+  category: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 0200000003000000
+  allowedBiomes: 010000000a000000
   allowedUnderwaterBiomes: 
   spawnChance: 0
   isOrbitalResource: 0
-  requiredTechsToReveal: []
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: e84b207bfb98de342a421ab91f3b1162, type: 2}
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 1
-  goldPerTurn: 1
+  productionPerTurn: 0
+  goldPerTurn: 4
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
@@ -34,13 +35,13 @@ MonoBehaviour:
   surplusYieldPerResource:
     food: 0
     production: 0
-    gold: 0
+    gold: 4
     science: 0
     culture: 0
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0
-  happinessPerSurplusResource: 0
+  happinessPerSurplusResource: 2
   forageFood: 0
   forageGold: 0
   forageScience: 0

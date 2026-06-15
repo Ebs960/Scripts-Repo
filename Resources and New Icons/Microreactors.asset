@@ -10,25 +10,37 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Stone Deposit
+  m_Name: Microreactors
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Stone Deposit
-  icon: {fileID: 21300000, guid: d0037666b8ea94d428d0194baac2b806, type: 3}
-  prefab: {fileID: 5870493028381212590, guid: 7641a40a8fed2df48bf3e0aaf81477f6, type: 3}
-  category: 3
-  selectSound: {fileID: 8300000, guid: 2af318bf70eb9fe469dda59f376d6499, type: 3}
+  resourceName: Microreactors
+  icon: {fileID: 21300000, guid: 8d2bc08807df6274ebc0c4399633cf05, type: 3}
+  prefab: {fileID: 0}
+  category: 2
+  selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 050000000600000008000000
+  allowedBiomes: 
   allowedUnderwaterBiomes: 
-  spawnChance: 0.03
+  spawnChance: 0
   isOrbitalResource: 0
+  requiredTechsToReveal: []
+  requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 3
-  goldPerTurn: 0
-  sciencePerTurn: 0
+  productionPerTurn: 5
+  goldPerTurn: 5
+  sciencePerTurn: 5
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 5
+    gold: 5
+    science: 5
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
   forageFood: 0
   forageGold: 0
   forageScience: 0

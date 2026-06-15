@@ -10,36 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Camels
+  m_Name: Hydrogen Cells
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Camels
-  icon: {fileID: 21300000, guid: 56d97be9eb9c49f4dbd3b935bca17299, type: 3}
+  resourceName: Hydrogen Cells
+  icon: {fileID: 21300000, guid: 9e8bcf6087d85ad40b23f5d1cf4b0066, type: 3}
   prefab: {fileID: 0}
-  category: 1
+  category: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 0200000003000000
+  allowedBiomes: 
   allowedUnderwaterBiomes: 
   spawnChance: 0
   isOrbitalResource: 0
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 1
-  goldPerTurn: 1
-  sciencePerTurn: 0
+  productionPerTurn: 5
+  goldPerTurn: 0
+  sciencePerTurn: 8
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 0
+    production: 5
     gold: 0
-    science: 0
+    science: 8
     culture: 0
     policyPoints: 0
     faith: 0
-    applyProductionToAllCities: 0
+    applyProductionToAllCities: 1
   happinessPerSurplusResource: 0
   forageFood: 0
   forageGold: 0
