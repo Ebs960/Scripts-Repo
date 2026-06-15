@@ -35,6 +35,37 @@ public enum UnitTerritoryRequirement
     Unowned,
 }
 
+
+[System.Serializable]
+public class UnitBuildingRequirement
+{
+    [Tooltip("Building that must be operational in the producing city before this unit can be trained.")]
+    public BuildingData building;
+
+    [Tooltip("If enabled, any operational building in this category satisfies the requirement.")]
+    public bool useBuildingCategoryFilter = false;
+    public BuildingCategory buildingCategory;
+}
+
+[System.Serializable]
+public class UnitProductionModifier
+{
+    [Header("Unit Filters")]
+    [Tooltip("If set, this modifier only applies when training this exact combat unit.")]
+    public CombatUnitData combatUnit;
+    [Tooltip("If set, this modifier only applies when training this exact worker unit.")]
+    public WorkerUnitData workerUnit;
+    [Tooltip("If enabled, this modifier applies to combat units in the selected category, such as Spearman or Artillery.")]
+    public bool useCombatCategoryFilter = false;
+    public CombatCategory combatCategory;
+
+    [Header("Production Speed")]
+    [Tooltip("Flat production points added each turn while training a matching unit in this city.")]
+    public int productionAdd;
+    [Tooltip("Percent faster unit training. 0.10 = +10%, 0.15 = +15%.")]
+    public float productionPct;
+}
+
 public enum BuildingCategory
 {
     Food,

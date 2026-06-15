@@ -208,6 +208,8 @@ public class WorkerUnitData : ScriptableObject
     public GovernmentData[] requiredGovernments;
     [Tooltip("All of these policies must be active to allow this worker (optional)")]
     public PolicyData[] requiredPolicies;
+    [Tooltip("All of these operational buildings must be present in the producing city to train this unit (optional). Use for requirements like Temple Guard needing a Grand Temple, or cannons needing a cannon maker.")]
+    public UnitBuildingRequirement[] requiredCityBuildings;
 
     [Header("Unit Limits")]
     [Tooltip("Maximum number of this unit type a civilization can have (-1 = unlimited)")]
