@@ -260,6 +260,59 @@ public class ResourceManager : MonoBehaviour
         StartCoroutine(SpawnResourcesOnPlanetCoroutine(planetGen, planetIndex));
     }
     
+
+    private static bool MaskContains(UnitLayerMask mask, TileLayer layer)
+    {
+        return (mask & (UnitLayerMask)(1 << (int)layer)) != 0;
+    }
+
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private static bool ContainsPlanetType(PlanetType[] planetTypes, PlanetType planetType)
+    {
+        if (planetTypes == null || planetTypes.Length == 0) return false;
+        foreach (var pt in planetTypes)
+            if (pt == planetType) return true;
+        return false;
+    }
+
+    private static TileLayer GetResourceSpawnLayer(ResourceData resource, HexTileData tileData)
+    {
+        if (resource != null && resource.isOrbitalResource) return TileLayer.Orbit;
+        if (resource != null && resource.allowedUnderwaterBiomes != null && resource.allowedUnderwaterBiomes.Length > 0
+            && tileData != null && tileData.IsWaterTile)
+            return TileLayer.Underwater;
+        return TileLayer.Surface;
+    }
+
+    private static bool MatchesResourceSpawnRules(ResourceData resource, HexTileData tileData, PlanetGenerator planetGen)
+    {
+        if (resource == null || tileData == null) return false;
+
+        PlanetType planetType = planetGen != null ? planetGen.planetType : PlanetType.Earth;
+        if (ContainsPlanetType(resource.blockedPlanetTypes, planetType)) return false;
+        if (resource.allowedPlanetTypes != null && resource.allowedPlanetTypes.Length > 0
+            && !ContainsPlanetType(resource.allowedPlanetTypes, planetType)) return false;
+
+        TileLayer spawnLayer = GetResourceSpawnLayer(resource, tileData);
+        if (!MaskContains(resource.allowedSpawnLayers, spawnLayer)) return false;
+
+        bool isFlatLand = tileData.isLand && !tileData.isHill && !tileData.isMountain;
+        if (!MatchesRequirement(resource.hillRequirement, tileData.isHill)) return false;
+        if (!MatchesRequirement(resource.mountainRequirement, tileData.isMountain)) return false;
+        if (!MatchesRequirement(resource.flatLandRequirement, isFlatLand)) return false;
+
+        return true;
+    }
+
     /// <summary>
     /// Spawn resources on a specific planet
     /// </summary>
@@ -283,6 +336,7 @@ public class ResourceManager : MonoBehaviour
             foreach (var rd in resourceTypes)
             {
                 if (rd == null) continue; // Safety check
+                if (!MatchesResourceSpawnRules(rd, tileData, planetGen)) continue;
 
                 // skip if biome not allowed (check surface biome AND underwater floor biome)
                 bool biomeAllowed = false;

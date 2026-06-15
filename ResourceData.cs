@@ -48,6 +48,18 @@ public class ResourceData : ScriptableObject
     public float selectPitchVariation = 0.1f;
 
     [Header("Spawn Rules")]
+    [Tooltip("If set, this resource can only spawn on these planet types. Leave empty to allow any planet.")]
+    public PlanetType[] allowedPlanetTypes;
+    [Tooltip("If set, this resource cannot spawn on these planet types even if allowedPlanetTypes is empty or includes them.")]
+    public PlanetType[] blockedPlanetTypes;
+    [Tooltip("Gameplay layers this resource is allowed to spawn on. All layers are allowed by default for backward compatibility.")]
+    public UnitLayerMask allowedSpawnLayers = UnitLayerMask.All;
+    [Tooltip("Controls whether this resource may spawn on hill tiles.")]
+    public BoolRequirement hillRequirement = BoolRequirement.Any;
+    [Tooltip("Controls whether this resource may spawn on mountain tiles.")]
+    public BoolRequirement mountainRequirement = BoolRequirement.Any;
+    [Tooltip("Controls whether this resource may spawn on flat land tiles (land that is not a hill or mountain).")]
+    public BoolRequirement flatLandRequirement = BoolRequirement.Any;
     [Tooltip("Which biomes this resource can appear on (surface biome check)")]
     public Biome[] allowedBiomes;
     [Tooltip("Which underwater floor biomes this resource can appear on (checked against HexTileData.underwaterBiome). Leave empty to skip underwater spawning.")]
