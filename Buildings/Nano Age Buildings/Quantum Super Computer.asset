@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Quantum Super Computer
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Quantum Super Computer
+  icon: {fileID: 0}
+  description: Quantum-scale computation center. +62 Science, +12 Production, +8 Policy.
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 11400000, guid: 19d7b17668c54344b6a2ad06c854adb8, type: 2}
+  productionCost: 6500
+  goldCost: 9750
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 9750
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
+  isScienceBuilding: 1
+  isFoodBuilding: 0
+  isProductionBuilding: 1
+  isGoldBuilding: 0
+  isCultureBuilding: 0
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 12
+  goldPerTurn: 0
+  sciencePerTurn: 62
+  culturePerTurn: 0
+  policyPointsPerTurn: 8
+  faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0.15
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0

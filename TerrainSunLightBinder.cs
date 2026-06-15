@@ -53,7 +53,7 @@ public class TerrainSunLightBinder : MonoBehaviour
 
     private static Light FindDirectionalLight()
     {
-        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+        Light[] lights = FindObjectsByType<Light>();
         for (int i = 0; i < lights.Length; i++)
         {
             Light light = lights[i];
