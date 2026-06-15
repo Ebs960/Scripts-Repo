@@ -109,6 +109,22 @@ public class BuildingData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("City Yield Modifiers")]
+    [Tooltip("Percent modifier applied to this city's food output while this building is operational (0.05 = +5%).")]
+    public float cityFoodModifier;
+    [Tooltip("Percent modifier applied to this city's production output while this building is operational (0.05 = +5%).")]
+    public float cityProductionModifier;
+    [Tooltip("Percent modifier applied to this city's gold output while this building is operational (0.05 = +5%).")]
+    public float cityGoldModifier;
+    [Tooltip("Percent modifier applied to this city's science output while this building is operational (0.05 = +5%).")]
+    public float cityScienceModifier;
+    [Tooltip("Percent modifier applied to this city's culture output while this building is operational (0.05 = +5%).")]
+    public float cityCultureModifier;
+    [Tooltip("Percent modifier applied to this city's policy point output while this building is operational (0.05 = +5%).")]
+    public float cityPolicyPointsModifier;
+    [Tooltip("Percent modifier applied to this city's faith output while this building is operational (0.05 = +5%).")]
+    public float cityFaithModifier;
+
     [Header("Tile Yield Bonuses")]
     [Tooltip("Per-tile yield bonuses applied to matching tiles worked by this city while this building is operational.")]
     public TileYieldBonus[] tileYieldBonuses;
@@ -133,6 +149,12 @@ public class BuildingData : ScriptableObject
     [Header("Other Effects")]
     public float defenseBonus;
     public float happinessBonus;
+    [Tooltip("Flat max order added to this city. Order reduces rebellion/crime pressure and trade route raid risk.")]
+    public float orderBonus;
+    [Tooltip("Percent max-happiness modifier for this city while this building is operational (0.15 = +15%).")]
+    public float cityHappinessModifier;
+    [Tooltip("Percent max-order modifier for this city while this building is operational (0.15 = +15%).")]
+    public float cityOrderModifier;
     [Tooltip("Per-unit stat bonuses granted by this building when present (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-worker stat bonuses granted by this building when present (e.g., healing speed).")]
