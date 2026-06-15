@@ -366,6 +366,45 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+
+    public bool IsResourceRevealedForCiv(ResourceData resource, Civilization civ)
+    {
+        if (resource == null) return true;
+        bool needsTech = resource.requiredTechsToReveal != null && resource.requiredTechsToReveal.Length > 0;
+        bool needsCulture = resource.requiredCulturesToReveal != null && resource.requiredCulturesToReveal.Length > 0;
+        if (!needsTech && !needsCulture) return true;
+
+        if (civ == null) return false;
+        if (needsTech && civ.researchedTechs != null)
+        {
+            foreach (var tech in resource.requiredTechsToReveal)
+                if (tech != null && civ.researchedTechs.Contains(tech))
+                    return true;
+        }
+        if (needsCulture && civ.researchedCultures != null)
+        {
+            foreach (var culture in resource.requiredCulturesToReveal)
+                if (culture != null && civ.researchedCultures.Contains(culture))
+                    return true;
+        }
+        return false;
+    }
+
+    private Civilization GetLocalViewingCiv()
+    {
+        return FindObjectsByType<Civilization>().FirstOrDefault(c => c != null && c.isPlayerControlled);
+    }
+
+    public void RefreshResourceVisibilityForCiv(Civilization civ = null)
+    {
+        if (civ == null) civ = GetLocalViewingCiv();
+        foreach (var inst in spawnedResources)
+        {
+            if (inst == null || inst.gameObject == null) continue;
+            inst.gameObject.SetActive(IsResourceRevealedForCiv(inst.data, civ));
+        }
+    }
+
     /// <summary>
     /// At the start of each civ's turn, grant per-turn yields for resources within its territory.
     /// </summary>
@@ -558,6 +597,7 @@ public class ResourceManager : MonoBehaviour
             inst.planetIndex = planetIndex;
             spawnedResources.Add(inst);
             _tileLookup[ResKey(planetIndex, tileIndex)] = inst;
+            go.SetActive(IsResourceRevealedForCiv(newResource, GetLocalViewingCiv()));
 
             // Register resource instance with HexMapChunkManager so it moves during wrap teleport
             try

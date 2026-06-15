@@ -11,6 +11,22 @@ public enum ResourceCategory
     Equipment
 }
 
+[System.Serializable]
+public class ResourceSurplusYield
+{
+    [Tooltip("Yield granted per surplus unit of this resource each turn.")]
+    public int food;
+    public int production;
+    public int gold;
+    public int science;
+    public int culture;
+    public int policyPoints;
+    public int faith;
+
+    [Tooltip("If true, production is added to every city production queue. If false, the production value is ignored until another production target is implemented.")]
+    public bool applyProductionToAllCities;
+}
+
 /// <summary>
 /// Defines a resource type: where it can spawn, what it looks like, and what yields it provides.
 /// </summary>
@@ -41,6 +57,12 @@ public class ResourceData : ScriptableObject
     [Header("Orbital")]
     [Tooltip("If true, this resource spawns in the orbit layer above a tile instead of on the surface. Uses allowedBiomes to check the surface biome below.")]
     public bool isOrbitalResource = false;
+    [Header("Map Visibility Requirements")]
+    [Tooltip("If set, this resource is hidden on the map until the viewing civilization has at least one of these technologies.")]
+    public TechData[] requiredTechsToReveal;
+    [Tooltip("If set, this resource is hidden on the map until the viewing civilization has at least one of these cultures.")]
+    public CultureData[] requiredCulturesToReveal;
+
     [Header("Per-Turn Yields (per owned node)")]
     public int foodPerTurn;
     public int productionPerTurn;
@@ -49,6 +71,11 @@ public class ResourceData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Surplus Bonuses (per unused produced resource)")]
+    public ResourceSurplusYield surplusYieldPerResource;
+    [Tooltip("Maximum happiness/morale added to each city per surplus unit of this resource.")]
+    public int happinessPerSurplusResource;
 
     [Header("Forage (one-off) Yields")]
     public int forageFood;

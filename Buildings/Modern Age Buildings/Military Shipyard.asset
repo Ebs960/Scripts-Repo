@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
+  m_Name: Military Shipyard
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingName: Military Shipyard
+  icon: {fileID: 0}
+  description: Heavy naval construction yard. +22 Production, +4 Science, provides Harbor.
+  buildingPrefab: {fileID: 0}
+  civVisualOverrides: []
+  replacesBuilding: {fileID: 11400000, guid: 8856b7f3dd080f8d923ff37ca97527a8, type: 2}
+  productionCost: 3400
+  goldCost: 5100
+  buildGoldCost: 0
+  buildResourceCosts: []
+  requiresAdjacentTile: 0
+  requiredResources: []
+  requiredTerrains:
+  allowedBiomes:
+  canBeDismantled: 1
+  dismantleGoldRefund: 5100
+  dismantleResourceRefunds: []
+  equipmentProduction: []
+  projectileProduction: []
+  providesHarbor: 1
+  providesAirport: 0
+  providesSpaceport: 0
+  isScienceBuilding: 1
+  isFoodBuilding: 0
+  isProductionBuilding: 1
+  isGoldBuilding: 0
+  isCultureBuilding: 0
+  isFaithBuilding: 0
+  isPerimeterWall: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 9535f89c8c04b1143847742c73f4efec, type: 2}
+  requiredCultures: []
+  requiredPopulation: 0
+  requiredGovernments: []
+  requiredPolicies: []
+  buildingLimit: -1
+  limitCategory:
+  perCityLimit: 1
+  foodPerTurn: 0
+  productionPerTurn: 22
+  goldPerTurn: 0
+  sciencePerTurn: 4
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  resourceProductionPerTurn: []
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  defenseBonus: 0
+  happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  buildableByHerd: 0
+  herdStorageBonus: 0
