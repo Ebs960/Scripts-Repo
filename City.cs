@@ -79,6 +79,11 @@ public class City : MonoBehaviour
     public int moraleRating = 100;
     public int maxMorale = 100;
     public int moraleDropPerTurn = 1;
+    [Tooltip("Base maximum city order before building bonuses. Order reduces rebellion/crime and trade route raid risk.")]
+    public int baseMaxOrder = 100;
+    public int orderRating = 100;
+    public int maxOrder = 100;
+    public int orderDropPerTurn = 1;
     [Tooltip("Last computed per-turn morale loss caused by citizens following non-state religions.")]
     public int cachedNonStateReligionUnhappiness = 0;
 
@@ -99,6 +104,7 @@ public class City : MonoBehaviour
 
     [Header("Production")]
     public int productionPerTurn = 10;
+    private int resourceSurplusProductionBonusThisTurn;
     public List<ProdEntry> productionQueue = new List<ProdEntry>();
 
     [Header("Built Content")]
@@ -349,6 +355,7 @@ public class City : MonoBehaviour
         RefreshCityDefenseAndHappinessBonuses();
         defenseRating = maxDefense;
         moraleRating = maxMorale;
+        orderRating = maxOrder;
 
         if (savedBuildings == null)
             return;
@@ -555,12 +562,13 @@ if (UIManager.Instance != null)
         // 5) Morale decay
         cachedNonStateReligionUnhappiness = CalculateNonStateReligionUnhappinessPerTurn();
         moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn - cachedNonStateReligionUnhappiness);
+        orderRating = Mathf.Max(0, orderRating - orderDropPerTurn);
         // 5b) Apply disease morale/loyalty/population effects
         ApplyDiseaseTurnEffects();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
         // Surrender is handled in TakeDamage() when a unit attacks
         // If defense reaches 0 from other means, check for units on tile
-        if (defenseRating <= 0 || moraleRating <= 0 || loyalty <= 0)
+        if (defenseRating <= 0 || moraleRating <= 0 || orderRating <= 0 || loyalty <= 0)
             HandleSurrender(lastAttackingCiv); // Use last attacking civ, or find from units on tile
         // 7) Update label
         UpdateLabel();
@@ -846,13 +854,19 @@ if (UIManager.Instance != null)
         if (isCapital)
             governorBonus += capitalLoyaltyBonus;
 
-        loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus;
+        float happinessRatio = maxMorale > 0 ? moraleRating / (float)maxMorale : 0f;
+        float orderRatio = maxOrder > 0 ? orderRating / (float)maxOrder : 0f;
+        float happinessLoyaltyModifier = (happinessRatio - 0.5f) * 20f;
+        float orderLoyaltyModifier = (orderRatio - 0.5f) * 30f;
+
+        loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus + happinessLoyaltyModifier + orderLoyaltyModifier;
 
         // Clamp 0–100
         loyalty = Mathf.Clamp(loyalty, 0f, 100f);
 
-        // Check for revolt
-        if (loyalty <= revoltThreshold)
+        // Check for revolt. Low order and low happiness increase random rebellion risk before total loyalty collapse.
+        float rebellionChance = GetRebellionChance();
+        if (loyalty <= revoltThreshold || UnityEngine.Random.value < rebellionChance)
             TriggerRevolt();
     }
 
@@ -920,6 +934,7 @@ if (UIManager.Instance != null)
 
         // 6) Reset loyalty so rebels stabilize somewhat
         loyalty = 50f;
+        orderRating = Mathf.Max(50, orderRating);
 
         // TODO: spawn rebel units, trigger UI popup, play SFX/VFX, etc.
     }
@@ -983,7 +998,8 @@ if (UIManager.Instance != null)
         var prodEntry = productionQueue[0];
         
         // Apply production points from this turn
-    prodEntry.remainingPts -= GetProductionPerTurn();
+        prodEntry.remainingPts -= GetProductionPerTurn();
+        resourceSurplusProductionBonusThisTurn = 0;
         
         // Check if completed
         if (prodEntry.remainingPts <= 0)
@@ -1930,6 +1946,8 @@ Destroy(oldTuple.instance);
         public float defensePct;
         public int happinessAdd;
         public float happinessPct;
+        public int orderAdd;
+        public float orderPct;
     }
 
     private void EnsureBuildingUpkeepState()
@@ -2242,6 +2260,9 @@ Destroy(oldTuple.instance);
 
         agg.defenseAdd += Mathf.RoundToInt(data.defenseBonus);
         agg.happinessAdd += Mathf.RoundToInt(data.happinessBonus);
+        agg.orderAdd += Mathf.RoundToInt(data.orderBonus);
+        agg.happinessPct += data.cityHappinessModifier;
+        agg.orderPct += data.cityOrderModifier;
 
         void Scan(BuildingYieldBonus[] bonuses)
         {
@@ -2350,6 +2371,7 @@ Destroy(oldTuple.instance);
     private CityStatAgg AggregateAllCityStatBonuses()
     {
         CityStatAgg agg = AggregateCityStatBonuses();
+        agg.happinessAdd += owner != null ? owner.GetResourceSurplusHappinessPerCity() : 0;
         foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
             if (data == null) continue;
@@ -2358,6 +2380,8 @@ Destroy(oldTuple.instance);
             agg.defensePct += buildingAgg.defensePct * upkeepMultiplier;
             agg.happinessAdd += Mathf.RoundToInt(buildingAgg.happinessAdd * upkeepMultiplier);
             agg.happinessPct += buildingAgg.happinessPct * upkeepMultiplier;
+            agg.orderAdd += Mathf.RoundToInt(buildingAgg.orderAdd * upkeepMultiplier);
+            agg.orderPct += buildingAgg.orderPct * upkeepMultiplier;
         }
         return agg;
     }
@@ -2366,19 +2390,24 @@ Destroy(oldTuple.instance);
     {
         int oldMaxDefense = Mathf.Max(1, maxDefense);
         int oldMaxMorale = Mathf.Max(1, maxMorale);
+        int oldMaxOrder = Mathf.Max(1, maxOrder);
         CityStatAgg agg = AggregateAllCityStatBonuses();
 
         int newMaxDefense = Mathf.Max(1, Mathf.RoundToInt((baseMaxDefense + agg.defenseAdd) * (1f + agg.defensePct)));
         int newMaxMorale = Mathf.Max(1, Mathf.RoundToInt((baseMaxHappiness + agg.happinessAdd) * (1f + agg.happinessPct)));
+        int newMaxOrder = Mathf.Max(1, Mathf.RoundToInt((baseMaxOrder + agg.orderAdd) * (1f + agg.orderPct)));
 
         bool defenseWasFull = defenseRating >= oldMaxDefense;
         bool moraleWasFull = moraleRating >= oldMaxMorale;
+        bool orderWasFull = orderRating >= oldMaxOrder;
 
         maxDefense = newMaxDefense;
         maxMorale = newMaxMorale;
+        maxOrder = newMaxOrder;
 
         defenseRating = defenseWasFull ? maxDefense : Mathf.Clamp(defenseRating, 0, maxDefense);
         moraleRating = moraleWasFull ? maxMorale : Mathf.Clamp(moraleRating, 0, maxMorale);
+        orderRating = orderWasFull ? maxOrder : Mathf.Clamp(orderRating, 0, maxOrder);
     }
 
     private CityYieldAgg AggregateBuildingYieldBonuses(BuildingData data, BuildingYieldType kind)
@@ -2614,13 +2643,73 @@ Destroy(oldTuple.instance);
             Scan(belief.cityYieldBonuses);
         }
 
+        foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+        {
+            if (data == null) continue;
+            agg.pct += GetDirectCityYieldModifier(data, kind) * upkeepMultiplier;
+        }
+
         return agg;
+    }
+
+    private float GetDirectCityYieldModifier(BuildingData data, BuildingYieldType kind)
+    {
+        if (data == null) return 0f;
+        return kind switch
+        {
+            BuildingYieldType.Food => data.cityFoodModifier,
+            BuildingYieldType.Production => data.cityProductionModifier,
+            BuildingYieldType.Gold => data.cityGoldModifier,
+            BuildingYieldType.Science => data.cityScienceModifier,
+            BuildingYieldType.Culture => data.cityCultureModifier,
+            BuildingYieldType.Faith => data.cityFaithModifier,
+            BuildingYieldType.PolicyPoints => data.cityPolicyPointsModifier,
+            _ => 0f,
+        };
+    }
+
+    private float GetHighHappinessYieldModifier(BuildingYieldType kind)
+    {
+        if (kind != BuildingYieldType.Science && kind != BuildingYieldType.Culture) return 0f;
+        if (maxMorale <= 0) return 0f;
+        float ratio = moraleRating / (float)maxMorale;
+        return ratio >= 0.90f ? 0.10f : ratio >= 0.75f ? 0.05f : 0f;
+    }
+
+    private float GetHighOrderYieldModifier(BuildingYieldType kind)
+    {
+        if (kind != BuildingYieldType.Production && kind != BuildingYieldType.Faith) return 0f;
+        if (maxOrder <= 0) return 0f;
+        float ratio = orderRating / (float)maxOrder;
+        return ratio >= 0.90f ? 0.10f : ratio >= 0.75f ? 0.05f : 0f;
+    }
+
+    public float GetOrderRaidReduction()
+    {
+        if (maxOrder <= 0) return 0f;
+        float ratio = orderRating / (float)maxOrder;
+        if (ratio >= 0.90f) return 0.08f;
+        if (ratio >= 0.75f) return 0.04f;
+        if (ratio <= 0.25f) return -0.05f;
+        return 0f;
+    }
+
+    public float GetRebellionChance()
+    {
+        float happinessRatio = maxMorale > 0 ? moraleRating / (float)maxMorale : 0f;
+        float orderRatio = maxOrder > 0 ? orderRating / (float)maxOrder : 0f;
+        float chance = 0f;
+        if (happinessRatio < 0.50f) chance += (0.50f - happinessRatio) * 0.04f;
+        if (orderRatio < 0.50f) chance += (0.50f - orderRatio) * 0.06f;
+        if (loyalty < 50f) chance += (50f - loyalty) * 0.001f;
+        return Mathf.Clamp(chance, 0f, 0.15f);
     }
 
     private int ApplyCityScopedYieldBonuses(int value, BuildingYieldType kind)
     {
         var agg = AggregateCityScopedYieldBonuses(kind);
-        return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct));
+        float statusModifier = GetHighHappinessYieldModifier(kind) + GetHighOrderYieldModifier(kind);
+        return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct + statusModifier));
     }
 
     int SumBuiltWithBonuses(BuildingYieldType kind)
@@ -2666,9 +2755,14 @@ Destroy(oldTuple.instance);
         return ApplyCityScopedYieldBonuses(baseGold, BuildingYieldType.Gold);
     }
 
+    public void AddResourceSurplusProduction(int amount)
+    {
+        resourceSurplusProductionBonusThisTurn += Mathf.Max(0, amount);
+    }
+
     public int GetProductionPerTurn()
     {
-        int baseProd = SumYield(t => t.production) + SumBuiltWithBonuses(BuildingYieldType.Production);
+        int baseProd = SumYield(t => t.production) + SumBuiltWithBonuses(BuildingYieldType.Production) + resourceSurplusProductionBonusThisTurn;
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
@@ -2905,7 +2999,7 @@ Destroy(oldTuple.instance);
         defenseRating = Mathf.Max(0, defenseRating - damage);
         
         // Check if city should surrender
-        if (defenseRating <= 0 || moraleRating <= 0 || loyalty <= 0)
+        if (defenseRating <= 0 || moraleRating <= 0 || orderRating <= 0 || loyalty <= 0)
         {
             HandleSurrender(lastAttackingCiv);
         }
@@ -3003,7 +3097,8 @@ Destroy(oldTuple.instance);
             }
             
             // 5) Reset loyalty and morale
-            loyalty = 50f; // Start with moderate loyalty to new owner
+            loyalty = 50f;
+        orderRating = Mathf.Max(50, orderRating); // Start with moderate loyalty to new owner
             moraleRating = Mathf.Max(50, moraleRating); // Boost morale slightly after surrender
             
             // 6) Update diplomatic relations (city capture doesn't automatically end war)

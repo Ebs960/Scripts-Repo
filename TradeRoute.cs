@@ -164,6 +164,8 @@ public class TradeRoute
         chance -= CalculateOwnerRaidReduction(sourceCity?.owner);
         chance -= CalculateCitySecurityRaidReduction(sourceCity);
         chance -= CalculateCitySecurityRaidReduction(destinationCity);
+        chance -= sourceCity != null ? sourceCity.GetOrderRaidReduction() : 0f;
+        chance -= destinationCity != null ? destinationCity.GetOrderRaidReduction() : 0f;
 
         return Mathf.Clamp(chance, 0f, 0.40f);
     }

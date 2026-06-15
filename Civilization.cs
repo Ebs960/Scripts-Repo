@@ -306,7 +306,82 @@ public class Civilization : MonoBehaviour
     
     [Header("Resources")]
     public Dictionary<ResourceData, int> resourceStockpile = new Dictionary<ResourceData, int>();
+    private readonly Dictionary<ResourceData, int> resourceSurplusByType = new Dictionary<ResourceData, int>();
     
+
+    public int GetResourceSurplusHappinessPerCity()
+    {
+        int total = 0;
+        foreach (var kvp in resourceSurplusByType)
+        {
+            if (kvp.Key == null || kvp.Value <= 0) continue;
+            total += kvp.Key.happinessPerSurplusResource * kvp.Value;
+        }
+        return total;
+    }
+
+    private void AddResourceDemand(Dictionary<ResourceData, int> totals, ResourceCost[] costs)
+    {
+        if (totals == null || costs == null) return;
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+            totals[cost.resource] = totals.GetValueOrDefault(cost.resource) + cost.amount;
+        }
+    }
+
+    private Dictionary<ResourceData, int> CalculateResourceUpkeepDemandPerTurn()
+    {
+        var totals = new Dictionary<ResourceData, int>();
+        if (cities != null)
+            foreach (var city in cities)
+                if (city != null)
+                    foreach (var (data, _, _) in city.EnumerateOperationalBuildings())
+                        AddResourceDemand(totals, data?.resourceUpkeepPerTurn);
+        if (combatUnits != null)
+            foreach (var unit in combatUnits)
+                AddResourceDemand(totals, unit?.data?.resourceUpkeepPerTurn);
+        if (workerUnits != null)
+            foreach (var unit in workerUnits)
+                AddResourceDemand(totals, unit?.data?.resourceUpkeepPerTurn);
+        return totals;
+    }
+
+    private void ApplyResourceSurplusBonuses(Dictionary<ResourceData, int> production, Dictionary<ResourceData, int> demand)
+    {
+        resourceSurplusByType.Clear();
+        if (production == null) return;
+        foreach (var kvp in production)
+        {
+            var resource = kvp.Key;
+            if (resource == null) continue;
+            int surplus = Mathf.Max(0, kvp.Value - (demand != null ? demand.GetValueOrDefault(resource) : 0));
+            if (surplus <= 0) continue;
+
+            resourceSurplusByType[resource] = surplus;
+            var y = resource.surplusYieldPerResource;
+            if (y == null) continue;
+
+            food += y.food * surplus;
+            gold += y.gold * surplus;
+            science += y.science * surplus;
+            culture += y.culture * surplus;
+            policyPoints += y.policyPoints * surplus;
+            faith += y.faith * surplus;
+
+            int productionBonus = y.production * surplus;
+            if (productionBonus != 0)
+            {
+                if (y.applyProductionToAllCities && cities != null)
+                {
+                    foreach (var city in cities)
+                        city?.AddResourceSurplusProduction(productionBonus);
+                }
+            }
+        }
+        RefreshCityDefenseAndHappinessBonuses();
+    }
+
     [Header("Equipment Inventory")]
     // Track equipment availability - each civ has stockpiles of equipment
     public Dictionary<EquipmentData, int> equipmentInventory = new Dictionary<EquipmentData, int>();
@@ -2277,6 +2352,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void BeginTurn(int round)
     {
+        var resourceDemandThisTurn = CalculateResourceUpkeepDemandPerTurn();
         try
         {
             turnCount = round;
@@ -2333,6 +2409,9 @@ public class Civilization : MonoBehaviour
         int totalFoodThisTurn = 0;
         int totalPolicyThisTurn = 0;
         int totalFaithThisTurn = 0;
+        var producedResourcesThisTurn = ResourceManager.Instance != null
+            ? ResourceManager.Instance.GetInventory(this)
+            : new Dictionary<ResourceData, int>();
         var buildingResourcesThisTurn = new Dictionary<ResourceData, int>();
         var globalBonuses = CalculateTotalBonuses(researchedTechs, researchedCultures);
 
@@ -2370,8 +2449,11 @@ public class Civilization : MonoBehaviour
             foreach (var kvp in buildingResourcesThisTurn)
             {
                 AddResource(kvp.Key, kvp.Value);
+                producedResourcesThisTurn[kvp.Key] = producedResourcesThisTurn.GetValueOrDefault(kvp.Key) + kvp.Value;
             }
         }
+
+        ApplyResourceSurplusBonuses(producedResourcesThisTurn, resourceDemandThisTurn);
 
         // 3.4) Process city trade routes. Routes can be raided; raided routes provide no
         // gold or copied resources for this turn.
@@ -4121,6 +4203,7 @@ return true;
         ApplyAllWorkersWorkPointsToExisting();
 
         RefreshVisionFromChangedSightBonuses();
+        ResourceManager.Instance?.RefreshResourceVisibilityForCiv(this);
 
         RecalculateCachedYieldRates();
 
@@ -4268,6 +4351,7 @@ return true;
         ApplyAllWorkersWorkPointsToExisting();
 
         RefreshVisionFromChangedSightBonuses();
+        ResourceManager.Instance?.RefreshResourceVisibilityForCiv(this);
 
         RecalculateCachedYieldRates();
 
