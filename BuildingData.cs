@@ -157,6 +157,8 @@ public class BuildingData : ScriptableObject
     public float cityOrderModifier;
     [Tooltip("Per-unit stat bonuses granted by this building when present (e.g., healing speed).")]
     public UnitStatBonus[] unitBonuses;
+    [Tooltip("Unit-training production modifiers granted by this building. Can affect all units, one combat/worker unit, or a combat category such as Spearman.")]
+    public UnitProductionModifier[] unitProductionModifiers;
     [Tooltip("Per-worker stat bonuses granted by this building when present (e.g., healing speed).")]
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Disease modifiers granted by this building when present.")]

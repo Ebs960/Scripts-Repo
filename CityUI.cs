@@ -452,7 +452,7 @@ if (currentCity == null)
         var allWorkerUnits = ResourceCache.GetAllWorkerUnits();
         foreach (var worker in allWorkerUnits)
         {
-            if (worker == null || !worker.AreRequirementsMet(ownerCiv)) continue;
+            if (worker == null || !worker.AreRequirementsMet(ownerCiv) || !currentCity.CanTrainWorkerInThisCity(worker)) continue;
             if (!availableWorkerUnits.Contains(worker))
             {
                 availableWorkerUnits.Add(worker);

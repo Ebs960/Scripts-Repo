@@ -288,7 +288,7 @@ public class City : MonoBehaviour
                 continue;
 
             var resolvedUnit = ResolveCombatUnitForProduction(baseUnit);
-            if (resolvedUnit == null || seen.Contains(resolvedUnit) || !owner.IsCombatUnitAvailable(resolvedUnit))
+            if (resolvedUnit == null || seen.Contains(resolvedUnit) || !owner.IsCombatUnitAvailable(resolvedUnit) || !CanTrainUnitInThisCity(resolvedUnit))
                 continue;
 
             seen.Add(resolvedUnit);
@@ -997,8 +997,9 @@ if (UIManager.Instance != null)
         // Get the current item in production (first in queue)
         var prodEntry = productionQueue[0];
         
-        // Apply production points from this turn
-        prodEntry.remainingPts -= GetProductionPerTurn();
+        // Apply production points from this turn. Unit entries can receive separate
+        // training-speed modifiers from techs, cultures, and local buildings.
+        prodEntry.remainingPts -= GetProductionPerTurn(prodEntry);
         resourceSurplusProductionBonusThisTurn = 0;
         
         // Check if completed
@@ -1056,6 +1057,42 @@ if (UIManager.Instance != null)
         return false;
     }
 
+
+    public bool CanTrainUnitInThisCity(CombatUnitData unitData)
+    {
+        if (unitData == null) return false;
+        if (unitData.requiresCoastalCity && !ControlsCoast()) return false;
+        if (unitData.requiresHarbor && !HasHarbor()) return false;
+        return HasRequiredUnitBuildings(unitData.requiredCityBuildings);
+    }
+
+    public bool CanTrainWorkerInThisCity(WorkerUnitData workerData)
+    {
+        if (workerData == null) return false;
+        if (workerData.requiresCoastalCity && !ControlsCoast()) return false;
+        if (workerData.requiresHarbor && !HasHarbor()) return false;
+        return HasRequiredUnitBuildings(workerData.requiredCityBuildings);
+    }
+
+    private bool HasRequiredUnitBuildings(UnitBuildingRequirement[] requirements)
+    {
+        if (requirements == null || requirements.Length == 0) return true;
+
+        foreach (var requirement in requirements)
+        {
+            if (requirement == null) continue;
+            bool satisfied = HasOperationalBuilding(building =>
+                building != null &&
+                ((requirement.building != null && building == requirement.building) ||
+                 (requirement.useBuildingCategoryFilter && MatchesBuildingCategory(building, requirement.buildingCategory))));
+            if (!satisfied) return false;
+        }
+
+        return true;
+    }
+
+
+
     /// <summary>
     /// Queue production by production points.
     /// </summary>
@@ -1068,9 +1105,10 @@ if (UIManager.Instance != null)
             bool requiresCoast = resolvedUnit.requiresCoastalCity;
             bool requiresHarbor = resolvedUnit.requiresHarbor;
             
-            // Check naval requirements
+            // Check city-specific requirements
             if (requiresCoast && !ControlsCoast()) return false;
             if (requiresHarbor && !HasHarbor()) return false;
+            if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
             
             if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(resolvedUnit, resolvedUnit.productionCost, resolvedUnit.goldCost,
@@ -1083,9 +1121,10 @@ if (UIManager.Instance != null)
             bool requiresCoast = w.requiresCoastalCity;
             bool requiresHarbor = w.requiresHarbor;
             
-            // Check naval requirements
+            // Check city-specific requirements
             if (requiresCoast && !ControlsCoast()) return false;
             if (requiresHarbor && !HasHarbor()) return false;
+            if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
             
             if (!CanProduce(w.requiredResources, w.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(w, w.productionCost, w.goldCost,
@@ -1345,6 +1384,7 @@ if (UIManager.Instance != null)
             reqTerr = resolvedUnit.requiredTerrains;
             requiresCoast = resolvedUnit.requiresCoastalCity;
             requiresHarbor = resolvedUnit.requiresHarbor;
+            if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
             d = resolvedUnit;
         }
         else if (d is WorkerUnitData w) {
@@ -1353,6 +1393,7 @@ if (UIManager.Instance != null)
             reqTerr = w.requiredTerrains;
             requiresCoast = w.requiresCoastalCity;
             requiresHarbor = w.requiresHarbor;
+            if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
         }
         else if (d is BuildingData b) {
             cost = b.goldCost;
@@ -2769,6 +2810,66 @@ Destroy(oldTuple.instance);
             baseProd += bonuses.production;
         }
         return ApplyCityScopedYieldBonuses(baseProd, BuildingYieldType.Production);
+    }
+
+    public int GetProductionPerTurn(ProdEntry entry)
+    {
+        int baseProduction = GetProductionPerTurn();
+        if (entry == null || (entry.type != ProdEntry.Type.Unit && entry.type != ProdEntry.Type.Worker))
+            return baseProduction;
+
+        var (flatAdd, percentAdd) = GetUnitProductionModifierTotals(entry.data);
+        float modified = (baseProduction + flatAdd) * (1f + percentAdd);
+        return Mathf.Max(0, Mathf.RoundToInt(modified));
+    }
+
+    private (int flatAdd, float percentAdd) GetUnitProductionModifierTotals(ScriptableObject unitData)
+    {
+        int flatAdd = 0;
+        float percentAdd = 0f;
+
+        void Scan(UnitProductionModifier[] modifiers, float sourceMultiplier = 1f)
+        {
+            if (modifiers == null) return;
+            foreach (var modifier in modifiers)
+            {
+                if (modifier == null || !MatchesUnitProductionModifier(unitData, modifier)) continue;
+                flatAdd += Mathf.RoundToInt(modifier.productionAdd * sourceMultiplier);
+                percentAdd += modifier.productionPct * sourceMultiplier;
+            }
+        }
+
+        if (owner != null)
+        {
+            if (owner.researchedTechs != null)
+                foreach (var tech in owner.researchedTechs) Scan(tech?.unitProductionModifiers);
+            if (owner.researchedCultures != null)
+                foreach (var culture in owner.researchedCultures) Scan(culture?.unitProductionModifiers);
+        }
+
+        foreach (var (building, _, upkeepMultiplier) in EnumerateOperationalBuildings())
+            Scan(building?.unitProductionModifiers, upkeepMultiplier);
+
+        return (flatAdd, percentAdd);
+    }
+
+    private static bool MatchesUnitProductionModifier(ScriptableObject unitData, UnitProductionModifier modifier)
+    {
+        if (modifier == null) return false;
+        if (unitData is CombatUnitData combat)
+        {
+            if (modifier.combatUnit != null && modifier.combatUnit != combat) return false;
+            if (modifier.workerUnit != null) return false;
+            if (modifier.useCombatCategoryFilter && modifier.combatCategory != combat.unitType) return false;
+            return true;
+        }
+        if (unitData is WorkerUnitData worker)
+        {
+            if (modifier.workerUnit != null && modifier.workerUnit != worker) return false;
+            if (modifier.combatUnit != null || modifier.useCombatCategoryFilter) return false;
+            return true;
+        }
+        return false;
     }
     
     public int GetSciencePerTurn()
