@@ -88,6 +88,8 @@ public class CultureData : ScriptableObject
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this culture.")]
     public UnitStatBonus[] unitBonuses;
+    [Tooltip("Unit-training production modifiers granted by this culture. Can affect all units, one combat/worker unit, or a combat category such as Spearman.")]
+    public UnitProductionModifier[] unitProductionModifiers;
     [Tooltip("Per-unit per-turn yield bonuses granted by this culture.")]
     public UnitYieldBonus[] unitYieldBonuses;
     [Tooltip("Per-worker stat bonuses granted by this culture.")]
