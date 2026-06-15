@@ -14,18 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: High Temple
   icon: {fileID: 0}
-  description: A major state temple and center of religious legitimacy.
+  description: +8 Faith, +6 Culture, +6 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 360
+  productionCost: 410
   goldCost: 540
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 540
   dismantleResourceRefunds: []
@@ -48,15 +48,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 3
-  policyPointsPerTurn: 0
+  culturePerTurn: 6
+  policyPointsPerTurn: 6
   faithPerTurn: 8
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

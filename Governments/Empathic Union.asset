@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Empathic Union
   leaderTitleSuffix: First Mediator
-  description: A psionic and diplomatic union that governs through shared feeling, mutual aid, and interstellar trust.
+  description: A psionic and diplomatic union that governs through shared feeling,
+    mutual aid, and interstellar trust.
   policyPointCost: 170
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 22063f523ed8e364d849b0bc1548519f, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -25,13 +27,13 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0.12
+  defenseBonus: 0.15
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.05
-  scienceModifier: 0.08
-  cultureModifier: 0.18
+  goldModifier: 0.1
+  scienceModifier: 0.1
+  cultureModifier: 1
   faithModifier: 0
   cityCapModifier: 0
   tileYieldBonuses: []

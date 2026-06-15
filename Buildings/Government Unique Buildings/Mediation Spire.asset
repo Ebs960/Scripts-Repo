@@ -10,11 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Union Mediation Spire
+  m_Name: Mediation Spire
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Union Mediation Spire
+  buildingName: Mediation Spire
   icon: {fileID: 0}
-  description: A vast mediation spire that broadcasts empathic arbitration across worlds and lowers internal conflict.
+  description: +12 Happiness, +12 Culture. A vast mediation spire that broadcasts
+    empathic arbitration across worlds and lowers internal conflict.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +25,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 1230
   dismantleResourceRefunds: []
@@ -48,20 +49,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 4
-  sciencePerTurn: 8
+  goldPerTurn: 0
+  sciencePerTurn: 0
   culturePerTurn: 12
-  policyPointsPerTurn: 5
+  policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 2
+  defenseBonus: 0
   happinessBonus: 12
   unitBonuses: []
   workerBonuses: []

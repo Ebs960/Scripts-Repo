@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Royal Granary
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Royal Granary
+  buildingName: Royal Grain Storage
   icon: {fileID: 0}
   description: A crown-managed granary for royal food logistics.
   buildingPrefab: {fileID: 0}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 300
   dismantleResourceRefunds: []
@@ -48,7 +48,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 6
   productionPerTurn: 2
@@ -57,6 +57,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

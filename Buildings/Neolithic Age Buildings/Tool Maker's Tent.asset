@@ -10,37 +10,39 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Ore Storage Tent
+  m_Name: Tool Maker's Tent
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Ore Storage Tent
+  buildingName: Toolmaker's Tent
   icon: {fileID: 0}
-  description: +2 Production, +2 Gold
+  description: +2 Production, +1 Science
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 55
-  goldCost: 100
+  productionCost: 45
+  goldCost: 70
   buildGoldCost: 0
-  buildResourceCosts:
-  - resource: {fileID: 11400000, guid: 02bfde88801f77b40b6214f047fddf07, type: 2}
-    amount: 1
+  buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 110
+  dismantleGoldRefund: 70
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
-  isGoldBuilding: 1
+  isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: ce0094a785550a148ba0c56fdbc6fc5e, type: 2}
+  - {fileID: 11400000, guid: d1d183d8f2efc3b4bb3f7179dcdd0f52, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -50,11 +52,13 @@ MonoBehaviour:
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 2
-  goldPerTurn: 2
-  sciencePerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 1
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

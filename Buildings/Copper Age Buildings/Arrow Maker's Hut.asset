@@ -10,59 +10,66 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Royal Court of Law
+  m_Name: Arrow Maker's Hut
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Royal Court of Law
+  buildingName: Arrow Maker's Hut
   icon: {fileID: 0}
-  description: A crown court grounded in constitutional procedure.
+  description: +2 Production, +1 Gold. Can produce Copper Arrows
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 400
-  goldCost: 600
+  productionCost: 72
+  goldCost: 120
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 600
+  dismantleGoldRefund: 120
   dismantleResourceRefunds: []
   equipmentProduction: []
-  projectileProduction: []
+  projectileProduction:
+  - projectile: {fileID: 11400000, guid: ceea71f9a8443374fb7c6de2c73c81c1, type: 2}
+    quantity: 2
+    productionCostOverride: 0
+    goldCostOverride: 0
+    produceImmediately: 0
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 0
+  isProductionBuilding: 1
   isGoldBuilding: 0
-  isCultureBuilding: 1
+  isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}
   requiredCultures: []
   requiredPopulation: 0
-  requiredGovernments:
-  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
+  requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 0
-  sciencePerTurn: 2
-  culturePerTurn: 3
+  productionPerTurn: 2
+  goldPerTurn: 1
+  sciencePerTurn: 0
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 2
-  happinessBonus: 8
+  defenseBonus: 0
+  happinessBonus: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

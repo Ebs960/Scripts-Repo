@@ -10,57 +10,61 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Temple Complex
+  m_Name: Royal Court
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Temple Complex
+  buildingName: Royal Court
   icon: {fileID: 0}
-  description: +4 Faith, +2 Culture, +1 Happiness
+  description: A crown court grounded in constitutional procedure.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 175
-  goldCost: 250
+  productionCost: 400
+  goldCost: 600
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 250
+  dismantleGoldRefund: 600
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
-  isScienceBuilding: 0
+  providesAirport: 0
+  providesSpaceport: 0
+  isScienceBuilding: 1
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 0
-  isFaithBuilding: 1
+  isCultureBuilding: 1
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures:
-  - {fileID: 11400000, guid: 32afc224d03efa0458eef66a6702e419, type: 2}
+  requiredCultures: []
   requiredPopulation: 0
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 0
-  culturePerTurn: 2
+  sciencePerTurn: 2
+  culturePerTurn: 3
   policyPointsPerTurn: 0
-  faithPerTurn: 4
+  faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 0
-  happinessBonus: 1
+  defenseBonus: 2
+  happinessBonus: 8
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

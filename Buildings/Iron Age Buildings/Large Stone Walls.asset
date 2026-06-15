@@ -10,57 +10,61 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Tool Rack
+  m_Name: Large Stone Walls
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Tool Rack
+  buildingName: Large Stone Walls
   icon: {fileID: 0}
-  description: +2 Production, +1 Science
+  description: +16 Defense, +3 Policy Points, +2 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
-  productionCost: 45
-  goldCost: 70
+  replacesBuilding: {fileID: 11400000, guid: a51d839a5d0bda740ba9b04259fafeea, type: 2}
+  productionCost: 220
+  goldCost: 340
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 70
+  dismantleGoldRefund: 340
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 1
+  isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
-  isPerimeterWall: 0
+  isPerimeterWall: 1
   requiredTechs:
-  - {fileID: 11400000, guid: d1d183d8f2efc3b4bb3f7179dcdd0f52, type: 2}
+  - {fileID: 11400000, guid: 9a3ebdafed991fc438c4b542eef81d34, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 2
+  productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 1
+  sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 0
+  policyPointsPerTurn: 3
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 0
-  happinessBonus: 0
+  defenseBonus: 16
+  happinessBonus: 2
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []
