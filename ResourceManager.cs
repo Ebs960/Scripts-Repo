@@ -392,7 +392,7 @@ public class ResourceManager : MonoBehaviour
 
     private Civilization GetLocalViewingCiv()
     {
-        return FindObjectsByType<Civilization>(FindObjectsSortMode.None).FirstOrDefault(c => c != null && c.isPlayerControlled);
+        return FindObjectsByType<Civilization>().FirstOrDefault(c => c != null && c.isPlayerControlled);
     }
 
     public void RefreshResourceVisibilityForCiv(Civilization civ = null)
