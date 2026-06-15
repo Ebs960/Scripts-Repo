@@ -866,7 +866,7 @@ if (UIManager.Instance != null)
 
         // Check for revolt. Low order and low happiness increase random rebellion risk before total loyalty collapse.
         float rebellionChance = GetRebellionChance();
-        if (loyalty <= revoltThreshold || Random.value < rebellionChance)
+        if (loyalty <= revoltThreshold || UnityEngine.Random.value < rebellionChance)
             TriggerRevolt();
     }
 
