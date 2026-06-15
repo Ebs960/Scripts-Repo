@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Construction Firm
   icon: {fileID: 0}
-  description: Digital fabrication and modular construction company. +48 Production, +12 Science.
+  description: Digital fabrication and modular construction company. +48 Production/
+    +10% Production for City
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 886fbaa6129744778da470be8b52e23e, type: 2}
@@ -24,8 +25,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 8100
   dismantleResourceRefunds: []
@@ -34,7 +35,7 @@ MonoBehaviour:
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 0
@@ -48,22 +49,24 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 48
   goldPerTurn: 0
-  sciencePerTurn: 12
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
-  cityProductionModifier: 0.10
+  cityProductionModifier: 0.1
   cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

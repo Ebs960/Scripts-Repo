@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Void Steel Furnace
   icon: {fileID: 0}
-  description: Void steel smelting furnace. +118 Production.
+  description: Void steel smelting furnace. +125 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 1a6e0fbead894177832f0d8a9735f308, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 14550
   dismantleResourceRefunds: []
@@ -48,10 +48,10 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 118
+  productionPerTurn: 125
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
@@ -64,8 +64,12 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: 6cbd3aa474d9ca5439ad427844c3499d, type: 2}
+    amount: 2
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0

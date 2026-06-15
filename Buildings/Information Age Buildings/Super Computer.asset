@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Super Computer
   icon: {fileID: 0}
-  description: Massive computational research center. +45 Science, +10 Production, +6 Policy.
+  description: Massive computational research center. +45 Science, +8 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8389ba5893b74b8b92d0ef170354301b, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 7500
   dismantleResourceRefunds: []
@@ -48,22 +48,24 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 10
+  productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 45
   culturePerTurn: 0
-  policyPointsPerTurn: 6
+  policyPointsPerTurn: 8
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
-  cityScienceModifier: 0.10
+  cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

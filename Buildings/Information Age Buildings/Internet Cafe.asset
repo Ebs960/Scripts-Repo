@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Internet Cafe
   icon: {fileID: 0}
-  description: Public digital access and social venue. +10 Science, +10 Culture, +8 Gold, +4 Happiness.
+  description: Public digital access and social venue. +10% Science, +10% Culture,
+    +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +25,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 5850
   dismantleResourceRefunds: []
@@ -48,7 +49,7 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -60,16 +61,18 @@ MonoBehaviour:
   cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
-  cityScienceModifier: 0
-  cityCultureModifier: 0.05
+  cityScienceModifier: 0.1
+  cityCultureModifier: 0.1
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 4
+  happinessBonus: 5
   orderBonus: 0
   cityHappinessModifier: 0
   cityOrderModifier: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Commercial Seaport
   icon: {fileID: 0}
-  description: Modern civilian port. +16 Gold, +10 Production, provides Harbor.
+  description: Modern civilian port. +20 Gold, +10 Production, provides Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8856b7f3dd080f8d923ff37ca97527a8, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 4800
   dismantleResourceRefunds: []
@@ -34,7 +34,7 @@ MonoBehaviour:
   providesHarbor: 1
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 1
@@ -48,22 +48,24 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 10
-  goldPerTurn: 16
+  goldPerTurn: 20
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
-  cityGoldModifier: 0.05
+  cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

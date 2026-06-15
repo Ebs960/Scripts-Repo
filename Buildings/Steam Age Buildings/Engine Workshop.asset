@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engine Workshop
   icon: {fileID: 0}
-  description: +6 Production, +6 Science, Produces 3 Steam Engines
+  description: +6 Production, +6 Science, Produces 2 Steam Engines
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -66,7 +66,9 @@ MonoBehaviour:
   cityFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
-  resourceProductionPerTurn: []
+  resourceProductionPerTurn:
+  - resource: {fileID: 11400000, guid: c41e182a7012474438b9b3dc14426c11, type: 2}
+    amount: 2
   resourceUpkeepPerTurn:
   - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
     amount: 2
