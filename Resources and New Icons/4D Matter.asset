@@ -10,36 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Magmite
+  m_Name: 4D Matter
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Magmite
-  icon: {fileID: 21300000, guid: 6ee920a64925aee4dafecb9ac2a98c21, type: 3}
+  resourceName: 4D Matter
+  icon: {fileID: 21300000, guid: 32bea529732c9e249802b15b6d17fb7a, type: 3}
   prefab: {fileID: 0}
-  category: 0
+  category: 3
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 130000000f000000190000002300000024000000060000002500000010000000050000000700000014000000
+  allowedBiomes: 
   allowedUnderwaterBiomes: 
   spawnChance: 0
   isOrbitalResource: 0
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
-  foodPerTurn: 0
-  productionPerTurn: 15
-  goldPerTurn: 0
-  sciencePerTurn: 0
-  culturePerTurn: 0
-  policyPointsPerTurn: 0
-  faithPerTurn: 0
+  foodPerTurn: 10
+  productionPerTurn: 10
+  goldPerTurn: 10
+  sciencePerTurn: 10
+  culturePerTurn: 10
+  policyPointsPerTurn: 10
+  faithPerTurn: 10
   surplusYieldPerResource:
-    food: 0
-    production: 15
-    gold: 0
-    science: 0
-    culture: 0
-    policyPoints: 0
-    faith: 0
-    applyProductionToAllCities: 0
+    food: 10
+    production: 10
+    gold: 10
+    science: 10
+    culture: 10
+    policyPoints: 10
+    faith: 10
+    applyProductionToAllCities: 1
   happinessPerSurplusResource: 0
   forageFood: 0
   forageGold: 0
@@ -47,7 +47,7 @@ MonoBehaviour:
   forageCulture: 0
   foragePolicyPoints: 0
   forageFaith: 0
-  canBeForaged: 1
+  canBeForaged: 0
   requiredTech: {fileID: 0}
   requiresSpecialHarvester: 0
   regrowthTime: 5

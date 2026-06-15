@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
   m_Name: Salt
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: 
-  icon: {fileID: 0}
+  resourceName: Salt
+  icon: {fileID: 21300000, guid: a35765efd7aba084f8bc52b88851c16b, type: 3}
   prefab: {fileID: 0}
-  category: 3
+  category: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
   allowedBiomes: 
@@ -24,19 +24,19 @@ MonoBehaviour:
   isOrbitalResource: 0
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
-  foodPerTurn: 0
+  foodPerTurn: 2
   productionPerTurn: 0
-  goldPerTurn: 0
+  goldPerTurn: 3
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
-    food: 0
+    food: 2
     production: 0
     gold: 0
     science: 0
-    culture: 0
+    culture: 3
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0

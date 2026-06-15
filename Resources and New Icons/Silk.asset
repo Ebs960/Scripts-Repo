@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
   m_Name: Silk
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: 
-  icon: {fileID: 0}
+  resourceName: Silk
+  icon: {fileID: 21300000, guid: e96f9591dfbfef840a3b9632aba0040b, type: 3}
   prefab: {fileID: 0}
-  category: 3
+  category: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
   allowedBiomes: 
@@ -26,21 +26,21 @@ MonoBehaviour:
   requiredCulturesToReveal: []
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 0
+  goldPerTurn: 5
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 3
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
     production: 0
-    gold: 0
+    gold: 5
     science: 0
-    culture: 0
+    culture: 3
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0
-  happinessPerSurplusResource: 0
+  happinessPerSurplusResource: 2
   forageFood: 0
   forageGold: 0
   forageScience: 0

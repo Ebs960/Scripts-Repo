@@ -10,33 +10,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Magmite
+  m_Name: Adamantium Ore
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Magmite
-  icon: {fileID: 21300000, guid: 6ee920a64925aee4dafecb9ac2a98c21, type: 3}
+  resourceName: Adamantium Ore
+  icon: {fileID: 21300000, guid: a8ad695f7698aaf4a8d56b6ade37ab10, type: 3}
   prefab: {fileID: 0}
   category: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
-  allowedBiomes: 130000000f000000190000002300000024000000060000002500000010000000050000000700000014000000
-  allowedUnderwaterBiomes: 
+  allowedBiomes: 26000000250000002400000023000000110000000f00000008000000050000001b0000001c000000140000001300000017000000060000000200000019000000
+  allowedUnderwaterBiomes: 2700000028000000
   spawnChance: 0
   isOrbitalResource: 0
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 15
+  productionPerTurn: 8
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 1
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 15
+    production: 8
     gold: 0
     science: 0
-    culture: 0
+    culture: 1
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0
@@ -47,7 +47,7 @@ MonoBehaviour:
   forageCulture: 0
   foragePolicyPoints: 0
   forageFaith: 0
-  canBeForaged: 1
+  canBeForaged: 0
   requiredTech: {fileID: 0}
   requiresSpecialHarvester: 0
   regrowthTime: 5

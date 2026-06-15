@@ -10,57 +10,61 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Sanctuary
+  m_Name: Dungeon
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Sanctuary
+  buildingName: Dungeon
   icon: {fileID: 0}
-  description: +5 Faith, +2 Culture, +1 Happiness
+  description: +4 Order, +2 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 200
-  goldCost: 305
+  productionCost: 500
+  goldCost: 700
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 305
+  dismantleGoldRefund: 700
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 0
-  isFaithBuilding: 1
+  isCultureBuilding: 1
+  isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures:
-  - {fileID: 11400000, guid: 93146b6dc91970646a73990920d427f1, type: 2}
+  requiredTechs:
+  - {fileID: 11400000, guid: 9f0f12163dd66f34fb84dfa373767080, type: 2}
+  requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 2
-  policyPointsPerTurn: 0
-  faithPerTurn: 5
+  culturePerTurn: 0
+  policyPointsPerTurn: 2
+  faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 1
+  happinessBonus: 4
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

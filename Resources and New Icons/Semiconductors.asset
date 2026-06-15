@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
   m_Name: Semiconductors
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: 
-  icon: {fileID: 0}
+  resourceName: Semiconductors
+  icon: {fileID: 21300000, guid: dcdbdf414ec5e5c4d9a75d8e6710e638, type: 3}
   prefab: {fileID: 0}
   category: 3
   selectSound: {fileID: 0}
@@ -22,12 +22,13 @@ MonoBehaviour:
   allowedUnderwaterBiomes: 
   spawnChance: 0
   isOrbitalResource: 0
-  requiredTechsToReveal: []
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCulturesToReveal: []
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 0
+  sciencePerTurn: 6
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
@@ -35,7 +36,7 @@ MonoBehaviour:
     food: 0
     production: 0
     gold: 0
-    science: 0
+    science: 6
     culture: 0
     policyPoints: 0
     faith: 0

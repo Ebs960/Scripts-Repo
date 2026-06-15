@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
   m_Name: Marble
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: 
-  icon: {fileID: 0}
+  resourceName: Marble
+  icon: {fileID: 21300000, guid: 047e61a1af0653d4abcc364a7a4720e0, type: 3}
   prefab: {fileID: 0}
   category: 3
   selectSound: {fileID: 0}
@@ -25,22 +25,22 @@ MonoBehaviour:
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 0
+  productionPerTurn: 1
+  goldPerTurn: 3
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 1
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 0
-    gold: 0
+    production: 1
+    gold: 3
     science: 0
-    culture: 0
+    culture: 1
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0
-  happinessPerSurplusResource: 0
+  happinessPerSurplusResource: 2
   forageFood: 0
   forageGold: 0
   forageScience: 0

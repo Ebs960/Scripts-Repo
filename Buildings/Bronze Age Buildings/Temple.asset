@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Temple
   icon: {fileID: 0}
-  description: +5 Faith, +2 Culture, +1 Happiness
+  description: +5 Faith, +1 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 88addffa231542043a5e6dd3788c740f, type: 2}
@@ -32,6 +32,8 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
@@ -55,6 +57,8 @@ MonoBehaviour:
   culturePerTurn: 2
   policyPointsPerTurn: 0
   faithPerTurn: 5
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
