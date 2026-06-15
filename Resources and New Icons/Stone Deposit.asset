@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Stone Deposit
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Stone Deposit
+  icon: {fileID: 21300000, guid: d0037666b8ea94d428d0194baac2b806, type: 3}
+  prefab: {fileID: 5870493028381212590, guid: 7641a40a8fed2df48bf3e0aaf81477f6, type: 3}
+  category: 3
+  selectSound: {fileID: 8300000, guid: 2af318bf70eb9fe469dda59f376d6499, type: 3}
+  selectPitchVariation: 0.1
+  allowedBiomes: 050000000600000008000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0.03
+  isOrbitalResource: 0
+  foodPerTurn: 0
+  productionPerTurn: 3
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  forageFood: 0
+  forageGold: 0
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 0
+  requiredTech: {fileID: 0}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5
