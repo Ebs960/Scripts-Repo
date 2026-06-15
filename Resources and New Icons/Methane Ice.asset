@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Methane Ice
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Methane Ice
+  icon: {fileID: 21300000, guid: 7b840dc0ff2d2b8409619c69232631da, type: 3}
+  prefab: {fileID: 0}
+  category: 2
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.1
+  allowedBiomes: 250000002400000017000000210000000e00000007000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0
+  isOrbitalResource: 0
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: 407196534c493eb49a83720e2a1fc1a4, type: 2}
+  requiredCulturesToReveal: []
+  foodPerTurn: 0
+  productionPerTurn: 0
+  goldPerTurn: 5
+  sciencePerTurn: 2
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 0
+    gold: 5
+    science: 2
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
+  forageFood: 0
+  forageGold: 0
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 0
+  requiredTech: {fileID: 0}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5

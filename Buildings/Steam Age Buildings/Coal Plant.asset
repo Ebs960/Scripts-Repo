@@ -14,18 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Coal Plant
   icon: {fileID: 0}
-  description: +18 Production, +2 Science
+  description: 'Uses Coal to provide 5 Energy and 10 Production  '
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
   productionCost: 1850
   goldCost: 2775
   buildGoldCost: 0
-  buildResourceCosts: []
+  buildResourceCosts:
+  - resource: {fileID: 11400000, guid: 04251ac9a589f1143a87eccd7e266783, type: 2}
+    amount: 1
+  - resource: {fileID: 11400000, guid: e6c0151da63f7a744b2491ca1a0ab092, type: 2}
+    amount: 1
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2775
   dismantleResourceRefunds: []
@@ -34,31 +38,37 @@ MonoBehaviour:
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 0d94e61b3fd903347beb7304db28d82e, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 18
+  productionPerTurn: 10
   goldPerTurn: 0
-  sciencePerTurn: 2
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
-  resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  tileYieldBonuses: []
+  buildingBonuses: []
+  resourceProductionPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 5
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: 04251ac9a589f1143a87eccd7e266783, type: 2}
+    amount: 2
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0

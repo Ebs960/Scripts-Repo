@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Foundry
   icon: {fileID: 0}
-  description: +5 Production, +2 Science. Produces 2 Bronze per turn. Can produce
+  description: +4 Production, +2 Science. Produces 2 Bronze per turn. Can produce
     Bronze Weapons
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
@@ -55,6 +55,8 @@ MonoBehaviour:
     produceImmediately: 0
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
@@ -78,6 +80,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn:
   - resource: {fileID: 11400000, guid: 6fcdf91c811ca584db361e6685f5c349, type: 2}
     amount: 2

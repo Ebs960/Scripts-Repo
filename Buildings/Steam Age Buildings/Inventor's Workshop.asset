@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Inventor's Workshop
   icon: {fileID: 0}
-  description: +7 Science, +5 Production
+  description: +8 Science, +5 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2250
   dismantleResourceRefunds: []
@@ -41,28 +41,40 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 5fcaa861b60a7ec4ebf57c550ce1238a, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 5
   goldPerTurn: 0
-  sciencePerTurn: 7
+  sciencePerTurn: 8
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

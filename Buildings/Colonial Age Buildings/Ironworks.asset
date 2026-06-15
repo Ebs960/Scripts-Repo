@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ironworks
   icon: {fileID: 0}
-  description: +11 Production, +3 Gold, +2 Science
+  description: +11 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b0125458be554c76b36d289d39838680, type: 2}
@@ -24,18 +24,20 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 1500
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
-  isScienceBuilding: 1
+  providesAirport: 0
+  providesSpaceport: 0
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
-  isGoldBuilding: 1
+  isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
@@ -46,15 +48,17 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 11
-  goldPerTurn: 3
-  sciencePerTurn: 2
+  goldPerTurn: 0
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Telegraph Station
   icon: {fileID: 0}
-  description: +6 Gold, +5 Policy Points, +3 Science
+  description: +6 Gold, +5 Culture, +5 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: d27da0ff820010ea7f57653f45f2a76b, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2850
   dismantleResourceRefunds: []
@@ -41,24 +41,28 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 00633badf76891f458c403f6cea6ff0a, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 6
-  sciencePerTurn: 3
-  culturePerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 5
   policyPointsPerTurn: 5
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 1
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0

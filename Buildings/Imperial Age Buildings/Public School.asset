@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public School
   icon: {fileID: 0}
-  description: +10 Science, +5 Culture, +2 Policy Points, +2 Happiness
+  description: +10 Science
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 92f88087226a0ee0687df591286eba95, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 3150
   dismantleResourceRefunds: []
@@ -38,31 +38,33 @@ MonoBehaviour:
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 1
+  isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: 
+  requiredCultures:
   - {fileID: 11400000, guid: 0d33b685a92c9c144a03f7c68776b048, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 10
-  culturePerTurn: 5
-  policyPointsPerTurn: 2
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 2
+  happinessBonus: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

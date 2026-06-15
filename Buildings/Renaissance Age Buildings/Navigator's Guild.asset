@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Navigator's Guild
   icon: {fileID: 0}
-  description: +5 Gold, +4 Science, +2 Culture
+  description: +6 Gold, Caravels trained here have +1 Sight Range
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,14 +24,16 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 1020
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 1
   isFoodBuilding: 0
   isProductionBuilding: 0
@@ -46,22 +48,72 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 5
-  sciencePerTurn: 4
-  culturePerTurn: 2
+  goldPerTurn: 6
+  sciencePerTurn: 0
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
-  unitBonuses: []
+  unitBonuses:
+  - unit: {fileID: 11400000, guid: f1480041788607e42af3988d98f43174, type: 2}
+    useUnitCategoryFilter: 0
+    unitCategory: 11
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 1
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Pelts
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Pelts
+  icon: {fileID: 21300000, guid: dfaf2bb4b3b210f439922f1baafdcb76, type: 3}
+  prefab: {fileID: 0}
+  category: 3
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.1
+  allowedBiomes: 050000000600000008000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0
+  isOrbitalResource: 0
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: de3ddceb3f87c8640923792c23f64107, type: 2}
+  requiredCulturesToReveal: []
+  foodPerTurn: 1
+  productionPerTurn: 1
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 1
+    production: 1
+    gold: 0
+    science: 0
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 1
+  happinessPerSurplusResource: 0
+  forageFood: 4
+  forageGold: 8
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 1
+  requiredTech: {fileID: 11400000, guid: de3ddceb3f87c8640923792c23f64107, type: 2}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engine Workshop
   icon: {fileID: 0}
-  description: +16 Production, +4 Science
+  description: +6 Production, +6 Science, Produces 3 Steam Engines
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2475
   dismantleResourceRefunds: []
@@ -41,28 +41,42 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 0d94e61b3fd903347beb7304db28d82e, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 16
+  productionPerTurn: 6
   goldPerTurn: 0
-  sciencePerTurn: 4
+  sciencePerTurn: 6
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 2
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

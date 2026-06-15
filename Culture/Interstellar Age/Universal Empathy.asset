@@ -71,7 +71,7 @@ MonoBehaviour:
     layers: 
     useSeasonFilter: 0
     seasons: 
-    foodAdd: 50
+    foodAdd: 20
     productionAdd: 0
     goldAdd: 0
     scienceAdd: 0
@@ -95,7 +95,7 @@ MonoBehaviour:
   genericYieldBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  cityCapIncrease: 0
+  cityCapIncrease: 1
   pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []

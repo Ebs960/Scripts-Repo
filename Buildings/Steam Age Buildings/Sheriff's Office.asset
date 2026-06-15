@@ -14,18 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Sheriff's Office
   icon: {fileID: 0}
-  description: +3 Policy Points, +3 Gold, +2 Culture
+  description: +6 Order, +3 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 31d8ff9537fd1834bb83b3970026bcf8, type: 2}
   productionCost: 1350
   goldCost: 2025
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2025
   dismantleResourceRefunds: []
@@ -42,27 +42,29 @@ MonoBehaviour:
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: 
+  requiredCultures:
   - {fileID: 11400000, guid: 105320888b9f46d43bf658a9a42d059d, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 3
+  goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 2
+  culturePerTurn: 0
   policyPointsPerTurn: 3
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 6
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

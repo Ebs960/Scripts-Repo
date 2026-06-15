@@ -22,7 +22,8 @@ MonoBehaviour:
   enablesTradeSystem: 0
   cultureCost: 7500
   requiredTechnologies: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 397bf580e8d75fd4785cd16e572ea6ef, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []
@@ -39,7 +40,7 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0
+  faithModifier: 0.05
   policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
@@ -71,7 +72,7 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   cityCapIncrease: 0
-  pantheonCapIncrease: 3
+  pantheonCapIncrease: 2
   unlocksPantheons: []
   unlocksBeliefs: []
   unitLimitModifiers: []

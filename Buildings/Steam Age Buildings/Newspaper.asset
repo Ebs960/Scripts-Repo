@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Newspaper
   icon: {fileID: 0}
-  description: +7 Culture, +5 Policy Points, +3 Gold
+  description: +6 Culture, +6 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 288401b3a188487fb0b341ca14ecd6ee, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2250
   dismantleResourceRefunds: []
@@ -42,21 +42,23 @@ MonoBehaviour:
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: 
+  requiredCultures:
   - {fileID: 11400000, guid: 0d33b685a92c9c144a03f7c68776b048, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 3
+  goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 7
-  policyPointsPerTurn: 5
+  culturePerTurn: 6
+  policyPointsPerTurn: 6
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

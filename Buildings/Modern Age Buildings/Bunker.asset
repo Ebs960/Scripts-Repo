@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bunker
   icon: {fileID: 0}
-  description: Hardened defensive shelter. +40 Defense, +10 Order, +2 Production.
+  description: Hardened defensive shelter. +40 Defense, +10 Order
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 4500
   dismantleResourceRefunds: []
@@ -36,11 +36,11 @@ MonoBehaviour:
   providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 1
+  isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
-  isPerimeterWall: 1
+  isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 9535f89c8c04b1143847742c73f4efec, type: 2}
   requiredCultures: []
@@ -48,10 +48,10 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 2
+  productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
@@ -64,6 +64,8 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
