@@ -99,6 +99,7 @@ public class City : MonoBehaviour
 
     [Header("Production")]
     public int productionPerTurn = 10;
+    private int resourceSurplusProductionBonusThisTurn;
     public List<ProdEntry> productionQueue = new List<ProdEntry>();
 
     [Header("Built Content")]
@@ -983,7 +984,8 @@ if (UIManager.Instance != null)
         var prodEntry = productionQueue[0];
         
         // Apply production points from this turn
-    prodEntry.remainingPts -= GetProductionPerTurn();
+        prodEntry.remainingPts -= GetProductionPerTurn();
+        resourceSurplusProductionBonusThisTurn = 0;
         
         // Check if completed
         if (prodEntry.remainingPts <= 0)
@@ -2350,6 +2352,7 @@ Destroy(oldTuple.instance);
     private CityStatAgg AggregateAllCityStatBonuses()
     {
         CityStatAgg agg = AggregateCityStatBonuses();
+        agg.happinessAdd += owner != null ? owner.GetResourceSurplusHappinessPerCity() : 0;
         foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
             if (data == null) continue;
@@ -2666,9 +2669,14 @@ Destroy(oldTuple.instance);
         return ApplyCityScopedYieldBonuses(baseGold, BuildingYieldType.Gold);
     }
 
+    public void AddResourceSurplusProduction(int amount)
+    {
+        resourceSurplusProductionBonusThisTurn += Mathf.Max(0, amount);
+    }
+
     public int GetProductionPerTurn()
     {
-        int baseProd = SumYield(t => t.production) + SumBuiltWithBonuses(BuildingYieldType.Production);
+        int baseProd = SumYield(t => t.production) + SumBuiltWithBonuses(BuildingYieldType.Production) + resourceSurplusProductionBonusThisTurn;
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
