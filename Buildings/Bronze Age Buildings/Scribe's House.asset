@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Scribe's House
   icon: {fileID: 0}
-  description: +4 Science, +2 Policy Points
+  description: +3 Science
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -32,6 +32,8 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 1
   isFoodBuilding: 0
   isProductionBuilding: 0
@@ -53,8 +55,10 @@ MonoBehaviour:
   goldPerTurn: 0
   sciencePerTurn: 4
   culturePerTurn: 0
-  policyPointsPerTurn: 2
+  policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

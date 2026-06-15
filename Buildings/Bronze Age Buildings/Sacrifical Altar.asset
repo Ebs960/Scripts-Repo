@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Sacrificial Altar
   icon: {fileID: 0}
-  description: +4 Faith, +1 Policy Points
+  description: +3 Faith
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 01f51ff10952c684abfa66568fd0633a, type: 2}
@@ -32,6 +32,8 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
@@ -53,8 +55,10 @@ MonoBehaviour:
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 1
+  policyPointsPerTurn: 0
   faithPerTurn: 4
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

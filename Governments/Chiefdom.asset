@@ -17,12 +17,13 @@ MonoBehaviour:
   description: A kinship-based chiefdom that concentrates early surplus in the capital.
   policyPointCost: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 67660ba94bee6334a8f730c697a89d5d, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
   attackBonus: 0
-  meleeAttackBonus: 0
+  meleeAttackBonus: 1
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
@@ -46,9 +47,9 @@ MonoBehaviour:
   cityBonuses:
   - scope: 1
     useLayerFilter: 0
-    layers: []
+    layers: 
     useSeasonFilter: 0
-    seasons: []
+    seasons: 
     foodAdd: 0
     productionAdd: 3
     goldAdd: 3

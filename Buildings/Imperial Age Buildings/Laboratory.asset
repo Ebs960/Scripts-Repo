@@ -14,18 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Laboratory
   icon: {fileID: 0}
-  description: +18 Science, +4 Production
+  description: +18 Science
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: 02c59d27f43ea717dc3c1f81c48c9fc0, type: 2}
+  replacesBuilding: {fileID: 11400000, guid: 52c3c8cbdfb6222a9b72ec0cadec1400, type: 2}
   productionCost: 2200
   goldCost: 3300
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 3300
   dismantleResourceRefunds: []
@@ -41,22 +41,24 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: a8c1e7e999286294e91b0f925f3cb2c6, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 4
+  productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 18
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

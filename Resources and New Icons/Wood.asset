@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Wood
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Wood
+  icon: {fileID: 21300000, guid: f98112266481ac34c8a159a020d72c94, type: 3}
+  prefab: {fileID: 454919038202320767, guid: c15468abb3c4ee446a67dc5a93f8b5b3, type: 3}
+  category: 3
+  selectSound: {fileID: 8300000, guid: 2cf73344c8ba0eb469b0475a1f27b004, type: 3}
+  selectPitchVariation: 0.1
+  allowedBiomes: 05000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0.33
+  isOrbitalResource: 0
+  requiredTechsToReveal: []
+  requiredCulturesToReveal: []
+  foodPerTurn: 0
+  productionPerTurn: 1
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 0
+    gold: 0
+    science: 0
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
+  forageFood: 2
+  forageGold: 2
+  forageScience: 1
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 1
+  requiredTech: {fileID: 0}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5
