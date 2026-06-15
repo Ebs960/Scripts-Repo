@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Automobile Factory
+  m_Name: Holoraph Theater
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Automobile Factory
+  buildingName: Holoraph Theater
   icon: {fileID: 0}
-  description: +32 Production, +14 Gold.
+  description: Immersive holoraphic theater. +92 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}
-  productionCost: 3600
-  goldCost: 5400
+  replacesBuilding: {fileID: 11400000, guid: eb949e84a6d945eaa5ccb4316af685cb, type: 2}
+  productionCost: 8800
+  goldCost: 13200
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 5400
+  dismantleGoldRefund: 13200
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -36,13 +36,13 @@ MonoBehaviour:
   providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 1
-  isGoldBuilding: 1
-  isCultureBuilding: 0
+  isProductionBuilding: 0
+  isGoldBuilding: 0
+  isCultureBuilding: 1
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 845c71a9f73de8843ac5a9b6cb08b4c5, type: 2}
+  - {fileID: 11400000, guid: 14c529addb61ccd46adbe9018a8caee1, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -51,10 +51,10 @@ MonoBehaviour:
   limitCategory:
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 32
-  goldPerTurn: 14
+  productionPerTurn: 0
+  goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 92
   policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
@@ -64,8 +64,6 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
-  tileYieldBonuses: []
-  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

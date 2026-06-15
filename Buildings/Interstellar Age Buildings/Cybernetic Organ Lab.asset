@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Automobile Factory
+  m_Name: Cybernetic Organ Lab
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Automobile Factory
+  buildingName: Cybernetic Organ Lab
   icon: {fileID: 0}
-  description: +32 Production, +14 Gold.
+  description: Cybernetic organ cultivation lab. +84 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}
-  productionCost: 3600
-  goldCost: 5400
+  replacesBuilding: {fileID: 11400000, guid: fd4d97b4cbdc40b1bcf799ebb7b2ff37, type: 2}
+  productionCost: 9000
+  goldCost: 13500
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 5400
+  dismantleGoldRefund: 13500
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -35,14 +35,14 @@ MonoBehaviour:
   providesAirport: 0
   providesSpaceport: 0
   isScienceBuilding: 0
-  isFoodBuilding: 0
-  isProductionBuilding: 1
-  isGoldBuilding: 1
+  isFoodBuilding: 1
+  isProductionBuilding: 0
+  isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 845c71a9f73de8843ac5a9b6cb08b4c5, type: 2}
+  - {fileID: 11400000, guid: 35f4b91c5736820488c64397d709427c, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -50,9 +50,9 @@ MonoBehaviour:
   buildingLimit: -1
   limitCategory:
   perCityLimit: 1
-  foodPerTurn: 0
-  productionPerTurn: 32
-  goldPerTurn: 14
+  foodPerTurn: 84
+  productionPerTurn: 0
+  goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
@@ -64,8 +64,6 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
-  tileYieldBonuses: []
-  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

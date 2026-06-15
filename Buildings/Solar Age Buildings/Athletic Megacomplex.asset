@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Automobile Factory
+  m_Name: Athletic Megacomplex
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Automobile Factory
+  buildingName: Athletic Megacomplex
   icon: {fileID: 0}
-  description: +32 Production, +14 Gold.
+  description: Planet-scale athletic complex. +24 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}
-  productionCost: 3600
-  goldCost: 5400
+  replacesBuilding: {fileID: 11400000, guid: 81d347896cc34c61a415e0c8ac132834, type: 2}
+  productionCost: 6900
+  goldCost: 10350
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 5400
+  dismantleGoldRefund: 10350
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -36,13 +36,13 @@ MonoBehaviour:
   providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 1
-  isGoldBuilding: 1
+  isProductionBuilding: 0
+  isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 845c71a9f73de8843ac5a9b6cb08b4c5, type: 2}
+  - {fileID: 11400000, guid: 4b83d013d545997448cd573b7842974e, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
@@ -51,8 +51,8 @@ MonoBehaviour:
   limitCategory:
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 32
-  goldPerTurn: 14
+  productionPerTurn: 0
+  goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
@@ -64,16 +64,14 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
-  tileYieldBonuses: []
-  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 24
   orderBonus: 0
-  cityHappinessModifier: 0
+  cityHappinessModifier: 0.10
   cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
