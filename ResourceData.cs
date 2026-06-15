@@ -11,6 +11,22 @@ public enum ResourceCategory
     Equipment
 }
 
+[System.Serializable]
+public class ResourceSurplusYield
+{
+    [Tooltip("Yield granted per surplus unit of this resource each turn.")]
+    public int food;
+    public int production;
+    public int gold;
+    public int science;
+    public int culture;
+    public int policyPoints;
+    public int faith;
+
+    [Tooltip("If true, production is added to every city production queue. If false, the production value is ignored until another production target is implemented.")]
+    public bool applyProductionToAllCities;
+}
+
 /// <summary>
 /// Defines a resource type: where it can spawn, what it looks like, and what yields it provides.
 /// </summary>
@@ -32,6 +48,18 @@ public class ResourceData : ScriptableObject
     public float selectPitchVariation = 0.1f;
 
     [Header("Spawn Rules")]
+    [Tooltip("If set, this resource can only spawn on these planet types. Leave empty to allow any planet.")]
+    public PlanetType[] allowedPlanetTypes;
+    [Tooltip("If set, this resource cannot spawn on these planet types even if allowedPlanetTypes is empty or includes them.")]
+    public PlanetType[] blockedPlanetTypes;
+    [Tooltip("Gameplay layers this resource is allowed to spawn on. All layers are allowed by default for backward compatibility.")]
+    public UnitLayerMask allowedSpawnLayers = UnitLayerMask.All;
+    [Tooltip("Controls whether this resource may spawn on hill tiles.")]
+    public BoolRequirement hillRequirement = BoolRequirement.Any;
+    [Tooltip("Controls whether this resource may spawn on mountain tiles.")]
+    public BoolRequirement mountainRequirement = BoolRequirement.Any;
+    [Tooltip("Controls whether this resource may spawn on flat land tiles (land that is not a hill or mountain).")]
+    public BoolRequirement flatLandRequirement = BoolRequirement.Any;
     [Tooltip("Which biomes this resource can appear on (surface biome check)")]
     public Biome[] allowedBiomes;
     [Tooltip("Which underwater floor biomes this resource can appear on (checked against HexTileData.underwaterBiome). Leave empty to skip underwater spawning.")]
@@ -41,6 +69,12 @@ public class ResourceData : ScriptableObject
     [Header("Orbital")]
     [Tooltip("If true, this resource spawns in the orbit layer above a tile instead of on the surface. Uses allowedBiomes to check the surface biome below.")]
     public bool isOrbitalResource = false;
+    [Header("Map Visibility Requirements")]
+    [Tooltip("If set, this resource is hidden on the map until the viewing civilization has at least one of these technologies.")]
+    public TechData[] requiredTechsToReveal;
+    [Tooltip("If set, this resource is hidden on the map until the viewing civilization has at least one of these cultures.")]
+    public CultureData[] requiredCulturesToReveal;
+
     [Header("Per-Turn Yields (per owned node)")]
     public int foodPerTurn;
     public int productionPerTurn;
@@ -49,6 +83,11 @@ public class ResourceData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Surplus Bonuses (per unused produced resource)")]
+    public ResourceSurplusYield surplusYieldPerResource;
+    [Tooltip("Maximum happiness/morale added to each city per surplus unit of this resource.")]
+    public int happinessPerSurplusResource;
 
     [Header("Forage (one-off) Yields")]
     public int forageFood;

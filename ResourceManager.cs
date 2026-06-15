@@ -260,6 +260,59 @@ public class ResourceManager : MonoBehaviour
         StartCoroutine(SpawnResourcesOnPlanetCoroutine(planetGen, planetIndex));
     }
     
+
+    private static bool MaskContains(UnitLayerMask mask, TileLayer layer)
+    {
+        return (mask & (UnitLayerMask)(1 << (int)layer)) != 0;
+    }
+
+    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement switch
+        {
+            BoolRequirement.MustBeTrue => value,
+            BoolRequirement.MustBeFalse => !value,
+            _ => true,
+        };
+    }
+
+    private static bool ContainsPlanetType(PlanetType[] planetTypes, PlanetType planetType)
+    {
+        if (planetTypes == null || planetTypes.Length == 0) return false;
+        foreach (var pt in planetTypes)
+            if (pt == planetType) return true;
+        return false;
+    }
+
+    private static TileLayer GetResourceSpawnLayer(ResourceData resource, HexTileData tileData)
+    {
+        if (resource != null && resource.isOrbitalResource) return TileLayer.Orbit;
+        if (resource != null && resource.allowedUnderwaterBiomes != null && resource.allowedUnderwaterBiomes.Length > 0
+            && tileData != null && tileData.IsWaterTile)
+            return TileLayer.Underwater;
+        return TileLayer.Surface;
+    }
+
+    private static bool MatchesResourceSpawnRules(ResourceData resource, HexTileData tileData, PlanetGenerator planetGen)
+    {
+        if (resource == null || tileData == null) return false;
+
+        PlanetType planetType = planetGen != null ? planetGen.planetType : PlanetType.Earth;
+        if (ContainsPlanetType(resource.blockedPlanetTypes, planetType)) return false;
+        if (resource.allowedPlanetTypes != null && resource.allowedPlanetTypes.Length > 0
+            && !ContainsPlanetType(resource.allowedPlanetTypes, planetType)) return false;
+
+        TileLayer spawnLayer = GetResourceSpawnLayer(resource, tileData);
+        if (!MaskContains(resource.allowedSpawnLayers, spawnLayer)) return false;
+
+        bool isFlatLand = tileData.isLand && !tileData.isHill && !tileData.isMountain;
+        if (!MatchesRequirement(resource.hillRequirement, tileData.isHill)) return false;
+        if (!MatchesRequirement(resource.mountainRequirement, tileData.isMountain)) return false;
+        if (!MatchesRequirement(resource.flatLandRequirement, isFlatLand)) return false;
+
+        return true;
+    }
+
     /// <summary>
     /// Spawn resources on a specific planet
     /// </summary>
@@ -283,6 +336,7 @@ public class ResourceManager : MonoBehaviour
             foreach (var rd in resourceTypes)
             {
                 if (rd == null) continue; // Safety check
+                if (!MatchesResourceSpawnRules(rd, tileData, planetGen)) continue;
 
                 // skip if biome not allowed (check surface biome AND underwater floor biome)
                 bool biomeAllowed = false;
@@ -363,6 +417,45 @@ public class ResourceManager : MonoBehaviour
                 dict[inst.data] = cnt + 1;
             else
                 dict[inst.data] = 1;
+        }
+    }
+
+
+    public bool IsResourceRevealedForCiv(ResourceData resource, Civilization civ)
+    {
+        if (resource == null) return true;
+        bool needsTech = resource.requiredTechsToReveal != null && resource.requiredTechsToReveal.Length > 0;
+        bool needsCulture = resource.requiredCulturesToReveal != null && resource.requiredCulturesToReveal.Length > 0;
+        if (!needsTech && !needsCulture) return true;
+
+        if (civ == null) return false;
+        if (needsTech && civ.researchedTechs != null)
+        {
+            foreach (var tech in resource.requiredTechsToReveal)
+                if (tech != null && civ.researchedTechs.Contains(tech))
+                    return true;
+        }
+        if (needsCulture && civ.researchedCultures != null)
+        {
+            foreach (var culture in resource.requiredCulturesToReveal)
+                if (culture != null && civ.researchedCultures.Contains(culture))
+                    return true;
+        }
+        return false;
+    }
+
+    private Civilization GetLocalViewingCiv()
+    {
+        return FindObjectsByType<Civilization>().FirstOrDefault(c => c != null && c.isPlayerControlled);
+    }
+
+    public void RefreshResourceVisibilityForCiv(Civilization civ = null)
+    {
+        if (civ == null) civ = GetLocalViewingCiv();
+        foreach (var inst in spawnedResources)
+        {
+            if (inst == null || inst.gameObject == null) continue;
+            inst.gameObject.SetActive(IsResourceRevealedForCiv(inst.data, civ));
         }
     }
 
@@ -558,6 +651,7 @@ public class ResourceManager : MonoBehaviour
             inst.planetIndex = planetIndex;
             spawnedResources.Add(inst);
             _tileLookup[ResKey(planetIndex, tileIndex)] = inst;
+            go.SetActive(IsResourceRevealedForCiv(newResource, GetLocalViewingCiv()));
 
             // Register resource instance with HexMapChunkManager so it moves during wrap teleport
             try
