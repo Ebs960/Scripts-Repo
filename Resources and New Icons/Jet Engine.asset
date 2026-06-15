@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
-  m_Name: Jewelry
+  m_Name: Jet Engine
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
-  resourceName: Jewelry
-  icon: {fileID: 21300000, guid: a27226c7c359f6a418b9b76a1118ab94, type: 3}
+  resourceName: Electric Engine
+  icon: {fileID: 0}
   prefab: {fileID: 0}
-  category: 4
+  category: 3
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
   allowedPlanetTypes: 
@@ -31,29 +31,29 @@ MonoBehaviour:
   requiredTechsToReveal: []
   requiredCulturesToReveal: []
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 8
+  productionPerTurn: 3
+  goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   surplusYieldPerResource:
     food: 0
-    production: 0
-    gold: 8
+    production: 3
+    gold: 0
     science: 0
     culture: 0
     policyPoints: 0
     faith: 0
     applyProductionToAllCities: 0
-  happinessPerSurplusResource: 3
+  happinessPerSurplusResource: 0
   forageFood: 0
   forageGold: 0
   forageScience: 0
   forageCulture: 0
   foragePolicyPoints: 0
   forageFaith: 0
-  canBeForaged: 1
+  canBeForaged: 0
   requiredTech: {fileID: 0}
   requiresSpecialHarvester: 0
   regrowthTime: 5

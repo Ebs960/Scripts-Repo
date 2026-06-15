@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Prison
   icon: {fileID: 0}
-  description: High-security detention system. +8 Policy, +6 Gold, +4 Culture, +15 Order.
+  description: High-security detention system. +8 Policy, +6 Gold, +4 Culture, +15
+    Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 64afcd29b408013990bf8e4ac234cf1d, type: 2}
@@ -24,8 +25,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 4200
   dismantleResourceRefunds: []
@@ -48,7 +49,7 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -64,15 +65,17 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 15
+  defenseBonus: 0
   happinessBonus: 0
-  orderBonus: 0
+  orderBonus: 15
   cityHappinessModifier: 0
-  cityOrderModifier: 0.10
+  cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

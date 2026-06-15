@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public College
   icon: {fileID: 0}
-  description: Higher education campus. +18 Science, +8 Culture, +4 Policy, +3 Happiness.
+  description: Higher education campus. +14 Science, +5% Science Yield for City
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 5ebb00966e740f53f74b88428b99996c, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 4500
   dismantleResourceRefunds: []
@@ -38,7 +38,7 @@ MonoBehaviour:
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 1
+  isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
@@ -48,14 +48,14 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 18
-  culturePerTurn: 8
-  policyPointsPerTurn: 4
+  sciencePerTurn: 14
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
@@ -64,6 +64,8 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

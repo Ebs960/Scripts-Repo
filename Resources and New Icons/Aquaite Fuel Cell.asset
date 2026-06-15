@@ -18,6 +18,12 @@ MonoBehaviour:
   category: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.1
+  allowedPlanetTypes: 
+  blockedPlanetTypes: 
+  allowedSpawnLayers: -1
+  hillRequirement: 0
+  mountainRequirement: 0
+  flatLandRequirement: 0
   allowedBiomes: 
   allowedUnderwaterBiomes: 
   spawnChance: 0

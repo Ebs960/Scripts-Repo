@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Jail
+  m_Name: Police Station
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Jail
+  buildingName: Police Station
   icon: {fileID: 0}
-  description: +4 Policy Points, +4 Happiness
+  description: +7 Order. +5 Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 65271b5d0dfa7d95253d33dd00624d33, type: 2}
@@ -37,8 +37,8 @@ MonoBehaviour:
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
-  isGoldBuilding: 1
-  isCultureBuilding: 1
+  isGoldBuilding: 0
+  isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
@@ -55,8 +55,15 @@ MonoBehaviour:
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 4
+  policyPointsPerTurn: 5
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -65,6 +72,9 @@ MonoBehaviour:
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 7
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []
