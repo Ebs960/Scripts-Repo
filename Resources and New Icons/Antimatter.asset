@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Antimatter
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Antimatter
+  icon: {fileID: 21300000, guid: e01fbe8b208c7fd4db5b1ec4856b85aa, type: 3}
+  prefab: {fileID: 0}
+  category: 2
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.1
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  spawnChance: 0
+  isOrbitalResource: 1
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: 41cb5be43043ef34491282c5a8693db4, type: 2}
+  requiredCulturesToReveal: []
+  foodPerTurn: 0
+  productionPerTurn: 10
+  goldPerTurn: 5
+  sciencePerTurn: 10
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 10
+    gold: 5
+    science: 10
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
+  forageFood: 0
+  forageGold: 0
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 0
+  requiredTech: {fileID: 0}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5

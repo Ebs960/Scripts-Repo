@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automobile Factory
   icon: {fileID: 0}
-  description: Mass automobile production. +32 Production, +14 Gold.
+  description: +32 Production, +14 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}
@@ -64,6 +64,8 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

@@ -17,15 +17,15 @@ MonoBehaviour:
   description: +4 Production, +1 Culture. Can produce Crossbows and Crossbow Bolts
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 5fd6764db29a4a0a2200b70cf17f1827, type: 2}
   productionCost: 340
   goldCost: 500
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 500
   dismantleResourceRefunds: []
@@ -42,6 +42,8 @@ MonoBehaviour:
     goldCostOverride: 0
     produceImmediately: 0
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
@@ -56,7 +58,7 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 4
@@ -65,6 +67,8 @@ MonoBehaviour:
   culturePerTurn: 1
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

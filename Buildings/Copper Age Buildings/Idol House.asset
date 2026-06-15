@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Idol House
   icon: {fileID: 0}
-  description: +4 Faith, +1 Culture, +1 Happiness
+  description: +4 Faith, +1 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -30,12 +30,16 @@ MonoBehaviour:
   dismantleGoldRefund: 115
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 1
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
@@ -50,9 +54,11 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 1
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 4
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

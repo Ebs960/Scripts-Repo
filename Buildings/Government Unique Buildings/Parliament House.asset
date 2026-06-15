@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 630
   dismantleResourceRefunds: []
@@ -48,15 +48,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 4
-  policyPointsPerTurn: 3
+  culturePerTurn: 7
+  policyPointsPerTurn: 9
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

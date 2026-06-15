@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Museum
   icon: {fileID: 0}
-  description: +9 Culture, +4 Science, +2 Happiness
+  description: +9 Culture, +2 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 97bb3ec82cb14b82b5e58373903c0596, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2325
   dismantleResourceRefunds: []
@@ -34,7 +34,7 @@ MonoBehaviour:
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
@@ -42,21 +42,23 @@ MonoBehaviour:
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: 
+  requiredCultures:
   - {fileID: 11400000, guid: b3852b788abed3044add13b88c411232, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 4
+  sciencePerTurn: 0
   culturePerTurn: 9
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

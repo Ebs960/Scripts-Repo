@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Cows
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Cows
+  icon: {fileID: 21300000, guid: 79b338fa5ed06c74ca41d344965930d2, type: 3}
+  prefab: {fileID: 0}
+  category: 1
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.1
+  allowedBiomes: 030000000400000005000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0
+  isOrbitalResource: 0
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: 79741f6eeb76e1540b742b8c18fbc27e, type: 2}
+  requiredCulturesToReveal: []
+  foodPerTurn: 0
+  productionPerTurn: 2
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 2
+    gold: 0
+    science: 0
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
+  forageFood: 0
+  forageGold: 0
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 1
+  requiredTech: {fileID: 0}
+  requiresSpecialHarvester: 0
+  regrowthTime: 5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pottery Workshop
   icon: {fileID: 0}
-  description: +2 Science, +2 Production
+  description: +1 Gold, +1 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -32,6 +32,8 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
@@ -55,6 +57,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

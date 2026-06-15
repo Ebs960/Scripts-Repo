@@ -14,18 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engineering School
   icon: {fileID: 0}
-  description: +10 Science, +5 Production, +2 Policy Points
+  description: +10 Science, +5 Production,
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 1600
+  productionCost: 2000
   goldCost: 2400
   buildGoldCost: 0
-  buildResourceCosts: []
+  buildResourceCosts:
+  - resource: {fileID: 11400000, guid: 50daaae45c714d243b6a5a81de0ef903, type: 2}
+    amount: 2
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2400
   dismantleResourceRefunds: []
@@ -41,22 +43,24 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 5fcaa861b60a7ec4ebf57c550ce1238a, type: 2}
   requiredCultures: []
-  requiredPopulation: 0
+  requiredPopulation: 10
   requiredGovernments: []
   requiredPolicies: []
-  buildingLimit: -1
-  limitCategory:
+  buildingLimit: 3
+  limitCategory: Engineering Schools
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 5
   goldPerTurn: 0
   sciencePerTurn: 10
   culturePerTurn: 0
-  policyPointsPerTurn: 2
+  policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

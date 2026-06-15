@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Monastery
   icon: {fileID: 0}
-  description: +5 Faith, +2 Science, +1 Happiness
+  description: +3 Culture, +3 Science
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,14 +24,16 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 360
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
@@ -46,7 +48,7 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -55,6 +57,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 5
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

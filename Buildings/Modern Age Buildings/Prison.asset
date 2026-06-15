@@ -68,11 +68,11 @@ MonoBehaviour:
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 15
+  defenseBonus: 0
   happinessBonus: 0
-  orderBonus: 0
+  orderBonus: 15
   cityHappinessModifier: 0
-  cityOrderModifier: 0.10
+  cityOrderModifier: 0
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []

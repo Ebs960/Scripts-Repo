@@ -17,7 +17,7 @@ MonoBehaviour:
   description: +3 Gold, +3 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 1c260bf3627dd386c4fe0d2a9c87171a, type: 2}
   productionCost: 65
   goldCost: 110
   buildGoldCost: 0
@@ -32,12 +32,16 @@ MonoBehaviour:
   dismantleGoldRefund: 110
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 1
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}
@@ -55,6 +59,8 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

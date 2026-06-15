@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: AI Directorate
   leaderTitleSuffix: Director
-  description: An automated state where machine policy engines optimize production, research, logistics, and security.
+  description: An automated state where machine policy engines optimize production,
+    research, logistics, and security.
   policyPointCost: 145
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 2646a30fb016ac247a5dc5c52c48b1c4, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steel Mill
   icon: {fileID: 0}
-  description: +20 Production, +3 Science
+  description: +20 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b3756abf502f4cd1a83c5947b34d30ed, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2850
   dismantleResourceRefunds: []
@@ -41,22 +41,24 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 7fac73a8cab290d4da9dc084ea21310c, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 20
   goldPerTurn: 0
-  sciencePerTurn: 3
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

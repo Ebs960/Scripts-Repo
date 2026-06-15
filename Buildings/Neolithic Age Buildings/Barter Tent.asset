@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Barter Tent
   icon: {fileID: 0}
-  description: 
+  description: +2 Gold
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -30,12 +30,16 @@ MonoBehaviour:
   dismantleGoldRefund: 70
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 1
   isCultureBuilding: 0
+  isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
@@ -50,9 +54,11 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 2
   sciencePerTurn: 0
-  culturePerTurn: 1
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

@@ -14,18 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steel Armory
   icon: {fileID: 0}
-  description: +6 Production, +2 Science. Can produce Steel Swords
+  description: +6 Production. Can produce Steel Swords
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: c409fbb173330e7b9570fad5c6c4ce29, type: 2}
   productionCost: 480
   goldCost: 720
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 720
   dismantleResourceRefunds: []
@@ -37,6 +37,8 @@ MonoBehaviour:
     produceImmediately: 0
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
@@ -51,15 +53,17 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 6
   goldPerTurn: 0
-  sciencePerTurn: 2
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

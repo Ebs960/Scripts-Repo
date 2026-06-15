@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Absolute Monarchy
   leaderTitleSuffix: Sovereign
-  description: A centralized royal state that accelerates science and production while alienating powerful lords.
+  description: A centralized royal state that accelerates science and production
+    while alienating powerful lords.
   policyPointCost: 120
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: c98a2a603aaa32b458dc084d2e044c63, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -53,7 +55,7 @@ MonoBehaviour:
   - reason: Absolute Monarchy Government
     value: -30
     durationTurns: -1
-    requiresAnyPersonality: []
+    requiresAnyPersonality: 
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
