@@ -105,7 +105,8 @@ public class TradeRoute
             usesHarborConnection = samePlanet && sourceCity.HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && routeDistance <= maxRange;
             usesAirportConnection = samePlanet && sourceCity.HasOperationalAirport() && destinationCity.HasOperationalAirport() && routeDistance <= TradeManager.CurrentMaxAirportTradeRange;
             usesSpaceportConnection = TradeManager.CanSpacePortTradeBetween(sourceCity, destinationCity);
-            usesRoadConnection = samePlanet && RoadConnectivityHelper.TryFindRoadPath(sourceCity, destinationCity, maxRange, out var roadPath);
+            List<int> roadPath = null;
+            usesRoadConnection = samePlanet && RoadConnectivityHelper.TryFindRoadPath(sourceCity, destinationCity, maxRange, out roadPath);
             if (usesRoadConnection && roadPath != null && roadPath.Count > 0)
                 routeDistance = roadPath.Count;
             else if (usesSpaceportConnection && !samePlanet)
