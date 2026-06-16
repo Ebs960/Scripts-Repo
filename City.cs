@@ -316,6 +316,8 @@ public class City : MonoBehaviour
 
             if (!resolvedBuilding.AreRequirementsMet(owner))
                 continue;
+            if (!AreBuildingRequirementsMet(resolvedBuilding.requiredBuildings))
+                continue;
 
             bool alreadyBuilt = false;
             foreach (var (builtData, _) in builtBuildings)
@@ -1143,6 +1145,7 @@ if (UIManager.Instance != null)
                 return false;
             }
             if (!b.AreRequirementsMet(owner)) return false;
+            if (!AreBuildingRequirementsMet(b.requiredBuildings)) return false;
             // Population requirement
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
@@ -1418,6 +1421,7 @@ if (UIManager.Instance != null)
                     }
                 }
             }
+            if (!AreBuildingRequirementsMet(b.requiredBuildings)) return false;
             // Population
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot buy {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
@@ -2089,6 +2093,79 @@ Destroy(oldTuple.instance);
         return false;
     }
 
+    private bool AreBuildingRequirementsMet(CityBuildingRequirement[] requirements)
+    {
+        if (requirements == null || requirements.Length == 0)
+            return true;
+
+        foreach (var requirement in requirements)
+        {
+            if (requirement == null)
+                continue;
+
+            if (!IsCityBuildingRequirementMet(requirement))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsCityBuildingRequirementMet(CityBuildingRequirement requirement)
+    {
+        if (requirement == null || owner == null)
+            return false;
+
+        bool MatchesRequiredBuildingData(BuildingData building)
+        {
+            return building != null &&
+                ((requirement.building != null && (building == requirement.building || building.replacesBuilding == requirement.building)) ||
+                (requirement.useBuildingCategoryFilter && MatchesBuildingCategory(building, requirement.buildingCategory)));
+        }
+
+        bool MatchesRequiredBuilding(City city)
+        {
+            return city != null && city.HasOperationalBuilding(MatchesRequiredBuildingData);
+        }
+
+        switch (requirement.scope)
+        {
+            case CityBuildingRequirementScope.SameCity:
+                return MatchesRequiredBuilding(this);
+            case CityBuildingRequirementScope.Capital:
+                return MatchesRequiredBuilding(owner.CapitalCity);
+            case CityBuildingRequirementScope.AnyOtherCity:
+                return owner.cities != null && owner.cities.Any(city => city != null && city != this && MatchesRequiredBuilding(city));
+            case CityBuildingRequirementScope.AnyCity:
+                return owner.cities != null && owner.cities.Any(MatchesRequiredBuilding);
+            case CityBuildingRequirementScope.EveryOtherCity:
+                if (owner.cities == null) return false;
+                var otherCities = owner.cities.Where(city => city != null && city != this).ToList();
+                return otherCities.Count > 0 && otherCities.All(MatchesRequiredBuilding);
+            default:
+                return false;
+        }
+    }
+
+    private bool HasCityResource(ResourceData resource)
+    {
+        if (resource == null)
+            return true;
+
+        var ts = TileSys;
+        if (ts == null || !ts.IsReady())
+            return false;
+
+        int tileCount = ts.TileCount;
+        for (int i = 0; i < tileCount; i++)
+        {
+            var tileData = ts.GetTileData(i);
+            if (tileData != null && tileData.controllingCity == this && tileData.resource == resource)
+                return true;
+        }
+
+        return false;
+    }
+
     private static bool MatchesRequirement(BoolRequirement requirement, bool value)
     {
         return requirement switch
@@ -2206,6 +2283,12 @@ Destroy(oldTuple.instance);
             return false;
 
         if (bonus.useBuildingCategoryFilter && !MatchesBuildingCategory(data, bonus.buildingCategory))
+            return false;
+
+        if (!HasCityResource(bonus.requiredCityResource))
+            return false;
+
+        if (!AreBuildingRequirementsMet(bonus.requiredBuildings))
             return false;
 
         Season currentSeason = ClimateManager.Instance != null

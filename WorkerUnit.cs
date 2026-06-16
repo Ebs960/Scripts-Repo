@@ -733,11 +733,13 @@ public class WorkerUnit : BaseUnit
             if (civ.IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.workerBonuses);
 
+        AccumulateBuildingWorkerBonuses(civ, BuildingUnitBonusScope.AllCivilizationUnits, Accumulate);
+
         var cityContext = GetCurrentCityContext();
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.workerBonuses);
+                AccumulateBuildingWorkerBonuses(building?.workerBonuses, BuildingUnitBonusScope.SameCity, Accumulate);
         }
 
         // Equipment bonuses
@@ -793,14 +795,41 @@ public class WorkerUnit : BaseUnit
             if (civ.IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.workerBonuses);
 
+        AccumulateBuildingWorkerBonuses(civ, BuildingUnitBonusScope.AllCivilizationUnits, Accumulate);
+
         var cityContext = GetCurrentCityContext();
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.workerBonuses);
+                AccumulateBuildingWorkerBonuses(building?.workerBonuses, BuildingUnitBonusScope.SameCity, Accumulate);
         }
 
         return a;
+    }
+
+    private static void AccumulateBuildingWorkerBonuses(Civilization civ, BuildingUnitBonusScope scope, System.Action<WorkerUnitStatBonus[]> accumulate)
+    {
+        if (civ?.cities == null || accumulate == null)
+            return;
+
+        foreach (var city in civ.cities)
+        {
+            if (city == null)
+                continue;
+
+            foreach (var (building, _, _) in city.EnumerateOperationalBuildings())
+                AccumulateBuildingWorkerBonuses(building?.workerBonuses, scope, accumulate);
+        }
+    }
+
+    private static void AccumulateBuildingWorkerBonuses(WorkerUnitStatBonus[] bonuses, BuildingUnitBonusScope scope, System.Action<WorkerUnitStatBonus[]> accumulate)
+    {
+        if (bonuses == null || accumulate == null)
+            return;
+
+        var scopedBonuses = bonuses.Where(bonus => bonus != null && bonus.buildingScope == scope).ToArray();
+        if (scopedBonuses.Length > 0)
+            accumulate(scopedBonuses);
     }
 
     public override int GetSituationalAttackAddAgainst(BaseUnit target)

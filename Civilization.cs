@@ -1579,13 +1579,16 @@ public class Civilization : MonoBehaviour
             if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 foreach (var b in belief.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
-        // City buildings (if context provided)
+        // Building bonuses can be scoped either to all civ units or to the local city context.
+        foreach (var bonus in EnumerateBuildingUnitBonuses(BuildingUnitBonusScope.AllCivilizationUnits))
+            if (bonus != null && MatchesCombatUnitBonusTarget(unit.data, bonus.unit, bonus.useUnitCategoryFilter, bonus.unitCategory) && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
+
         if (cityContext != null)
         {
             foreach (var (bd, _, _) in cityContext.EnumerateOperationalBuildings())
             {
                 if (bd == null || bd.unitBonuses == null) continue;
-                foreach (var b in bd.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in bd.unitBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
@@ -1634,13 +1637,16 @@ public class Civilization : MonoBehaviour
             if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
+        foreach (var bonus in EnumerateBuildingWorkerBonuses(BuildingUnitBonusScope.AllCivilizationUnits))
+            if (bonus != null && bonus.worker == worker.data && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
+
         if (cityContext != null)
         {
             foreach (var (bd, _, _) in cityContext.EnumerateOperationalBuildings())
             {
                 if (bd == null) continue;
                 if (bd.workerBonuses != null)
-                    foreach (var b in bd.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in bd.workerBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
@@ -1706,10 +1712,14 @@ public class Civilization : MonoBehaviour
             if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief.unitBonuses);
 
+        Accumulate(EnumerateBuildingUnitBonuses(BuildingUnitBonusScope.AllCivilizationUnits).ToArray());
+
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.unitBonuses);
+                Accumulate(building?.unitBonuses?.Where(bonus => bonus != null &&
+                    (bonus.buildingScope == BuildingUnitBonusScope.SameCity ||
+                     bonus.buildingScope == BuildingUnitBonusScope.TrainedUnitsOnly)).ToArray());
         }
 
         return totals;
@@ -1766,13 +1776,61 @@ public class Civilization : MonoBehaviour
             if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief.workerBonuses);
 
+        Accumulate(EnumerateBuildingWorkerBonuses(BuildingUnitBonusScope.AllCivilizationUnits).ToArray());
+
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.workerBonuses);
+                Accumulate(building?.workerBonuses?.Where(bonus => bonus != null &&
+                    (bonus.buildingScope == BuildingUnitBonusScope.SameCity ||
+                     bonus.buildingScope == BuildingUnitBonusScope.TrainedUnitsOnly)).ToArray());
         }
 
         return totals;
+    }
+
+    private IEnumerable<UnitStatBonus> EnumerateBuildingUnitBonuses(BuildingUnitBonusScope scope)
+    {
+        if (cities == null)
+            yield break;
+
+        foreach (var city in cities)
+        {
+            if (city == null)
+                continue;
+
+            foreach (var (building, _, _) in city.EnumerateOperationalBuildings())
+            {
+                if (building?.unitBonuses == null)
+                    continue;
+
+                foreach (var bonus in building.unitBonuses)
+                    if (bonus != null && bonus.buildingScope == scope)
+                        yield return bonus;
+            }
+        }
+    }
+
+    private IEnumerable<WorkerUnitStatBonus> EnumerateBuildingWorkerBonuses(BuildingUnitBonusScope scope)
+    {
+        if (cities == null)
+            yield break;
+
+        foreach (var city in cities)
+        {
+            if (city == null)
+                continue;
+
+            foreach (var (building, _, _) in city.EnumerateOperationalBuildings())
+            {
+                if (building?.workerBonuses == null)
+                    continue;
+
+                foreach (var bonus in building.workerBonuses)
+                    if (bonus != null && bonus.buildingScope == scope)
+                        yield return bonus;
+            }
+        }
     }
 
     private static bool MatchesDiseaseModifier(DiseaseModifierBonus bonus, DiseaseData disease)
