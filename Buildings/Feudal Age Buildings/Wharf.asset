@@ -10,24 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Tithe Barn
+  m_Name: Wharf
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Tithe Barn
+  buildingName: Cog Wharf
   icon: {fileID: 0}
-  description: +5 Gold, +3 Faith
+  description: +4 Gold, +3 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 225
-  goldCost: 335
+  productionCost: 320
+  goldCost: 475
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 335
+  dismantleGoldRefund: 475
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -39,22 +39,22 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures:
-  - {fileID: 11400000, guid: 6318491335753b949bdc2c879a65dd68, type: 2}
+  requiredTechs:
+  - {fileID: 11400000, guid: e9bfb6fae990f4f4dba3109076f3d637, type: 2}
+  requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 5
+  productionPerTurn: 3
+  goldPerTurn: 4
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
-  faithPerTurn: 3
+  faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0

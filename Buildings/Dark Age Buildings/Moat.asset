@@ -10,24 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Bishopric
+  m_Name: Moat
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Bishopric
+  buildingName: Motte Bailey
   icon: {fileID: 0}
-  description: +5 Faith, +2 Policy Points, +1 Happiness
+  description: +18 Defense, +2 Policy Points, +2 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 330
-  goldCost: 490
+  productionCost: 240
+  goldCost: 360
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 490
+  dismantleGoldRefund: 360
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -37,16 +37,16 @@ MonoBehaviour:
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
-  isFaithBuilding: 1
-  isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures:
-  - {fileID: 11400000, guid: c336900f7002463468415a14576d258e, type: 2}
+  isFaithBuilding: 0
+  isPerimeterWall: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: 054102cf948834a4689e6b6411b01a8b, type: 2}
+  requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -54,13 +54,13 @@ MonoBehaviour:
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 2
-  faithPerTurn: 5
+  faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 0
-  happinessBonus: 1
+  defenseBonus: 18
+  happinessBonus: 2
   unitBonuses: []
   workerBonuses: []
   diseaseBonuses: []
