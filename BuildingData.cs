@@ -91,6 +91,8 @@ public class BuildingData : ScriptableObject
     public GovernmentData[] requiredGovernments;
     [Tooltip("All of these policies must be active to build this building (optional)")]
     public PolicyData[] requiredPolicies;
+    [Tooltip("Operational building prerequisites that may be checked in this city, the capital, other cities, or across all cities.")]
+    public CityBuildingRequirement[] requiredBuildings;
 
     [Header("Building Limits")]
     [Tooltip("Maximum number of this building type a civilization can have (-1 = unlimited)")]

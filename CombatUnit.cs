@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
@@ -656,11 +657,13 @@ public class CombatUnit : BaseUnit
             if (civ.IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.unitBonuses);
 
+        AccumulateBuildingUnitBonuses(civ, BuildingUnitBonusScope.AllCivilizationUnits, Accumulate);
+
         var cityContext = GetCurrentCityContext();
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.unitBonuses);
+                AccumulateBuildingUnitBonuses(building?.unitBonuses, BuildingUnitBonusScope.SameCity, Accumulate);
         }
 
         return a;
@@ -711,14 +714,41 @@ public class CombatUnit : BaseUnit
             if (civ.IsBeliefSeasonActive(belief, planetIndex))
                 Accumulate(belief?.unitBonuses);
 
+        AccumulateBuildingUnitBonuses(civ, BuildingUnitBonusScope.AllCivilizationUnits, Accumulate);
+
         var cityContext = GetCurrentCityContext();
         if (cityContext != null)
         {
             foreach (var (building, _, _) in cityContext.EnumerateOperationalBuildings())
-                Accumulate(building?.unitBonuses);
+                AccumulateBuildingUnitBonuses(building?.unitBonuses, BuildingUnitBonusScope.SameCity, Accumulate);
         }
 
         return a;
+    }
+
+    private static void AccumulateBuildingUnitBonuses(Civilization civ, BuildingUnitBonusScope scope, System.Action<UnitStatBonus[]> accumulate)
+    {
+        if (civ?.cities == null || accumulate == null)
+            return;
+
+        foreach (var city in civ.cities)
+        {
+            if (city == null)
+                continue;
+
+            foreach (var (building, _, _) in city.EnumerateOperationalBuildings())
+                AccumulateBuildingUnitBonuses(building?.unitBonuses, scope, accumulate);
+        }
+    }
+
+    private static void AccumulateBuildingUnitBonuses(UnitStatBonus[] bonuses, BuildingUnitBonusScope scope, System.Action<UnitStatBonus[]> accumulate)
+    {
+        if (bonuses == null || accumulate == null)
+            return;
+
+        var scopedBonuses = bonuses.Where(bonus => bonus != null && bonus.buildingScope == scope).ToArray();
+        if (scopedBonuses.Length > 0)
+            accumulate(scopedBonuses);
     }
 
     public override int GetSituationalAttackAddAgainst(BaseUnit target)

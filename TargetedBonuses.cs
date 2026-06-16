@@ -16,6 +16,29 @@ public enum CityYieldScope
     CapitalOnly,
 }
 
+public enum CityBuildingRequirementScope
+{
+    SameCity,
+    Capital,
+    AnyOtherCity,
+    AnyCity,
+    EveryOtherCity,
+}
+
+[System.Serializable]
+public class CityBuildingRequirement
+{
+    [Tooltip("Where to look for the required operational building.")]
+    public CityBuildingRequirementScope scope = CityBuildingRequirementScope.SameCity;
+
+    [Tooltip("Exact building that must be operational. Leave empty to use only the category filter.")]
+    public BuildingData building;
+
+    [Tooltip("If enabled, any operational building in this category satisfies the requirement.")]
+    public bool useBuildingCategoryFilter = false;
+    public BuildingCategory buildingCategory;
+}
+
 [System.Serializable]
 public class NonStateReligionUnhappinessModifier
 {
@@ -33,6 +56,16 @@ public enum UnitTerritoryRequirement
     Friendly,
     Enemy,
     Unowned,
+}
+
+public enum BuildingUnitBonusScope
+{
+    [Tooltip("For building-sourced unit bonuses, apply to units in this building's city and to units trained in this building's city.")]
+    SameCity,
+    [Tooltip("For building-sourced unit bonuses, apply to all units owned by the civilization, regardless of city.")]
+    AllCivilizationUnits,
+    [Tooltip("For building-sourced unit bonuses, only apply one-time new-unit progression bonuses to units trained in this building's city.")]
+    TrainedUnitsOnly,
 }
 
 
@@ -109,6 +142,10 @@ public class UnitStatBonus
     [Tooltip("If enabled, this bonus only applies to combat units in the selected category.")]
     public bool useUnitCategoryFilter = false;
     public CombatCategory unitCategory;
+
+    [Header("Building Source Scope")]
+    [Tooltip("Only used when this bonus is placed on a BuildingData asset.")]
+    public BuildingUnitBonusScope buildingScope = BuildingUnitBonusScope.SameCity;
 
     [Header("Combat Target Filters")]
     [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy combat unit.")]
@@ -222,6 +259,10 @@ public class UnitYieldBonus
 public class WorkerUnitStatBonus
 {
     public WorkerUnitData worker;
+
+    [Header("Building Source Scope")]
+    [Tooltip("Only used when this bonus is placed on a BuildingData asset.")]
+    public BuildingUnitBonusScope buildingScope = BuildingUnitBonusScope.SameCity;
 
     [Header("Combat Target Filters")]
     [Tooltip("If set, attack/defense portions of this bonus only apply against this specific enemy combat unit.")]
@@ -430,6 +471,12 @@ public class BuildingYieldBonus
     [Tooltip("If enabled, this bonus only applies to buildings in the selected category (for example IsFoodBuilding).")]
     public bool useBuildingCategoryFilter = false;
     public BuildingCategory buildingCategory;
+
+    [Header("Presence Filters")]
+    [Tooltip("If set, this bonus only applies in cities controlling at least one tile with this resource.")]
+    public ResourceData requiredCityResource;
+    [Tooltip("Optional operational building requirements that must be satisfied in this city/civilization before the bonus applies.")]
+    public CityBuildingRequirement[] requiredBuildings;
 
     [Header("Season Filter")]
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
