@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automated Port
   icon: {fileID: 0}
-  description: Robotic cargo port. +32 Gold, +22 Production, +4 Policy, +6 Order, provides Harbor.
+  description: Robotic cargo port. +32 Gold, +22 Production, provides Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 350f3aa7b753425497cb00f34c27f0bb, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 8850
   dismantleResourceRefunds: []
@@ -48,22 +48,24 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 22
   goldPerTurn: 32
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 4
+  policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
-  cityGoldModifier: 0.10
+  cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +76,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
