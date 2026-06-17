@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Menelik II
+  m_EditorClassIdentifier: 
+  leaderName: Menelik II
+  portrait: {fileID: 21300000, guid: 305cadcc3926fdf46a0eb91b11b489fa, type: 3}
+  historicalEra: 
+  biography: The great modern emperor of Ethiopia who modernized the country and
+    fought against the fools who attempted to take him down.
+  aggressiveness: 5
+  diplomacy: 10
+  science: 8
+  expansion: 2
+  religion: 5
+  primaryAgenda: 4
+  secondaryAgenda: 9
+  likesTraits: 0500000003000000
+  dislikesTraits: 0000000002000000
+  preferredVictory: 5
+  militaryFocus: 1
+  economicFocus: 1.01
+  scientificFocus: 1.64
+  culturalFocus: 1
+  religiousFocus: 1
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: 
+  abilityDescription: 
+  goldModifier: 0
+  scienceModifier: 0.15
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  militaryStrengthModifier: 0.05
+  herdYieldBonuses:
+  - useSpeciesFilter: 0
+    species: 4
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 1
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  idleSprite: {fileID: 0}
+  speakingSprite: {fileID: 0}
+  angrySprite: {fileID: 0}
+  declareWarSprite: {fileID: 0}
+  happySprite: {fileID: 0}
+  agreementSprite: {fileID: 0}
+  idleGifPath: 
+  speakingGifPath: 
+  angryGifPath: 
+  declareWarGifPath: 
+  happyGifPath: 
+  agreementGifPath: 
+  prefersAlliance: 1
+  prefersTrade: 0
+  isWarmonger: 0
+  isIsolationist: 1

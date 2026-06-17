@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Court
   icon: {fileID: 0}
-  description: A crown court grounded in constitutional procedure.
+  description: A crown court grounded in constitutional procedure. +15 Order, +15
+    Policy Points
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -40,6 +41,13 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 1
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures: []
@@ -47,25 +55,45 @@ MonoBehaviour:
   requiredGovernments:
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   requiredPolicies: []
-  buildingLimit: -1
-  limitCategory: 
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  buildingLimit: 1
+  limitCategory: Royal Court
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 2
-  culturePerTurn: 3
-  policyPointsPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 15
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 2
-  happinessBonus: 8
+  defenseBonus: 0
+  happinessBonus: 0
+  orderBonus: 15
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62fc5d8f3b04c014090052f5bffbad37, type: 3}
+  m_Name: Mali
+  m_EditorClassIdentifier: Assembly-CSharp::CivData
+  civName: Mali
+  icon: {fileID: 21300000, guid: b6457a3019956ce4f9418a4813db5f41, type: 3}
+  cityNames:
+  - Timbuktu
+  - Segou
+  - Bamako
+  - Sikasso
+  - Kayes
+  - Mopti
+  herdNames:
+  - The Great Herd
+  - The Camel Herds
+  - The Moving Pasture
+  availableLeaders:
+  - {fileID: 11400000, guid: 8733f293cf2f7c143885ef88b97bf47e, type: 2}
+  cultureGroup: 3
+  cultureBonuses: []
+  description: A land of gold and horses.
+  startingTechs: []
+  startingCultures: []
+  startingPolicies: []
+  uniqueUnits: []
+  uniqueBuildings: []
+  climatePreferences: 0200000003000000
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0.35
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  unitBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses:
+  - useSeasonFilter: 0
+    seasons: 
+    winterDamageReductionPct: 0
+    famineDamageReductionPct: 0
+    biomeDamageReductionPct: 0.2
+  herdStarvationPercentReduction: 0.2
+  herdYieldBonuses: []
+  isTribe: 0
+  isCityState: 0
+  musicData: {fileID: 11400000, guid: d6aaa3870d41fc94185df8d4215c613c, type: 2}
+  cityPrefabsByAge:
+  - techAge: 0
+    cityPrefab: {fileID: 8258165273280901363, guid: 36cb236dbd7e4aa43a1c9a5141aba6ec, type: 3}
+  - techAge: 1
+    cityPrefab: {fileID: 4190042404842890405, guid: c0face8f3d5c4fb4d8f881f72abc5dbe, type: 3}
+  - techAge: 2
+    cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
+  herdPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
+  herdPackedPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
+  herdSettledPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}

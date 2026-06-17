@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Germanicus
+  m_EditorClassIdentifier: Assembly-CSharp::LeaderData
+  leaderName: Germanicus
+  portrait: {fileID: 0}
+  historicalEra: Ancient
+  biography: He is not a fan of Germans
+  aggressiveness: 10
+  diplomacy: 3
+  science: 4
+  expansion: 7
+  religion: 1
+  primaryAgenda: 3
+  secondaryAgenda: 2
+  likesTraits: 
+  dislikesTraits: 
+  preferredVictory: 0
+  militaryFocus: 1.65
+  economicFocus: 1.23
+  scientificFocus: 1
+  culturalFocus: 0.53
+  religiousFocus: 0.26
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: 
+  abilityDescription: 
+  goldModifier: 0
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  militaryStrengthModifier: 0.1
+  prefersAlliance: 0
+  prefersTrade: 0
+  isWarmonger: 1
+  isIsolationist: 0

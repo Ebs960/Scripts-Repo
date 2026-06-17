@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62fc5d8f3b04c014090052f5bffbad37, type: 3}
+  m_Name: Arabia
+  m_EditorClassIdentifier: Assembly-CSharp::CivData
+  civName: Arabia
+  icon: {fileID: 21300000, guid: c18c07d6a609cbe4db55accef30cef27, type: 3}
+  cityNames:
+  - Mecca
+  - Medina
+  - Riyadh
+  herdNames:
+  - Sheep of Allah
+  - Cows of Allah
+  - The Great Umayyad Horde Herd
+  availableLeaders:
+  - {fileID: 11400000, guid: dc4cb2a7cd971d64d9da2b8d25c72e60, type: 2}
+  cultureGroup: 12
+  cultureBonuses: []
+  description: The desert sands make trade and travel essential to survival. All
+    praise Allah
+  startingTechs: []
+  startingCultures: []
+  startingPolicies: []
+  uniqueUnits: []
+  uniqueBuildings: []
+  climatePreferences: 0200000003000000
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0.35
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 0
+    unitCategory: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 01000000
+    attackAdd: 2
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0
+    defensePct: 0
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 0
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses:
+  - useSeasonFilter: 0
+    seasons: 
+    winterDamageReductionPct: 0
+    famineDamageReductionPct: 0.5
+    biomeDamageReductionPct: 0.5
+  herdStarvationPercentReduction: 0.4
+  herdYieldBonuses:
+  - useSpeciesFilter: 1
+    species: 5
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 2
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  isTribe: 0
+  isCityState: 0
+  musicData: {fileID: 11400000, guid: d6aaa3870d41fc94185df8d4215c613c, type: 2}
+  cityPrefabsByAge:
+  - techAge: 0
+    cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
+  - techAge: 1
+    cityPrefab: {fileID: 8258165273280901363, guid: 36cb236dbd7e4aa43a1c9a5141aba6ec, type: 3}
+  - techAge: 2
+    cityPrefab: {fileID: 9048948297536333698, guid: 65c2616984db3dc419321ddfc54c1bc4, type: 3}
+  herdPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
+  herdPackedPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
+  herdSettledPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}

@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5739e74414fdbbf4caf70136243f7139, type: 3}
+  m_Name: African Music
+  m_EditorClassIdentifier: 
+  ageMusicTracks:
+  - age: 0
+    peaceMusicTracks:
+    - {fileID: 8300000, guid: 0a2853c86fb0f5b46b652ac18aac7ef9, type: 3}
+    - {fileID: 8300000, guid: 25d154b810479b84f9f59597d02d59c7, type: 3}
+    warMusicTracks:
+    - {fileID: 8300000, guid: 3be15af963a8d3444a57c4e367f3692d, type: 3}
+    - {fileID: 8300000, guid: e137ba30066f9d5449b789d5db065da3, type: 3}
+    - {fileID: 8300000, guid: 620c7f7899c855b4c9c461652fc545a8, type: 3}
+    - {fileID: 8300000, guid: 38416147a6339f4488c6cee87a0fb37b, type: 3}
+  - age: 1
+    peaceMusicTracks:
+    - {fileID: 8300000, guid: ac4a0c48b0b7f5e4ea963290d07c711d, type: 3}
+    - {fileID: 8300000, guid: b5ad7cb7863153c45bc492ea5e9a0a1c, type: 3}
+    - {fileID: 8300000, guid: 0a2853c86fb0f5b46b652ac18aac7ef9, type: 3}
+    warMusicTracks:
+    - {fileID: 8300000, guid: 3be15af963a8d3444a57c4e367f3692d, type: 3}
+    - {fileID: 8300000, guid: e137ba30066f9d5449b789d5db065da3, type: 3}
+    - {fileID: 8300000, guid: 620c7f7899c855b4c9c461652fc545a8, type: 3}
+    - {fileID: 8300000, guid: 38416147a6339f4488c6cee87a0fb37b, type: 3}
+  - age: 2
+    peaceMusicTracks:
+    - {fileID: 8300000, guid: ac4a0c48b0b7f5e4ea963290d07c711d, type: 3}
+    - {fileID: 8300000, guid: b5ad7cb7863153c45bc492ea5e9a0a1c, type: 3}
+    - {fileID: 8300000, guid: 0a2853c86fb0f5b46b652ac18aac7ef9, type: 3}
+    warMusicTracks:
+    - {fileID: 8300000, guid: 3be15af963a8d3444a57c4e367f3692d, type: 3}
+    - {fileID: 8300000, guid: e137ba30066f9d5449b789d5db065da3, type: 3}
+    - {fileID: 8300000, guid: 620c7f7899c855b4c9c461652fc545a8, type: 3}
+    - {fileID: 8300000, guid: 38416147a6339f4488c6cee87a0fb37b, type: 3}

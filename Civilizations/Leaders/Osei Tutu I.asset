@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Osei Tutu I
+  m_EditorClassIdentifier: 
+  leaderName: Osei Tutu I
+  portrait: {fileID: 21300000, guid: b69dc7fe03a72064fbe35682c5754d6a, type: 3}
+  historicalEra: 
+  biography: A proud Ashanti warrior king.
+  aggressiveness: 8
+  diplomacy: 5
+  science: 5
+  expansion: 7
+  religion: 5
+  primaryAgenda: 3
+  secondaryAgenda: 5
+  likesTraits: 04000000
+  dislikesTraits: 
+  preferredVictory: 0
+  militaryFocus: 1.6
+  economicFocus: 1
+  scientificFocus: 1
+  culturalFocus: 1.404
+  religiousFocus: 1
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: 
+  abilityDescription: 
+  goldModifier: 0
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  militaryStrengthModifier: 0.11
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  idleSprite: {fileID: 0}
+  speakingSprite: {fileID: 0}
+  angrySprite: {fileID: 0}
+  declareWarSprite: {fileID: 0}
+  happySprite: {fileID: 0}
+  agreementSprite: {fileID: 0}
+  idleGifPath: 
+  speakingGifPath: 
+  angryGifPath: 
+  declareWarGifPath: 
+  happyGifPath: 
+  agreementGifPath: 
+  prefersAlliance: 0
+  prefersTrade: 0
+  isWarmonger: 0
+  isIsolationist: 0

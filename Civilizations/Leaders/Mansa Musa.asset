@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Mansa Musa
+  m_EditorClassIdentifier: 
+  leaderName: Mansa Musa
+  portrait: {fileID: 21300000, guid: 305cadcc3926fdf46a0eb91b11b489fa, type: 3}
+  historicalEra: 
+  biography: A rich black dude
+  aggressiveness: 5
+  diplomacy: 7
+  science: 5
+  expansion: 5
+  religion: 5
+  primaryAgenda: 7
+  secondaryAgenda: 0
+  likesTraits: 
+  dislikesTraits: 
+  preferredVictory: 5
+  militaryFocus: 1
+  economicFocus: 1.63
+  scientificFocus: 1
+  culturalFocus: 1
+  religiousFocus: 1
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: 
+  abilityDescription: 
+  goldModifier: 0.2
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  militaryStrengthModifier: 0
+  prefersAlliance: 0
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 1
