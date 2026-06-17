@@ -99,7 +99,6 @@ MonoBehaviour:
     rangedAttackAdd: 5
     cityAttackAdd: 0
     groundAttackAdd: 0
-    navalAttackAdd: 0
     underwaterAttackAdd: 0
     airAttackAdd: 0
     spaceAttackAdd: 0
@@ -113,7 +112,6 @@ MonoBehaviour:
     rangedAttackPct: 0
     cityAttackPct: 0
     groundAttackPct: 0
-    navalAttackPct: 0
     underwaterAttackPct: 0
     airAttackPct: 0
     spaceAttackPct: 0

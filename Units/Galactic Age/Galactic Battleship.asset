@@ -110,7 +110,6 @@ MonoBehaviour:
   baseRangedAttack: 350
   baseCityAttack: 250
   baseGroundAttack: 180
-  baseNavalAttack: 180
   baseUnderwaterAttack: 0
   baseAirAttack: 300
   baseSpaceAttack: 350
