@@ -106,7 +106,7 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 9
-  baseMeleeAttack: 0
+  baseMeleeAttack: 3
   baseRangedAttack: 5
   baseCityAttack: 0
   baseGroundAttack: 0
@@ -117,6 +117,8 @@ MonoBehaviour:
   baseDefense: 2
   baseHealth: 25
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []

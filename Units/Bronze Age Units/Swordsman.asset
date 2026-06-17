@@ -20,6 +20,19 @@ MonoBehaviour:
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 0
+  spawnLayers: 0
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 0
+  airJumpRange: 0
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 12
+  airJumpAnimationDuration: 0.8
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
   animalBehavior: 0
   animalMovePoints: 1
   canSpawnInOldWorld: 1
@@ -41,16 +54,46 @@ MonoBehaviour:
   orbitVisionBonus: 3
   isTransport: 0
   transportCapacity: 3
+  canTransportCombatUnits: 1
+  canBaseAircraft: 0
+  canBaseSpaceships: 0
   canTravelToMoon: 0
   canStoreMissiles: 0
   maxMissileStorage: 0
   allowedMissileTypes: []
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
+  canReconAirMission: 0
+  canInterceptAirMissions: 0
+  canProvideAntiAir: 0
+  airMissionRange: 0
+  interceptionRange: 3
+  antiAirRange: 2
+  interceptionChance: 0.45
+  antiAirInterceptionChance: 0.25
+  antiAirDamage: 0
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
+  spaceInterceptionRange: 3
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 0
   canAttackSpace: 0
+  canAttackNavalSurface: 1
   canAttackUnderwater: 0
   canCounterAttack: 0
+  bonusesAgainstCategories: []
+  bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
   immuneToLava: 0
@@ -63,18 +106,30 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 13
+  baseMeleeAttack: 12
+  baseRangedAttack: 0
+  baseCityAttack: 6
+  baseGroundAttack: 0
+  baseUnderwaterAttack: 0
+  baseAirAttack: 0
+  baseSpaceAttack: 0
   baseMovePoints: 2
   baseDefense: 4
   baseHealth: 42
   baseRange: 1
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: cc4d33ccb1f824b4ba57c4aab2af07f4, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -89,6 +144,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

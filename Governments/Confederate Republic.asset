@@ -10,14 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
-  m_Name: Monarchy
+  m_Name: Confederate Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
-  governmentName: Monarchy
-  leaderTitleSuffix: Monarch
-  description: A hereditary kingdom that concentrates building power in the capital while organizing food systems realm-wide.
-  policyPointCost: 30
+  governmentName: Confederate Republic
+  leaderTitleSuffix: President
+  description: A confederate system that increases state sovereignty to the max,
+    with high loyalty from sister nations but veto ability coming from all directions.
+  policyPointCost: 140
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0c6f3d3c41ee1b94aad06d6b5153ee03, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -27,7 +29,7 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.1
+  foodModifier: 0
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
@@ -43,40 +45,17 @@ MonoBehaviour:
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
-  cityBonuses:
-  - scope: 1
-    useLayerFilter: 0
-    layers: []
-    useSeasonFilter: 0
-    seasons: []
-    foodAdd: 0
-    productionAdd: 9
-    goldAdd: 0
-    scienceAdd: 0
-    cultureAdd: 0
-    faithAdd: 0
-    policyPointsAdd: 0
-    defenseAdd: 0
-    happinessAdd: 0
-    foodPct: 0
-    productionPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
-    defensePct: 0
-    happinessPct: 0
+  cityBonuses: []
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  councilSeatCount: 2
-  councilVetoDomains: 1
+  councilSeatCount: 7
+  councilVetoDomains: -1
   governorOpinionEffects:
-  - reason: Monarchy Government
-    value: 5
+  - reason: Confederacy
+    value: 80
     durationTurns: -1
-    requiresAnyPersonality: []
+    requiresAnyPersonality: 
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0

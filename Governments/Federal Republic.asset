@@ -10,14 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
-  m_Name: Federal Democracy
+  m_Name: Federal Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
-  governmentName: Federal Democracy
+  governmentName: Federal Republic
   leaderTitleSuffix: President
-  description: A federal system that increases city capacity, gold, and local loyalty while preserving modest production gains.
+  description: A federal system that increases city capacity, gold, and local loyalty
+    while preserving modest production gains.
   policyPointCost: 140
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0c6f3d3c41ee1b94aad06d6b5153ee03, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -53,7 +55,7 @@ MonoBehaviour:
   - reason: Federal Democracy Government
     value: 25
     durationTurns: -1
-    requiresAnyPersonality: []
+    requiresAnyPersonality: 
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
