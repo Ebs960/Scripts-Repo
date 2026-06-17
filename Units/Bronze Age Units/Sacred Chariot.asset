@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
   m_Name: Sacred Chariot
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Chariot
+  unitName: Sacred Chariot
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -109,15 +109,15 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0.5
-  productionCost: 125
-  goldCost: 300
+  productionCost: 150
+  goldCost: 320
   requiredResources:
   - {fileID: 11400000, guid: 13c36b88eb99b1741b9d6259234c154e, type: 2}
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 19
-  baseMeleeAttack: 20
+  baseMeleeAttack: 25
   baseRangedAttack: 0
   baseCityAttack: 0
   baseGroundAttack: 0
@@ -125,8 +125,8 @@ MonoBehaviour:
   baseAirAttack: 0
   baseSpaceAttack: 0
   baseMovePoints: 3
-  baseDefense: 3
-  baseHealth: 40
+  baseDefense: 5
+  baseHealth: 35
   baseRange: 1
   intrinsicStatBonuses: []
   auraBonuses: []
@@ -137,7 +137,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 263bea14437566e439619ca1da46ac15, type: 2}
   requiredCultures: []
   requiredPantheons: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []
