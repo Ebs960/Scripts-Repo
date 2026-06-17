@@ -99,8 +99,6 @@ public class EquipmentData : ScriptableObject
     public float cityAttackBonus;
     [Tooltip("Flat attack bonus against land/surface ground targets (can be fractional)")]
     public float groundAttackBonus;
-    [Tooltip("Flat attack bonus against naval surface targets (can be fractional)")]
-    public float navalAttackBonus;
     [Tooltip("Flat attack bonus against underwater targets (can be fractional)")]
     public float underwaterAttackBonus;
     [Tooltip("Flat attack bonus against air targets (can be fractional)")]

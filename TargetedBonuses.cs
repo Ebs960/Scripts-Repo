@@ -183,7 +183,6 @@ public class UnitStatBonus
     public int rangedAttackAdd;
     public int cityAttackAdd;
     public int groundAttackAdd;
-    public int navalAttackAdd;
     public int underwaterAttackAdd;
     public int airAttackAdd;
     public int spaceAttackAdd;
@@ -202,7 +201,6 @@ public class UnitStatBonus
     public float rangedAttackPct;
     public float cityAttackPct;
     public float groundAttackPct;
-    public float navalAttackPct;
     public float underwaterAttackPct;
     public float airAttackPct;
     public float spaceAttackPct;
@@ -300,7 +298,6 @@ public class WorkerUnitStatBonus
     public int rangedAttackAdd;
     public int cityAttackAdd;
     public int groundAttackAdd;
-    public int navalAttackAdd;
     public int underwaterAttackAdd;
     public int airAttackAdd;
     public int spaceAttackAdd;
@@ -319,7 +316,6 @@ public class WorkerUnitStatBonus
     public float rangedAttackPct;
     public float cityAttackPct;
     public float groundAttackPct;
-    public float navalAttackPct;
     public float underwaterAttackPct;
     public float airAttackPct;
     public float spaceAttackPct;
@@ -388,7 +384,6 @@ public class EquipmentStatBonus
     public int rangedAttackAdd;
     public int cityAttackAdd;
     public int groundAttackAdd;
-    public int navalAttackAdd;
     public int underwaterAttackAdd;
     public int airAttackAdd;
     public int spaceAttackAdd;
@@ -405,7 +400,6 @@ public class EquipmentStatBonus
     public float rangedAttackPct;
     public float cityAttackPct;
     public float groundAttackPct;
-    public float navalAttackPct;
     public float underwaterAttackPct;
     public float airAttackPct;
     public float spaceAttackPct;
