@@ -593,11 +593,19 @@ public class CombatUnit : BaseUnit
             return false;
         if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain))
             return false;
+        if (!MatchesLayerRequirement(bonus.layerRequirement, tile))
+            return false;
+        if (!MatchesRequirement(bonus.underwaterRequirement, tile != null && tile.IsUnderwaterTile))
+            return false;
+        if (!MatchesRequirement(bonus.orbitRequirement, tile != null && tile.isSpace))
+            return false;
         if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource))
             return false;
         if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement))
             return false;
-        if (!civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+        if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+            return false;
+        if (civ == null && bonus.useSeasonFilter)
             return false;
 
         return true;
@@ -612,7 +620,15 @@ public class CombatUnit : BaseUnit
 
     private UnitAgg AggregateUnitBonusesLocal(Civilization civ, CombatUnitData u)
     {
-        UnitAgg a = new UnitAgg(); if (civ == null || u == null) return a;
+        UnitAgg a = new UnitAgg(); if (u == null) return a;
+
+        void Add(UnitStatBonus b)
+        {
+            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+            a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd;
+            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+            a.movePct += b.movePointsPct; a.rangePct += b.rangePct;
+        }
 
         void Accumulate(UnitStatBonus[] bonuses)
         {
@@ -624,13 +640,12 @@ public class CombatUnit : BaseUnit
                 if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
                     continue;
 
-                a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd;
-                a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                a.movePct += b.movePointsPct; a.rangePct += b.rangePct;
+                Add(b);
             }
         }
 
+        Accumulate(u.intrinsicStatBonuses);
+        if (civ == null) return a;
         Accumulate(civ.civData?.unitBonuses);
         Accumulate(civ.leader?.unitBonuses);
 
@@ -688,6 +703,7 @@ public class CombatUnit : BaseUnit
             }
         }
 
+        Accumulate(actualUnit.intrinsicStatBonuses);
         Accumulate(civ.civData?.unitBonuses);
         Accumulate(civ.leader?.unitBonuses);
 
@@ -747,6 +763,15 @@ public class CombatUnit : BaseUnit
         var scopedBonuses = bonuses.Where(bonus => bonus != null && bonus.buildingScope == scope).ToArray();
         if (scopedBonuses.Length > 0)
             accumulate(scopedBonuses);
+    }
+
+    protected override IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    {
+        foreach (var aura in base.EnumerateOwnedAuraBonuses())
+            yield return aura;
+        if (data?.auraBonuses != null)
+            foreach (var aura in data.auraBonuses)
+                if (aura != null) yield return aura;
     }
 
     public override int GetSituationalAttackAddAgainst(BaseUnit target)
@@ -873,13 +898,26 @@ public class CombatUnit : BaseUnit
 
     private EquipAgg AggregateEquipBonusesLocal(Civilization civ, EquipmentData eq)
     {
-        EquipAgg a = new EquipAgg(); if (civ == null || eq == null) return a;
+        EquipAgg a = new EquipAgg(); if (eq == null) return a;
+        void AddEquipmentStatBonus(EquipmentStatBonus b)
+        {
+            if (b == null || !MatchesEquipmentBonusLocation(b) || Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
+                return;
+            a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+            a.rangeAdd += b.rangeAdd;
+            a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+            a.rangePct += b.rangePct;
+        }
+        if (eq.conditionalStatBonuses != null)
+            foreach (var b in eq.conditionalStatBonuses)
+                AddEquipmentStatBonus(b);
+        if (civ == null) return a;
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
             {
                 if (t?.equipmentBonuses == null) continue;
                 foreach (var b in t.equipmentBonuses)
-                    if (b != null && b.equipment == eq)
+                    if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b))
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
@@ -897,7 +935,7 @@ public class CombatUnit : BaseUnit
             {
                 if (c?.equipmentBonuses == null) continue;
                 foreach (var b in c.equipmentBonuses)
-                    if (b != null && b.equipment == eq)
+                    if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b))
                     {
                         if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
                         {
@@ -916,12 +954,22 @@ public class CombatUnit : BaseUnit
     private EquipAgg AggregateTargetedEquipBonuses(Civilization civ, EquipmentData eq, BaseUnit opponent)
     {
         EquipAgg a = new EquipAgg(); if (civ == null || eq == null || opponent == null) return a;
+        if (eq.conditionalStatBonuses != null)
+            foreach (var b in eq.conditionalStatBonuses)
+                if (b != null
+                    && MatchesEquipmentBonusLocation(b)
+                    && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
+                    && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                {
+                    a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                    a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
+                }
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
             {
                 if (t?.equipmentBonuses == null) continue;
                 foreach (var b in t.equipmentBonuses)
-                    if (b != null && b.equipment == eq
+                    if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b)
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
@@ -934,7 +982,7 @@ public class CombatUnit : BaseUnit
             {
                 if (c?.equipmentBonuses == null) continue;
                 foreach (var b in c.equipmentBonuses)
-                    if (b != null && b.equipment == eq
+                    if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b)
                         && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
                         && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
                     {
@@ -949,7 +997,6 @@ public class CombatUnit : BaseUnit
     private EquipAgg AggregateAllEquippedBonusesLocal(Civilization civ)
     {
         EquipAgg total = new EquipAgg();
-        if (civ == null) return total;
         EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
         foreach (var it in items)
         {
@@ -985,7 +1032,7 @@ public class CombatUnit : BaseUnit
 
     private float ApplyTypeSpecificAttackBonuses(float valF, AttackType attackType)
     {
-        if (owner != null && data != null)
+        if (data != null)
         {
             var u = AggregateUnitBonusesLocal(owner, data);
             float attackAdd = u.attackAdd;
@@ -1165,7 +1212,7 @@ public class CombatUnit : BaseUnit
 
     private float ApplyTargetDomainAttackBonuses(float valF, CombatTargetDomain targetDomain, AttackType legacyFallbackType, bool includeLegacyTypedBonuses)
     {
-        if (owner != null && data != null)
+        if (data != null)
         {
             var u = AggregateUnitBonusesLocal(owner, data);
             CombatTargetDomain bonusDomain = GetAttackDomainForTarget(targetDomain);
@@ -1338,7 +1385,7 @@ public class CombatUnit : BaseUnit
         {
             // Use floats internally for accuracy, then round when returning an int for gameplay values that expect ints.
             float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
-            if (owner != null && data != null)
+            if (data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
                 valF = (valF + u.attackAdd) * (1f + u.attackPct);
@@ -1348,6 +1395,8 @@ public class CombatUnit : BaseUnit
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.attackAdd) * (1f + e.attackPct);
             }
+            var aura = AggregateIncomingAuraBonuses();
+            valF = (valF + aura.attackAdd) * (1f + aura.attackPct);
 
             valF = ApplyOwnerAttackBonuses(valF, AttackType.Generic);
 
@@ -1371,7 +1420,7 @@ public class CombatUnit : BaseUnit
     protected override float ApplyOwnerDefenseBonuses(float defenseValue)
     {
         float valF = defenseValue;
-        if (owner != null && data != null)
+        if (data != null)
         {
             var u = AggregateUnitBonusesLocal(owner, data);
             valF = (valF + u.defenseAdd) * (1f + u.defensePct);
@@ -1381,6 +1430,8 @@ public class CombatUnit : BaseUnit
             var e = AggregateAllEquippedBonusesLocal(owner);
             valF = (valF + e.defenseAdd) * (1f + e.defensePct);
         }
+        var aura = AggregateIncomingAuraBonuses();
+        valF = (valF + aura.defenseAdd) * (1f + aura.defensePct);
         return valF;
     }
 
@@ -1392,7 +1443,7 @@ public class CombatUnit : BaseUnit
             baseMove = data.animalMovePoints;
 
         float move = baseMove;
-        if (owner != null && data != null)
+        if (data != null)
         {
             var u = AggregateUnitBonusesLocal(owner, data);
             move = (move + u.moveAdd) * (1f + u.movePct);
@@ -1411,7 +1462,7 @@ public class CombatUnit : BaseUnit
         get
         {
             float valF = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
-            if (owner != null && data != null)
+            if (data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
                 valF = (valF + u.healthAdd) * (1f + u.healthPct);
@@ -1421,6 +1472,8 @@ public class CombatUnit : BaseUnit
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.healthAdd) * (1f + e.healthPct);
             }
+            var aura = AggregateIncomingAuraBonuses();
+            valF = (valF + aura.healthAdd) * (1f + aura.healthPct);
             return Mathf.RoundToInt(valF);
         }
     }
@@ -1430,7 +1483,7 @@ public class CombatUnit : BaseUnit
         get
         {
             float valF = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
-            if (owner != null && data != null)
+            if (data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
                 valF = (valF + u.rangeAdd) * (1f + u.rangePct);
@@ -1440,6 +1493,8 @@ public class CombatUnit : BaseUnit
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.rangeAdd) * (1f + e.rangePct);
             }
+            var aura = AggregateIncomingAuraBonuses();
+            valF = (valF + aura.rangeAdd) * (1f + aura.rangePct);
             valF = ApplyResourceUpkeepToStat(valF);
             return IsDeactivatedByResourceUpkeep ? 0f : valF; // Return as float, no rounding
         }

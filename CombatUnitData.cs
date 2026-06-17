@@ -665,6 +665,12 @@ public class CombatUnitData : ScriptableObject
     public int baseDefense;
     public int baseHealth;
     public float baseRange;
+
+    [Header("Intrinsic Conditional Bonuses")]
+    [Tooltip("Bonuses supplied directly by this unit type. Use location filters for terrain/layer bonuses such as hills, mountains, underwater, or orbit.")]
+    public UnitStatBonus[] intrinsicStatBonuses;
+    [Tooltip("Auras projected by this unit type to nearby units.")]
+    public UnitAuraBonus[] auraBonuses;
     
     [Header("Vision")]
     [Tooltip("How many tiles this unit can see (reveals fog of war). Default is 2 tiles.")]

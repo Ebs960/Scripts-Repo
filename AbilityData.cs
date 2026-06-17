@@ -21,10 +21,25 @@ public class AbilityData : ScriptableObject
     [Tooltip("If enabled, attack/defense/damage portions of this ability only apply against enemy combat units in the selected category.")]
     public bool useTargetUnitCategoryFilter = false;
     public CombatCategory targetUnitCategory;
-    
+
     // New modifiers
     public int healthModifier;
     public int rangeModifier;
+
+    [Header("Location Filters")]
+    public BoolRequirement cityRequirement;
+    public bool useBiomeFilter;
+    public Biome biome;
+    public BoolRequirement hillRequirement;
+    public BoolRequirement mountainRequirement;
+    public UnitLayerRequirement layerRequirement = UnitLayerRequirement.Any;
+    public BoolRequirement underwaterRequirement;
+    public BoolRequirement orbitRequirement;
+    public bool useResourceFilter;
+    public ResourceData resource;
+
+    [Header("Aura Bonuses")]
+    public UnitAuraBonus[] auraBonuses;
 
     public Ability CreateAbility()
     {
@@ -42,7 +57,18 @@ public class AbilityData : ScriptableObject
             useTargetUnitCategoryFilter = useTargetUnitCategoryFilter,
             targetUnitCategory = targetUnitCategory,
             healthModifier   = healthModifier,
-            rangeModifier    = rangeModifier
+            rangeModifier    = rangeModifier,
+            cityRequirement = cityRequirement,
+            useBiomeFilter = useBiomeFilter,
+            biome = biome,
+            hillRequirement = hillRequirement,
+            mountainRequirement = mountainRequirement,
+            layerRequirement = layerRequirement,
+            underwaterRequirement = underwaterRequirement,
+            orbitRequirement = orbitRequirement,
+            useResourceFilter = useResourceFilter,
+            resource = resource,
+            auraBonuses = auraBonuses
         };
     }
-} 
+}

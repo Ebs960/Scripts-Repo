@@ -156,6 +156,12 @@ public class WorkerUnitData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("Intrinsic Conditional Bonuses")]
+    [Tooltip("Bonuses supplied directly by this worker type. Use location filters for terrain/layer bonuses such as hills, mountains, underwater, or orbit.")]
+    public WorkerUnitStatBonus[] intrinsicStatBonuses;
+    [Tooltip("Auras projected by this worker type to nearby units.")]
+    public UnitAuraBonus[] auraBonuses;
+
     [Header("Resource Upkeep (per turn)")]
     [Tooltip("Resources this worker consumes from the civilization stockpile each turn.")]
     public ResourceCost[] resourceUpkeepPerTurn;

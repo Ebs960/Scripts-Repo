@@ -68,6 +68,8 @@ public class WorkerUnit : BaseUnit
         {
             var wb = AggregateWorkerBonusesLocal(owner, data);
             float maxHPF = (BaseHealth + wb.healthAdd) * (1f + wb.healthPct);
+            var aura = AggregateIncomingAuraBonuses();
+            maxHPF = (maxHPF + aura.healthAdd) * (1f + aura.healthPct);
             return Mathf.RoundToInt(maxHPF);
         }
     }
@@ -653,11 +655,19 @@ public class WorkerUnit : BaseUnit
             return false;
         if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain))
             return false;
+        if (!MatchesLayerRequirement(bonus.layerRequirement, tile))
+            return false;
+        if (!MatchesRequirement(bonus.underwaterRequirement, tile != null && tile.IsUnderwaterTile))
+            return false;
+        if (!MatchesRequirement(bonus.orbitRequirement, tile != null && tile.isSpace))
+            return false;
         if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource))
             return false;
         if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement))
             return false;
-        if (!civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+        if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+            return false;
+        if (civ == null && bonus.useSeasonFilter)
             return false;
 
         return true;
@@ -673,7 +683,7 @@ public class WorkerUnit : BaseUnit
     private WorkerAgg AggregateWorkerBonusesLocal(Civilization civ, WorkerUnitData wu)
     {
         WorkerAgg a = new WorkerAgg();
-        if (civ == null || wu == null) return a;
+        if (wu == null) return a;
 
         void Accumulate(WorkerUnitStatBonus[] bonuses)
         {
@@ -701,6 +711,8 @@ public class WorkerUnit : BaseUnit
             }
         }
 
+        Accumulate(wu.intrinsicStatBonuses);
+        if (civ == null) return a;
         Accumulate(civ.civData?.workerBonuses);
         Accumulate(civ.leader?.workerBonuses);
 
@@ -750,6 +762,22 @@ public class WorkerUnit : BaseUnit
             a.workAdd += eq.workPointsBonus;
             a.moveAdd += eq.movementBonus;
             a.healthAdd += eq.healthBonus;
+            if (eq.conditionalStatBonuses != null)
+            {
+                foreach (var b in eq.conditionalStatBonuses)
+                {
+                    if (b == null || !MatchesEquipmentBonusLocation(b) || Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
+                        continue;
+                    a.attackAdd += b.attackAdd;
+                    a.defenseAdd += b.defenseAdd;
+                    a.healthAdd += Mathf.RoundToInt(b.healthAdd);
+                    a.rangeAdd += Mathf.RoundToInt(b.rangeAdd);
+                    a.attackPct += b.attackPct;
+                    a.defensePct += b.defensePct;
+                    a.healthPct += b.healthPct;
+                    a.rangePct += b.rangePct;
+                }
+            }
         }
 
         return a;
@@ -832,6 +860,15 @@ public class WorkerUnit : BaseUnit
             accumulate(scopedBonuses);
     }
 
+    protected override IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    {
+        foreach (var aura in base.EnumerateOwnedAuraBonuses())
+            yield return aura;
+        if (data?.auraBonuses != null)
+            foreach (var aura in data.auraBonuses)
+                if (aura != null) yield return aura;
+    }
+
     public override int GetSituationalAttackAddAgainst(BaseUnit target)
     {
         if (owner == null || data == null || target == null) return 0;
@@ -886,6 +923,8 @@ public class WorkerUnit : BaseUnit
                 var wb = AggregateWorkerBonusesLocal(owner, data);
                 valF = (valF + wb.attackAdd) * (1f + wb.attackPct);
             }
+            var aura = AggregateIncomingAuraBonuses();
+            valF = (valF + aura.attackAdd) * (1f + aura.attackPct);
 
             valF *= FatigueMultiplier;
             valF = ApplyResourceUpkeepToStat(valF);
@@ -901,6 +940,8 @@ public class WorkerUnit : BaseUnit
             var wb = AggregateWorkerBonusesLocal(owner, data);
             valF = (valF + wb.defenseAdd) * (1f + wb.defensePct);
         }
+        var aura = AggregateIncomingAuraBonuses();
+        valF = (valF + aura.defenseAdd) * (1f + aura.defensePct);
         return valF;
     }
 
@@ -916,6 +957,8 @@ public class WorkerUnit : BaseUnit
                 var wb = AggregateWorkerBonusesLocal(owner, data);
                 valF = (valF + wb.rangeAdd) * (1f + wb.rangePct);
             }
+            var aura = AggregateIncomingAuraBonuses();
+            valF = (valF + aura.rangeAdd) * (1f + aura.rangePct);
 
             valF = ApplyResourceUpkeepToStat(valF);
             return IsDeactivatedByResourceUpkeep ? 0f : Mathf.Max(1f, valF);
