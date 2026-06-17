@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using TMPro;
 using GameCombat;
@@ -995,13 +996,168 @@ public abstract class BaseUnit : MonoBehaviour
         return total;
     }
 
+    protected struct UnitAuraAgg
+    {
+        public float attackAdd, defenseAdd, healthAdd, rangeAdd;
+        public float attackPct, defensePct, healthPct, rangePct;
+    }
+
+    protected static bool MatchesRequirement(BoolRequirement requirement, bool value)
+    {
+        return requirement == BoolRequirement.Any
+            || (requirement == BoolRequirement.MustBeTrue && value)
+            || (requirement == BoolRequirement.MustBeFalse && !value);
+    }
+
+    protected HexTileData GetCurrentTileData()
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        return ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
+    }
+
+    protected bool MatchesLayerRequirement(UnitLayerRequirement requirement, HexTileData tile)
+    {
+        bool isOrbit = tile != null && tile.isSpace;
+        bool isUnderwater = tile != null && tile.IsUnderwaterTile;
+        switch (requirement)
+        {
+            case UnitLayerRequirement.Surface:
+                return !isOrbit && !isUnderwater;
+            case UnitLayerRequirement.Underwater:
+                return isUnderwater;
+            case UnitLayerRequirement.Orbit:
+                return isOrbit;
+            default:
+                return true;
+        }
+    }
+
+    protected bool MatchesAbilityLocation(Ability ability)
+    {
+        if (ability == null) return false;
+        var tile = GetCurrentTileData();
+        bool isCityTile = tile?.controllingCity != null;
+        bool isUnderwater = tile != null && tile.IsUnderwaterTile;
+        bool isOrbit = tile != null && tile.isSpace;
+
+        if (!MatchesRequirement(ability.cityRequirement, isCityTile)) return false;
+        if (ability.useBiomeFilter && (tile == null || tile.biome != ability.biome)) return false;
+        if (!MatchesRequirement(ability.hillRequirement, tile != null && tile.isHill)) return false;
+        if (!MatchesRequirement(ability.mountainRequirement, tile != null && tile.isMountain)) return false;
+        if (!MatchesLayerRequirement(ability.layerRequirement, tile)) return false;
+        if (!MatchesRequirement(ability.underwaterRequirement, isUnderwater)) return false;
+        if (!MatchesRequirement(ability.orbitRequirement, isOrbit)) return false;
+        if (ability.useResourceFilter && (tile == null || tile.resource != ability.resource)) return false;
+        return true;
+    }
+
+    protected bool MatchesEquipmentBonusLocation(EquipmentStatBonus bonus)
+    {
+        if (bonus == null) return false;
+        var tile = GetCurrentTileData();
+        bool isCityTile = tile?.controllingCity != null;
+        bool isUnderwater = tile != null && tile.IsUnderwaterTile;
+        bool isOrbit = tile != null && tile.isSpace;
+
+        if (!MatchesRequirement(bonus.cityRequirement, isCityTile)) return false;
+        if (bonus.useBiomeFilter && (tile == null || tile.biome != bonus.biome)) return false;
+        if (!MatchesRequirement(bonus.hillRequirement, tile != null && tile.isHill)) return false;
+        if (!MatchesRequirement(bonus.mountainRequirement, tile != null && tile.isMountain)) return false;
+        if (!MatchesLayerRequirement(bonus.layerRequirement, tile)) return false;
+        if (!MatchesRequirement(bonus.underwaterRequirement, isUnderwater)) return false;
+        if (!MatchesRequirement(bonus.orbitRequirement, isOrbit)) return false;
+        if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
+        return true;
+    }
+
+    protected virtual IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    {
+        if (unlockedAbilities != null)
+            foreach (var ability in unlockedAbilities)
+                if (ability != null && MatchesAbilityLocation(ability) && ability.auraBonuses != null)
+                    foreach (var aura in ability.auraBonuses)
+                        if (aura != null) yield return aura;
+
+        foreach (var equipment in EnumerateEquippedItems())
+            if (equipment?.auraBonuses != null)
+                foreach (var aura in equipment.auraBonuses)
+                    if (aura != null) yield return aura;
+    }
+
+    private bool AuraCanAffect(BaseUnit target, UnitAuraBonus aura)
+    {
+        if (target == null || aura == null) return false;
+        if (target == this && !aura.includeSelf) return false;
+        switch (aura.targetRelationship)
+        {
+            case UnitAuraTargetRelationship.SameCivilization:
+                if (owner == null || target.owner != owner) return false;
+                break;
+            case UnitAuraTargetRelationship.Friendly:
+                if (owner == null || target.owner == null) return false;
+                if (target.owner != owner)
+                {
+                    var state = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(owner, target.owner)
+                        : (owner.relations != null && owner.relations.TryGetValue(target.owner, out var rel) ? rel : DiplomaticState.Peace);
+                    if (state == DiplomaticState.War) return false;
+                }
+                break;
+            case UnitAuraTargetRelationship.Enemy:
+                if (owner == null || target.owner == null || target.owner == owner) return false;
+                {
+                    var state = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(owner, target.owner)
+                        : (owner.relations != null && owner.relations.TryGetValue(target.owner, out var rel) ? rel : DiplomaticState.Peace);
+                    if (state != DiplomaticState.War) return false;
+                }
+                break;
+        }
+
+        return Civilization.MatchesCombatBonusOpponent(target, aura.targetCombatUnit, aura.targetWorkerUnit, aura.useTargetUnitCategoryFilter, aura.targetUnitCategory);
+    }
+
+    protected UnitAuraAgg AggregateIncomingAuraBonuses()
+    {
+        UnitAuraAgg total = new UnitAuraAgg();
+        if (currentTileIndex < 0 || owner == null) return total;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return total;
+
+        void AccumulateFrom(BaseUnit source)
+        {
+            if (source == null || source.planetIndex != planetIndex || source.currentTileIndex < 0) return;
+            foreach (var aura in source.EnumerateOwnedAuraBonuses())
+            {
+                if (aura == null || aura.radius < 0 || !source.AuraCanAffect(this, aura)) continue;
+                var tiles = MissileManager.GetTilesInRadius(ts, source.currentTileIndex, aura.radius);
+                if (tiles == null || !tiles.Contains(currentTileIndex)) continue;
+                total.attackAdd += aura.attackAdd; total.defenseAdd += aura.defenseAdd; total.healthAdd += aura.healthAdd; total.rangeAdd += aura.rangeAdd;
+                total.attackPct += aura.attackPct; total.defensePct += aura.defensePct; total.healthPct += aura.healthPct; total.rangePct += aura.rangePct;
+            }
+        }
+
+        foreach (var civ in FindObjectsByType<Civilization>())
+        {
+            if (civ == null) continue;
+            if (civ.combatUnits != null)
+                foreach (var unit in civ.combatUnits)
+                    AccumulateFrom(unit);
+            if (civ.workerUnits != null)
+                foreach (var unit in civ.workerUnits)
+                    AccumulateFrom(unit);
+        }
+
+        return total;
+    }
+
     protected int GetTargetedAbilityAttackModifierAgainst(BaseUnit target)
     {
         int total = 0;
         if (unlockedAbilities == null || target == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (!AbilityHasCombatTargetFilter(ability))
+            if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             if (!Civilization.MatchesCombatBonusOpponent(target, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
                 continue;
@@ -1016,7 +1172,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (unlockedAbilities == null || attacker == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (!AbilityHasCombatTargetFilter(ability))
+            if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             if (!Civilization.MatchesCombatBonusOpponent(attacker, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
                 continue;
@@ -1031,7 +1187,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (AbilityHasCombatTargetFilter(ability))
+            if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             total += ability.attackModifier;
         }
@@ -1044,7 +1200,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (AbilityHasCombatTargetFilter(ability))
+            if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             total += ability.defenseModifier;
         }
@@ -1056,7 +1212,8 @@ public abstract class BaseUnit : MonoBehaviour
         int total = 0;
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
-            total += ability.healthModifier;
+            if (MatchesAbilityLocation(ability))
+                total += ability.healthModifier;
         return total;
     }
 
@@ -1065,7 +1222,8 @@ public abstract class BaseUnit : MonoBehaviour
         int total = 0;
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
-            total += ability.rangeModifier;
+            if (MatchesAbilityLocation(ability))
+                total += ability.rangeModifier;
         return total;
     }
 
@@ -1075,7 +1233,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (unlockedAbilities == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (AbilityHasCombatTargetFilter(ability))
+            if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             total *= ability.damageMultiplier <= 0f ? 1f : ability.damageMultiplier;
         }
@@ -1088,7 +1246,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (unlockedAbilities == null || target == null) return total;
         foreach (var ability in unlockedAbilities)
         {
-            if (!AbilityHasCombatTargetFilter(ability))
+            if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
             if (!Civilization.MatchesCombatBonusOpponent(target, ability.targetUnit, ability.targetWorker, ability.useTargetUnitCategoryFilter, ability.targetUnitCategory))
                 continue;

@@ -116,6 +116,12 @@ public class EquipmentData : ScriptableObject
     [Tooltip("Flat sight/vision range provided by this equipment while equipped (can be fractional).")]
     public float sightRangeBonus;
 
+    [Header("Conditional Stat Bonuses")]
+    [Tooltip("Additional bonuses this equipment grants only when its location filters match.")]
+    public EquipmentStatBonus[] conditionalStatBonuses;
+    [Tooltip("Auras projected by units while this equipment is equipped.")]
+    public UnitAuraBonus[] auraBonuses;
+
     [Header("Per-Turn Yields (optional)")]
     [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]
     public int foodPerTurn;

@@ -58,6 +58,22 @@ public enum UnitTerritoryRequirement
     Unowned,
 }
 
+public enum UnitLayerRequirement
+{
+    Any,
+    Surface,
+    Underwater,
+    Orbit,
+}
+
+public enum UnitAuraTargetRelationship
+{
+    Friendly,
+    SameCivilization,
+    Enemy,
+    Any,
+}
+
 public enum BuildingUnitBonusScope
 {
     [Tooltip("For building-sourced unit bonuses, apply to units in this building's city and to units trained in this building's city.")]
@@ -166,6 +182,12 @@ public class UnitStatBonus
     public Biome biome;
     public BoolRequirement hillRequirement;
     public BoolRequirement mountainRequirement;
+    [Tooltip("Require the unit to be in a particular map layer. Surface excludes underwater and orbit tiles.")]
+    public UnitLayerRequirement layerRequirement = UnitLayerRequirement.Any;
+    [Tooltip("Whether the unit must be standing on an underwater tile/layer.")]
+    public BoolRequirement underwaterRequirement;
+    [Tooltip("Whether the unit must be standing on an orbit/space tile/layer.")]
+    public BoolRequirement orbitRequirement;
     [Tooltip("Require a specific resource on the unit's tile.")]
     public bool useResourceFilter;
     public ResourceData resource;
@@ -281,6 +303,12 @@ public class WorkerUnitStatBonus
     public Biome biome;
     public BoolRequirement hillRequirement;
     public BoolRequirement mountainRequirement;
+    [Tooltip("Require the worker to be in a particular map layer. Surface excludes underwater and orbit tiles.")]
+    public UnitLayerRequirement layerRequirement = UnitLayerRequirement.Any;
+    [Tooltip("Whether the worker must be standing on an underwater tile/layer.")]
+    public BoolRequirement underwaterRequirement;
+    [Tooltip("Whether the worker must be standing on an orbit/space tile/layer.")]
+    public BoolRequirement orbitRequirement;
     [Tooltip("Require a specific resource on the worker's tile.")]
     public bool useResourceFilter;
     public ResourceData resource;
@@ -378,6 +406,18 @@ public class EquipmentStatBonus
     public bool useTargetUnitCategoryFilter = false;
     public CombatCategory targetUnitCategory;
 
+    [Header("Location Filters")]
+    public BoolRequirement cityRequirement;
+    public bool useBiomeFilter;
+    public Biome biome;
+    public BoolRequirement hillRequirement;
+    public BoolRequirement mountainRequirement;
+    public UnitLayerRequirement layerRequirement = UnitLayerRequirement.Any;
+    public BoolRequirement underwaterRequirement;
+    public BoolRequirement orbitRequirement;
+    public bool useResourceFilter;
+    public ResourceData resource;
+
     [Header("Additive (flat)")]
     public int attackAdd;
     public int meleeAttackAdd;
@@ -408,6 +448,37 @@ public class EquipmentStatBonus
     public float rangePct;
     [Tooltip("Percent sight/vision range increase as 0.10 = +10%.")]
     public float sightRangePct;
+}
+
+[System.Serializable]
+public class UnitAuraBonus
+{
+    [Header("Aura")]
+    [Tooltip("Maximum hex distance from the source unit. 2 means units up to two hexes away.")]
+    public int radius = 1;
+    [Tooltip("Whether the source unit receives its own aura.")]
+    public bool includeSelf = false;
+    [Tooltip("Which units can receive this aura relative to the source unit.")]
+    public UnitAuraTargetRelationship targetRelationship = UnitAuraTargetRelationship.Friendly;
+
+    [Header("Target Filters")]
+    public CombatUnitData targetCombatUnit;
+    public WorkerUnitData targetWorkerUnit;
+    public bool useTargetUnitCategoryFilter = false;
+    public CombatCategory targetUnitCategory;
+
+    [Header("Additive (flat)")]
+    public float attackAdd;
+    public float defenseAdd;
+    public float healthAdd;
+    public float rangeAdd;
+
+    [Header("Multiplicative (%)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float attackPct;
+    public float defensePct;
+    public float healthPct;
+    public float rangePct;
 }
 
 [System.Serializable]
