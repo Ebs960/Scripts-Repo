@@ -2836,7 +2836,23 @@ Destroy(oldTuple.instance);
     {
         var agg = AggregateCityScopedYieldBonuses(kind);
         float statusModifier = GetHighHappinessYieldModifier(kind) + GetHighOrderYieldModifier(kind);
-        return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct + statusModifier));
+        float empireModifier = owner != null ? owner.GetEmpireBuildingYieldModifier(ToEmpireYieldType(kind)) : 0f;
+        return Mathf.RoundToInt((value + agg.add) * (1f + agg.pct + statusModifier + empireModifier));
+    }
+
+    private static EmpireYieldType ToEmpireYieldType(BuildingYieldType kind)
+    {
+        return kind switch
+        {
+            BuildingYieldType.Food => EmpireYieldType.Food,
+            BuildingYieldType.Production => EmpireYieldType.Production,
+            BuildingYieldType.Gold => EmpireYieldType.Gold,
+            BuildingYieldType.Science => EmpireYieldType.Science,
+            BuildingYieldType.Culture => EmpireYieldType.Culture,
+            BuildingYieldType.Faith => EmpireYieldType.Faith,
+            BuildingYieldType.PolicyPoints => EmpireYieldType.PolicyPoints,
+            _ => EmpireYieldType.Food,
+        };
     }
 
     int SumBuiltWithBonuses(BuildingYieldType kind)

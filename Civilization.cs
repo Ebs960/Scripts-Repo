@@ -2562,7 +2562,7 @@ public class Civilization : MonoBehaviour
         {
             if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
             {
-                int tradeGold = Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+                int tradeGold = Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
                 gold += tradeGold;
                 totalGoldThisTurn += tradeGold;
 }
@@ -2602,16 +2602,16 @@ public class Civilization : MonoBehaviour
             }
 
             // Apply global civ yield modifiers to these additions as well
-            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
-            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
-            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            food    += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
+            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
             policyPoints += modifiedPolicy;
-            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
             totalPolicyThisTurn += modifiedPolicy;
         }
 
@@ -2631,16 +2631,16 @@ public class Civilization : MonoBehaviour
                 addPol  += yields.policy;
             }
 
-            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
-            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
-            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            food    += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
+            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
             policyPoints += modifiedPolicy;
-            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
             totalPolicyThisTurn += modifiedPolicy;
         }
 
@@ -4060,6 +4060,35 @@ return true;
         return religion.faithCost;
     }
 
+
+    public float GetEmpireBuildingYieldModifier(EmpireYieldType yieldType)
+    {
+        float total = 0f;
+        if (cities == null) return total;
+
+        foreach (var city in cities)
+        {
+            if (city == null) continue;
+            foreach (var (building, _, upkeepMultiplier) in city.EnumerateOperationalBuildings())
+            {
+                if (building == null) continue;
+                float modifier = yieldType switch
+                {
+                    EmpireYieldType.Food => building.empireFoodModifier,
+                    EmpireYieldType.Production => building.empireProductionModifier,
+                    EmpireYieldType.Gold => building.empireGoldModifier,
+                    EmpireYieldType.Science => building.empireScienceModifier,
+                    EmpireYieldType.Culture => building.empireCultureModifier,
+                    EmpireYieldType.Faith => building.empireFaithModifier,
+                    EmpireYieldType.PolicyPoints => building.empirePolicyPointsModifier,
+                    _ => 0f,
+                };
+                total += modifier * upkeepMultiplier;
+            }
+        }
+
+        return total;
+    }
     public void RecalculateCachedYieldRates()
     {
         int totalScienceThisTurn = 0;
@@ -4089,7 +4118,7 @@ return true;
             foreach (var tradeRoute in interplanetaryTradeRoutes)
             {
                 if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
-                    totalGoldThisTurn += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+                    totalGoldThisTurn += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
             }
         }
 
@@ -4124,12 +4153,12 @@ return true;
                 }
             }
 
-            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
-            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
-            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
-            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
         }
 
         if (workerUnits != null)
@@ -4147,12 +4176,12 @@ return true;
                 addPol += yields.policy;
             }
 
-            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
-            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier));
-            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier));
-            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier));
-            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier));
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
         }
 
         if (herds != null)
