@@ -654,8 +654,6 @@ public class CombatUnitData : ScriptableObject
     public int baseCityAttack;
     [Tooltip("Base attack value against land/surface ground units. Leave 0 to fall back to this unit's weapon-style attack.")]
     public int baseGroundAttack;
-    [Tooltip("Base attack value against naval surface units such as boats and ships. Leave 0 to fall back to this unit's weapon-style attack.")]
-    public int baseNavalAttack;
     [Tooltip("Base attack value against underwater targets such as submarines, sea crawlers, or undersea bases. Leave 0 to fall back to this unit's weapon-style attack.")]
     public int baseUnderwaterAttack;
     [Tooltip("Base attack value against air units. Leave 0 to fall back to this unit's weapon-style attack.")]

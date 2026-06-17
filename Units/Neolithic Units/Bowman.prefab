@@ -323,7 +323,6 @@ MonoBehaviour:
   rangedAttack: 0
   cityAttack: 0
   groundAttack: 0
-  navalAttack: 0
   underwaterAttack: 0
   airAttack: 0
   spaceAttack: 0

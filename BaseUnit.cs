@@ -866,12 +866,6 @@ public abstract class BaseUnit : MonoBehaviour
         (_equippedArmor?.groundAttackBonus ?? 0f) +
         (_equippedMiscellaneous?.groundAttackBonus ?? 0f);
 
-    public float EquipmentNavalAttackBonus =>
-        (_equippedWeapon?.navalAttackBonus ?? 0f) +
-        (_equippedShield?.navalAttackBonus ?? 0f) +
-        (_equippedArmor?.navalAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.navalAttackBonus ?? 0f);
-
     public float EquipmentUnderwaterAttackBonus =>
         (_equippedWeapon?.underwaterAttackBonus ?? 0f) +
         (_equippedShield?.underwaterAttackBonus ?? 0f) +
@@ -1111,7 +1105,6 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual int BaseRangedAttack => BaseAttack;
     public virtual int BaseCityAttack => BaseAttack;
     public virtual int BaseGroundAttack => BaseAttack;
-    public virtual int BaseNavalAttack => BaseAttack;
     public virtual int BaseUnderwaterAttack => BaseAttack;
     public virtual int BaseAirAttack => BaseAttack;
     public virtual int BaseSpaceAttack => BaseAttack;
@@ -1120,7 +1113,6 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual int CurrentRangedAttack => CurrentAttack;
     public virtual int CurrentCityAttack => CurrentAttack;
     public virtual int CurrentGroundAttack => CurrentAttack;
-    public virtual int CurrentNavalAttack => CurrentAttack;
     public virtual int CurrentUnderwaterAttack => CurrentAttack;
     public virtual int CurrentAirAttack => CurrentAttack;
     public virtual int CurrentSpaceAttack => CurrentAttack;
