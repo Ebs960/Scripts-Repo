@@ -95,14 +95,14 @@ MonoBehaviour:
   bonusesAgainstCategories:
   - targetCategory: 0
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
-    defensePercent: 0
-  - targetCategory: 7
+    defensePercent: 0.1
+  - targetCategory: 1
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
-    defensePercent: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
@@ -116,7 +116,7 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 11
-  baseMeleeAttack: 0
+  baseMeleeAttack: 11
   baseRangedAttack: 0
   baseCityAttack: 0
   baseGroundAttack: 0

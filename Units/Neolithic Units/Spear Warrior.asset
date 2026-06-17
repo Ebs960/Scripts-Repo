@@ -95,27 +95,27 @@ MonoBehaviour:
   bonusesAgainstCategories:
   - targetCategory: 21
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
   - targetCategory: 22
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
   - targetCategory: 23
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
   - targetCategory: 24
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
   - targetCategory: 25
     attackBonus: 0
-    attackPercent: 0.2
+    attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
   bonusesAgainstUnits: []
@@ -131,7 +131,7 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 8
-  baseMeleeAttack: 0
+  baseMeleeAttack: 9
   baseRangedAttack: 0
   baseCityAttack: 0
   baseGroundAttack: 0
@@ -141,7 +141,7 @@ MonoBehaviour:
   baseSpaceAttack: 0
   baseMovePoints: 2
   baseDefense: 2
-  baseHealth: 32
+  baseHealth: 30
   baseRange: 1
   sightRange: 2
   xpToNextLevel: 
