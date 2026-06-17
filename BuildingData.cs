@@ -1,6 +1,31 @@
 // Assets/Scripts/Data/BuildingData.cs
 using UnityEngine;
 
+public enum EmpireYieldType { Food, Production, Gold, Science, Culture, Faith, PolicyPoints }
+
+[System.Serializable]
+public struct UnlockRequirementOption
+{
+    [Tooltip("Optional tech that can satisfy this alternative unlock option.")]
+    public TechData tech;
+    [Tooltip("Optional culture that can satisfy this alternative unlock option.")]
+    public CultureData culture;
+    [Tooltip("Optional government that can satisfy this alternative unlock option.")]
+    public GovernmentData government;
+    [Tooltip("Optional active policy that can satisfy this alternative unlock option.")]
+    public PolicyData policy;
+
+    public bool IsMet(Civilization civ)
+    {
+        if (civ == null) return false;
+        if (tech != null && civ.researchedTechs != null && civ.researchedTechs.Contains(tech)) return true;
+        if (culture != null && civ.researchedCultures != null && civ.researchedCultures.Contains(culture)) return true;
+        if (government != null && civ.currentGovernment == government) return true;
+        if (policy != null && civ.activePolicies != null && civ.activePolicies.Contains(policy)) return true;
+        return false;
+    }
+}
+
 [System.Serializable]
 public struct BuildingVisualOverride
 {
@@ -82,6 +107,15 @@ public class BuildingData : ScriptableObject
     public bool isDefenseBuilding;
 
     public bool isEnergyBuilding;
+
+    [Tooltip("Marks this building as an equipment producer for filtering/UI/special logic.")]
+    public bool IsEquipmentProducer;
+    [Tooltip("Marks this building as a wonder for filtering/UI/special logic.")]
+    public bool IsWonder;
+    [Tooltip("Marks this building as a happiness building for filtering/UI/special logic.")]
+    public bool IsHappinessBuilding;
+    [Tooltip("Marks this building as an order building for filtering/UI/special logic.")]
+    public bool IsOrderBuilding;
     
     [Tooltip("Marks this building as a perimeter wall (special handling in City/Tile logic)")]
     public bool isPerimeterWall;
@@ -99,6 +133,8 @@ public class BuildingData : ScriptableObject
     public PolicyData[] requiredPolicies;
     [Tooltip("Operational building prerequisites that may be checked in this city, the capital, other cities, or across all cities.")]
     public CityBuildingRequirement[] requiredBuildings;
+    [Tooltip("Optional alternative unlocks. If any entries are assigned, at least one listed tech, culture, government, or policy must be owned/active.")]
+    public UnlockRequirementOption[] alternativeUnlockRequirements;
 
     [Header("Building Limits")]
     [Tooltip("Maximum number of this building type a civilization can have (-1 = unlimited)")]
@@ -132,6 +168,22 @@ public class BuildingData : ScriptableObject
     public float cityPolicyPointsModifier;
     [Tooltip("Percent modifier applied to this city's faith output while this building is operational (0.05 = +5%).")]
     public float cityFaithModifier;
+
+    [Header("Empire Yield Modifiers")]
+    [Tooltip("Percent modifier applied empire-wide to food output while this building is operational (1.0 = +100%).")]
+    public float empireFoodModifier;
+    [Tooltip("Percent modifier applied empire-wide to production output while this building is operational (1.0 = +100%).")]
+    public float empireProductionModifier;
+    [Tooltip("Percent modifier applied empire-wide to gold output while this building is operational (1.0 = +100%).")]
+    public float empireGoldModifier;
+    [Tooltip("Percent modifier applied empire-wide to science output while this building is operational (1.0 = +100%).")]
+    public float empireScienceModifier;
+    [Tooltip("Percent modifier applied empire-wide to culture output while this building is operational (1.0 = +100%).")]
+    public float empireCultureModifier;
+    [Tooltip("Percent modifier applied empire-wide to policy point output while this building is operational (1.0 = +100%).")]
+    public float empirePolicyPointsModifier;
+    [Tooltip("Percent modifier applied empire-wide to faith output while this building is operational (1.0 = +100%).")]
+    public float empireFaithModifier;
 
     [Header("Tile Yield Bonuses")]
     [Tooltip("Per-tile yield bonuses applied to matching tiles worked by this city while this building is operational.")]
@@ -253,8 +305,18 @@ public static class BuildingDataExtensions
             foreach (var pol in building.requiredPolicies)
             {
                 if (pol == null) continue;
-                if (!civ.activePolicies.Contains(pol)) return false;
+                if (civ.activePolicies == null || !civ.activePolicies.Contains(pol)) return false;
             }
+        }
+
+        if (building.alternativeUnlockRequirements != null && building.alternativeUnlockRequirements.Length > 0)
+        {
+            bool anyAlternativeMet = false;
+            foreach (var option in building.alternativeUnlockRequirements)
+            {
+                if (option.IsMet(civ)) { anyAlternativeMet = true; break; }
+            }
+            if (!anyAlternativeMet) return false;
         }
 
         return true;

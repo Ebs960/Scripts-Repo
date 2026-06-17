@@ -208,6 +208,8 @@ public class WorkerUnitData : ScriptableObject
     public GovernmentData[] requiredGovernments;
     [Tooltip("All of these policies must be active to allow this worker (optional)")]
     public PolicyData[] requiredPolicies;
+    [Tooltip("Optional alternative unlocks. If any entries are assigned, at least one listed tech, culture, government, or policy must be owned/active.")]
+    public UnlockRequirementOption[] alternativeUnlockRequirements;
     [Tooltip("All of these operational buildings must be present in the producing city to train this unit (optional). Use for requirements like Temple Guard needing a Grand Temple, or cannons needing a cannon maker.")]
     public UnitBuildingRequirement[] requiredCityBuildings;
 
@@ -299,8 +301,18 @@ public class WorkerUnitData : ScriptableObject
             foreach (var pol in requiredPolicies)
             {
                 if (pol == null) continue;
-                if (!civ.activePolicies.Contains(pol)) return false;
+                if (civ.activePolicies == null || !civ.activePolicies.Contains(pol)) return false;
             }
+        }
+
+        if (alternativeUnlockRequirements != null && alternativeUnlockRequirements.Length > 0)
+        {
+            bool anyAlternativeMet = false;
+            foreach (var option in alternativeUnlockRequirements)
+            {
+                if (option.IsMet(civ)) { anyAlternativeMet = true; break; }
+            }
+            if (!anyAlternativeMet) return false;
         }
         
         return true;
