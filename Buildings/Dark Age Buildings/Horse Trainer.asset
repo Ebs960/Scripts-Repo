@@ -79,7 +79,203 @@ MonoBehaviour:
   orderBonus: 0
   cityHappinessModifier: 0
   cityOrderModifier: 0
-  unitBonuses: []
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 21
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 22
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 23
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 24
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    navalAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    navalAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
   unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []

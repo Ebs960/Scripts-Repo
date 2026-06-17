@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Synthetic Food Factory
   icon: {fileID: 0}
-  description: Lab-grown food facility. +34 Food.
+  description: Lab-grown food facility. +40 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a990180bc3494adb8d882af9ce9c2ed7, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 8400
   dismantleResourceRefunds: []
@@ -40,6 +40,9 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 0f56b5c583f87164a9f83b1ca376ed59, type: 2}
@@ -47,23 +50,26 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 34
+  foodPerTurn: 40
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
-  cityFoodModifier: 0.10
+  cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +80,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

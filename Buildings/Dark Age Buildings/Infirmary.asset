@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Infirmary
   icon: {fileID: 0}
-  description: +4 Food, +2 Happiness
+  description: +4 Food, -20% Disease Deaths in this Settlement
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,20 +24,25 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 350
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 1
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 9e54f0cd2a879c14ab5c601673e50735, type: 2}
@@ -45,8 +50,9 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 4
   productionPerTurn: 0
@@ -55,15 +61,42 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 2
+  happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
-  diseaseBonuses: []
+  diseaseBonuses:
+  - disease: {fileID: 0}
+    affectsAllDiseases: 1
+    useSeasonFilter: 0
+    seasons: 
+    grantsImmunity: 0
+    infectionChancePct: 0
+    spreadChancePct: 0
+    durationPct: 0
+    cityPopulationLossPct: -0.2
+    cityYieldPenaltyPct: 0
+    cityMoralePenaltyPct: 0
+    cityLoyaltyPenaltyPct: 0
+    herdMortalityPct: 0
+    herdForagePenaltyPct: 0
   attritionBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []

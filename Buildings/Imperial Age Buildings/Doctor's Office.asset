@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Doctor's Office
   icon: {fileID: 0}
-  description: +7 Food, -55% Disease Fatalities in this city
+  description: +7 Food, -40% Disease Fatalities in this city
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f9d2727f062f4c0f91e23f7effecb004, type: 2}
@@ -40,6 +40,9 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
@@ -47,6 +50,7 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -76,6 +80,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses:
   - disease: {fileID: 0}
@@ -86,7 +91,7 @@ MonoBehaviour:
     infectionChancePct: 0
     spreadChancePct: 0
     durationPct: 0
-    cityPopulationLossPct: -0.55
+    cityPopulationLossPct: -0.4
     cityYieldPenaltyPct: 0
     cityMoralePenaltyPct: 0
     cityLoyaltyPenaltyPct: 0

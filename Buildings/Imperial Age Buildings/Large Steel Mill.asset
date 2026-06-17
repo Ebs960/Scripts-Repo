@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Large Steel Mill
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Manufacturing Complex
+  buildingName: Large Sreel Mill
   icon: {fileID: 0}
   description: +25 Production, Produces 8 Steel
   buildingPrefab: {fileID: 0}
@@ -40,6 +40,9 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 41fc12c0783860946bb766519f649041, type: 2}

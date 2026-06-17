@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Power Plant
   icon: {fileID: 0}
-  description: +26 Production, +4 Science
+  description: +25 Production, Produces 7 Energy using Oil
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 6491bbc3aec0000f24e9312309af438f, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 3750
   dismantleResourceRefunds: []
@@ -40,30 +40,51 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: a8c1e7e999286294e91b0f925f3cb2c6, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 26
+  productionPerTurn: 25
   goldPerTurn: 0
-  sciencePerTurn: 4
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
-  resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  resourceProductionPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 7
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: cc31934ca1fc07c42bf71e65958758ea, type: 2}
+    amount: 2
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

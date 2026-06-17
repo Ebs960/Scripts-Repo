@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Quantum Super Computer
   icon: {fileID: 0}
-  description: Quantum-scale computation center. +62 Science, +12 Production, +8 Policy.
+  description: Quantum-scale computation center. +62 Science, +8 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 19d7b17668c54344b6a2ad06c854adb8, type: 2}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 9750
   dismantleResourceRefunds: []
@@ -36,10 +36,13 @@ MonoBehaviour:
   providesSpaceport: 0
   isScienceBuilding: 1
   isFoodBuilding: 0
-  isProductionBuilding: 1
+  isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
@@ -47,11 +50,12 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 12
+  productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 62
   culturePerTurn: 0
@@ -60,10 +64,12 @@ MonoBehaviour:
   cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
-  cityScienceModifier: 0.15
+  cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +80,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

@@ -18,7 +18,7 @@ MonoBehaviour:
     here have +1 Starting Level and are trained 25% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}
+  replacesBuilding: {fileID: 11400000, guid: 0ad7eb97d085efd7300295403296fa3c, type: 2}
   productionCost: 3600
   goldCost: 5400
   buildGoldCost: 0
@@ -41,6 +41,9 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 845c71a9f73de8843ac5a9b6cb08b4c5, type: 2}
@@ -48,6 +51,7 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -84,6 +88,7 @@ MonoBehaviour:
   - unit: {fileID: 0}
     useUnitCategoryFilter: 1
     unitCategory: 20
+    buildingScope: 0
     targetUnit: {fileID: 0}
     targetWorker: {fileID: 0}
     useTargetUnitCategoryFilter: 0

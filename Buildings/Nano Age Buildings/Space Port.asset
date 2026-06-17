@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Space Port
   icon: {fileID: 0}
-  description: Orbital launch and logistics hub. +28 Production, +20 Gold, +18 Science, +10 Policy, +8 Order, provides Spaceport.
+  description: Orbital launch and logistics hub. +30 Gold, +10 Policy Points, +10
+    Order, provides Spaceport. Boosts Production and Science Output by 10%
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +25,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 10500
   dismantleResourceRefunds: []
@@ -34,12 +35,15 @@ MonoBehaviour:
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 1
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
-  isProductionBuilding: 1
+  isProductionBuilding: 0
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 552b8c68ef24beb4692df6d40e7cf5d7, type: 2}
@@ -47,33 +51,37 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 28
-  goldPerTurn: 20
-  sciencePerTurn: 18
+  productionPerTurn: 0
+  goldPerTurn: 35
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 10
   faithPerTurn: 0
   cityFoodModifier: 0
-  cityProductionModifier: 0.05
-  cityGoldModifier: 0.05
-  cityScienceModifier: 0
+  cityProductionModifier: 0.1
+  cityGoldModifier: 0
+  cityScienceModifier: 0.1
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
-  orderBonus: 8
+  orderBonus: 10
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

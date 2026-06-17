@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Stone Walls
   icon: {fileID: 0}
-  description: +14 Defense, +3 Policy Points, +3 Happiness
+  description: +20 Defense, +3 Policy Points, +5 Happiness, +5 Order
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: ceb427da063c9aa458ea55c8a20b3314, type: 2}
@@ -32,12 +32,17 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
   isPerimeterWall: 1
   requiredTechs:
   - {fileID: 11400000, guid: c011273d0f6a91d4596a62ce22d9c8e8, type: 2}
@@ -45,6 +50,7 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -55,13 +61,26 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 3
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 14
-  happinessBonus: 3
+  defenseBonus: 20
+  happinessBonus: 5
+  orderBonus: 5
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
