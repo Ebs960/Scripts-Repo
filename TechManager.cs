@@ -158,7 +158,7 @@ return;
     /// </summary>
     public bool CanProduceUnit(Civilization civ, CombatUnitData unitData)
     {
-        return unitData.AreRequirementsMet(civ);
+        return unitData != null && unitData.IsBuildableFor(civ);
     }
     
     /// <summary>
@@ -166,6 +166,6 @@ return;
     /// </summary>
     public bool CanProduceWorkerUnit(Civilization civ, WorkerUnitData unitData)
     {
-        return unitData.AreRequirementsMet(civ);
+        return unitData != null && unitData.IsBuildableFor(civ);
     }
 }

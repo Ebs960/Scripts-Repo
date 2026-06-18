@@ -2044,6 +2044,60 @@ public class CombatUnit : BaseUnit
         return GetCurrentDefenseValueFloat();
     }
 
+
+    public CombatUnitData GetLatestUnlockedUpgrade()
+    {
+        if (data == null || owner == null) return null;
+        var latest = data.GetLatestUnlockedUpgrade(owner);
+        return latest != data ? latest : null;
+    }
+
+    public int GetUpgradeGoldCost(CombatUnitData target)
+    {
+        return data != null ? data.GetUpgradeGoldCostTo(target) : 0;
+    }
+
+    public bool CanUpgrade(out CombatUnitData target, out int goldCost, out string reason)
+    {
+        target = GetLatestUnlockedUpgrade();
+        goldCost = GetUpgradeGoldCost(target);
+        reason = null;
+
+        if (data == null) { reason = "missing unit data"; return false; }
+        if (owner == null) { reason = "missing owner"; return false; }
+        if (target == null) { reason = "no unlocked upgrade"; return false; }
+        if (owner.gold < goldCost) { reason = $"requires {goldCost} gold"; return false; }
+        return true;
+    }
+
+    public bool TryUpgradeToLatest()
+    {
+        if (!CanUpgrade(out var target, out int goldCost, out string reason))
+        {
+            Debug.Log($"[CombatUnit] Upgrade rejected for {data?.unitName ?? name}: {reason}");
+            return false;
+        }
+
+        int previousHealth = currentHealth;
+        var previousData = data;
+        owner.gold -= goldCost;
+        data = target;
+
+        try { attackPointsPerTurn = data.attackPointsPerTurn; currentAttackPoints = Mathf.Min(currentAttackPoints, MaxAttackPoints); } catch { }
+        takesWeatherDamage = data.takesWeatherDamage;
+        currentHealth = Mathf.Min(previousHealth, MaxHealth);
+        RecalculateStats();
+        currentHealth = Mathf.Min(previousHealth, MaxHealth);
+
+        UpdateEquipmentVisuals();
+        InitializeSoldierGroup(data.GetSoldierCount(owner), data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
+        UpdateUnitLabel();
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+        try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
+        UIManager.Instance?.ShowNotification($"Upgraded {previousData.unitName} to {target.unitName} for {goldCost} gold.");
+        return true;
+    }
+
     public void GainExperience(int xp)
     {
         experience += xp;

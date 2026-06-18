@@ -252,7 +252,8 @@ public class City : MonoBehaviour
             return unitData;
 
         var baseUnit = heritageOwner.GetBaseUnitData(unitData);
-        return heritageOwner.GetUnitData(baseUnit);
+        var heritageUnit = heritageOwner.GetUnitData(baseUnit);
+        return heritageUnit != null ? heritageUnit.GetLatestUnlockedUpgrade(owner) : null;
     }
 
     public BuildingData ResolveBuildingForProduction(BuildingData buildingData)

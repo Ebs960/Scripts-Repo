@@ -688,7 +688,17 @@ public static class ResourceCache
         if (civ == null) return new List<CombatUnitData>();
         
         var allUnits = GetAllCombatUnits();
-        return allUnits.Where(u => u != null && u.AreRequirementsMet(civ)).ToList();
+        var available = new List<CombatUnitData>();
+        var seen = new HashSet<CombatUnitData>();
+        foreach (var unit in allUnits)
+        {
+            if (unit == null) continue;
+            var resolved = unit.GetLatestUnlockedUpgrade(civ);
+            if (resolved == null || seen.Contains(resolved)) continue;
+            seen.Add(resolved);
+            available.Add(resolved);
+        }
+        return available;
     }
     
     /// <summary>
@@ -699,7 +709,7 @@ public static class ResourceCache
         if (civ == null) return new List<WorkerUnitData>();
         
         var allWorkers = GetAllWorkerUnits();
-        return allWorkers.Where(w => w != null && w.AreRequirementsMet(civ)).ToList();
+        return allWorkers.Where(w => w != null && w.IsBuildableFor(civ)).ToList();
     }
     
     /// <summary>

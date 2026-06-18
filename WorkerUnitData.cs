@@ -223,6 +223,12 @@ public class WorkerUnitData : ScriptableObject
     [Header("Build Options")]
     public RouteType[] buildableRoutes;
 
+    [Header("Obsolescence")]
+    [Tooltip("If any listed tech is researched, this worker unit becomes obsolete and is removed from new build options.")]
+    public TechData[] obsoleteWithTechs;
+    [Tooltip("If any listed culture is adopted, this worker unit becomes obsolete and is removed from new build options.")]
+    public CultureData[] obsoleteWithCultures;
+
     [Header("Requirements")]
     [Tooltip("All these techs must be researched to unlock this unit")]
     public TechData[] requiredTechs;
@@ -276,8 +282,38 @@ public class WorkerUnitData : ScriptableObject
     }
 
     /// <summary>
-    /// Checks if all requirements (techs, cultures) are met for this unit
+    /// Checks whether this worker has been explicitly made obsolete by researched techs or adopted cultures.
     /// </summary>
+    public bool AreObsoleteFor(Civilization civ)
+    {
+        if (civ == null) return false;
+
+        if (obsoleteWithTechs != null)
+        {
+            foreach (var tech in obsoleteWithTechs)
+            {
+                if (tech != null && civ.researchedTechs != null && civ.researchedTechs.Contains(tech))
+                    return true;
+            }
+        }
+
+        if (obsoleteWithCultures != null)
+        {
+            foreach (var culture in obsoleteWithCultures)
+            {
+                if (culture != null && civ.researchedCultures != null && civ.researchedCultures.Contains(culture))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsBuildableFor(Civilization civ)
+    {
+        return AreRequirementsMet(civ) && !AreObsoleteFor(civ);
+    }
+
     public bool AreRequirementsMet(Civilization civ)
     {
         if (civ == null) return false;

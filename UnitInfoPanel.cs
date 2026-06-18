@@ -32,6 +32,7 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Button fortifyButton;
     [SerializeField] private Button startBuildButton; // starts selected build option (optional)
     [SerializeField] private Button captureButton; // capture action for animals/workers
+    [SerializeField] private Button upgradeButton; // upgrades selected combat unit to latest unlocked replacement
     [Header("Orbit Controls")]
     [SerializeField] private TextMeshProUGUI orbitStatusText;
     [SerializeField] private Button enterOrbitButton;
@@ -82,9 +83,16 @@ public class UnitInfoPanel : MonoBehaviour
         if (forageButton != null)
             forageButton.onClick.AddListener(OnForageClicked);
         AddTooltipToButton(forageButton, "Forage", "Forage resources from this tile if available.");
+        EnsureUpgradeButton();
         if (fortifyButton != null)
             fortifyButton.onClick.AddListener(OnFortifyClicked);
         AddTooltipToButton(fortifyButton, "Fortify", "Fortify to gain defense and skip this unit's action.");
+        if (upgradeButton != null)
+        {
+            upgradeButton.onClick.RemoveAllListeners();
+            upgradeButton.onClick.AddListener(OnUpgradeClicked);
+            upgradeButton.gameObject.SetActive(false);
+        }
 
         if (enterOrbitButton != null)
             enterOrbitButton.onClick.AddListener(OnEnterOrbitClicked);
@@ -145,6 +153,19 @@ public class UnitInfoPanel : MonoBehaviour
             GameEventManager.Instance.OnDamageApplied += HandleCombatEvent;
             GameEventManager.Instance.OnUnitKilled += HandleCombatEvent;
         }
+    }
+
+
+    private void EnsureUpgradeButton()
+    {
+        if (upgradeButton != null || fortifyButton == null) return;
+
+        var clone = Instantiate(fortifyButton.gameObject, fortifyButton.transform.parent);
+        clone.name = "Upgrade Button";
+        upgradeButton = clone.GetComponent<Button>();
+        var label = clone.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null) label.text = "Upgrade";
+        clone.SetActive(false);
     }
 
     private void AddTooltipToButton(Button btn, string title, string description)
@@ -359,6 +380,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
         if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
         if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
+        if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
 
         // Hide stack controls
         if (unstackButton != null) unstackButton.gameObject.SetActive(false);
@@ -481,7 +503,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (!unitData.buildableByWorker) return "buildableByWorker=false";
         if (worker.currentWorkPoints <= 0) return "no work points";
         if (worker.currentTileIndex < 0) return "invalid worker tile";
-        if (!unitData.AreRequirementsMet(worker.owner)) return "requirements unmet";
+        if (!unitData.IsBuildableFor(worker.owner)) return unitData.AreObsoleteFor(worker.owner) ? "obsolete" : "requirements unmet";
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateCombatUnit(worker.owner, unitData)) return "combat unit limit reached";
         return "buildable";
     }
@@ -494,7 +516,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (!workerData.buildableByWorker) return "buildableByWorker=false";
         if (worker.currentWorkPoints <= 0) return "no work points";
         if (worker.currentTileIndex < 0) return "invalid worker tile";
-        if (!workerData.AreRequirementsMet(worker.owner)) return "requirements unmet";
+        if (!workerData.IsBuildableFor(worker.owner)) return workerData.AreObsoleteFor(worker.owner) ? "obsolete" : "requirements unmet";
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateWorkerUnit(worker.owner, workerData)) return "worker unit limit reached";
         return "buildable";
     }
@@ -543,6 +565,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         // Orbit status & controls
         UpdateOrbitControls(currentCombatUnit);
+        UpdateUpgradeActionState(currentCombatUnit);
         UpdateFortifyActionState(currentCombatUnit);
         UpdateStackInfo(currentCombatUnit);
     }
@@ -603,6 +626,37 @@ PopulateForWorkerUnit(currentWorkerUnit);
         UpdateStackInfo(currentWorkerUnit);
     }
     
+
+    private void UpdateUpgradeActionState(CombatUnit combatUnit)
+    {
+        if (upgradeButton == null) return;
+
+        upgradeButton.onClick.RemoveAllListeners();
+        upgradeButton.gameObject.SetActive(true);
+
+        CombatUnitData target = null;
+        int cost = 0;
+        string reason = null;
+        bool canUpgrade = combatUnit != null && combatUnit.CanUpgrade(out target, out cost, out reason);
+        upgradeButton.interactable = canUpgrade;
+
+        string title = target != null ? $"Upgrade to {target.unitName}" : "Upgrade";
+        string description = canUpgrade
+            ? $"Pay {cost} gold to upgrade this unit. Current HP is preserved."
+            : (string.IsNullOrWhiteSpace(reason) ? "No unlocked upgrade is available." : $"Cannot upgrade: {reason}.");
+        AddTooltipToButton(upgradeButton, title, description);
+
+        if (canUpgrade)
+            upgradeButton.onClick.AddListener(OnUpgradeClicked);
+    }
+
+    private void OnUpgradeClicked()
+    {
+        if (currentCombatUnit == null) return;
+        if (currentCombatUnit.TryUpgradeToLatest())
+            UpdateUnitInfoForCombatUnit();
+    }
+
     private void OnSettleCityClicked()
     {
         if (currentWorkerUnit == null) return;
@@ -822,6 +876,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
         if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
         if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
+        if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
 
         // (Removed obsolete buildUnitsContainer/buildUnitButtons cleanup)
     }
