@@ -1619,15 +1619,18 @@ public class CivilizationManager : MonoBehaviour
         
         // Filter to available military units (meet requirements)
         var availableUnits = new List<CombatUnitData>();
+        var seenUnits = new HashSet<CombatUnitData>();
         foreach (var unitData in allUnitData)
         {
             if (unitData == null) continue;
-            if (unitData.AreRequirementsMet(civ))
-            {
-                // Use unique unit replacement if available
-                var unitToUse = civ.GetUnitData(unitData);
-                availableUnits.Add(unitToUse);
-            }
+
+            // Use unique unit replacement and then resolve to the latest unlocked upgrade if available.
+            var unitToUse = civ.GetUnitData(unitData);
+            unitToUse = unitToUse != null ? unitToUse.GetLatestUnlockedUpgrade(civ) : null;
+            if (unitToUse == null || seenUnits.Contains(unitToUse)) continue;
+
+            seenUnits.Add(unitToUse);
+            availableUnits.Add(unitToUse);
         }
         
         if (availableUnits.Count == 0) return;
@@ -1764,7 +1767,7 @@ public class CivilizationManager : MonoBehaviour
         }
         
         // Check if pioneer can be produced
-        if (!resolvedPioneerData.AreRequirementsMet(civ)) return;
+        if (!resolvedPioneerData.IsBuildableFor(civ)) return;
         
         // Find cities that can produce pioneers
         var citiesByProduction = civ.cities

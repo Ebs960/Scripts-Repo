@@ -276,7 +276,7 @@ public class ImprovementManager : MonoBehaviour
     {
         if (unit == null || owner == null) return false;
         if (!unit.buildableByWorker) return false;
-        if (!unit.AreRequirementsMet(owner)) return false;
+        if (!unit.IsBuildableFor(owner)) return false;
         if (!LimitManager.Instance.CanCreateCombatUnit(owner, unit)) return false;
 
         // No duplicate jobs per tile
@@ -328,7 +328,7 @@ public class ImprovementManager : MonoBehaviour
     {
         if (unit == null || owner == null) return false;
         if (!unit.buildableByWorker) return false;
-        if (!unit.AreRequirementsMet(owner)) return false;
+        if (!unit.IsBuildableFor(owner)) return false;
         if (!LimitManager.Instance.CanCreateWorkerUnit(owner, unit)) return false;
 
         planetIndex = ResolvePlanetIndex(planetIndex);

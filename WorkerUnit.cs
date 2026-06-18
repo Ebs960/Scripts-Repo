@@ -1084,7 +1084,7 @@ public class WorkerUnit : BaseUnit
         if (currentWorkPoints <= 0) return false;
         if (!IsAdjacentOrSame(tileIndex)) return false;
         if (!unitData.buildableByWorker) return false;
-        if (!unitData.AreRequirementsMet(owner)) return false;
+        if (!unitData.IsBuildableFor(owner)) return false;
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateCombatUnit(owner, unitData)) return false;
         return true;
     }
@@ -1096,7 +1096,7 @@ public class WorkerUnit : BaseUnit
         if (currentWorkPoints <= 0) return false;
         if (!IsAdjacentOrSame(tileIndex)) return false;
         if (!workerData.buildableByWorker) return false;
-        if (!workerData.AreRequirementsMet(owner)) return false;
+        if (!workerData.IsBuildableFor(owner)) return false;
         if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateWorkerUnit(owner, workerData)) return false;
         return true;
     }

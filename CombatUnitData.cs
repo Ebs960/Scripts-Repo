@@ -652,6 +652,16 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Resource amount requirements for production/purchase. Example: set Iron amount 5 to require 5 Iron in the civilization stockpile.")]
     public ResourceCost[] requiredResourceCosts;
     public Biome[] requiredTerrains;
+
+    [Header("Upgrade & Obsolescence")]
+    [Tooltip("The next unit this unit upgrades into. Build lists resolve to the latest unlocked upgrade in this chain.")]
+    public CombatUnitData upgradesTo;
+    [Tooltip("Gold cost paid by an existing unit to upgrade from this unit to its next upgrade. Multi-step upgrades sum each skipped step.")]
+    public int upgradeGoldCost = 0;
+    [Tooltip("If any listed tech is researched, this unit becomes obsolete and is removed from new build options unless a latest unlocked upgrade replaces it.")]
+    public TechData[] obsoleteWithTechs;
+    [Tooltip("If any listed culture is adopted, this unit becomes obsolete and is removed from new build options unless a latest unlocked upgrade replaces it.")]
+    public CultureData[] obsoleteWithCultures;
     
     [Header("Worker Construction")]
     [Tooltip("If true, workers can construct this unit on the map using work points.")]
@@ -789,7 +799,75 @@ public class CombatUnitData : ScriptableObject
     public CombatUnitVisualOverride[] civVisualOverrides;
 
     /// <summary>
-    /// Checks if all requirements (techs, cultures) are met for this unit
+    /// Checks whether this unit has been explicitly made obsolete by researched techs or adopted cultures.
+    /// </summary>
+    public bool AreObsoleteFor(Civilization civ)
+    {
+        if (civ == null) return false;
+
+        if (obsoleteWithTechs != null)
+        {
+            foreach (var tech in obsoleteWithTechs)
+            {
+                if (tech != null && civ.researchedTechs != null && civ.researchedTechs.Contains(tech))
+                    return true;
+            }
+        }
+
+        if (obsoleteWithCultures != null)
+        {
+            foreach (var culture in obsoleteWithCultures)
+            {
+                if (culture != null && civ.researchedCultures != null && civ.researchedCultures.Contains(culture))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsBuildableFor(Civilization civ)
+    {
+        return AreRequirementsMet(civ) && !AreObsoleteFor(civ);
+    }
+
+    public CombatUnitData GetLatestUnlockedUpgrade(Civilization civ)
+    {
+        if (civ == null) return null;
+
+        CombatUnitData latest = IsBuildableFor(civ) ? this : null;
+        var visited = new System.Collections.Generic.HashSet<CombatUnitData>();
+        var cursor = this;
+
+        while (cursor != null && cursor.upgradesTo != null && visited.Add(cursor))
+        {
+            var next = cursor.upgradesTo;
+            if (next == null || visited.Contains(next)) break;
+            if (next.IsBuildableFor(civ)) latest = next;
+            cursor = next;
+        }
+
+        return latest;
+    }
+
+    public int GetUpgradeGoldCostTo(CombatUnitData target)
+    {
+        if (target == null || target == this) return 0;
+
+        int total = 0;
+        var visited = new System.Collections.Generic.HashSet<CombatUnitData>();
+        var cursor = this;
+        while (cursor != null && cursor != target && visited.Add(cursor))
+        {
+            total += Mathf.Max(0, cursor.upgradeGoldCost);
+            cursor = cursor.upgradesTo;
+        }
+
+        return cursor == target ? total : 0;
+    }
+
+    /// <summary>
+    /// Checks if all unlock requirements (techs, cultures) are met for this unit. Obsolescence is checked separately by IsBuildableFor.
     /// </summary>
     public bool AreRequirementsMet(Civilization civ)
     {

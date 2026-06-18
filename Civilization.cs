@@ -1335,8 +1335,9 @@ public class Civilization : MonoBehaviour
         var seenCombat = new HashSet<CombatUnitData>();
         foreach (var baseUnit in ResourceCache.GetAllCombatUnits())
         {
-            if (baseUnit == null || !baseUnit.AreRequirementsMet(this)) continue;
+            if (baseUnit == null) continue;
             var resolvedUnit = GetUnitData(baseUnit);
+            resolvedUnit = resolvedUnit != null ? resolvedUnit.GetLatestUnlockedUpgrade(this) : null;
             if (resolvedUnit == null || seenCombat.Contains(resolvedUnit)) continue;
             seenCombat.Add(resolvedUnit);
             unlockedCombatUnits.Add(resolvedUnit);
@@ -1364,7 +1365,7 @@ public class Civilization : MonoBehaviour
         var seenWorkers = new HashSet<WorkerUnitData>();
         foreach (var workerUnit in ResourceCache.GetAllWorkerUnits())
         {
-            if (workerUnit == null || !workerUnit.AreRequirementsMet(this) || seenWorkers.Contains(workerUnit)) continue;
+            if (workerUnit == null || !workerUnit.IsBuildableFor(this) || seenWorkers.Contains(workerUnit)) continue;
             seenWorkers.Add(workerUnit);
             unlockedWorkerUnits.Add(workerUnit);
         }
@@ -6037,7 +6038,7 @@ return true;
         
         if (_availabilityCacheDirty || !_unitAvailabilityCache.ContainsKey(unitData))
         {
-            bool available = unitData.AreRequirementsMet(this);
+            bool available = unitData.IsBuildableFor(this);
             _unitAvailabilityCache[unitData] = available;
         }
         
@@ -6053,7 +6054,7 @@ return true;
         
         if (_availabilityCacheDirty || !_workerAvailabilityCache.ContainsKey(unitData))
         {
-            bool available = unitData.AreRequirementsMet(this);
+            bool available = unitData.IsBuildableFor(this);
             _workerAvailabilityCache[unitData] = available;
         }
         
