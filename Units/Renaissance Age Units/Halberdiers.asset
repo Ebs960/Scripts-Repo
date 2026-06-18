@@ -91,7 +91,22 @@ MonoBehaviour:
   canAttackSpace: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 22
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 24
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 21
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0

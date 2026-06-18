@@ -108,7 +108,9 @@ MonoBehaviour:
   faithPurchaseCost: 0
   requiresFaith: 0
   requiredFaith: 0
-  requiredResourceCosts: []
+  requiredResourceCosts:
+  - resource: {fileID: 11400000, guid: 8b2cb0e8eb3206f4ea10a61873402502, type: 2}
+    amount: 1
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
