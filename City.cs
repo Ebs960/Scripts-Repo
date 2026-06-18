@@ -25,18 +25,20 @@ public class City : MonoBehaviour
         public int        remainingPts;    // turns left in production
         public int        goldCost;        // for instant buy
         public ResourceData[] requiredResources;
+        public ResourceCost[] requiredResourceCosts;
         public Biome[]    requiredTerrains;
         public bool       reqCoast;        // Requires coastal city
         public bool       reqHarbor;       // Requires harbor building
 
         public ProdEntry(ScriptableObject d, int prodCost, int gCost,
                         ResourceData[] reqRes, Biome[] reqTerrains, 
-                        bool coast, bool harbor, Type t)
+                        bool coast, bool harbor, Type t, ResourceCost[] reqResourceCosts = null)
         {
             data = d;
             remainingPts = prodCost;
             goldCost     = gCost;
             requiredResources = reqRes;
+            requiredResourceCosts = reqResourceCosts;
             requiredTerrains  = reqTerrains;
             reqCoast = coast;
             reqHarbor = harbor;
@@ -1177,11 +1179,11 @@ if (UIManager.Instance != null)
             if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
             if (!MeetsUnitPointRequirements(resolvedUnit)) return false;
             
-            if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains)) return false;
+            if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains, resolvedUnit.requiredResourceCosts)) return false;
             productionQueue.Add(new ProdEntry(resolvedUnit, resolvedUnit.productionCost, resolvedUnit.goldCost,
                                             resolvedUnit.requiredResources, resolvedUnit.requiredTerrains,
                                             requiresCoast, requiresHarbor,
-                                            ProdEntry.Type.Unit));
+                                            ProdEntry.Type.Unit, resolvedUnit.requiredResourceCosts));
             return true;
         }
         if (d is WorkerUnitData w) {
@@ -1194,11 +1196,11 @@ if (UIManager.Instance != null)
             if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
             if (!MeetsUnitPointRequirements(w)) return false;
             
-            if (!CanProduce(w.requiredResources, w.requiredTerrains)) return false;
+            if (!CanProduce(w.requiredResources, w.requiredTerrains, w.requiredResourceCosts)) return false;
             productionQueue.Add(new ProdEntry(w, w.productionCost, w.goldCost,
                                             w.requiredResources, w.requiredTerrains,
                                             requiresCoast, requiresHarbor,
-                                            ProdEntry.Type.Worker));
+                                            ProdEntry.Type.Worker, w.requiredResourceCosts));
             return true;
         }
         if (d is BuildingData b) {
@@ -1439,6 +1441,7 @@ if (UIManager.Instance != null)
     public bool BuyProduction(ScriptableObject d) {
         int cost = 0;
         ResourceData[] reqRes = null;
+        ResourceCost[] reqResourceCosts = null;
         Biome[] reqTerr = null;
         bool requiresCoast = false;
         bool requiresHarbor = false;
@@ -1450,6 +1453,7 @@ if (UIManager.Instance != null)
             if (resolvedUnit == null || !IsCombatUnitAvailableForProduction(resolvedUnit)) return false;
             cost = resolvedUnit.goldCost;
             reqRes = resolvedUnit.requiredResources;
+            reqResourceCosts = resolvedUnit.requiredResourceCosts;
             reqTerr = resolvedUnit.requiredTerrains;
             requiresCoast = resolvedUnit.requiresCoastalCity;
             requiresHarbor = resolvedUnit.requiresHarbor;
@@ -1460,6 +1464,7 @@ if (UIManager.Instance != null)
         else if (d is WorkerUnitData w) {
             cost = w.goldCost;
             reqRes = w.requiredResources;
+            reqResourceCosts = w.requiredResourceCosts;
             reqTerr = w.requiredTerrains;
             requiresCoast = w.requiresCoastalCity;
             requiresHarbor = w.requiresHarbor;
@@ -1532,7 +1537,7 @@ if (UIManager.Instance != null)
         }
         
         // Validate other requirements
-        if (!CanProduce(reqRes, reqTerr)) return false;
+        if (!CanProduce(reqRes, reqTerr, reqResourceCosts)) return false;
 
         if (d is BuildingData buildingToBuy)
         {
@@ -1651,7 +1656,7 @@ if (UIManager.Instance != null)
     /// <summary>
     /// Ensure empire resources and city‐radius biomes satisfy requirements.
     /// </summary>
-    private bool CanProduce(ResourceData[] reqRes, Biome[] reqTerrains) {
+    private bool CanProduce(ResourceData[] reqRes, Biome[] reqTerrains, ResourceCost[] reqResourceCosts = null) {
         // Resources
         if (reqRes != null && reqRes.Length > 0) {
             foreach (var r in reqRes) {
@@ -1659,6 +1664,14 @@ if (UIManager.Instance != null)
             }
         }
         
+        // Resource amount requirements
+        if (reqResourceCosts != null && reqResourceCosts.Length > 0) {
+            foreach (var cost in reqResourceCosts) {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                if (owner.GetResourceCount(cost.resource) < cost.amount) return false;
+            }
+        }
+
         // Terrains
         if (reqTerrains != null && reqTerrains.Length > 0) {
             if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();

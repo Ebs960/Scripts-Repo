@@ -651,7 +651,10 @@ public class CombatUnitData : ScriptableObject
     public bool requiresFaith = false;
     [Tooltip("Minimum faith required to purchase or produce this unit. This is not spent unless canPurchaseWithFaith is enabled.")]
     public int requiredFaith = 0;
+    [Tooltip("Legacy one-of-each resource requirements. Each listed resource requires at least 1 in the civilization stockpile.")]
     public ResourceData[] requiredResources;
+    [Tooltip("Resource amount requirements for production/purchase. Example: set Iron amount 5 to require 5 Iron in the civilization stockpile.")]
+    public ResourceCost[] requiredResourceCosts;
     public Biome[] requiredTerrains;
     
     [Header("Worker Construction")]
