@@ -635,6 +635,22 @@ public class CombatUnitData : ScriptableObject
     [Header("Production & Purchase")]
     public int productionCost;
     public int goldCost;
+    [Tooltip("If true, instant purchase spends policy points instead of only gold.")]
+    public bool canPurchaseWithPolicyPoints = false;
+    [Tooltip("Policy points spent when canPurchaseWithPolicyPoints is enabled.")]
+    public int policyPointPurchaseCost = 0;
+    [Tooltip("If true, this unit requires the owning civilization to have at least requiredPolicyPoints to purchase or produce it.")]
+    public bool requiresPolicyPoints = false;
+    [Tooltip("Minimum policy points required to purchase or produce this unit. This is not spent unless canPurchaseWithPolicyPoints is enabled.")]
+    public int requiredPolicyPoints = 0;
+    [Tooltip("If true, instant purchase spends faith in addition to any other enabled purchase costs.")]
+    public bool canPurchaseWithFaith = false;
+    [Tooltip("Faith spent when canPurchaseWithFaith is enabled.")]
+    public int faithPurchaseCost = 0;
+    [Tooltip("If true, this unit requires the owning civilization to have at least requiredFaith to purchase or produce it.")]
+    public bool requiresFaith = false;
+    [Tooltip("Minimum faith required to purchase or produce this unit. This is not spent unless canPurchaseWithFaith is enabled.")]
+    public int requiredFaith = 0;
     public ResourceData[] requiredResources;
     public Biome[] requiredTerrains;
     

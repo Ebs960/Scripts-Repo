@@ -1093,6 +1093,70 @@ if (UIManager.Instance != null)
         return true;
     }
 
+    private bool MeetsUnitPointRequirements(CombatUnitData unitData)
+    {
+        if (unitData == null || owner == null) return false;
+        if (unitData.requiresPolicyPoints && owner.policyPoints < unitData.requiredPolicyPoints)
+        {
+            Debug.LogWarning($"Cannot produce {unitData.unitName} - requires {unitData.requiredPolicyPoints} policy points, have {owner.policyPoints}.");
+            return false;
+        }
+        if (unitData.requiresFaith && owner.faith < unitData.requiredFaith)
+        {
+            Debug.LogWarning($"Cannot produce {unitData.unitName} - requires {unitData.requiredFaith} faith, have {owner.faith}.");
+            return false;
+        }
+        return true;
+    }
+
+    private bool MeetsUnitPointRequirements(WorkerUnitData unitData)
+    {
+        if (unitData == null || owner == null) return false;
+        if (unitData.requiresPolicyPoints && owner.policyPoints < unitData.requiredPolicyPoints)
+        {
+            Debug.LogWarning($"Cannot produce {unitData.unitName} - requires {unitData.requiredPolicyPoints} policy points, have {owner.policyPoints}.");
+            return false;
+        }
+        if (unitData.requiresFaith && owner.faith < unitData.requiredFaith)
+        {
+            Debug.LogWarning($"Cannot produce {unitData.unitName} - requires {unitData.requiredFaith} faith, have {owner.faith}.");
+            return false;
+        }
+        return true;
+    }
+
+    private bool CanPayUnitPurchaseCosts(CombatUnitData unitData)
+    {
+        if (!MeetsUnitPointRequirements(unitData)) return false;
+        if (unitData.canPurchaseWithPolicyPoints && owner.policyPoints < unitData.policyPointPurchaseCost) return false;
+        if (unitData.canPurchaseWithFaith && owner.faith < unitData.faithPurchaseCost) return false;
+        if (!unitData.canPurchaseWithPolicyPoints && !unitData.canPurchaseWithFaith && owner.gold < unitData.goldCost) return false;
+        return true;
+    }
+
+    private bool CanPayUnitPurchaseCosts(WorkerUnitData unitData)
+    {
+        if (!MeetsUnitPointRequirements(unitData)) return false;
+        if (unitData.canPurchaseWithPolicyPoints && owner.policyPoints < unitData.policyPointPurchaseCost) return false;
+        if (unitData.canPurchaseWithFaith && owner.faith < unitData.faithPurchaseCost) return false;
+        if (!unitData.canPurchaseWithPolicyPoints && !unitData.canPurchaseWithFaith && owner.gold < unitData.goldCost) return false;
+        return true;
+    }
+
+    private void SpendUnitPurchaseCosts(CombatUnitData unitData)
+    {
+        if (unitData.canPurchaseWithPolicyPoints) owner.policyPoints -= unitData.policyPointPurchaseCost;
+        if (unitData.canPurchaseWithFaith) owner.faith -= unitData.faithPurchaseCost;
+        if (!unitData.canPurchaseWithPolicyPoints && !unitData.canPurchaseWithFaith) owner.gold -= unitData.goldCost;
+    }
+
+    private void SpendUnitPurchaseCosts(WorkerUnitData unitData)
+    {
+        if (unitData.canPurchaseWithPolicyPoints) owner.policyPoints -= unitData.policyPointPurchaseCost;
+        if (unitData.canPurchaseWithFaith) owner.faith -= unitData.faithPurchaseCost;
+        if (!unitData.canPurchaseWithPolicyPoints && !unitData.canPurchaseWithFaith) owner.gold -= unitData.goldCost;
+    }
+
 
 
     /// <summary>
@@ -1111,6 +1175,7 @@ if (UIManager.Instance != null)
             if (requiresCoast && !ControlsCoast()) return false;
             if (requiresHarbor && !HasHarbor()) return false;
             if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
+            if (!MeetsUnitPointRequirements(resolvedUnit)) return false;
             
             if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(resolvedUnit, resolvedUnit.productionCost, resolvedUnit.goldCost,
@@ -1127,6 +1192,7 @@ if (UIManager.Instance != null)
             if (requiresCoast && !ControlsCoast()) return false;
             if (requiresHarbor && !HasHarbor()) return false;
             if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
+            if (!MeetsUnitPointRequirements(w)) return false;
             
             if (!CanProduce(w.requiredResources, w.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(w, w.productionCost, w.goldCost,
@@ -1388,6 +1454,7 @@ if (UIManager.Instance != null)
             requiresCoast = resolvedUnit.requiresCoastalCity;
             requiresHarbor = resolvedUnit.requiresHarbor;
             if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
+            if (!CanPayUnitPurchaseCosts(resolvedUnit)) return false;
             d = resolvedUnit;
         }
         else if (d is WorkerUnitData w) {
@@ -1397,6 +1464,7 @@ if (UIManager.Instance != null)
             requiresCoast = w.requiresCoastalCity;
             requiresHarbor = w.requiresHarbor;
             if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
+            if (!CanPayUnitPurchaseCosts(w)) return false;
         }
         else if (d is BuildingData b) {
             cost = b.goldCost;
@@ -1451,7 +1519,7 @@ if (UIManager.Instance != null)
             }
         }
         
-        if (owner.gold < cost) return false;
+        if (!(d is CombatUnitData) && !(d is WorkerUnitData) && owner.gold < cost) return false;
         
         // Check naval requirements
         if (requiresCoast && !ControlsCoast()) return false;
@@ -1472,7 +1540,18 @@ if (UIManager.Instance != null)
             if (!buildingToBuy.ConsumeBuildCosts(owner)) return false;
         }
         
-        owner.gold -= cost;
+        if (d is CombatUnitData unitToBuy)
+        {
+            SpendUnitPurchaseCosts(unitToBuy);
+        }
+        else if (d is WorkerUnitData workerToBuy)
+        {
+            SpendUnitPurchaseCosts(workerToBuy);
+        }
+        else
+        {
+            owner.gold -= cost;
+        }
         CompleteItem(d);
         return true;
     }
