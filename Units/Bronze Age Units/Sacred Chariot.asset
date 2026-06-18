@@ -111,6 +111,14 @@ MonoBehaviour:
   chargeBonusPercent: 0.5
   productionCost: 150
   goldCost: 320
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
   requiredResources:
   - {fileID: 11400000, guid: 13c36b88eb99b1741b9d6259234c154e, type: 2}
   requiredTerrains: 
@@ -164,7 +172,7 @@ MonoBehaviour:
   captureHerdCount: 0
   captureSpecies: 7
   foodConsumptionPerTurn: 2
-  soldierCount: 2
+  soldierCount: 1
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5

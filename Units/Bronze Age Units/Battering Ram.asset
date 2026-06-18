@@ -101,6 +101,14 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 90
   goldCost: 200
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
@@ -122,7 +130,8 @@ MonoBehaviour:
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: cc4d33ccb1f824b4ba57c4aab2af07f4, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []

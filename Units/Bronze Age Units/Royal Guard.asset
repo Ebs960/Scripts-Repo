@@ -101,6 +101,14 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 85
   goldCost: 140
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
   requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0

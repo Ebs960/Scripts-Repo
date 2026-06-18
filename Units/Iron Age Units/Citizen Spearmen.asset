@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Camel Rider
+  m_Name: Citizen Spearmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Camel Rider
-  unitType: 21
+  unitName: Citizen Spearman
+  unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: deb162624d72c734283d855a915dd7dd, type: 3}
+  _iconDirect: {fileID: 0}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -99,8 +99,8 @@ MonoBehaviour:
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 130
-  goldCost: 300
+  productionCost: 60
+  goldCost: 145
   canPurchaseWithPolicyPoints: 0
   policyPointPurchaseCost: 0
   requiresPolicyPoints: 0
@@ -110,88 +110,39 @@ MonoBehaviour:
   requiresFaith: 0
   requiredFaith: 0
   requiredResources:
-  - {fileID: 11400000, guid: c3af920ff16013c4e85e83754b45a6b9, type: 2}
+  - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
-  baseAttack: 22
-  baseMeleeAttack: 22
+  baseAttack: 14
+  baseMeleeAttack: 12
   baseRangedAttack: 0
-  baseCityAttack: 6
+  baseCityAttack: 7
   baseGroundAttack: 0
   baseUnderwaterAttack: 0
   baseAirAttack: 0
   baseSpaceAttack: 0
-  baseMovePoints: 4
-  baseDefense: 7
-  baseHealth: 50
+  baseMovePoints: 2
+  baseDefense: 12
+  baseHealth: 55
   baseRange: 1
-  intrinsicStatBonuses:
-  - unit: {fileID: 0}
-    useUnitCategoryFilter: 0
-    unitCategory: 0
-    buildingScope: 0
-    targetUnit: {fileID: 0}
-    targetWorker: {fileID: 0}
-    useTargetUnitCategoryFilter: 0
-    targetUnitCategory: 0
-    cityRequirement: 0
-    useBiomeFilter: 1
-    biome: 2
-    hillRequirement: 0
-    mountainRequirement: 0
-    layerRequirement: 0
-    underwaterRequirement: 0
-    orbitRequirement: 0
-    useResourceFilter: 0
-    resource: {fileID: 0}
-    territoryRequirement: 0
-    useSeasonFilter: 0
-    seasons: 
-    attackAdd: 0
-    meleeAttackAdd: 0
-    rangedAttackAdd: 0
-    cityAttackAdd: 0
-    groundAttackAdd: 0
-    underwaterAttackAdd: 0
-    airAttackAdd: 0
-    spaceAttackAdd: 0
-    defenseAdd: 0
-    healthAdd: 0
-    movePointsAdd: 0
-    rangeAdd: 0
-    sightRangeAdd: 0
-    attackPct: 0
-    meleeAttackPct: 4
-    rangedAttackPct: 0
-    cityAttackPct: 0
-    groundAttackPct: 0
-    underwaterAttackPct: 0
-    airAttackPct: 0
-    spaceAttackPct: 0
-    defensePct: 0
-    healthPct: 8
-    movePointsPct: 0
-    rangePct: 0
-    sightRangePct: 0
-    healingRatePct: 0
-    startingExperienceAdd: 0
-    startingLevelsAdd: 0
+  intrinsicStatBonuses: []
   auraBonuses: []
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs:
-  - {fileID: 11400000, guid: 4a746c714438aae40b04469317c27047, type: 2}
+  - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
   requiredCultures: []
   requiredPantheons: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
-  defaultWeapon: {fileID: 11400000, guid: 13aea7ac3d3c40341b2966bb6ce71d7a, type: 2}
+  defaultWeapon: {fileID: 0}
   defaultShield: {fileID: 0}
   defaultArmor: {fileID: 0}
   defaultMiscellaneous: {fileID: 0}
@@ -211,7 +162,7 @@ MonoBehaviour:
   captureHerdCount: 0
   captureSpecies: 7
   foodConsumptionPerTurn: 2
-  soldierCount: 5
+  soldierCount: 6
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5
