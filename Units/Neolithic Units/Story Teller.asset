@@ -36,7 +36,6 @@ MonoBehaviour:
   takesWeatherDamage: 1
   productionCost: 30
   goldCost: 30
-  requiredResources: []
   requiredTerrains: 
   requiresCoastalCity: 0
   requiresHarbor: 0

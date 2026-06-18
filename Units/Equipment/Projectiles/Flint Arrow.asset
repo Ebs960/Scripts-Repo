@@ -17,8 +17,6 @@ MonoBehaviour:
   category: 0
   productionCost: 10
   goldCost: 50
-  requiredResources:
-  - {fileID: 0}
   requiredTechs: []
   requiredCultures: []
   damage: 2

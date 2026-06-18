@@ -54,7 +54,6 @@ MonoBehaviour:
   attackPointsPerTurn: 1
   productionCost: 25
   goldCost: 28
-  requiredResources: []
   requiredTerrains: 0b000000
   buildableByWorker: 0
   workerWorkCost: 40

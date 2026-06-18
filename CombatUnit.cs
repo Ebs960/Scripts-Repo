@@ -1547,7 +1547,7 @@ public class CombatUnit : BaseUnit
             case CombatTargetDomain.Space:
                 return data.canAttackSpace;
             case CombatTargetDomain.NavalSurface:
-                return data.canAttackNavalSurface;
+                return true;
             case CombatTargetDomain.Underwater:
                 return data.canAttackUnderwater;
             default:

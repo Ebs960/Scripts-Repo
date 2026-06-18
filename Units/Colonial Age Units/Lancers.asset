@@ -58,7 +58,6 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 700
   goldCost: 1350
-  requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40

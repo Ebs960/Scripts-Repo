@@ -52,7 +52,6 @@ MonoBehaviour:
   immuneToLava: 0
   productionCost: 15
   goldCost: 20
-  requiredResources: []
   requiredTerrains: 
   requiresCoastalCity: 0
   requiresHarbor: 0

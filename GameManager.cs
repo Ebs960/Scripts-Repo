@@ -3139,9 +3139,9 @@ public class GameManager : MonoBehaviour
         switch (data)
         {
             case CombatUnitData unit:
-                return new City.ProdEntry(unit, unit.productionCost, goldCost, unit.requiredResources, unit.requiredTerrains, unit.requiresCoastalCity, unit.requiresHarbor, type, unit.requiredResourceCosts);
+                return new City.ProdEntry(unit, unit.productionCost, goldCost, null, unit.requiredTerrains, unit.requiresCoastalCity, unit.requiresHarbor, type, unit.requiredResourceCosts);
             case WorkerUnitData worker:
-                return new City.ProdEntry(worker, worker.productionCost, goldCost, worker.requiredResources, worker.requiredTerrains, worker.requiresCoastalCity, worker.requiresHarbor, type, worker.requiredResourceCosts);
+                return new City.ProdEntry(worker, worker.productionCost, goldCost, null, worker.requiredTerrains, worker.requiresCoastalCity, worker.requiresHarbor, type, worker.requiredResourceCosts);
             case BuildingData building:
                 return new City.ProdEntry(building, building.productionCost, goldCost, building.requiredResources, building.requiredTerrains, false, false, type);
             case DistrictData district:
