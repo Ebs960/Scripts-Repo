@@ -1179,9 +1179,9 @@ if (UIManager.Instance != null)
             if (!HasRequiredUnitBuildings(resolvedUnit.requiredCityBuildings)) return false;
             if (!MeetsUnitPointRequirements(resolvedUnit)) return false;
             
-            if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains, resolvedUnit.requiredResourceCosts)) return false;
+            if (!CanProduce(null, resolvedUnit.requiredTerrains, resolvedUnit.requiredResourceCosts)) return false;
             productionQueue.Add(new ProdEntry(resolvedUnit, resolvedUnit.productionCost, resolvedUnit.goldCost,
-                                            resolvedUnit.requiredResources, resolvedUnit.requiredTerrains,
+                                            null, resolvedUnit.requiredTerrains,
                                             requiresCoast, requiresHarbor,
                                             ProdEntry.Type.Unit, resolvedUnit.requiredResourceCosts));
             return true;
@@ -1196,9 +1196,9 @@ if (UIManager.Instance != null)
             if (!HasRequiredUnitBuildings(w.requiredCityBuildings)) return false;
             if (!MeetsUnitPointRequirements(w)) return false;
             
-            if (!CanProduce(w.requiredResources, w.requiredTerrains, w.requiredResourceCosts)) return false;
+            if (!CanProduce(null, w.requiredTerrains, w.requiredResourceCosts)) return false;
             productionQueue.Add(new ProdEntry(w, w.productionCost, w.goldCost,
-                                            w.requiredResources, w.requiredTerrains,
+                                            null, w.requiredTerrains,
                                             requiresCoast, requiresHarbor,
                                             ProdEntry.Type.Worker, w.requiredResourceCosts));
             return true;
@@ -1452,7 +1452,6 @@ if (UIManager.Instance != null)
             var resolvedUnit = ResolveCombatUnitForProduction(u);
             if (resolvedUnit == null || !IsCombatUnitAvailableForProduction(resolvedUnit)) return false;
             cost = resolvedUnit.goldCost;
-            reqRes = resolvedUnit.requiredResources;
             reqResourceCosts = resolvedUnit.requiredResourceCosts;
             reqTerr = resolvedUnit.requiredTerrains;
             requiresCoast = resolvedUnit.requiresCoastalCity;
@@ -1463,7 +1462,6 @@ if (UIManager.Instance != null)
         }
         else if (d is WorkerUnitData w) {
             cost = w.goldCost;
-            reqRes = w.requiredResources;
             reqResourceCosts = w.requiredResourceCosts;
             reqTerr = w.requiredTerrains;
             requiresCoast = w.requiresCoastalCity;

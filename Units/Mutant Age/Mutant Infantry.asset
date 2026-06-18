@@ -84,7 +84,6 @@ MonoBehaviour:
   requiresHarbor: 0
   canAttackAir: 0
   canAttackSpace: 0
-  canAttackNavalSurface: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
   bonusesAgainstCategories:
@@ -111,7 +110,6 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 2000
   goldCost: 2800
-  requiredResources: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40

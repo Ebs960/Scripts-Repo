@@ -17,7 +17,6 @@ MonoBehaviour:
   category: 1
   productionCost: 16
   goldCost: 65
-  requiredResources: []
   requiredTechs:
   - {fileID: 11400000, guid: 2776d4919ae2c3641b4903f7e03f0c0e, type: 2}
   requiredCultures: []

@@ -89,7 +89,6 @@ MonoBehaviour:
   requiresHarbor: 0
   canAttackAir: 0
   canAttackSpace: 0
-  canAttackNavalSurface: 1
   canAttackUnderwater: 0
   canCounterAttack: 0
   bonusesAgainstCategories:
@@ -119,8 +118,6 @@ MonoBehaviour:
   faithPurchaseCost: 0
   requiresFaith: 0
   requiredFaith: 0
-  requiredResources:
-  - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
