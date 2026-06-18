@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Crossbowmen
+  m_Name: Royal Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Crossbowmen
-  unitType: 6
+  unitName: Royal Knights
+  unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 4a14672e0d143b5438b32c96191a9536, type: 3}
+  _iconDirect: {fileID: 21300000, guid: 2081f677c4b19384b83b6f8314c1d9cf, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -89,20 +89,30 @@ MonoBehaviour:
   requiresHarbor: 0
   canAttackAir: 0
   canAttackSpace: 0
-  canAttackNavalSurface: 1
+  canAttackNavalSurface: 0
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories: []
+  bonusesAgainstCategories:
+  - targetCategory: 1
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
+  - targetCategory: 2
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
   immuneToLava: 0
   attackPointsPerTurn: 1
-  chargeBonusPercent: 0
-  productionCost: 220
-  goldCost: 450
-  canPurchaseWithPolicyPoints: 0
-  policyPointPurchaseCost: 0
+  chargeBonusPercent: 0.2
+  productionCost: 450
+  goldCost: 800
+  canPurchaseWithPolicyPoints: 1
+  policyPointPurchaseCost: 300
   requiresPolicyPoints: 0
   requiredPolicyPoints: 0
   canPurchaseWithFaith: 0
@@ -110,32 +120,37 @@ MonoBehaviour:
   requiresFaith: 0
   requiredFaith: 0
   requiredResources: []
-  requiredResourceCosts: []
+  requiredResourceCosts:
+  - resource: {fileID: 11400000, guid: 13c36b88eb99b1741b9d6259234c154e, type: 2}
+    amount: 1
+  - resource: {fileID: 11400000, guid: fbeea2663281fcb4394787defe6be88e, type: 2}
+    amount: 2
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
-  baseAttack: 20
-  baseMeleeAttack: 6
-  baseRangedAttack: 20
-  baseCityAttack: 6
+  baseAttack: 35
+  baseMeleeAttack: 35
+  baseRangedAttack: 0
+  baseCityAttack: 13
   baseGroundAttack: 0
   baseUnderwaterAttack: 0
   baseAirAttack: 0
   baseSpaceAttack: 0
-  baseMovePoints: 2
-  baseDefense: 4
-  baseHealth: 40
-  baseRange: 2
+  baseMovePoints: 3
+  baseDefense: 15
+  baseHealth: 85
+  baseRange: 1
   intrinsicStatBonuses: []
   auraBonuses: []
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs:
-  - {fileID: 11400000, guid: 2776d4919ae2c3641b4903f7e03f0c0e, type: 2}
+  - {fileID: 11400000, guid: 024f0e0799c277347b4acb9a07166585, type: 2}
   requiredCultures: []
   requiredPantheons: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []
@@ -160,8 +175,8 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 2
-  soldierCount: 6
+  foodConsumptionPerTurn: 8
+  soldierCount: 4
   formationType: 0
   soldierVariants: []
   formationSpacing: 0.5

@@ -16,7 +16,7 @@ MonoBehaviour:
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 0}
+  _iconDirect: {fileID: 21300000, guid: 6d0be1f90fdca7a4890af815f68bab9e, type: 3}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -120,6 +120,7 @@ MonoBehaviour:
   requiresFaith: 0
   requiredFaith: 0
   requiredResources: []
+  requiredResourceCosts: []
   requiredTerrains: 
   buildableByWorker: 0
   workerWorkCost: 40
