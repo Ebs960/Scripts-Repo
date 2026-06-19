@@ -1652,7 +1652,7 @@ public class CivilizationManager : MonoBehaviour
             {
                 preferredUnitTypes.AddRange(new[] { 
                     CombatCategory.Swordsman, CombatCategory.Spearman, 
-                    CombatCategory.Axeman, CombatCategory.Cavalry 
+                    CombatCategory.Axeman, CombatCategory.LightCavalry 
                 });
             }
         }

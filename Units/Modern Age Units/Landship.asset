@@ -97,6 +97,11 @@ MonoBehaviour:
     attackPercent: 0.25
     defenseBonus: 0
     defensePercent: 0.1
+  - targetCategory: 31
+    attackBonus: 0
+    attackPercent: 0.25
+    defenseBonus: 0
+    defensePercent: 0.1
   bonusesAgainstUnits: []
   takesWeatherDamage: 1
   immuneToMosquitoes: 0
@@ -115,6 +120,10 @@ MonoBehaviour:
   requiredFaith: 0
   requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0

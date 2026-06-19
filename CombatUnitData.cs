@@ -25,7 +25,7 @@ public enum CombatCategory
     Driller = 18,
     LavaSwimmer = 19,
     Tank = 20,
-    Cavalry = 21,
+    LightCavalry = 21,
     HeavyCavalry = 22,
     RangedCavalry = 23,
     Dragoon = 24,
@@ -45,10 +45,13 @@ public enum CombatCategory
     SpaceCarrier = 33,
     // Anti-air specialization
     AntiAircraft = 34,
-
     Helicopter = 35,
     // Amphibious aircraft that can use air systems while being allowed to base/spawn from water-surface tiles.
-    SeaPlane = 36
+    SeaPlane = 36,
+
+    FightingVehicle = 37
+
+
 }
 
 public enum CombatTargetDomain

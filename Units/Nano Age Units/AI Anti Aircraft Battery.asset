@@ -20,6 +20,19 @@ MonoBehaviour:
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 0
+  spawnLayers: 0
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 0
+  airJumpRange: 0
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 12
+  airJumpAnimationDuration: 0.8
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
   animalBehavior: 0
   animalMovePoints: 1
   canSpawnInOldWorld: 1
@@ -60,6 +73,18 @@ MonoBehaviour:
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.95
   antiAirDamage: 140
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 0
+  spaceInterceptionRange: 3
+  antiSpaceRange: 2
+  spaceInterceptionChance: 0.45
+  antiSpaceInterceptionChance: 0.25
+  antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 1
@@ -75,7 +100,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 2300
   goldCost: 3100
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -90,14 +128,19 @@ MonoBehaviour:
   baseDefense: 55
   baseHealth: 150
   baseRange: 4
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -112,6 +155,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

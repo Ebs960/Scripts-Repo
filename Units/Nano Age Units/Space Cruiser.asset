@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
-  m_Name: Tank
+  m_Name: Space Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
-  unitName: Tank
-  unitType: 20
+  unitName: Space Cruiser
+  unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 5e82e6a3b72f2d34cb2a7c469e34a647, type: 3}
+  _iconDirect: {fileID: 21300000, guid: ff0e61bf4dbfcf242a2dfe683fdc163b, type: 3}
   addressableAddress: 
   requiresAirport: 0
-  requiresSpaceport: 0
+  requiresSpaceport: 1
   nativeLayer: 0
-  allowedLayers: 0
-  spawnLayers: 0
+  allowedLayers: 8
+  spawnLayers: -1
   canTransitionSurfaceUnderwater: 0
-  canTransitionSurfaceAtmosphere: 0
+  canTransitionSurfaceAtmosphere: 1
   canAirJump: 0
   airJumpRange: 0
   airJumpConsumesAction: 1
@@ -45,71 +45,61 @@ MonoBehaviour:
   travelCapability: 2
   spaceAUPerTurn: 0
   spaceSpeedMultiplier: 1
-  orbitEntryCost: 2
-  canEnterOrbit: 0
+  orbitEntryCost: 1
+  canEnterOrbit: 1
   orbitExitCost: 1
   orbitMovementCost: 1
-  requiresSpaceportToLand: 0
-  canBombardSurface: 0
+  requiresSpaceportToLand: 1
+  canBombardSurface: 1
   orbitVisionBonus: 3
-  isTransport: 0
+  isTransport: 1
   transportCapacity: 3
   canTransportCombatUnits: 1
   canBaseAircraft: 0
-  canBaseSpaceships: 0
-  canTravelToMoon: 0
-  canStoreMissiles: 0
-  maxMissileStorage: 0
+  canBaseSpaceships: 1
+  canTravelToMoon: 1
+  canStoreMissiles: 1
+  maxMissileStorage: 1
   allowedMissileTypes: []
-  canLaunchAirMissions: 0
-  canAirStrike: 0
-  canBombardCitiesFromAir: 0
+  canLaunchAirMissions: 1
+  canAirStrike: 1
+  canBombardCitiesFromAir: 1
   canReconAirMission: 0
   canInterceptAirMissions: 0
-  canProvideAntiAir: 0
-  airMissionRange: 0
-  interceptionRange: 3
-  antiAirRange: 2
-  interceptionChance: 0.45
-  antiAirInterceptionChance: 0.25
-  antiAirDamage: 0
-  canLaunchSpaceMissions: 0
-  canSpaceStrike: 0
-  canBombardCitiesFromSpace: 0
+  canProvideAntiAir: 1
+  airMissionRange: 50
+  interceptionRange: 25
+  antiAirRange: 10
+  interceptionChance: 0.9
+  antiAirInterceptionChance: 0.8
+  antiAirDamage: 160
+  canLaunchSpaceMissions: 1
+  canSpaceStrike: 1
+  canBombardCitiesFromSpace: 1
   canReconSpaceMission: 0
   canInterceptSpaceMissions: 0
-  canProvideAntiSpace: 0
-  spaceMissionRange: 0
-  spaceInterceptionRange: 3
-  antiSpaceRange: 2
+  canProvideAntiSpace: 1
+  spaceMissionRange: 50
+  spaceInterceptionRange: 25
+  antiSpaceRange: 10
   spaceInterceptionChance: 0.45
-  antiSpaceInterceptionChance: 0.25
-  antiSpaceDamage: 0
+  antiSpaceInterceptionChance: 0.8
+  antiSpaceDamage: 160
   requiresCoastalCity: 0
   requiresHarbor: 0
-  canAttackAir: 0
-  canAttackSpace: 0
+  canAttackAir: 1
+  canAttackSpace: 1
   canAttackUnderwater: 0
   canCounterAttack: 0
-  bonusesAgainstCategories:
-  - targetCategory: 14
-    attackBonus: 0
-    attackPercent: 0.25
-    defenseBonus: 0
-    defensePercent: 0.1
-  - targetCategory: 31
-    attackBonus: 0
-    attackPercent: 0.25
-    defenseBonus: 0
-    defensePercent: 0.1
+  bonusesAgainstCategories: []
   bonusesAgainstUnits: []
-  takesWeatherDamage: 1
+  takesWeatherDamage: 0
   immuneToMosquitoes: 0
   immuneToLava: 0
   attackPointsPerTurn: 1
   chargeBonusPercent: 0
-  productionCost: 2200
-  goldCost: 3200
+  productionCost: 4500
+  goldCost: 7000
   canPurchaseWithPolicyPoints: 0
   policyPointPurchaseCost: 0
   requiresPolicyPoints: 0
@@ -127,24 +117,24 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 85
-  baseRangedAttack: 85
-  baseCityAttack: 42
-  baseGroundAttack: 0
+  baseMeleeAttack: 0
+  baseRangedAttack: 0
+  baseCityAttack: 75
+  baseGroundAttack: 40
   baseUnderwaterAttack: 0
-  baseAirAttack: 0
-  baseSpaceAttack: 0
-  baseMovePoints: 3
-  baseDefense: 50
-  baseHealth: 160
-  baseRange: 2
+  baseAirAttack: 160
+  baseSpaceAttack: 160
+  baseMovePoints: 8
+  baseDefense: 90
+  baseHealth: 250
+  baseRange: 3
   intrinsicStatBonuses: []
   auraBonuses: []
-  sightRange: 2
+  sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs:
-  - {fileID: 11400000, guid: 0cf91e4df02de8740b0af860a078b63a, type: 2}
+  - {fileID: 11400000, guid: c79f69f875152fa4f8b02b3f54ff486b, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
@@ -172,7 +162,7 @@ MonoBehaviour:
   captureable: 0
   captureHerdCount: 0
   captureSpecies: 7
-  foodConsumptionPerTurn: 8
+  foodConsumptionPerTurn: 10
   soldierCount: 1
   formationType: 0
   soldierVariants: []
