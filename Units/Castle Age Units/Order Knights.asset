@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Order Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Order Knights
+  description: An order knight mobile mounted troops who use speed and shock to overwhelm slower enemies.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

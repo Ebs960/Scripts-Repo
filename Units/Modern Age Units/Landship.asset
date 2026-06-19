@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Landship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Landship
+  description: A landship armored vehicle that breaks defensive lines with protection, mobility, and direct firepower.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

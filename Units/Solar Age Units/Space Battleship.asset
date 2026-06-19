@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Space Battleship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Battleship
-  description: 
+  description: A space battleship massive space battleship that brings heavy guns to decisive fleet engagements.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

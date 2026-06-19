@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Brood Titan
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Brood Titan
-  description: 
+  description: A gigantic hive-bred organism that smashes enemy lines through sheer mass. This is a unique unit for the Hive Mind government.
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

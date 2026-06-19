@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Chosen Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Chosen Infantry
+  description: A frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Chiefdom government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

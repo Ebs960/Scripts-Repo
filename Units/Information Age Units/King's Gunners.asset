@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: King's Gunners
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: King's Gunners
+  description: Frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Absolute Monarchy government.
   unitType: 31
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

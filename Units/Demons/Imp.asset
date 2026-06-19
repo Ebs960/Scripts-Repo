@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Imp
   m_EditorClassIdentifier: 
   unitName: Imp
+  description: An imp is a spiteful lesser demon that swarms enemies with claws, fire, and malicious tricks.
   unitType: 0
   icon: {fileID: 21300000, guid: b2a80e13ca76a1d438e21ab4acc04ce3, type: 3}
   addressableAddress: Assets/Units/Demons/Imp.prefab

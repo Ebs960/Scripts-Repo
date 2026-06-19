@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Space Troopers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Troopers
-  description: 
+  description: A space trooper frontline soldiers equipped for the weapons and tactics of their society.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

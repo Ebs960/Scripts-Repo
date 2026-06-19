@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Magnate Cataphracts
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Magnate Cataphracts
+  description: A magnate cataphract mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Oligarchy government.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

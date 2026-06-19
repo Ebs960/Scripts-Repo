@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Clubman
   m_EditorClassIdentifier: 
   unitName: Clubman
+  description: An early melee fighter armed with a heavy club for hunting and camp defense.
   unitType: 3
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

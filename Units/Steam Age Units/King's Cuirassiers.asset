@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: King's Cuirassiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: King's Cuirassiers
+  description: Mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Absolute Monarchy government.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

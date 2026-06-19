@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Solar Shock Praetorians
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Solar Shock Praetorians
-  description: 
+  description: Fanatical elite troops armed for orbital-era repression and assault. This is a unique unit for the Fascism government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

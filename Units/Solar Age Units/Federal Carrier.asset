@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Federal Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Federal Carrier
-  description: 
+  description: A mobile carrier that launches, recovers, and supports aircraft during extended campaigns. This is a unique unit for the Federal Republic government.
   unitType: 33
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Elder Wardens
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Elder Wardens
+  description: Veteran guardians who defend council lands and enforce the will of the elders. This is a unique unit for the Elder Council government.
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

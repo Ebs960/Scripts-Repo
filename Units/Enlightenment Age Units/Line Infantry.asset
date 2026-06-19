@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Line Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Line Infantry
+  description: A line infantry frontline soldier equipped for the weapons and tactics of its society.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

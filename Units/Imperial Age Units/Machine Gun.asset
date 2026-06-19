@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Machine Gun
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Machine Gun
+  description: A machine gun frontline soldier equipped for the weapons and tactics of its society.
   unitType: 31
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

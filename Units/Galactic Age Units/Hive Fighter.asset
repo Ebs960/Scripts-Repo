@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Hive Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Hive Fighter
+  description: A fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets. This is a unique unit for the Hive Mind government.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

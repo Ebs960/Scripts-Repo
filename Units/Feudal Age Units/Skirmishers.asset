@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Skirmishers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Skirmishers
+  description: Light troops who harass enemies with javelins and withdraw before heavy infantry closes.
   unitType: 7
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

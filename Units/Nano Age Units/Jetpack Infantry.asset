@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Jetpack Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Jetpack Infantry
+  description: A jetpack infantry fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

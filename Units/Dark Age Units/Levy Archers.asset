@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Levy Archers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Levy Archers
+  description: Ranged troops who weaken enemies with missiles before the melee begins.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sympathy Wing
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Sympathy Wing
-  description: A high-atmosphere space carrier using predictive empathy models to
+  description: An empathic carrier group that coordinates rescues and protective air cover. This is a unique unit for the Empathic Union government.
     break attack runs without escalating the battle. It protects friendly airspace
     while accepting weaker strike performance.
   unitType: 33

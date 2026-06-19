@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Raft
   m_EditorClassIdentifier: 
   unitName: Raft
+  description: A raft vessel built for patrols, transport, and fighting along coasts or rivers.
   unitType: 12
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

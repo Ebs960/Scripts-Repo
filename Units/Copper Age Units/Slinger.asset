@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Slinger
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Slinger
+  description: A slinger ranged troop who weakens enemies with missiles before the melee begins.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

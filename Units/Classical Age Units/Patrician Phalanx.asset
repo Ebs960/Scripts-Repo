@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Patrician Phalanx
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Patrician Phalanx
+  description: A polearm soldier trained to hold ground and stop cavalry charges. This is a unique unit for the Oligarchy government.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

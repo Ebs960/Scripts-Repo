@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Senate Star Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Senate Star Cruiser
-  description: 
+  description: A capital spacecraft armed for long-range fleet actions and interplanetary patrols. This is a unique unit for the Republic and Federal Republic government.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

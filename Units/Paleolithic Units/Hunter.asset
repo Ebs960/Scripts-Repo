@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Hunter
   m_EditorClassIdentifier: 
   unitName: Hunter
+  description: A hunter civilian support group that supports survival, exploration, and settlement growth outside direct battlefield roles.
   unitType: 0
   selectSound: {fileID: 8300000, guid: 1ff291a4d59df464e8803b509d348e9e, type: 3}
   selectPitchVariation: 0.08

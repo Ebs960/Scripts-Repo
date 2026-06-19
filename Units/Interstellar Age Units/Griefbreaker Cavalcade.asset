@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Griefbreaker Cavalcade
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Griefbreaker Cavalcade
-  description: A fast land relief column of medevac walkers. It stabilizes collapsing
+  description: A mobile mounted unit that uses speed and shock to overwhelm slower enemies. This is a unique unit for the Empathic Union government.
     fronts by raising nearby health while accepting reduced attack output. Provides
     some anti air
   unitType: 37

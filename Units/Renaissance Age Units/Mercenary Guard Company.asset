@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Mercenary Guard Company
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mercenary Guard Company
+  description: A frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Merchant Republic government.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

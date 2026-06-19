@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Fighter-Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Fighter-Bomber
+  description: A fighter bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
   unitType: 30
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

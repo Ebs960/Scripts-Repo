@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Temple Artillery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Temple Artillery
+  description: A siege weapon that hammers formations, fortifications, and cities from long range. This is a unique unit for the Priest King government.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

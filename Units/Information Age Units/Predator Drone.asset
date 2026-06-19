@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Predator Drone
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Predator Drone
+  description: A predator drone fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
   unitType: 30
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Parliamentary Deep Space Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Parliamentary Deep Space Cruiser
-  description: 
+  description: A capital spacecraft armed for long-range fleet actions and interplanetary patrols. This is a unique unit for the Parliamentary Democracy government.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

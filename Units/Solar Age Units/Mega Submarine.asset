@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mega Submarine
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mega Submarine
-  description: 
+  description: A mega submarine built to attack shipping and coastal targets from concealment.
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

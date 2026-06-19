@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Rabbit
   m_EditorClassIdentifier: 
   unitName: Rabbit
+  description: A rabbit is small game that marks fertile grassland and supports early foraging.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 7e73bf9911763394f9b1a67928fdb7cc, type: 3}
   selectPitchVariation: 0.08

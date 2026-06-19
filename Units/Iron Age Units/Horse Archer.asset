@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Horse Archer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Horse Archer
+  description: A horse archer ranged troop who weakens enemies with missiles before the melee begins.
   unitType: 23
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

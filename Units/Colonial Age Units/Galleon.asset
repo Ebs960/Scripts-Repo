@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Galleon
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Galleon
+  description: A galleon vessel built for patrols, transport, and fighting along coasts or rivers.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

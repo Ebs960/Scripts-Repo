@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Culverin
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Culverin
+  description: A long-barreled cannon used to batter formations and fortifications with accurate gunfire.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

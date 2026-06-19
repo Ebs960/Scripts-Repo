@@ -18,6 +18,7 @@ MonoBehaviour:
   defaultArmor: {fileID: 0}
   defaultMiscellaneous: {fileID: 0}
   unitName: Story Teller
+  description: A story teller civilian support group that supports survival, exploration, and settlement growth outside direct battlefield roles.
   icon: {fileID: 0}
   prefab: {fileID: 3126871888916689482, guid: b8d5ba8bd9b92bf498f06a41433c4ecb, type: 3}
   selectSound: {fileID: 0}

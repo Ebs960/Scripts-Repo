@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Androids
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Androids
+  description: An android synthetic combat unit built to fight with machine precision and tireless discipline.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

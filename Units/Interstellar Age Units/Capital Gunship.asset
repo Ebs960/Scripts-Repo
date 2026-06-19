@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Capital Gunship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Capital Gunship
-  description: 
+  description: A royal command aircraft that brings heavy weapons and authority to distant fronts. This is a unique unit for the Constitutional Monarchy government.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

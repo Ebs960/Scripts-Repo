@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Axe Warrior
   m_EditorClassIdentifier: 
   unitName: Axe Warrior
+  description: An early melee fighter armed with a stone axe for raids and settlement defense.
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

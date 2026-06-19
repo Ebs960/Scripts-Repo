@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: State Regiment
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: State Regiment
+  description: A formally organized rifle formation raised by a centralized federal state. This is a unique unit for the Federal Republic government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

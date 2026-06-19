@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Power Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Power Cruiser
+  description: A reactor-heavy warship built to overpower lighter vessels with sustained energy fire.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

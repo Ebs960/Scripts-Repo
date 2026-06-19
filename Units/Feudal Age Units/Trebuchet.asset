@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Trebuchet
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Trebuchet
+  description: A counterweight trebuchet that hammers formations, fortifications, and cities from long range.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

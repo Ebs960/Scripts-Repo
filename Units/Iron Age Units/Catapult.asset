@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Catapult
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Catapult
+  description: A stone-throwing siege engine that hammers formations, fortifications, and cities from long range.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

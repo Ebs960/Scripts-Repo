@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Royal Marines
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Royal Marines
+  description: A royal marine frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Constitutional Monarchy government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
