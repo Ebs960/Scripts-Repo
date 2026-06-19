@@ -2076,6 +2076,14 @@ Destroy(oldTuple.instance);
         public float pct;
     }
 
+    struct UnitCityAuraAgg
+    {
+        public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyPointsAdd;
+        public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPointsPct;
+        public int orderAdd, happinessAdd, defenseAdd;
+        public float orderPct, happinessPct, defensePct;
+    }
+
     struct CityStatAgg
     {
         public int defenseAdd;
@@ -2332,6 +2340,20 @@ Destroy(oldTuple.instance);
         }
     }
 
+    private static void AddUnitCityAuraYieldBonus(ref CityYieldAgg agg, UnitCityAuraAgg aura, BuildingYieldType kind)
+    {
+        switch (kind)
+        {
+            case BuildingYieldType.Food: agg.add += aura.foodAdd; agg.pct += aura.foodPct; break;
+            case BuildingYieldType.Production: agg.add += aura.productionAdd; agg.pct += aura.productionPct; break;
+            case BuildingYieldType.Gold: agg.add += aura.goldAdd; agg.pct += aura.goldPct; break;
+            case BuildingYieldType.Science: agg.add += aura.scienceAdd; agg.pct += aura.sciencePct; break;
+            case BuildingYieldType.Culture: agg.add += aura.cultureAdd; agg.pct += aura.culturePct; break;
+            case BuildingYieldType.Faith: agg.add += aura.faithAdd; agg.pct += aura.faithPct; break;
+            case BuildingYieldType.PolicyPoints: agg.add += aura.policyPointsAdd; agg.pct += aura.policyPointsPct; break;
+        }
+    }
+
     private static void AddCityBonus(ref CityYieldAgg agg, CityYieldBonus bonus, BuildingYieldType kind)
     {
         if (bonus == null) return;
@@ -2471,6 +2493,51 @@ Destroy(oldTuple.instance);
         agg.happinessPct += bonus.happinessPct;
     }
 
+
+    private UnitCityAuraAgg AggregateIncomingUnitCityAuras()
+    {
+        UnitCityAuraAgg agg = default;
+        if (owner == null || centerTileIndex < 0) return agg;
+        var ts = TileSys;
+        if (ts == null) return agg;
+
+        void AccumulateFrom(BaseUnit source)
+        {
+            if (source == null || source.planetIndex != planetIndex || source.currentTileIndex < 0) return;
+            foreach (var aura in source.EnumerateOwnedAuraBonuses())
+            {
+                if (aura == null || aura.radius < 0) continue;
+                if (aura.targetRelationship != UnitAuraTargetRelationship.SameCivilization && aura.targetRelationship != UnitAuraTargetRelationship.Friendly) continue;
+                if (source.owner == null) continue;
+                if (source.owner != owner)
+                {
+                    var state = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(source.owner, owner)
+                        : (source.owner.relations != null && source.owner.relations.TryGetValue(owner, out var rel) ? rel : DiplomaticState.Peace);
+                    if (state == DiplomaticState.War) continue;
+                }
+
+                var tiles = MissileManager.GetTilesInRadius(ts, source.currentTileIndex, aura.radius);
+                if (tiles == null || !tiles.Contains(centerTileIndex)) continue;
+
+                agg.foodAdd += aura.cityFoodAdd; agg.productionAdd += aura.cityProductionAdd; agg.goldAdd += aura.cityGoldAdd;
+                agg.scienceAdd += aura.cityScienceAdd; agg.cultureAdd += aura.cityCultureAdd; agg.faithAdd += aura.cityFaithAdd; agg.policyPointsAdd += aura.cityPolicyPointsAdd;
+                agg.foodPct += aura.cityFoodPct; agg.productionPct += aura.cityProductionPct; agg.goldPct += aura.cityGoldPct;
+                agg.sciencePct += aura.citySciencePct; agg.culturePct += aura.cityCulturePct; agg.faithPct += aura.cityFaithPct; agg.policyPointsPct += aura.cityPolicyPointsPct;
+                agg.orderAdd += aura.cityOrderAdd; agg.happinessAdd += aura.cityHappinessAdd; agg.defenseAdd += aura.cityDefenseAdd;
+                agg.orderPct += aura.cityOrderPct; agg.happinessPct += aura.cityHappinessPct; agg.defensePct += aura.cityDefensePct;
+            }
+        }
+
+        foreach (var civ in FindObjectsByType<Civilization>())
+        {
+            if (civ == null) continue;
+            if (civ.combatUnits != null) foreach (var unit in civ.combatUnits) AccumulateFrom(unit);
+            if (civ.workerUnits != null) foreach (var unit in civ.workerUnits) AccumulateFrom(unit);
+        }
+        return agg;
+    }
+
     private CityStatAgg AggregateBuildingStatBonuses(BuildingData data)
     {
         CityStatAgg agg = default;
@@ -2589,6 +2656,13 @@ Destroy(oldTuple.instance);
     private CityStatAgg AggregateAllCityStatBonuses()
     {
         CityStatAgg agg = AggregateCityStatBonuses();
+        UnitCityAuraAgg unitAuraAgg = AggregateIncomingUnitCityAuras();
+        agg.defenseAdd += unitAuraAgg.defenseAdd;
+        agg.defensePct += unitAuraAgg.defensePct;
+        agg.happinessAdd += unitAuraAgg.happinessAdd;
+        agg.happinessPct += unitAuraAgg.happinessPct;
+        agg.orderAdd += unitAuraAgg.orderAdd;
+        agg.orderPct += unitAuraAgg.orderPct;
         agg.happinessAdd += owner != null ? owner.GetResourceSurplusHappinessPerCity() : 0;
         foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
@@ -2866,6 +2940,8 @@ Destroy(oldTuple.instance);
             if (data == null) continue;
             agg.pct += GetDirectCityYieldModifier(data, kind) * upkeepMultiplier;
         }
+
+        AddUnitCityAuraYieldBonus(ref agg, AggregateIncomingUnitCityAuras(), kind);
 
         return agg;
     }
