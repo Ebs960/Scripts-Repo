@@ -630,6 +630,20 @@ public abstract class BaseUnit : MonoBehaviour
             // Status effect healing (regeneration)
             Heal(-hpChange);
         }
+
+        ApplyPassiveAuraHealingForNewTurn();
+    }
+
+    private void ApplyPassiveAuraHealingForNewTurn()
+    {
+        if (currentHealth <= 0 || currentHealth >= MaxHealth) return;
+
+        float healingPct = AggregateIncomingAuraBonuses().healingRatePct;
+        if (healingPct <= 0f) return;
+
+        int healAmount = Mathf.RoundToInt(MaxHealth * healingPct);
+        if (healAmount > 0)
+            Heal(healAmount);
     }
 
     /// <summary>Clean up all status effects (called on death).</summary>
@@ -1002,6 +1016,7 @@ public abstract class BaseUnit : MonoBehaviour
         public float defenseAdd, healthAdd, rangeAdd;
         public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct;
         public float defensePct, healthPct, rangePct;
+        public float healingRatePct;
     }
 
     protected static bool MatchesRequirement(BoolRequirement requirement, bool value)
@@ -1072,7 +1087,7 @@ public abstract class BaseUnit : MonoBehaviour
         return true;
     }
 
-    protected virtual IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    public virtual IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
     {
         if (unlockedAbilities != null)
             foreach (var ability in unlockedAbilities)
@@ -1086,7 +1101,7 @@ public abstract class BaseUnit : MonoBehaviour
                     if (aura != null) yield return aura;
     }
 
-    private bool AuraCanAffect(BaseUnit target, UnitAuraBonus aura)
+    public bool AuraCanAffect(BaseUnit target, UnitAuraBonus aura)
     {
         if (target == null || aura == null) return false;
         if (target == this && !aura.includeSelf) return false;
@@ -1142,6 +1157,7 @@ public abstract class BaseUnit : MonoBehaviour
                 total.meleeAttackPct += aura.meleeAttackPct; total.rangedAttackPct += aura.rangedAttackPct; total.cityAttackPct += aura.cityAttackPct;
                 total.groundAttackPct += aura.groundAttackPct; total.underwaterAttackPct += aura.underwaterAttackPct; total.airAttackPct += aura.airAttackPct; total.spaceAttackPct += aura.spaceAttackPct;
                 total.defensePct += aura.defensePct; total.healthPct += aura.healthPct; total.rangePct += aura.rangePct;
+                total.healingRatePct += aura.healingRatePct;
             }
         }
 
