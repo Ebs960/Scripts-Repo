@@ -860,7 +860,7 @@ public class WorkerUnit : BaseUnit
             accumulate(scopedBonuses);
     }
 
-    protected override IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    public override IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
     {
         foreach (var aura in base.EnumerateOwnedAuraBonuses())
             yield return aura;

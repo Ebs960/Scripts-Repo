@@ -493,6 +493,35 @@ public class UnitAuraBonus
     public float defensePct;
     public float healthPct;
     public float rangePct;
+
+    [Header("Passive Healing")]
+    [Tooltip("Percent of the target unit's maximum health restored at the start of that unit's turn. 0.20 = heals 20% of max health per turn.")]
+    public float healingRatePct;
+
+    [Header("City Aura Additive (flat)")]
+    public int cityFoodAdd;
+    public int cityProductionAdd;
+    public int cityGoldAdd;
+    public int cityScienceAdd;
+    public int cityCultureAdd;
+    public int cityFaithAdd;
+    public int cityPolicyPointsAdd;
+    public int cityOrderAdd;
+    public int cityHappinessAdd;
+    public int cityDefenseAdd;
+
+    [Header("City Aura Multiplicative (%)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float cityFoodPct;
+    public float cityProductionPct;
+    public float cityGoldPct;
+    public float citySciencePct;
+    public float cityCulturePct;
+    public float cityFaithPct;
+    public float cityPolicyPointsPct;
+    public float cityOrderPct;
+    public float cityHappinessPct;
+    public float cityDefensePct;
 }
 
 [System.Serializable]
