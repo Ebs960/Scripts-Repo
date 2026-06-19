@@ -1078,7 +1078,60 @@ public class CombatUnit : BaseUnit
             valF = (valF + attackAdd) * (1f + attackPct);
         }
 
+        var aura = AggregateIncomingAuraBonuses();
+        float auraAttackAdd = aura.attackAdd;
+        float auraAttackPct = aura.attackPct;
+        AddLegacyTypedAuraBonuses(aura, attackType, ref auraAttackAdd, ref auraAttackPct);
+        valF = (valF + auraAttackAdd) * (1f + auraAttackPct);
+
         return valF;
+    }
+
+
+    private static void AddLegacyTypedAuraBonuses(UnitAuraAgg bonuses, AttackType attackType, ref float attackAdd, ref float attackPct)
+    {
+        switch (attackType)
+        {
+            case AttackType.Melee:
+                attackAdd += bonuses.meleeAttackAdd;
+                attackPct += bonuses.meleeAttackPct;
+                break;
+            case AttackType.Ranged:
+                attackAdd += bonuses.rangedAttackAdd;
+                attackPct += bonuses.rangedAttackPct;
+                break;
+            case AttackType.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
+    }
+
+    private static void AddDomainAuraBonuses(UnitAuraAgg bonuses, CombatTargetDomain targetDomain, ref float attackAdd, ref float attackPct)
+    {
+        switch (targetDomain)
+        {
+            case CombatTargetDomain.Ground:
+                attackAdd += bonuses.groundAttackAdd;
+                attackPct += bonuses.groundAttackPct;
+                break;
+            case CombatTargetDomain.Underwater:
+                attackAdd += bonuses.underwaterAttackAdd;
+                attackPct += bonuses.underwaterAttackPct;
+                break;
+            case CombatTargetDomain.Air:
+                attackAdd += bonuses.airAttackAdd;
+                attackPct += bonuses.airAttackPct;
+                break;
+            case CombatTargetDomain.Space:
+                attackAdd += bonuses.spaceAttackAdd;
+                attackPct += bonuses.spaceAttackPct;
+                break;
+            case CombatTargetDomain.City:
+                attackAdd += bonuses.cityAttackAdd;
+                attackPct += bonuses.cityAttackPct;
+                break;
+        }
     }
 
     private float AddTypedEquipmentAttackBonus(float valF, AttackType attackType)
@@ -1235,6 +1288,15 @@ public class CombatUnit : BaseUnit
                 AddLegacyTypedEquipBonuses(e, legacyFallbackType, ref attackAdd, ref attackPct);
             valF = (valF + attackAdd) * (1f + attackPct);
         }
+
+        var aura = AggregateIncomingAuraBonuses();
+        CombatTargetDomain auraDomain = GetAttackDomainForTarget(targetDomain);
+        float auraAttackAdd = aura.attackAdd;
+        float auraAttackPct = aura.attackPct;
+        AddDomainAuraBonuses(aura, auraDomain, ref auraAttackAdd, ref auraAttackPct);
+        if (includeLegacyTypedBonuses)
+            AddLegacyTypedAuraBonuses(aura, legacyFallbackType, ref auraAttackAdd, ref auraAttackPct);
+        valF = (valF + auraAttackAdd) * (1f + auraAttackPct);
 
         return valF;
     }

@@ -12,6 +12,7 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Image unitIconImage; // Display the unit's icon
     [SerializeField] private TextMeshProUGUI unitNameText;
     [SerializeField] private TextMeshProUGUI unitTypeText;
+    [SerializeField] private TextMeshProUGUI unitDescriptionText;
     [SerializeField] private TextMeshProUGUI levelText;
     [SerializeField] private TextMeshProUGUI experienceText;
     
@@ -225,6 +226,7 @@ public class UnitInfoPanel : MonoBehaviour
         if (unitInfoPanel == null) Debug.LogWarning("[UnitInfoPanel] unitInfoPanel is not assigned in the Inspector.");
         if (unitNameText == null) Debug.LogWarning("[UnitInfoPanel] unitNameText is not assigned in the Inspector.");
         if (unitTypeText == null) Debug.LogWarning("[UnitInfoPanel] unitTypeText is not assigned in the Inspector.");
+        if (unitDescriptionText == null) Debug.LogWarning("[UnitInfoPanel] unitDescriptionText is not assigned in the Inspector; unit descriptions will appear as a name tooltip only.");
         if (levelText == null) Debug.LogWarning("[UnitInfoPanel] levelText is not assigned in the Inspector.");
         if (experienceText == null) Debug.LogWarning("[UnitInfoPanel] experienceText is not assigned in the Inspector.");
 
@@ -346,6 +348,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Set all text fields to their default "empty" state and ensure they are visible
         if (unitNameText != null) { unitNameText.text = "No Unit Selected"; unitNameText.gameObject.SetActive(true); }
         if (unitTypeText != null) { unitTypeText.text = "---"; unitTypeText.gameObject.SetActive(true); }
+        if (unitDescriptionText != null) { unitDescriptionText.text = string.Empty; unitDescriptionText.gameObject.SetActive(false); }
         if (levelText != null) { levelText.text = "Level: -"; levelText.gameObject.SetActive(true); }
         if (experienceText != null) { experienceText.text = "XP: -/-"; experienceText.gameObject.SetActive(true); }
         if (attackText != null) { attackText.text = "Attack: -"; attackText.gameObject.SetActive(true); }
@@ -526,6 +529,35 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Diagnostic logging removed.
     }
 
+
+    private void SetUnitDescription(string description, string fallbackTitle)
+    {
+        bool hasDescription = !string.IsNullOrWhiteSpace(description);
+        if (unitDescriptionText != null)
+        {
+            unitDescriptionText.text = hasDescription ? description.Trim() : string.Empty;
+            unitDescriptionText.gameObject.SetActive(hasDescription);
+        }
+        if (unitNameText != null)
+            AddTooltipToText(unitNameText, fallbackTitle, hasDescription ? description.Trim() : "No unit description set.");
+    }
+
+    private void AddTooltipToText(TextMeshProUGUI text, string title, string description)
+    {
+        if (text == null || TooltipSystem.Instance == null) return;
+        var trig = text.GetComponent<EventTrigger>();
+        if (trig == null) trig = text.gameObject.AddComponent<EventTrigger>();
+        for (int i = trig.triggers.Count - 1; i >= 0; --i)
+            if (trig.triggers[i].eventID == EventTriggerType.PointerEnter || trig.triggers[i].eventID == EventTriggerType.PointerExit)
+                trig.triggers.RemoveAt(i);
+        var entryEnter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        entryEnter.callback.AddListener((data) => { TooltipSystem.Instance.ShowSimpleTooltip(title, description); });
+        trig.triggers.Add(entryEnter);
+        var entryExit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        entryExit.callback.AddListener((data) => { TooltipSystem.Instance.RequestHideTooltip(); });
+        trig.triggers.Add(entryExit);
+    }
+
     private void UpdateUnitInfoForCombatUnit()
     {
         if (currentCombatUnit == null) return;
@@ -545,6 +577,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         unitNameText.text = currentCombatUnit.data.unitName;
         unitTypeText.text = currentCombatUnit.data.unitType.ToString();
+        SetUnitDescription(currentCombatUnit.data.description, currentCombatUnit.data.unitName);
 
         // Display unit icon
         if (unitIconImage != null && currentCombatUnit.data.icon != null)
@@ -591,6 +624,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         unitNameText.text = currentWorkerUnit.data.unitName;
         unitTypeText.text = "Worker Unit";
+        SetUnitDescription(currentWorkerUnit.data.description, currentWorkerUnit.data.unitName);
 
         // Display worker icon (was missing, causing stale/blank icon in worker panel)
         if (unitIconImage != null)

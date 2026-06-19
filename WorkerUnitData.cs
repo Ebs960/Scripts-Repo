@@ -43,6 +43,7 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Default miscellaneous equipment equipped by this worker (optional)")]
     public EquipmentData defaultMiscellaneous;
     public string unitName;
+    [TextArea] public string description;
     public Sprite icon;
     public GameObject prefab;
     [Tooltip("Optional Addressables fallback for this worker prefab. The direct prefab reference is used first when assigned.")]

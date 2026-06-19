@@ -998,8 +998,10 @@ public abstract class BaseUnit : MonoBehaviour
 
     protected struct UnitAuraAgg
     {
-        public float attackAdd, defenseAdd, healthAdd, rangeAdd;
-        public float attackPct, defensePct, healthPct, rangePct;
+        public float attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, groundAttackAdd, underwaterAttackAdd, airAttackAdd, spaceAttackAdd;
+        public float defenseAdd, healthAdd, rangeAdd;
+        public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct;
+        public float defensePct, healthPct, rangePct;
     }
 
     protected static bool MatchesRequirement(BoolRequirement requirement, bool value)
@@ -1132,8 +1134,14 @@ public abstract class BaseUnit : MonoBehaviour
                 if (aura == null || aura.radius < 0 || !source.AuraCanAffect(this, aura)) continue;
                 var tiles = MissileManager.GetTilesInRadius(ts, source.currentTileIndex, aura.radius);
                 if (tiles == null || !tiles.Contains(currentTileIndex)) continue;
-                total.attackAdd += aura.attackAdd; total.defenseAdd += aura.defenseAdd; total.healthAdd += aura.healthAdd; total.rangeAdd += aura.rangeAdd;
-                total.attackPct += aura.attackPct; total.defensePct += aura.defensePct; total.healthPct += aura.healthPct; total.rangePct += aura.rangePct;
+                total.attackAdd += aura.attackAdd;
+                total.meleeAttackAdd += aura.meleeAttackAdd; total.rangedAttackAdd += aura.rangedAttackAdd; total.cityAttackAdd += aura.cityAttackAdd;
+                total.groundAttackAdd += aura.groundAttackAdd; total.underwaterAttackAdd += aura.underwaterAttackAdd; total.airAttackAdd += aura.airAttackAdd; total.spaceAttackAdd += aura.spaceAttackAdd;
+                total.defenseAdd += aura.defenseAdd; total.healthAdd += aura.healthAdd; total.rangeAdd += aura.rangeAdd;
+                total.attackPct += aura.attackPct;
+                total.meleeAttackPct += aura.meleeAttackPct; total.rangedAttackPct += aura.rangedAttackPct; total.cityAttackPct += aura.cityAttackPct;
+                total.groundAttackPct += aura.groundAttackPct; total.underwaterAttackPct += aura.underwaterAttackPct; total.airAttackPct += aura.airAttackPct; total.spaceAttackPct += aura.spaceAttackPct;
+                total.defensePct += aura.defensePct; total.healthPct += aura.healthPct; total.rangePct += aura.rangePct;
             }
         }
 
