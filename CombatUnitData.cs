@@ -108,6 +108,7 @@ public class CombatUnitData : ScriptableObject
 {
     [Header("Basic Info")]
     public string unitName;
+    [TextArea] public string description;
     public CombatCategory unitType;
 
     [Header("Audio")]

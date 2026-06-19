@@ -469,6 +469,13 @@ public class UnitAuraBonus
 
     [Header("Additive (flat)")]
     public float attackAdd;
+    public float meleeAttackAdd;
+    public float rangedAttackAdd;
+    public float cityAttackAdd;
+    public float groundAttackAdd;
+    public float underwaterAttackAdd;
+    public float airAttackAdd;
+    public float spaceAttackAdd;
     public float defenseAdd;
     public float healthAdd;
     public float rangeAdd;
@@ -476,6 +483,13 @@ public class UnitAuraBonus
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float attackPct;
+    public float meleeAttackPct;
+    public float rangedAttackPct;
+    public float cityAttackPct;
+    public float groundAttackPct;
+    public float underwaterAttackPct;
+    public float airAttackPct;
+    public float spaceAttackPct;
     public float defensePct;
     public float healthPct;
     public float rangePct;
