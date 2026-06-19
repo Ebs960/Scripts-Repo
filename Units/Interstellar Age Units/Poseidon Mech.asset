@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Poseidon Mech
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Poseidon Mech
+  description: 
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -135,7 +136,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 7000
   goldCost: 11000
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -150,14 +164,19 @@ MonoBehaviour:
   baseDefense: 80
   baseHealth: 250
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: c672bb3ecbde10341a2aefdbe0f00f66, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -172,6 +191,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

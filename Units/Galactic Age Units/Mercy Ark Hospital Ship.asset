@@ -1,0 +1,411 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8957b9e497dbe64993629f150a21ecf, type: 3}
+  m_Name: Mercy Ark Hospital Ship
+  m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
+  unitName: Mercy Ark Hospital Ship
+  description: A surface naval sanctuary ship with trauma bays, evacuation craft,
+    and empathy-link operators. It keeps fleets alive through attrition but is intentionally
+    poor at shore bombardment.
+  unitType: 32
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.08
+  _iconDirect: {fileID: 0}
+  addressableAddress: 
+  requiresAirport: 0
+  requiresSpaceport: 0
+  nativeLayer: 0
+  allowedLayers: 1
+  spawnLayers: 1
+  canTransitionSurfaceUnderwater: 0
+  canTransitionSurfaceAtmosphere: 0
+  canAirJump: 0
+  airJumpRange: 0
+  airJumpConsumesAction: 1
+  airJumpDropHeight: 12
+  airJumpAnimationDuration: 0.8
+  airJumpLaunchVFX: {fileID: 0}
+  airJumpLandingVFX: {fileID: 0}
+  guaranteedRegenPercentPerTurn: 0
+  animalBehavior: 0
+  animalMovePoints: 1
+  canSpawnInOldWorld: 1
+  canSpawnInNewWorld: 1
+  canSpawnInNewWorldSecondary: 1
+  canSpawnOnStandardMaps: 1
+  canSpawnOnFrozenMaps: 1
+  canSpawnOnDemonicMaps: 1
+  canSpawnOnInfernalMaps: 1
+  travelCapability: 4
+  spaceAUPerTurn: 0
+  spaceSpeedMultiplier: 1
+  orbitEntryCost: 2
+  canEnterOrbit: 0
+  orbitExitCost: 1
+  orbitMovementCost: 1
+  requiresSpaceportToLand: 0
+  canBombardSurface: 0
+  orbitVisionBonus: 3
+  isTransport: 1
+  transportCapacity: 3
+  canTransportCombatUnits: 1
+  canBaseAircraft: 1
+  canBaseSpaceships: 0
+  canTravelToMoon: 0
+  canStoreMissiles: 1
+  maxMissileStorage: 3
+  allowedMissileTypes: []
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
+  canReconAirMission: 0
+  canInterceptAirMissions: 0
+  canProvideAntiAir: 1
+  airMissionRange: 50
+  interceptionRange: 25
+  antiAirRange: 10
+  interceptionChance: 0.9
+  antiAirInterceptionChance: 0.8
+  antiAirDamage: 220
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
+  canReconSpaceMission: 0
+  canInterceptSpaceMissions: 0
+  canProvideAntiSpace: 0
+  spaceMissionRange: 50
+  spaceInterceptionRange: 3
+  antiSpaceRange: 10
+  spaceInterceptionChance: 0.897
+  antiSpaceInterceptionChance: 0.883
+  antiSpaceDamage: 240
+  requiresCoastalCity: 1
+  requiresHarbor: 1
+  canAttackAir: 1
+  canAttackSpace: 0
+  canAttackUnderwater: 1
+  canCounterAttack: 0
+  bonusesAgainstCategories:
+  - targetCategory: 10
+    attackBonus: 0
+    attackPercent: 0.1
+    defenseBonus: 0
+    defensePercent: 0.15
+  bonusesAgainstUnits: []
+  takesWeatherDamage: 0
+  immuneToMosquitoes: 0
+  immuneToLava: 0
+  attackPointsPerTurn: 1
+  chargeBonusPercent: 0
+  productionCost: 7800
+  goldCost: 9000
+  canPurchaseWithPolicyPoints: 1
+  policyPointPurchaseCost: 7800
+  requiresPolicyPoints: 1
+  requiredPolicyPoints: 250
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
+  requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
+  buildableByWorker: 0
+  workerWorkCost: 40
+  baseAttack: 0
+  baseMeleeAttack: 200
+  baseRangedAttack: 200
+  baseCityAttack: 100
+  baseGroundAttack: 0
+  baseUnderwaterAttack: 185
+  baseAirAttack: 220
+  baseSpaceAttack: 0
+  baseMovePoints: 6
+  baseDefense: 170
+  baseHealth: 700
+  baseRange: 3
+  intrinsicStatBonuses: []
+  auraBonuses:
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 36
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 13
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 26
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 12
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 11
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 10
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 27
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  - radius: 6
+    includeSelf: 1
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 32
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: -0.1
+    meleeAttackPct: -0.1
+    rangedAttackPct: -0.1
+    cityAttackPct: -0.25
+    groundAttackPct: -0.1
+    underwaterAttackPct: -0.15
+    airAttackPct: -0.15
+    spaceAttackPct: -0.15
+    defensePct: 0.05
+    healthPct: 0.15
+    rangePct: 0
+  sightRange: 3
+  xpToNextLevel: 
+  abilitiesByLevel: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ebc7101f1af21884c86e65d54bc74ec7, type: 2}
+  requiredCultures: []
+  requiredPantheons: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}
+  requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
+  unitLimit: -1
+  limitCategory: 
+  defaultWeapon: {fileID: 0}
+  defaultShield: {fileID: 0}
+  defaultArmor: {fileID: 0}
+  defaultMiscellaneous: {fileID: 0}
+  defaultProjectileWeapon: {fileID: 0}
+  foodOnKill: 0
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  goldMaintenancePerTurn: 2
+  resourceUpkeepPerTurn: []
+  upkeepFailureBehavior: 0
+  upkeepFailureDebuffMultiplier: 0.5
+  captureable: 0
+  captureHerdCount: 0
+  captureSpecies: 7
+  foodConsumptionPerTurn: 10
+  soldierCount: 1
+  formationType: 0
+  soldierVariants: []
+  formationSpacing: 0.5
+  civVisualOverrides: []

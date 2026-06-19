@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Space Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Carrier
+  description: 
   unitType: 33
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -61,9 +62,9 @@ MonoBehaviour:
   canStoreMissiles: 1
   maxMissileStorage: 2
   allowedMissileTypes: []
-  canLaunchAirMissions: 1
-  canAirStrike: 1
-  canBombardCitiesFromAir: 1
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
   canReconAirMission: 0
   canInterceptAirMissions: 0
   canProvideAntiAir: 1
@@ -72,12 +73,11 @@ MonoBehaviour:
   antiAirRange: 10
   interceptionChance: 0.9
   antiAirInterceptionChance: 0.8
-  antiAirDamage: 100
-  canLaunchSpaceMissions: 1
-  canSpaceStrike: 1
-  canBombardCitiesFromSpace: 1
+  antiAirDamage: 160
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
-  canSpacePatrol: 0
   canInterceptSpaceMissions: 0
   canProvideAntiSpace: 1
   spaceMissionRange: 50
@@ -85,7 +85,7 @@ MonoBehaviour:
   antiSpaceRange: 15
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.8
-  antiSpaceDamage: 100
+  antiSpaceDamage: 160
   requiresCoastalCity: 0
   requiresHarbor: 0
   canAttackAir: 1
@@ -101,7 +101,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 5200
   goldCost: 8200
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -116,14 +129,19 @@ MonoBehaviour:
   baseDefense: 100
   baseHealth: 250
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 289ea63f2df62b24c91eac19a2478a85, type: 2}
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -138,6 +156,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

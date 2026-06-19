@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Laser Hyperjet
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Hyperjet
+  description: 
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -77,7 +78,6 @@ MonoBehaviour:
   canSpaceStrike: 0
   canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
-  canSpacePatrol: 0
   canInterceptSpaceMissions: 0
   canProvideAntiSpace: 0
   spaceMissionRange: 0
@@ -101,7 +101,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 2700
   goldCost: 3300
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -116,14 +129,19 @@ MonoBehaviour:
   baseDefense: 65
   baseHealth: 200
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 3
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 06968baf86d25e24f978744eacbb2bc7, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -138,6 +156,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

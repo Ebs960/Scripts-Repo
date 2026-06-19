@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Super Soldiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Super Soldiers
+  description: 
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -115,7 +116,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 4000
   goldCost: 7000
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -130,14 +144,19 @@ MonoBehaviour:
   baseDefense: 110
   baseHealth: 240
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 4
   xpToNextLevel: 
   abilitiesByLevel: []
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 93b99acdc98a9eb4aaf9f3821055c8ed, type: 2}
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -152,6 +171,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

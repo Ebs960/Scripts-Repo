@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Advanced Ocean Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Advanced Ocean Fighter
+  description: 
   unitType: 36
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -65,7 +66,6 @@ MonoBehaviour:
   canAirStrike: 1
   canBombardCitiesFromAir: 1
   canReconAirMission: 1
-  canAirPatrol: 1
   canInterceptAirMissions: 1
   canProvideAntiAir: 0
   airMissionRange: 40
@@ -78,7 +78,6 @@ MonoBehaviour:
   canSpaceStrike: 0
   canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
-  canSpacePatrol: 0
   canInterceptSpaceMissions: 0
   canProvideAntiSpace: 0
   spaceMissionRange: 0
@@ -102,7 +101,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 2800
   goldCost: 3800
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -117,14 +129,19 @@ MonoBehaviour:
   baseDefense: 80
   baseHealth: 190
   baseRange: 2
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 4
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: c672bb3ecbde10341a2aefdbe0f00f66, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -139,6 +156,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5

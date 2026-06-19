@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Mega Submarine
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mega Submarine
+  description: 
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -105,7 +106,20 @@ MonoBehaviour:
   chargeBonusPercent: 0
   productionCost: 3000
   goldCost: 4500
+  canPurchaseWithPolicyPoints: 0
+  policyPointPurchaseCost: 0
+  requiresPolicyPoints: 0
+  requiredPolicyPoints: 0
+  canPurchaseWithFaith: 0
+  faithPurchaseCost: 0
+  requiresFaith: 0
+  requiredFaith: 0
+  requiredResourceCosts: []
   requiredTerrains: 
+  upgradesTo: {fileID: 0}
+  upgradeGoldCost: 0
+  obsoleteWithTechs: []
+  obsoleteWithCultures: []
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
@@ -120,14 +134,19 @@ MonoBehaviour:
   baseDefense: 45
   baseHealth: 200
   baseRange: 4
+  intrinsicStatBonuses: []
+  auraBonuses: []
   sightRange: 4
   xpToNextLevel: 
   abilitiesByLevel: []
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: bfe432d3d493d464e90cbf63415b712d, type: 2}
   requiredCultures: []
   requiredPantheons: []
   requiredGovernments: []
   requiredPolicies: []
+  alternativeUnlockRequirements: []
+  requiredCityBuildings: []
   unitLimit: -1
   limitCategory: 
   defaultWeapon: {fileID: 0}
@@ -142,6 +161,7 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  goldMaintenancePerTurn: 2
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
