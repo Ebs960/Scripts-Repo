@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Senate Star Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Senate Star Cruiser
+  description: 
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -139,7 +140,7 @@ MonoBehaviour:
   requiredPantheons: []
   requiredGovernments:
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
-
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []

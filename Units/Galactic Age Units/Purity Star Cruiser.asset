@@ -54,17 +54,17 @@ MonoBehaviour:
   canBombardSurface: 1
   orbitVisionBonus: 3
   isTransport: 1
-  transportCapacity: 3
+  transportCapacity: 5
   canTransportCombatUnits: 1
   canBaseAircraft: 0
-  canBaseSpaceships: 1
+  canBaseSpaceships: 0
   canTravelToMoon: 1
   canStoreMissiles: 1
   maxMissileStorage: 2
   allowedMissileTypes: []
-  canLaunchAirMissions: 1
-  canAirStrike: 1
-  canBombardCitiesFromAir: 1
+  canLaunchAirMissions: 0
+  canAirStrike: 0
+  canBombardCitiesFromAir: 0
   canReconAirMission: 0
   canInterceptAirMissions: 0
   canProvideAntiAir: 1
@@ -74,9 +74,9 @@ MonoBehaviour:
   interceptionChance: 0.9
   antiAirInterceptionChance: 0.8
   antiAirDamage: 190
-  canLaunchSpaceMissions: 1
-  canSpaceStrike: 1
-  canBombardCitiesFromSpace: 1
+  canLaunchSpaceMissions: 0
+  canSpaceStrike: 0
+  canBombardCitiesFromSpace: 0
   canReconSpaceMission: 0
   canInterceptSpaceMissions: 0
   canProvideAntiSpace: 1
@@ -190,7 +190,7 @@ MonoBehaviour:
   requiredPantheons: []
   requiredGovernments:
   - {fileID: 11400000, guid: ba59728f1d884649936dd595b4f0d3d6, type: 2}
-
+  - {fileID: 0}
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []

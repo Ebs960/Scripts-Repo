@@ -17,7 +17,7 @@ MonoBehaviour:
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
-  _iconDirect: {fileID: 21300000, guid: 0600e856ae9d1c2489d13c806f1e1dbd, type: 3}
+  _iconDirect: {fileID: 0}
   addressableAddress: 
   requiresAirport: 0
   requiresSpaceport: 0
@@ -138,16 +138,16 @@ MonoBehaviour:
   buildableByWorker: 0
   workerWorkCost: 40
   baseAttack: 0
-  baseMeleeAttack: 145
-  baseRangedAttack: 165
-  baseCityAttack: 105
+  baseMeleeAttack: 150
+  baseRangedAttack: 175
+  baseCityAttack: 90
   baseGroundAttack: 0
   baseUnderwaterAttack: 0
   baseAirAttack: 0
   baseSpaceAttack: 170
   baseMovePoints: 3
-  baseDefense: 104
-  baseHealth: 242
+  baseDefense: 110
+  baseHealth: 250
   baseRange: 2
   intrinsicStatBonuses: []
   auraBonuses:
@@ -210,7 +210,6 @@ MonoBehaviour:
   requiredPantheons: []
   requiredGovernments:
   - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
-
   requiredPolicies: []
   alternativeUnlockRequirements: []
   requiredCityBuildings: []
