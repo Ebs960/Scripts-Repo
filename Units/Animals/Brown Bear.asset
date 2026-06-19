@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Brown Bear
   m_EditorClassIdentifier: 
   unitName: Brown Bear
+  description: A brown bear is a powerful forest predator that threatens isolated travelers and early camps.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 2ba14d8f9ba3e6941938eaf7910cc24e, type: 3}
   selectPitchVariation: 0.08

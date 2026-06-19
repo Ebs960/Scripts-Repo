@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Sabretooth Tiger
   m_EditorClassIdentifier: 
   unitName: Sabretooth
+  description: A prehistoric ambush predator with crushing fangs and explosive charges.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 033fea8b9b72fc54eb11b71dd91f8bc7, type: 3}
   selectPitchVariation: 0.08

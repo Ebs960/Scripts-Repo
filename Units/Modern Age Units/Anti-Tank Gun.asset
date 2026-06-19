@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Anti-Tank Gun
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Anti-Tank Gun
+  description: An anti-tank gun that breaks defensive lines with protection, mobility, and direct firepower.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

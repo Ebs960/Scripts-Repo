@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: War Elephant
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: War Elephant
+  description: A war elephant mobile mounted unit that uses speed and shock to overwhelm slower enemies.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

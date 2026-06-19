@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Galactic Star Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Galactic Star Cruiser
-  description: 
+  description: A galactic star cruiser capital spacecraft armed for long-range fleet actions and interplanetary patrols.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Horse Animal
   m_EditorClassIdentifier: 
   unitName: Horse Animal
+  description: Wild horses are roaming herds that foreshadow future cavalry and pastoral economies.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 4d49848d163e21b4bb9fde90d299b98c, type: 3}
   selectPitchVariation: 0.08

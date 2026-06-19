@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Nuclear Aircraft Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Nuclear Aircraft Carrier
+  description: A nuclear aircraft carrier that launches, recovers, and supports aircraft during extended campaigns.
   unitType: 32
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

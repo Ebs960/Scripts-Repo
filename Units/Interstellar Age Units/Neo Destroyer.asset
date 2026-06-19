@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Neo Destroyer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Neo Destroyer
-  description: 
+  description: A neo destroyer aquatic combat unit built for battles across shorelines, oceans, and submerged fronts.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

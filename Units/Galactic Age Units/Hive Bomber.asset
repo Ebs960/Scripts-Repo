@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hive Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Hive Bomber
-  description: 
+  description: A strike aircraft built to bomb armies, cities, and strategic targets from above. This is a unique unit for the Hive Mind government.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

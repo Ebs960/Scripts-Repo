@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: God's Hand
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: God's Hand.
-  description: 'Gives all friendly adjacent Units +1 Range and +10% Ranged Attack '
+  description: God's Hand is a sacred support unit whose presence extends the reach and firepower of nearby allies. This is a unique unit for the Theocracy government.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

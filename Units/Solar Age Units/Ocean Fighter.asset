@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ocean Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Ocean Fighter
-  description: 
+  description: An ocean fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

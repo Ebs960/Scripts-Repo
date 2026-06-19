@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Chariot Archer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Chariot Archer
+  description: A chariot archer ranged troop who weakens enemies with missiles before the melee begins.
   unitType: 23
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

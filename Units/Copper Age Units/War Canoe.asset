@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: War Canoe
   m_EditorClassIdentifier: 
   unitName: War Canoe
+  description: A fighting canoe used for river raids, coastal scouting, and early naval skirmishes.
   unitType: 12
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

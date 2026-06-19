@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Tyrant Killers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Tyrant Killers
+  description: Republican commandos trained to destroy armored symbols of oppression. This is a unique unit for the Republic government.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

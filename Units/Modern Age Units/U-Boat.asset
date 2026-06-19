@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: U-Boat
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: U-Boat
+  description: An u-boat built to attack shipping and coastal targets from concealment.
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

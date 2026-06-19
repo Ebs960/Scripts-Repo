@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Dark Werewolf
   m_EditorClassIdentifier: 
   unitName: Dark Werewolf
+  description: A dark werewolf is a cursed lupine monster that tears into lightly defended settlements.
   unitType: 1
   icon: {fileID: 0}
   addressableAddress: Assets/Units/Demons/Dark Werewolves.prefab

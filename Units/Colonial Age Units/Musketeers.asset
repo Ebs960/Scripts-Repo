@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Musketeers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Musketeers
+  description: A musketeer frontline soldiers equipped for the weapons and tactics of their society.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

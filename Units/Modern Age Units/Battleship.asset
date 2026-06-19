@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Battleship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Battleship
+  description: A battleship heavy warship that uses large guns and armor to dominate naval battles.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

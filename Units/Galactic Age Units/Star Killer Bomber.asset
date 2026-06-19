@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Star Killer Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Star Killer Bomber
-  description: 
+  description: A star killer bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

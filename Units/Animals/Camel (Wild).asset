@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Camel (Wild)
   m_EditorClassIdentifier: 
   unitName: Camel (Wild)
+  description: A wild camel is a hardy desert animal that roams arid trade routes before domestication.
   unitType: 25
   selectSound: {fileID: 8300000, guid: c02236f710f52564d8cf644967b29712, type: 3}
   selectPitchVariation: 0.08

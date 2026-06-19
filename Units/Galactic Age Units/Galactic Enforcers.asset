@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Galactic Enforcers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Galactic Enforcers
-  description: 
+  description: A galactic enforcer frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Fascism government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mercenary Droids
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mercenary Droids
-  description: 
+  description: A mercenary droid synthetic combat unit built to fight with machine precision and tireless discipline.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

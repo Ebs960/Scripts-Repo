@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mercy Ark Hospital Ship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mercy Ark Hospital Ship
-  description: A surface naval sanctuary ship with trauma bays, evacuation craft,
+  description: A vast medical vessel that evacuates casualties and sustains relief fleets. This is a unique unit for the Empathic Union government.
     and empathy-link operators. It keeps fleets alive through attrition but is intentionally
     poor at shore bombardment.
   unitType: 32

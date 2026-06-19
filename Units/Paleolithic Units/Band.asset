@@ -18,6 +18,7 @@ MonoBehaviour:
   defaultArmor: {fileID: 0}
   defaultMiscellaneous: {fileID: 0}
   unitName: Band
+  description: A band civilian support group that supports survival, exploration, and settlement growth outside direct battlefield roles.
   icon: {fileID: 21300000, guid: 3115485b89b2b064fb333507fc530884, type: 3}
   prefab: {fileID: 3076081410584474018, guid: 90a0dc12a7c50a44389726ee18d0ea55, type: 3}
   addressableAddress: 

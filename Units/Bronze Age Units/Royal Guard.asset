@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Royal Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Royal Guard
+  description: A frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Kingdom government.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Stealth Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Stealth Fighter
+  description: A stealth fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

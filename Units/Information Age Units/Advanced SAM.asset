@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Advanced SAM
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Advanced SAM
+  description: An advanced surface-to-air missile battery that protects armies and cities from hostile aircraft.
   unitType: 34
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mega Space Battleship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mega Space Battleship
-  description: 
+  description: A mega space battleship massive space battleship that brings heavy guns to decisive fleet engagements.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

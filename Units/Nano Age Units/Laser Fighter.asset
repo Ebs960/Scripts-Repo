@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Laser Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Fighter
+  description: A laser fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
   unitType: 30
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

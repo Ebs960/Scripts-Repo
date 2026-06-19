@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Holy Grenadiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Holy Grenadiers
+  description: Frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Theocracy government.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

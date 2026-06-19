@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Sheep
   m_EditorClassIdentifier: 
   unitName: Sheep
+  description: Docile herd animals that become valuable livestock once protected by a settlement.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 10ae9533f0e3984459d90faad12b315d, type: 3}
   selectPitchVariation: 0.08

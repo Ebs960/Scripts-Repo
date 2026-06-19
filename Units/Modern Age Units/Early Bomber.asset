@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Early Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Early Bomber
+  description: An early bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

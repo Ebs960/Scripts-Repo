@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Priest Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Priest Knights
+  description: Mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Priest King government.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Manorial Longbowmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Manorial Longbowmen
+  description: A ranged troop who weakens enemies with missiles before the melee begins. This is a unique unit for the Feudal Monarchy government.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

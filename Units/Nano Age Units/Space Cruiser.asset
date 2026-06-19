@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Space Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Cruiser
+  description: A deep-space capital ship with long-range weapons for fleet engagements beyond orbit.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

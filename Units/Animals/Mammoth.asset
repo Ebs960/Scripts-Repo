@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Mammoth
   m_EditorClassIdentifier: 
   unitName: Mammoth
+  description: A mammoth is an enormous Ice Age beast prized by hunters but dangerous when provoked.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 68396bfbf51eef3429ee88a23c2847c1, type: 3}
   selectPitchVariation: 0.08

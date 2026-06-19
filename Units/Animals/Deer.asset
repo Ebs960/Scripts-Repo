@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Deer
   m_EditorClassIdentifier: 
   unitName: Deer
+  description: Skittish herd animals that provide early hunters with meat, hides, and bone.
   unitType: 25
   selectSound: {fileID: 8300000, guid: d00efff174075de459a085bc6b1362ba, type: 3}
   selectPitchVariation: 0.08

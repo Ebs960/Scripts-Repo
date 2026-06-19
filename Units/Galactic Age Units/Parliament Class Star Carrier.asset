@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Parliament Class Star Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Parliament Class Star Carrier
-  description: 
+  description: A mobile carrier that launches, recovers, and supports spacecraft during extended campaigns. This is a unique unit for the Parliamentary Democracy government.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

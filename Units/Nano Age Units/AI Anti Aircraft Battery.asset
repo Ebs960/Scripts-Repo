@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: AI Anti Aircraft Battery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: AI Anti Aircraft Battery
+  description: An ai anti aircraft battery vessel built for patrols, transport, and fighting along coasts or rivers.
   unitType: 34
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

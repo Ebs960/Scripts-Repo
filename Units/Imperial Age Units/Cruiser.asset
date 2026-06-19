@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cruiser
+  description: A cruiser vessel built for patrols, transport, and fighting along coasts or rivers.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

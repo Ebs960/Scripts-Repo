@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Quantum Jumper
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Quantum Jumper
-  description: 
+  description: A quantum jumper space-capable assault unit made for rapid deployment between orbit and the surface.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

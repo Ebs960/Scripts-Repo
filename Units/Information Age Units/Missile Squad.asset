@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Missile Squad
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Missile Squad
+  description: An infantry team carrying guided missiles to threaten armor and aircraft.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

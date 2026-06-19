@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Mecha Droid
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mecha Droid
+  description: A mecha droid towering combat walker that combines heavy armor with advanced weapons systems.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

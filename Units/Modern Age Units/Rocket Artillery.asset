@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Rocket Artillery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Rocket Artillery
+  description: A rocket artillery siege weapon that hammers formations, fortifications, and cities from long range.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Spear Warrior
   m_EditorClassIdentifier: 
   unitName: Spear Warrior
+  description: An early fighter who uses a simple spear to hold enemies at a safer distance.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

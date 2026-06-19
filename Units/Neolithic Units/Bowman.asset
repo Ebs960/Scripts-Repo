@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Bowman
   m_EditorClassIdentifier: 
   unitName: Bowman
+  description: A bowman ranged troop who weakens enemies with missiles before the melee begins.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

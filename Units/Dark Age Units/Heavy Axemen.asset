@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Heavy Axemen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Heavy Axemen
+  description: Shield-breaking infantry who use broad axes to crack armor and wooden defenses.
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

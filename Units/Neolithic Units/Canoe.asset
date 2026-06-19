@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Canoe
   m_EditorClassIdentifier: 
   unitName: Canoe
+  description: A small paddled boat used to cross rivers, scout shores, and connect early settlements.
   unitType: 12
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

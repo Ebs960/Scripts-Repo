@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: War Droid
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: War Droid
+  description: A war droid synthetic combat unit built to fight with machine precision and tireless discipline.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

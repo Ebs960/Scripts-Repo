@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Dire Wolf
   m_EditorClassIdentifier: 
   unitName: Dire Wolf
+  description: A dire wolf is a massive pack predator that stalks units moving beyond settled borders.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 8d8feec49cde36743b6ff3251ed9b064, type: 3}
   selectPitchVariation: 0.08

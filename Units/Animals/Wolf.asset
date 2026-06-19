@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Wolf
   m_EditorClassIdentifier: 
   unitName: Wolf
+  description: Wolves are lean pack predators that harass scouts, workers, and unguarded camps.
   unitType: 25
   selectSound: {fileID: 8300000, guid: 81d91ad806ab47f44b6d05a672814105, type: 3}
   selectPitchVariation: 0.08
