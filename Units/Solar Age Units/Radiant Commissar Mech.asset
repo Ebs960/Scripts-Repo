@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Radiant Commissar Mech
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Radiant Commissar Mech
-  description: A towering combat walker that combines heavy armor with advanced weapons systems. This is a unique unit for the Fascism government.
+  description: Radiant Commissar Mechs turn ideology into towering enforcement, watching the line while punishing enemies and hesitation alike.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

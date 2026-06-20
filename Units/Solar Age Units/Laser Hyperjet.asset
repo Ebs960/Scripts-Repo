@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Laser Hyperjet
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Hyperjet
-  description: A laser hyperjet fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Laser Hyperjets cross battlespaces at extreme speed, using directed-energy weapons to intercept threats before slower craft respond.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

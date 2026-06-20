@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Siege Ship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Siege Ship
-  description: A bombardment vessel built to crack fortified coastlines and support amphibious attacks.
+  description: Siege Ships are orbital bombardment craft, built to crack fortified stations, moons, and planetary defenses from space.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Heavy Stealth Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Heavy Stealth Bomber
-  description: A heavy stealth bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: Heavy stealth bombers carry enormous payloads through defended skies, hiding strategic destruction behind silence and sensor confusion.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

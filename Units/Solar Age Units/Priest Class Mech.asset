@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Priest Class Mech
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Priest Class Mech
-  description: A towering combat walker that combines heavy armor with advanced weapons systems. This is a unique unit for the Priest King government.
+  description: Priest Class Mechs stride like moving temples, giving sacred authority the armor and weapons of a war machine.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Directive Coordinator Androids
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Directive Coordinator Androids
-  description: Command androids that synchronize nearby machine soldiers in battle. Their aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
+  description: Directive Coordinator Androids synchronize machine formations, turning nearby robots and cyborgs into a cleaner, faster combat network.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

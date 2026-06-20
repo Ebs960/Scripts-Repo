@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Laser Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Tank
-  description: A laser tank that breaks defensive lines with protection, mobility, and direct firepower.
+  description: Laser tanks replace shells with focused energy, burning through armor and cover with fewer warnings than older guns.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
