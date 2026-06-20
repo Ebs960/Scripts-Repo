@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Freemen Militia
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Freemen Militia
-  description: A freemen militia frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Democracy government.
+  description: Freemen militia raise plain spears for democracy, holding muddy lanes where professional troops expect collapse.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ballista
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Ballista
-  description: A torsion-powered siege weapon that launches heavy bolts through troops and defenses.
+  description: Torsion arms snap forward, driving black-fletched bolts through packed ranks and crews hiding behind palisades.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

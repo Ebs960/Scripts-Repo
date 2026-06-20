@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Axeman
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Axeman
-  description: A close-combat infantryman who chops through shields and lightly armored foes.
+  description: Short, brutal swings make axemen dangerous in packed fights where reinforced shields cannot absorb every blow.
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
