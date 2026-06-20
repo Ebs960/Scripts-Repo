@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Priest Class Mech
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Priest Class Mech
-  description: Priest Class Mechs stride like moving temples, giving sacred authority the armor and weapons of a war machine.
+  description: These mechs stride like moving temples, giving sacred authority the
+    armor and weapons of a war machine.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -73,6 +74,7 @@ MonoBehaviour:
   antiAirRange: 2
   interceptionChance: 0.45
   antiAirInterceptionChance: 1
+  interceptionEvasion: 0
   antiAirDamage: 90
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
@@ -85,6 +87,7 @@ MonoBehaviour:
   antiSpaceRange: 2
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.25
+  spaceInterceptionEvasion: 0
   antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0
@@ -185,6 +188,27 @@ MonoBehaviour:
     defensePct: 0
     healthPct: 0
     rangePct: 0
+    healingRatePct: 0
+    cityFoodAdd: 0
+    cityProductionAdd: 0
+    cityGoldAdd: 0
+    cityScienceAdd: 0
+    cityCultureAdd: 0
+    cityFaithAdd: 0
+    cityPolicyPointsAdd: 0
+    cityOrderAdd: 0
+    cityHappinessAdd: 0
+    cityDefenseAdd: 0
+    cityFoodPct: 0
+    cityProductionPct: 0
+    cityGoldPct: 0
+    citySciencePct: 0
+    cityCulturePct: 0
+    cityFaithPct: 0
+    cityPolicyPointsPct: 0
+    cityOrderPct: 0
+    cityHappinessPct: 0
+    cityDefensePct: 0
   sightRange: 2
   xpToNextLevel: 
   abilitiesByLevel: []

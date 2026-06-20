@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Dive Destroyer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dive Destroyer
-  description: Dive Destroyers hunt beneath the surface, using depth, sensors, and sudden missile strikes to break underwater threats.
+  description: These futuristic destroyers hunt beneath the surface, using depth,
+    sensors, and sudden missile strikes to break underwater threats.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -73,6 +74,7 @@ MonoBehaviour:
   antiAirRange: 2
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
+  interceptionEvasion: 0
   antiAirDamage: 0
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
@@ -85,6 +87,7 @@ MonoBehaviour:
   antiSpaceRange: 2
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.25
+  spaceInterceptionEvasion: 0
   antiSpaceDamage: 0
   requiresCoastalCity: 1
   requiresHarbor: 1

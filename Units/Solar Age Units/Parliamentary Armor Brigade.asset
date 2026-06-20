@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Parliamentary Armor Brigade
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Parliamentary Armor Brigade
-  description: Parliamentary Armor Brigades carry democratic mandates into armored warfare, pairing public legitimacy with heavy vehicles and professional crews.
+  description: Armor Brigades carry democratic mandates into armored warfare, pairing
+    public legitimacy with heavy vehicles and professional crews.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -73,6 +74,7 @@ MonoBehaviour:
   antiAirRange: 2
   interceptionChance: 0.45
   antiAirInterceptionChance: 0.25
+  interceptionEvasion: 0
   antiAirDamage: 0
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
@@ -85,6 +87,7 @@ MonoBehaviour:
   antiSpaceRange: 2
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.25
+  spaceInterceptionEvasion: 0
   antiSpaceDamage: 0
   requiresCoastalCity: 0
   requiresHarbor: 0

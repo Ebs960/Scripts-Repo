@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Federal Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Federal Carrier
-  description: Federal Carriers project republican power through deep-space strike wings, keeping distant orbital fronts supplied, coordinated, and defended.
+  description: These carriers project republican power through deep-space strike
+    wings, keeping distant orbital fronts supplied, coordinated, and defended.
   unitType: 33
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
@@ -73,6 +74,7 @@ MonoBehaviour:
   antiAirRange: 10
   interceptionChance: 0.9
   antiAirInterceptionChance: 0.8
+  interceptionEvasion: 0
   antiAirDamage: 190
   canLaunchSpaceMissions: 0
   canSpaceStrike: 0
@@ -85,6 +87,7 @@ MonoBehaviour:
   antiSpaceRange: 15
   spaceInterceptionChance: 0.45
   antiSpaceInterceptionChance: 0.8
+  spaceInterceptionEvasion: 0
   antiSpaceDamage: 190
   requiresCoastalCity: 0
   requiresHarbor: 0
