@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sacred Chariot
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Sacred Chariot
-  description: A mobile mounted unit that uses speed and shock to overwhelm slower enemies. This is a unique unit for the Priest King government.
+  description: Blessed horses and metallic fittings give these chariots a ceremonial look and a ruthless battlefield purpose.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

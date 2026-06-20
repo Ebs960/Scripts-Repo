@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Horseman
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Horseman
-  description: A horseman mobile mounted unit that uses speed and shock to overwhelm slower enemies.
+  description: Quick hooves carry these riders into gaps, where bronze fittings glint just before a flank collapses.
   unitType: 21
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

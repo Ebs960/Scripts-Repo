@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lancers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Lancers
-  description: A lancer mobile mounted troops who use speed and shock to overwhelm slower enemies.
+  description: Lancers are made for the decisive moment, when an exposed line, tired infantry, or scattered skirmishers can be broken by a focused charge.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

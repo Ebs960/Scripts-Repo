@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mortar
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mortar
-  description: A high-arc mortar that hammers formations, fortifications, and cities from long range.
+  description: Mortar crews work with patience and calculation, lobbing explosive answers into places enemies thought safely hidden.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

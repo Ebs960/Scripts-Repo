@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Howitzer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Howitzer
-  description: A mobile howitzer that hammers formations, fortifications, and cities from long range.
+  description: The howitzer thrives between cannon and mortar, throwing shells over awkward ground with industrial patience and punishing force.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
