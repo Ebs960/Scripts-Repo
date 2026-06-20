@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Fighting Vehicle
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Fighting Vehicle
-  description: A fighting vehicle that breaks defensive lines with protection, mobility, and direct firepower.
+  description: This vehicle is built for combined warfare, keeping troops close to the action without leaving them exposed.
   unitType: 21
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

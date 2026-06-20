@@ -248,7 +248,10 @@ public class AircraftMissionManager : MonoBehaviour
         float defense = Mathf.Max(1f, aircraft.CurrentDefense);
         float statFactor = attack / (attack + defense);
         float hitChance = Mathf.Clamp01(baseChance + (statFactor - 0.5f));
-        return UnityEngine.Random.value <= hitChance;
+        if (UnityEngine.Random.value > hitChance) return false;
+
+        float evasionChance = aircraft?.data != null ? Mathf.Clamp01(aircraft.data.interceptionEvasion) : 0f;
+        return evasionChance <= 0f || UnityEngine.Random.value > evasionChance;
     }
 
     private static void ResolveMissionEffect(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTile)

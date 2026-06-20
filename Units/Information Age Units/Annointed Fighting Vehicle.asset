@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Annointed Fighting Vehicle
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Annointed Fighting Vehicle
-  description: An annointed fighting vehicle that breaks defensive lines with protection, mobility, and direct firepower. This is a unique unit for the Theocracy government.
+  description: Annointed fighting vehicles carry protected infantry under sacred command, making every advance feel like a guarded procession.
   unitType: 37
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
