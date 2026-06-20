@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tidechief Leviathan
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Tidechief Leviathan
-  description: An aquatic combat unit built for battles across shorelines, oceans, and submerged fronts. This is a unique unit for the Chiefdom government.
+  description: Tidechief Leviathans express chiefdom power beneath the waves, ruling submerged battlefields through size and ancestral authority.
   unitType: 13
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

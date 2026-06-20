@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Household Cavalry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Household Cavalry
-  description: A mobile mounted unit that uses speed and shock to overwhelm slower enemies. This is a unique unit for the Constitutional Monarchy government.
+  description: In war, household cavalry bring discipline and status; in peace, they remind citizens that monarchy still has teeth.
   unitType: 21
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Carrack
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Carrack
-  description: A carrack vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Towering above smaller ships, carracks carry cargo, crews, and royal expectations across dangerous seas.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

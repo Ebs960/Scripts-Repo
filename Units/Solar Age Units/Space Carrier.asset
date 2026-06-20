@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Space Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Carrier
-  description: A mobile carrier that launches, recovers, and supports spacecraft during extended campaigns.
+  description: Space Carriers launch strike craft through extended campaigns, turning orbital distance into deployable airpower.
   unitType: 33
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

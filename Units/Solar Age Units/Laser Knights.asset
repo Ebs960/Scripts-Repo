@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Laser Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Swordsman
-  description: A frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Kingdom, Constitutional Monarchy, Absolute Monarchy and Feudal Monarchy government.
+  description: Laser Knights carry royal traditions into futuristic war, turning monarchy’s prestige into close-range energy combat.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

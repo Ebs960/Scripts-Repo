@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Camel Archer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Camel Archer
-  description: A camel archer ranged troop who weakens enemies with missiles before the melee begins.
+  description: Riding above the dust, these tan-cloaked bowmen punish pursuit and retreat before heavier troops can answer.
   unitType: 23
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

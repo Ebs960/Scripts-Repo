@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Space Legionaires
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Legionaires
-  description: A space legionaire frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Empire government.
+  description: Space Legionaires carry imperial order beyond the atmosphere, securing stations, colonies, and landing zones for the empire.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

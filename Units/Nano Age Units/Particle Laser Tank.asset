@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Particle Laser Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Particle Laser Tank
-  description: An upgraded laser tank that focuses particle beams through precision targeting arrays. It has 10% more health and 10% more attack than its base unit. This is a unique unit for the Technocracy government.
+  description: The Particle Laser Tank is an upgraded answer to battlefield uncertainty: better power, better targeting, better results.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

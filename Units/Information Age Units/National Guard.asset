@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: National Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: National Guard
-  description: A national guard frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Federal Republic government.
+  description: National Guard units defend the federal republic at home, bridging citizen service, military training, and public emergency.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

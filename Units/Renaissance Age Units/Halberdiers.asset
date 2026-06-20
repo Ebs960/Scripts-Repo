@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Halberdiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Halberdiers
-  description: Polearm troops trained to hold ground and stop cavalry charges.
+  description: Sturdy, formal, and dangerous, halberdiers bridge medieval infantry traditions with the more ordered armies to come.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Divine Spearmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Divine Spearmen
-  description: A polearm soldier trained to hold ground and stop cavalry charges. This is a unique unit for the Priest King government.
+  description: Under sacred white pennants, divine spearmen brace against cavalry and turn faith into disciplined defensive depth.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

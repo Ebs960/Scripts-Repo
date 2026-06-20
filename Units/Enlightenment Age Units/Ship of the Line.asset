@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ship of the Line
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Ship of the Line
-  description: A powerful sailing warship built to trade broadsides in formal battle lines.
+  description: A ship of the line is built for formal naval battle, trading broadsides where discipline matters as much as firepower.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

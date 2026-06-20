@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Unmanned Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Unmanned Fighter
-  description: An unmanned fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Unmanned fighters remove pilots from the cockpit, trading human risk for remote control, autonomy, and expendability.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

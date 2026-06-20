@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shock Commandos
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Shock Commandos
-  description: A shock commando frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Fascism government.
+  description: A fascist state uses shock commandos as both military tool and political theater in uniform.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

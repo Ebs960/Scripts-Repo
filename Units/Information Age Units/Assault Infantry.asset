@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Assault Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Assault Infantry
-  description: An assault infantry frontline soldier equipped for the weapons and tactics of its society.
+  description: These soldiers bring modern weapons and aggressive discipline to battles decided room by room or block by block.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

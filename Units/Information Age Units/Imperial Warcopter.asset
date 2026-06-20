@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Imperial Warcopter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Imperial Warcopter
-  description: A fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets. This is a unique unit for the Empire government.
+  description: Warcopters suit empires well: mobile, intimidating, and able to appear before slower forces can gather.
   unitType: 35
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Laser Swordsmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Laser Swordsman
-  description: A laser swordsman frontline soldier equipped for the weapons and tactics of its society.
+  description: Laser Swordsmen fight with disciplined precision, replacing steel blades with compact energy weapons built for decisive clashes.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

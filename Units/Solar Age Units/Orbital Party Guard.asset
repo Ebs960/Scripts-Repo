@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Orbital Party Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Orbital Party Guard
-  description: An orbital party guard frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Fascism government.
+  description: Orbital Party Guards carry fascist authority from orbit, landing wherever obedience must be enforced quickly.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

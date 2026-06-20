@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Plasma Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Plasma Tank
-  description: A plasma tank that breaks defensive lines with protection, mobility, and direct firepower.
+  description: Plasma Tanks bring superheated firepower to armored war, making hardened cover feel temporary and unsafe.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

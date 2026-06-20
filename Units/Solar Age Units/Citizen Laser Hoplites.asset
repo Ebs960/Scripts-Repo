@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Citizen Laser Hoplites
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Citizen Laser Hoplites
-  description: A citizen laser hoplite polearm troops trained to hold ground and stop cavalry charges. This is a unique unit for the Democracy government.
+  description: Citizen Laser Hoplites defend democratic ranks with disciplined shields, civic duty, and precise energy weapons.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

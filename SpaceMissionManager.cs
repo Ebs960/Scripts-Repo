@@ -239,7 +239,10 @@ public class SpaceMissionManager : MonoBehaviour
         float defense = Mathf.Max(1f, spacecraft.CurrentDefense);
         float statFactor = attack / (attack + defense);
         float hitChance = Mathf.Clamp01(baseChance + (statFactor - 0.5f));
-        return UnityEngine.Random.value <= hitChance;
+        if (UnityEngine.Random.value > hitChance) return false;
+
+        float evasionChance = spacecraft?.data != null ? Mathf.Clamp01(spacecraft.data.spaceInterceptionEvasion) : 0f;
+        return evasionChance <= 0f || UnityEngine.Random.value > evasionChance;
     }
 
     private static void ResolveMissionEffect(CombatUnit spacecraft, SpaceMissionKind missionKind, int targetTile)

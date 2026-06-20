@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Aqua Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Aqua Infantry
-  description: An aqua infantry frontline soldier equipped for the weapons and tactics of its society.
+  description: Aqua Infantry are soldiers shaped for submerged war, moving through flooded ruins and pressure-sealed habitats with practiced ease.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

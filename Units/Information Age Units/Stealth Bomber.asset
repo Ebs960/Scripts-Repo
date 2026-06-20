@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stealth Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Stealth Bomber
-  description: A stealth bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: Stealth bombers let commanders strike at strategic targets while forcing defenses to search for shadows.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

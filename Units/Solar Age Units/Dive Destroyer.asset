@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dive Destroyer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dive Destroyer
-  description: A dive destroyer aquatic combat unit built for battles across shorelines, oceans, and submerged fronts.
+  description: Dive Destroyers descend beneath surface battles, hunting submerged targets with heavy sensors and sudden strike capability.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

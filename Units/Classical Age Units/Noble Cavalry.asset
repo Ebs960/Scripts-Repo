@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Noble Cavalry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Noble Cavalry
-  description: A mobile mounted unit that uses speed and shock to overwhelm slower enemies. This is a unique unit for the Oligarchy government.
+  description: Noble cavalry ride with crimson plumes, preserving oligarchic prestige by breaking flanks at decisive moments.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

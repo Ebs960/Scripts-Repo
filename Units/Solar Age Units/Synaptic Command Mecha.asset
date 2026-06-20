@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Synaptic Command Mecha
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Synaptic Command Mecha
-  description: A neural-network command walker that directs robotic and cyborg formations. Its aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
+  description: Synaptic Command Mecha link robotic and cyborg units into coordinated formations through advanced neural control systems.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

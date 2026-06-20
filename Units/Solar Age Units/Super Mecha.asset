@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Super Mecha
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Super Mecha
-  description: A super mecha towering combat walker that combines heavy armor with advanced weapons systems.
+  description: Super Mecha are colossal combat walkers, built to overpower conventional armor through scale, shielding, and heavy weapons.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

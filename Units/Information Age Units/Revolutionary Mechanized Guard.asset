@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Revolutionary Mechanized Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Revolutionary Mechanized Guard
-  description: A towering combat walker that combines heavy armor with advanced weapons systems. This is a unique unit for the Communism government.
+  description: Revolutionary Mechanized Guards give communism a towering armored symbol, built to defend the revolution with industrial force.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Parliamentary Armor Brigade
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Parliamentary Armor Brigade
-  description: A politically backed armored formation deployed to defend democratic mandates. This is a unique unit for the Parliamentary Democracy government.
+  description: Parliamentary Armor Brigades turn democratic authorization into armored force, advancing with professional crews and public mandate.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

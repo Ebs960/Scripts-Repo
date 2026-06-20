@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Technocrat War Droid
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Technocrat War Droid
-  description: A systems-optimized battle robot built as a stronger upgrade to the War Droid. It has 10% more health and 10% more attack than its base unit. This is a unique unit for the Technocracy government.
+  description: Built by engineers who trust data over tradition, these droids improve the War Droid through ruthless system refinement.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Swordsman
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Swordsman
-  description: A swordsman frontline soldier equipped for the weapons and tactics of its society.
+  description: Swordsmen are flexible close-combat infantry, useful for holding the line or pressing openings after enemies falter.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

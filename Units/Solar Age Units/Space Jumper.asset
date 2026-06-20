@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Space Jumper
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Space Jumper
-  description: A space jumper space-capable assault unit made for rapid deployment between orbit and the surface.
+  description: Space Jumpers are rapid orbital assault troops, dropping into contested zones before defenders can stabilize.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

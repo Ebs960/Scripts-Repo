@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Civic Thunder Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Civic Thunder Tank
-  description: An armored vehicle that breaks defensive lines with protection, mobility, and direct firepower. This is a unique unit for the Republic government.
+  description: This tank fights under civic banners, a heavy reminder that republics can answer threats with steel.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sea Crawler
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Sea Crawler
-  description: A sea crawler aquatic combat unit built for battles across shorelines, oceans, and submerged fronts.
+  description: Sea Crawlers are heavy seabed war machines, grinding through flooded terrain where submarines cannot occupy ground.
   unitType: 13
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
