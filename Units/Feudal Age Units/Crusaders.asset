@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Crusaders
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Crusaders
-  description: Oath-bound religious warriors who march far from home to fight holy wars.
+  description: Crusaders march under holy signs, carrying religious momentum into assaults far from home and supply.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

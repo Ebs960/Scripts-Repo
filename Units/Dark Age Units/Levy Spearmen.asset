@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Levy Spearmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Levy Spearmen
-  description: A levy spearmen polearm soldier trained to hold ground and stop cavalry charges.
+  description: Levy spearmen plant rough shafts in the mud, stopping cavalry through numbers and nerve.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

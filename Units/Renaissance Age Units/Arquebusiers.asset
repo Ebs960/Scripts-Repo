@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Arquebusiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Arquebusiers
-  description: An arquebusier frontline soldiers equipped for the weapons and tactics of their society.
+  description: Arquebusiers bring smoke, noise, and modern fear to armies learning that courage cannot argue with gunpowder.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

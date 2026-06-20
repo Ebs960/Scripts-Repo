@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Royal Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Royal Knights
-  description: Mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Feudal Monarchy government.
+  description: Royal knights ride beneath crown banners, enforcing feudal monarchy through disciplined charges at decisive moments.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
