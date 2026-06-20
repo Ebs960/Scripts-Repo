@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Gentlemen Dragoons
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Gentlemen Dragoons
-  description: A gentlemen dragoon mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Oligarchy government.
+  description: Drawn from privileged circles, gentlemen dragoons make status useful by turning education, horses, and weapons into flexible service.
   unitType: 24
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sloop
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Sloop
-  description: A sloop vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Small, quick, and useful, the sloop scouts coastlines, carries messages, and slips into waters where larger warships waste too much time.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

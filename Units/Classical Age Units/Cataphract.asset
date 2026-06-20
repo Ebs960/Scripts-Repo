@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cataphract
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cataphract
-  description: A cataphract mobile mounted unit that uses speed and shock to overwhelm slower enemies.
+  description: Fully armored from helm to hoof, cataphracts grind forward in bronze scale and rupture overextended lines.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

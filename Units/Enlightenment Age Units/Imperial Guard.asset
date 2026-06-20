@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Imperial Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Imperial Guard
-  description: An imperial guard frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Empire government.
+  description: Their uniforms may inspire admiration, but their real purpose is simpler: protect the empire’s center and project its power.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

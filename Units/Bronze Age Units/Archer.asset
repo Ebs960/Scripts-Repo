@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Archer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Archer
-  description: An archer ranged troop who weakens enemies with missiles before the melee begins.
+  description: Arrows rise from disciplined ranks, softening shield walls before friendly spears risk the close fight.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

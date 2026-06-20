@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Quadrireme
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Quadrireme
-  description: A quadrireme vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Four banks of oars churn blue water, letting quadriremes ram heavy ships and contest harbor mouths.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

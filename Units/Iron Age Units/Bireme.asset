@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bireme
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Bireme
-  description: A bireme vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: With painted oars flashing, the bireme patrols narrow seas and punishes careless landings near friendly harbors.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

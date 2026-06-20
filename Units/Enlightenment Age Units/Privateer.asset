@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Privateer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Privateer
-  description: A state-licensed raider that attacks enemy trade while preserving official deniability. This is a unique unit for the Merchant Republic government.
+  description: Privateers blur the line between commerce and warfare, raiding enemy trade while giving patrons room to deny responsibility.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

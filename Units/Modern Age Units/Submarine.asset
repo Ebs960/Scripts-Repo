@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Submarine
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Submarine
-  description: A submarine built to attack shipping and coastal targets from concealment.
+  description: A submarine wins by remaining unseen, turning patience, machinery, and torpedoes into pressure on entire economies.
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

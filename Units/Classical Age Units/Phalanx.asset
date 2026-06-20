@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Phalanx
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Phalanx
-  description: A phalanx polearm soldier trained to hold ground and stop cavalry charges.
+  description: Bronze shields overlap as the phalanx advances, pinning enemies in place for allies to exploit.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

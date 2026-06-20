@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Royal Grenadiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Royal Grenadiers
-  description: A royal grenadier frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Constitutional Monarchy government.
+  description: Their loyalty belongs to crown and constitution alike, making them symbols of order during dangerous campaigns.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

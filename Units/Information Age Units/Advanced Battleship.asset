@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Advanced Battleship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Advanced Battleship
-  description: An advanced battleship heavy warship that uses large guns and armor to dominate naval battles.
+  description: Advanced battleships project sea control through heavy guns, hardened defenses, and the political confidence of a floating fortress.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

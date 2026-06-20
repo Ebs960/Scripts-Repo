@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Expeditionary Brigade
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Expeditionary Brigade
-  description: A deployable combined-arms force built for overseas democratic interventions. This is a unique unit for the Parliamentary Democracy government.
+  description: This brigade is built for distance, arriving where democratic governments decide that speeches require soldiers.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

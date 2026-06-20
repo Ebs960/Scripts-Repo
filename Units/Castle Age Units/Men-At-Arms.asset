@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Men-At-Arms
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Men-At-Arms
-  description: A men at arm frontline soldiers equipped for the weapons and tactics of their society.
+  description: Men-at-arms are professional soldiers of the castle age, armored enough for hard service and trusted in close fighting.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Jet Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Jet Fighter
-  description: A jet fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Jet fighters make the sky faster and less forgiving, where seconds decide interception, survival, and control.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

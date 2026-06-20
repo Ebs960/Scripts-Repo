@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Trireme
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Trireme
-  description: A trireme vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Three oar decks flash in rhythm, giving triremes the speed to screen fleets and spear exposed hulls.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

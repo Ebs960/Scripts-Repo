@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Artillery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Artillery
-  description: An artillery siege weapon that hammers formations, fortifications, and cities from long range.
+  description: Modern artillery makes distance violent, shaping battles before infantry ever sees the positions it must take.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

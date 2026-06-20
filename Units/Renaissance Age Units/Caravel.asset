@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Caravel
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Caravel
-  description: A caravel vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Small enough for daring, strong enough for distance, the caravel carries Renaissance ambition across open water.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

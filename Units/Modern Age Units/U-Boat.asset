@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: U-Boat
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: U-Boat
-  description: An u-boat built to attack shipping and coastal targets from concealment.
+  description: A U-boat is a weapon of suspense, forcing merchants and admirals to fear empty water.
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

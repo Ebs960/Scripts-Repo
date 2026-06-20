@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Bomber
-  description: A bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: A bomber’s value lies in reach, turning distant targets into immediate concerns for commanders and civilians alike.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
