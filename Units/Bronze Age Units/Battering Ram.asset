@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Battering Ram
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Battering Ram
-  description: A battering ram assault engine used to breach walls and carry attackers into fortified positions.
+  description: Its covered beam creeps forward through dust, giving attackers a way through gates instead of over them.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
