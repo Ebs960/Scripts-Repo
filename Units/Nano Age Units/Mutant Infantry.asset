@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mutant Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mutant Infantry
-  description: A mutant infantry frontline soldier equipped for the weapons and tactics of its society.
+  description: Mutant infantry bring altered bodies into modern war, surviving conditions that would break ordinary soldiers too quickly.
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

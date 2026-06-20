@@ -315,6 +315,8 @@ public class CombatUnitData : ScriptableObject
     [Range(0f, 1f)] public float interceptionChance = 0.45f;
     [Tooltip("Base chance for local anti-air / missile-defense fire to hit before combat modifiers. A hit damages the target; only lethal damage stops it.")]
     [Range(0f, 1f)] public float antiAirInterceptionChance = 0.25f;
+    [Tooltip("Chance for this unit to evade aircraft interception or anti-air fire after defensive fire would otherwise hit.")]
+    [Range(0f, 1f)] public float interceptionEvasion = 0f;
     [Tooltip("Flat damage dealt by passive anti-air. If 0, CurrentAirAttack is used.")]
     public int antiAirDamage = 0;
 
@@ -341,6 +343,8 @@ public class CombatUnitData : ScriptableObject
     [Range(0f, 1f)] public float spaceInterceptionChance = 0.45f;
     [Tooltip("Base chance for local anti-space/orbital-defense fire to hit before combat modifiers. A hit damages the target; only lethal damage stops it.")]
     [Range(0f, 1f)] public float antiSpaceInterceptionChance = 0.25f;
+    [Tooltip("Chance for this unit to evade space interception or anti-space fire after defensive fire would otherwise hit.")]
+    [Range(0f, 1f)] public float spaceInterceptionEvasion = 0f;
     [Tooltip("Flat damage dealt by passive anti-space defense. If 0, CurrentSpaceAttack is used.")]
     public int antiSpaceDamage = 0;
 

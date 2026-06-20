@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Torpedo Boat
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Torpedo Boat
-  description: A torpedo boat vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: A torpedo boat gives modest crews a dangerous answer to armored giants, especially in crowded or coastal waters.
   unitType: 27
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

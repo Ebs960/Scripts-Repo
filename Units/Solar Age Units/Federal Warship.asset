@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Federal Warship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Federal Warship
-  description: A federal warship vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Federal Warships carry republic authority between worlds, enforcing security with disciplined crews and long-range spaceborne weapons.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

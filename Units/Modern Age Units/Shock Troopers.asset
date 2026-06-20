@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shock Troopers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Shock Troopers
-  description: A shock trooper frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Fascism government.
+  description: Shock troopers serve fascism as aggressive symbols of force, built for hard assaults and public intimidation.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

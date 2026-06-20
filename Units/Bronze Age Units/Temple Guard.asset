@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Temple Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Temple Guard
-  description: A temple guard frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Priest King government.
+  description: Temple guards defend sacred rule with disciplined ranks, bracing key ground against cavalry and infantry alike.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

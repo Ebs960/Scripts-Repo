@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Tank
-  description: An armored fighting vehicle that breaks defensive lines with protection, mobility, and direct firepower.
+  description: Tanks combine armor, engines, and firepower into a mobile answer to trenches, strongpoints, and exposed infantry.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Annointed Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Annointed Knights
-  description: Mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Theocracy government.
+  description: Annointed knights charge beneath sacred signs, using theocracy’s blessing to break fearful infantry on open ground.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

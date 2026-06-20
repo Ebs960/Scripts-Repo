@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Flak Gun
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Flak Gun
-  description: A flak gun that protects armies and cities from hostile aircraft.
+  description: Flak guns fill the sky with danger, forcing pilots to fly through fear before they reach their targets.
   unitType: 34
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

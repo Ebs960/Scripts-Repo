@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Domination Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Domination Tank
-  description: An armored vehicle that breaks defensive lines with protection, mobility, and direct firepower. This is a unique unit for the Fascism government.
+  description: Domination Tanks embody fascist armored power, built to crush resistance while making obedience feel mechanically inevitable.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

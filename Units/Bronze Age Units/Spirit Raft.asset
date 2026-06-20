@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Spirit Raft
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Spirit Raft
-  description: A spirit raft vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Guided by ritual crews, this raft patrols rivers where shifting currents hide sudden landings.
   unitType: 12
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

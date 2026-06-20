@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Nuclear Submarine
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Nuclear Submarine
-  description: A nuclear submarine built to attack shipping and coastal targets from concealment.
+  description: This vessel is dangerous because it can wait, move, and threaten without announcing where it is.
   unitType: 10
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

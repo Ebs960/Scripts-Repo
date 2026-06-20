@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Orbital Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Orbital Bomber
-  description: An orbital bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: This craft turns orbit into a firing platform, making distance, atmosphere, and borders feel strategically smaller.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

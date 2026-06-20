@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Gatling Gun
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Gatling Gun
-  description: An early rapid-fire weapon that cuts down massed infantry with rotating barrels.
+  description: Its rotating barrels make massed bravery look suddenly outdated, especially when crews have time to set and aim.
   unitType: 31
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Spearman
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Spearman
-  description: A spearman polearm soldier trained to hold ground and stop cavalry charges.
+  description: Simple ranks and long spear shafts make these troops dependable anchors when the enemy tries to rush.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

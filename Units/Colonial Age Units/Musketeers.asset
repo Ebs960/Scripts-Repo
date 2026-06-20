@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Musketeers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Musketeers
-  description: A musketeer frontline soldiers equipped for the weapons and tactics of their society.
+  description: Musketeers define the new infantry standard, combining drilled volleys, smoke, and stubborn formation work into the backbone of colonial armies.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

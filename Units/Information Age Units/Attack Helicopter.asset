@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Attack Helicopter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Attack Helicopter
-  description: An attack helicopter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Fast, armed, and difficult to ignore, attack helicopters turn ridgelines and roads into sudden danger zones.
   unitType: 35
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

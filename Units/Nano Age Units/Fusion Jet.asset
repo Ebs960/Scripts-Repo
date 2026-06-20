@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Fusion Jet
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Fusion Jet
-  description: A fusion jet fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Fusion jets bring reactor-age speed to the atmosphere, intercepting threats before older aircraft finish understanding the approach.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

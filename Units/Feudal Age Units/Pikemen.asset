@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Pikemen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Pikemen
-  description: A pikemen polearm soldier trained to hold ground and stop cavalry charges.
+  description: Pikemen level long shafts, turning narrow fields into traps for confident cavalry and reckless infantry.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

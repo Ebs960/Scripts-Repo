@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Council Bowkeepers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Council Bowkeepers
-  description: Ranged troops who weaken enemies with missiles before the melee begins. This is a unique unit for the Elder Council government.
+  description: Council bowkeepers defend elder lands with steady bows, thinning attacks before they reach the meeting stones.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

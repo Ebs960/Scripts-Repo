@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Field Cannon
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Field Cannon
-  description: A field cannon siege weapon that hammers formations, fortifications, and cities from long range.
+  description: A practiced gun crew can turn measured range, powder, and timing into the loudest argument on the battlefield.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

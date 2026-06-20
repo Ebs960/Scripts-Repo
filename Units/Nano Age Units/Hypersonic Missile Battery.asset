@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hypersonic Missile Battery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Hypersonic Missile Battery
-  description: A hypersonic missile battery siege weapon that hammers formations, fortifications, and cities from long range.
+  description: Hypersonic missile batteries compress warning time, striking distant targets before defenders can properly understand the launch.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

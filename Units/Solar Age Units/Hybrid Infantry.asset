@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hybrid Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Hybrid Infantry
-  description: A hybrid infantry frontline soldier equipped for the weapons and tactics of its society.
+  description: Hybrid Infantry blend organic resilience with engineered upgrades, adapting quickly to hostile terrain, radiation, and close combat pressure.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

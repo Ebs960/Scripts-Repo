@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Holy Warrior
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Holy Warrior
-  description: A zealous fighter driven by religious vows and trained for brutal close combat. This is a unique unit for the Theocracy government.
+  description: Vowed blades and sacred marks drive these fighters into breaches where ordinary soldiers hesitate.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

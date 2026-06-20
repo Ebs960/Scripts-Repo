@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cog
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cog
-  description: A cog vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Round-bellied cogs carry troops across rough seas, supplying sieges and landing forces where roads fail.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

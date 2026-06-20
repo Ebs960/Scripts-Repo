@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Divine Longbowmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Divine Longbowmen
-  description: A ranged troop who weakens enemies with missiles before the melee begins. This is a unique unit for the Priest King government.
+  description: These longbowmen stand beneath sacred command, their volleys carrying the weight of ritual, training, and obedience.
   unitType: 5
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
