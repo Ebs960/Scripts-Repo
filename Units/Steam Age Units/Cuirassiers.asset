@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cuirassiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cuirassiers
-  description: A cuirassier mobile mounted troops who use speed and shock to overwhelm slower enemies.
+  description: These riders are expensive, proud, and difficult to ignore, built for moments when appearance and force must align.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

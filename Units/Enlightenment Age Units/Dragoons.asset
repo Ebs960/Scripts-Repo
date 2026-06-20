@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dragoons
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dragoons
-  description: A dragoon mobile mounted troops who use speed and shock to overwhelm slower enemies.
+  description: Dragoons ride where roads fail, dismount where firepower matters, and give commanders flexible troops between cavalry and infantry.
   unitType: 24
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Riflemen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Riflemen
-  description: A riflemen frontline soldier equipped for the weapons and tactics of its society.
+  description: Riflemen represent the infantryman transformed by better weapons, longer reach, and a battlefield that punishes careless movement.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

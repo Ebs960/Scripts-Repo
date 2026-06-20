@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Church Warship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Church Warship
-  description: A vessel built for patrols, transport, and fighting along coasts or rivers. This is a unique unit for the Theocracy government.
+  description: Built for faith as much as empire, this vessel turns naval power into a floating statement of divine authority.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

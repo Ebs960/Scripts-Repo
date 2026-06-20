@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Steamship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Steamship
-  description: A steamship vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Smoke from its funnel marks a new maritime age, where engines carry troops, cargo, and ambition against the current.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

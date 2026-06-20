@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Horse Artillery
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Horse Artillery
-  description: A horse artillery siege weapon that hammers formations, fortifications, and cities from long range.
+  description: A horse artillery battery arrives like cavalry and speaks like artillery, giving an advance more reach than enemies expect.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
