@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Knights
-  description: Heavily armored horsemen who charge enemy lines and defend feudal holdings.
+  description: Armored horses and polished shields make knights decisive when commanders need one wing broken quickly.
   unitType: 22
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

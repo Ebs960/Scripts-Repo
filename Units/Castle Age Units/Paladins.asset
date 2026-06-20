@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Paladins
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Paladins
-  description: Elite holy knights whose armor, faith, and training make them fearsome shock cavalry. This is a unique unit for the Empire government.
+  description: Their armor shines with prestige, but their true weight lies in the stories soldiers tell about them.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Musket Militia
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Musket Militia
-  description: A musket militia frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Democracy government.
+  description: Musket militia give democracy a citizen’s defense, imperfectly polished but deeply tied to local responsibility and public duty.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

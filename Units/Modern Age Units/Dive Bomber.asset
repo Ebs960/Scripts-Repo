@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dive Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dive Bomber
-  description: A dive bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: These aircraft specialize in battlefield shock, making tanks, ships, and strongpoints feel exposed beneath a screaming approach.
   unitType: 30
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

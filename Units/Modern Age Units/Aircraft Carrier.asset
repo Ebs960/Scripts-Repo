@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Aircraft Carrier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Aircraft Carrier
-  description: An aircraft carrier that launches, recovers, and supports aircraft during extended campaigns.
+  description: The aircraft carrier moves the airfield to sea, projecting power far beyond the range of coastal bases.
   unitType: 32
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Provincial Auxilaries
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Provincial Auxilaries
-  description: A provincial auxilarie frontline soldiers equipped for the weapons and tactics of their society. This is a unique unit for the Empire government.
+  description: Recruited beyond the capital, these auxiliaries plug gaps, screen marches, and carry provincial colors into imperial wars.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

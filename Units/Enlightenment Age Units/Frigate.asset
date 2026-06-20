@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Frigate
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Frigate
-  description: A frigate vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Built for movement and initiative, frigates give admirals eyes, teeth, and reach beyond the main battle fleet.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

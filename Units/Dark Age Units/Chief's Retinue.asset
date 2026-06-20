@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Chief's Retinue
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Chief's Retinue
-  description: Loyal bodyguards who follow a tribal chief into raids and border wars. This is a unique unit for the Chiefdom government.
+  description: Chief’s retinue fight close around their warlord, marking the moment for brutal counterattacks against exposed raiders.
   unitType: 2
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

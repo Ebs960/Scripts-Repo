@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Republican Swordsmen
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Republican Swordsmen
-  description: A republican swordsmen frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Republic government.
+  description: Republican swordsmen carry plain iron blades, using civic discipline to pressure centers without waiting for nobles.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

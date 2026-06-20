@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dreadnought
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dreadnought
-  description: A dreadnought heavy warship that uses large guns and armor to dominate naval battles.
+  description: A dreadnought does not merely join a fleet; it changes what every rival navy must build to survive.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cruiser
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cruiser
-  description: A cruiser vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: Faster than a battleship and stronger than a scout, the cruiser gives admirals a practical tool for global pressure.
   unitType: 26
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

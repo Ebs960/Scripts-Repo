@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Palace Guards
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Halberdiers
-  description: Polearm troops trained to hold ground and stop cavalry charges. This is a unique unit for the Absolute Monarchy government.
+  description: Palace guards serve absolute monarchy as visible proof that royal authority has both ceremony and muscle.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SAM
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: SAM
-  description: A surface-to-air missile battery that protects armies and cities from hostile aircraft.
+  description: A SAM battery changes the airspace around it, making pilots respect invisible ranges and sudden warnings.
   unitType: 34
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
