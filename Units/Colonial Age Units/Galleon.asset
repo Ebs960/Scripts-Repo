@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Galleon
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Galleon
-  description: A galleon vessel built for patrols, transport, and fighting along coasts or rivers.
+  description: A galleon is a floating stronghold of the colonial age, able to escort treasure, land troops, and answer threats with broadside fire.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
