@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Jet Bomber
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Jet Bomber
-  description: A jet bomber strike aircraft built to bomb armies, cities, and strategic targets from above.
+  description: Jet bombers bring speed to strategic destruction, reaching targets faster than older defenses can comfortably answer.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

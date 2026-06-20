@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Infantry
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Infantry
-  description: An infantry frontline soldier equipped for the weapons and tactics of its society.
+  description: These soldiers are the army’s constant presence, marching through mud, smoke, and machine fire because no battle holds ground without them.
   unitType: 14
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Biplane
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Biplane
-  description: A biplane fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: Fragile but daring, the biplane belongs to pilots who trust canvas, engine noise, and nerve more than armor.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
