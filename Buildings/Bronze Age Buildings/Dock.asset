@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dock
   icon: {fileID: 0}
-  description: +4 Food, +4 Gold. Allows production of ships
+  description: Supports fishing, trade, and the construction of ships.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f33aed667b0a6b44cb7abdb059861f8d, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Poet's Hall
   icon: {fileID: 0}
-  description: +5 Culture, +2 Policy Points
+  description: A cultural hall where poets preserve stories, values, and public memory.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e545bb4b0c1c96f4b9601991f58fd79b, type: 2}

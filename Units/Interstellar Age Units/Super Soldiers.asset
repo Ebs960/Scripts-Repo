@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Super Soldiers
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Super Soldiers
-  description: Genetically and cybernetically enhanced infantry built to outperform ordinary troops.
+  description: Enhanced infantry built to outfight, outlast, and outmarch normal troops.
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

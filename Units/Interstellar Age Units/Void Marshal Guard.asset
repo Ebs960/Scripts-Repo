@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Void Marshal Guard
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Void Marshal Guard
-  description: A void marshal guard frontline soldier equipped for the weapons and tactics of its society. This is a unique unit for the Fascism government.
+  description: Fascist elite infantry enforcing order with vacuum-hardened armor and ruthless discipline. This is a unique unit for the Fascism government.
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

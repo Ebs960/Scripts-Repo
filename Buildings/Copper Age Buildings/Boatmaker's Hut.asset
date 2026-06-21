@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Boatmaker's Hut
   icon: {fileID: 0}
-  description: +2 Gold, +2 Food. Allows production of Ships
+  description: Allows the settlement to produce ships and use nearby waters.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

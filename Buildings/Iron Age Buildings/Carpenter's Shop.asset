@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Carpenter's Shop
   icon: {fileID: 0}
-  description: +5 Production, +2 Gold
+  description: Supports construction and trade through skilled woodworking.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

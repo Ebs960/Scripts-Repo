@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Barter Tent
   icon: {fileID: 0}
-  description: +2 Gold
+  description: A simple marketplace for exchanging food, tools, and crafted goods.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

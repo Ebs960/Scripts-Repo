@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Sacrificial Altar
   icon: {fileID: 0}
-  description: +3 Faith
+  description: A religious site used for offerings and sacrifice.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 01f51ff10952c684abfa66568fd0633a, type: 2}

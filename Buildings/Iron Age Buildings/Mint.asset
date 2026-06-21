@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mint
   icon: {fileID: 0}
-  description: +7 Gold, +2 Policy Points
+  description: Produces standardized coins for trade and taxation.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

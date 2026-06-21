@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Palace
   icon: {fileID: 0}
-  description: +10 Policy Points, +4 Happiness
+  description: Houses the ruler and serves as the center of government.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Caravan Yard
   icon: {fileID: 0}
-  description: +3 Gold, +2 Production
+  description: Organizes pack animals, wagons, and goods for overland trade.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

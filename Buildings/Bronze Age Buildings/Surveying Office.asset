@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Surveying Office
   icon: {fileID: 0}
-  description: +3 Science, +2 Production
+  description: Measures land for construction, farming, and city planning.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

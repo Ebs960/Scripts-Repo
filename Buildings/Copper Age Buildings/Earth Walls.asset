@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Earth Walls
   icon: {fileID: 0}
-  description: +8 Defense, +2 Happiness, +2 Policy Points
+  description: Improves protection with packed earth barriers and reinforced walls.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 9adfa226cdc6ed547bbdad4d25836a52, type: 2}

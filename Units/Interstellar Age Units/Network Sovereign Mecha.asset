@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Network Sovereign Mecha
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Network Sovereign Mecha
-  description: An interstellar command walker that coordinates machine armies through a sovereign battle network. Its aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
+  description: A command walker that binds machine troops into one ruthless battlefield mind. Its aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

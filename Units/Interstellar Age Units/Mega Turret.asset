@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mega Turret
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Mega Turret
-  description: A colossal defensive gun platform built to lock down approaches with overwhelming fire.
+  description: A colossal gun platform that turns every approach into a death corridor.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

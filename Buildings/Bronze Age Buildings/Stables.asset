@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Stables
   icon: {fileID: 0}
-  description: +3 Food, +2 Production
+  description: Houses and trains horses or other riding animals.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

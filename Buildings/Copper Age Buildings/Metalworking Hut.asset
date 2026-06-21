@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Metalworking Hut
   icon: {fileID: 0}
-  description: +3 Gold, +3 Production
+  description: Processes metal into tools, weapons, and trade goods.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 1c260bf3627dd386c4fe0d2a9c87171a, type: 2}

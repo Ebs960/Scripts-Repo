@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Stone Walls
   icon: {fileID: 0}
-  description: +20 Defense, +3 Policy Points, +5 Happiness, +5 Order
+  description: Strong stone defenses that protect the city from attacks.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: ceb427da063c9aa458ea55c8a20b3314, type: 2}

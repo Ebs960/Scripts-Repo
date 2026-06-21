@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pottery Workshop
   icon: {fileID: 0}
-  description: +1 Gold, +1 Production
+  description: A workshop for making pottery used in daily village life.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

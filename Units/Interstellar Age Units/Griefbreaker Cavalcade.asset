@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: Griefbreaker Cavalcade
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Griefbreaker Cavalcade
-  description: A mobile mounted unit that uses speed and shock to overwhelm slower enemies. This is a unique unit for the Empathic Union government.
-    fronts by raising nearby health while accepting reduced attack output. Provides
-    some anti air
+  description: Fast relief riders who crash through enemy lines to keep allies alive. This is a unique unit for the Empathic Union government.
   unitType: 37
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

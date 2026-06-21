@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Archery Range
   icon: {fileID: 0}
-  description: +4 Production, +1 Culture. Can produce Composite Bows and Composite
+  description: A military training ground for ranged units and bowmaking.
     Arrows
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

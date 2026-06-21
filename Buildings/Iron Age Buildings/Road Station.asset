@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Road Station
   icon: {fileID: 0}
-  description: +4 Gold, +2 Production
+  description: Supports travel, trade, and logistics along major roads.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
