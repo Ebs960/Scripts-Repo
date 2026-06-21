@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Grocery Store
   icon: {fileID: 0}
-  description: +6 Food, +8 Gold, +2 Happiness
+  description: The neighborhood gathers here for dinner ingredients, gossip, and whatever is on sale. Provides +6 Food, +8 Gold, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b027b42fde3d4ddee26a5dcea5f89f3f, type: 2}

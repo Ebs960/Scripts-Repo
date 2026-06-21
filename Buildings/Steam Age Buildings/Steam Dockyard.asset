@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steam Dockyard
   icon: {fileID: 0}
-  description: +14 Production, +9 Gold
+  description: Iron hulls, smoking funnels, and shouting crews make the harbor feel alive with industry. Provides +14 Production, +9 Gold, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 2c98525443244158b1d2d08b8f83b0f1, type: 2}

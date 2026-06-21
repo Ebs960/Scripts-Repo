@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Power Plant
   icon: {fileID: 0}
-  description: +25 Production, Produces 7 Energy using Oil
+  description: The plant turns fuel into motion, light, and the confidence to build on a larger scale. Provides +25 Production, produces 7 Energy, and uses 2 Oil.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 6491bbc3aec0000f24e9312309af438f, type: 2}

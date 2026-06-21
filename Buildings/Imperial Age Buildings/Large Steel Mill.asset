@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Large Steel Mill
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Large Sreel Mill
+  buildingName: Large Steel Mill
   icon: {fileID: 0}
-  description: +25 Production, Produces 8 Steel
+  description: Steel leaves in heavy loads, hot enough to build an empire and hard enough to defend it. Provides +25 Production and produces 8 Steel.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: c7c6cc58b32a9749a573310a82f3c127, type: 2}

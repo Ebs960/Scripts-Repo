@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clinic
   icon: {fileID: 0}
-  description: +5 Food, +4 Science, +5 Happiness
+  description: Clean linens, trained hands, and better remedies make sickness feel less like a sentence. Provides +5 Food and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 89f3f317f6b84abb49970f48967e159c, type: 2}
@@ -52,7 +52,7 @@ MonoBehaviour:
   foodPerTurn: 5
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 4
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0

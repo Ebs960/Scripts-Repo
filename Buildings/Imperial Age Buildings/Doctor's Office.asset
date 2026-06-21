@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Doctor's Office
   icon: {fileID: 0}
-  description: +7 Food, -40% Disease Fatalities in this city
+  description: Patients come in frightened and leave with prescriptions, advice, and better odds of surviving the next outbreak. Provides +7 Food, +7 Happiness, and reduces disease fatalities in this city by 40%.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f9d2727f062f4c0f91e23f7effecb004, type: 2}
@@ -57,7 +57,7 @@ MonoBehaviour:
   foodPerTurn: 7
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 6
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0

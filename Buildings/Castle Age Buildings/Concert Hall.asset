@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Concert Hall
   icon: {fileID: 0}
-  description: +6 Culture, +2 Happiness
+  description: A refined stage for performers, patrons, and celebration, giving citizens a place to hear music worthy of remembrance. Provides +6 Culture and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

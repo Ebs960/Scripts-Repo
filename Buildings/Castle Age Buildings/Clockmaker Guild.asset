@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clockmaker Guild
   icon: {fileID: 0}
-  description: +4 Science, +4 Gold
+  description: Tiny gears, patient hands, and clever minds help the city measure time more precisely and profit from skilled craft. Provides +4 Science and +4 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

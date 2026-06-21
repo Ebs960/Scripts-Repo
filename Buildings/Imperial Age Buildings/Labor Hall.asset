@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Labor Hall
   icon: {fileID: 0}
-  description: +6 Policy Points, +5 Production
+  description: A hall of speeches, strike plans, and solidarity, where labor becomes political power. Provides +6 Policy Points and +5 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

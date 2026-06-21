@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Infirmary
   icon: {fileID: 0}
-  description: +4 Food, -20% Disease Deaths in this Settlement
+  description: A place of herbs, care, and hard-won survival. Provides +4 Food and reduces disease deaths in this settlement by 20%.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

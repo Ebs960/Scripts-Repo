@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Chapel
   icon: {fileID: 0}
-  description: +7 Faith, +2 Happiness
+  description: Prayers, candles, and quiet devotion strengthen the city’s spirit. Provides +7 Faith and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 54c0861fecb882becbfd706a28f5dee2, type: 2}

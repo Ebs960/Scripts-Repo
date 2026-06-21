@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Barracks
   icon: {fileID: 0}
-  description: +2 Policy Points, +2 Order. Units trained here have +1 Starting Level.
+  description: A disciplined training ground for soldiers and officers. Provides +2 Policy Points, +2 Order, and gives trained units +1 Starting Level.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

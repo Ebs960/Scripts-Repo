@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Seminary
   icon: {fileID: 0}
-  description: +12 Faith, +4 Happiness
+  description: Future clergy study scripture, language, and reason, learning to defend faith in a more questioning age. Provides +12 Faith and +4 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 4d178ba23b91450d954a00f9fd67c508, type: 2}
@@ -57,10 +57,10 @@ MonoBehaviour:
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 3
-  culturePerTurn: 3
+  sciencePerTurn: 0
+  culturePerTurn: 0
   policyPointsPerTurn: 0
-  faithPerTurn: 6
+  faithPerTurn: 12
   cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
@@ -75,7 +75,7 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 0
+  happinessBonus: 4
   orderBonus: 0
   cityHappinessModifier: 0
   cityOrderModifier: 0

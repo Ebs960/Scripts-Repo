@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Telegraph Station
   icon: {fileID: 0}
-  description: +6 Gold, +5 Culture, +5 Policy Points
+  description: Dots and dashes tie the city to distant markets, capitals, armies, and breaking news. Provides +6 Gold, +5 Culture, and +5 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: d27da0ff820010ea7f57653f45f2a76b, type: 2}

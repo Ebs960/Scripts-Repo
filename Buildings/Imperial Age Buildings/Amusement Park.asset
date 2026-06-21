@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Amusement Park
   icon: {fileID: 0}
-  description: +7 Culture, +6 Happiness
+  description: Crowds line up for thrills, sweets, music, and spectacle, turning leisure into a civic institution. Provides +7 Culture and +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

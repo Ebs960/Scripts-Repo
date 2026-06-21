@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engine Workshop
   icon: {fileID: 0}
-  description: +6 Production, +6 Science, Produces 2 Steam Engines
+  description: Pistons, boilers, and bright ideas are fitted together until raw pressure learns to obey. Provides +6 Production, +6 Science, produces 2 Steam Engines, and uses 2 Energy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

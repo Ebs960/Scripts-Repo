@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Department Store
   icon: {fileID: 0}
-  description: +14 Gold, +5 Culture, +3 Happiness
+  description: Glass counters and polished floors turn shopping into entertainment, status, and steady profit. Provides +14 Gold and +3 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -54,7 +54,7 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 14
   sciencePerTurn: 0
-  culturePerTurn: 5
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   resourceProductionPerTurn: []

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Paper Mill
   icon: {fileID: 0}
-  description: +6 Production, +4 Science, +2 Culture
+  description: Makes paper in steady sheets so records, letters, books, and new ideas can travel farther. Provides +6 Production, +4 Science, and +2 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e2e15ffda8aa411393db47846671888d, type: 2}

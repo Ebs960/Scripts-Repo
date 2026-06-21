@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pharmacy
   icon: {fileID: 0}
-  description: +5 Science, +5 Gold, +3 Happiness
+  description: A trusted counter of remedies and advice, where health becomes both service and care. Provides +3 Happiness and reduces disease incidence and spread by 35%.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -41,7 +41,7 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
   requiredCultures: []
   requiredPopulation: 0
@@ -52,8 +52,8 @@ MonoBehaviour:
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 5
-  sciencePerTurn: 5
+  goldPerTurn: 0
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
@@ -65,7 +65,21 @@ MonoBehaviour:
   happinessBonus: 3
   unitBonuses: []
   workerBonuses: []
-  diseaseBonuses: []
+  diseaseBonuses:
+  - disease: {fileID: 0}
+    affectsAllDiseases: 1
+    useSeasonFilter: 0
+    seasons:
+    grantsImmunity: 0
+    infectionChancePct: -0.35
+    spreadChancePct: -0.35
+    durationPct: 0
+    cityPopulationLossPct: 0
+    cityYieldPenaltyPct: 0
+    cityMoralePenaltyPct: 0
+    cityLoyaltyPenaltyPct: 0
+    herdMortalityPct: 0
+    herdForagePenaltyPct: 0
   attritionBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []

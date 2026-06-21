@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Police Station
   icon: {fileID: 0}
-  description: +7 Order. +5 Policy Points
+  description: The law gains a permanent address, and trouble learns to keep moving. Provides +7 Order and +5 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 65271b5d0dfa7d95253d33dd00624d33, type: 2}

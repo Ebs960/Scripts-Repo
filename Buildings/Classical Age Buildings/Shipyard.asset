@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Shipyard
   icon: {fileID: 0}
-  description: +5 Production, Provides Harbor
+  description: Workers shape timber into ships for trade and war. Provides +5 Production and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

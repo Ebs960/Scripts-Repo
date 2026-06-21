@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Knightly Stables
   icon: {fileID: 0}
-  description: +4 Food, +5 Production, +2 Gold. Can produce Knight Lances
+  description: A prestigious stable for feeding, training, and arming knights. Provides +4 Food, +5 Production, +2 Gold, and can produce Knight Lances.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

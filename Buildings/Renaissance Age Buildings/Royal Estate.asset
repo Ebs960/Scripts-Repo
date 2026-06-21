@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Estate
   icon: {fileID: 0}
-  description: +12 Policy Points, +8 Gold, +5 Happiness
+  description: A lavish seat of noble wealth and political influence, surrounded by gardens, halls, and servants. Provides +12 Policy Points, +8 Gold, and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 68032108ee449844babf9db03e074a49, type: 2}

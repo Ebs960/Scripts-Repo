@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Gunpowder Arsenal
   icon: {fileID: 0}
-  description: +11 Production, +3 Ranged Attack for Gun Units
+  description: Powder, shot, and careful storage arm the new age of war with louder and deadlier weapons. Provides +11 Production and +3 Ranged Attack for Gun Units.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 6670acf1af3963ca6edd62a99c8213b5, type: 2}
