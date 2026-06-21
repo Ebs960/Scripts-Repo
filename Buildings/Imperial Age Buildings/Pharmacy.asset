@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pharmacy
   icon: {fileID: 0}
-  description: +5 Science, +5 Gold, +3 Happiness
+  description: '+5 Happiness, -25% Disease Spread Chance, Infection Chance, and Duration '
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +24,8 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 2775
   dismantleResourceRefunds: []
@@ -40,32 +40,75 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: 
+  requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 5
-  sciencePerTurn: 5
+  goldPerTurn: 0
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 3
+  happinessBonus: 5
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
-  diseaseBonuses: []
+  diseaseBonuses:
+  - disease: {fileID: 0}
+    affectsAllDiseases: 1
+    useSeasonFilter: 0
+    seasons: 
+    grantsImmunity: 0
+    infectionChancePct: -0.25
+    spreadChancePct: -0.25
+    durationPct: -0.25
+    cityPopulationLossPct: 0
+    cityYieldPenaltyPct: 0
+    cityMoralePenaltyPct: 0
+    cityLoyaltyPenaltyPct: 0
+    herdMortalityPct: 0
+    herdForagePenaltyPct: 0
   attritionBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []

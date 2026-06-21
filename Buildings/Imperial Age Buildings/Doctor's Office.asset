@@ -43,6 +43,10 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
@@ -51,13 +55,14 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 7
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 6
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
@@ -68,6 +73,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

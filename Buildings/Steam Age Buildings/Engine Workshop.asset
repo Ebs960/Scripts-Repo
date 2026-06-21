@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engine Workshop
   icon: {fileID: 0}
-  description: Pistons, boilers, and bright ideas are fitted together until raw pressure learns to obey. Provides +6 Production, +6 Science, produces 2 Steam Engines, and uses 2 Energy.
+  description: Pistons, boilers, and bright ideas are fitted together until raw pressure
+    learns to obey. Provides +7 Production,  produces 2 Steam Engines, and uses 2
+    Energy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -40,6 +42,13 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 0d94e61b3fd903347beb7304db28d82e, type: 2}
@@ -47,6 +56,8 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -64,6 +75,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn:
@@ -80,6 +98,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
