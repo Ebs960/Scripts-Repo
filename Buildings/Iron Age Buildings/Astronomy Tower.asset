@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Astronomy Tower
   icon: {fileID: 0}
-  description: +6 Science, +2 Culture
+  description: Studies the movement of stars and planets to improve knowledge.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

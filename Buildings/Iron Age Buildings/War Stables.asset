@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: War Stables
   icon: {fileID: 0}
-  description: +3 Food, +4 Production, +2 Gold
+  description: A military stable used to breed, feed, and equip horses for battle.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b6d837439b727054297347673c9eebb8, type: 2}

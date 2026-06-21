@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mathematics School
   icon: {fileID: 0}
-  description: +5 Science, +2 Policy Points
+  description: Teaches mathematics for engineering, trade, and administration.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

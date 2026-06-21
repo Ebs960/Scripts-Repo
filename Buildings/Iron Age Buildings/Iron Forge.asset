@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Iron Forge
   icon: {fileID: 0}
-  description: +7 Production, +2 Science
+  description: A forge where iron is heated, shaped, and improved for practical use.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: ff77658d9c1aa0a44b87e2a92fddf114, type: 2}

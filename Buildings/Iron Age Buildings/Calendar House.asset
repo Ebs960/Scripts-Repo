@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Calendar House
   icon: {fileID: 0}
-  description: +4 Food, +2 Science
+  description: Tracks seasons to improve farming and planning.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

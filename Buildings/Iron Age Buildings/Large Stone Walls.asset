@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Large Stone Walls
   icon: {fileID: 0}
-  description: +16 Defense, +3 Policy Points, +2 Happiness
+  description: Provides a major defensive barrier around people, supplies, and key buildings.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a51d839a5d0bda740ba9b04259fafeea, type: 2}
