@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Battlemech Arena
   icon: {fileID: 0}
-  description: Militarized mech spectacle arena. +18 Order, +10 Happiness.
+  description: The battlemech arena lets the city watch machines fight so its citizens remember who commands the machines. Provides +18 Order and +10 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 81d347896cc34c61a415e0c8ac132834, type: 2}

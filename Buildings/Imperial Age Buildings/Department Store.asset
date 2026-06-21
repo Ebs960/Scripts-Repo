@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Department Store
   icon: {fileID: 0}
-  description: +14 Gold, +5 Culture, +3 Happiness
+  description: Everything the city desires waits under one roof, priced, wrapped, and carried home in a paper bag. Provides +14 Gold, +5 Culture, and +3 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

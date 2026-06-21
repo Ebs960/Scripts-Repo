@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Plasma Forge
   icon: {fileID: 0}
-  description: Plasma manufacturing forge. +86 Production.
+  description: White-hot plasma shapes advanced alloys in seconds, forging parts that ordinary fire could never touch. Provides +86 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e3fdb81acb3e4e5ea851418b9f0ad7e8, type: 2}

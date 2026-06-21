@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Metamaterial Foundry
   icon: {fileID: 0}
-  description: Exotic materials foundry. +75 Production.
+  description: Engineers cast substances that redirect heat, light, force, and expectation itself. Provides +75 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e3fdb81acb3e4e5ea851418b9f0ad7e8, type: 2}

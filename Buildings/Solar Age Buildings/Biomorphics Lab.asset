@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Biomorphics Lab
   icon: {fileID: 0}
-  description: Adaptive biological engineering lab. +70 Science.
+  description: Researchers sculpt cells, organs, and organisms into shapes nature never had time to try. Provides +70 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a68acfaf9d3b4098994e2d98e60392cd, type: 2}

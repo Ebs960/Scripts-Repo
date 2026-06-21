@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Skyscraper
   icon: {fileID: 0}
-  description: Dense commercial towers that concentrate offices and services. +18
-    Gold, +6 Culture, +4 Policy Points, +4 Happiness.
+  description: Steel and glass climb into the clouds, stacking ambition floor by floor above the crowded streets. Provides +18 Gold, +6 Culture, +4 Policy Points, and +4 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Laboratory
   icon: {fileID: 0}
-  description: +18 Science
+  description: White coats, stained notebooks, and sealed samples turn careful experiments into dangerous new knowledge. Provides +18 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 52c3c8cbdfb6222a9b72ec0cadec1400, type: 2}

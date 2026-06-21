@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automobile Factory
   icon: {fileID: 0}
-  description: +20 Production, +10 Gold. Provides 3 Diesel Engines. Tanks trained
-    here have +1 Starting Level and are trained 25% faster.
+  description: Steel frames, rubber tires, and diesel engines roll off the line, ready for highways or war fronts. Provides +20 Production, +10 Gold, and 3 Diesel Engines. Tanks trained here gain +1 Starting Level and are trained 25% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 0ad7eb97d085efd7300295403296fa3c, type: 2}

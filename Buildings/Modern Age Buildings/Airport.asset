@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Airport
   icon: {fileID: 0}
-  description: Air transport hub that enables long-distance air trade. +12 Gold, +4 Production, +2 Policy.
+  description: Passengers and cargo lift into the sky on strict schedules, tying the city to markets far beyond the rails. Enables long-distance air trade. Provides +12 Gold, +4 Production, and +2 Policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

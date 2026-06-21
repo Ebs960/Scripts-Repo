@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Police Station
   icon: {fileID: 0}
-  description: +7 Order. +5 Policy Points
+  description: The police station gives the city’s laws a uniform, a whistle, and a place to bring trouble after dark. Provides +7 Order and +5 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 65271b5d0dfa7d95253d33dd00624d33, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Commercial Seaport
   icon: {fileID: 0}
-  description: Modern civilian port. +20 Gold, +10 Production, provides Harbor.
+  description: Cranes swing over container stacks as the city’s wealth arrives by ship and leaves by rail. Provides +20 Gold, +10 Production, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8856b7f3dd080f8d923ff37ca97527a8, type: 2}

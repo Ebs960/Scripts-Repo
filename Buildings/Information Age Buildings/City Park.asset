@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: City Park
   icon: {fileID: 0}
-  description: Large urban green space. +8 Food, +10 Culture, +12 Happiness.
+  description: Families picnic, runners circle the paths, and office workers reclaim an hour of daylight under the trees. Provides +8 Food, +10 Culture, and +12 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

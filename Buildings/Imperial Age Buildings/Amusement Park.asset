@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Amusement Park
   icon: {fileID: 0}
-  description: +7 Culture, +6 Happiness
+  description: Bright lights, shrieking rides, and impossible prizes give the city a place to forget the factory whistle for a while. Provides +7 Culture and +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Nuclear Power Plant
   icon: {fileID: 0}
-  description: Atomic power infrastructure. +30 Production, Uses Uranium to produce
-    10 Energy
+  description: Engineers watch gauges with reverence and fear as uranium becomes heat, electricity, and responsibility. Provides +30 Production and uses Uranium to produce 10 Energy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 88ca467ac085426d4e13ed142d83ddcc, type: 2}
