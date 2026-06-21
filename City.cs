@@ -104,6 +104,19 @@ public class City : MonoBehaviour
     [Header("Territory")]
     public int baseRadius = 1;
 
+    [Header("Building Slots")]
+    [Tooltip("Base building slots available in this city by category.")]
+    public CitySlotModifier[] baseBuildingSlots = new CitySlotModifier[]
+    {
+        new CitySlotModifier { slotType = CitySlotType.Infrastructure, slotIncrease = 3 },
+        new CitySlotModifier { slotType = CitySlotType.Food, slotIncrease = 1 },
+        new CitySlotModifier { slotType = CitySlotType.Production, slotIncrease = 1 },
+        new CitySlotModifier { slotType = CitySlotType.Commerce, slotIncrease = 1 },
+        new CitySlotModifier { slotType = CitySlotType.Defense, slotIncrease = 1 }
+    };
+    [Tooltip("Attached hamlets, villages, towns, suburbs, and sectors extending this city.")]
+    public List<CitySettlementExtension> attachedSettlements = new List<CitySettlementExtension>();
+
     [Header("Production")]
     public int productionPerTurn = 10;
     private int resourceSurplusProductionBonusThisTurn;
@@ -320,6 +333,8 @@ public class City : MonoBehaviour
             if (!resolvedBuilding.AreRequirementsMet(owner))
                 continue;
             if (!AreBuildingRequirementsMet(resolvedBuilding.requiredBuildings))
+                continue;
+            if (!CanFitBuildingInAnyAllowedSlot(resolvedBuilding))
                 continue;
 
             bool alreadyBuilt = false;
@@ -980,6 +995,144 @@ if (UIManager.Instance != null)
         return tiles;
     }
 
+
+    public int GetBuildingSlotCapacity(CitySlotType slotType)
+    {
+        int capacity = 0;
+        AddSlotModifiers(ref capacity, baseBuildingSlots, slotType);
+
+        if (owner?.researchedTechs != null)
+        {
+            foreach (var tech in owner.researchedTechs)
+                AddSlotModifiers(ref capacity, tech?.citySlotModifiers, slotType);
+        }
+
+        if (owner?.researchedCultures != null)
+        {
+            foreach (var culture in owner.researchedCultures)
+                AddSlotModifiers(ref capacity, culture?.citySlotModifiers, slotType);
+        }
+
+        AddSlotModifiers(ref capacity, owner?.currentGovernment?.citySlotModifiers, slotType);
+
+        if (attachedSettlements != null)
+        {
+            foreach (var settlement in attachedSettlements)
+                AddSlotModifiers(ref capacity, settlement?.slotModifiers, slotType);
+        }
+
+        return Mathf.Max(0, capacity);
+    }
+
+    public int GetUsedBuildingSlots(CitySlotType slotType)
+    {
+        return CalculateAssignedBuildingSlots().TryGetValue(slotType, out int used) ? used : 0;
+    }
+
+    public bool CanFitBuildingInSlot(BuildingData building, CitySlotType slotType)
+    {
+        if (!CanBuildingUseSlot(building, slotType)) return false;
+        var usedBySlot = CalculateAssignedBuildingSlots();
+        int used = usedBySlot.TryGetValue(slotType, out int count) ? count : 0;
+        return used < GetBuildingSlotCapacity(slotType);
+    }
+
+    public bool CanFitBuildingInAnyAllowedSlot(BuildingData building)
+    {
+        if (building == null) return false;
+        var usedBySlot = CalculateAssignedBuildingSlots();
+        foreach (var slotType in GetAllowedSlotsForBuilding(building))
+        {
+            int used = usedBySlot.TryGetValue(slotType, out int count) ? count : 0;
+            if (used < GetBuildingSlotCapacity(slotType))
+                return true;
+        }
+        return false;
+    }
+
+
+    private Dictionary<CitySlotType, int> CalculateAssignedBuildingSlots()
+    {
+        var usedBySlot = new Dictionary<CitySlotType, int>();
+        foreach (var (data, _) in builtBuildings)
+        {
+            if (data == null) continue;
+            foreach (var slotType in GetAllowedSlotsForBuilding(data))
+            {
+                int used = usedBySlot.TryGetValue(slotType, out int count) ? count : 0;
+                if (used < GetBuildingSlotCapacity(slotType))
+                {
+                    usedBySlot[slotType] = used + 1;
+                    break;
+                }
+            }
+        }
+        return usedBySlot;
+    }
+
+    public void AddAttachedSettlement(CitySettlementExtension settlement)
+    {
+        if (settlement == null) return;
+        if (attachedSettlements == null) attachedSettlements = new List<CitySettlementExtension>();
+        attachedSettlements.Add(settlement);
+        ClaimAttachedSettlementTerritory(settlement);
+    }
+
+    private static void AddSlotModifiers(ref int capacity, CitySlotModifier[] modifiers, CitySlotType slotType)
+    {
+        if (modifiers == null) return;
+        foreach (var modifier in modifiers)
+        {
+            if (modifier != null && modifier.slotType == slotType)
+                capacity += modifier.slotIncrease;
+        }
+    }
+
+    private static IEnumerable<CitySlotType> GetAllowedSlotsForBuilding(BuildingData building)
+    {
+        if (building?.allowedCitySlotTypes != null && building.allowedCitySlotTypes.Length > 0)
+            return building.allowedCitySlotTypes;
+        return new[] { CitySlotType.Infrastructure };
+    }
+
+    private static bool CanBuildingUseSlot(BuildingData building, CitySlotType slotType)
+    {
+        if (building == null) return false;
+        foreach (var allowed in GetAllowedSlotsForBuilding(building))
+        {
+            if (allowed == slotType) return true;
+        }
+        return false;
+    }
+
+    private int GetAttachedSettlementTerritoryRadiusBonus()
+    {
+        if (attachedSettlements == null) return 0;
+        int bonus = 0;
+        foreach (var settlement in attachedSettlements)
+        {
+            if (settlement != null)
+                bonus += Mathf.Max(0, settlement.territoryRadiusBonus);
+        }
+        return bonus;
+    }
+
+    private void ClaimAttachedSettlementTerritory(CitySettlementExtension settlement)
+    {
+        if (settlement == null || owner == null) return;
+        int originalCenter = centerTileIndex;
+        if (settlement.centerTileIndex >= 0)
+            centerTileIndex = settlement.centerTileIndex;
+
+        var tiles = GetTerritoryTiles(Mathf.Max(1, settlement.territoryRadiusBonus));
+        centerTileIndex = originalCenter;
+
+        var ts = TileSys;
+        if (ts == null) return;
+        foreach (var idx in tiles)
+            ts.SetTileOwner(idx, owner, this);
+    }
+
     /// <summary>
     /// Resolve an appropriate PlanetGenerator for this city, preferring the owner's helper.
     /// Also updates `planetIndex` when a generator with a concrete index is found.
@@ -1215,6 +1368,7 @@ if (UIManager.Instance != null)
             }
             if (!b.AreRequirementsMet(owner)) return false;
             if (!AreBuildingRequirementsMet(b.requiredBuildings)) return false;
+            if (!CanFitBuildingInAnyAllowedSlot(b)) return false;
             // Population requirement
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
@@ -1499,6 +1653,7 @@ if (UIManager.Instance != null)
                 }
             }
             if (!AreBuildingRequirementsMet(b.requiredBuildings)) return false;
+            if (!CanFitBuildingInAnyAllowedSlot(b)) return false;
             // Population
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot buy {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
@@ -1870,6 +2025,12 @@ Destroy(oldTuple.instance);
             builtBuildings.RemoveAll(tuple => tuple.data == b.replacesBuilding || tuple.data?.replacesBuilding == b.replacesBuilding);
             OnBuildingRemoved?.Invoke(this, b.replacesBuilding, BuildingRemovalReason.Replaced);
         }
+
+        if (!CanFitBuildingInAnyAllowedSlot(b))
+        {
+            Debug.LogWarning($"Cannot add {b.buildingName} to {cityName} - no compatible building slot is available.");
+            return;
+        }
         
         // Instantiate the new building
         GameObject buildingInstance = null;
@@ -2048,7 +2209,7 @@ Destroy(oldTuple.instance);
     }
 
     public int TerritoryRadius => baseRadius
-        + (level >= 20 ? 1 : 0) + (level >= 40 ? 1 : 0);
+        + (level >= 20 ? 1 : 0) + (level >= 40 ? 1 : 0) + GetAttachedSettlementTerritoryRadiusBonus();
 
     // --- Yield Calculation ---
     // NOTE: These need proper implementation based on your game logic

@@ -145,4 +145,6 @@ public class CultureData : ScriptableObject
     [Tooltip("Increases the limit for specific units/buildings")]
     public UnitLimitModifier[] unitLimitModifiers;
     public BuildingLimitModifier[] buildingLimitModifiers;
+    [Tooltip("Increases city building slot capacity by slot type.")]
+    public CitySlotModifier[] citySlotModifiers;
 }

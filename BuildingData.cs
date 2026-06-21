@@ -140,6 +140,10 @@ public class BuildingData : ScriptableObject
     [Tooltip("Optional alternative unlocks. If any entries are assigned, at least one listed tech, culture, government, or policy must be owned/active.")]
     public UnlockRequirementOption[] alternativeUnlockRequirements;
 
+    [Header("City Slots")]
+    [Tooltip("Slot types this building may occupy. Empty means Infrastructure for backwards-compatible default capacity checks.")]
+    public CitySlotType[] allowedCitySlotTypes;
+
     [Header("Building Limits")]
     [Tooltip("Maximum number of this building type a civilization can have (-1 = unlimited)")]
     public int buildingLimit = -1;
