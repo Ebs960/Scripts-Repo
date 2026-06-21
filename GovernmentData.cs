@@ -36,6 +36,8 @@ public class GovernmentData : ScriptableObject
     public float faithModifier;         // New
     [Tooltip("Temporary city capacity modifier while this government is active.")]
     public int cityCapModifier;
+    [Tooltip("Temporary city building slot capacity modifiers while this government is active.")]
+    public CitySlotModifier[] citySlotModifiers;
 
     [Header("Tile Yield Bonuses")]
     [Tooltip("Per-tile yield bonuses granted by this government while active. Filters can target terrain, resources, improvements, and more.")]

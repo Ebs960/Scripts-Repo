@@ -314,7 +314,7 @@ public class LimitManager : MonoBehaviour
         if (building.perCityLimit < 0) return true; // Unlimited per city
         
         int currentInCity = GetBuildingCountInCity(city, building);
-        return currentInCity < building.perCityLimit;
+        return currentInCity < building.perCityLimit && city != null && city.CanFitBuildingInAnyAllowedSlot(building);
     }
     
     /// <summary>
