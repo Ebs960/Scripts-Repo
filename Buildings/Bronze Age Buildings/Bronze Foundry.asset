@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Foundry
   icon: {fileID: 0}
-  description: +4 Production, +2 Science. Produces 2 Bronze per turn. Can produce
+  description: Smelts bronze for tools, weapons, and construction materials.
     Bronze Weapons
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

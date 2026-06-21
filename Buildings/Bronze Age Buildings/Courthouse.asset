@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Courthouse
   icon: {fileID: 0}
-  description: +4 Policy Points, +2 Order
+  description: Enforces laws and settles disputes within the city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b96f42a5f167ef24881f30c9ac8bf74a, type: 2}

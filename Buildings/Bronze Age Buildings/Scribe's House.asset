@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Scribe's House
   icon: {fileID: 0}
-  description: +3 Science
+  description: Trains scribes to record information, accounts, and discoveries.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

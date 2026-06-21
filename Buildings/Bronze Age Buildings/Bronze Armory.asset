@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Armory
   icon: {fileID: 0}
-  description: '+2 Production, +2 Gold. Can produce Bronze Armor, Bronze Arrows,
+  description: Stores and produces bronze weapons and armor for soldiers.
     and Bronze Shields. '
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

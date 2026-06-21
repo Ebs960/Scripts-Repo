@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Treasury
   icon: {fileID: 0}
-  description: +7 Gold, +2 Policy Points
+  description: Stores taxes, tribute, and valuables controlled by the ruler.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

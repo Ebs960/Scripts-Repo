@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Temple
   icon: {fileID: 0}
-  description: +5 Faith, +1 Happiness
+  description: A major religious building for worship, offerings, and ceremonies.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 88addffa231542043a5e6dd3788c740f, type: 2}
