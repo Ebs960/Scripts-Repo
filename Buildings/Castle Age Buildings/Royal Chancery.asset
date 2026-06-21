@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Chancery
   icon: {fileID: 0}
-  description: +6 Policy Points, +3 Gold
+  description: Royal authority is written, sealed, copied, and delivered from these busy offices. Provides +6 Policy Points and +3 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

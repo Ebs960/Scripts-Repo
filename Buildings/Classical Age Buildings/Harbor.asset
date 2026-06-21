@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Harbor
   icon: {fileID: 0}
-  description: +5 Food, +5 Gold, Provides Harbor
+  description: Ships bring fish, cargo, and trade into the city. Provides +5 Food, +5 Gold, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a6124b620bfa230448bb93874185f53e, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Workshop
   icon: {fileID: 0}
-  description: +5 Production, +1 Science
+  description: Craftsmen refine tools, methods, and materials. Provides +5 Production and +1 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

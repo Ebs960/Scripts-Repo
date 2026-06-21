@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Grand Cathedral
   icon: {fileID: 0}
-  description: +9 Faith, +3 Happiness
+  description: Vast halls, sacred art, and solemn ceremony lift the faithful and impress every visitor. Provides +9 Faith and +3 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: aab3a3249c07ba4f344cae8bd0063c52, type: 2}

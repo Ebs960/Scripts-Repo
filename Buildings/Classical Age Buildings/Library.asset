@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Library
   icon: {fileID: 0}
-  description: +4 Science
+  description: Scrolls, records, and scholars preserve knowledge for the future. Provides +4 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

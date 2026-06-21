@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Large Temple
   icon: {fileID: 0}
-  description: +6 Faith, +1 Happiness
+  description: A grand sacred place where worship strengthens the city’s spirit. Provides +6 Faith and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 16d069246fdc57948bbfe0196dd174dc, type: 2}

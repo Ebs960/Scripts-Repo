@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Wharf
   icon: {fileID: 0}
-  description: +4 Gold, +3 Production
+  description: A working waterfront of ropes, crates, and coin. Provides +4 Gold and +3 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

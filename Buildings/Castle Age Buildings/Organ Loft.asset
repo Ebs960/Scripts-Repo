@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Organ Loft
   icon: {fileID: 0}
-  description: +5 Faith, +4 Culture
+  description: A raised loft where the organ’s voice carries through sacred halls, strengthening devotion and art. Provides +5 Faith and +4 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

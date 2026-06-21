@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Common Court
   icon: {fileID: 0}
-  description: +5 Policy Points,  +3 Order
+  description: A court for laws, judgments, and common order. Provides +5 Policy Points and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 21962c2929b11c44481a0df5704cc684, type: 2}

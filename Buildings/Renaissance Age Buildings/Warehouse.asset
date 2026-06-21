@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Warehouse
   icon: {fileID: 0}
-  description: +6 Gold, +5 Production
+  description: Stored goods keep trade steady, protect surplus from waste, and make sure workshops stay supplied. Provides +6 Gold and +5 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
