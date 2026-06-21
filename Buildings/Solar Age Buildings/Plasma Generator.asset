@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Plasma Generator
   icon: {fileID: 0}
-  description: Plasma power generator. +84 Production.
+  description: The plasma generator turns disciplined energy into industrial force, lighting entire districts with artificial suns. Provides +84 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f6e331070240435081e164ed0f0555b2, type: 2}

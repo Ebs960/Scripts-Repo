@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Warbot Production Facility
   icon: {fileID: 0}
-  description: Autonomous war machine factory. +54 Production, +10 Science, +12 Order.
+  description: Armored machines wake on the assembly line, built for battle before they ever see a battlefield. Provides +54 Production, +10 Science, and +12 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bunker
   icon: {fileID: 0}
-  description: Hardened defensive shelter. +40 Defense, +10 Order
+  description: Beneath the city, command rooms and shelters wait for the worst day anyone can imagine. Provides +40 Defense and +10 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

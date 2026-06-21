@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Fiber Optics Plant
   icon: {fileID: 0}
-  description: High-capacity communications infrastructure. +18 Science, +14 Production, +10 Gold.
+  description: Glass threads thinner than hair carry the city’s voice, money, research, and gossip at the speed of light. Provides +18 Science, +14 Production, and +10 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 79710e3c3c00487eabfebc0760b58cda, type: 2}

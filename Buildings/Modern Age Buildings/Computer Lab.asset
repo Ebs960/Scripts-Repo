@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Computer Lab
   icon: {fileID: 0}
-  description: Electronic computing research lab. +35 Science, +3 Policy Points.
+  description: Circuits, punch cards, and blinking panels help the city ask questions too large for paper. Provides +35 Science and +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a7622a02145d3cf84ad48f43b4f41fd2, type: 2}

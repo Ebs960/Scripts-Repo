@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pharmacy
   icon: {fileID: 0}
-  description: '+5 Happiness, -25% Disease Spread Chance, Infection Chance, and Duration '
+  description: Prescriptions and patent cures crowd the shelves, offering the city relief from fevers, coughs, and fear. Provides +5 Happiness and -25% Disease Spread Chance, Infection Chance, and Duration.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Electric Car Factory
   icon: {fileID: 0}
-  description: Advanced vehicle manufacturing. +42 Production, +20 Gold, +6 Science.
+  description: Engineers and assemblers build the next generation of vehicles around software, batteries, and quiet acceleration. Provides +42 Production, +20 Gold, and +6 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 3bffa7721f52434ba80f2c53b94f04fc, type: 2}

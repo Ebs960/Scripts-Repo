@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Fusion Reactor
   icon: {fileID: 0}
-  description: Clean fusion power infrastructure. +62 Production, +12 Science.
+  description: A captured star burns behind magnetic fields, feeding the city clean power from impossible heat. Provides +62 Production and +12 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 222918c548f84c88a0b631548a9e1957, type: 2}

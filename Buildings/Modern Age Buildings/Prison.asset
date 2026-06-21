@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Prison
   icon: {fileID: 0}
-  description: High-security detention system. +8 Policy, +6 Gold, +4 Culture, +15 Order.
+  description: Behind iron doors, law becomes schedule, labor, silence, and consequence. Provides +8 Policy, +6 Gold, +4 Culture, and +15 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 64afcd29b408013990bf8e4ac234cf1d, type: 2}

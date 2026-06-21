@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Construction Firm
   icon: {fileID: 0}
-  description: Digital fabrication and modular construction company. +48 Production/
-    +10% Production for City
+  description: Modular crews, digital plans, and prefabricated parts let the city rise almost as fast as it can imagine. Provides +48 Production and +10% Production for City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 886fbaa6129744778da470be8b52e23e, type: 2}
