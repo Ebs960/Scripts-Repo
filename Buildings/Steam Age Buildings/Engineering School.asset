@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engineering School
   icon: {fileID: 0}
-  description: +10 Science, +5 Production,
+  description: Students learn bridges, boilers, stress, and failure before the city trusts them with iron. Provides +10 Science and +5 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

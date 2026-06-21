@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ammunition Factory
   icon: {fileID: 0}
-  description: '+10 Production, Creates Ammunition. Units created in this city have
-    +5 Ranged Attack '
+  description: Cartridges, shells, and careful measurements leave the line by the crate, making every volley more frightening. Provides +15 Production and +5 Ranged Attack for Units.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 79e2ed72edbd4bdd967565f39a61a66d, type: 2}
@@ -53,8 +52,8 @@ MonoBehaviour:
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 15
-  goldPerTurn: 5
-  sciencePerTurn: 3
+  goldPerTurn: 0
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0

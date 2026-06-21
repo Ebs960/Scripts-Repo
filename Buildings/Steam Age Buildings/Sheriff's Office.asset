@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Sheriff's Office
   icon: {fileID: 0}
-  description: +6 Order, +3 Policy Points
+  description: The sheriff keeps a desk, a badge, and enough authority to make trouble think twice. Provides +6 Order and +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 31d8ff9537fd1834bb83b3970026bcf8, type: 2}

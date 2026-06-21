@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Inventor's Workshop
   icon: {fileID: 0}
-  description: +8 Science, +5 Production
+  description: Half the devices inside look impossible; the other half only look dangerous. Provides +8 Science and +5 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

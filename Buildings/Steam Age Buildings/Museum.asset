@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Museum
   icon: {fileID: 0}
-  description: +9 Culture, +2 Happiness
+  description: The past is polished, labeled, and placed behind glass so the city can admire itself. Provides +9 Culture and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 97bb3ec82cb14b82b5e58373903c0596, type: 2}

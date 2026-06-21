@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Coffee House
   icon: {fileID: 0}
-  description: +5 Culture, +4 Science, +3 Policy Points
+  description: Hot coffee, loud opinions, and forbidden pamphlets make this room more dangerous than it looks. Provides +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -51,8 +51,8 @@ MonoBehaviour:
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 4
-  culturePerTurn: 5
+  sciencePerTurn: 0
+  culturePerTurn: 0
   policyPointsPerTurn: 3
   faithPerTurn: 0
   resourceProductionPerTurn: []

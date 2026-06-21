@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Insurance House
   icon: {fileID: 0}
-  description: +15 Gold, +3 Policy Points
+  description: Fire, flood, shipwreck, and ruin all look different once someone has put a price on them. Provides +15 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -53,7 +53,7 @@ MonoBehaviour:
   goldPerTurn: 15
   sciencePerTurn: 0
   culturePerTurn: 0
-  policyPointsPerTurn: 3
+  policyPointsPerTurn: 0
   faithPerTurn: 0
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []

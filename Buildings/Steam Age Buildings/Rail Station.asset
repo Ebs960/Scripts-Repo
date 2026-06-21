@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Rail Station
   icon: {fileID: 0}
-  description: +8 Gold, +5 Production, +2 Policy Points
+  description: The platform never stays still for long; cargo, passengers, and orders arrive in clouds of steam. Provides +8 Gold, +5 Production, and +2 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
