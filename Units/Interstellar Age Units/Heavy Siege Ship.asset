@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Heavy Siege Ship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Heavy Siege Ship
-  description: A massive bombardment vessel designed to reduce coastal defenses from offshore.
+  description: A bombardment vessel that makes coastlines tremble before the landing begins.
   unitType: 29
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

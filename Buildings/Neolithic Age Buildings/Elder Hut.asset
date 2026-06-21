@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Elder Hut
   icon: {fileID: 0}
-  description: +2 Culture, +2 Policy Points
+  description: A meeting place where elders guide village decisions.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

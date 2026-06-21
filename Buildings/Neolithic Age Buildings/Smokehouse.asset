@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Smokehouse
   icon: {fileID: 0}
-  description: +3 Food, +1 Happiness
+  description: Improves food supply by smoking and drying fresh catches.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

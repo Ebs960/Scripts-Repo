@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Idol House
   icon: {fileID: 0}
-  description: +4 Faith, +1 Happiness
+  description: Houses sacred figures used in prayer, ceremony, and communal worship.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

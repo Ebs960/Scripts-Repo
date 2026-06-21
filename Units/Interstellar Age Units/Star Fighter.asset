@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Star Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Star Fighter
-  description: A star fighter space interceptor designed to chase hostile craft through orbital and deep-space battles.
+  description: A nimble void interceptor built to chase hostile craft through orbital combat.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

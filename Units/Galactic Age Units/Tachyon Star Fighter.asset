@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tachyon Star Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Tachyon Star Fighter
-  description: A faster-than-light interceptor that upgrades star fighter tactics with tachyon drives. It has 10% more health and 10% more attack than its base unit. This is a unique unit for the Technocracy government.
+  description: A tachyon-driven interceptor that hits faster, harder, and earlier than enemy pilots expect. It has 10% more health and 10% more attack than its base unit. This is a unique unit for the Technocracy government.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

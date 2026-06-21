@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Gathering Circle
   icon: {fileID: 0}
-  description: +2 Culture, +1 Policy Points, +1 Faith, +1 Happiness
+  description: A shared meeting space for ceremonies, decisions, and village gatherings.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

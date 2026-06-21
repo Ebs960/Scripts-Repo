@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Neo Dreadnought
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Neo Dreadnought
-  description: A neo dreadnought heavy warship that uses large guns and armor to dominate naval battles.
+  description: A modern capital warship that brings old dreadnought terror into a new age.
   unitType: 11
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

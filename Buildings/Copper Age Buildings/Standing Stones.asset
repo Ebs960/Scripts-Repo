@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Standing Stones
   icon: {fileID: 0}
-  description: +3 Faith, +3 Culture, +2 Policy Points, +1 Happiness
+  description: A ceremonial stone site used for rituals and community gatherings.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
