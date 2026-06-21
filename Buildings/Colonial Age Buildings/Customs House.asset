@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Customs House
   icon: {fileID: 0}
-  description: +12 Gold, +3 Policy Points
+  description: Inspectors count barrels by daylight and coins by candlelight, keeping the port profitable and obedient. Provides +12 Gold and +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

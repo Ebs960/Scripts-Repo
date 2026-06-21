@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Naval Arsenal
   icon: {fileID: 0}
-  description: +10 Production, +8 Gold. Provides harbor functionality.
+  description: A fortified nest of shipwrights and quartermasters, built for empires that measure power by the tide. Provides +10 Production, +8 Gold, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 2c98525443244158b1d2d08b8f83b0f1, type: 2}

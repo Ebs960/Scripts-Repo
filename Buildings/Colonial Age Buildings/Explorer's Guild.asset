@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Explorer's Guild
   icon: {fileID: 0}
-  description: +8 Gold, +5 Science, +3 Culture
+  description: Captains, scholars, and fortune-seekers trade stories here, some true enough to change the world. Provides +8 Gold, +5 Science, and +3 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

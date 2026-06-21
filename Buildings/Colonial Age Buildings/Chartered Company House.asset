@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Chartered Company House
   icon: {fileID: 0}
-  description: +14 Gold, +4 Policy Points
+  description: A house of contracts, monopolies, and distant promises, where trade becomes law before the ships even sail. Provides +14 Gold and +4 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
