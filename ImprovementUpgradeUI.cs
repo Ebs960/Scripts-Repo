@@ -375,14 +375,9 @@ public class ImprovementUpgradeUI : MonoBehaviour
             if (nameText != null)
             {
                 string costText = $"Gold: {upgrade.goldCost}";
-                if (upgrade.resourceCosts != null)
-                {
-                    foreach (var cost in upgrade.resourceCosts)
-                    {
-                        if (cost.resource != null)
-                            costText += $"\n{cost.resource.resourceName}: {cost.amount}";
-                    }
-                }
+                string resourceText = ResourceCost.FormatCosts(upgrade.resourceCosts, upgrade.hasSubstituteCosts);
+                if (!string.IsNullOrEmpty(resourceText))
+                    costText += $"\n{resourceText}";
                 nameText.text = $"{upgrade.upgradeName}\n{costText}";
             }
 
@@ -446,12 +441,14 @@ return;
             if (!impInstance.HasApplied(upgradeKey))
             {
                 // Replace the whole improvement object if a replacePrefab is defined
-                if (upgrade.replacePrefab != null)
+                var replacePrefab = upgrade.GetReplacePrefab(currentCiv);
+                var attachPrefabs = upgrade.GetAttachPrefabs(currentCiv);
+                if (replacePrefab != null)
                 {
                     Vector3 pos = instanceObj.transform.position;
                     Quaternion rot = instanceObj.transform.rotation;
                     // Instantiate replacement
-                    var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
+                    var newObj = Instantiate(replacePrefab, pos, rot);
                     // Transfer ImprovementInstance state
                     var newInst = newObj.GetComponent<ImprovementInstance>();
                     if (newInst == null) newInst = newObj.AddComponent<ImprovementInstance>();
@@ -484,11 +481,11 @@ return;
                     instanceObj = newObj;
                     impInstance = newInst;
                 }
-                else if (upgrade.attachPrefabs != null && upgrade.attachPrefabs.Length > 0)
+                else if (attachPrefabs != null && attachPrefabs.Length > 0)
                 {
-                    for (int i = 0; i < upgrade.attachPrefabs.Length; i++)
+                    for (int i = 0; i < attachPrefabs.Length; i++)
                     {
-                        var prefab = upgrade.attachPrefabs[i];
+                        var prefab = attachPrefabs[i];
                         if (prefab == null) continue;
                         // Avoid duplicating identical attachment by name
                         bool already = false;
@@ -543,7 +540,10 @@ return;
                 tileData.builtUpgrades = new System.Collections.Generic.List<string>();
 
             foreach (string supersededKey in ImprovementUpgradeRules.GetSupersededUpgradeKeys(currentImprovement, tileData, upgrade))
+            {
                 tileData.builtUpgrades.Remove(supersededKey);
+                impInstance.MarkRemoved(supersededKey);
+            }
 
             string keyToPersist = ImprovementUpgradeRules.GetKey(upgrade);
             if (!tileData.builtUpgrades.Contains(keyToPersist))

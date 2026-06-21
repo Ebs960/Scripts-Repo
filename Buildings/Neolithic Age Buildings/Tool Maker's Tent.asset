@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Toolmaker's Tent
   icon: {fileID: 0}
-  description: A tent where workers shape stone, bone, and wood into useful tools.
+  description: Smoke, knapped stone, bone awls, and polished handles fill this busy tent where everyday tools become the difference between survival and surplus. Provides early Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

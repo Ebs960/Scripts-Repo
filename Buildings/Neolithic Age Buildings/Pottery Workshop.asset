@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pottery Workshop
   icon: {fileID: 0}
-  description: A workshop for making pottery used in daily village life.
+  description: Hands shape clay into jars, bowls, and storage vessels, giving the village cleaner kitchens, safer grain, and goods worth exchanging. Provides early Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
