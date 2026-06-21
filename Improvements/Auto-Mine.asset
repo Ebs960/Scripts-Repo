@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Auto-Mine
   icon: {fileID: 0}
-  description: Getting metal
+  description: Autonomous drills and conveyors pull ore from the ground with minimal oversight, turning discovered deposits into steady late-era production. Provides +4 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

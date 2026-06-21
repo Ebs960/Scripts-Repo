@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Grain Storage
   icon: {fileID: 0}
-  description: A crown-managed granary for royal food logistics. +8 Food, +5 Happiness,
-    +40% Food in this City
+  description: A crown-managed granary keeps famine from becoming rebellion, distributing stored grain when harvests fail. Provides +8 Food, +5 Happiness, and +40% Food in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 200
-  goldCost: 300
+  productionCost: 141
+  goldCost: 257
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 300
+  dismantleGoldRefund: 257
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f91851b5c709cc149b1edfa773dec4bd, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: af193a46545fa9b4daf1e1d8479debcb, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}

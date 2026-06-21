@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Story Lodge
   icon: {fileID: 0}
-  description: A lodge preserving oral history and shared law. +3 Culture, +2 Science,
-    +2 Policy Points, +2 Faith
+  description: Oral histories, seasonal law, and ancestral warnings are preserved in a lodge where stories become governance. Provides +2 Science, +3 Culture, +2 Policy Points, and +2 Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 110
-  goldCost: 165
+  productionCost: 58
+  goldCost: 91
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 165
+  dismantleGoldRefund: 91
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -45,9 +44,10 @@ MonoBehaviour:
   isDefenseBuilding: 0
   isEnergyBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: a075269bdca0b7c41b2b2c11d2465be2, type: 2}
   requiredCultures:
-  - {fileID: 11400000, guid: db993aed6282d834ca97499fa995369f, type: 2}
+  - {fileID: 11400000, guid: f86da6138de743f4bbb67c4c59e4dd81, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 000df63a560245af86ddde61cf98942c, type: 2}

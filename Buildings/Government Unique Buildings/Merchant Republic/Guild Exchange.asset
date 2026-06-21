@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Guild Exchange
   icon: {fileID: 0}
-  description: An urban exchange where guilds coordinate trade and craft. +35% Gold
-    in this city and +5% Gold Nationwide
+  description: Guild factors, shipowners, and master artisans bargain under one roof, coordinating trade routes and craft monopolies. Provides +35% Gold in this city and +5% Gold empire-wide.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 340
-  goldCost: 510
+  productionCost: 582
+  goldCost: 864
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 510
+  dismantleGoldRefund: 864
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 657d5cc80ff17cb4981bdf10908bb320, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 77b3d9e1f95cb09478d6566d6fe563de, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}

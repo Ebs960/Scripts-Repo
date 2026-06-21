@@ -16,14 +16,9 @@ public class UpgradeButton : MonoBehaviour
         if (nameText != null)
         {
             string costText = $"Gold: {upgrade.goldCost}";
-            if (upgrade.resourceCosts != null)
-            {
-                foreach (var cost in upgrade.resourceCosts)
-                {
-                    if (cost.resource != null)
-                        costText += $"\n{cost.resource.resourceName}: {cost.amount}";
-                }
-            }
+            string resourceText = ResourceCost.FormatCosts(upgrade.resourceCosts, upgrade.hasSubstituteCosts);
+            if (!string.IsNullOrEmpty(resourceText))
+                costText += $"\n{resourceText}";
             nameText.text = $"{upgrade.upgradeName}\n{costText}";
         }
 

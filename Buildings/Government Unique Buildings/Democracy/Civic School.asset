@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Civic School
   icon: {fileID: 0}
-  description: A school for citizen literacy and civic participation. +3 Science,
-    +2 Culture, +2 Policy Points
+  description: Students learn literacy, law, rhetoric, and public duty so self-government has citizens capable of using it. Provides +3 Science, +2 Culture, and +2 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 250
-  goldCost: 375
+  productionCost: 199
+  goldCost: 285
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 375
+  dismantleGoldRefund: 285
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -46,7 +45,8 @@ MonoBehaviour:
   isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: e9afb65641f1fdc449c44df0d0e558e8, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}

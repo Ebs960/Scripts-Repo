@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Farm
   icon: {fileID: 0}
-  description: A field of wheat
+  description: Irrigated plots and worked fields produce dependable harvests for nearby settlements, especially once better tools and crop options are adopted. Provides +2 Food.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

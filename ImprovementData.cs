@@ -2,6 +2,17 @@
 using UnityEngine;
 
 [System.Serializable]
+public struct ImprovementUpgradeVisualOverride
+{
+    [Tooltip("Civilization that uses this improvement option visual override.")]
+    public CivData civ;
+    [Tooltip("Prefabs to attach for this civilization. Leave empty to use the default attach prefabs.")]
+    public GameObject[] attachPrefabs;
+    [Tooltip("Replacement prefab for this civilization. Leave empty to use the default replacement prefab.")]
+    public GameObject replacePrefab;
+}
+
+[System.Serializable]
 public class ImprovementUpgradeData
 {
     [Header("Identity")]
@@ -22,6 +33,8 @@ public class ImprovementUpgradeData
     public Vector3[] attachLocalEulerAngles;
     [Tooltip("Optional: fully replace the improvement GameObject when this upgrade is applied. Use for complex visual reworks.")]
     public GameObject replacePrefab;
+    [Tooltip("Optional per-civilization visual overrides for this improvement option/upgrade.")]
+    public ImprovementUpgradeVisualOverride[] civVisualOverrides;
 
     [Header("Requirements")]
     [Tooltip("Technology required to unlock this upgrade")]
@@ -30,8 +43,10 @@ public class ImprovementUpgradeData
     public CultureData requiredCulture;
     [Tooltip("Gold cost to build this upgrade")]
     public int goldCost;
-    [Tooltip("Resources required to build this upgrade")]
+    [Tooltip("Resources required to build this option/upgrade")]
     public ResourceCost[] resourceCosts;
+    [Tooltip("If true, only one valid entry in Resource Costs must be paid instead of every listed cost. Example: 5 Copper OR 2 Bronze.")]
+    public bool hasSubstituteCosts = false;
 
     [Header("Effects")]
     [Tooltip("Additional yields this upgrade provides per turn")]
@@ -69,10 +84,12 @@ public class ImprovementUpgradeData
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;
 
-    [Header("Upgrade Pathing")]
-    [Tooltip("Optional slot/category for upgrade choices, such as farm_tools, farm_labor, or farm_addons.")]
+    [Header("Option / Upgrade Pathing")]
+    [Tooltip("If true, this entry behaves like a swappable improvement option; building it can replace the current option in the same slot.")]
+    public bool isSwitchableOption = false;
+    [Tooltip("Optional slot/category for option choices, such as crop_type, farm_tools, farm_labor, or farm_addons.")]
     public string upgradeSlot = "";
-    [Tooltip("Optional path within a slot, such as sickles or plows. Different paths in the same exclusive group lock each other out.")]
+    [Tooltip("Optional path within a slot, such as sickles or plows. Different paths in the same exclusive group lock each other out unless this is a switchable option.")]
     public string upgradePath = "";
     [Tooltip("Optional exclusive group. Built upgrades in the same group but a different path prevent this upgrade from being built.")]
     public string exclusiveGroupId = "";
@@ -94,6 +111,34 @@ public class ImprovementUpgradeData
         return !string.IsNullOrEmpty(upgradeId) ? upgradeId : upgradeName;
     }
 
+    public GameObject GetReplacePrefab(Civilization civ)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var visualOverride in civVisualOverrides)
+            {
+                if (visualOverride.civ == civ.civData && visualOverride.replacePrefab != null)
+                    return visualOverride.replacePrefab;
+            }
+        }
+
+        return replacePrefab;
+    }
+
+    public GameObject[] GetAttachPrefabs(Civilization civ)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var visualOverride in civVisualOverrides)
+            {
+                if (visualOverride.civ == civ.civData && visualOverride.attachPrefabs != null && visualOverride.attachPrefabs.Length > 0)
+                    return visualOverride.attachPrefabs;
+            }
+        }
+
+        return attachPrefabs;
+    }
+
     /// <summary>
     /// Check if this upgrade can be built by the given civilization
     /// </summary>
@@ -113,15 +158,8 @@ public class ImprovementUpgradeData
         if (civ.gold < goldCost)
             return false;
 
-        // Check resource costs
-        if (resourceCosts != null)
-        {
-            foreach (var cost in resourceCosts)
-            {
-                if (cost.resource != null && civ.GetResourceCount(cost.resource) < cost.amount)
-                    return false;
-            }
-        }
+        if (!ResourceCost.CanAfford(civ, resourceCosts, hasSubstituteCosts))
+            return false;
 
         return true;
     }
@@ -136,15 +174,8 @@ public class ImprovementUpgradeData
         // Deduct gold
         civ.gold -= goldCost;
 
-        // Deduct resources
-        if (resourceCosts != null)
-        {
-            foreach (var cost in resourceCosts)
-            {
-                if (cost.resource != null)
-                    civ.ConsumeResource(cost.resource, cost.amount);
-            }
-        }
+        if (!ResourceCost.Consume(civ, resourceCosts, hasSubstituteCosts))
+            return false;
 
         return true;
     }
@@ -155,6 +186,84 @@ public class ResourceCost
 {
     public ResourceData resource;
     public int amount;
+
+    public static bool CanAfford(Civilization civ, ResourceCost[] costs, bool hasSubstituteCosts = false)
+    {
+        if (civ == null) return false;
+        if (costs == null || costs.Length == 0) return true;
+
+        bool sawValidCost = false;
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+            sawValidCost = true;
+            bool canPayThisCost = civ.GetResourceCount(cost.resource) >= cost.amount;
+            if (hasSubstituteCosts && canPayThisCost) return true;
+            if (!hasSubstituteCosts && !canPayThisCost) return false;
+        }
+
+        return !hasSubstituteCosts || !sawValidCost;
+    }
+
+    public static bool Consume(Civilization civ, ResourceCost[] costs, bool hasSubstituteCosts = false)
+    {
+        if (!CanAfford(civ, costs, hasSubstituteCosts)) return false;
+        if (costs == null) return true;
+
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+            if (!hasSubstituteCosts || civ.GetResourceCount(cost.resource) >= cost.amount)
+            {
+                civ.ConsumeResource(cost.resource, cost.amount);
+                if (hasSubstituteCosts) break;
+            }
+        }
+
+        return true;
+    }
+
+    public static bool HasRequiredResources(Civilization civ, ResourceData[] resources, bool hasSubstituteResources = false)
+    {
+        if (civ == null) return false;
+        if (resources == null || resources.Length == 0) return true;
+
+        bool sawValidResource = false;
+        foreach (var resource in resources)
+        {
+            if (resource == null) continue;
+            sawValidResource = true;
+            bool hasResource = civ.GetResourceCount(resource) > 0;
+            if (hasSubstituteResources && hasResource) return true;
+            if (!hasSubstituteResources && !hasResource) return false;
+        }
+
+        return !hasSubstituteResources || !sawValidResource;
+    }
+
+    public static string FormatCosts(ResourceCost[] costs, bool hasSubstituteCosts = false)
+    {
+        if (costs == null || costs.Length == 0) return string.Empty;
+        var parts = new System.Collections.Generic.List<string>();
+        foreach (var cost in costs)
+        {
+            if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+            parts.Add($"{cost.resource.resourceName}: {cost.amount}");
+        }
+
+        if (parts.Count == 0) return string.Empty;
+        return string.Join(hasSubstituteCosts ? " OR " : ", ", parts);
+    }
+}
+
+[System.Serializable]
+public struct ImprovementVisualOverride
+{
+    [Tooltip("Civilization that uses this improvement visual override.")]
+    public CivData civ;
+    public GameObject constructionPrefab;
+    public GameObject completePrefab;
+    public GameObject destroyedPrefab;
 }
 
 [CreateAssetMenu(fileName = "NewImprovementData", menuName = "Data/Improvement Data")]
@@ -178,6 +287,10 @@ public class ImprovementData : ScriptableObject
     public GameObject completePrefab;
     [Tooltip("Prefab to spawn if destroyed")]
     public GameObject destroyedPrefab;
+    [Tooltip("Optional per-civilization prefab overrides for this improvement.")]
+    public ImprovementVisualOverride[] civVisualOverrides;
+    [Tooltip("If true, only one valid entry in Build Resource Costs must be paid instead of every listed cost.")]
+    public bool hasSubstituteBuildCosts = false;
 
     [Header("Dismantle")]
     public bool canBeDismantled = true;
@@ -205,6 +318,8 @@ public class ImprovementData : ScriptableObject
     [Tooltip("Which underwater floor biomes this improvement can be placed on (checked against HexTileData.underwaterBiome). Leave empty to disallow underwater placement.")]
     public Biome[] allowedUnderwaterBiomes;
     public ResourceData[] requiredResources;
+    [Tooltip("If true, only one resource in Required Resources must be present instead of every listed resource.")]
+    public bool hasSubstituteRequiredResources = false;
 
     [Header("Tech & Culture Requirements")]
     [Tooltip("All these techs must be researched to unlock this improvement")]
@@ -310,6 +425,50 @@ public class ImprovementData : ScriptableObject
     [Tooltip("Available upgrades that can be built on this improvement")]
     public ImprovementUpgradeData[] availableUpgrades;
 
+
+    public GameObject GetConstructionPrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Construction);
+    public GameObject GetCompletePrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Complete);
+    public GameObject GetDestroyedPrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Destroyed);
+
+    private enum VisualPrefabKind { Construction, Complete, Destroyed }
+
+    private GameObject GetVisualPrefab(Civilization civ, VisualPrefabKind kind)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var visualOverride in civVisualOverrides)
+            {
+                if (visualOverride.civ != civ.civData) continue;
+                GameObject overridePrefab = null;
+                switch (kind)
+                {
+                    case VisualPrefabKind.Construction:
+                        overridePrefab = visualOverride.constructionPrefab;
+                        break;
+                    case VisualPrefabKind.Complete:
+                        overridePrefab = visualOverride.completePrefab;
+                        break;
+                    case VisualPrefabKind.Destroyed:
+                        overridePrefab = visualOverride.destroyedPrefab;
+                        break;
+                }
+                if (overridePrefab != null) return overridePrefab;
+            }
+        }
+
+        switch (kind)
+        {
+            case VisualPrefabKind.Construction:
+                return constructionPrefab;
+            case VisualPrefabKind.Complete:
+                return completePrefab;
+            case VisualPrefabKind.Destroyed:
+                return destroyedPrefab;
+            default:
+                return null;
+        }
+    }
+
     /// <summary>
     /// Checks if the civilization meets this improvement's tech/culture requirements.
     /// </summary>
@@ -331,14 +490,7 @@ public class ImprovementData : ScriptableObject
     {
         if (civ == null) return false;
         if (buildGoldCost > 0 && civ.gold < buildGoldCost) return false;
-        if (buildResourceCosts != null)
-        {
-            foreach (var cost in buildResourceCosts)
-            {
-                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
-                if (civ.GetResourceCount(cost.resource) < cost.amount) return false;
-            }
-        }
+        if (!ResourceCost.CanAfford(civ, buildResourceCosts, hasSubstituteBuildCosts)) return false;
         return true;
     }
 
@@ -346,14 +498,7 @@ public class ImprovementData : ScriptableObject
     {
         if (!CanPayBuildCosts(civ)) return false;
         if (buildGoldCost > 0) civ.gold -= buildGoldCost;
-        if (buildResourceCosts != null)
-        {
-            foreach (var cost in buildResourceCosts)
-            {
-                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
-                civ.ConsumeResource(cost.resource, cost.amount);
-            }
-        }
+        if (!ResourceCost.Consume(civ, buildResourceCosts, hasSubstituteBuildCosts)) return false;
         return true;
     }
 

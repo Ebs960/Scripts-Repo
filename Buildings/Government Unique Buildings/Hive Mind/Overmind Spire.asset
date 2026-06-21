@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Overmind Spire
   icon: {fileID: 0}
-  description: A towering psychic organ that expands command range and turns collective
-    thought into science and production. +60 Production, +55 Science, +10 Policy
-    Points, +8 Order, +5% Culture Nationwide, +5% Faith Nationwide
+  description: A psychic organ rises above the settlement, extending the collective will into every drone and labor node. Provides +60 Production, +55 Science, +10 Policy Points, +8 Order, +5% Culture empire-wide, and +5% Faith empire-wide.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 1200
-  goldCost: 1800
+  productionCost: 14094
+  goldCost: 21141
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1800
+  dismantleGoldRefund: 21141
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -51,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 5fac79cffc1012747b34732bf21f8b59, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 40932b4c77c14003b3c9a22afc347526, type: 2}

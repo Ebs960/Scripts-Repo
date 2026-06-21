@@ -62,9 +62,13 @@ public class BuildingData : ScriptableObject
     public int buildGoldCost;
     [Tooltip("Resources consumed when this building is queued through normal construction.")]
     public ResourceCost[] buildResourceCosts;
+    [Tooltip("If true, only one valid entry in Build Resource Costs must be paid instead of every listed cost.")]
+    public bool hasSubstituteBuildCosts = false;
     public bool requiresAdjacentTile;    // e.g., walls, farms
     [Tooltip("Must have these resources in empire stockpile")]
     public ResourceData[] requiredResources;
+    [Tooltip("If true, only one resource in Required Resources must be present instead of every listed resource.")]
+    public bool hasSubstituteRequiredResources = false;
     [Tooltip("City must control at least one tile of these biomes")]
     public Biome[] requiredTerrains;
     public Biome[] allowedBiomes;
@@ -326,14 +330,7 @@ public static class BuildingDataExtensions
     {
         if (building == null || civ == null) return false;
         if (building.buildGoldCost > 0 && civ.gold < building.buildGoldCost) return false;
-        if (building.buildResourceCosts != null)
-        {
-            foreach (var cost in building.buildResourceCosts)
-            {
-                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
-                if (civ.GetResourceCount(cost.resource) < cost.amount) return false;
-            }
-        }
+        if (!ResourceCost.CanAfford(civ, building.buildResourceCosts, building.hasSubstituteBuildCosts)) return false;
         return true;
     }
 
@@ -341,14 +338,7 @@ public static class BuildingDataExtensions
     {
         if (!building.CanPayBuildCosts(civ)) return false;
         if (building.buildGoldCost > 0) civ.gold -= building.buildGoldCost;
-        if (building.buildResourceCosts != null)
-        {
-            foreach (var cost in building.buildResourceCosts)
-            {
-                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
-                civ.ConsumeResource(cost.resource, cost.amount);
-            }
-        }
+        if (!ResourceCost.Consume(civ, building.buildResourceCosts, building.hasSubstituteBuildCosts)) return false;
         return true;
     }
 

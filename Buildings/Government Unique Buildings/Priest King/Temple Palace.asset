@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Temple Palace
   icon: {fileID: 0}
-  description: A palace-temple complex joining ruler and priesthood.
+  description: The ruler and priesthood share one palace-temple complex, making command feel divine and worship feel administrative. Provides +2 Production, +3 Culture, and +4 Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 180
-  goldCost: 270
+  productionCost: 153
+  goldCost: 279
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 270
+  dismantleGoldRefund: 279
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -42,7 +42,9 @@ MonoBehaviour:
   isFaithBuilding: 1
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b2d415dc646c4454e8085f731563a023, type: 2}
+  - {fileID: 11400000, guid: 21c867f9d21637248853c1f72467a9db, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}

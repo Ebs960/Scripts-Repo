@@ -76,7 +76,7 @@ public static class ImprovementUpgradeRules
                 return false;
             }
 
-            if (ConflictsByExclusiveGroup(built, upgrade))
+            if (!upgrade.isSwitchableOption && ConflictsByExclusiveGroup(built, upgrade))
             {
                 reason = "Blocked by a different upgrade path.";
                 return false;
@@ -95,16 +95,18 @@ public static class ImprovementUpgradeRules
                 foreach (var built in upgradesInSlot)
                 {
                     if (built == null) continue;
+                    if (upgrade.isSwitchableOption && GetKey(built) != upgradeKey)
+                        continue;
                     if (built.upgradePath == upgrade.upgradePath && upgrade.supersedesLowerTiersInPath)
                     {
                         if (built.pathTier < upgrade.pathTier)
                             continue;
 
-                        reason = "This path already has an equal or higher tier upgrade.";
+                        reason = "This path already has an equal or higher tier option.";
                         return false;
                     }
 
-                    reason = "This upgrade slot is already occupied.";
+                    reason = "This option slot is already occupied.";
                     return false;
                 }
             }
@@ -124,15 +126,23 @@ public static class ImprovementUpgradeRules
         if (improvement == null || tileData == null || tileData.builtUpgrades == null || upgrade == null)
             return result;
         string effectiveSlot = GetEffectiveSlot(upgrade);
-        if (!upgrade.supersedesLowerTiersInPath || string.IsNullOrEmpty(effectiveSlot))
+        if (string.IsNullOrEmpty(effectiveSlot))
             return result;
 
         foreach (var built in GetBuiltUpgradeDefinitions(improvement, tileData.builtUpgrades))
         {
             if (built == null) continue;
             if (GetEffectiveSlot(built) != effectiveSlot) continue;
-            if (built.upgradePath != upgrade.upgradePath) continue;
-            if (built.pathTier >= upgrade.pathTier) continue;
+            if (upgrade.isSwitchableOption)
+            {
+                if (GetKey(built) == GetKey(upgrade)) continue;
+            }
+            else
+            {
+                if (!upgrade.supersedesLowerTiersInPath) continue;
+                if (built.upgradePath != upgrade.upgradePath) continue;
+                if (built.pathTier >= upgrade.pathTier) continue;
+            }
 
             string key = GetKey(built);
             if (!string.IsNullOrEmpty(key) && !result.Contains(key))

@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Magistrate Court
   icon: {fileID: 0}
-  description: A civic court supporting law and public order. +5 Culture, +10% Policy
-    Points and +10% Gold
+  description: Magistrates hear cases, enforce contracts, and make republican law visible in daily life. Provides +5 Culture, +2 Defense, +5 Happiness, +10% Gold in this city, and +10% Policy Points in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 260
-  goldCost: 390
+  productionCost: 199
+  goldCost: 285
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 390
+  dismantleGoldRefund: 285
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -46,7 +45,8 @@ MonoBehaviour:
   isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 48d289f45b1e54d4fae8ddfb3b4981b4, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}

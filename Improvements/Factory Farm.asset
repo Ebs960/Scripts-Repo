@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Factory Farm
   icon: {fileID: 0}
-  description: 
+  description: Automated feed systems, dense enclosures, and industrial processing turn livestock into a high-volume food engine. Provides +5 Food.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

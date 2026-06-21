@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Patron Hall
   icon: {fileID: 0}
-  description: A hall where elites sponsor soldiers, artists, and clients. +5 Culture,
-    +5 Gold, +3 Happiness
+  description: Elites sponsor soldiers, artists, clients, and public works here, buying loyalty through favors and prestige. Provides +5 Gold, +5 Culture, and +3 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 260
-  goldCost: 390
+  productionCost: 199
+  goldCost: 285
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 390
+  dismantleGoldRefund: 285
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,9 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 1
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 188af3f1ce878c54fa5ee698cd89b50a, type: 2}
   requiredCultures:
-  - {fileID: 11400000, guid: d43a01c8056b2014db4dc9de7dc45f98, type: 2}
+  - {fileID: 11400000, guid: a8ce4713cccdf444dbaef19249b8e2be, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}

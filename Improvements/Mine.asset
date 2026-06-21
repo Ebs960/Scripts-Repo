@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Mine
   icon: {fileID: 21300000, guid: d4d23d52d0ef4a945b97336bf43f1764, type: 3}
-  description: Getting metal
+  description: Timbered shafts and surface works extract useful stone and ore, turning raw geology into tools, weapons, and construction materials. Provides +2 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

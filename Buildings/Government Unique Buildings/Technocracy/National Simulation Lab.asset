@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: National Simulation Lab
   icon: {fileID: 0}
-  description: A strategic simulation complex for testing prototypes, war games,
-    and advanced social models. +10 Policy Points, +5% to all yields in all Cities
+  description: Strategic models run prototypes, war games, disasters, and economic futures before leaders risk the real city. Provides +10 Policy Points, +5% Food empire-wide, +5% Production empire-wide, +5% Gold empire-wide, +5% Science empire-wide, +5% Culture empire-wide, +5% Policy Points empire-wide, and +5% Faith empire-wide.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 680
-  goldCost: 1020
+  productionCost: 5376
+  goldCost: 8064
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1020
+  dismantleGoldRefund: 8064
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,7 +48,8 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments:

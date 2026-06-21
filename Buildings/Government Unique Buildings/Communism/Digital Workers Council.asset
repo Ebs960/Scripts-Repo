@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Digital Workers Council
   icon: {fileID: 0}
-  description: A remote council that coordinates public labor, worker training, and
-    local production quotas. +10 Food, +10 Culture, +10 Production, +10 Policy Points, 
-    +10% Production in this City and +10% Culture in this City
+  description: A remote council platform coordinates public labor, worker training, and factory priorities through constant votes and reports. Provides +10 Food, +10 Production, +10 Culture, +10 Policy Points, +10% Food in this city, and +10% Production in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 550
-  goldCost: 800
+  productionCost: 5152
+  goldCost: 7728
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 800
+  dismantleGoldRefund: 7728
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,9 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f00764adc6805f94d9896d0c99fbe036, type: 2}
   requiredCultures:
-  - {fileID: 11400000, guid: d4f61b03aa7a5fb4ab2f1427eef7ea0c, type: 2}
+  - {fileID: 11400000, guid: 0bcf5ad155555424885e5715782f06b8, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}

@@ -110,9 +110,9 @@ public class ImprovementManager : MonoBehaviour
         return workerJobs.Find(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex);
     }
 
-    private void SpawnConstructionVisual(ImprovementData data, int tileIndex, int planetIndex)
+    private void SpawnConstructionVisual(ImprovementData data, int tileIndex, int planetIndex, Civilization owner)
     {
-        if (data == null || data.constructionPrefab == null) return;
+        if (data == null) return;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         if (ts == null) return;
@@ -120,13 +120,16 @@ public class ImprovementManager : MonoBehaviour
         var tileData = ts.GetTileData(tileIndex);
         if (tileData == null) return;
 
+        if (owner == null) owner = tileData.improvementOwner;
+        GameObject constructionPrefab = data.GetConstructionPrefab(owner);
+        if (constructionPrefab == null) return;
+
         if (tileData.improvementInstanceObject != null)
             Destroy(tileData.improvementInstanceObject);
 
         Vector3 pos = ts.GetTileSurfacePosition(tileIndex);
-        GameObject constructionObject = Instantiate(data.constructionPrefab, pos, Quaternion.identity);
+        GameObject constructionObject = Instantiate(constructionPrefab, pos, Quaternion.identity);
         // Prefer the tile's owner civ to determine the correct planet generator when available
-        Civilization owner = tileData != null ? tileData.improvementOwner : null;
         PlanetGenerator planetGen = null;
         if (owner != null)
         {
@@ -246,6 +249,9 @@ public class ImprovementManager : MonoBehaviour
                 System.Array.IndexOf(data.allowedBiomes, td.biome) < 0) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: allowedBiomes mismatch tile={tileIndex} biome={td.biome}"); return false; }
         }
         
+        if (!data.AreRequirementsMet(owner)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: requirements unmet for {data.improvementName}"); return false; }
+        if (!ResourceCost.HasRequiredResources(owner, data.requiredResources, data.hasSubstituteRequiredResources)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: required resources missing for {data.improvementName}"); return false; }
+
         // Territory control checks
         bool isOwnedByBuilder = td.owner == owner;
         bool isNeutral = td.owner == null;
@@ -264,7 +270,7 @@ public class ImprovementManager : MonoBehaviour
 
         var job = new BuildJob(tileIndex, planetIndex, owner, data);
         jobs.Add(job);
-        SpawnConstructionVisual(data, tileIndex, planetIndex);
+        SpawnConstructionVisual(data, tileIndex, planetIndex, owner);
         return true;
     }
 
@@ -712,9 +718,10 @@ public class ImprovementManager : MonoBehaviour
             if (ts != null) ts.SetTileData(job.tileIndex, tileData);
         }
 
-        if (job.data.completePrefab != null)
+        var completePrefab = job.data.GetCompletePrefab(job.owner);
+        if (completePrefab != null)
         {
-            completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
+            completedImprovement = Instantiate(completePrefab, pos, Quaternion.identity);
             // Keep hierarchy organized: parent improvements under their planet generator.
             if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
 
@@ -1355,11 +1362,13 @@ public class ImprovementManager : MonoBehaviour
 
             if (found.makesVisualChange)
             {
-                if (found.replacePrefab != null)
+                var replacePrefab = found.GetReplacePrefab(tileData.improvementOwner);
+                var attachPrefabs = found.GetAttachPrefabs(tileData.improvementOwner);
+                if (replacePrefab != null)
                 {
                     Vector3 pos = instanceObj.transform.position;
                     Quaternion rot = instanceObj.transform.rotation;
-                    var newObj = Instantiate(found.replacePrefab, pos, rot);
+                    var newObj = Instantiate(replacePrefab, pos, rot);
                     try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
                     var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                     if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
@@ -1379,9 +1388,9 @@ public class ImprovementManager : MonoBehaviour
                     instanceObj = newObj;
                     impInstance = newInst;
                 }
-                else if (found.attachPrefabs != null)
+                else if (attachPrefabs != null)
                 {
-                    foreach (var prefab in found.attachPrefabs)
+                    foreach (var prefab in attachPrefabs)
                     {
                         if (prefab == null) continue;
                         bool already = false;
@@ -1464,11 +1473,13 @@ public class ImprovementManager : MonoBehaviour
 
         if (upgrade.makesVisualChange)
         {
-            if (upgrade.replacePrefab != null)
+            var replacePrefab = upgrade.GetReplacePrefab(td.improvementOwner);
+            var attachPrefabs = upgrade.GetAttachPrefabs(td.improvementOwner);
+            if (replacePrefab != null)
             {
                 Vector3 pos = instanceObj.transform.position;
                 Quaternion rot = instanceObj.transform.rotation;
-                var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
+                var newObj = Instantiate(replacePrefab, pos, rot);
                 try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
                 var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                 if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
@@ -1495,11 +1506,11 @@ public class ImprovementManager : MonoBehaviour
                 instanceObj = newObj;
                 impInstance = newInst;
             }
-            else if (upgrade.attachPrefabs != null && upgrade.attachPrefabs.Length > 0)
+            else if (attachPrefabs != null && attachPrefabs.Length > 0)
             {
-                for (int i = 0; i < upgrade.attachPrefabs.Length; i++)
+                for (int i = 0; i < attachPrefabs.Length; i++)
                 {
-                    var prefab = upgrade.attachPrefabs[i];
+                    var prefab = attachPrefabs[i];
                     if (prefab == null) continue;
                     bool already = impInstance.attachedParts != null && impInstance.attachedParts.Any(c => c != null && c.name.Contains(prefab.name));
                     if (already) continue;
@@ -1523,7 +1534,10 @@ public class ImprovementManager : MonoBehaviour
 
         if (td.builtUpgrades == null) td.builtUpgrades = new System.Collections.Generic.List<string>();
         foreach (string supersededKey in ImprovementUpgradeRules.GetSupersededUpgradeKeys(td.improvement, td, upgrade))
+        {
             td.builtUpgrades.Remove(supersededKey);
+            impInstance.MarkRemoved(supersededKey);
+        }
         if (!td.builtUpgrades.Contains(upgradeKey)) td.builtUpgrades.Add(upgradeKey);
         td.RecomputeImprovementDefenseAggregates();
         if (planetIndex >= 0 && ts != null) ts.SetTileDataOnPlanet(tileIndex, td, planetIndex);

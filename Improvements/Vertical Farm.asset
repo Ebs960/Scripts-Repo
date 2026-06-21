@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Vertical Farm
   icon: {fileID: 0}
-  description: 
+  description: Stacked hydroponic beds and controlled lighting grow crops upward instead of outward, feeding dense cities from a compact footprint. Provides +8 Food.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

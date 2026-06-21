@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Tent Camp
   icon: {fileID: 21300000, guid: ce4b712a606bc014a9345c57af741a9b, type: 3}
-  description: Keep yourself warm and your food warmer.
+  description: A cluster of tents, cookfires, and supply bundles keeps people warm while food dries beside the flames. Provides +1 Food, +1 Culture, and shelter for 4 units.
   workCost: 7
   constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
   completePrefab: {fileID: 4190042404842890405, guid: c0face8f3d5c4fb4d8f881f72abc5dbe, type: 3}

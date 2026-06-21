@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Weaver's Tent
   icon: {fileID: 0}
-  description: A workshop for making textiles and useful woven items.
+  description: Plant fibers, wool, and hide strips are twisted into mats, baskets, cloth, and shelter pieces that make settled life more durable. Provides +2 Production, +2 Gold, and +1 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

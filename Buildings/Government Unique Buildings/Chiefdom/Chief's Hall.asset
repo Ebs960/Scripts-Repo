@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Chief's Hall
   icon: {fileID: 0}
-  description: Capital authority center for chiefdom tribute and labor. +10% Production,
-    +10% Gold, +2 Policy Points, +4 Order
+  description: A timber hall where the chief receives tribute, settles disputes, and directs communal labor through personal authority. Provides +2 Policy Points, +4 Order, +10% Production in this city, and +10% Gold in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 120
-  goldCost: 180
+  productionCost: 61
+  goldCost: 95
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 180
+  dismantleGoldRefund: 95
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -45,8 +44,10 @@ MonoBehaviour:
   isDefenseBuilding: 0
   isEnergyBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: a075269bdca0b7c41b2b2c11d2465be2, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 67660ba94bee6334a8f730c697a89d5d, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 7d301448e05c4af5bdc3060584963e7e, type: 2}

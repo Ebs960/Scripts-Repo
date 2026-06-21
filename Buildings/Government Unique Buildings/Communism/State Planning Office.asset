@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: State Planning Office
   icon: {fileID: 0}
-  description: A central planning bureau that converts census data, logistics, and
-    public works into industrial output. +30 Production, +20% Production in this
-    City
+  description: Census data, logistics, and production quotas converge in this planning bureau, where scarcity is mapped before it becomes crisis. Provides +30 Production and +20% Production in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 520
-  goldCost: 780
+  productionCost: 2420
+  goldCost: 3630
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 780
+  dismantleGoldRefund: 3630
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -51,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0bcf5ad155555424885e5715782f06b8, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Mining Complex
   icon: {fileID: 21300000, guid: d4d23d52d0ef4a945b97336bf43f1764, type: 3}
-  description: Getting metal
+  description: Linked shafts, crushers, smelters, and worker camps coordinate extraction on a regional scale. Provides +3 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

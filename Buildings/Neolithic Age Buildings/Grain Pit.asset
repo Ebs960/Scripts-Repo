@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Grain Pit
   icon: {fileID: 0}
-  description: A basic food storage pit that protects grain from spoilage and shortages.
+  description: Clay-lined pits protect precious seed grain from rot, pests, and hungry winters, letting a settlement plan for seasons instead of days. Provides +3 Food and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

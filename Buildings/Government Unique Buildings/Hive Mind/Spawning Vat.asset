@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Spawning Vat
   icon: {fileID: 0}
-  description: A biological production vat that grows swarm bodies and converts nutrients
-    into military biomass. +50 Food, +50 Production. Double Production Speed for
-    Hive Fighters and Hive Bombers
+  description: Nutrient tanks and living tissue chambers grow new swarm bodies as naturally as other states mint coins. Provides +50 Food and +50 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 820
-  goldCost: 1230
+  productionCost: 12967
+  goldCost: 19450
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1230
+  dismantleGoldRefund: 19450
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -51,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 5fac79cffc1012747b34732bf21f8b59, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 40932b4c77c14003b3c9a22afc347526, type: 2}

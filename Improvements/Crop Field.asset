@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Crop Field
   icon: {fileID: 0}
-  description: A field of wheat
+  description: Tended rows of grain turn open soil into a predictable food source, marking the first steps from gathering toward planned harvests. Provides +1 Food.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

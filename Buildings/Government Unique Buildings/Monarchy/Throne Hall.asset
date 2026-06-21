@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Throne Hall
   icon: {fileID: 0}
-  description: 'A formal royal hall that centralizes authority. +8 Gold, +8 Culture,
-    +5 Happiness '
+  description: A formal royal hall centralizes authority through ceremony, petitions, decrees, and visible majesty. Provides +8 Gold, +8 Culture, and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 220
-  goldCost: 330
+  productionCost: 147
+  goldCost: 268
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 330
+  dismantleGoldRefund: 268
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: af193a46545fa9b4daf1e1d8479debcb, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}

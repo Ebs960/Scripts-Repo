@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Federal Courthouse
   icon: {fileID: 0}
-  description: A federal legal institution balancing local and central law. +25%
-    Science, +25% Culture, +25% Production in this City, +10 Policy Points
+  description: Judges balance local autonomy against national law, giving the federation a peaceful way to settle disputes between citizens and states. Provides +10 Policy Points, +8 Happiness, +25% Production in this city, +25% Science in this city, and +25% Culture in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 440
-  goldCost: 660
+  productionCost: 1431
+  goldCost: 2150
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 660
+  dismantleGoldRefund: 2150
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,7 +49,9 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0c6f3d3c41ee1b94aad06d6b5153ee03, type: 2}
+  - {fileID: 11400000, guid: 60e37a6438aedfb44b5e4a824c976280, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
