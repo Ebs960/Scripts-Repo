@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mech Assembly Plant
   icon: {fileID: 0}
-  description: Advanced mech assembly lines. +80 Production and +1 Level to all Robot
-    and Cyborg Units trained in this city.
+  description: Towering frames, servo bundles, and armored limbs move down the line until machines of war stand ready. Provides +80 Production and +1 Level to all Robot and Cyborg Units trained in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 42082222298e46448c27f9cde4b67d34, type: 2}

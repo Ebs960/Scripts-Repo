@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mechatronics Lab
   icon: {fileID: 0}
-  description: Integrated mechanical-electronic research lab. +72 Science.
+  description: The mechatronics lab studies the seam between thought and motion, making devices smarter with every prototype. Provides +72 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e3fdb81acb3e4e5ea851418b9f0ad7e8, type: 2}
