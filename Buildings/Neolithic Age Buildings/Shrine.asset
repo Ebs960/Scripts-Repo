@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Shrine
   icon: {fileID: 0}
-  description: +2 Faith
+  description: A sacred place for offerings, prayers, and early religious practice.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Monument
   icon: {fileID: 0}
-  description: +5 Faith, +5 Policy Points, +5 Culture +3 Happiness
+  description: A major ceremonial structure that helps unite the community.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

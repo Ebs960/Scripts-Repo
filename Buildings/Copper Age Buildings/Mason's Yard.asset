@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mason's Yard
   icon: {fileID: 0}
-  description: +2 Production
+  description: A work yard where masons produce stone materials for stronger structures.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

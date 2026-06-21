@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Copper Smithy
   icon: {fileID: 0}
-  description: '+2 Production. Allows production of Copper Spears, Axes, and Swords '
+  description: Produces copper tools and weapons for the settlement.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
