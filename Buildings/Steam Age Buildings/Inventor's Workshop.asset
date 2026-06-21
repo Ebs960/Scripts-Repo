@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Inventor's Workshop
   icon: {fileID: 0}
-  description: Half the devices inside look impossible; the other half only look dangerous. Provides +8 Science and +5 Production.
+  description: Half the devices inside look impossible; the other half only look
+    dangerous. Provides +13 Science and +5 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: e51acddbe9b84c26a7bce61b7b16f479, type: 2}
   productionCost: 1500
   goldCost: 2250
   buildGoldCost: 0
@@ -40,6 +41,13 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 5fcaa861b60a7ec4ebf57c550ce1238a, type: 2}
@@ -47,13 +55,15 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 5
   goldPerTurn: 0
-  sciencePerTurn: 8
+  sciencePerTurn: 13
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
@@ -64,6 +74,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -76,6 +93,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

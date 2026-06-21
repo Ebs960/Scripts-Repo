@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Chemist Workshop
   icon: {fileID: 0}
-  description: Glassware bubbles, powders hiss, and careful notes turn strange reactions into practical discoveries. Provides +10 Science and +7 Production.
+  description: Glassware bubbles, powders hiss, and careful notes turn strange reactions
+    into practical discoveries. Provides +10 Science and +4 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,20 +25,29 @@ MonoBehaviour:
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 1770
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 1
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
   - {fileID: 11400000, guid: 693a48909f61c9b408fc02b47c554add, type: 2}
@@ -45,23 +55,45 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 7
+  productionPerTurn: 4
   goldPerTurn: 0
   sciencePerTurn: 10
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

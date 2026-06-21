@@ -14,30 +14,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Insurance House
   icon: {fileID: 0}
-  description: Fire, flood, shipwreck, and ruin all look different once someone has put a price on them. Provides +15 Gold.
+  description: Fire, flood, shipwreck, and ruin all look different once someone has
+    put a price on them. Provides +15 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 2c2cb4baafea459c913c2d7760e4f981, type: 2}
   productionCost: 1150
   goldCost: 1725
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 1725
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
@@ -45,8 +55,10 @@ MonoBehaviour:
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -55,13 +67,33 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
