@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ironworks
   icon: {fileID: 0}
-  description: +11 Production
+  description: A hard, hot place of sparks and sweat, feeding the age’s hunger for metal. Provides +11 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b0125458be554c76b36d289d39838680, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Tailor's Workshop
   icon: {fileID: 0}
-  description: +7 Production, +7 Gold
+  description: Bolts of cloth become uniforms, coats, gowns, and profit under quick needles and sharper eyes. Provides +7 Production and +7 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 51b74007d34d94b5604b8804ac36109f, type: 2}

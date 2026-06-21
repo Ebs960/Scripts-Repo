@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: University
   icon: {fileID: 0}
-  description: +7 Science
+  description: A center of higher learning where knowledge takes root. Provides +7 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

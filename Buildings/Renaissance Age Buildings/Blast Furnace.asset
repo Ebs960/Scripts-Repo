@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Blast Furnace
   icon: {fileID: 0}
-  description: +10 Production, +3 Science
+  description: Roaring furnaces push metalworking forward, giving workshops stronger materials and scholars better methods to study. Provides +10 Production and +3 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 0cedc610f3663409174b81d03fb3dd7a, type: 2}

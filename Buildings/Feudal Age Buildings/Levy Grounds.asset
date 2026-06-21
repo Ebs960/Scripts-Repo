@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Levy Grounds
   icon: {fileID: 0}
-  description: +5 Production, +2 Policy Points
+  description: A mustering field for raising troops and enforcing obligations. Provides +5 Production and +2 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

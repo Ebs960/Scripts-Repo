@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Print Office
   icon: {fileID: 0}
-  description: +4 Culture, +4 Policy Points
+  description: News, scandal, scripture, and rebellion all pass through the same press. Provides +4 Culture and +4 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e2e15ffda8aa411393db47846671888d, type: 2}

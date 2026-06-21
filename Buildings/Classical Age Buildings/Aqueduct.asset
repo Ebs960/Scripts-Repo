@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Aqueduct
   icon: {fileID: 0}
-  description: +5 Food, +2 Happiness
+  description: Clean water flows into the city, supporting growth and daily life. Provides +5 Food and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steel Armory
   icon: {fileID: 0}
-  description: +6 Production. Can produce Steel Swords
+  description: Fine steel is forged, sharpened, and stored here for soldiers who need stronger blades. Provides +6 Production and can produce Steel Swords.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: c409fbb173330e7b9570fad5c6c4ce29, type: 2}

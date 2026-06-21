@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Crossbow Range
   icon: {fileID: 0}
-  description: +4 Production, +1 Culture. Can produce Crossbows and Crossbow Bolts
+  description: A martial range where bolts, bows, and discipline are prepared. Provides +4 Production, +1 Culture, and can produce Crossbows and Crossbow Bolts.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 5fd6764db29a4a0a2200b70cf17f1827, type: 2}

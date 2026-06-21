@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Navigator's Guild
   icon: {fileID: 0}
-  description: +6 Gold, Caravels trained here have +1 Sight Range
+  description: A guild of maps, stars, pilots, and profitable voyages, helping sailors find safer routes across open water. Provides +6 Gold, and Caravels trained here gain +1 Sight Range.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Caravanserai
   icon: {fileID: 0}
-  description: +7 Gold
+  description: Travelers rest here while trade routes fill the city’s coffers. Provides +7 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
