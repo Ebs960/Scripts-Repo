@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Hyperintelligent Being
   icon: {fileID: 0}
-  description: Singular hyperintelligent advisor. +170 Science.
+  description: The being offers answers with frightening calm, seeing patterns across history, physics, and civilizations at once. Provides +170 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e2abdec0560f4ab5a5cd8cd2434dc2cb, type: 2}

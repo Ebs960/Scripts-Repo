@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Memory Bank
   icon: {fileID: 0}
-  description: Civilizational memory archive. +90 Culture.
+  description: The memory bank preserves voices, images, lives, disasters, and triumphs so civilization can remember itself at scale. Provides +90 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

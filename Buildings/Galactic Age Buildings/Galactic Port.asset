@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Galactic Port
   icon: {fileID: 0}
-  description: Galactic commerce and transit hub. +128 Gold, provides Spaceport.
+  description: Docking lanes stretch into orbit as merchants turn starlight, distance, and risk into profit. Provides +128 Gold and a Spaceport.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e90015a1904d4ee79130d15ff79712af, type: 2}

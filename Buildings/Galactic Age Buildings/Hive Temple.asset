@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Hive Temple
   icon: {fileID: 0}
-  description: Collective consciousness temple. +120 Faith.
+  description: Millions of minds pray through one shared signal, making devotion feel less like speech than resonance. Provides +120 Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

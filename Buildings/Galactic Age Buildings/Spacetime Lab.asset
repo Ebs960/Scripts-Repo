@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Spacetime Lab
   icon: {fileID: 0}
-  description: Spacetime research laboratory. +142 Science.
+  description: Experiments here do not merely ask where and when; they ask whether those words still matter. Provides +142 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 18c1a76e08e1439a99ebae8424859f39, type: 2}

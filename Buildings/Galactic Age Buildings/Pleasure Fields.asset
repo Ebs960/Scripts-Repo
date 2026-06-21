@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pleasure Fields
   icon: {fileID: 0}
-  description: Post-scarcity pleasure fields. +32 Happiness.
+  description: Post-scarcity gardens, simulations, and sensory sanctuaries give citizens joy without ration, guilt, or schedule. Provides +32 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 38a897bc0c80493090471bb2d784c9be, type: 2}

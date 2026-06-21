@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Superhero Guild
   icon: {fileID: 0}
-  description: Legendary protector guild. +100 Defense, +28 Order.
+  description: The superhero guild trains, coordinates, and restrains champions powerful enough to become disasters without purpose. Provides +100 Defense and +28 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

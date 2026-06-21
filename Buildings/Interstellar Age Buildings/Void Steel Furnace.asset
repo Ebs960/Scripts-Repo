@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Void Steel Furnace
   icon: {fileID: 0}
-  description: Void steel smelting furnace. +125 Production.
+  description: Metal treated in vacuum and exotic fields leaves the furnace stronger than gravity thinks it should be. Provides +125 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 1a6e0fbead894177832f0d8a9735f308, type: 2}

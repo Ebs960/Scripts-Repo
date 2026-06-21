@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dark Matter Smith
   icon: {fileID: 0}
-  description: Dark matter smithing facility. +146 Production.
+  description: Dark matter is hammered through fields instead of anvils, becoming structure where emptiness used to be. Provides +146 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 4761d6cca669431eaa3de6d713b102e1, type: 2}

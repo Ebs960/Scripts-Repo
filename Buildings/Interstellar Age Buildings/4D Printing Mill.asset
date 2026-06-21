@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: 4D Printing Mill
   icon: {fileID: 0}
-  description: Temporal manufacturing mill. +105 Production.
+  description: Printers shape matter with time as another tool, assembling parts that finish becoming useful before they fully exist. Provides +105 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 25cd5a039b644fedbc4f7d4fcaabea3e, type: 2}
