@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Monastery
   icon: {fileID: 0}
-  description: +3 Culture, +3 Science
+  description: A peaceful house of prayer, study, and copied texts. Provides +2 Science, +5 Faith, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

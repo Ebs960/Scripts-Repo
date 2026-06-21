@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Millwright Hall
   icon: {fileID: 0}
-  description: +6 Food, +3 Production
+  description: Water, wind, and clever machinery grind grain faster and keep the city’s workshops supplied. Provides +6 Food and +3 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

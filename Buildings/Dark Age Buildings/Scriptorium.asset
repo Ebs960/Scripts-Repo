@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Scriptorium
   icon: {fileID: 0}
-  description: +5 Science, +2 Culture
+  description: A quiet room where ink preserves the knowledge of ages. Provides +5 Science and +2 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b775d86fa80aa3a193c059331b222c59, type: 2}

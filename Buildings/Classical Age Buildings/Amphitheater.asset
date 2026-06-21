@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Amphitheater
   icon: {fileID: 0}
-  description: +4 Culture, +2 Happiness
+  description: A grand stage for drama, music, and public gatherings. Provides +4 Culture and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

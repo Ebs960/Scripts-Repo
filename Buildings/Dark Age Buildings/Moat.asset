@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Moat
   icon: {fileID: 0}
-  description: +18 Defense, +2 Policy Points, +2 Happiness
+  description: Water and earth form a strong barrier around the settlement. Provides +18 Defense, +2 Policy Points, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

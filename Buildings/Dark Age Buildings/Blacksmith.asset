@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Blacksmith
   icon: {fileID: 0}
-  description: +6 Production Can produce War Hammers
+  description: A hot forge where iron becomes weapons, tools, and strength. Provides +6 Production and can produce War Hammers.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

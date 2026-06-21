@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Builders Lodge
   icon: {fileID: 0}
-  description: +6 Production, +1 Science
+  description: A lodge for skilled builders who turn plans into stone and timber. Provides +6 Production and +1 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

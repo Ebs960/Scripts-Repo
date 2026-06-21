@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Playwright
   icon: {fileID: 0}
-  description: +9 Culture, +2 Policy Points, +2 Happiness
+  description: Words, actors, and audiences fill the stage with comedy, tragedy, politics, and public delight. Provides +9 Culture, +2 Policy Points, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
