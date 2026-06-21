@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Starship Killer
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Starship Killer
-  description: A heavy anti-ship weapon designed to destroy large spacecraft before they close in.
+  description: A dedicated anti-ship weapon built to end capital vessels before they close range.
   unitType: 34
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

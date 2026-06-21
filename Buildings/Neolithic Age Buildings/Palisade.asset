@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Palisade
   icon: {fileID: 0}
-  description: +5 Defense, +1 Policy Points, +1 Happiness
+  description: Protects homes and stores from raiders, predators, and hostile groups.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clan Council
   icon: {fileID: 0}
-  description: +2 Culture, +2 Policy Points
+  description: A council building used for planning, disputes, and clan policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dark Energy Cannon
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dark Energy Cannon
-  description: A dark energy cannon siege weapon that hammers formations, fortifications, and cities from long range.
+  description: A siege cannon that twists invisible force into city-breaking blasts.
   unitType: 4
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

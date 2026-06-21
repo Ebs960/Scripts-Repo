@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Archive Hall
   icon: {fileID: 0}
-  description: +4 Culture, +2 Policy Points
+  description: Stores records, laws, and important knowledge for the city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

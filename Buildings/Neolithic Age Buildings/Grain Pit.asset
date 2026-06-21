@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Grain Pit
   icon: {fileID: 0}
-  description: 
+  description: A basic food storage pit that protects grain from spoilage and shortages.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

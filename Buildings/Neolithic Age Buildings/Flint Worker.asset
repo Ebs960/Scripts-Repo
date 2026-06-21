@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Flint Worker
   icon: {fileID: 0}
-  description: +3 Production, +1 Science
+  description: Produces sharpened flint tools for work, hunting, and defense.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
