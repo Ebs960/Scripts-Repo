@@ -10,31 +10,40 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
-  m_Name: Wheat Field
+  m_Name: Mantle Mine
   m_EditorClassIdentifier: 
-  improvementName: Wheat Field
-  icon: {fileID: 21300000, guid: bc903f35121ebbd4e928b6a1402c3016, type: 3}
-  description: A field of wheat
+  improvementName: Mantle Mine
+  icon: {fileID: 0}
+  description: Getting metal
   workCost: 20
+  buildGoldCost: 0
+  buildResourceCosts: []
   constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
-  completePrefab: {fileID: 1752416405099052385, guid: 5ac4c7926659dd04ea47085727b8ca8c, type: 3}
-  destroyedPrefab: {fileID: 1752416405099052385, guid: 5ac4c7926659dd04ea47085727b8ca8c, type: 3}
+  completePrefab: {fileID: 1087995095692571578, guid: 05e79084495901043973eeb25bb2b8e3, type: 3}
+  destroyedPrefab: {fileID: 1087995095692571578, guid: 05e79084495901043973eeb25bb2b8e3, type: 3}
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
   isShelter: 0
   shelterCapacity: 0
-  needsCity: 1
-  requiresControlledTerritory: 0
+  needsCity: 0
+  requiresControlledTerritory: 1
   canBuildInNeutralTerritory: 0
   canBuildInEnemyTerritory: 0
-  allowedBiomes: 
+  allowedBiomes: 04000000030000000a0000000f000000090000000c000000
   allowedUnderwaterBiomes: 
-  requiredResources: []
-  requiredTechs:
-  - {fileID: 11400000, guid: 90afd5701f1e98f48b83b1222d80f73f, type: 2}
+  requiredResources:
+  - {fileID: 11400000, guid: 02bfde88801f77b40b6214f047fddf07, type: 2}
+  - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
+  requiredTechs: []
   requiredCultures: []
   isUnderwaterImprovement: 0
   isOrbitalImprovement: 0
-  foodPerTurn: 2
-  productionPerTurn: 0
+  isMissileSilo: 0
+  siloMissileCapacity: 5
+  allowedMissileTypes: []
+  foodPerTurn: 0
+  productionPerTurn: 6
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
@@ -57,5 +66,14 @@ MonoBehaviour:
   trapMaxTriggers: 1
   trapConsumeOnDeplete: 1
   trapFriendlySafe: 1
+  isFort: 0
+  fortAttack: 0
+  fortDefense: 0
+  fortHitPoints: 100
+  fortAttackRange: 1
+  fortAutoFireOnEnemyEntry: 1
+  fortAttacksPerTurn: 1
+  grantsZoneOfControl: 0
+  blocksZoneOfControl: 0
   replacesImprovements: []
   availableUpgrades: []

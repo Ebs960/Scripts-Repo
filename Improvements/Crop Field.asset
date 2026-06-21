@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Crop Field
+  m_EditorClassIdentifier: 
+  improvementName: Crop Field
+  icon: {fileID: 0}
+  description: A field of wheat
+  workCost: 20
+  buildGoldCost: 0
+  buildResourceCosts: []
+  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
+  completePrefab: {fileID: 1752416405099052385, guid: 5ac4c7926659dd04ea47085727b8ca8c, type: 3}
+  destroyedPrefab: {fileID: 1752416405099052385, guid: 5ac4c7926659dd04ea47085727b8ca8c, type: 3}
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
+  isShelter: 0
+  shelterCapacity: 0
+  needsCity: 1
+  requiresControlledTerritory: 0
+  canBuildInNeutralTerritory: 0
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  requiredResources: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 90afd5701f1e98f48b83b1222d80f73f, type: 2}
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  isMissileSilo: 0
+  siloMissileCapacity: 5
+  allowedMissileTypes: []
+  foodPerTurn: 1
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  movementSpeedBonus: 0
+  isRoad: 0
+  connectedGoldPerTurn: 0
+  connectedProductionPerTurn: 0
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  isFort: 0
+  fortAttack: 0
+  fortDefense: 0
+  fortHitPoints: 100
+  fortAttackRange: 1
+  fortAutoFireOnEnemyEntry: 1
+  fortAttacksPerTurn: 1
+  grantsZoneOfControl: 0
+  blocksZoneOfControl: 0
+  replacesImprovements: []
+  availableUpgrades:
+  - upgradeName: Stone Tools
+    upgradeId: 
+    icon: {fileID: 0}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    requiredTech: {fileID: 11400000, guid: d1d183d8f2efc3b4bb3f7179dcdd0f52, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 0
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: e427caeeba215d640a24944aa420566b, type: 2}
+      amount: 0
+    additionalFood: 1
+    additionalProduction: 0
+    additionalGold: 0
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 0
+    blockedByUpgradeIds: []
+    blocksUpgradeIds: []

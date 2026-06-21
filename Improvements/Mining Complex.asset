@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
-  m_Name: Mine
+  m_Name: Mining Complex
   m_EditorClassIdentifier: 
-  improvementName: Mine
+  improvementName: Mining Complex
   icon: {fileID: 21300000, guid: d4d23d52d0ef4a945b97336bf43f1764, type: 3}
   description: Getting metal
   workCost: 20
@@ -35,8 +35,7 @@ MonoBehaviour:
   requiredResources:
   - {fileID: 11400000, guid: 02bfde88801f77b40b6214f047fddf07, type: 2}
   - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
-  requiredTechs:
-  - {fileID: 11400000, guid: ce0094a785550a148ba0c56fdbc6fc5e, type: 2}
+  requiredTechs: []
   requiredCultures: []
   isUnderwaterImprovement: 0
   isOrbitalImprovement: 0
@@ -44,7 +43,7 @@ MonoBehaviour:
   siloMissileCapacity: 5
   allowedMissileTypes: []
   foodPerTurn: 0
-  productionPerTurn: 2
+  productionPerTurn: 3
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
