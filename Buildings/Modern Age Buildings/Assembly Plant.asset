@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Assembly Plant
   icon: {fileID: 0}
-  description: Focused industrial assembly lines. +38 Production, +10 Gold.
+  description: The assembly plant breaks labor into perfect motions, turning repetition into a river of finished goods. Provides +38 Production and +10 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b6eb7c883530fa41b3f9c558b2d764ea, type: 2}

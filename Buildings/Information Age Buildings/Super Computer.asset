@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Super Computer
   icon: {fileID: 0}
-  description: Massive computational research center. +45 Science, +8 Policy Points.
+  description: The super computer models climate, markets, weapons, and medicine with a cold patience no human committee can match. Provides +45 Science and +8 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8389ba5893b74b8b92d0ef170354301b, type: 2}

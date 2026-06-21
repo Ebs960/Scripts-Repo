@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Oil Refinery
   icon: {fileID: 0}
-  description: +12 Production, +12 Gold
+  description: Steel towers, pipes, and burning flares mark where raw oil becomes the lifeblood of industry. Provides +12 Production and +12 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
