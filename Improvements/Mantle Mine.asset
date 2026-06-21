@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Mantle Mine
   icon: {fileID: 0}
-  description: Getting metal
+  description: Heat-resistant shafts and pressure rigs tap the planet mantle for exotic metals and geothermal power. Provides +6 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

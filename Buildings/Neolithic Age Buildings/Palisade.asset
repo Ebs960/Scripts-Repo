@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Palisade
   icon: {fileID: 0}
-  description: Sharpened posts ring the settlement, warning raiders and predators that this cluster of homes has become a defended community. Provides early Defense.
+  description: Sharpened posts ring the settlement, warning raiders and predators that this cluster of homes has become a defended community. Provides +1 Policy Points, +5 Defense, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

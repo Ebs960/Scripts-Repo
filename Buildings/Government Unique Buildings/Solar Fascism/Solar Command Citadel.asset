@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Solar Command Citadel
   icon: {fileID: 0}
-  description: 'A fortified orbital command citadel that coordinates legions, fleet
-    musters, and militarized colonies. +300 Defense, +10 Policy Points '
+  description: A fortified orbital citadel coordinates legions, fleets, surveillance, and planetary crackdowns from above. Provides +10 Policy Points and +300 Defense.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 980
-  goldCost: 1470
+  productionCost: 11591
+  goldCost: 17387
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1470
+  dismantleGoldRefund: 17387
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -46,7 +45,8 @@ MonoBehaviour:
   isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 928872935c0448944a917c10dd8d044a, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: ba59728f1d884649936dd595b4f0d3d6, type: 2}

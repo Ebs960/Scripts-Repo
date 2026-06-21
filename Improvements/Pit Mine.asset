@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Pit Mine
   icon: {fileID: 21300000, guid: d4d23d52d0ef4a945b97336bf43f1764, type: 3}
-  description: Getting metal
+  description: An open excavation cuts into shallow ore seams where early miners can haul metal-bearing rock with simple tools. Provides +1 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

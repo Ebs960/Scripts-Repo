@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Counting House
   icon: {fileID: 0}
-  description: A commercial accounting office for merchant finance. +7 Gold, +10%
-    Gold in this City
+  description: Ledgers, contracts, and guarded vaults help merchant families turn trust into credit and credit into power. Provides +7 Gold and +10% Gold in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 360
-  goldCost: 540
+  productionCost: 536
+  goldCost: 795
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 540
+  dismantleGoldRefund: 795
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 657d5cc80ff17cb4981bdf10908bb320, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 77b3d9e1f95cb09478d6566d6fe563de, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}

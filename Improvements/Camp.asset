@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Camp
   icon: {fileID: 21300000, guid: 7cbbce6381c43794f8cc2b0d140bf0ef, type: 3}
-  description: A warm place to sleep and cook. Protects units from winter damage
-    and provides a great place for stories. Only lasts 2 turns until it needs to
-    be rebuilt.
+  description: A small campfire, bedrolls, and rough windbreaks give travelers a place to cook, rest, and survive dangerous seasons. Provides +1 Food, +1 Culture, and shelter for 1 unit.
   workCost: 6
   buildGoldCost: 0
   buildResourceCosts:

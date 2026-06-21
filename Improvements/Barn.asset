@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Barn
   icon: {fileID: 0}
-  description: 
+  description: A sturdy storage barn keeps grain, tools, fodder, and animals organized between seasons, helping farms turn harvests into reliable surplus. Provides +3 Food.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

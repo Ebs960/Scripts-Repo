@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Core Mine
   icon: {fileID: 0}
-  description: Getting metal
+  description: Deep extraction shafts descend toward the planet core, drawing rare heat-forged minerals from layers ordinary mines could never reach. Provides +8 Production.
   workCost: 20
   buildGoldCost: 0
   buildResourceCosts: []

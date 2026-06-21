@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Psi Healing Sanctuary
   icon: {fileID: 0}
-  description: A psionic sanctuary that accelerates recovery, eases trauma, and strengthens defensive resolve.
+  description: Healers combine medicine, ritual, and psionic care to ease trauma and restore bodies after war or disaster. Provides +3 Food, +6 Science, +6 Culture, +2 Policy Points, +3 Faith, +3 Defense, and +10 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 700
-  goldCost: 1050
+  productionCost: 11128
+  goldCost: 16691
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 1050
+  dismantleGoldRefund: 16691
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -42,7 +42,9 @@ MonoBehaviour:
   isFaithBuilding: 1
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 22063f523ed8e364d849b0bc1548519f, type: 2}
+  - {fileID: 11400000, guid: 6261e89d074e0bf4eb62c080a93eba0e, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}

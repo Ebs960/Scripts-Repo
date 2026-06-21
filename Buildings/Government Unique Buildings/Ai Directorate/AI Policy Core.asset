@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: AI Policy Core
   icon: {fileID: 0}
-  description: A machine-governance core that automates law, budget routing, production queues, and research priorities.
+  description: A machine-governance core automates law, budget routing, production queues, and research priorities with tireless algorithmic discipline. Provides +8 Production, +12 Science, +3 Policy Points, and +2 Defense.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 760
-  goldCost: 1140
+  productionCost: 7265
+  goldCost: 10897
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 1140
+  dismantleGoldRefund: 10897
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -41,8 +41,10 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 2646a30fb016ac247a5dc5c52c48b1c4, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}

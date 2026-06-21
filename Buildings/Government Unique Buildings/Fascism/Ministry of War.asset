@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ministry of War
   icon: {fileID: 0}
-  description: A central office for total mobilization, officer training, and military-industrial
-    coordination. +200 Defense +25 Production, +5 Order, +50% Production Speed for
-    Units
+  description: A central office for total mobilization, officer training, and military industry turns the state toward permanent readiness. Provides +25 Production, +200 Defense, and +10 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 520
-  goldCost: 780
+  productionCost: 3787
+  goldCost: 5680
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 780
+  dismantleGoldRefund: 5680
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 9535f89c8c04b1143847742c73f4efec, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: d35b608969488b241bae6d556281e3a6, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}

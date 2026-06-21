@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Court
   icon: {fileID: 0}
-  description: A crown court grounded in constitutional procedure. +15 Order, +15
-    Policy Points
+  description: Nobles, ministers, judges, and petitioners orbit the crown, turning royal favor into law and administration. Provides +15 Policy Points and +15 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 400
-  goldCost: 600
+  productionCost: 536
+  goldCost: 795
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 600
+  dismantleGoldRefund: 795
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 9f0f12163dd66f34fb84dfa373767080, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: a2e4af3c556327648b57e1e3aec07b4c, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}

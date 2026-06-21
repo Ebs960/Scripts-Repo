@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Empathy Forum
   icon: {fileID: 0}
-  description: A civic forum for mediated consensus, emotional reconciliation, and
-    shared public memory. +10 Culture, +10 Faith, +5 Policy Points, +5 Science, +8
-    Happiness
+  description: Mediators, citizens, and empathic listeners turn conflict into consensus before resentment hardens into rebellion. Provides +5 Science, +10 Culture, +5 Policy Points, +10 Faith, and +8 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 580
-  goldCost: 870
+  productionCost: 10664
+  goldCost: 15996
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 870
+  dismantleGoldRefund: 15996
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -47,7 +45,8 @@ MonoBehaviour:
   isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 22063f523ed8e364d849b0bc1548519f, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}

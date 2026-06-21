@@ -14,15 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Central Logistics Grid
   icon: {fileID: 0}
-  description: An automated logistics grid that coordinates supply drones, repairs,
-    and rapid unit deployment. +10 Production, +50% Production in this Settlement
-    and +15 Health and +1 Starting Level for all Artillery and Aircraft Carriers
-    and Space Carriers
+  description: Automated depots, supply drones, and repair schedules route every part of the economy through one optimized logistical nervous system. Provides +10 Production and +50% Production in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 640
-  goldCost: 960
+  productionCost: 6962
+  goldCost: 10443
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -30,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 960
+  dismantleGoldRefund: 10443
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -47,8 +44,10 @@ MonoBehaviour:
   isDefenseBuilding: 0
   isEnergyBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 2646a30fb016ac247a5dc5c52c48b1c4, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}

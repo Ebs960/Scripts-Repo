@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Arsenal
   icon: {fileID: 0}
-  description: A centralized state arsenal for military production. +15 Production,
-    +25% Production for Units,  +1 Starting Level for all Units trained in this City
+  description: Crown armorers and quartermasters concentrate weapons, powder, and uniforms where royal armies can be equipped quickly. Provides +15 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 440
-  goldCost: 660
+  productionCost: 559
+  goldCost: 830
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 660
+  dismantleGoldRefund: 830
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,8 +49,9 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs:
-  - {fileID: 11400000, guid: b0391261c9f77cb46932448e5003712d, type: 2}
-  requiredCultures: []
+  - {fileID: 11400000, guid: aa2a1819cf87a2c4bae774495eec0d98, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: a2e4af3c556327648b57e1e3aec07b4c, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []

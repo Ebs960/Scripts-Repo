@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Systems Ministry
   icon: {fileID: 0}
-  description: A ministry of engineers and analysts that standardizes infrastructure,
-    research, and industrial planning. +20 Production, +20 Science, +20 Food
+  description: Engineers and analysts standardize infrastructure so the city behaves less like politics and more like a solvable machine. Provides +20 Food, +20 Production, and +20 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 560
-  goldCost: 840
+  productionCost: 1317
+  goldCost: 1978
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 840
+  dismantleGoldRefund: 1978
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 3d85d85209615614ba0eb52b58a4b7b1, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: bd04c686db8f10e4b8410f2785eac12d, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}

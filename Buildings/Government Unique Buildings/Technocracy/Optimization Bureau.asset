@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Optimization Bureau
   icon: {fileID: 0}
-  description: 'A civic analytics office that identifies waste and turns complete
-    infrastructure networks into extra output. +25 Gold, +7 Policy Points, +15% Gold
-    in this City, +10% Production in this City '
+  description: Analysts identify waste and redesign completed districts into smoother systems of labor, traffic, and output. Provides +25 Gold, +7 Policy Points, +10% Production in this city, and +15% Gold in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 460
-  goldCost: 690
+  productionCost: 1883
+  goldCost: 2778
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -29,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 690
+  dismantleGoldRefund: 2778
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 7fac73a8cab290d4da9dc084ea21310c, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 3af67bc001cd60c4fa61a9f022a177b5, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}

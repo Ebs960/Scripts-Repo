@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: State Assembly
   icon: {fileID: 0}
-  description: A local assembly that strengthens decentralized government. +10% Culture
-    and +10% Science Output in this City
+  description: Local representatives debate regional budgets and laws, proving that decentralized government can still act with common purpose. Provides +5 Happiness, +10% Science in this city, and +10% Culture in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 420
-  goldCost: 630
+  productionCost: 1317
+  goldCost: 1978
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 630
+  dismantleGoldRefund: 1978
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0a7a4c86c3778be458f4f9ffcf64e784, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []

@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ritual Granary
   icon: {fileID: 0}
-  description: A sacred granary tied to festivals and temple redistribution.
+  description: A sacred granary ties harvest storage to festivals, offerings, and temple redistribution. Provides +5 Food, +2 Faith, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 160
-  goldCost: 240
+  productionCost: 141
+  goldCost: 257
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 240
+  dismantleGoldRefund: 257
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -42,7 +42,8 @@ MonoBehaviour:
   isFaithBuilding: 1
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b2d415dc646c4454e8085f731563a023, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}

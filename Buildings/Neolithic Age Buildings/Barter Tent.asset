@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Barter Tent
   icon: {fileID: 0}
-  description: Tools, shells, grain, hides, and favors change hands here, turning neighborly exchange into the village's first reliable marketplace. Provides early Gold.
+  description: Tools, shells, grain, hides, and favors change hands here, turning neighborly exchange into the village's first reliable marketplace. Provides +2 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

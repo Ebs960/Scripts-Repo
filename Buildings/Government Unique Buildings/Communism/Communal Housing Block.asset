@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Communal Housing Block
   icon: {fileID: 0}
-  description: 'Dense public housing that stabilizes industrial cities and supports
-    a larger urban workforce. +30 Food, +25% Food in this City '
+  description: Dense public housing stabilizes industrial cities by tying shelter, childcare, and daily services to the collective project. Provides +25 Food and +25% Food in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 440
-  goldCost: 660
+  productionCost: 2525
+  goldCost: 3787
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 660
+  dismantleGoldRefund: 3787
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,7 +49,8 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}

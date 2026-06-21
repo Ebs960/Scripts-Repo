@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Central Algorithm Nexus
   icon: {fileID: 0}
-  description: A hardened central intelligence nexus that synchronizes robotic forces and machine-run cities.
+  description: A hardened intelligence nexus synchronizes robotic forces and machine-run cities through predictive models no human council could audit in time. Provides +12 Production, +14 Science, +4 Policy Points, and +4 Defense.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 920
-  goldCost: 1380
+  productionCost: 7568
+  goldCost: 11351
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 1380
+  dismantleGoldRefund: 11351
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -41,8 +41,10 @@ MonoBehaviour:
   isCultureBuilding: 0
   isFaithBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 2646a30fb016ac247a5dc5c52c48b1c4, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}

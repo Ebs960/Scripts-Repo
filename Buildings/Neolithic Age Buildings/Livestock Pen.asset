@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Livestock Pen
   icon: {fileID: 0}
-  description: Fenced yards keep the village's first herds close, turning restless animals into steady food, hides, labor, and trade wealth. Provides early Food and economic support.
+  description: Fenced yards keep the village's first herds close, turning restless animals into steady food, hides, labor, and trade wealth. Provides +2 Food, +2 Production, and +2 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

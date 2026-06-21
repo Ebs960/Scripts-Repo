@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public Press
   icon: {fileID: 0}
-  description: A public information and print institution for politics. +4 Gold,
-    +4 Science, +4 Culture, +4 Happiness
+  description: Printers, editors, and public readers spread arguments beyond the chamber, making politics a citywide conversation. Provides +4 Gold, +4 Science, +4 Culture, and +4 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 410
-  goldCost: 615
+  productionCost: 1089
+  goldCost: 1633
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 615
+  dismantleGoldRefund: 1633
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -47,7 +46,7 @@ MonoBehaviour:
   isPerimeterWall: 0
   requiredTechs: []
   requiredCultures:
-  - {fileID: 11400000, guid: 05704e1f73ea3274b811c8f43ae1e84a, type: 2}
+  - {fileID: 11400000, guid: a5200ff47ae13d84dba0d703392cc629, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}

@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mediation Spire
   icon: {fileID: 0}
-  description: +12 Happiness, +12 Culture. A vast mediation spire that broadcasts
-    empathic arbitration across worlds and lowers internal conflict.
+  description: A towering psionic spire broadcasts calming patterns across the city, helping rivals feel one another before they strike. Provides +12 Culture and +12 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 820
-  goldCost: 1230
+  productionCost: 11591
+  goldCost: 17387
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1230
+  dismantleGoldRefund: 17387
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -46,7 +45,8 @@ MonoBehaviour:
   isEnergyBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6261e89d074e0bf4eb62c080a93eba0e, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}

@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Provincial Office
   icon: {fileID: 0}
-  description: A local office for imperial taxation and reporting. +20% Gold, +10%
-    Science, +5 Policy Points, +5 Order
+  description: Clerks, surveyors, and tax agents translate distant provinces into ledgers the empire can command. Provides +5 Policy Points, +5 Order, +20% Gold in this city, and +10% Science in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 300
-  goldCost: 450
+  productionCost: 1089
+  goldCost: 1633
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 450
+  dismantleGoldRefund: 1633
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: e98fc1c660ca367409b5ffe863ea1883, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 8468f7ac78e8c864abdf7aac55c01f78, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}

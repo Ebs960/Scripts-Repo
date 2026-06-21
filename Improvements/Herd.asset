@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   improvementName: Herd
   icon: {fileID: 21300000, guid: 0aad21824858fc94e9a20c829ea6bcd3, type: 3}
-  description: A nice relaxing field with a few animals.
+  description: Managed animals graze under watch, providing meat, milk, hides, labor, and a living reserve of wealth for the settlement. Provides +2 Food.
   workCost: 20
   constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
   completePrefab: {fileID: 1438332890144544779, guid: 3f54ad8061896df4596b1a4cbf6db058, type: 3}

@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: High Temple
   icon: {fileID: 0}
-  description: +8 Faith, +6 Culture, +6 Policy Points +5 Happiness, +5 Order, +50%
-    Faith Output in this City
+  description: Priests, pilgrims, and rulers gather at the high temple where worship, law, and treasury meet. Provides +6 Culture, +6 Policy Points, +8 Faith, +5 Happiness, +5 Order, and +50% Faith in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 410
-  goldCost: 540
+  productionCost: 249
+  goldCost: 381
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 540
+  dismantleGoldRefund: 381
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -50,7 +49,9 @@ MonoBehaviour:
   IsOrderBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b13ae3e3b7d16bd4aa7e33b77d1278fe, type: 2}
+  - {fileID: 11400000, guid: 93146b6dc91970646a73990920d427f1, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}

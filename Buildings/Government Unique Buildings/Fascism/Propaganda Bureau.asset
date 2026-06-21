@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Propaganda Bureau
   icon: {fileID: 0}
-  description: A state media bureau that converts militarized culture into obedience
-    and wartime morale. +10 Happiness, +10 Order, +10 Policy Points
+  description: State artists, broadcasters, and censors convert militarized culture into obedience, spectacle, and fear of dissent. Provides +10 Policy Points, +10 Happiness, and +10 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 420
-  goldCost: 630
+  productionCost: 3629
+  goldCost: 5444
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -28,7 +27,7 @@ MonoBehaviour:
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 630
+  dismantleGoldRefund: 5444
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -49,8 +48,10 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
-  requiredTechs: []
-  requiredCultures: []
+  requiredTechs:
+  - {fileID: 11400000, guid: d262cc121f225a04c810849f0ecb056d, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: d35b608969488b241bae6d556281e3a6, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}

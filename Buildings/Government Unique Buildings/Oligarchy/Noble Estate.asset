@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Noble Estate
   icon: {fileID: 0}
-  description: An aristocratic estate with strong production and wealth.
+  description: An aristocratic estate concentrates land, labor, and private guards under elite families who profit from stability. Provides +4 Production, +3 Gold, and -2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 280
-  goldCost: 420
+  productionCost: 147
+  goldCost: 268
   buildGoldCost: 0
   buildResourceCosts: []
   requiresAdjacentTile: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   requiredTerrains:
   allowedBiomes:
   canBeDismantled: 1
-  dismantleGoldRefund: 420
+  dismantleGoldRefund: 268
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -42,7 +42,8 @@ MonoBehaviour:
   isFaithBuilding: 0
   isPerimeterWall: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 21c867f9d21637248853c1f72467a9db, type: 2}
   requiredPopulation: 0
   requiredGovernments:
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
