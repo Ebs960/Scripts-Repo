@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Drone Manufacturing Plant
   icon: {fileID: 0}
-  description: Drone assembly and control facility. +44 Production, +10 Gold, +8 Science, +6 Order.
+  description: Swarms begin as circuits, rotors, and code before leaving the line to watch, deliver, build, or fight. Provides +44 Production, +10 Gold, +8 Science, and +6 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 03deebf3c53240f5bf07e5ddb6e3bd14, type: 2}

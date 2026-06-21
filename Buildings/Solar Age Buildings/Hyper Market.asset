@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Hyper Market
   icon: {fileID: 0}
-  description: Hyper-automated market district. +76 Gold.
+  description: Autonomous shops, predictive deliveries, and personalized prices make commerce feel like it knows what citizens want before they do. Provides +76 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

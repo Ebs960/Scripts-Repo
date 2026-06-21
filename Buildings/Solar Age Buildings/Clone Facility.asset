@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clone Facility
   icon: {fileID: 0}
-  description: Population cloning and growth facility. +62 Food.
+  description: The clone facility expands the city’s future one cultivated body, organ, and food source at a time. Provides +62 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 5c6ab1277c724ac9b69c2e816ec00b88, type: 2}

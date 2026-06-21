@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Spacescraper
   icon: {fileID: 0}
-  description: Galactic-scale vertical city district. +112 Gold.
+  description: The spacescraper rises through atmosphere and orbit alike, stacking commerce where skylines used to end. Provides +112 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

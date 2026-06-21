@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Robotic Surgeon's Office
   icon: {fileID: 0}
-  description: Robotic medical clinic. +14 Food,  -60% Disease Fatality and Incidence
-    in this City
+  description: Steady robotic hands make cuts too precise for panic, turning surgery into engineered certainty. Provides +14 Food and -60% Disease Fatality and Incidence in this City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: bc83f15ed74c411c8716c51d58670f81, type: 2}

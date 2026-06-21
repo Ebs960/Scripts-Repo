@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Artificial Super Intelligence
   icon: {fileID: 0}
-  description: Super-intelligence computation core. +120 Science.
+  description: The super intelligence thinks across disciplines, planets, and probabilities with a speed that makes genius look local. Provides +120 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 19b919d3888e4182abe4bf4996674ab7, type: 2}

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Space Port
   icon: {fileID: 0}
-  description: Orbital launch and logistics hub. +30 Gold, +10 Policy Points, +10
-    Order, provides Spaceport. Boosts Production and Science Output by 10%
+  description: Rockets, shuttles, and orbital freight turn the edge of the city into a gateway beyond the sky. Provides +30 Gold, +10 Policy Points, +10 Order, and a Spaceport. Boosts Production and Science Output by 10%.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

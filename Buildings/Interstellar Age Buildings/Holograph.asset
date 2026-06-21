@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Holograph Theater
   icon: {fileID: 0}
-  description: Immersive holoraphic theater. +92 Culture.
+  description: Actors, myths, battles, and memories appear in the air with enough detail to make reality feel underfunded. Provides +92 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: eb949e84a6d945eaa5ccb4316af685cb, type: 2}

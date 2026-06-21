@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Interstellar Star Port
   icon: {fileID: 0}
-  description: Interstellar transit and commerce hub. +96 Gold, provides Spaceport.
+  description: Ships depart for other suns from these docks, carrying cargo, migrants, and ambition beyond the home system. Provides +96 Gold and a Spaceport.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

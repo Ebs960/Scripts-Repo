@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Artificial General Intelligence
   icon: {fileID: 0}
-  description: General intelligence computation center. +88 Science.
+  description: A mind built from circuits and code studies every field at once, answering questions no human team could finish asking. Provides +88 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8fa94db6ab3e46ea90ff2a7cb29d4dab, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dream Market
   icon: {fileID: 0}
-  description: Commerce in simulated dream spaces. +104 Gold.
+  description: The dream market sells experiences no physical shop could stock and no waking customer fully forgets. Provides +104 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 71f894e4c1d74846aa84dd8afcc257ae, type: 2}

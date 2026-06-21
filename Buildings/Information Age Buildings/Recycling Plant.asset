@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Recycling Plant
   icon: {fileID: 0}
-  description: Waste recovery and materials reuse facility. +10 Production, +10%
-    Production, +1 Aluminum
+  description: What the city throws away returns as sorted metal, useful material, and a little less guilt. Provides +10 Production, +10% Production, and +1 Aluminum.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

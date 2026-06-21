@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Maglev Station
   icon: {fileID: 0}
-  description: Magnetic levitation transit hub. +34 Gold, +24 Production, +8 Policy, +6 Happiness.
+  description: Trains float above the track and vanish down the line, making speed feel smooth enough to forget. Provides +34 Gold, +24 Production, +8 Policy, and +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: be8815e26bf046d7a55bed1598566d6a, type: 2}

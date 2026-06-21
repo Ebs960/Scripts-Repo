@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Protection Dome
   icon: {fileID: 0}
-  description: Citywide protective force dome. +120 Defense, +20 Order.
+  description: A shimmering force dome seals the skyline, making invasion, disaster, and panic strike the same invisible wall. Provides +120 Defense and +20 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

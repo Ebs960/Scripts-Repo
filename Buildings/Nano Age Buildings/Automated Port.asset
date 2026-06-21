@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automated Port
   icon: {fileID: 0}
-  description: Robotic cargo port. +32 Gold, +22 Production, provides Harbor.
+  description: Driverless cranes and smart containers move cargo from ship to city before the crews finish docking. Provides +32 Gold, +22 Production, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 350f3aa7b753425497cb00f34c27f0bb, type: 2}

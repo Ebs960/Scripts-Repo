@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Warp Station
   icon: {fileID: 0}
-  description: Warp travel station. +118 Gold, provides Spaceport.
+  description: Ships enter local space and leave elsewhere, turning geography into a negotiable inconvenience. Provides +118 Gold and a Spaceport.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

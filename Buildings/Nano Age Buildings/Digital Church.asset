@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Digital Church
   icon: {fileID: 0}
-  description: Networked place of worship. +18 Faith, +12 Culture, +6 Happiness.
-    +10% City-Wide Faith
+  description: Sermons stream through sanctuaries and screens alike, carrying old prayers across new networks. Provides +18 Faith, +12 Culture, +6 Happiness, and +10% City-Wide Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Picotech Complex
   icon: {fileID: 0}
-  description: Picotech manufacturing complex. +132 Production.
+  description: The picotech complex manufactures at scales where atoms become building blocks and physics becomes craft. Provides +132 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: fb61428596c74a2e9b8348847397fc49, type: 2}

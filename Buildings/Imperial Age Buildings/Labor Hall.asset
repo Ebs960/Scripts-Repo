@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Labor Hall
   icon: {fileID: 0}
-  description: +6 Policy Points, +10% Production and +10% Food in this City
+  description: Meetings run late into the night as wages, safety, bread, and power become matters of public force. Provides +6 Policy Points, +10% Production, and +10% Food in this City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
