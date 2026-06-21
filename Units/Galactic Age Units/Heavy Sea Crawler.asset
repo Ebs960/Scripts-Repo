@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Heavy Sea Crawler
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Heavy Sea Crawler
-  description: A heavy sea crawler aquatic combat unit built for battles across shorelines, oceans, and submerged fronts.
+  description: An armored crawler that grinds through surf, seabed, and coastal fire.
   unitType: 13
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

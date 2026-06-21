@@ -13,10 +13,7 @@ MonoBehaviour:
   m_Name: Concord Wardens
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Concord Wardens
-  description: Peacekeeping troops equipped to shield civilians and stabilize war zones. This is a unique unit for the Empathic Union government.
-    between armies. They are strong at holding lines and keeping allies alive, but
-    their doctrine discourages aggressive breakthroughs. Receive 5% Health and Attack
-    bonus for every adjacent Concord Warden.
+  description: Peacekeepers trained to shield civilians while dragging war zones back from collapse. This is a unique unit for the Empathic Union government.
   unitType: 17
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

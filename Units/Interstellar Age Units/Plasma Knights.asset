@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Plasma Knights
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Plasma Knights
-  description: Mobile mounted troops who use speed and shock to overwhelm slower enemies. This is a unique unit for the Kingdom, Constitutional Monarchy, Absolute Monarchy and Feudal Monarchy government.
+  description: Noble shock cavalry wielding plasma lances in the service of crown and charge. This is a unique unit for the Kingdom, Constitutional Monarchy, Absolute Monarchy and Feudal Monarchy government.
   unitType: 1
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

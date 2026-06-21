@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: Sympathy Wing
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Sympathy Wing
-  description: An empathic carrier group that coordinates rescues and protective air cover. This is a unique unit for the Empathic Union government.
-    break attack runs without escalating the battle. It protects friendly airspace
-    while accepting weaker strike performance.
+  description: An empathic carrier wing that shields allies while coordinating rescues under fire. This is a unique unit for the Empathic Union government.
   unitType: 33
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

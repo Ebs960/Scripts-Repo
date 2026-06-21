@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: FTL Star Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: FTL Star Fighter
-  description: A ftl star fighter space interceptor designed to chase hostile craft through orbital and deep-space battles.
+  description: A faster-than-light interceptor that turns pursuit into inevitability.
   unitType: 28
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

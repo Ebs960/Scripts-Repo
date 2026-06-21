@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Overmind Command Tank
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Overmind Command Tank
-  description: A galactic command vehicle that broadcasts tactical directives to synthetic troops. Its aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
+  description: A rolling command nexus that sharpens synthetic troops through direct machine will. Its aura improves nearby Robot and Cyborg units. This is a unique unit for the AI Directorate government.
   unitType: 20
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

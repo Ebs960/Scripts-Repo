@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Galactic Battleship
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Galactic Battleship
-  description: A galactic battleship massive space battleship that brings heavy guns to decisive fleet engagements.
+  description: A vast capital ship built to decide fleet wars with planet-shaking broadsides.
   unitType: 8
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
