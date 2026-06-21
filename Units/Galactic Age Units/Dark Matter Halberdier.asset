@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dark Matter Halberdier
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Dark Matter Halberdier
-  description: A dark matter halberdier polearm soldier trained to hold ground and stop cavalry charges.
+  description: Polearm infantry wielding impossible mass to stop charges dead.
   unitType: 0
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

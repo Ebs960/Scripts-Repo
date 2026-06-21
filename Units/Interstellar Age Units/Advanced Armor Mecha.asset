@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Advanced Armor Mecha
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Advanced Armor Mecha
-  description: An advanced armor mecha towering combat walker that combines heavy armor with advanced weapons systems.
+  description: A towering war machine that turns open ground into a furnace of armor-piercing plasma.
   unitType: 15
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

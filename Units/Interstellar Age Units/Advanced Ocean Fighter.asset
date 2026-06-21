@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Advanced Ocean Fighter
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Advanced Ocean Fighter
-  description: An advanced ocean fighter fast aircraft used to intercept enemies, scout ahead, and strike vulnerable targets.
+  description: A high-speed strike craft built to hunt across sea, sky, and storm.
   unitType: 36
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08

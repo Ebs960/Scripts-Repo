@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cyber Mutants
   m_EditorClassIdentifier: Assembly-CSharp::CombatUnitData
   unitName: Cyber Mutants
-  description: Altered warriors able to survive conditions that would break ordinary troops.
+  description: Altered fighters whose bodies treat poison, pressure, and pain as suggestions.
   unitType: 16
   selectSound: {fileID: 0}
   selectPitchVariation: 0.08
