@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Military Shipyard
   icon: {fileID: 0}
-  description: Heavy naval construction yard. +20 Production, +1 Level for all Ships
-    built here, provides Harbor.
+  description: Armor plate, heavy guns, and disciplined crews take shape beside the waterline. Provides +20 Production and +1 Level for all Ships.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8856b7f3dd080f8d923ff37ca97527a8, type: 2}

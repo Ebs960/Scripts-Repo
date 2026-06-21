@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: High Speed Rail Station
   icon: {fileID: 0}
-  description: Fast regional rail hub. +24 Gold, +18 Production, +6 Policy, +4 Happiness.
+  description: Sleek trains arrive in minutes, not hours, pulling distant cities into the rhythm of the same commute. Provides +24 Gold, +18 Production, +6 Policy, and +4 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 528ffd03ba6044219a810763b0824512, type: 2}

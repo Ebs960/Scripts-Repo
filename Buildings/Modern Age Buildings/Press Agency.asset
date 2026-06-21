@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Press Agency
   icon: {fileID: 0}
-  description: Professional news bureau. +8 Gold, +8 Culture, +8 Policy.
+  description: Reporters, editors, phones, and deadlines turn scattered events into tomorrow’s public argument. Provides +8 Gold, +8 Culture, and +8 Policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f044e925f7a890297c0bb0828012b908, type: 2}

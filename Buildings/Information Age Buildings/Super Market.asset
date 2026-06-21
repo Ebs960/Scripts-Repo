@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Super Market
   icon: {fileID: 0}
-  description: Modern retail food chain. +14 Food, +20 Gold, +5 Happiness.
+  description: Endless aisles, bright labels, and refrigerated abundance make dinner feel like a solved problem. Provides +14 Food, +20 Gold, and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: abafacec9197584df13311472b8be2c5, type: 2}

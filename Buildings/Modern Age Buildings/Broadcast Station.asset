@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Broadcast Station
   icon: {fileID: 0}
-  description: Radio broadcast infrastructure. +14 Culture, +10 Policy, +6 Gold.
+  description: The broadcast station gives the city one voice that can reach kitchens, barracks, factories, and farms at once. Provides +14 Culture, +10 Policy, and +6 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f044e925f7a890297c0bb0828012b908, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Synthetic Food Factory
   icon: {fileID: 0}
-  description: Lab-grown food facility. +40 Food.
+  description: Protein vats and cultured harvests feed the city without waiting for soil, weather, or seasons. Provides +40 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a990180bc3494adb8d882af9ce9c2ed7, type: 2}

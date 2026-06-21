@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Movie Theater
   icon: {fileID: 0}
-  description: Mass entertainment venue. +14 Culture, +8 Gold, +6 Happiness.
+  description: Posters promise romance, danger, comedy, and glory, and the line outside proves the city believes them. Provides +14 Culture, +8 Gold, and +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: dad27976e10e12869965c29d7edb9d84, type: 2}

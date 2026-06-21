@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Internet Cafe
   icon: {fileID: 0}
-  description: Public digital access and social venue. +10% Science, +10% Culture,
-    +5 Happiness.
+  description: Screens glow over coffee cups as students, gamers, workers, and wanderers log into the wider world. Provides +10% Science, +10% Culture, and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

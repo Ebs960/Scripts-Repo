@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public College
   icon: {fileID: 0}
-  description: Higher education campus. +14 Science, +5% Science Yield for City
+  description: Lecture halls and laboratories give ambitious minds the tools to question everything properly. Provides +14 Science and +5% Science Yield for City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 5ebb00966e740f53f74b88428b99996c, type: 2}

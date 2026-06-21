@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Nanotech Complex
   icon: {fileID: 0}
-  description: Nanomaterials research and production campus. +30 Production, +30
-    Science. Nanobot Units made 50% Faster
+  description: Matter is engineered molecule by molecule here, where tiny machines promise enormous changes. Provides +30 Production and +30 Science. Nanobot Units are made 50% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

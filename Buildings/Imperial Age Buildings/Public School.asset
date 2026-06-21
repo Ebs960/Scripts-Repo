@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public School
   icon: {fileID: 0}
-  description: +10 Science
+  description: The public school turns literacy, discipline, and arithmetic into promises the whole city can claim. Provides +10 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 92f88087226a0ee0687df591286eba95, type: 2}

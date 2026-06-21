@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Quantum Super Computer
   icon: {fileID: 0}
-  description: Quantum-scale computation center. +62 Science, +8 Policy Points.
+  description: Problems once called impossible are fed into chilled quantum cores and returned as unsettling answers. Provides +62 Science and +8 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 19d7b17668c54344b6a2ad06c854adb8, type: 2}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Doctor's Office
   icon: {fileID: 0}
-  description: +7 Food, -40% Disease Fatalities in this city
+  description: A clean room, steady hands, and careful records keep illness from becoming a death sentence. Provides +7 Food and -40% Disease Fatalities in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f9d2727f062f4c0f91e23f7effecb004, type: 2}
