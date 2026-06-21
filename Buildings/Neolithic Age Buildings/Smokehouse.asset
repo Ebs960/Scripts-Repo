@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Smokehouse
   icon: {fileID: 0}
-  description: Improves food supply by smoking and drying fresh catches.
+  description: Fish, meat, and gathered foods hang above slow coals, preserving the season's luck long after the hunt and harvest have ended. Provides early Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

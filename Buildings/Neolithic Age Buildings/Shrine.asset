@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Shrine
   icon: {fileID: 0}
-  description: A sacred place for offerings, prayers, and early religious practice.
+  description: Offerings gather beneath carved posts and painted stones, giving the young village shared rituals, omens, and reasons to endure hardship together. Provides early Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Palisade
   icon: {fileID: 0}
-  description: Protects homes and stores from raiders, predators, and hostile groups.
+  description: Sharpened posts ring the settlement, warning raiders and predators that this cluster of homes has become a defended community. Provides early Defense.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

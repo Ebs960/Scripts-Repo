@@ -151,6 +151,8 @@ public class WorkerUnitData : ScriptableObject
     public int requiredFaith = 0;
     [Tooltip("Resource amount requirements for production/purchase. Example: set Iron amount 5 to require 5 Iron in the civilization stockpile.")]
     public ResourceCost[] requiredResourceCosts;
+    [Tooltip("If true, only one valid entry in Required Resource Costs must be present instead of every listed cost.")]
+    public bool hasSubstituteResourceCosts = false;
     public Biome[] requiredTerrains;
     [Tooltip("Coastal city required for production")]
     public bool requiresCoastalCity = false;

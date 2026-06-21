@@ -449,4 +449,10 @@ public class ImprovementInstance : MonoBehaviour
         if (string.IsNullOrEmpty(idOrName)) return;
         appliedUpgrades.Add(idOrName);
     }
+
+    public void MarkRemoved(string idOrName)
+    {
+        if (string.IsNullOrEmpty(idOrName)) return;
+        appliedUpgrades.Remove(idOrName);
+    }
 }

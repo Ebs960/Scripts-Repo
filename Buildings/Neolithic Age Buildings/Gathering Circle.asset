@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Gathering Circle
   icon: {fileID: 0}
-  description: A shared meeting space for ceremonies, decisions, and village gatherings.
+  description: Packed earth and standing stones mark the place where neighbors meet for ceremonies, judgments, feasts, and the first shared plans. Provides early Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
