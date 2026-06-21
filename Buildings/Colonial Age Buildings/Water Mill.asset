@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Water Mill
   icon: {fileID: 0}
-  description: +7 Food, +7 Production
+  description: The river does not rest, and neither do the wheels that grind the harvest and drive the workshops. Provides +7 Food and +7 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e6ee15a09a85384b0c7a08a25aa85c46, type: 2}

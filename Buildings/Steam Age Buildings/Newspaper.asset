@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Newspaper
   icon: {fileID: 0}
-  description: +6 Culture, +6 Policy Points
+  description: By breakfast, the city knows who lied, who died, who profited, and who must answer for it. Provides +6 Culture and +6 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 288401b3a188487fb0b341ca14ecd6ee, type: 2}

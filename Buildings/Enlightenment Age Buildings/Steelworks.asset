@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steelworks
   icon: {fileID: 0}
-  description: +14 Production, +3 Science
+  description: The steelworks roars with hotter fires and harder metal, giving the city strength in every beam and blade. Provides +14 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 6d01b981e1534611b9d803f7ece94a7a, type: 2}
@@ -51,7 +51,7 @@ MonoBehaviour:
   foodPerTurn: 0
   productionPerTurn: 14
   goldPerTurn: 0
-  sciencePerTurn: 3
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0

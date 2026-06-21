@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Burgh Hall
   icon: {fileID: 0}
-  description: +5 Gold, +3 Production, +1 Happiness
+  description: The burgh’s business and decisions gather under one roof. Provides +5 Gold, +3 Production, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

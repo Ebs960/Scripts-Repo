@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clock Tower
   icon: {fileID: 0}
-  description: +5 Production, +4 Science, +3 Culture
+  description: A public clock orders city life by bell and gear, helping workers, traders, and officials keep pace. Provides +5 Production, +4 Science, and +3 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

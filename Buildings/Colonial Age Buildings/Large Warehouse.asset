@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Large Warehouse
   icon: {fileID: 0}
-  description: +10 Gold, +7 Production
+  description: Spices, timber, cloth, grain, and tools wait in stacked rows, ready for the next deal or disaster. Provides +10 Gold and +7 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 8783861a96de45f8b02c6560a5dd20ab, type: 2}

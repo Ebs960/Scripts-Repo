@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steel Mill
   icon: {fileID: 0}
-  description: +20 Production, Produces 5 Steel
+  description: The mill pours the city’s future in glowing streams, cooling into rails, beams, armor, and machines. Provides +20 Production and produces 5 Steel.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b3756abf502f4cd1a83c5947b34d30ed, type: 2}

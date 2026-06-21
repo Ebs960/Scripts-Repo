@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Art Studio
   icon: {fileID: 0}
-  description: +8 Culture, +3 Gold, +1 Happiness
+  description: Painters and sculptors create works that draw wealthy patrons, stir civic pride, and brighten public life. Provides +8 Culture, +3 Gold, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

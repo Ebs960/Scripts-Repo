@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Paper Manufactory
   icon: {fileID: 0}
-  description: +8 Production, +5 Science, +3 Gold
+  description: Rags, pulp, water, and pressure become the blank pages that carry laws, letters, and experiments. Provides +8 Production, +5 Science, and +3 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 3c8e9ffa35db40bd90b10a94295b1f05, type: 2}

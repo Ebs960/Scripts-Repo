@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mission House
   icon: {fileID: 0}
-  description: +7 Faith, +4 Culture, +1 Happiness
+  description: A modest house with a heavy purpose, teaching scripture, custom, and comfort to those who gather there. Provides +7 Faith, +4 Culture, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

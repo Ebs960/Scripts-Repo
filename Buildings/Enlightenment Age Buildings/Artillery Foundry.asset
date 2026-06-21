@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Artillery Foundry
   icon: {fileID: 0}
-  description: +14 Production
+  description: Bronze and iron thunder into shape here, each cannon cast with enough force to redraw a battlefield. Provides +14 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: ef5a4145131445619a1dad1d4d508310, type: 2}

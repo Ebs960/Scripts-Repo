@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Lighthouse
   icon: {fileID: 0}
-  description: '+4 Production, +2 Culture. +1 Food for all water tiles with Improvements '
+  description: A guiding flame for ships and fishermen. Provides +2 Food, +4 Production, and +1 Food on improved water tiles.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

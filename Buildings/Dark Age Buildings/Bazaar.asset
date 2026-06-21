@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bazaar
   icon: {fileID: 0}
-  description: +6 Gold, +2 Culture
+  description: Merchants from near and far gather here to bargain and boast. Provides +6 Gold and +2 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

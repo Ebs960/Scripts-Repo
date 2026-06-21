@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Festival Grounds
   icon: {fileID: 0}
-  description: +5 Culture, +4 Gold, +2 Happiness
+  description: A lively fairground where contests, food, music, and visiting merchants bring coin and joy to the city. Provides +5 Culture, +4 Gold, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

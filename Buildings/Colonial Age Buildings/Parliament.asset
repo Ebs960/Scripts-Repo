@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Parliament
   icon: {fileID: 0}
-  description: +10 Policy Points, +6 Culture, +2 Happiness
+  description: The people may not always agree with the votes, but they love hearing someone speak for them. Provides +10 Policy Points, +6 Culture, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

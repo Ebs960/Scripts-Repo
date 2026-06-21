@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Post Office
   icon: {fileID: 0}
-  description: +4 Gold, +4 Culture, +4 Policy Points
+  description: Letters cross roads, rails, and rain, tying distant lives to the same city seal. Provides +4 Gold, +4 Culture, and +4 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

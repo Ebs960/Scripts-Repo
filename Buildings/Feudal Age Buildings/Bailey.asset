@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bailey
   icon: {fileID: 0}
-  description: +20 Defense, +3 Policy Points, +2 Happiness
+  description: Walls, watchmen, and order protect the people within. Provides +20 Defense, +3 Policy Points, and +2 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

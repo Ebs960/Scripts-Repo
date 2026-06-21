@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Coal Plant
   icon: {fileID: 0}
-  description: 'Uses Coal to provide 5 Energy and 10 Production  '
+  description: Coal dust settles on everything, but the city forgives it when the machines keep moving. Provides +10 Production, produces +5 Energy, and uses 2 Coal.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

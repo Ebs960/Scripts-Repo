@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Longbow Range
   icon: {fileID: 0}
-  description: +5 Production, +2 Culture. Can produce Longbows and Longbow Arrows
+  description: Bowyers and archers perfect the longbow’s deadly reach through constant practice and careful craft. Provides +5 Production, +2 Culture, and can produce Longbows and Longbow Arrows.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 7d958210ee2d5109804aecb49a7ae0db, type: 2}

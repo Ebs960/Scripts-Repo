@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dungeon
   icon: {fileID: 0}
-  description: +4 Order, +2 Policy Points
+  description: A grim prison beneath the stronghold, where lawbreakers and dangerous rivals are kept far from the streets. Provides +4 Order and +2 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bell Foundry
   icon: {fileID: 0}
-  description: +5 Production, +4 Faith, +3 Culture
+  description: Molten metal becomes bells that call the faithful, mark the hours, and give the city a powerful voice. Provides +5 Production, +4 Faith, and +3 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

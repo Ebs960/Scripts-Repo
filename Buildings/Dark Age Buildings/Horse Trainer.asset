@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Horse Trainer
   icon: {fileID: 0}
-  description: +3 Production, Cavalry trained here have +1 Starting Level
+  description: A yard of hooves, saddles, and hard riding lessons. Provides +3 Production, and cavalry trained here gain +1 Starting Level.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

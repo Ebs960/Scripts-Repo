@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Forum
   icon: {fileID: 0}
-  description: +3 Culture, +3 Policy Points, +1 Happiness
+  description: A public square for debate, law, and civic life. Provides +3 Culture, +3 Policy Points, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
