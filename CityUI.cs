@@ -43,6 +43,13 @@ public class CityUI : MonoBehaviour
     [SerializeField] private Transform missilesContainer; // Container for missile production options
     [SerializeField] private GameObject buildOptionPrefab; // button + icon + cost
 
+    [Header("Citizen Assignment UI")]
+    [SerializeField] private Button openCitizenAssignmentButton;
+    [SerializeField] private TextMeshProUGUI citizenJobsSummaryText;
+    [SerializeField] private TextMeshProUGUI unemploymentWarningText;
+    [SerializeField] private TextMeshProUGUI orderCrimeSummaryText;
+    [SerializeField] private bool autoOpenCitizenAssignmentOverlayOnCityClick = false;
+
     [Header("Missile Launch")]
     [Tooltip("Button shown when the city has stored missiles ready to launch. Opens MissilePanelUI.")]
     [SerializeField] private Button launchMissileButton;
@@ -105,6 +112,11 @@ public class CityUI : MonoBehaviour
         {
             makeCapitalButton.onClick.RemoveAllListeners();
             makeCapitalButton.onClick.AddListener(OnMakeCapitalClicked);
+        }
+        if (openCitizenAssignmentButton != null)
+        {
+            openCitizenAssignmentButton.onClick.RemoveAllListeners();
+            openCitizenAssignmentButton.onClick.AddListener(OnOpenCitizenAssignmentClicked);
         }
     }
 
@@ -173,9 +185,18 @@ currentCity = city;
             UIManager.Instance.unitInfoPanel.SetActive(false);
         }
 
+        CityCameraFocus.Instance?.FocusCity(currentCity);
         RefreshUI();
         gameObject.SetActive(true);
+        if (autoOpenCitizenAssignmentOverlayOnCityClick)
+            CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
 }
+
+    private void OnOpenCitizenAssignmentClicked()
+    {
+        if (currentCity == null) return;
+        CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
+    }
 
     private void OnGovernorDropdownChanged(int idx)
     {
@@ -227,6 +248,7 @@ if (currentCity == null)
         culturePerTurnText.text = $"Culture: {currentCity.GetCulturePerTurn():+#;-#;0}/turn";
         policyPointsPerTurnText.text = $"Policy: {currentCity.GetPolicyPointPerTurn():+#;-#;0}/turn";
         faithPerTurnText.text = $"Faith: {currentCity.GetFaithPerTurn():+#;-#;0}/turn";
+        RefreshCitizenAssignmentSummary();
 
         // Update Governor Display
         UpdateGovernorDisplay();
@@ -761,8 +783,28 @@ if (currentCity == null)
         governorDropdown.interactable = true;
     }
 
+    private void RefreshCitizenAssignmentSummary()
+    {
+        if (currentCity == null) return;
+        currentCity.RecalculateCitizenAssignmentCaches();
+        int tileWorkers = currentCity.GetAssignedCount(CityCitizenJobType.TileWorker);
+        int rural = currentCity.GetAssignedCount(CityCitizenJobType.RuralSpecialist);
+        int urban = currentCity.GetAssignedCount(CityCitizenJobType.UrbanSpecialist);
+        int unemployed = currentCity.GetUnemployedCount();
+        if (citizenJobsSummaryText != null)
+            citizenJobsSummaryText.text = $"Workers: {tileWorkers} | Rural: {rural} | Urban: {urban} | Unemployed: {unemployed}";
+        if (unemploymentWarningText != null)
+        {
+            unemploymentWarningText.gameObject.SetActive(unemployed > 0);
+            unemploymentWarningText.text = unemployed > 0 ? $"{unemployed} unemployed citizens are lowering order and raising bandit risk." : "";
+        }
+        if (orderCrimeSummaryText != null)
+            orderCrimeSummaryText.text = $"Order: {currentCity.orderRating}/{currentCity.maxOrder} | Bandit Risk: +{currentCity.CachedBanditRiskFromUnemployment}";
+    }
+
     public void Hide()
     {
+        CityTileOverlayController.Instance?.ExitCityAssignmentMode();
         gameObject.SetActive(false);
         // Always restore the unit info panel when the city UI is closed.
         if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)

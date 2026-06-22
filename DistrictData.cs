@@ -36,6 +36,10 @@ public class DistrictData : ScriptableObject
     public int baseScience;
     public int baseCulture;
     
+    [Header("Urban Specialist Slots")]
+    [Tooltip("Specialist jobs created by this district. These are worked by Urban Specialists.")]
+    public SpecialistSlotDefinition[] urbanSpecialistSlots;
+
     [Header("Buildings")]
     public BuildingData[] possibleBuildings;
 } 
