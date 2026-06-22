@@ -61,6 +61,10 @@ public class ImprovementUpgradeData
     [Tooltip("Increase to shelter capacity when this upgrade is applied (adds to ImprovementData.shelterCapacity)")]
     public int additionalShelterCapacity = 0;
 
+    [Header("Rural Specialist Slots")]
+    [Tooltip("Specialist jobs added by this improvement upgrade.")]
+    public SpecialistSlotDefinition[] addedRuralSpecialistSlots;
+
     [Header("Defense Effects")]
     [Tooltip("Flat defense added to any unit standing on this tile when this upgrade is built")]
     public int defenseAdd = 0;
@@ -352,6 +356,10 @@ public class ImprovementData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Rural Specialist Slots")]
+    [Tooltip("Specialist jobs created by the base improvement. These are worked by Rural Specialists.")]
+    public SpecialistSlotDefinition[] ruralSpecialistSlots;
 
     [Header("Movement")]
     [Tooltip("Flat movement bonus (can be fractional) applied to units moving on this tile (adds to their movement points).")]

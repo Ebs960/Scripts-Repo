@@ -126,6 +126,10 @@ public class BuildingData : ScriptableObject
   
 
 
+    [Header("Urban Specialist Slots")]
+    [Tooltip("Specialist jobs created by this building. These are worked by Urban Specialists.")]
+    public SpecialistSlotDefinition[] urbanSpecialistSlots;
+
     [Header("Requirements")]
     public TechData[] requiredTechs;
     [Tooltip("All these cultures must be adopted to build this building")]

@@ -88,6 +88,28 @@ public class ImprovementInstance : MonoBehaviour
         return Mathf.Max(0, cap);
     }
 
+    public List<SpecialistSlotDefinition> GetActiveRuralSpecialistSlots()
+    {
+        List<SpecialistSlotDefinition> result = new List<SpecialistSlotDefinition>();
+
+        if (data != null && data.ruralSpecialistSlots != null)
+        {
+            foreach (var slot in data.ruralSpecialistSlots)
+                if (slot != null) result.Add(slot);
+        }
+
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+        {
+            if (upgrade == null || upgrade.addedRuralSpecialistSlots == null)
+                continue;
+
+            foreach (var slot in upgrade.addedRuralSpecialistSlots)
+                if (slot != null) result.Add(slot);
+        }
+
+        return result;
+    }
+
     public bool IsFort => data != null && data.isFort;
     public bool IsFortNeutralized => IsFort && fortNeutralized;
     public int CurrentFortHitPoints => IsFort ? Mathf.Max(0, currentFortHitPoints) : 0;
@@ -210,7 +232,7 @@ public class ImprovementInstance : MonoBehaviour
             ResetFortAttacksForTurn();
     }
 
-    private IEnumerable<ImprovementUpgradeData> EnumerateAppliedUpgrades()
+    public IEnumerable<ImprovementUpgradeData> EnumerateAppliedUpgrades()
     {
         if (appliedUpgrades == null || data?.availableUpgrades == null)
             yield break;
