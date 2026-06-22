@@ -34,6 +34,9 @@ public struct BuildingVisualOverride
 
     [Tooltip("Override prefab for this civilization. Leave empty to use the default building prefab.")]
     public GameObject buildingPrefab;
+
+    [Tooltip("Override icon for this civilization. Leave empty to use the default building icon.")]
+    public Sprite icon;
 }
 
 [CreateAssetMenu(menuName="Data/Building Data")]
@@ -246,18 +249,38 @@ public class BuildingData : ScriptableObject
     [Tooltip("If >0, increases herd food storage capacity when this building is present for a herd")]
     public int herdStorageBonus = 0;
 
-    public GameObject GetBuildingPrefab(Civilization civ)
+    private bool TryGetVisualOverride(Civilization civ, out BuildingVisualOverride visualOverride)
     {
         if (civVisualOverrides != null && civ != null && civ.civData != null)
         {
             for (int i = 0; i < civVisualOverrides.Length; i++)
             {
-                if (civVisualOverrides[i].civ == civ.civData && civVisualOverrides[i].buildingPrefab != null)
-                    return civVisualOverrides[i].buildingPrefab;
+                if (civVisualOverrides[i].civ == civ.civData)
+                {
+                    visualOverride = civVisualOverrides[i];
+                    return true;
+                }
             }
         }
 
+        visualOverride = default;
+        return false;
+    }
+
+    public GameObject GetBuildingPrefab(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride) && visualOverride.buildingPrefab != null)
+            return visualOverride.buildingPrefab;
+
         return buildingPrefab;
+    }
+
+    public Sprite GetIcon(Civilization civ)
+    {
+        if (TryGetVisualOverride(civ, out var visualOverride) && visualOverride.icon != null)
+            return visualOverride.icon;
+
+        return icon;
     }
 }
 
