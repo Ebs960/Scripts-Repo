@@ -557,7 +557,7 @@ if (currentCity == null)
         // Display Buildings in buildings container
         foreach (var building in availableBuildings.OrderBy(b => b.productionCost))
         {
-            CreateBuildOptionButton(building, building.icon, building.buildingName, building.productionCost, buildingsContainer);
+            CreateBuildOptionButton(building, building.GetIcon(currentCity != null ? currentCity.owner : null), building.buildingName, building.productionCost, buildingsContainer);
         }
         
         // Display Combat Units in units container
