@@ -70,6 +70,22 @@ public class City : MonoBehaviour
     [Header("Population Consumption")]
     [Tooltip("Food consumed per population level per turn")]
     public int foodConsumptionPerPopulation = 1;
+    public int Population => Mathf.Max(1, level);
+
+    [Header("Citizen Assignment")]
+    [SerializeField] private bool manualCitizenAssignment = false;
+    [SerializeField] private List<CityCitizenAssignment> citizenAssignments = new List<CityCitizenAssignment>();
+
+    [Header("Unemployment Effects")]
+    [SerializeField] private int orderPenaltyPerUnemployedCitizen = 2;
+    [SerializeField] private int banditRiskPerUnemployedCitizen = 5;
+    [SerializeField] private int cachedUnemployedCitizens = 0;
+    [SerializeField] private int cachedBanditRiskFromUnemployment = 0;
+
+    public IReadOnlyList<CityCitizenAssignment> CitizenAssignments => citizenAssignments;
+    public bool ManualCitizenAssignment => manualCitizenAssignment;
+    public int CachedUnemployedCitizens => cachedUnemployedCitizens;
+    public int CachedBanditRiskFromUnemployment => cachedBanditRiskFromUnemployment;
 
     [Header("Defense & Morale")]
     [Tooltip("Base maximum city defense before building, technology, culture, pantheon, and belief bonuses.")]
@@ -583,6 +599,9 @@ if (UIManager.Instance != null)
         cachedNonStateReligionUnhappiness = CalculateNonStateReligionUnhappinessPerTurn();
         moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn - cachedNonStateReligionUnhappiness);
         orderRating = Mathf.Max(0, orderRating - orderDropPerTurn);
+        RecalculateCitizenAssignmentCaches();
+        int unemploymentOrderPenalty = GetUnemploymentOrderPenaltyPerTurn();
+        orderRating = Mathf.Max(0, orderRating - unemploymentOrderPenalty);
         // 5b) Apply disease morale/loyalty/population effects
         ApplyDiseaseTurnEffects();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
@@ -960,7 +979,7 @@ if (UIManager.Instance != null)
     }
     
     // Helper method to get all tiles in this city's territory
-    private List<int> GetTerritoryTiles(int radius)
+    public List<int> GetTerritoryTiles(int radius)
     {
         List<int> tiles = new List<int>();
         var ts = TileSys;
@@ -2208,8 +2227,266 @@ Destroy(oldTuple.instance);
         }
     }
 
+    public List<int> GetWorkableTileIndexes()
+    {
+        var tiles = GetTerritoryTiles(baseRadius);
+        if (!tiles.Contains(centerTileIndex))
+            tiles.Insert(0, centerTileIndex);
+        return tiles;
+    }
+
+    public bool IsTileWorkableByThisCity(int tileIndex)
+    {
+        if (tileIndex < 0) return false;
+        var ts = TileSys;
+        if (ts == null) return false;
+        var td = ts.GetTileData(tileIndex);
+        if (td == null || td.owner != owner) return false;
+        return GetWorkableTileIndexes().Contains(tileIndex);
+    }
+
+    public int GetAssignedCount(CityCitizenJobType jobType)
+    {
+        int count = 0;
+        foreach (var assignment in citizenAssignments)
+            if (assignment != null && assignment.jobType == jobType) count++;
+        return count;
+    }
+
+    public int GetAvailablePopulationForNewAssignment() => Population - citizenAssignments.Count;
+    public int GetUnemployedCount() => Mathf.Max(0, Population - citizenAssignments.Count);
+
+    public CityCitizenAssignment GetTileAssignment(int tileIndex)
+    {
+        foreach (var assignment in citizenAssignments)
+            if (assignment != null && assignment.tileIndex == tileIndex) return assignment;
+        return null;
+    }
+
+    public bool IsTileLocked(int tileIndex)
+    {
+        var assignment = GetTileAssignment(tileIndex);
+        return assignment != null && assignment.locked;
+    }
+
+    public bool AssignTileWorker(int tileIndex, out string reason)
+    {
+        reason = "";
+        if (!IsTileWorkableByThisCity(tileIndex)) { reason = "Tile is not workable by this city."; return false; }
+        if (GetTileAssignment(tileIndex) != null) { reason = "Tile already has an assignment."; return false; }
+        if (GetAvailablePopulationForNewAssignment() <= 0) { reason = "No available population."; return false; }
+        citizenAssignments.Add(new CityCitizenAssignment { jobType = CityCitizenJobType.TileWorker, tileIndex = tileIndex });
+        manualCitizenAssignment = true;
+        RecalculateCitizenAssignmentCaches();
+        return true;
+    }
+
+    public bool AssignRuralSpecialist(int tileIndex, string slotId, out string reason)
+    {
+        reason = "";
+        if (!IsTileWorkableByThisCity(tileIndex)) { reason = "Tile is not workable by this city."; return false; }
+        if (GetAvailablePopulationForNewAssignment() <= 0) { reason = "No available population."; return false; }
+        var ts = TileSys;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
+        var instance = td?.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+        if (instance == null) { reason = "This tile has no improvement specialist slots."; return false; }
+        bool foundSlot = instance.GetActiveRuralSpecialistSlots().Any(slot => slot != null && slot.slotId == slotId);
+        if (!foundSlot) { reason = "Rural specialist slot not found."; return false; }
+        foreach (var assignment in citizenAssignments)
+            if (assignment != null && assignment.jobType == CityCitizenJobType.RuralSpecialist && assignment.tileIndex == tileIndex && assignment.specialistSlotId == slotId)
+            { reason = "That rural specialist slot is already assigned."; return false; }
+        citizenAssignments.Add(new CityCitizenAssignment { jobType = CityCitizenJobType.RuralSpecialist, tileIndex = tileIndex, specialistSlotId = slotId, improvement = td.improvement });
+        manualCitizenAssignment = true;
+        RecalculateCitizenAssignmentCaches();
+        return true;
+    }
+
+    public bool AssignUrbanSpecialist(BuildingData building, string slotId, out string reason)
+    {
+        reason = "";
+        if (building == null) { reason = "No building selected."; return false; }
+        if (GetAvailablePopulationForNewAssignment() <= 0) { reason = "No available population."; return false; }
+        bool cityHasBuilding = builtBuildings.Any(entry => entry.data == building);
+        if (!cityHasBuilding) { reason = "City does not have this building."; return false; }
+        bool foundSlot = building.urbanSpecialistSlots != null && building.urbanSpecialistSlots.Any(slot => slot != null && slot.slotId == slotId);
+        if (!foundSlot) { reason = "Urban specialist slot not found."; return false; }
+        foreach (var assignment in citizenAssignments)
+            if (assignment != null && assignment.jobType == CityCitizenJobType.UrbanSpecialist && assignment.building == building && assignment.specialistSlotId == slotId)
+            { reason = "That urban specialist slot is already assigned."; return false; }
+        citizenAssignments.Add(new CityCitizenAssignment { jobType = CityCitizenJobType.UrbanSpecialist, building = building, specialistSlotId = slotId });
+        manualCitizenAssignment = true;
+        RecalculateCitizenAssignmentCaches();
+        return true;
+    }
+
+    public bool AssignUrbanSpecialist(DistrictData district, string slotId, out string reason)
+    {
+        reason = "";
+        if (district == null) { reason = "No district selected."; return false; }
+        if (GetAvailablePopulationForNewAssignment() <= 0) { reason = "No available population."; return false; }
+        bool cityHasDistrict = builtDistricts.Any(entry => entry.data == district);
+        if (!cityHasDistrict) { reason = "City does not have this district."; return false; }
+        bool foundSlot = district.urbanSpecialistSlots != null && district.urbanSpecialistSlots.Any(slot => slot != null && slot.slotId == slotId);
+        if (!foundSlot) { reason = "Urban specialist slot not found."; return false; }
+        foreach (var assignment in citizenAssignments)
+            if (assignment != null && assignment.jobType == CityCitizenJobType.UrbanSpecialist && assignment.district == district && assignment.specialistSlotId == slotId)
+            { reason = "That urban specialist slot is already assigned."; return false; }
+        citizenAssignments.Add(new CityCitizenAssignment { jobType = CityCitizenJobType.UrbanSpecialist, district = district, specialistSlotId = slotId });
+        manualCitizenAssignment = true;
+        RecalculateCitizenAssignmentCaches();
+        return true;
+    }
+
+    public bool RemoveUrbanSpecialist(BuildingData building, string slotId)
+    {
+        return RemoveAssignment(citizenAssignments.FirstOrDefault(a => a != null && a.jobType == CityCitizenJobType.UrbanSpecialist && a.building == building && a.specialistSlotId == slotId));
+    }
+
+    public bool RemoveUrbanSpecialist(DistrictData district, string slotId)
+    {
+        return RemoveAssignment(citizenAssignments.FirstOrDefault(a => a != null && a.jobType == CityCitizenJobType.UrbanSpecialist && a.district == district && a.specialistSlotId == slotId));
+    }
+
+    public bool RemoveAssignment(CityCitizenAssignment assignment)
+    {
+        if (assignment == null) return false;
+        bool removed = citizenAssignments.Remove(assignment);
+        if (removed) RecalculateCitizenAssignmentCaches();
+        return removed;
+    }
+
+    public bool RemoveAssignmentFromTile(int tileIndex) => RemoveAssignment(GetTileAssignment(tileIndex));
+
+    public void SetTileAssignmentLocked(int tileIndex, bool locked)
+    {
+        var assignment = GetTileAssignment(tileIndex);
+        if (assignment != null) assignment.locked = locked;
+    }
+
+    public void RecalculateCitizenAssignmentCaches()
+    {
+        cachedUnemployedCitizens = GetUnemployedCount();
+        cachedBanditRiskFromUnemployment = cachedUnemployedCitizens * banditRiskPerUnemployedCitizen;
+    }
+
+    public int GetUnemploymentOrderPenaltyPerTurn() => cachedUnemployedCitizens * GetEffectiveOrderPenaltyPerUnemployedCitizen();
+
+    public int GetEffectiveOrderPenaltyPerUnemployedCitizen()
+    {
+        int penalty = orderPenaltyPerUnemployedCitizen;
+        return Mathf.Max(0, penalty);
+    }
+
     public int TerritoryRadius => baseRadius
         + (level >= 20 ? 1 : 0) + (level >= 40 ? 1 : 0) + GetAttachedSettlementTerritoryRadiusBonus();
+
+    public void AutoAssignCitizens()
+    {
+        citizenAssignments.RemoveAll(a => a == null || !a.locked);
+        RecalculateCitizenAssignmentCaches();
+
+        foreach (int tileIndex in GetWorkableTileIndexes()
+            .OrderByDescending(GetBasicTileAssignmentScore))
+        {
+            if (GetAvailablePopulationForNewAssignment() <= 0) break;
+            string reason;
+            AssignTileWorker(tileIndex, out reason);
+        }
+    }
+
+    private int GetBasicTileAssignmentScore(int tileIndex)
+    {
+        var ts = TileSys;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (td == null) return 0;
+        int score = td.food + td.production + td.gold;
+        if (td.improvement != null)
+            score += td.improvement.foodPerTurn + td.improvement.productionPerTurn + td.improvement.goldPerTurn;
+        return score;
+    }
+
+    private TileYield GetYieldFromCitizenAssignments()
+    {
+        TileYield result = new TileYield();
+        foreach (var assignment in citizenAssignments)
+        {
+            if (assignment == null) continue;
+            if (assignment.jobType == CityCitizenJobType.TileWorker) AddWorkedTileYield(ref result, assignment.tileIndex);
+            else if (assignment.jobType == CityCitizenJobType.RuralSpecialist) AddRuralSpecialistYield(ref result, assignment);
+            else if (assignment.jobType == CityCitizenJobType.UrbanSpecialist) AddUrbanSpecialistYield(ref result, assignment);
+        }
+        return result;
+    }
+
+    private void AddWorkedTileYield(ref TileYield result, int tileIndex)
+    {
+        var ts = TileSys;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (td == null) return;
+        result.Food += td.food;
+        result.Production += td.production;
+        result.Gold += td.gold;
+        result.Science += td.science;
+        result.Culture += td.culture;
+        result.Faith += td.faithYield;
+        result.Policy += td.policyPointYield;
+        if (td.improvement != null)
+        {
+            result.Food += td.improvement.foodPerTurn;
+            result.Production += td.improvement.productionPerTurn;
+            result.Gold += td.improvement.goldPerTurn;
+            result.Science += td.improvement.sciencePerTurn;
+            result.Culture += td.improvement.culturePerTurn;
+            result.Faith += td.improvement.faithPerTurn;
+            result.Policy += td.improvement.policyPointsPerTurn;
+        }
+    }
+
+    private void AddRuralSpecialistYield(ref TileYield result, CityCitizenAssignment assignment)
+    {
+        var slot = FindRuralSpecialistSlot(assignment.tileIndex, assignment.specialistSlotId);
+        AddSpecialistSlotYield(ref result, slot);
+    }
+
+    private void AddUrbanSpecialistYield(ref TileYield result, CityCitizenAssignment assignment)
+    {
+        SpecialistSlotDefinition slot = assignment.building != null
+            ? FindUrbanSpecialistSlot(assignment.building, assignment.specialistSlotId)
+            : FindUrbanSpecialistSlot(assignment.district, assignment.specialistSlotId);
+        AddSpecialistSlotYield(ref result, slot);
+    }
+
+    private void AddSpecialistSlotYield(ref TileYield result, SpecialistSlotDefinition slot)
+    {
+        if (slot == null) return;
+        result.Food += slot.food;
+        result.Production += slot.production;
+        result.Gold += slot.gold;
+        result.Science += slot.science;
+        result.Culture += slot.culture;
+        result.Faith += slot.faith;
+        result.Policy += slot.policyPoints;
+    }
+
+    private SpecialistSlotDefinition FindRuralSpecialistSlot(int tileIndex, string slotId)
+    {
+        var ts = TileSys;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
+        var instance = td?.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+        return instance == null ? null : instance.GetActiveRuralSpecialistSlots().FirstOrDefault(slot => slot != null && slot.slotId == slotId);
+    }
+
+    private SpecialistSlotDefinition FindUrbanSpecialistSlot(BuildingData building, string slotId)
+    {
+        if (building == null || building.urbanSpecialistSlots == null) return null;
+        return building.urbanSpecialistSlots.FirstOrDefault(slot => slot != null && slot.slotId == slotId);
+    }
+
+    private SpecialistSlotDefinition FindUrbanSpecialistSlot(DistrictData district, string slotId)
+    {
+        if (district == null || district.urbanSpecialistSlots == null) return null;
+        return district.urbanSpecialistSlots.FirstOrDefault(slot => slot != null && slot.slotId == slotId);
+    }
 
     // --- Yield Calculation ---
     // NOTE: These need proper implementation based on your game logic
