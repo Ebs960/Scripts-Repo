@@ -10,11 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Holograph
+  m_Name: Holograph Theater
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Holograph Theater
   icon: {fileID: 0}
-  description: Actors, myths, battles, and memories appear in the air with enough detail to make reality feel underfunded. Provides +92 Culture.
+  description: Actors, myths, battles, and memories appear in the air with enough
+    detail to make reality feel underfunded. Provides +92 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: eb949e84a6d945eaa5ccb4316af685cb, type: 2}

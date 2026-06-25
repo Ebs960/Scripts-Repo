@@ -18,7 +18,7 @@ MonoBehaviour:
     soil, weather, or seasons. Provides +40 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 11400000, guid: a990180bc3494adb8d882af9ce9c2ed7, type: 2}
+  replacesBuilding: {fileID: 0}
   productionCost: 5600
   goldCost: 8400
   buildGoldCost: 0

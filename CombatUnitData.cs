@@ -48,8 +48,10 @@ public enum CombatCategory
     Helicopter = 35,
     // Amphibious aircraft that can use air systems while being allowed to base/spawn from water-surface tiles.
     SeaPlane = 36,
+    FightingVehicle = 37,
 
-    FightingVehicle = 37
+    Mech = 38
+
 
 
 }

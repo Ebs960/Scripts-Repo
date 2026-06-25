@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Clone Facility
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clone Facility
-  icon: {fileID: 0}
-  description: The clone facility expands the city’s future one cultivated body, organ, and food source at a time. Provides +62 Food.
+  icon: {fileID: 21300000, guid: 6d53a1330d316864a939dc5c278f0d68, type: 3}
+  description: "The clone facility expands the city\u2019s future one cultivated
+    body, organ, and food source at a time. Provides +65 Food. +40% Faster Production
+    of Mutant Units"
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 5c6ab1277c724ac9b69c2e816ec00b88, type: 2}
@@ -22,10 +24,12 @@ MonoBehaviour:
   goldCost: 10800
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 10800
   dismantleResourceRefunds: []
@@ -40,17 +44,28 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 01e13a10e4a29ad4cafb5a5ab1678722, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 01000000
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
-  foodPerTurn: 62
+  foodPerTurn: 65
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -64,6 +79,15 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +98,13 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers:
+  - combatUnit: {fileID: 0}
+    workerUnit: {fileID: 0}
+    useCombatCategoryFilter: 1
+    combatCategory: 16
+    productionAdd: 0
+    productionPct: 0.5
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

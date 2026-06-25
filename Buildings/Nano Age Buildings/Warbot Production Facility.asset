@@ -15,7 +15,8 @@ MonoBehaviour:
   buildingName: Warbot Production Facility
   icon: {fileID: 21300000, guid: 1f260edfb1451de4db0c5ec8628e164e, type: 3}
   description: Armored machines wake on the assembly line, built for battle before
-    they ever see a battlefield. Provides +54 Production, +10 Science, and +12 Order.
+    they ever see a battlefield. Provides +54 Production, and +12 Order. +30% Faster
+    Production of Mechs
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -49,7 +50,7 @@ MonoBehaviour:
   IsEquipmentProducer: 0
   IsWonder: 0
   IsHappinessBuilding: 0
-  IsOrderBuilding: 0
+  IsOrderBuilding: 1
   isPerimeterWall: 0
   urbanSpecialistSlots: []
   requiredTechs:
@@ -60,19 +61,19 @@ MonoBehaviour:
   requiredPolicies: []
   requiredBuildings: []
   alternativeUnlockRequirements: []
-  allowedCitySlotTypes: 
+  allowedCitySlotTypes: 07000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 54
   goldPerTurn: 0
-  sciencePerTurn: 10
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
-  cityProductionModifier: 0.1
+  cityProductionModifier: 0
   cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
@@ -97,7 +98,13 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
-  unitProductionModifiers: []
+  unitProductionModifiers:
+  - combatUnit: {fileID: 0}
+    workerUnit: {fileID: 0}
+    useCombatCategoryFilter: 1
+    combatCategory: 38
+    productionAdd: 0
+    productionPct: 0.3
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

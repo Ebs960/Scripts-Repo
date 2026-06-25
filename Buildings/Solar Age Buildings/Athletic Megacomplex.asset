@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Athletic Megacomplex
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Athletic Megacomplex
-  icon: {fileID: 0}
-  description: Stadiums, arenas, training towers, and simulated worlds make competition a daily celebration for the entire city. Provides +24 Happiness.
+  icon: {fileID: 21300000, guid: 37b59c64c56208f47ad2a998c0491b31, type: 3}
+  description: Stadiums, arenas, training towers, and simulated worlds make competition
+    a daily celebration for the entire city. Provides +24 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 81d347896cc34c61a415e0c8ac132834, type: 2}
@@ -22,10 +23,12 @@ MonoBehaviour:
   goldCost: 10350
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 10350
   dismantleResourceRefunds: []
@@ -40,15 +43,26 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 4b83d013d545997448cd573b7842974e, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -64,6 +78,15 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -71,9 +94,10 @@ MonoBehaviour:
   defenseBonus: 0
   happinessBonus: 24
   orderBonus: 0
-  cityHappinessModifier: 0.10
+  cityHappinessModifier: 0.1
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

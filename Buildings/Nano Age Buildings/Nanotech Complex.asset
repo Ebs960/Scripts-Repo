@@ -15,7 +15,7 @@ MonoBehaviour:
   buildingName: Nanotech Complex
   icon: {fileID: 21300000, guid: a3460609e7f703d4ab517cf4b756ca8b, type: 3}
   description: Matter is engineered molecule by molecule here, where tiny machines
-    promise enormous changes. Provides +30 Production and +30 Science. Nanobot Units
+    promise enormous changes. Provides +30 Production and +30 Science. Robot Units
     are made 50% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
@@ -61,7 +61,7 @@ MonoBehaviour:
   requiredPolicies: []
   requiredBuildings: []
   alternativeUnlockRequirements: []
-  allowedCitySlotTypes: 
+  allowedCitySlotTypes: 02000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -89,7 +89,9 @@ MonoBehaviour:
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 5
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
@@ -99,16 +101,10 @@ MonoBehaviour:
   cityOrderModifier: 0
   unitBonuses: []
   unitProductionModifiers:
-  - combatUnit: {fileID: 11400000, guid: e783f5221c102ce4e9d2171805c59931, type: 2}
+  - combatUnit: {fileID: 0}
     workerUnit: {fileID: 0}
-    useCombatCategoryFilter: 0
-    combatCategory: 0
-    productionAdd: 0
-    productionPct: 0.5
-  - combatUnit: {fileID: 11400000, guid: 8dddd5715d97d44488c176a93d98e130, type: 2}
-    workerUnit: {fileID: 0}
-    useCombatCategoryFilter: 0
-    combatCategory: 0
+    useCombatCategoryFilter: 1
+    combatCategory: 15
     productionAdd: 0
     productionPct: 0.5
   workerBonuses: []
