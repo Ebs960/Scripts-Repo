@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Fusion Reactor
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Fusion Reactor
-  icon: {fileID: 0}
-  description: A captured star burns behind magnetic fields, feeding the city clean power from impossible heat. Provides +62 Production and +12 Science.
+  icon: {fileID: 21300000, guid: aa8078fce23ae654e824b078f6a768ae, type: 3}
+  description: A captured star burns behind magnetic fields, feeding the city clean
+    power from impossible heat. Provides +62 Production and +12 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 222918c548f84c88a0b631548a9e1957, type: 2}
@@ -22,10 +23,12 @@ MonoBehaviour:
   goldCost: 9300
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 9300
   dismantleResourceRefunds: []
@@ -40,15 +43,26 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 172a326c5a7196e48bb628458111906f, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 62
@@ -58,12 +72,21 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
-  cityProductionModifier: 0.10
+  cityProductionModifier: 0.1
   cityGoldModifier: 0
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +97,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

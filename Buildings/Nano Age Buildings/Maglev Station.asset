@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Maglev Station
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Maglev Station
-  icon: {fileID: 0}
-  description: Trains float above the track and vanish down the line, making speed feel smooth enough to forget. Provides +34 Gold, +24 Production, +8 Policy, and +6 Happiness.
+  icon: {fileID: 21300000, guid: 78d21adeccfa5f84880c0ca099736ffa, type: 3}
+  description: Trains float above the track and vanish down the line, making speed
+    feel smooth enough to forget. Provides +34 Gold, +24 Production, +8 Policy, and
+    +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: be8815e26bf046d7a55bed1598566d6a, type: 2}
@@ -22,10 +24,12 @@ MonoBehaviour:
   goldCost: 8700
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 8700
   dismantleResourceRefunds: []
@@ -40,15 +44,26 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: b090ebad0549db24c85b3fb25a2ce983, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 24
@@ -59,11 +74,20 @@ MonoBehaviour:
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
-  cityGoldModifier: 0.10
+  cityGoldModifier: 0.1
   cityScienceModifier: 0
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +98,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

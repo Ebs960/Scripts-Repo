@@ -13,17 +13,20 @@ MonoBehaviour:
   m_Name: Internet Cafe
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Internet Cafe
-  icon: {fileID: 0}
-  description: Screens glow over coffee cups as students, gamers, workers, and wanderers log into the wider world. Provides +10% Science, +10% Culture, and +5 Happiness.
+  icon: {fileID: 21300000, guid: 12a59c7064decdf4d8f3a02bec145760, type: 3}
+  description: Screens glow over coffee cups as students, gamers, workers, and wanderers
+    log into the wider world. Provides +10% Science, +10% Culture, and +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 5fb8e86107c34552802d5426d48ed3fe, type: 2}
   productionCost: 3900
   goldCost: 5850
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,13 +43,24 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 1
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: f00764adc6805f94d9896d0c99fbe036, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -64,6 +78,13 @@ MonoBehaviour:
   cityCultureModifier: 0.1
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -76,6 +97,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

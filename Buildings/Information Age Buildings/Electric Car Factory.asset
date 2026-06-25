@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Electric Car Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Electric Car Factory
-  icon: {fileID: 0}
-  description: Engineers and assemblers build the next generation of vehicles around software, batteries, and quiet acceleration. Provides +42 Production, +20 Gold, and +6 Science.
+  icon: {fileID: 21300000, guid: 78fa1db8125f2d74d8118dfa74fafffa, type: 3}
+  description: Engineers and assemblers build the next generation of vehicles around
+    software, batteries, and quiet acceleration. Provides +42 Production, +20 Gold,
+    and +6 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 3bffa7721f52434ba80f2c53b94f04fc, type: 2}
@@ -22,10 +24,12 @@ MonoBehaviour:
   goldCost: 7800
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 7800
   dismantleResourceRefunds: []
@@ -40,15 +44,26 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: b6ce78791027b9f458b6d41ba625cdd4, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 42
@@ -64,6 +79,15 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +98,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

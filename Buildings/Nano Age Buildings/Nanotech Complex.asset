@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Nanotech Complex
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Nanotech Complex
-  icon: {fileID: 0}
-  description: Matter is engineered molecule by molecule here, where tiny machines promise enormous changes. Provides +30 Production and +30 Science. Nanobot Units are made 50% faster.
+  icon: {fileID: 21300000, guid: a3460609e7f703d4ab517cf4b756ca8b, type: 3}
+  description: Matter is engineered molecule by molecule here, where tiny machines
+    promise enormous changes. Provides +30 Production and +30 Science. Nanobot Units
+    are made 50% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 10200
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -43,7 +47,12 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: b090ebad0549db24c85b3fb25a2ce983, type: 2}
   requiredCultures: []
@@ -51,6 +60,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -68,6 +79,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

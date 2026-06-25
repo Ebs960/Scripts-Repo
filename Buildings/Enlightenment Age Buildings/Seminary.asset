@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Seminary
   icon: {fileID: 0}
-  description: Future clergy study scripture, language, and reason, learning to defend faith in a more questioning age. Provides +12 Faith and +4 Happiness.
+  description: Future clergy study scripture, language, and reason, learning to defend
+    faith in a more questioning age. Provides +12 Faith and +6 Culture, +6 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 4d178ba23b91450d954a00f9fd67c508, type: 2}
@@ -22,8 +23,10 @@ MonoBehaviour:
   goldCost: 1230
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -38,12 +41,17 @@ MonoBehaviour:
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 0
+  isCultureBuilding: 1
   isFaithBuilding: 1
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 1
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: dfc17cf7505494b4eb57b551af845e10, type: 2}
@@ -51,6 +59,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -58,7 +68,7 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 0
+  culturePerTurn: 6
   policyPointsPerTurn: 0
   faithPerTurn: 12
   cityFoodModifier: 0
@@ -68,6 +78,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -75,7 +92,7 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 4
+  happinessBonus: 6
   orderBonus: 0
   cityHappinessModifier: 0
   cityOrderModifier: 0
