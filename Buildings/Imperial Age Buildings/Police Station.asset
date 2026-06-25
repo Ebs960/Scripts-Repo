@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Police Station
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Police Station
-  icon: {fileID: 0}
-  description: The police station gives the city’s laws a uniform, a whistle, and a place to bring trouble after dark. Provides +7 Order and +5 Policy Points.
+  icon: {fileID: 21300000, guid: c00779cea2bcbe940a14c43daa8cf3ad, type: 3}
+  description: "The police station gives the city\u2019s laws a uniform, a whistle,
+    and a place to bring trouble after dark. Provides +7 Order and +5 Policy Points."
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: 65271b5d0dfa7d95253d33dd00624d33, type: 2}
@@ -22,8 +23,10 @@ MonoBehaviour:
   goldCost: 2850
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,13 +43,24 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: eae1dbf5d5b5e5b4893d3587a20b199f, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -64,6 +78,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -76,6 +97,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

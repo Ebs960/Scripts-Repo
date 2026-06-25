@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Doctor's Office
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Doctor's Office
-  icon: {fileID: 0}
-  description: A clean room, steady hands, and careful records keep illness from becoming a death sentence. Provides +7 Food and -40% Disease Fatalities in this city.
+  icon: {fileID: 21300000, guid: 03586d7c6ce700f4cbb14971292343d6, type: 3}
+  description: A clean room, steady hands, and careful records keep illness from
+    becoming a death sentence. Provides +7 Food and -40% Disease Fatalities in this
+    city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: f9d2727f062f4c0f91e23f7effecb004, type: 2}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 2850
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -48,6 +52,7 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
   requiredCultures: []
@@ -56,6 +61,7 @@ MonoBehaviour:
   requiredPolicies: []
   requiredBuildings: []
   alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1

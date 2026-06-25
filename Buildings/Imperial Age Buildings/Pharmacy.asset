@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Pharmacy
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pharmacy
-  icon: {fileID: 0}
-  description: Prescriptions and patent cures crowd the shelves, offering the city relief from fevers, coughs, and fear. Provides +5 Happiness and -25% Disease Spread Chance, Infection Chance, and Duration.
+  icon: {fileID: 21300000, guid: 289bd4dfd313f6d42b05e5b7052d9b6f, type: 3}
+  description: Prescriptions and patent cures crowd the shelves, offering the city
+    relief from fevers, coughs, and fear. Provides +5 Happiness and -25% Disease
+    Spread Chance, Infection Chance, and Duration.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 2775
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -48,6 +52,7 @@ MonoBehaviour:
   IsHappinessBuilding: 0
   IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 444c07017ad27644bb68bcf71aa639ea, type: 2}
   requiredCultures: []
@@ -56,6 +61,7 @@ MonoBehaviour:
   requiredPolicies: []
   requiredBuildings: []
   alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1

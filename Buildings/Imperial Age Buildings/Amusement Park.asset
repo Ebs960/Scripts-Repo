@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Amusement Park
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Amusement Park
-  icon: {fileID: 0}
-  description: Bright lights, shrieking rides, and impossible prizes give the city a place to forget the factory whistle for a while. Provides +7 Culture and +6 Happiness.
+  icon: {fileID: 21300000, guid: 5dfcae6844ba8414aaa762a84c030dc0, type: 3}
+  description: Bright lights, shrieking rides, and impossible prizes give the city
+    a place to forget the factory whistle for a while. Provides +7 Culture and +6
+    Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 3150
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,13 +44,24 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 1
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: eeaca3e7b29798144aae9d6b2c8c7e4b, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -64,6 +79,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

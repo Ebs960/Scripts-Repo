@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Telegraph Station
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Telegraph Station
-  icon: {fileID: 0}
-  description: Clicks race along the wires, carrying prices, orders, gossip, and warnings faster than any horse. Provides +6 Gold, +5 Culture, and +5 Policy Points.
+  icon: {fileID: 21300000, guid: 79401780d43316044909c43f042a1ae8, type: 3}
+  description: Clicks race along the wires, carrying prices, orders, gossip, and
+    warnings faster than any horse. Provides +6 Gold, +5 Culture, and +5 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: d27da0ff820010ea7f57653f45f2a76b, type: 2}
@@ -22,8 +23,10 @@ MonoBehaviour:
   goldCost: 2850
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,13 +43,24 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 00633badf76891f458c403f6cea6ff0a, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -57,6 +71,20 @@ MonoBehaviour:
   culturePerTurn: 5
   policyPointsPerTurn: 5
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -67,7 +95,11 @@ MonoBehaviour:
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
