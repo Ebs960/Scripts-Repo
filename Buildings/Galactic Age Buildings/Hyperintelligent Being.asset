@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Hyperintelligent Being
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Hyperintelligent Being
-  icon: {fileID: 0}
-  description: The being offers answers with frightening calm, seeing patterns across history, physics, and civilizations at once. Provides +170 Science.
+  icon: {fileID: 21300000, guid: 855bf49c35c7dd64bb054087bfdd9c80, type: 3}
+  description: The being offers answers with frightening calm, seeing patterns across
+    history, physics, and civilizations at once. Provides +170 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: e2abdec0560f4ab5a5cd8cd2434dc2cb, type: 2}
@@ -22,10 +23,12 @@ MonoBehaviour:
   goldCost: 18750
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 18750
   dismantleResourceRefunds: []
@@ -40,15 +43,26 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 870ab5c0f7907944a8c86a2ad6929fbd, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 04000000
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -64,6 +78,15 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +97,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

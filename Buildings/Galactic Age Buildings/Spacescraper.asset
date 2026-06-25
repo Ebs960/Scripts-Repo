@@ -13,19 +13,22 @@ MonoBehaviour:
   m_Name: Spacescraper
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Spacescraper
-  icon: {fileID: 0}
-  description: The spacescraper rises through atmosphere and orbit alike, stacking commerce where skylines used to end. Provides +112 Gold.
+  icon: {fileID: 21300000, guid: 0f1a0765a75bbe443b6b764f427859d9, type: 3}
+  description: The spacescraper rises through atmosphere and orbit alike, stacking
+    commerce where skylines used to end. Provides +112 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
-  replacesBuilding: {fileID: 0}
+  replacesBuilding: {fileID: 11400000, guid: 953eb73f74ea436198d8f5e51f797dd9, type: 2}
   productionCost: 10600
   goldCost: 15900
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
-  requiredTerrains:
-  allowedBiomes:
+  hasSubstituteRequiredResources: 0
+  requiredTerrains: 
+  allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 15900
   dismantleResourceRefunds: []
@@ -40,15 +43,26 @@ MonoBehaviour:
   isGoldBuilding: 1
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: f5d30f86694386742b70c942ad335bef, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 09000000
   buildingLimit: -1
-  limitCategory:
+  limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
@@ -64,6 +78,15 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
@@ -74,6 +97,7 @@ MonoBehaviour:
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
