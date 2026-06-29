@@ -10,24 +10,28 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
-  m_Name: Public Press
+  m_Name: Prime Minister's Office Icon
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Public Press
+  buildingName: Prime Minister's Office
   icon: {fileID: 0}
-  description: Printers, editors, and public readers spread arguments beyond the chamber, making politics a citywide conversation. Provides +4 Gold, +4 Science, +4 Culture, and +4 Happiness.
+  description: The Prime Minister rules the country from this residence and advances
+    the cause of democracy. Provides +3 Science, +5 Culture, +2 Policy Points, and
+    +5 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 1089
-  goldCost: 1633
+  productionCost: 1136
+  goldCost: 1704
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
-  dismantleGoldRefund: 1633
+  dismantleGoldRefund: 1704
   dismantleResourceRefunds: []
   equipmentProduction: []
   projectileProduction: []
@@ -37,13 +41,18 @@ MonoBehaviour:
   isScienceBuilding: 1
   isFoodBuilding: 0
   isProductionBuilding: 0
-  isGoldBuilding: 1
+  isGoldBuilding: 0
   isCultureBuilding: 1
   isFaithBuilding: 0
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: a5200ff47ae13d84dba0d703392cc629, type: 2}
@@ -52,15 +61,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 0b000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 4
-  sciencePerTurn: 4
-  culturePerTurn: 4
-  policyPointsPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 3
+  culturePerTurn: 5
+  policyPointsPerTurn: 2
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
@@ -69,6 +80,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -76,7 +94,7 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 4
+  happinessBonus: 5
   orderBonus: 0
   cityHappinessModifier: 0
   cityOrderModifier: 0

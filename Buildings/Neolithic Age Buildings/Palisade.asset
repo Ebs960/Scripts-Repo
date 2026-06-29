@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Palisade
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Palisade
-  icon: {fileID: 0}
-  description: Sharpened posts ring the settlement, warning raiders and predators that this cluster of homes has become a defended community. Provides +1 Policy Points, +5 Defense, and +1 Happiness.
+  icon: {fileID: 21300000, guid: 925be80114c53a34496b987ce8a45d48, type: 3}
+  description: Sharpened posts ring the settlement, warning raiders and predators
+    that this cluster of homes has become a defended community. Provides +1 Policy
+    Points, +5 Defense, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,27 +24,44 @@ MonoBehaviour:
   goldCost: 90
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
   dismantleGoldRefund: 90
   dismantleResourceRefunds: []
   equipmentProduction: []
+  projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
   isCultureBuilding: 0
+  isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 1
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: cb48ec11f69efca40bf2b61f6a381a8f, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -53,13 +72,33 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 1
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 5
   happinessBonus: 1
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

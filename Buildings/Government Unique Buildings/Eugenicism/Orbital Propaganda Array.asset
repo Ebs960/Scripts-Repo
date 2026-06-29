@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Orbital Propaganda Array
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Orbital Propaganda Array
-  icon: {fileID: 0}
-  description: Orbital transmitters flood colonies with martial pageantry and loyalist myth, making obedience visible from space. Provides +15 Policy Points, +10 Happiness, and +10 Order.
+  icon: {fileID: 21300000, guid: 48c6ae90b2e3b1145b12221a37ab05de, type: 3}
+  description: Orbital transmitters flood colonies with martial pageantry and loyalist
+    myth, making obedience visible from space. Provides +15 Policy Points, +10 Happiness,
+    and +10 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 15996
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -43,7 +47,12 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: 928872935c0448944a917c10dd8d044a, type: 2}
@@ -52,6 +61,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ba59728f1d884649936dd595b4f0d3d6, type: 2}
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -69,6 +80,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
