@@ -555,9 +555,12 @@ public class UnitMovementController : MonoBehaviour
             foreach (var comp in stackCompanions)
                 effectiveMP = Mathf.Min(effectiveMP, comp.currentMovePoints);
 
-            if (effectiveMP < movementCost)
+            // Allow a unit with at least 1 MP to enter the next tile even if
+            // the full movement cost, including all penalties, exceeds its
+            // remaining MP. The deduction below clamps remaining MP to zero.
+            if (effectiveMP < 1)
             {
-                breakReason = $"insufficient MP ({effectiveMP} < {movementCost}) at step {stepIndex} tile={targetTile}";
+                breakReason = $"no MP remaining ({effectiveMP} < 1; full cost {movementCost}) at step {stepIndex} tile={targetTile}";
                 break;
             }
 
