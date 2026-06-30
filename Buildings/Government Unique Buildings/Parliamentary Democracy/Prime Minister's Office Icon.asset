@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: Prime Minister's Office Icon
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Prime Minister's Office
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 3192ce70503e75b4eb45b4321d1c68b7, type: 3}
   description: The Prime Minister rules the country from this residence and advances
-    the cause of democracy. Provides +3 Science, +5 Culture, +2 Policy Points, and
-    +5 Happiness.
+    the cause of democracy. Provides +8 Happiness, +8 Order, and +20% Science and
+    Culture in this City
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
-  productionCost: 1136
-  goldCost: 1704
+  productionCost: 1130
+  goldCost: 1700
   buildGoldCost: 0
   buildResourceCosts: []
   hasSubstituteBuildCosts: 0
@@ -69,15 +69,15 @@ MonoBehaviour:
   foodPerTurn: 0
   productionPerTurn: 0
   goldPerTurn: 0
-  sciencePerTurn: 3
-  culturePerTurn: 5
-  policyPointsPerTurn: 2
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
   cityGoldModifier: 0
-  cityScienceModifier: 0
-  cityCultureModifier: 0
+  cityScienceModifier: 0.2
+  cityCultureModifier: 0.2
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
   empireFoodModifier: 0
@@ -94,8 +94,8 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 5
-  orderBonus: 0
+  happinessBonus: 8
+  orderBonus: 8
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []

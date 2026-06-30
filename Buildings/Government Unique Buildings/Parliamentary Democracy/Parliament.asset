@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99e79da4c1316194bad8d03472d8b0f7, type: 3}
   m_Name: Parliament
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
-  buildingName: Public Press
-  icon: {fileID: 0}
-  description: Printers, editors, and public readers spread arguments beyond the
-    chamber, making politics a citywide conversation. Provides +4 Gold, +4 Science,
-    +4 Culture, and +4 Happiness.
+  buildingName: Parliament
+  icon: {fileID: 21300000, guid: 58bf9c29d6e136846aba271004ba8ab4, type: 3}
+  description: Members of Parliament spread arguments throughout the chamber, making
+    politics a nationwide conversation. Provides +10 Policy Points, +5 Culture, +5
+    Order, and +50% Policy Points in this City
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -24,8 +24,10 @@ MonoBehaviour:
   goldCost: 1633
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -36,16 +38,21 @@ MonoBehaviour:
   providesHarbor: 0
   providesAirport: 0
   providesSpaceport: 0
-  isScienceBuilding: 1
+  isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
-  isGoldBuilding: 1
+  isGoldBuilding: 0
   isCultureBuilding: 1
   isFaithBuilding: 0
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 1
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 1
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: a5200ff47ae13d84dba0d703392cc629, type: 2}
@@ -54,23 +61,32 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredPolicies: []
   requiredBuildings: []
-  buildingLimit: -1
-  limitCategory: 
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
+  buildingLimit: 1
+  limitCategory: Parliament
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 0
-  goldPerTurn: 4
-  sciencePerTurn: 4
-  culturePerTurn: 4
-  policyPointsPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 5
+  policyPointsPerTurn: 10
   faithPerTurn: 0
   cityFoodModifier: 0
   cityProductionModifier: 0
-  cityGoldModifier: 0
-  cityScienceModifier: 0
-  cityCultureModifier: 0
-  cityPolicyPointsModifier: 0
+  cityGoldModifier: 0.15
+  cityScienceModifier: 0.15
+  cityCultureModifier: 0.15
+  cityPolicyPointsModifier: 0.5
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -78,8 +94,8 @@ MonoBehaviour:
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
-  happinessBonus: 4
-  orderBonus: 0
+  happinessBonus: 0
+  orderBonus: 5
   cityHappinessModifier: 0
   cityOrderModifier: 0
   unitBonuses: []
