@@ -2581,10 +2581,13 @@ public abstract class BaseUnit : MonoBehaviour
             }
         }
 
-        // Move-point check for units with turn-based movement
-        if (GetStartingMovePoints() > 0 && currentMovePoints < moveCost)
+        // Move-point check for units with turn-based movement. Any unit with at
+        // least 1 MP can enter the next tile, even when the full movement cost
+        // is higher than its remaining MP; DeductMovePoints clamps the result
+        // to zero after the move is committed.
+        if (GetStartingMovePoints() > 0 && currentMovePoints < 1)
         {
-            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: insufficient MP current={currentMovePoints} required={moveCost} unit={name} tile={tileIndex}");
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: no MP remaining current={currentMovePoints} requiredAtLeast=1 fullCost={moveCost} unit={name} tile={tileIndex}");
             return false;
         }
 
