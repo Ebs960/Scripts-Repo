@@ -600,15 +600,6 @@ public class WorkerUnit : BaseUnit
             currentHealth = Mathf.Min(MaxHealth, currentHealth + healthGain);
     }
 
-    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
-    {
-        return requirement switch
-        {
-            BoolRequirement.MustBeTrue => value,
-            BoolRequirement.MustBeFalse => !value,
-            _ => true,
-        };
-    }
 
     private bool MatchesTerritoryRequirement(HexTileData tile, Civilization civ, UnitTerritoryRequirement requirement)
     {
