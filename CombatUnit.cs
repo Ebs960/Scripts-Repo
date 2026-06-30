@@ -538,15 +538,6 @@ public class CombatUnit : BaseUnit
     private struct UnitAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, groundAttackAdd, underwaterAttackAdd, airAttackAdd, spaceAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
     private struct EquipAgg { public int attackAdd, meleeAttackAdd, rangedAttackAdd, cityAttackAdd, groundAttackAdd, underwaterAttackAdd, airAttackAdd, spaceAttackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, meleeAttackPct, rangedAttackPct, cityAttackPct, groundAttackPct, underwaterAttackPct, airAttackPct, spaceAttackPct, defensePct, healthPct, movePct, rangePct, apPct; }
 
-    private static bool MatchesRequirement(BoolRequirement requirement, bool value)
-    {
-        return requirement switch
-        {
-            BoolRequirement.MustBeTrue => value,
-            BoolRequirement.MustBeFalse => !value,
-            _ => true,
-        };
-    }
 
     private bool MatchesTerritoryRequirement(HexTileData tile, Civilization civ, UnitTerritoryRequirement requirement)
     {
