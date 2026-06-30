@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Archery Range
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Archery Range
-  icon: {fileID: 0}
-  description: A military training ground for ranged units and bowmaking.
-    Arrows
+  icon: {fileID: 21300000, guid: 9037087506aee2244bb0c5bd8c29863e, type: 3}
+  description: A military training ground for ranged units and bowmaking. +2 Production.
+    Can produce Arrows and provides +1 Starting Level for all Archer, Crossbowman,
+    and Spear Thrower Unit Types.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b2a4de63f86c436d9fd343907f2d4307, type: 2}
@@ -23,8 +24,10 @@ MonoBehaviour:
   goldCost: 280
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -51,23 +54,48 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 2163442045cc28047bc4793bfe76c04c, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 07000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
-  productionPerTurn: 4
+  productionPerTurn: 2
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 1
+  culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -76,7 +104,161 @@ MonoBehaviour:
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
-  unitBonuses: []
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
+  unitBonuses:
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 5
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    layerRequirement: 0
+    underwaterRequirement: 0
+    orbitRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 6
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    layerRequirement: 0
+    underwaterRequirement: 0
+    orbitRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  - unit: {fileID: 0}
+    useUnitCategoryFilter: 1
+    unitCategory: 7
+    buildingScope: 0
+    targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    cityRequirement: 0
+    useBiomeFilter: 0
+    biome: 0
+    hillRequirement: 0
+    mountainRequirement: 0
+    layerRequirement: 0
+    underwaterRequirement: 0
+    orbitRequirement: 0
+    useResourceFilter: 0
+    resource: {fileID: 0}
+    territoryRequirement: 0
+    useSeasonFilter: 0
+    seasons: 
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    movePointsAdd: 0
+    rangeAdd: 0
+    sightRangeAdd: 0
+    attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0
+    healthPct: 0
+    movePointsPct: 0
+    rangePct: 0
+    sightRangePct: 0
+    healingRatePct: 0
+    startingExperienceAdd: 0
+    startingLevelsAdd: 1
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

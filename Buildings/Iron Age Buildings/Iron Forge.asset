@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Iron Forge
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Iron Forge
-  icon: {fileID: 0}
-  description: A forge where iron is heated, shaped, and improved for practical use.
+  icon: {fileID: 21300000, guid: 39f0d4e749ff2324ba6f10e26d1f97e2, type: 3}
+  description: 'A forge where iron is heated, shaped, and improved for practical
+    use. +7 Production '
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: ff77658d9c1aa0a44b87e2a92fddf114, type: 2}
@@ -22,8 +23,11 @@ MonoBehaviour:
   goldCost: 320
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
-  requiredResources: []
+  requiredResources:
+  - {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,32 +44,65 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 02000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 7
   goldPerTurn: 0
-  sciencePerTurn: 2
+  sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
-  resourceProductionPerTurn: []
-  resourceUpkeepPerTurn: []
+  resourceProductionPerTurn:
+  - resource: {fileID: 11400000, guid: fbeea2663281fcb4394787defe6be88e, type: 2}
+    amount: 2
+  resourceUpkeepPerTurn:
+  - resource: {fileID: 11400000, guid: d3346ac9070e4f84ea0d051fc3c21f2b, type: 2}
+    amount: 2
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

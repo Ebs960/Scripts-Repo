@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Assembly Hall
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Assembly Hall
-  icon: {fileID: 0}
-  description: Citizens gather in open assembly to debate budgets, reforms, taxes, and common defense. Provides +5 Happiness, +5 Order, +15% Gold in this city, and +15% Policy Points in this city.
+  icon: {fileID: 21300000, guid: 67301331dff5dcd478961e497a573478, type: 3}
+  description: Citizens gather in open assembly to debate budgets, reforms, taxes,
+    and common defense. Provides +5 Happiness, +5 Order, +15% Gold in this city,
+    and +15% Policy Points in this city.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 309
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -43,7 +47,12 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: e9afb65641f1fdc449c44df0d0e558e8, type: 2}
@@ -53,6 +62,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: Assembly Hall
   perCityLimit: 1
@@ -70,6 +81,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0.15
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

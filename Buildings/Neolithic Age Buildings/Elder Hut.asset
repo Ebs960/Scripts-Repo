@@ -22,8 +22,10 @@ MonoBehaviour:
   goldCost: 75
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -32,19 +34,32 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 0
   isGoldBuilding: 0
-  isCultureBuilding: 1
+  isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 1
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: f86da6138de743f4bbb67c4c59e4dd81, type: 2}
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -52,16 +67,36 @@ MonoBehaviour:
   productionPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
-  culturePerTurn: 2
+  culturePerTurn: 0
   policyPointsPerTurn: 2
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 2
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

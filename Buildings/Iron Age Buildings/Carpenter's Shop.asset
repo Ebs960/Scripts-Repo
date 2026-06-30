@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Carpenter's Shop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Carpenter's Shop
-  icon: {fileID: 0}
-  description: Supports construction and trade through skilled woodworking.
+  icon: {fileID: 21300000, guid: cc63a01cc90e9164dbfe6400851534d1, type: 3}
+  description: Supports construction and trade through skilled woodworking. +5 Production
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +22,10 @@ MonoBehaviour:
   goldCost: 290
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -32,29 +34,56 @@ MonoBehaviour:
   equipmentProduction: []
   projectileProduction: []
   providesHarbor: 0
+  providesAirport: 0
+  providesSpaceport: 0
   isScienceBuilding: 0
   isFoodBuilding: 0
   isProductionBuilding: 1
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 34bbd64598e81a048bce79c7e810135e, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 02000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
   foodPerTurn: 0
   productionPerTurn: 5
-  goldPerTurn: 2
+  goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
@@ -63,7 +92,11 @@ MonoBehaviour:
   upkeepFailureDebuffMultiplier: 0.5
   defenseBonus: 0
   happinessBonus: 0
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

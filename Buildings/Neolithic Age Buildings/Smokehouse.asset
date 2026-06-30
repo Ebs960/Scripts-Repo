@@ -22,8 +22,10 @@ MonoBehaviour:
   goldCost: 85
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -43,7 +45,12 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 1
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: faa3bafd4063a024fb5c7215c37fb9ea, type: 2}
   requiredCultures: []
@@ -51,6 +58,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -68,6 +77,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

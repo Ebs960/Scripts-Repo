@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Civic School
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Civic School
-  icon: {fileID: 0}
-  description: Students learn literacy, law, rhetoric, and public duty so self-government has citizens capable of using it. Provides +3 Science, +2 Culture, and +2 Policy Points.
+  icon: {fileID: 21300000, guid: 8ef77b6457c8e5647b16888068764e40, type: 3}
+  description: Students learn literacy, law, rhetoric, and public duty so self-government
+    has citizens capable of using it. Provides +3 Science, +2 Culture, and +2 Policy
+    Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}
@@ -22,8 +24,10 @@ MonoBehaviour:
   goldCost: 285
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -43,7 +47,12 @@ MonoBehaviour:
   isHealthBuilding: 0
   isDefenseBuilding: 0
   isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: e9afb65641f1fdc449c44df0d0e558e8, type: 2}
@@ -52,6 +61,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   requiredPolicies: []
   requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -69,6 +80,13 @@ MonoBehaviour:
   cityCultureModifier: 0
   cityPolicyPointsModifier: 0
   cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []

@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Large Stone Walls
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Large Stone Walls
-  icon: {fileID: 0}
-  description: Provides a major defensive barrier around people, supplies, and key buildings.
+  icon: {fileID: 21300000, guid: a318ef95879dafc4b8f44bb39a4cbd01, type: 3}
+  description: Provides a major defensive barrier around people, supplies, and key
+    buildings.+20 Defense +2 Happiness
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: a51d839a5d0bda740ba9b04259fafeea, type: 2}
@@ -22,8 +23,10 @@ MonoBehaviour:
   goldCost: 340
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -40,13 +43,24 @@ MonoBehaviour:
   isGoldBuilding: 0
   isCultureBuilding: 0
   isFaithBuilding: 0
+  isHealthBuilding: 0
+  isDefenseBuilding: 0
+  isEnergyBuilding: 0
+  IsEquipmentProducer: 0
+  IsWonder: 0
+  IsHappinessBuilding: 0
+  IsOrderBuilding: 0
   isPerimeterWall: 1
+  urbanSpecialistSlots: []
   requiredTechs:
   - {fileID: 11400000, guid: 9a3ebdafed991fc438c4b542eef81d34, type: 2}
   requiredCultures: []
   requiredPopulation: 0
   requiredGovernments: []
   requiredPolicies: []
+  requiredBuildings: []
+  alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 08000000
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
@@ -57,15 +71,33 @@ MonoBehaviour:
   culturePerTurn: 0
   policyPointsPerTurn: 3
   faithPerTurn: 0
+  cityFoodModifier: 0
+  cityProductionModifier: 0
+  cityGoldModifier: 0
+  cityScienceModifier: 0
+  cityCultureModifier: 0
+  cityPolicyPointsModifier: 0
+  cityFaithModifier: 0
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empirePolicyPointsModifier: 0
+  empireFaithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   resourceProductionPerTurn: []
   resourceUpkeepPerTurn: []
   upkeepFailureBehavior: 0
   upkeepFailureDebuffMultiplier: 0.5
-  defenseBonus: 16
+  defenseBonus: 20
   happinessBonus: 2
+  orderBonus: 0
+  cityHappinessModifier: 0
+  cityOrderModifier: 0
   unitBonuses: []
+  unitProductionModifiers: []
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []

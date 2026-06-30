@@ -22,8 +22,10 @@ MonoBehaviour:
   goldCost: 80
   buildGoldCost: 0
   buildResourceCosts: []
+  hasSubstituteBuildCosts: 0
   requiresAdjacentTile: 0
   requiredResources: []
+  hasSubstituteRequiredResources: 0
   requiredTerrains: 
   allowedBiomes: 
   canBeDismantled: 1
@@ -48,6 +50,7 @@ MonoBehaviour:
   IsHappinessBuilding: 1
   IsOrderBuilding: 0
   isPerimeterWall: 0
+  urbanSpecialistSlots: []
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: a3258aa65bba0c346bfe32c0d0cc4ee2, type: 2}
@@ -56,6 +59,7 @@ MonoBehaviour:
   requiredPolicies: []
   requiredBuildings: []
   alternativeUnlockRequirements: []
+  allowedCitySlotTypes: 
   buildingLimit: -1
   limitCategory: 
   perCityLimit: 1
