@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Military Shipyard
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Military Shipyard
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e2a8bb75d6a6b1c4999dd331cac8db19, type: 3}
   description: Armor plate, heavy guns, and disciplined crews take shape beside the waterline. Provides +20 Production and +1 Level for all Ships.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

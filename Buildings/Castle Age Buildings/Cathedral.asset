@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cathedral
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Cathedral
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 8b3246d9bf692a74d838a4c65c5cef32, type: 3}
   description: Stone arches, sacred music, and prayer strengthen the people through
     times of fear and triumph. Provides +8 Faith, +4 Culture, and +4 Happiness.
   buildingPrefab: {fileID: 0}

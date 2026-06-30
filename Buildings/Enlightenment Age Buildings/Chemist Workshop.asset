@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Chemist Workshop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Chemist Workshop
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 36a4c7c4f949ed54387210f31b9b3211, type: 3}
   description: Glassware bubbles, powders hiss, and careful notes turn strange reactions
     into practical discoveries. Provides +10 Science and +4 Production.
   buildingPrefab: {fileID: 0}

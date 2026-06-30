@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: 4D Printing Mill
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: 4D Printing Mill
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 58ade614218f25a498f74f2f29c60bd2, type: 3}
   description: Printers shape matter with time as another tool, assembling parts that finish becoming useful before they fully exist. Provides +105 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

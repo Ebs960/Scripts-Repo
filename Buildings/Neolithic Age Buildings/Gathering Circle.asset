@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Gathering Circle
   icon: {fileID: 21300000, guid: 490524f36c65d954db1ec28b21288198, type: 3}
-  description: Packed earth and standing stones mark the place where neighbors meet
-    for ceremonies, judgments, feasts, and the first shared plans. Provides +2 Culture,
-    +1 Policy Points, +1 Faith, and +1 Happiness.
+  description: Packed earth and standing stones mark the place where neighbors meet for ceremonies, judgments, feasts, and the first shared plans. Provides +2 Culture, +1 Policy Points, +1 Faith, and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

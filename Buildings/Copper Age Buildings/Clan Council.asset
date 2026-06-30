@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Clan Council
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Clan Council
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6d77468e4107d9f40a64d161e43de8b6, type: 3}
   description: A council building used for planning, disputes, and clan policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

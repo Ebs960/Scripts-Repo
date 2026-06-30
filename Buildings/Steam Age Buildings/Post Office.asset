@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Post Office
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Post Office
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 7adfa526ba0879741b5ec334b2f0a775, type: 3}
   description: Letters cross roads, rails, and rain, tying distant lives to the same city seal. Provides +4 Gold, +4 Culture, and +4 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

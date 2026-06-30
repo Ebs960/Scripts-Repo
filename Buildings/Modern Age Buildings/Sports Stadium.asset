@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sports Stadium
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Sports Stadium
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 7b6f6c6140583af47a02d83d6110e9b4, type: 3}
   description: The stadium gives the city heroes, heartbreaks, chants, and a reason to wear the same colors. Provides +10 Culture and +10 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

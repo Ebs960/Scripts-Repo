@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Public College
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Public College
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 18f913eaed95d7241a7b7731180cb4eb, type: 3}
   description: Lecture halls and laboratories give ambitious minds the tools to question everything properly. Provides +14 Science and +5% Science Yield for City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

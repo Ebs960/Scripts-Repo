@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Automobile Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automobile Factory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 29e81350f3b8beb4dbec559ab0619bdd, type: 3}
   description: Steel frames, rubber tires, and diesel engines roll off the line, ready for highways or war fronts. Provides +20 Production, +10 Gold, and 3 Diesel Engines. Tanks trained here gain +1 Starting Level and are trained 25% faster.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

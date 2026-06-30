@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Courthouse
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Courthouse
-  icon: {fileID: 0}
-  description: 'Enforces laws and settles disputes within the city. +5 Order '
+  icon: {fileID: 21300000, guid: 581c2a9205fee5f418f3190f9b06ad80, type: 3}
+  description: Enforces laws and settles disputes within the city. +5 Order
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 11400000, guid: b96f42a5f167ef24881f30c9ac8bf74a, type: 2}

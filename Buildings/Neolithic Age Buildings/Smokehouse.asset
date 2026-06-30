@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Smokehouse
   icon: {fileID: 21300000, guid: a5ecac0332cad9049a954ea9540a6c01, type: 3}
-  description: Fish, meat, and gathered foods hang above slow coals, preserving the
-    season's luck long after the hunt and harvest have ended. Provides +3 Food and
-    +1 Happiness.
+  description: Fish, meat, and gathered foods hang above slow coals, preserving the season's luck long after the hunt and harvest have ended. Provides +3 Food and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

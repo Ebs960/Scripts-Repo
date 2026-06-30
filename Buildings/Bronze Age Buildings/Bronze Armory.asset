@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bronze Armory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Armory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e90dac62e73e3fa47bd4aece161e616c, type: 3}
   description: Stores and produces bronze weapons and armor for soldiers.
     and Bronze Shields. '
   buildingPrefab: {fileID: 0}

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Holograph Theater
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Holograph Theater
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2d82eda430c16924b96c7d73908dbe74, type: 3}
   description: Actors, myths, battles, and memories appear in the air with enough
     detail to make reality feel underfunded. Provides +92 Culture.
   buildingPrefab: {fileID: 0}

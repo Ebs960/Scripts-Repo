@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Royal Arsenal
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Arsenal
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 68a37509b4426d64e98d7ce09a9b7292, type: 3}
   description: Crown armorers and quartermasters concentrate weapons, powder, and uniforms where royal armies can be equipped quickly. Provides +15 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Nuclear Power Plant
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Nuclear Power Plant
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 66082d817925fb944a16f32aedefca61, type: 3}
   description: Engineers watch gauges with reverence and fear as uranium becomes heat, electricity, and responsibility. Provides +30 Production and uses Uranium to produce 10 Energy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Advanced Nanobot Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Advanced Nanobot Factory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 3648928e5b9a5d041bc6100ea1333462, type: 3}
   description: Invisible swarms pour from sterile assembly chambers, ready to build cities from the inside out. Provides +120 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

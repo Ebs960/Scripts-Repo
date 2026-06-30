@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Pottery Workshop
   icon: {fileID: 21300000, guid: 490676f874ae26a4dad1d9501810e68e, type: 3}
-  description: Hands shape clay into jars, bowls, and storage vessels, giving the
-    village cleaner kitchens, safer grain, and goods worth exchanging. Provides +1
-    Production and +1 Gold.
+  description: Hands shape clay into jars, bowls, and storage vessels, giving the village cleaner kitchens, safer grain, and goods worth exchanging. Provides +1 Production and +1 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

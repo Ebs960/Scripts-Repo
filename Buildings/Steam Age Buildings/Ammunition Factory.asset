@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ammunition Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Ammunition Factory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d8d77ba2489cbd64b863917749f0c532, type: 3}
   description: Cartridges, shells, and careful measurements leave the line by the crate, making every volley more frightening. Provides +15 Production and +5 Ranged Attack for Units.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

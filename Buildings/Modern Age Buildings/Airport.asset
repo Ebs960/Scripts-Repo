@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Airport
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Airport
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 646f35a1a6119f74c84a9d976482f3ef, type: 3}
   description: Passengers and cargo lift into the sky on strict schedules, tying the city to markets far beyond the rails. Enables long-distance air trade. Provides +12 Gold, +4 Production, and +2 Policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

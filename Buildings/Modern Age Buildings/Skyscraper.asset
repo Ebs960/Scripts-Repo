@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Skyscraper
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Skyscraper
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: f3a8158b6d1aaf9408c2f0c22eac8be0, type: 3}
   description: Steel and glass climb into the clouds, stacking ambition floor by floor above the crowded streets. Provides +18 Gold, +6 Culture, +4 Policy Points, and +4 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

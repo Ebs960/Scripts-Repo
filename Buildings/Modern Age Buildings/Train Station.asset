@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Train Station
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Train Station
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 22714cbb10bb5cb40a3479e7a796005e, type: 3}
   description: The train station binds suburbs, factories, ports, and markets into one restless system of arrivals. Provides +14 Gold, +10 Production, and +4 Policy.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

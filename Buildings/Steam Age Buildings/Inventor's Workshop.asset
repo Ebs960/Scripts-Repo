@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Inventor's Workshop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Inventor's Workshop
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6dfed06e09b5b39449d697ef164385e0, type: 3}
   description: Half the devices inside look impossible; the other half only look
     dangerous. Provides +13 Science and +5 Production.
   buildingPrefab: {fileID: 0}

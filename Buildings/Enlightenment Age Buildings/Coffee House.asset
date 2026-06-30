@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Coffee House
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Coffee House
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1cd2bbf08dafa0a4a86a3d940a922e3c, type: 3}
   description: Hot coffee, loud opinions, and forbidden pamphlets make this room more dangerous than it looks. Provides +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

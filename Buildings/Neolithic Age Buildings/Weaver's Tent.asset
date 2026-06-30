@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Weaver's Tent
   icon: {fileID: 21300000, guid: 9a8b7ec5c32195748b80a8b1a7f9a837, type: 3}
-  description: Plant fibers, wool, and hide strips are twisted into mats, baskets,
-    cloth, and shelter pieces that make settled life more durable. Provides +2 Production,
-    +2 Gold.
+  description: Plant fibers, wool, and hide strips are twisted into mats, baskets, cloth, and shelter pieces that make settled life more durable. Provides +2 Production, +2 Gold, and +1 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

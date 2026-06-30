@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Interstellar University
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Interstellar University
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 334e50a9baade8b49bc18e596a4b0f8a, type: 3}
   description: The interstellar university gathers knowledge from every settled planet and sends better questions back out. Provides +104 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

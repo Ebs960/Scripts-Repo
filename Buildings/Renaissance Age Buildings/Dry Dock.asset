@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dry Dock
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dry Dock
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e35e7fd336d447f40b1891b28cf264cd, type: 3}
   description: A powerful naval yard where large ships can be repaired, refitted, and prepared for longer voyages. Provides +8 Production and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

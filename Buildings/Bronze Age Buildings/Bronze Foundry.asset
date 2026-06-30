@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bronze Foundry
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bronze Foundry
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6734571bbfbba6f4cb39ede6f49500a0, type: 3}
   description: Smelts bronze for tools, weapons, and construction materials.
     Bronze Weapons
   buildingPrefab: {fileID: 0}

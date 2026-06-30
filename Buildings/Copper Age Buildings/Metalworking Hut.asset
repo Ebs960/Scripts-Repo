@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Metalworking Hut
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Metalworking Hut
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2cd0a22c380d941408316f5a57faf774, type: 3}
   description: Processes metal into tools, weapons, and trade goods.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

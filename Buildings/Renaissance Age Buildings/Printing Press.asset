@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Printing Press
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Printing Press
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 5ba3846c15e26a045acaa4117118014c, type: 3}
   description: Printed pages carry knowledge through the city and beyond, spreading arguments faster than rumor. Provides +9 Science and +4 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

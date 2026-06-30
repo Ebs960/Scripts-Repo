@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stone Walls
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Stone Walls
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 3520329e56e7f45458640272de2d3749, type: 3}
   description: Strong stone defenses that protect the city from attacks.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

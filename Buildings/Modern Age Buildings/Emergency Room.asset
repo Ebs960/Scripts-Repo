@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Emergency Room
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Emergency Room
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 005b8dd11276a4d4b8b422fd3e1f45ab, type: 3}
   description: The emergency room keeps disaster from becoming routine tragedy, treating the worst cases before hope runs out. Provides +10 Food and -50% Fatality and Incident in this City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

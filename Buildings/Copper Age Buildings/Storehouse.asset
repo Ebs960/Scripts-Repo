@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Storehouse
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Storehouse
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 5c00d358599d09e4dbc7c6b8fa27b1c7, type: 3}
   description: Increases food security by protecting surplus harvests.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

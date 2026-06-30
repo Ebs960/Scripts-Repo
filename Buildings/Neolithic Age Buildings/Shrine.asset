@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Shrine
   icon: {fileID: 21300000, guid: 78abf04c652940244aa0873deaf136ee, type: 3}
-  description: Offerings gather beneath carved posts and painted stones, giving the
-    young village shared rituals, omens, and reasons to endure hardship together.
-    Provides +2 Faith.
+  description: Offerings gather beneath carved posts and painted stones, giving the young village shared rituals, omens, and reasons to endure hardship together. Provides +2 Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

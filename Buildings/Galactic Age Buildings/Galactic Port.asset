@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Galactic Port
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Galactic Port
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 80e22cb53c998cd44b9caffaee7570f1, type: 3}
   description: Docking lanes stretch into orbit as merchants turn starlight, distance,
     and risk into profit. Provides +128 Gold and a Spaceport.
   buildingPrefab: {fileID: 0}

@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Elder Hut
   icon: {fileID: 21300000, guid: 06fe34a2266b26b41a2824e378ba557a, type: 3}
-  description: Stories, disputes, marriages, and migrations are weighed inside this
-    humble hut, where memory becomes the village's first form of government. Provides
-    +2 Order and +2 Policy Points.
+  description: Stories, disputes, marriages, and migrations are weighed inside this humble hut, where memory becomes the village's first form of government. Provides +2 Culture and +2 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

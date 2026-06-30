@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Observatory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Observatory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d96013e6a691ec945bfddd0f4a70688f, type: 3}
   description: A tower of discovery where scholars map the heavens and rethink the city’s place in the universe. Provides +10 Science and +2 Culture.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

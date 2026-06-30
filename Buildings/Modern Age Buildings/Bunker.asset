@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bunker
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bunker
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0611e8c6c75fbd341ae1172dced496b4, type: 3}
   description: Beneath the city, command rooms and shelters wait for the worst day anyone can imagine. Provides +40 Defense and +10 Order.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

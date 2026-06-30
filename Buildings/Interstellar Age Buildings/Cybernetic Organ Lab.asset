@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cybernetic Organ Lab
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Cybernetic Organ Lab
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c8e13c1183ad2f74c94991fc837d43d3, type: 3}
   description: The cybernetic organ lab cultivates hearts, lungs, and stranger replacements for bodies built to survive new worlds. Provides +84 Food.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

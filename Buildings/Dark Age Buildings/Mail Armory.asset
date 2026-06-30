@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mail Armory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mail Armory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a9b190f1514ad624aa1b01b641a6d0b3, type: 3}
   description: A guarded workshop where iron defense is made by hand. Provides +3 Production, +1 Policy Point, and can produce Mail Hauberks.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

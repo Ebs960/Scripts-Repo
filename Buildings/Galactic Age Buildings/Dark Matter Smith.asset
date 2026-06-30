@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dark Matter Smith
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dark Matter Smith
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6cf521adf026653458d20784b3e1c9a2, type: 3}
   description: Dark matter is hammered through fields instead of anvils, becoming
     structure where emptiness used to be. Provides +146 Production.
   buildingPrefab: {fileID: 0}

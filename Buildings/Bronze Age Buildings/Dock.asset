@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dock
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dock
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 40af201efdb09ce4a843aabcaf318b75, type: 3}
   description: Supports fishing, trade, and the construction of ships.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

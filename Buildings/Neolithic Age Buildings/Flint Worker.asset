@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Flint Worker
   icon: {fileID: 21300000, guid: c53f93b5152798b4ea6058cb081d2585, type: 3}
-  description: Flint cores are struck into blades, scrapers, and points with practiced
-    precision, arming hunters and workers with sharper possibilities. Provides +3
-    Production and +1 Science.
+  description: Flint cores are struck into blades, scrapers, and points with practiced precision, arming hunters and workers with sharper possibilities. Provides +3 Production and +1 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
   replacesBuilding: {fileID: 0}

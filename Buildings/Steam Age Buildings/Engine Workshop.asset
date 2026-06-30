@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Engine Workshop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Engine Workshop
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 53046200056c7354ea7a9d8c42de5585, type: 3}
   description: Pistons, boilers, and bright ideas are fitted together until raw pressure
     learns to obey. Provides +7 Production,  produces 2 Steam Engines, and uses 2
     Energy.
