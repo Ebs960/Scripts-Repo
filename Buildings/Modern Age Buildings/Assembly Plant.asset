@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Assembly Plant
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Assembly Plant
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c1d37d7df5bc7e642b80b6c7282094f9, type: 3}
   description: The assembly plant breaks labor into perfect motions, turning repetition into a river of finished goods. Provides +38 Production and +10 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

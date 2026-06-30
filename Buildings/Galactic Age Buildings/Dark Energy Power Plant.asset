@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dark Energy Power Plant
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Dark Energy Power Plant
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9fabacb7be5db4144839a41c4d090b72, type: 3}
   description: Dark energy infrastructure turns expansion itself into a power source
     for a civilization too large for ordinary fuel. Provides +160 Production.
   buildingPrefab: {fileID: 0}

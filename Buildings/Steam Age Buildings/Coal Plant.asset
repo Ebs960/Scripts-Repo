@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Coal Plant
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Coal Plant
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c1381e17d5147114ba0d37a90a427940, type: 3}
   description: Coal dust settles on everything, but the city forgives it when the machines keep moving. Provides +10 Production, produces +5 Energy, and uses 2 Coal.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

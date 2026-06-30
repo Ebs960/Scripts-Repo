@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Computer Lab
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Computer Lab
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d2a197626dfa1c142a59e0bffa1e6a28, type: 3}
   description: Circuits, punch cards, and blinking panels help the city ask questions too large for paper. Provides +35 Science and +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

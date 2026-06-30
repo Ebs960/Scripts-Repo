@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Monument
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Monument
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9e488bc79bfdc7347af9157205809af2, type: 3}
   description: A major ceremonial structure that helps unite the community.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

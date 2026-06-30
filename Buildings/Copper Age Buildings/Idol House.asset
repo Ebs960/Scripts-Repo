@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Idol House
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Idol House
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d5d15acb0b7825542a11b4c67df97e92, type: 3}
   description: Houses sacred figures used in prayer, ceremony, and communal worship.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

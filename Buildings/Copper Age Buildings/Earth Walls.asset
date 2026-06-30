@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Earth Walls
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Earth Walls
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2968d16bf23c7e943893802d32b853ad, type: 3}
   description: Improves protection with packed earth barriers and reinforced walls.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

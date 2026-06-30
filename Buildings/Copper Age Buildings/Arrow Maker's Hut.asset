@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Arrow Maker's Hut
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Arrow Maker's Hut
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 14f30bc79f929c4489e4db849f349eae, type: 3}
   description: Produces arrows and copper arrowheads for hunters and soldiers.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

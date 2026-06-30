@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Uranium Enrichment Facility
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Uranium Enrichment Facility
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ecd81c08f05b4c140b207a61b024f527, type: 3}
   description: The enrichment facility turns rare ore into strategic power under secrecy, precision, and armed watch. Provides +8 Science and allows building of Nuclear Weapons.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

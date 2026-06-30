@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Commercial Seaport
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Commercial Seaport
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c07883a519cff30479914b303d0cb400, type: 3}
   description: Cranes swing over container stacks as the city’s wealth arrives by ship and leaves by rail. Provides +20 Gold, +10 Production, and a Harbor.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

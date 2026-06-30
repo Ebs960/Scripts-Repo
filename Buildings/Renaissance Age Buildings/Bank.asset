@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bank
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Bank
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 17a5060a51b765542bd7229cb1a93abf, type: 3}
   description: Wealth flows through its vaults, financing merchants, rulers, and ambitious plans across the city. Provides +11 Gold and +3 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

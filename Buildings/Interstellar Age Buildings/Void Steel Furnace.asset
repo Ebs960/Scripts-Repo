@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Void Steel Furnace
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Void Steel Furnace
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d1889ddf28c5cd24286add163749f71f, type: 3}
   description: Metal treated in vacuum and exotic fields leaves the furnace stronger than gravity thinks it should be. Provides +125 Production.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

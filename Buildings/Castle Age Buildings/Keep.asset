@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Keep
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Keep
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2db30ee6f057c1948b32bdf2fb3a91ff, type: 3}
   description: A mighty central tower that commands the castle, shelters the people,
     and reminds all who holds power. Provides +50 Defense, +4 Policy Points, and
     +3 Happiness.

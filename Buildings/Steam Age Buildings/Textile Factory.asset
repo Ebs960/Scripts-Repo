@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Textile Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Textile Factory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: f0713712c4d5c0a47a42834de3f83b7c, type: 3}
   description: Rows of machines pull thread faster than hands ever could, and the market can barely keep up. Provides +14 Production and +10 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

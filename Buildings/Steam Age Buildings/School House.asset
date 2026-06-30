@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: School House
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: School House
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: b34abcf686a2bea4ab42b0ce7147b6eb, type: 3}
   description: Chalk dust, slates, and stern lessons give the next generation a firmer start. Provides +6 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

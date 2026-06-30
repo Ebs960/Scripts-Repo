@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Debating Society
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Debating Society
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d96c4abb58543384aa431cd8432967f9, type: 3}
   description: Arguments are sharpened like blades here, though the wounds are usually political. Provides +5 Culture and +5 Policy Points.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cannery
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Cannery
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ee229914566ffd842a906bfe41994877, type: 3}
   description: Fish, fruit, and meat are sealed away from rot, letting harvests travel farther than the season. Provides +7 Food and +5 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

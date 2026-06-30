@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mosaic Workshop
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Mosaic Workshop
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6dd9df46be9e2924b86a23dd2dca057e, type: 3}
   description: Bright mosaics turn walls into stories of beauty and belief. Provides +5 Culture and +2 Faith.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

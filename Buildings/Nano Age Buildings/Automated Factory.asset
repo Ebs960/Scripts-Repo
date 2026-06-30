@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Automated Factory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Automated Factory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2a03ec779682dfe4c9d2aca6d7050b67, type: 3}
   description: Robotic arms and self-correcting machines keep the factory working long after human supervisors go home. Provides +50 Production and +15% Production for the City.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

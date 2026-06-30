@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Grain Pit
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Grain Pit
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: b500b8b2833c93b4f88f28159401cc55, type: 3}
   description: Clay-lined pits protect precious seed grain from rot, pests, and hungry winters, letting a settlement plan for seasons instead of days. Provides +3 Food and +1 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

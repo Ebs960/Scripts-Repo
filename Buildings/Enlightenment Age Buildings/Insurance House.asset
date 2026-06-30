@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Insurance House
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Insurance House
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d6175ad1ed0b7884aa3c94b6b8430c23, type: 3}
   description: Fire, flood, shipwreck, and ruin all look different once someone has
     put a price on them. Provides +15 Gold.
   buildingPrefab: {fileID: 0}

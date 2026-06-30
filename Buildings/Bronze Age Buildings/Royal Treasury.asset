@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Royal Treasury
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Royal Treasury
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a437fb56f33f23c4c872993ee95c6a6d, type: 3}
   description: Stores taxes, tribute, and valuables controlled by the ruler.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

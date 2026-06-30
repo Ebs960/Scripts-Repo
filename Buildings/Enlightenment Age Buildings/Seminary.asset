@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Seminary
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Seminary
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 113beaf168d1074498cb3d44d17590d7, type: 3}
   description: Future clergy study scripture, language, and reason, learning to defend
     faith in a more questioning age. Provides +12 Faith and +6 Culture, +6 Happiness.
   buildingPrefab: {fileID: 0}

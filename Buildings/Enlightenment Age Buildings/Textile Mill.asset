@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Textile Mill
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Textile Mill
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 3e09b2358b1836f46a0e3c0d651f7b59, type: 3}
   description: Thread races through the mill in a blur of looms, wages, lint, and profit. Provides +12 Production and +9 Gold.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

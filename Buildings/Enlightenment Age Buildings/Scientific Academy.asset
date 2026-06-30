@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Scientific Academy
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Scientific Academy
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0c35aa38e8d8bde438748ac9f4224083, type: 3}
   description: The academy gives curiosity marble halls, formal lectures, and enough prestige to trouble old beliefs. Provides +14 Science.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

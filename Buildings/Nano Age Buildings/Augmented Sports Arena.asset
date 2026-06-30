@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Augmented Sports Arena
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Augmented Sports Arena
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 151605de1f9664645a9a757a66b6a609, type: 3}
   description: Holographic crowds, impossible replays, and augmented athletes turn every match into a citywide spectacle. Provides +18 Gold, +18 Culture, and +16 Happiness.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

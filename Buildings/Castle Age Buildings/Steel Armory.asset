@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Steel Armory
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Steel Armory
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c8454a11d9672734991d90a2904205d3, type: 3}
   description: Fine steel is forged, sharpened, and stored here for soldiers who
     need stronger blades. Provides +6 Production and can produce Steel Swords.
   buildingPrefab: {fileID: 0}

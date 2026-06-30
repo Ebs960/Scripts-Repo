@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Temple
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Temple
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 76f285c30a6691a448f1aa982f6b1670, type: 3}
   description: A major religious building for worship, offerings, and ceremonies.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []

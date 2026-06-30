@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Copper Smithy
   m_EditorClassIdentifier: Assembly-CSharp::BuildingData
   buildingName: Copper Smithy
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 470a0d35146790e419d7eb8d3435ba16, type: 3}
   description: Produces copper tools and weapons for the settlement.
   buildingPrefab: {fileID: 0}
   civVisualOverrides: []
