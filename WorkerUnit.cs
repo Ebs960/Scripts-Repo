@@ -705,6 +705,7 @@ public class WorkerUnit : BaseUnit
         Accumulate(wu.intrinsicStatBonuses);
         if (civ == null) return a;
         Accumulate(civ.civData?.workerBonuses);
+        Accumulate(civ.civData?.effects?.workerBonuses);
         Accumulate(civ.leader?.workerBonuses);
 
         if (civ.researchedTechs != null)
@@ -797,6 +798,7 @@ public class WorkerUnit : BaseUnit
         }
 
         Accumulate(civ.civData?.workerBonuses);
+        Accumulate(civ.civData?.effects?.workerBonuses);
         Accumulate(civ.leader?.workerBonuses);
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
@@ -857,6 +859,12 @@ public class WorkerUnit : BaseUnit
             yield return aura;
         if (data?.auraBonuses != null)
             foreach (var aura in data.auraBonuses)
+                if (aura != null) yield return aura;
+        if (owner?.civData?.auraBonuses != null)
+            foreach (var aura in owner.civData.auraBonuses)
+                if (aura != null) yield return aura;
+        if (owner?.civData?.effects?.auraBonuses != null)
+            foreach (var aura in owner.civData.effects.auraBonuses)
                 if (aura != null) yield return aura;
     }
 

@@ -83,6 +83,40 @@ public class CivData : ScriptableObject
     public UnitStatBonus[] unitBonuses;
     [Tooltip("Per-worker stat bonuses granted by this civilization's base identity (e.g., healing speed).")]
     public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Auras projected by this civilization's units.")]
+    public UnitAuraBonus[] auraBonuses;
+    [Tooltip("Unit-training production modifiers granted by this civilization.")]
+    public UnitProductionModifier[] unitProductionModifiers;
+    [Tooltip("Per-unit per-turn yield bonuses granted by this civilization.")]
+    public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-worker per-turn yield bonuses granted by this civilization.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Flat work points added to ALL worker units for this civilization.")]
+    public int allWorkersWorkPoints = 0;
+
+    [Header("Equipment Bonuses")]
+    [Tooltip("Per-equipment stat bonuses granted by this civilization.")]
+    public EquipmentStatBonus[] equipmentBonuses;
+    [Tooltip("Per-equipment per-turn yield bonuses granted by this civilization (applies when equipped).")]
+    public EquipmentYieldBonus[] equipmentYieldBonuses;
+
+    [Header("Improvement & Generic Bonuses")]
+    [Tooltip("Per-improvement yield bonuses granted by this civilization.")]
+    public ImprovementYieldBonus[] improvementBonuses;
+    [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
+    public GenericYieldBonus[] genericYieldBonuses;
+
+    [Header("Unit & Building Limits")]
+    [Tooltip("Increases the limit for specific units/buildings.")]
+    public UnitLimitModifier[] unitLimitModifiers;
+    public BuildingLimitModifier[] buildingLimitModifiers;
+    [Tooltip("Increases city building slot capacity by slot type.")]
+    public CitySlotModifier[] citySlotModifiers;
+
+    [Header("Consolidated Effects")]
+    [Tooltip("Shared effect set for new civ bonuses. Existing fields remain supported for backwards compatibility.")]
+    public CivEffectSet effects;
+
     [Tooltip("Disease modifiers granted by this civilization's base identity.")]
     public DiseaseModifierBonus[] diseaseBonuses;
     [Tooltip("Attrition modifiers provided directly on the civilization asset.")]
