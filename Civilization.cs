@@ -1542,6 +1542,9 @@ public class Civilization : MonoBehaviour
         if (civData?.unitBonuses != null)
             foreach (var b in civData.unitBonuses)
                 if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+        if (civData?.effects?.unitBonuses != null)
+            foreach (var b in civData.effects.unitBonuses)
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Leader
         if (leader?.unitBonuses != null)
@@ -1607,6 +1610,9 @@ public class Civilization : MonoBehaviour
 
         if (civData?.workerBonuses != null)
             foreach (var b in civData.workerBonuses)
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+        if (civData?.effects?.workerBonuses != null)
+            foreach (var b in civData.effects.workerBonuses)
                 if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
         if (leader?.workerBonuses != null)
             foreach (var b in leader.workerBonuses)
@@ -1690,6 +1696,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.unitBonuses);
+        Accumulate(civData?.effects?.unitBonuses);
         Accumulate(leader?.unitBonuses);
 
         if (researchedTechs != null)
@@ -1754,6 +1761,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.workerBonuses);
+        Accumulate(civData?.effects?.workerBonuses);
         Accumulate(leader?.workerBonuses);
 
         if (researchedTechs != null)
@@ -1880,6 +1888,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.diseaseBonuses);
+        Accumulate(civData?.effects?.diseaseBonuses);
 
         if (researchedTechs != null)
             foreach (var tech in researchedTechs)
@@ -1939,6 +1948,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.attritionBonuses);
+        Accumulate(civData?.effects?.attritionBonuses);
 
         if (researchedTechs != null)
             foreach (var tech in researchedTechs)
@@ -1993,6 +2003,7 @@ public class Civilization : MonoBehaviour
         }
 
         Accumulate(civData?.nonStateReligionUnhappinessModifiers);
+        Accumulate(civData?.effects?.nonStateReligionUnhappinessModifiers);
         Accumulate(leader?.nonStateReligionUnhappinessModifiers);
 
         if (researchedTechs != null)
@@ -2032,6 +2043,7 @@ public class Civilization : MonoBehaviour
         int planetIndex = herdContext != null ? herdContext.planetIndex : -1;
 
         total += civData != null ? civData.herdStarvationPercentReduction : 0f;
+        total += civData?.effects?.herdStarvationPercentReduction ?? 0f;
 
         if (researchedTechs != null)
             foreach (var tech in researchedTechs)
@@ -4322,6 +4334,11 @@ return true;
     public int GetAggregatedAllWorkersWorkPoints()
     {
         int total = 0;
+        if (civData != null)
+        {
+            total += civData.allWorkersWorkPoints;
+            total += civData.effects != null ? civData.effects.allWorkersWorkPoints : 0;
+        }
         if (researchedTechs != null)
         {
             foreach (var t in researchedTechs)
@@ -5301,6 +5318,17 @@ return true;
         YieldBonusAgg agg = new YieldBonusAgg();
         if (unit == null) return agg;
 
+        // CivData
+        void ScanCivUnitYields(UnitYieldBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    AddUnitYieldBonus(ref agg, b);
+        }
+        ScanCivUnitYields(civData?.unitYieldBonuses);
+        ScanCivUnitYields(civData?.effects?.unitYieldBonuses);
+
         // Techs
         if (researchedTechs != null)
         {
@@ -5373,6 +5401,22 @@ return true;
     {
         YieldBonusAgg agg = new YieldBonusAgg();
         if (equip == null) return agg;
+
+        // CivData
+        void ScanCivEquipmentYields(EquipmentYieldBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && b.equipment == equip)
+                {
+                    agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                    agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                    agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                    agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                }
+        }
+        ScanCivEquipmentYields(civData?.equipmentYieldBonuses);
+        ScanCivEquipmentYields(civData?.effects?.equipmentYieldBonuses);
 
         // Techs
         if (researchedTechs != null)
@@ -5504,6 +5548,16 @@ return true;
         YieldBonusAgg agg = new YieldBonusAgg();
         if (worker == null) return agg;
 
+        void ScanCivWorkerYields(WorkerUnitYieldBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    AddWorkerYieldBonus(ref agg, b);
+        }
+        ScanCivWorkerYields(civData?.workerYieldBonuses);
+        ScanCivWorkerYields(civData?.effects?.workerYieldBonuses);
+
         if (researchedTechs != null)
         {
             foreach (var tech in researchedTechs)
@@ -5628,6 +5682,7 @@ return true;
 
         // CivData
         Scan(civData?.herdYieldBonuses);
+        Scan(civData?.effects?.herdYieldBonuses);
 
         // Leader
         if (leader != null) Scan(leader.herdYieldBonuses);

@@ -638,6 +638,7 @@ public class CombatUnit : BaseUnit
         Accumulate(u.intrinsicStatBonuses);
         if (civ == null) return a;
         Accumulate(civ.civData?.unitBonuses);
+        Accumulate(civ.civData?.effects?.unitBonuses);
         Accumulate(civ.leader?.unitBonuses);
 
         if (civ.researchedTechs != null)
@@ -696,6 +697,7 @@ public class CombatUnit : BaseUnit
 
         Accumulate(actualUnit.intrinsicStatBonuses);
         Accumulate(civ.civData?.unitBonuses);
+        Accumulate(civ.civData?.effects?.unitBonuses);
         Accumulate(civ.leader?.unitBonuses);
 
         if (civ.researchedTechs != null)
@@ -762,6 +764,12 @@ public class CombatUnit : BaseUnit
             yield return aura;
         if (data?.auraBonuses != null)
             foreach (var aura in data.auraBonuses)
+                if (aura != null) yield return aura;
+        if (owner?.civData?.auraBonuses != null)
+            foreach (var aura in owner.civData.auraBonuses)
+                if (aura != null) yield return aura;
+        if (owner?.civData?.effects?.auraBonuses != null)
+            foreach (var aura in owner.civData.effects.auraBonuses)
                 if (aura != null) yield return aura;
     }
 
@@ -903,6 +911,25 @@ public class CombatUnit : BaseUnit
             foreach (var b in eq.conditionalStatBonuses)
                 AddEquipmentStatBonus(b);
         if (civ == null) return a;
+        void ScanCivEquipmentBonuses(EquipmentStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b))
+                {
+                    if (!Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter))
+                    {
+                        a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                        a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
+                    }
+                    a.healthAdd += b.healthAdd;
+                    a.rangeAdd += b.rangeAdd;
+                    a.healthPct += b.healthPct;
+                    a.rangePct += b.rangePct;
+                }
+        }
+        ScanCivEquipmentBonuses(civ.civData?.equipmentBonuses);
+        ScanCivEquipmentBonuses(civ.civData?.effects?.equipmentBonuses);
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
             {
@@ -955,6 +982,21 @@ public class CombatUnit : BaseUnit
                     a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
                     a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
                 }
+        void ScanCivTargetedEquipmentBonuses(EquipmentStatBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+                if (b != null && b.equipment == eq && MatchesEquipmentBonusLocation(b)
+                    && Civilization.HasCombatBonusOpponentFilter(b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter)
+                    && Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                {
+                    a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd; a.defenseAdd += b.defenseAdd;
+                    a.attackPct += b.attackPct; a.meleeAttackPct += b.meleeAttackPct; a.rangedAttackPct += b.rangedAttackPct; a.cityAttackPct += b.cityAttackPct; a.groundAttackPct += b.groundAttackPct; a.underwaterAttackPct += b.underwaterAttackPct; a.airAttackPct += b.airAttackPct; a.spaceAttackPct += b.spaceAttackPct; a.defensePct += b.defensePct;
+                    a.healthAdd += b.healthAdd; a.rangeAdd += b.rangeAdd; a.healthPct += b.healthPct; a.rangePct += b.rangePct;
+                }
+        }
+        ScanCivTargetedEquipmentBonuses(civ.civData?.equipmentBonuses);
+        ScanCivTargetedEquipmentBonuses(civ.civData?.effects?.equipmentBonuses);
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
             {
