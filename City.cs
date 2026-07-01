@@ -1019,6 +1019,8 @@ if (UIManager.Instance != null)
     {
         int capacity = 0;
         AddSlotModifiers(ref capacity, baseBuildingSlots, slotType);
+        AddSlotModifiers(ref capacity, owner?.civData?.citySlotModifiers, slotType);
+        AddSlotModifiers(ref capacity, owner?.civData?.effects?.citySlotModifiers, slotType);
 
         if (owner?.researchedTechs != null)
         {
@@ -2992,6 +2994,7 @@ Destroy(oldTuple.instance);
         }
 
         Scan(owner?.civData?.buildingBonuses);
+        Scan(owner?.civData?.effects?.buildingBonuses);
         Scan(owner?.leader?.buildingBonuses);
 
         if (owner?.researchedTechs != null)
@@ -3544,6 +3547,8 @@ Destroy(oldTuple.instance);
 
         if (owner != null)
         {
+            Scan(owner.civData?.unitProductionModifiers);
+            Scan(owner.civData?.effects?.unitProductionModifiers);
             if (owner.researchedTechs != null)
                 foreach (var tech in owner.researchedTechs) Scan(tech?.unitProductionModifiers);
             if (owner.researchedCultures != null)
