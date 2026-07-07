@@ -10,25 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
-  m_Name: Foot Path
-  m_EditorClassIdentifier: 
-  improvementName: Foot Path
-  icon: {fileID: 21300000, guid: 06f1bd1a1db2d68408aea5b6c6a17baf, type: 3}
-  description: A worn trail packed by repeated travel helps workers, hunters, and
-    armies cross familiar ground more quickly. Provides +0.5 Movement Speed
-  workCost: 15
+  m_Name: Space Station
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: Space Station
+  icon: {fileID: 0}
+  description: 
+  workCost: 1200
   buildGoldCost: 0
-  buildResourceCosts: []
-  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
-  completePrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
-  destroyedPrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
+  buildResourceCosts:
+  - resource: {fileID: 11400000, guid: 6aa8a26d2dac04b4b9a6786f5a45dbae, type: 2}
+    amount: 5
+  constructionPrefab: {fileID: 0}
+  completePrefab: {fileID: 0}
+  destroyedPrefab: {fileID: 0}
   civVisualOverrides: []
   hasSubstituteBuildCosts: 0
   canBeDismantled: 1
   dismantleGoldRefund: 0
   dismantleResourceRefunds: []
-  isShelter: 0
-  shelterCapacity: 0
+  isShelter: 1
+  shelterCapacity: 2
   needsCity: 0
   requiresControlledTerritory: 0
   canBuildInNeutralTerritory: 1
@@ -38,17 +39,17 @@ MonoBehaviour:
   requiredResources: []
   hasSubstituteRequiredResources: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 716d06ba0110413489e9cc881ff82cce, type: 2}
+  - {fileID: 11400000, guid: f00764adc6805f94d9896d0c99fbe036, type: 2}
   requiredCultures: []
   isUnderwaterImprovement: 0
-  isOrbitalImprovement: 0
+  isOrbitalImprovement: 1
   isMissileSilo: 0
   siloMissileCapacity: 5
   allowedMissileTypes: []
   foodPerTurn: 0
-  productionPerTurn: 0
-  goldPerTurn: 0
-  sciencePerTurn: 0
+  productionPerTurn: 3
+  goldPerTurn: 3
+  sciencePerTurn: 5
   culturePerTurn: 0
   policyPointsPerTurn: 0
   faithPerTurn: 0
@@ -60,10 +61,12 @@ MonoBehaviour:
   empireCultureModifier: 0
   empireFaithModifier: 0
   empirePolicyPointsModifier: 0
-  resourceProductionPerTurn: []
+  resourceProductionPerTurn:
+  - resource: {fileID: 11400000, guid: 69c04e098e5013d468e072e8c7e589eb, type: 2}
+    amount: 3
   ruralSpecialistSlots: []
-  movementSpeedBonus: 0.5
-  isRoad: 1
+  movementSpeedBonus: 0
+  isRoad: 0
   connectedGoldPerTurn: 0
   connectedProductionPerTurn: 0
   connectedSciencePerTurn: 0

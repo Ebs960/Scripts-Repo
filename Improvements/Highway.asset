@@ -10,18 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
-  m_Name: Foot Path
-  m_EditorClassIdentifier: 
-  improvementName: Foot Path
-  icon: {fileID: 21300000, guid: 06f1bd1a1db2d68408aea5b6c6a17baf, type: 3}
-  description: A worn trail packed by repeated travel helps workers, hunters, and
-    armies cross familiar ground more quickly. Provides +0.5 Movement Speed
-  workCost: 15
+  m_Name: Highway
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: Highway
+  icon: {fileID: 21300000, guid: cb80d2cdbc90f1f49b0e63e1c1f2231c, type: 3}
+  description: 
+  workCost: 150
   buildGoldCost: 0
   buildResourceCosts: []
-  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
-  completePrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
-  destroyedPrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
+  constructionPrefab: {fileID: 0}
+  completePrefab: {fileID: 0}
+  destroyedPrefab: {fileID: 0}
   civVisualOverrides: []
   hasSubstituteBuildCosts: 0
   canBeDismantled: 1
@@ -38,7 +37,7 @@ MonoBehaviour:
   requiredResources: []
   hasSubstituteRequiredResources: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 716d06ba0110413489e9cc881ff82cce, type: 2}
+  - {fileID: 11400000, guid: 845c71a9f73de8843ac5a9b6cb08b4c5, type: 2}
   requiredCultures: []
   isUnderwaterImprovement: 0
   isOrbitalImprovement: 0
@@ -62,14 +61,14 @@ MonoBehaviour:
   empirePolicyPointsModifier: 0
   resourceProductionPerTurn: []
   ruralSpecialistSlots: []
-  movementSpeedBonus: 0.5
+  movementSpeedBonus: 2.5
   isRoad: 1
-  connectedGoldPerTurn: 0
+  connectedGoldPerTurn: 3
   connectedProductionPerTurn: 0
   connectedSciencePerTurn: 0
   connectedCulturePerTurn: 0
   connectedFaithPerTurn: 0
-  connectedPolicyPointsPerTurn: 0
+  connectedPolicyPointsPerTurn: 1
   isTrap: 0
   trapDamage: 20
   trapAffectsAnimalsOnly: 1
@@ -88,5 +87,6 @@ MonoBehaviour:
   fortAttacksPerTurn: 1
   grantsZoneOfControl: 0
   blocksZoneOfControl: 0
-  replacesImprovements: []
+  replacesImprovements:
+  - {fileID: 11400000, guid: 1d8366cb015f447418af32eaf18ef6a7, type: 2}
   availableUpgrades: []

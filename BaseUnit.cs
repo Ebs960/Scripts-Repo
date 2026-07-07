@@ -1172,6 +1172,26 @@ public abstract class BaseUnit : MonoBehaviour
                     AccumulateFrom(unit);
         }
 
+        foreach (var improvement in FindObjectsByType<ImprovementInstance>())
+        {
+            if (improvement == null || improvement.PlanetIndex != planetIndex || improvement.tileIndex < 0) continue;
+            foreach (var aura in improvement.EnumerateOwnedAuraBonuses())
+            {
+                if (aura == null || aura.radius < 0 || !improvement.AuraCanAffect(this, aura)) continue;
+                var tiles = MissileManager.GetTilesInRadius(ts, improvement.tileIndex, aura.radius);
+                if (tiles == null || !tiles.Contains(currentTileIndex)) continue;
+                total.attackAdd += aura.attackAdd;
+                total.meleeAttackAdd += aura.meleeAttackAdd; total.rangedAttackAdd += aura.rangedAttackAdd; total.cityAttackAdd += aura.cityAttackAdd;
+                total.groundAttackAdd += aura.groundAttackAdd; total.underwaterAttackAdd += aura.underwaterAttackAdd; total.airAttackAdd += aura.airAttackAdd; total.spaceAttackAdd += aura.spaceAttackAdd;
+                total.defenseAdd += aura.defenseAdd; total.healthAdd += aura.healthAdd; total.rangeAdd += aura.rangeAdd;
+                total.attackPct += aura.attackPct;
+                total.meleeAttackPct += aura.meleeAttackPct; total.rangedAttackPct += aura.rangedAttackPct; total.cityAttackPct += aura.cityAttackPct;
+                total.groundAttackPct += aura.groundAttackPct; total.underwaterAttackPct += aura.underwaterAttackPct; total.airAttackPct += aura.airAttackPct; total.spaceAttackPct += aura.spaceAttackPct;
+                total.defensePct += aura.defensePct; total.healthPct += aura.healthPct; total.rangePct += aura.rangePct;
+                total.healingRatePct += aura.healingRatePct;
+            }
+        }
+
         return total;
     }
 

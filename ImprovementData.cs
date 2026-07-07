@@ -61,6 +61,28 @@ public class ImprovementUpgradeData
     [Tooltip("Increase to shelter capacity when this upgrade is applied (adds to ImprovementData.shelterCapacity)")]
     public int additionalShelterCapacity = 0;
 
+    [Header("Aura / Empire")]
+    [Tooltip("Aura bonuses this upgrade projects to nearby units and cities while active.")]
+    public UnitAuraBonus[] auraBonuses;
+    [Tooltip("Percent modifier applied empire-wide to food output while this upgrade is active (0.10 = +10%).")]
+    public float empireFoodModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to production output while this upgrade is active (0.10 = +10%).")]
+    public float empireProductionModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to gold output while this upgrade is active (0.10 = +10%).")]
+    public float empireGoldModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to science output while this upgrade is active (0.10 = +10%).")]
+    public float empireScienceModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to culture output while this upgrade is active (0.10 = +10%).")]
+    public float empireCultureModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to faith output while this upgrade is active (0.10 = +10%).")]
+    public float empireFaithModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to policy point output while this upgrade is active (0.10 = +10%).")]
+    public float empirePolicyPointsModifier = 0f;
+
+    [Header("Resource Production")]
+    [Tooltip("Resources this upgrade adds to the civilization stockpile each turn while active.")]
+    public ResourceCost[] resourceProductionPerTurn;
+
     [Header("Rural Specialist Slots")]
     [Tooltip("Specialist jobs added by this improvement upgrade.")]
     public SpecialistSlotDefinition[] addedRuralSpecialistSlots;
@@ -356,6 +378,30 @@ public class ImprovementData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Aura Bonuses")]
+    [Tooltip("Aura bonuses this improvement projects to nearby units and cities while present.")]
+    public UnitAuraBonus[] auraBonuses;
+
+    [Header("Empire Yield Modifiers")]
+    [Tooltip("Percent modifier applied empire-wide to food output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireFoodModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to production output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireProductionModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to gold output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireGoldModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to science output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireScienceModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to culture output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireCultureModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to faith output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empireFaithModifier = 0f;
+    [Tooltip("Percent modifier applied empire-wide to policy point output while this improvement is owned/operational (0.10 = +10%).")]
+    public float empirePolicyPointsModifier = 0f;
+
+    [Header("Resource Production (per turn)")]
+    [Tooltip("Resources this improvement adds to the civilization stockpile each turn while present.")]
+    public ResourceCost[] resourceProductionPerTurn;
 
     [Header("Rural Specialist Slots")]
     [Tooltip("Specialist jobs created by the base improvement. These are worked by Rural Specialists.")]

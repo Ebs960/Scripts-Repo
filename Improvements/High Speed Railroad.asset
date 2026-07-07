@@ -10,18 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
-  m_Name: Foot Path
-  m_EditorClassIdentifier: 
-  improvementName: Foot Path
-  icon: {fileID: 21300000, guid: 06f1bd1a1db2d68408aea5b6c6a17baf, type: 3}
-  description: A worn trail packed by repeated travel helps workers, hunters, and
-    armies cross familiar ground more quickly. Provides +0.5 Movement Speed
-  workCost: 15
+  m_Name: High Speed Railroad
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: High Speed Railroad
+  icon: {fileID: 21300000, guid: cebd8581954ea9543872eca47dcaee01, type: 3}
+  description: 
+  workCost: 150
   buildGoldCost: 0
   buildResourceCosts: []
-  constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
-  completePrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
-  destroyedPrefab: {fileID: 782580965004877517, guid: 09f1091cc68645f43a015c94f50eb638, type: 3}
+  constructionPrefab: {fileID: 0}
+  completePrefab: {fileID: 0}
+  destroyedPrefab: {fileID: 0}
   civVisualOverrides: []
   hasSubstituteBuildCosts: 0
   canBeDismantled: 1
@@ -38,7 +37,7 @@ MonoBehaviour:
   requiredResources: []
   hasSubstituteRequiredResources: 0
   requiredTechs:
-  - {fileID: 11400000, guid: 716d06ba0110413489e9cc881ff82cce, type: 2}
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCultures: []
   isUnderwaterImprovement: 0
   isOrbitalImprovement: 0
@@ -62,10 +61,10 @@ MonoBehaviour:
   empirePolicyPointsModifier: 0
   resourceProductionPerTurn: []
   ruralSpecialistSlots: []
-  movementSpeedBonus: 0.5
+  movementSpeedBonus: 4
   isRoad: 1
-  connectedGoldPerTurn: 0
-  connectedProductionPerTurn: 0
+  connectedGoldPerTurn: 2
+  connectedProductionPerTurn: 3
   connectedSciencePerTurn: 0
   connectedCulturePerTurn: 0
   connectedFaithPerTurn: 0
@@ -88,5 +87,6 @@ MonoBehaviour:
   fortAttacksPerTurn: 1
   grantsZoneOfControl: 0
   blocksZoneOfControl: 0
-  replacesImprovements: []
+  replacesImprovements:
+  - {fileID: 11400000, guid: 0d0b07062ebceff40b166781a073c0f0, type: 2}
   availableUpgrades: []

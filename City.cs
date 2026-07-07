@@ -2971,6 +2971,24 @@ Destroy(oldTuple.instance);
             if (civ.combatUnits != null) foreach (var unit in civ.combatUnits) AccumulateFrom(unit);
             if (civ.workerUnits != null) foreach (var unit in civ.workerUnits) AccumulateFrom(unit);
         }
+
+        foreach (var improvement in FindObjectsByType<ImprovementInstance>())
+        {
+            if (improvement == null || improvement.PlanetIndex != planetIndex || improvement.tileIndex < 0 || improvement.owner == null || improvement.owner != owner) continue;
+            foreach (var aura in improvement.EnumerateOwnedAuraBonuses())
+            {
+                if (aura == null || aura.radius < 0) continue;
+                var tiles = MissileManager.GetTilesInRadius(ts, improvement.tileIndex, aura.radius);
+                if (tiles == null || !tiles.Contains(centerTileIndex)) continue;
+                agg.foodAdd += aura.cityFoodAdd; agg.productionAdd += aura.cityProductionAdd; agg.goldAdd += aura.cityGoldAdd;
+                agg.scienceAdd += aura.cityScienceAdd; agg.cultureAdd += aura.cityCultureAdd; agg.faithAdd += aura.cityFaithAdd; agg.policyPointsAdd += aura.cityPolicyPointsAdd;
+                agg.foodPct += aura.cityFoodPct; agg.productionPct += aura.cityProductionPct; agg.goldPct += aura.cityGoldPct;
+                agg.sciencePct += aura.citySciencePct; agg.culturePct += aura.cityCulturePct; agg.faithPct += aura.cityFaithPct; agg.policyPointsPct += aura.cityPolicyPointsPct;
+                agg.orderAdd += aura.cityOrderAdd; agg.happinessAdd += aura.cityHappinessAdd; agg.defenseAdd += aura.cityDefenseAdd;
+                agg.orderPct += aura.cityOrderPct; agg.happinessPct += aura.cityHappinessPct; agg.defensePct += aura.cityDefensePct;
+            }
+        }
+
         return agg;
     }
 

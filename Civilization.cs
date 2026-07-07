@@ -4077,26 +4077,47 @@ return true;
     public float GetEmpireBuildingYieldModifier(EmpireYieldType yieldType)
     {
         float total = 0f;
-        if (cities == null) return total;
-
-        foreach (var city in cities)
+        if (cities != null)
         {
-            if (city == null) continue;
-            foreach (var (building, _, upkeepMultiplier) in city.EnumerateOperationalBuildings())
+            foreach (var city in cities)
             {
-                if (building == null) continue;
-                float modifier = yieldType switch
+                if (city == null) continue;
+                foreach (var (building, _, upkeepMultiplier) in city.EnumerateOperationalBuildings())
                 {
-                    EmpireYieldType.Food => building.empireFoodModifier,
-                    EmpireYieldType.Production => building.empireProductionModifier,
-                    EmpireYieldType.Gold => building.empireGoldModifier,
-                    EmpireYieldType.Science => building.empireScienceModifier,
-                    EmpireYieldType.Culture => building.empireCultureModifier,
-                    EmpireYieldType.Faith => building.empireFaithModifier,
-                    EmpireYieldType.PolicyPoints => building.empirePolicyPointsModifier,
-                    _ => 0f,
-                };
-                total += modifier * upkeepMultiplier;
+                    if (building == null) continue;
+                    float modifier = yieldType switch
+                    {
+                        EmpireYieldType.Food => building.empireFoodModifier,
+                        EmpireYieldType.Production => building.empireProductionModifier,
+                        EmpireYieldType.Gold => building.empireGoldModifier,
+                        EmpireYieldType.Science => building.empireScienceModifier,
+                        EmpireYieldType.Culture => building.empireCultureModifier,
+                        EmpireYieldType.Faith => building.empireFaithModifier,
+                        EmpireYieldType.PolicyPoints => building.empirePolicyPointsModifier,
+                        _ => 0f,
+                    };
+                    total += modifier * upkeepMultiplier;
+                }
+            }
+        }
+
+        if (GameManager.Instance != null)
+        {
+            foreach (var planetKvp in GameManager.Instance.GetPlanetData())
+            {
+                int planetIndex = planetKvp.Key;
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                if (ts == null) continue;
+                for (int tileIndex = 0; tileIndex < ts.TileCount; tileIndex++)
+                {
+                    var td = ts.GetTileData(tileIndex);
+                    if (td == null || td.improvementInstanceObject == null) continue;
+                    var instance = td.improvementInstanceObject.GetComponent<ImprovementInstance>();
+                    if (instance == null) continue;
+                    var owner = instance.owner ?? td.improvementOwner ?? td.owner;
+                    if (owner != this) continue;
+                    total += instance.GetEmpireYieldModifier(yieldType);
+                }
             }
         }
 

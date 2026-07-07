@@ -24,6 +24,7 @@ public class ImprovementInstance : MonoBehaviour
 
     // Runtime list of units stored inside this improvement (shelter)
     public List<BaseUnit> storedUnits = new List<BaseUnit>();
+    public int PlanetIndex => planetIndex;
 
     [Header("Fort Runtime")]
     [SerializeField] private int currentFortHitPoints = -1;
@@ -244,6 +245,99 @@ public class ImprovementInstance : MonoBehaviour
             if (!string.IsNullOrEmpty(key) && appliedUpgrades.Contains(key))
                 yield return upgrade;
         }
+    }
+
+    public IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
+    {
+        if (data?.auraBonuses != null)
+            foreach (var aura in data.auraBonuses)
+                if (aura != null) yield return aura;
+
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+            if (upgrade?.auraBonuses != null)
+                foreach (var aura in upgrade.auraBonuses)
+                    if (aura != null) yield return aura;
+    }
+
+    public IEnumerable<ResourceCost> EnumerateResourceProductionPerTurn()
+    {
+        if (data?.resourceProductionPerTurn != null)
+            foreach (var resourceYield in data.resourceProductionPerTurn)
+                if (resourceYield != null) yield return resourceYield;
+
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+            if (upgrade?.resourceProductionPerTurn != null)
+                foreach (var resourceYield in upgrade.resourceProductionPerTurn)
+                    if (resourceYield != null) yield return resourceYield;
+    }
+
+    public float GetEmpireYieldModifier(EmpireYieldType yieldType)
+    {
+        float total = 0f;
+        if (data != null)
+        {
+            total += yieldType switch
+            {
+                EmpireYieldType.Food => data.empireFoodModifier,
+                EmpireYieldType.Production => data.empireProductionModifier,
+                EmpireYieldType.Gold => data.empireGoldModifier,
+                EmpireYieldType.Science => data.empireScienceModifier,
+                EmpireYieldType.Culture => data.empireCultureModifier,
+                EmpireYieldType.Faith => data.empireFaithModifier,
+                EmpireYieldType.PolicyPoints => data.empirePolicyPointsModifier,
+                _ => 0f,
+            };
+        }
+
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+        {
+            total += yieldType switch
+            {
+                EmpireYieldType.Food => upgrade?.empireFoodModifier ?? 0f,
+                EmpireYieldType.Production => upgrade?.empireProductionModifier ?? 0f,
+                EmpireYieldType.Gold => upgrade?.empireGoldModifier ?? 0f,
+                EmpireYieldType.Science => upgrade?.empireScienceModifier ?? 0f,
+                EmpireYieldType.Culture => upgrade?.empireCultureModifier ?? 0f,
+                EmpireYieldType.Faith => upgrade?.empireFaithModifier ?? 0f,
+                EmpireYieldType.PolicyPoints => upgrade?.empirePolicyPointsModifier ?? 0f,
+                _ => 0f,
+            };
+        }
+
+        return total;
+    }
+
+    public bool AuraCanAffect(BaseUnit target, UnitAuraBonus aura)
+    {
+        if (target == null || aura == null) return false;
+        if (owner == null || target.owner == null) return false;
+
+        switch (aura.targetRelationship)
+        {
+            case UnitAuraTargetRelationship.SameCivilization:
+                if (target.owner != owner) return false;
+                break;
+            case UnitAuraTargetRelationship.Friendly:
+                if (target.owner != owner)
+                {
+                    var state = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(owner, target.owner)
+                        : (owner.relations != null && owner.relations.TryGetValue(target.owner, out var rel) ? rel : DiplomaticState.Peace);
+                    if (state == DiplomaticState.War) return false;
+                }
+                break;
+            case UnitAuraTargetRelationship.Enemy:
+                if (target.owner == null || target.owner == owner) return false;
+                {
+                    var state = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(owner, target.owner)
+                        : (owner.relations != null && owner.relations.TryGetValue(target.owner, out var rel) ? rel : DiplomaticState.Peace);
+                    if (state != DiplomaticState.War) return false;
+                }
+                break;
+        }
+
+        return Civilization.MatchesCombatBonusOpponent(target, aura.targetCombatUnit, aura.targetWorkerUnit, aura.useTargetUnitCategoryFilter, aura.targetUnitCategory);
     }
 
     // Runtime click handling / tile awareness (consolidated from ImprovementClickHandler)

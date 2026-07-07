@@ -624,6 +624,27 @@ public class ImprovementManager : MonoBehaviour
     /// This iterates all planets and tiles and credits the civ with improvement yields
     /// (excluding resource-node yields which are handled by ResourceManager).
     /// </summary>
+    private void ApplyImprovementResourceProductionToCiv(Civilization civ, ImprovementData data, ImprovementInstance instance)
+    {
+        if (civ == null) return;
+        if (instance != null)
+        {
+            foreach (var resourceYield in instance.EnumerateResourceProductionPerTurn())
+            {
+                if (resourceYield == null || resourceYield.resource == null || resourceYield.amount <= 0) continue;
+                civ.AddResource(resourceYield.resource, resourceYield.amount);
+            }
+            return;
+        }
+
+        if (data?.resourceProductionPerTurn == null) return;
+        foreach (var resourceYield in data.resourceProductionPerTurn)
+        {
+            if (resourceYield == null || resourceYield.resource == null || resourceYield.amount <= 0) continue;
+            civ.AddResource(resourceYield.resource, resourceYield.amount);
+        }
+    }
+
     public void ApplyImprovementYieldsToCiv(Civilization civ)
     {
         if (civ == null || GameManager.Instance == null) return;
@@ -652,6 +673,9 @@ public class ImprovementManager : MonoBehaviour
                     ty.Policy -= td.resource.policyPointsPerTurn;
                     ty.Faith -= td.resource.faithPerTurn;
                 }
+
+                var impInstance = td.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+                ApplyImprovementResourceProductionToCiv(civ, td.improvement, impInstance);
 
                 if (ty.Food != 0) civ.AddFood(ty.Food);
                 if (ty.Gold != 0) civ.AddGold(ty.Gold);
@@ -691,6 +715,9 @@ public class ImprovementManager : MonoBehaviour
             ty.Policy -= td.resource.policyPointsPerTurn;
             ty.Faith -= td.resource.faithPerTurn;
         }
+
+        var impInstance = td.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+        ApplyImprovementResourceProductionToCiv(civ, td.improvement, impInstance);
 
         if (ty.Food != 0) civ.AddFood(ty.Food);
         if (ty.Gold != 0) civ.AddGold(ty.Gold);
