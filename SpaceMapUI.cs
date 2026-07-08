@@ -45,6 +45,11 @@ public class SpaceMapUI : MonoBehaviour
     public Color activeTravelRouteColor = Color.cyan;
     public float spaceshipIconSize = 20f;
 
+    [Header("World-Space Space Map")]
+    [Tooltip("When enabled, planets and routes are rendered in a true 3D map scene instead of as UI icons.")]
+    [SerializeField] private bool useWorldSpaceMap = true;
+    [SerializeField] private SpaceMapWorldController spaceMapWorldController;
+
     [Header("Planet Icons")]
     public PlanetTypeSprite[] planetTypeIcons;
     private Dictionary<GameManager.PlanetType, Sprite> planetIconDict;
@@ -60,6 +65,17 @@ public class SpaceMapUI : MonoBehaviour
     void Awake()
     {
         SetupUIReferences();
+        if (spaceMapWorldController == null)
+        {
+            SpaceMapWorldController[] controllers = FindObjectsByType<SpaceMapWorldController>(FindObjectsInactive.Include);
+            if (controllers != null && controllers.Length > 0)
+                spaceMapWorldController = controllers[0];
+        }
+        if (useWorldSpaceMap && spaceMapWorldController == null)
+        {
+            GameObject worldMapGO = new GameObject("SpaceMapWorldController");
+            spaceMapWorldController = worldMapGO.AddComponent<SpaceMapWorldController>();
+        }
         
         // IMPORTANT: Hide the space map UI immediately
         Hide();
@@ -284,6 +300,32 @@ ConfirmTravel(selectedPlanet);
     // {
     //     // REMOVED: Use GameManager.Instance for planet data
     // }
+
+    private void ClearPlanetButtonVisuals()
+    {
+        foreach (var button in planetButtons)
+        {
+            if (button != null && button.gameObject != null)
+                Destroy(button.gameObject);
+        }
+        planetButtons.Clear();
+
+        foreach (var line in connectionLines)
+        {
+            if (line != null)
+                Destroy(line);
+        }
+        connectionLines.Clear();
+        ClearSpaceTravelVisuals();
+    }
+
+    private void SetSpaceMapPanelBackgroundVisible(bool visible)
+    {
+        if (spaceMapPanel == null) return;
+        Image panelImage = spaceMapPanel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = visible;
+    }
 
     /// <summary>
     /// Create buttons for each planet in the solar system
@@ -742,7 +784,20 @@ Hide();
     {
         // No more SolarSystemManager. Just show and refresh.
         gameObject.SetActive(true);
+        if (spaceMapCanvas != null)
+            spaceMapCanvas.gameObject.SetActive(true);
         spaceMapPanel.SetActive(true);
+
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            SetSpaceMapPanelBackgroundVisible(false);
+            ClearPlanetButtonVisuals();
+            spaceMapWorldController.ShowMap(this);
+            RefreshPlanetData();
+            return;
+        }
+
+        SetSpaceMapPanelBackgroundVisible(true);
         RefreshPlanetData();
         CreatePlanetButtons();
         UpdateSpaceTravelVisualization();
@@ -753,6 +808,8 @@ Hide();
     /// </summary>
     public void Hide()
     {
+        if (spaceMapWorldController != null)
+            spaceMapWorldController.HideMap();
 // Hide the entire canvas or root object
         if (spaceMapCanvas != null)
         {
@@ -789,6 +846,12 @@ Hide();
         // Update planet button selection highlighting
         var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
         if (planetData == null) return;
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            spaceMapWorldController.RefreshCurrentPlanetHighlight();
+            spaceMapWorldController.RefreshTravelVisuals();
+            return;
+        }
         for (int i = 0; i < planetButtons.Count; i++)
         {
             if (planetButtons[i] != null)
@@ -822,6 +885,12 @@ Hide();
     /// </summary>
     private void UpdateSpaceTravelVisualization()
     {
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            spaceMapWorldController.RefreshTravelVisuals();
+            return;
+        }
+
         // Clear existing travel visuals
         ClearSpaceTravelVisuals();
 
