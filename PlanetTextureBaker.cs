@@ -264,6 +264,12 @@ public static class PlanetTextureBaker
         {
             var td = planetGen.GetHexTileData(i);
             Biome biome = td != null ? td.biome : planetGen.GetBaseBiome(i);
+            // Rivers are stored as tile metadata rather than always replacing the gameplay biome.
+            // Promote them for the baked color map so globe/minimap previews show the exact generated waterways.
+            if (td != null && td.isRiver)
+            {
+                biome = Biome.River;
+            }
 
             // Compute equirect UV from the planet's own grid so baking is independent of TileSystem timing
             // and works correctly for non-current planets in multi-planet mode.
