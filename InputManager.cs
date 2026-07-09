@@ -21,6 +21,9 @@ public class InputManager : MonoBehaviour
     private InputPriority currentPriority = InputPriority.Background;
     private bool isInputEnabled = true;
 
+    public InputPriority CurrentPriority => currentPriority;
+    public bool InputEnabled => isInputEnabled;
+
     void Awake()
     {
         if (Instance == null)

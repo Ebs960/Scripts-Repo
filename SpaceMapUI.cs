@@ -45,6 +45,11 @@ public class SpaceMapUI : MonoBehaviour
     public Color activeTravelRouteColor = Color.cyan;
     public float spaceshipIconSize = 20f;
 
+    [Header("World-Space Space Map")]
+    [Tooltip("When enabled, planets and routes are rendered in a true 3D map scene instead of as UI icons.")]
+    [SerializeField] private bool useWorldSpaceMap = true;
+    [SerializeField] private SpaceMapWorldController spaceMapWorldController;
+
     [Header("Planet Icons")]
     public PlanetTypeSprite[] planetTypeIcons;
     private Dictionary<GameManager.PlanetType, Sprite> planetIconDict;
@@ -56,10 +61,27 @@ public class SpaceMapUI : MonoBehaviour
     private List<GameObject> travelingSpaceships = new List<GameObject>();
     private GameManager.PlanetData selectedPlanet;
     private Vector2 homeWorldPosition = Vector2.zero;
+    private bool restoreGameplayHudAfterSpaceMap;
+    private bool previousGamePaused;
+    private bool previousInputEnabled = true;
+    private InputManager.InputPriority previousInputPriority = InputManager.InputPriority.Background;
+    private bool spaceMapModeActive;
+    private float ignoreCloseInputUntil;
 
     void Awake()
     {
         SetupUIReferences();
+        if (spaceMapWorldController == null)
+        {
+            SpaceMapWorldController[] controllers = FindObjectsByType<SpaceMapWorldController>(FindObjectsInactive.Include);
+            if (controllers != null && controllers.Length > 0)
+                spaceMapWorldController = controllers[0];
+        }
+        if (useWorldSpaceMap && spaceMapWorldController == null)
+        {
+            GameObject worldMapGO = new GameObject("SpaceMapWorldController");
+            spaceMapWorldController = worldMapGO.AddComponent<SpaceMapWorldController>();
+        }
         
         // IMPORTANT: Hide the space map UI immediately
         Hide();
@@ -80,6 +102,20 @@ public class SpaceMapUI : MonoBehaviour
     {
         // Setup button listeners AFTER all components are initialized
         SetupButtonListeners();
+    }
+
+    private void Update()
+    {
+        if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M))
+        {
+            if (UIManager.Instance != null)
+                UIManager.Instance.HideSpaceMap();
+            else
+                Hide();
+        }
     }
     
     private void SetupButtonListeners()
@@ -284,6 +320,79 @@ ConfirmTravel(selectedPlanet);
     // {
     //     // REMOVED: Use GameManager.Instance for planet data
     // }
+
+    private void EnterSpaceMapMode()
+    {
+        if (spaceMapModeActive) return;
+
+        spaceMapModeActive = true;
+        ignoreCloseInputUntil = Time.unscaledTime + 0.15f;
+
+        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
+        {
+            restoreGameplayHudAfterSpaceMap = UIManager.Instance.gameplayHudRoot.activeSelf;
+            UIManager.Instance.gameplayHudRoot.SetActive(false);
+        }
+
+        if (GameManager.Instance != null)
+        {
+            previousGamePaused = GameManager.Instance.gamePaused;
+            GameManager.Instance.gamePaused = true;
+        }
+
+        if (InputManager.Instance != null)
+        {
+            previousInputPriority = InputManager.Instance.CurrentPriority;
+            previousInputEnabled = InputManager.Instance.InputEnabled;
+            InputManager.Instance.SetInputEnabled(true);
+            InputManager.Instance.SetPriority(InputManager.InputPriority.Modal);
+        }
+    }
+
+    private void ExitSpaceMapMode()
+    {
+        if (!spaceMapModeActive) return;
+
+        spaceMapModeActive = false;
+
+        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
+            UIManager.Instance.gameplayHudRoot.SetActive(restoreGameplayHudAfterSpaceMap);
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.gamePaused = previousGamePaused;
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.SetPriority(previousInputPriority);
+            InputManager.Instance.SetInputEnabled(previousInputEnabled);
+        }
+    }
+
+    private void ClearPlanetButtonVisuals()
+    {
+        foreach (var button in planetButtons)
+        {
+            if (button != null && button.gameObject != null)
+                Destroy(button.gameObject);
+        }
+        planetButtons.Clear();
+
+        foreach (var line in connectionLines)
+        {
+            if (line != null)
+                Destroy(line);
+        }
+        connectionLines.Clear();
+        ClearSpaceTravelVisuals();
+    }
+
+    private void SetSpaceMapPanelBackgroundVisible(bool visible)
+    {
+        if (spaceMapPanel == null) return;
+        Image panelImage = spaceMapPanel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = visible;
+    }
 
     /// <summary>
     /// Create buttons for each planet in the solar system
@@ -742,7 +851,22 @@ Hide();
     {
         // No more SolarSystemManager. Just show and refresh.
         gameObject.SetActive(true);
+        if (spaceMapCanvas != null)
+            spaceMapCanvas.gameObject.SetActive(true);
         spaceMapPanel.SetActive(true);
+
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            EnterSpaceMapMode();
+            SetSpaceMapPanelBackgroundVisible(false);
+            ClearPlanetButtonVisuals();
+            spaceMapWorldController.ShowMap(this);
+            RefreshPlanetData();
+            return;
+        }
+
+        ExitSpaceMapMode();
+        SetSpaceMapPanelBackgroundVisible(true);
         RefreshPlanetData();
         CreatePlanetButtons();
         UpdateSpaceTravelVisualization();
@@ -753,6 +877,9 @@ Hide();
     /// </summary>
     public void Hide()
     {
+        if (spaceMapWorldController != null)
+            spaceMapWorldController.HideMap();
+        ExitSpaceMapMode();
 // Hide the entire canvas or root object
         if (spaceMapCanvas != null)
         {
@@ -789,6 +916,12 @@ Hide();
         // Update planet button selection highlighting
         var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
         if (planetData == null) return;
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            spaceMapWorldController.RefreshCurrentPlanetHighlight();
+            spaceMapWorldController.RefreshTravelVisuals();
+            return;
+        }
         for (int i = 0; i < planetButtons.Count; i++)
         {
             if (planetButtons[i] != null)
@@ -822,6 +955,12 @@ Hide();
     /// </summary>
     private void UpdateSpaceTravelVisualization()
     {
+        if (useWorldSpaceMap && spaceMapWorldController != null)
+        {
+            spaceMapWorldController.RefreshTravelVisuals();
+            return;
+        }
+
         // Clear existing travel visuals
         ClearSpaceTravelVisuals();
 
