@@ -61,6 +61,12 @@ public class SpaceMapUI : MonoBehaviour
     private List<GameObject> travelingSpaceships = new List<GameObject>();
     private GameManager.PlanetData selectedPlanet;
     private Vector2 homeWorldPosition = Vector2.zero;
+    private bool restoreGameplayHudAfterSpaceMap;
+    private bool previousGamePaused;
+    private bool previousInputEnabled = true;
+    private InputManager.InputPriority previousInputPriority = InputManager.InputPriority.Background;
+    private bool spaceMapModeActive;
+    private float ignoreCloseInputUntil;
 
     void Awake()
     {
@@ -96,6 +102,20 @@ public class SpaceMapUI : MonoBehaviour
     {
         // Setup button listeners AFTER all components are initialized
         SetupButtonListeners();
+    }
+
+    private void Update()
+    {
+        if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M))
+        {
+            if (UIManager.Instance != null)
+                UIManager.Instance.HideSpaceMap();
+            else
+                Hide();
+        }
     }
     
     private void SetupButtonListeners()
@@ -300,6 +320,53 @@ ConfirmTravel(selectedPlanet);
     // {
     //     // REMOVED: Use GameManager.Instance for planet data
     // }
+
+    private void EnterSpaceMapMode()
+    {
+        if (spaceMapModeActive) return;
+
+        spaceMapModeActive = true;
+        ignoreCloseInputUntil = Time.unscaledTime + 0.15f;
+
+        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
+        {
+            restoreGameplayHudAfterSpaceMap = UIManager.Instance.gameplayHudRoot.activeSelf;
+            UIManager.Instance.gameplayHudRoot.SetActive(false);
+        }
+
+        if (GameManager.Instance != null)
+        {
+            previousGamePaused = GameManager.Instance.gamePaused;
+            GameManager.Instance.gamePaused = true;
+        }
+
+        if (InputManager.Instance != null)
+        {
+            previousInputPriority = InputManager.Instance.CurrentPriority;
+            previousInputEnabled = InputManager.Instance.InputEnabled;
+            InputManager.Instance.SetInputEnabled(true);
+            InputManager.Instance.SetPriority(InputManager.InputPriority.Modal);
+        }
+    }
+
+    private void ExitSpaceMapMode()
+    {
+        if (!spaceMapModeActive) return;
+
+        spaceMapModeActive = false;
+
+        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
+            UIManager.Instance.gameplayHudRoot.SetActive(restoreGameplayHudAfterSpaceMap);
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.gamePaused = previousGamePaused;
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.SetPriority(previousInputPriority);
+            InputManager.Instance.SetInputEnabled(previousInputEnabled);
+        }
+    }
 
     private void ClearPlanetButtonVisuals()
     {
@@ -790,6 +857,7 @@ Hide();
 
         if (useWorldSpaceMap && spaceMapWorldController != null)
         {
+            EnterSpaceMapMode();
             SetSpaceMapPanelBackgroundVisible(false);
             ClearPlanetButtonVisuals();
             spaceMapWorldController.ShowMap(this);
@@ -797,6 +865,7 @@ Hide();
             return;
         }
 
+        ExitSpaceMapMode();
         SetSpaceMapPanelBackgroundVisible(true);
         RefreshPlanetData();
         CreatePlanetButtons();
@@ -810,6 +879,7 @@ Hide();
     {
         if (spaceMapWorldController != null)
             spaceMapWorldController.HideMap();
+        ExitSpaceMapMode();
 // Hide the entire canvas or root object
         if (spaceMapCanvas != null)
         {

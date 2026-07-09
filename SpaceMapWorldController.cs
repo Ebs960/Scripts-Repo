@@ -40,8 +40,11 @@ public class SpaceMapWorldController : MonoBehaviour
     [SerializeField] private float shipMarkerRadius = 0.9f;
 
     private readonly Dictionary<int, SpaceMapPlanetMarker> markersByPlanet = new Dictionary<int, SpaceMapPlanetMarker>();
-    private readonly List<GameObject> routeObjects = new List<GameObject>();
-    private readonly List<GameObject> shipObjects = new List<GameObject>();
+    private readonly List<GameObject> connectionObjects = new List<GameObject>();
+    private readonly Dictionary<int, GameObject> activeRouteObjects = new Dictionary<int, GameObject>();
+    private readonly Dictionary<int, GameObject> shipObjectsByTask = new Dictionary<int, GameObject>();
+    private readonly Dictionary<Camera, bool> hiddenGameplayCameraStates = new Dictionary<Camera, bool>();
+    private readonly Dictionary<Camera, int> hiddenGameplayCameraCullingMasks = new Dictionary<Camera, int>();
     private SpaceMapPlanetMarker selectedMarker;
     private bool isVisible;
     private float nextTravelRefreshTime;
@@ -68,6 +71,7 @@ public class SpaceMapWorldController : MonoBehaviour
     {
         if (ui != null) spaceMapUI = ui;
         EnsureSceneObjects();
+        HideGameplayCameras();
         SetMapActive(true);
         RebuildPlanets();
         RefreshTravelVisuals();
@@ -78,11 +82,13 @@ public class SpaceMapWorldController : MonoBehaviour
     public void HideMap()
     {
         SetMapActive(false);
+        RestoreGameplayCameras();
     }
 
     public void RebuildPlanets()
     {
         ClearPlanets();
+        ClearRouteVisuals();
         var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
         if (planetData == null || planetData.Count == 0) return;
 
@@ -114,9 +120,9 @@ public class SpaceMapWorldController : MonoBehaviour
     public void RefreshTravelVisuals()
     {
         if (!isVisible) return;
-        ClearRouteVisuals();
-        CreateConnectionLines();
-        CreateActiveTravelVisuals();
+        if (connectionObjects.Count == 0)
+            CreateConnectionLines();
+        RefreshActiveTravelVisuals();
     }
 
     public void SelectPlanetMarker(SpaceMapPlanetMarker marker)
@@ -187,29 +193,55 @@ public class SpaceMapWorldController : MonoBehaviour
 
     private void CreateConnectionLines()
     {
+        ClearConnectionVisuals();
         SpaceMapPlanetMarker home = markersByPlanet.Values.FirstOrDefault(m => m.PlanetData != null && m.PlanetData.isHomeWorld);
         if (home == null) return;
 
         foreach (SpaceMapPlanetMarker marker in markersByPlanet.Values)
         {
             if (marker == home) continue;
-            routeObjects.Add(CreateLineObject($"Connection_{home.PlanetIndex}_{marker.PlanetIndex}", home.transform.position, marker.transform.position, connectionLineColor, connectionLineWidth, routeMaterial));
+            connectionObjects.Add(CreateLineObject($"Connection_{home.PlanetIndex}_{marker.PlanetIndex}", home.transform.position, marker.transform.position, connectionLineColor, connectionLineWidth, routeMaterial));
         }
     }
 
-    private void CreateActiveTravelVisuals()
+    private void RefreshActiveTravelVisuals()
     {
-        if (SpaceRouteManager.Instance == null) return;
-        foreach (var travel in SpaceRouteManager.Instance.GetActiveTravels())
+        HashSet<int> seenTaskIds = new HashSet<int>();
+        if (SpaceRouteManager.Instance != null)
         {
-            if (!markersByPlanet.TryGetValue(travel.originPlanetIndex, out var origin)) continue;
-            if (!markersByPlanet.TryGetValue(travel.destinationPlanetIndex, out var destination)) continue;
+            foreach (var travel in SpaceRouteManager.Instance.GetActiveTravels())
+            {
+                if (!markersByPlanet.TryGetValue(travel.originPlanetIndex, out var origin)) continue;
+                if (!markersByPlanet.TryGetValue(travel.destinationPlanetIndex, out var destination)) continue;
 
-            Vector3 start = origin.transform.position;
-            Vector3 end = destination.transform.position;
-            routeObjects.Add(CreateLineObject($"ActiveRoute_{travel.taskId}", start, end, activeRouteColor, connectionLineWidth * 2f, activeRouteMaterial));
-            shipObjects.Add(CreateShipMarker(travel, Vector3.Lerp(start, end, Mathf.Clamp01(travel.Progress))));
+                seenTaskIds.Add(travel.taskId);
+                Vector3 start = origin.transform.position;
+                Vector3 end = destination.transform.position;
+                Vector3 shipPosition = Vector3.Lerp(start, end, Mathf.Clamp01(travel.Progress));
+
+                if (!activeRouteObjects.TryGetValue(travel.taskId, out GameObject routeGO) || routeGO == null)
+                {
+                    routeGO = CreateLineObject($"ActiveRoute_{travel.taskId}", start, end, activeRouteColor, connectionLineWidth * 2f, activeRouteMaterial);
+                    activeRouteObjects[travel.taskId] = routeGO;
+                }
+                else
+                {
+                    UpdateLineObject(routeGO, start, end, activeRouteColor, connectionLineWidth * 2f);
+                }
+
+                if (!shipObjectsByTask.TryGetValue(travel.taskId, out GameObject shipGO) || shipGO == null)
+                {
+                    shipObjectsByTask[travel.taskId] = CreateShipMarker(travel, shipPosition);
+                }
+                else
+                {
+                    shipGO.transform.position = shipPosition + Vector3.up * 0.75f;
+                    shipGO.name = $"SpaceMapShip_{travel.taskId}_{travel.unitName}";
+                }
+            }
         }
+
+        RemoveStaleActiveTravelVisuals(seenTaskIds);
     }
 
     private GameObject CreateLineObject(string objectName, Vector3 start, Vector3 end, Color color, float width, Material material)
@@ -227,6 +259,20 @@ public class SpaceMapWorldController : MonoBehaviour
         line.startColor = color;
         line.endColor = color;
         return lineGO;
+    }
+
+    private void UpdateLineObject(GameObject lineGO, Vector3 start, Vector3 end, Color color, float width)
+    {
+        if (lineGO == null) return;
+        LineRenderer line = lineGO.GetComponent<LineRenderer>();
+        if (line == null) return;
+        line.positionCount = 2;
+        line.SetPosition(0, start + Vector3.up * 0.15f);
+        line.SetPosition(1, end + Vector3.up * 0.15f);
+        line.startWidth = width;
+        line.endWidth = width;
+        line.startColor = color;
+        line.endColor = color;
     }
 
     private GameObject CreateShipMarker(SpaceRouteManager.SpaceTravelTask travel, Vector3 position)
@@ -334,6 +380,37 @@ public class SpaceMapWorldController : MonoBehaviour
         }
     }
 
+    private void HideGameplayCameras()
+    {
+        hiddenGameplayCameraStates.Clear();
+        hiddenGameplayCameraCullingMasks.Clear();
+        Camera[] cameras = Camera.allCameras;
+        foreach (Camera cam in cameras)
+        {
+            if (cam == null || cam == spaceMapCamera) continue;
+
+            bool looksLikeGameplayCamera = cam.CompareTag("MainCamera") || cam.GetComponent<PlanetaryCameraManager>() != null;
+            if (!looksLikeGameplayCamera) continue;
+
+            hiddenGameplayCameraStates[cam] = cam.enabled;
+            hiddenGameplayCameraCullingMasks[cam] = cam.cullingMask;
+            cam.cullingMask = 0;
+        }
+    }
+
+    private void RestoreGameplayCameras()
+    {
+        foreach (var kv in hiddenGameplayCameraStates)
+        {
+            if (kv.Key == null) continue;
+            kv.Key.enabled = kv.Value;
+            if (hiddenGameplayCameraCullingMasks.TryGetValue(kv.Key, out int cullingMask))
+                kv.Key.cullingMask = cullingMask;
+        }
+        hiddenGameplayCameraStates.Clear();
+        hiddenGameplayCameraCullingMasks.Clear();
+    }
+
     private void SetMapActive(bool active)
     {
         isVisible = active;
@@ -351,11 +428,35 @@ public class SpaceMapWorldController : MonoBehaviour
         selectedMarker = null;
     }
 
+    private void ClearConnectionVisuals()
+    {
+        foreach (GameObject route in connectionObjects) if (route != null) Destroy(route);
+        connectionObjects.Clear();
+    }
+
     private void ClearRouteVisuals()
     {
-        foreach (GameObject route in routeObjects) if (route != null) Destroy(route);
-        foreach (GameObject ship in shipObjects) if (ship != null) Destroy(ship);
-        routeObjects.Clear();
-        shipObjects.Clear();
+        ClearConnectionVisuals();
+        foreach (GameObject route in activeRouteObjects.Values) if (route != null) Destroy(route);
+        foreach (GameObject ship in shipObjectsByTask.Values) if (ship != null) Destroy(ship);
+        activeRouteObjects.Clear();
+        shipObjectsByTask.Clear();
+    }
+
+    private void RemoveStaleActiveTravelVisuals(HashSet<int> activeTaskIds)
+    {
+        List<int> staleRouteIds = activeRouteObjects.Keys.Where(id => !activeTaskIds.Contains(id)).ToList();
+        foreach (int taskId in staleRouteIds)
+        {
+            if (activeRouteObjects.TryGetValue(taskId, out GameObject routeGO) && routeGO != null) Destroy(routeGO);
+            activeRouteObjects.Remove(taskId);
+        }
+
+        List<int> staleShipIds = shipObjectsByTask.Keys.Where(id => !activeTaskIds.Contains(id)).ToList();
+        foreach (int taskId in staleShipIds)
+        {
+            if (shipObjectsByTask.TryGetValue(taskId, out GameObject shipGO) && shipGO != null) Destroy(shipGO);
+            shipObjectsByTask.Remove(taskId);
+        }
     }
 }
