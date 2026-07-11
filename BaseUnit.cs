@@ -245,6 +245,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int oldAttackPoints = currentAttackPoints;
         currentAttackPoints = ApplyResourceUpkeepToTurnPoints(attackPointsPerTurn);
+        hasUsedSpaceReactionThisTurn = false;
         try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
     }
 
@@ -265,6 +266,22 @@ public abstract class BaseUnit : MonoBehaviour
     public int currentHealth { get; protected set; }
     public int currentTileIndex = -1;
     public TileLayer currentLayer = TileLayer.Surface;
+
+    [Header("Space Hex Location")]
+    public SpaceLocation spaceLocation = SpaceLocation.OnSurface(-1, -1);
+    public int spaceMovementPointsPerTurn = 3;
+    public int currentSpaceMovementPoints = 3;
+    public int currentSpaceTileIndex = -1;
+    public List<int> queuedSpacePath = new List<int>();
+    public int queuedSpacePathCursor = 0;
+    public int spaceVisionRange = 2;
+    public int spaceReconRange = 5;
+    public bool canPerformSpaceRecon = false;
+    public int reconActionCost = 1;
+    public int spaceFleetId = -1;
+    public bool isPackedInSpaceFleet = false;
+    public bool hasUsedSpaceReactionThisTurn = false;
+
     [Tooltip("Which planet this unit belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
 
@@ -2362,7 +2379,7 @@ public abstract class BaseUnit : MonoBehaviour
 
     /// <summary>
     /// Land this unit from orbit back to the surface layer.
-    /// Consumes movement points equal to CombatUnitData.orbitExitCost.
+    /// Lands from orbit through the centralized space transition flow.
     /// If requiresSpaceportToLand is true, the target tile must have a spaceport improvement.
     /// </summary>
     public virtual void ExitOrbit(int landingTileIndex = -1)

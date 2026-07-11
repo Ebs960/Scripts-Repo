@@ -260,10 +260,8 @@ public class SpaceEmbarkUI : MonoBehaviour
             return Mathf.RoundToInt(distance * 5); // Fallback: 5 turns per AU
 
         // Access the calculation logic (you might need to make this public in SpaceRouteManager)
-        float baseTurns = distance * spaceManager.baseTurnsPerAU;
-        baseTurns *= spaceManager.technologyModifier;
-        
-        return Mathf.Max(spaceManager.minimumTravelTurns, Mathf.RoundToInt(baseTurns));
+        // Space travel now uses queued hex movement instead of AU countdowns.
+        return Mathf.Max(1, Mathf.RoundToInt(distance));
     }
 
     private void OnEmbarkButtonClicked()

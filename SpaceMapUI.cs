@@ -2,1155 +2,158 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Linq;
 
 /// <summary>
-/// Custom UI for the space map showing planets and civilizations
+/// Overlay-only UI for the mandatory world-space solar-system map. Rendering,
+/// selection, hexes, planets, routes, and ships are owned by SpaceMapWorldController.
 /// </summary>
 public class SpaceMapUI : MonoBehaviour
 {
-    [Header("UI References")]
+    [Header("Overlay References")]
     public Canvas spaceMapCanvas;
     public GameObject spaceMapPanel;
     public Button closeButton;
     public TextMeshProUGUI titleText;
-    
-    [Header("Planet Display")]
-    public Transform planetContainer;
-    public GameObject planetButtonPrefab;
-    public RectTransform solarSystemView;
-    
-    [Header("Planet Info Panel")]
+
+    [Header("Selected Entity Info")]
     public GameObject planetInfoPanel;
     public TextMeshProUGUI planetNameText;
     public TextMeshProUGUI planetTypeText;
     public TextMeshProUGUI planetStatusText;
     public TextMeshProUGUI distanceText;
-    public Image planetIcon;
     public Button travelButton;
     public Button cancelButton;
-    
+
     [Header("Civilization List")]
     public Transform civilizationContainer;
     public GameObject civilizationEntryPrefab;
     public TextMeshProUGUI noCivilizationsText;
-    
-    [Header("Visual Settings")]
-    public float planetSpacing = 100f;
-    public float connectionLineWidth = 2f;
-    public Color connectionLineColor = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
-    
-    [Header("Space Travel Visualization")]
-    public GameObject spaceshipIconPrefab;
-    public Color activeTravelRouteColor = Color.cyan;
-    public float spaceshipIconSize = 20f;
 
     [Header("World-Space Space Map")]
-    [Tooltip("When enabled, planets and routes are rendered in a true 3D map scene instead of as UI icons.")]
-    [SerializeField] private bool useWorldSpaceMap = true;
     [SerializeField] private SpaceMapWorldController spaceMapWorldController;
 
-    [Header("Planet Icons")]
-    public PlanetTypeSprite[] planetTypeIcons;
-    private Dictionary<GameManager.PlanetType, Sprite> planetIconDict;
-
-    // private SolarSystemManager solarSystemManager; // REMOVED: Use GameManager.Instance
-    private List<PlanetButton> planetButtons = new List<PlanetButton>();
-    private List<GameObject> connectionLines = new List<GameObject>();
-    private List<GameObject> activeTravelRoutes = new List<GameObject>();
-    private List<GameObject> travelingSpaceships = new List<GameObject>();
     private GameManager.PlanetData selectedPlanet;
-    private Vector2 homeWorldPosition = Vector2.zero;
-    private bool restoreGameplayHudAfterSpaceMap;
-    private bool previousGamePaused;
-    private bool previousInputEnabled = true;
-    private InputManager.InputPriority previousInputPriority = InputManager.InputPriority.Background;
+    private BaseUnit selectedShip;
     private bool spaceMapModeActive;
     private float ignoreCloseInputUntil;
 
-    void Awake()
+    private void Awake()
     {
-        SetupUIReferences();
-        if (spaceMapWorldController == null)
-        {
-            SpaceMapWorldController[] controllers = FindObjectsByType<SpaceMapWorldController>(FindObjectsInactive.Include);
-            if (controllers != null && controllers.Length > 0)
-                spaceMapWorldController = controllers[0];
-        }
-        if (useWorldSpaceMap && spaceMapWorldController == null)
-        {
-            GameObject worldMapGO = new GameObject("SpaceMapWorldController");
-            spaceMapWorldController = worldMapGO.AddComponent<SpaceMapWorldController>();
-        }
-        
-        // IMPORTANT: Hide the space map UI immediately
+        ResolveAssignedReferences();
+        ValidateAssignedReferences();
         Hide();
-
-        // Build planet icon dictionary
-        planetIconDict = new Dictionary<GameManager.PlanetType, Sprite>();
-        if (planetTypeIcons != null)
-        {
-            foreach (var entry in planetTypeIcons)
-            {
-                if (!planetIconDict.ContainsKey(entry.planetType) && entry.icon != null)
-                    planetIconDict.Add(entry.planetType, entry.icon);
-            }
-        }
     }
 
-    void Start()
+    private void Start()
     {
-        // Setup button listeners AFTER all components are initialized
-        SetupButtonListeners();
+        if (closeButton != null) { closeButton.onClick.RemoveAllListeners(); closeButton.onClick.AddListener(Hide); }
+        if (travelButton != null) { travelButton.onClick.RemoveAllListeners(); travelButton.onClick.AddListener(() => { if (selectedPlanet != null) SwitchToPlanet(selectedPlanet); }); }
+        if (cancelButton != null) { cancelButton.onClick.RemoveAllListeners(); cancelButton.onClick.AddListener(() => SelectPlanet(null)); }
     }
 
     private void Update()
     {
-        if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil)
-            return;
-
-        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M))
-        {
-            if (UIManager.Instance != null)
-                UIManager.Instance.HideSpaceMap();
-            else
-                Hide();
-        }
-    }
-    
-    private void SetupButtonListeners()
-    {
-if (closeButton != null)
-        {
-            closeButton.onClick.RemoveAllListeners(); // Clear any existing listeners
-            closeButton.onClick.AddListener(() => {
-Hide();
-            });
-            
-            // Ensure button is interactable
-            closeButton.interactable = true;
-}
-        else
-        {
-            Debug.LogError("[SpaceMapUI] Close button is null in Start()! UI may not be properly initialized.");
-        }
-        
-        // Setup travel button if it exists
-        if (travelButton != null)
-        {
-            travelButton.onClick.RemoveAllListeners();
-            travelButton.onClick.AddListener(() => {
-                if (selectedPlanet != null)
-                {
-ConfirmTravel(selectedPlanet);
-                }
-            });
-}
+        if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil) return;
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M)) Hide();
     }
 
-    /// <summary>
-    /// Setup UI references if not assigned in inspector
-    /// </summary>
-    private void SetupUIReferences()
-    {
-        if (spaceMapCanvas == null)
-        {
-            spaceMapCanvas = GetComponent<Canvas>();
-            if (spaceMapCanvas == null)
-            {
-                spaceMapCanvas = gameObject.AddComponent<Canvas>();
-                spaceMapCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                spaceMapCanvas.sortingOrder = 100; // High priority overlay
-            }
-            
-            // CRITICAL: Add GraphicRaycaster for button clicks to work
-            if (spaceMapCanvas.GetComponent<GraphicRaycaster>() == null)
-            {
-                spaceMapCanvas.gameObject.AddComponent<GraphicRaycaster>();
-}
-        }
-
-        if (spaceMapPanel == null)
-        {
-            CreateSpaceMapPanel();
-        }
-    }
-
-    /// <summary>
-    /// Create the main space map panel programmatically
-    /// </summary>
-    private void CreateSpaceMapPanel()
-    {
-        // Main panel
-        spaceMapPanel = CreateUIElement("SpaceMapPanel", spaceMapCanvas.transform);
-        spaceMapPanel.AddComponent<Image>().color = new Color(0, 0, 0.2f, 0.9f); // Dark blue background
-        
-        RectTransform panelRect = spaceMapPanel.GetComponent<RectTransform>();
-        panelRect.anchorMin = Vector2.zero;
-        panelRect.anchorMax = Vector2.one;
-        panelRect.offsetMin = Vector2.zero;
-        panelRect.offsetMax = Vector2.zero;
-
-        // Title
-        GameObject titleGO = CreateUIElement("Title", spaceMapPanel.transform);
-        titleText = titleGO.AddComponent<TextMeshProUGUI>();
-        titleText.text = "Solar System Map";
-        titleText.fontSize = 36;
-        titleText.alignment = TextAlignmentOptions.Center;
-        
-        RectTransform titleRect = titleGO.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0, 0.9f);
-        titleRect.anchorMax = new Vector2(1, 1);
-        titleRect.offsetMin = Vector2.zero;
-        titleRect.offsetMax = Vector2.zero;
-
-        // Close button
-        GameObject closeGO = CreateUIElement("CloseButton", spaceMapPanel.transform);
-        closeButton = closeGO.AddComponent<Button>();
-        closeGO.AddComponent<Image>().color = Color.red;
-        
-        TextMeshProUGUI closeText = CreateUIElement("Text", closeGO.transform).AddComponent<TextMeshProUGUI>();
-        closeText.text = "X";
-        closeText.fontSize = 24;
-        closeText.alignment = TextAlignmentOptions.Center;
-        closeText.color = Color.white;
-        
-        RectTransform closeRect = closeGO.GetComponent<RectTransform>();
-        closeRect.anchorMin = new Vector2(0.95f, 0.9f);
-        closeRect.anchorMax = new Vector2(1, 1);
-        closeRect.offsetMin = Vector2.zero;
-        closeRect.offsetMax = Vector2.zero;
-        // Ensure runtime-created close button is wired to UIManager (click sounds, etc.)
-        if (UIManager.Instance != null)
-            UIManager.Instance.WireUIInteractions(closeGO);
-
-        // Solar system view
-        GameObject solarViewGO = CreateUIElement("SolarSystemView", spaceMapPanel.transform);
-        solarSystemView = solarViewGO.GetComponent<RectTransform>();
-        solarSystemView.anchorMin = new Vector2(0, 0.4f);
-        solarSystemView.anchorMax = new Vector2(1, 0.9f);
-        solarSystemView.offsetMin = Vector2.zero;
-        solarSystemView.offsetMax = Vector2.zero;
-
-        // Planet container
-        GameObject planetContainerGO = CreateUIElement("PlanetContainer", solarSystemView);
-        planetContainer = planetContainerGO.transform;
-        
-        // Planet info panel
-        CreatePlanetInfoPanel();
-        
-        // Note: Button listeners are set up in Start() method
-}
-
-    /// <summary>
-    /// Create planet info panel
-    /// </summary>
-    private void CreatePlanetInfoPanel()
-    {
-        planetInfoPanel = CreateUIElement("PlanetInfoPanel", spaceMapPanel.transform);
-        planetInfoPanel.AddComponent<Image>().color = new Color(0.1f, 0.1f, 0.3f, 0.8f);
-        
-        RectTransform infoRect = planetInfoPanel.GetComponent<RectTransform>();
-        infoRect.anchorMin = new Vector2(0, 0);
-        infoRect.anchorMax = new Vector2(1, 0.4f);
-        infoRect.offsetMin = Vector2.zero;
-        infoRect.offsetMax = Vector2.zero;
-
-        // Planet name
-        GameObject nameGO = CreateUIElement("PlanetName", planetInfoPanel.transform);
-        planetNameText = nameGO.AddComponent<TextMeshProUGUI>();
-        planetNameText.fontSize = 28;
-        planetNameText.alignment = TextAlignmentOptions.Center;
-        
-        RectTransform nameRect = nameGO.GetComponent<RectTransform>();
-        nameRect.anchorMin = new Vector2(0, 0.8f);
-        nameRect.anchorMax = new Vector2(1, 1);
-        nameRect.offsetMin = Vector2.zero;
-        nameRect.offsetMax = Vector2.zero;
-
-        // Travel button
-        GameObject travelGO = CreateUIElement("TravelButton", planetInfoPanel.transform);
-        travelButton = travelGO.AddComponent<Button>();
-        travelGO.AddComponent<Image>().color = Color.green;
-        
-        TextMeshProUGUI travelText = CreateUIElement("Text", travelGO.transform).AddComponent<TextMeshProUGUI>();
-        travelText.text = "Travel to Planet";
-        travelText.fontSize = 18;
-        travelText.alignment = TextAlignmentOptions.Center;
-        travelText.color = Color.white;
-        
-        RectTransform travelRect = travelGO.GetComponent<RectTransform>();
-        travelRect.anchorMin = new Vector2(0.7f, 0.1f);
-        travelRect.anchorMax = new Vector2(0.95f, 0.3f);
-        travelRect.offsetMin = Vector2.zero;
-        travelRect.offsetMax = Vector2.zero;
-
-        // Wire interactions for the runtime-created travel button
-        if (UIManager.Instance != null)
-            UIManager.Instance.WireUIInteractions(travelGO);
-
-        // Civilization container
-        GameObject civContainerGO = CreateUIElement("CivilizationContainer", planetInfoPanel.transform);
-        civilizationContainer = civContainerGO.transform;
-        
-        RectTransform civRect = civContainerGO.GetComponent<RectTransform>();
-        civRect.anchorMin = new Vector2(0.05f, 0.1f);
-        civRect.anchorMax = new Vector2(0.65f, 0.7f);
-        civRect.offsetMin = Vector2.zero;
-        civRect.offsetMax = Vector2.zero;
-
-        planetInfoPanel.SetActive(false);
-    }
-
-    /// <summary>
-    /// Helper to create UI elements
-    /// </summary>
-    private GameObject CreateUIElement(string name, Transform parent)
-    {
-        GameObject go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        go.AddComponent<RectTransform>();
-        return go;
-    }
-
-    /// <summary>
-    /// Initialize the space map with solar system data
-    /// </summary>
-    // public void Initialize(SolarSystemManager manager)
-    // {
-    //     // REMOVED: Use GameManager.Instance for planet data
-    // }
-
-    private void EnterSpaceMapMode()
-    {
-        if (spaceMapModeActive) return;
-
-        spaceMapModeActive = true;
-        ignoreCloseInputUntil = Time.unscaledTime + 0.15f;
-
-        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
-        {
-            restoreGameplayHudAfterSpaceMap = UIManager.Instance.gameplayHudRoot.activeSelf;
-            UIManager.Instance.gameplayHudRoot.SetActive(false);
-        }
-
-        if (GameManager.Instance != null)
-        {
-            previousGamePaused = GameManager.Instance.gamePaused;
-            GameManager.Instance.gamePaused = true;
-        }
-
-        if (InputManager.Instance != null)
-        {
-            previousInputPriority = InputManager.Instance.CurrentPriority;
-            previousInputEnabled = InputManager.Instance.InputEnabled;
-            InputManager.Instance.SetInputEnabled(true);
-            InputManager.Instance.SetPriority(InputManager.InputPriority.Modal);
-        }
-    }
-
-    private void ExitSpaceMapMode()
-    {
-        if (!spaceMapModeActive) return;
-
-        spaceMapModeActive = false;
-
-        if (UIManager.Instance != null && UIManager.Instance.gameplayHudRoot != null)
-            UIManager.Instance.gameplayHudRoot.SetActive(restoreGameplayHudAfterSpaceMap);
-
-        if (GameManager.Instance != null)
-            GameManager.Instance.gamePaused = previousGamePaused;
-
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.SetPriority(previousInputPriority);
-            InputManager.Instance.SetInputEnabled(previousInputEnabled);
-        }
-    }
-
-    private void ClearPlanetButtonVisuals()
-    {
-        foreach (var button in planetButtons)
-        {
-            if (button != null && button.gameObject != null)
-                Destroy(button.gameObject);
-        }
-        planetButtons.Clear();
-
-        foreach (var line in connectionLines)
-        {
-            if (line != null)
-                Destroy(line);
-        }
-        connectionLines.Clear();
-        ClearSpaceTravelVisuals();
-    }
-
-    private void SetSpaceMapPanelBackgroundVisible(bool visible)
-    {
-        if (spaceMapPanel == null) return;
-        Image panelImage = spaceMapPanel.GetComponent<Image>();
-        if (panelImage != null)
-            panelImage.enabled = visible;
-    }
-
-    /// <summary>
-    /// Create buttons for each planet in the solar system
-    /// </summary>
-    private void CreatePlanetButtons()
-    {
-        // Clear existing buttons and connection lines
-        foreach (var button in planetButtons)
-        {
-            if (button != null && button.gameObject != null)
-                Destroy(button.gameObject);
-        }
-        planetButtons.Clear();
-
-        foreach (var line in connectionLines)
-        {
-            if (line != null)
-                Destroy(line);
-        }
-        connectionLines.Clear();
-
-        var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
-        if (planetData == null) return;
-        var planets = planetData.Values.ToList();
-        // Find home world to use as center reference
-                    GameManager.PlanetData homeWorld = planets.FirstOrDefault(p => p.isHomeWorld);
-        homeWorldPosition = Vector2.zero; // Always center the home world
-        // Sort planets by distance from star for proper layout
-        var sortedPlanets = planets.OrderBy(p => p.distanceFromHome).ToList();
-        
-        Vector2 center = Vector2.zero; // Center of the solar system view
-        float maxRadius = solarSystemView != null ? Mathf.Min(solarSystemView.rect.width, solarSystemView.rect.height) * 0.4f : 300f;
-        
-        // Find max distance for scaling (excluding home world)
-        float maxDistance = sortedPlanets.Where(p => !p.isHomeWorld).Count() > 0 ? 
-            sortedPlanets.Where(p => !p.isHomeWorld).Max(p => p.distanceFromStar) : 1f;
-        
-        // Create planet buttons
-        List<Vector2> planetPositions = new List<Vector2>();
-        
-        for (int i = 0; i < sortedPlanets.Count; i++)
-        {
-            GameManager.PlanetData planet = sortedPlanets[i];
-            Vector2 position;
-            
-            if (planet.isHomeWorld)
-            {
-                // Home world always at center
-                position = center;
-                homeWorldPosition = position;
-            }
-            else
-            {
-                // Logarithmic scaling so inner and outer planets are evenly spread
-                // instead of bunching near the center.
-                float logDist = Mathf.Log(1f + planet.distanceFromStar);
-                float logMax  = Mathf.Log(1f + maxDistance);
-                float normalizedDistance = logMax > 0.001f ? logDist / logMax : 0.5f;
-
-                // Ensure a minimum radius so the closest planet isn't on top of the star
-                float minRadius = maxRadius * 0.15f;
-                float radius = Mathf.Lerp(minRadius, maxRadius, normalizedDistance);
-                
-                // Distribute planets at equal angular spacing around orbit
-                int nonHomeCount = sortedPlanets.Count - (homeWorld != null ? 1 : 0);
-                int nonHomeIndex = i - (homeWorld != null ? 1 : 0);
-                float angle = (360f / Mathf.Max(nonHomeCount, 1)) * nonHomeIndex * Mathf.Deg2Rad;
-                position = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
-            }
-            
-            planetPositions.Add(position);
-            CreatePlanetButton(planet, i, position);
-        }
-        
-        // Create connection lines from home world to other planets
-        if (homeWorld != null)
-        {
-            for (int i = 0; i < sortedPlanets.Count; i++)
-            {
-                GameManager.PlanetData planet = sortedPlanets[i];
-                if (!planet.isHomeWorld)
-                {
-                    CreateConnectionLine(homeWorldPosition, planetPositions[i]);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Create a button for a specific planet
-    /// </summary>
-    private void CreatePlanetButton(GameManager.PlanetData planet, int index, Vector2 position)
-    {
-        GameObject buttonGO = CreateUIElement($"Planet_{planet.planetIndex}", planetContainer);
-        PlanetButton planetButton = buttonGO.AddComponent<PlanetButton>();
-
-        // Add visual components
-        Image buttonImage = buttonGO.AddComponent<Image>();
-        Button button = buttonGO.AddComponent<Button>();
-
-        // Use sprite - debug if missing
-        if (planetIconDict != null && planetIconDict.TryGetValue(planet.planetType, out var iconSprite))
-        {
-            buttonImage.sprite = iconSprite;
-            buttonImage.type = Image.Type.Simple;
-            buttonImage.preserveAspect = true;
-            buttonImage.color = Color.white; // Keep sprite natural color
-        }
-        else
-        {
-            // Debug missing sprite
-            Debug.LogWarning($"[SpaceMapUI] No sprite found for planet type: {planet.planetType} (Planet: {planet.planetName}). Assign a sprite in the Planet Type Icons array.");
-            buttonImage.color = Color.white; // Default white background
-        }
-
-        // Position button based on distance from star
-        RectTransform rect = buttonGO.GetComponent<RectTransform>();
-        rect.anchoredPosition = position;
-        rect.sizeDelta = GetPlanetButtonSize(planet);
-
-        // Setup button click
-        button.onClick.AddListener(() => SelectPlanet(planet));
-
-        // Wire UI interactions for dynamic planet buttons
-        if (UIManager.Instance != null)
-            UIManager.Instance.WireUIInteractions(buttonGO);
-
-        planetButton.Initialize(planet, this);
-        planetButtons.Add(planetButton);
-    }
-
-    /// <summary>
-    /// Create a thin line connecting two positions
-    /// </summary>
-    private void CreateConnectionLine(Vector2 startPos, Vector2 endPos)
-    {
-        GameObject lineGO = CreateUIElement("ConnectionLine", planetContainer);
-        Image lineImage = lineGO.AddComponent<Image>();
-        
-        // Set line appearance
-        lineImage.color = connectionLineColor;
-        lineImage.sprite = null; // Use solid color
-        
-        // Calculate line position, rotation, and scale
-        Vector2 direction = endPos - startPos;
-        float distance = direction.magnitude;
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        
-        Vector2 center = (startPos + endPos) / 2f;
-        
-        RectTransform lineRect = lineGO.GetComponent<RectTransform>();
-        lineRect.anchoredPosition = center;
-        lineRect.sizeDelta = new Vector2(distance, connectionLineWidth);
-        lineRect.rotation = Quaternion.Euler(0, 0, angle);
-        
-        // Ensure lines are drawn behind planet buttons
-        lineGO.transform.SetAsFirstSibling();
-        
-        connectionLines.Add(lineGO);
-    }
-    
-    /// <summary>
-    /// Get the appropriate size for a planet button
-    /// </summary>
-    private Vector2 GetPlanetButtonSize(GameManager.PlanetData planet)
-    {
-        // Default size
-        Vector2 baseSize = new Vector2(80, 80);
-        
-        if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
-        {
-            switch (planet.planetType)
-            {
-                case GameManager.PlanetType.Gas_Giant:
-                    return new Vector2(120, 120); // Gas giants are larger
-                case GameManager.PlanetType.Barren:
-                    return new Vector2(50, 50); // Small barren planets
-                case GameManager.PlanetType.Volcanic:
-                    return new Vector2(90, 90); // Volcanic worlds, slightly larger
-                default:
-                    return new Vector2(70, 70); // Standard-sized planets
-            }
-        }
-        else if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon)
-        {
-            return new Vector2(35, 35); // Moons are smaller
-        }
-        
-        return baseSize;
-    }
-    
-    /// <summary>
-    /// Get the position for a planet button
-    /// </summary>
-    private Vector2 GetPlanetPosition(GameManager.PlanetData planet, int index)
-    {
-        if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
-        {
-            // Position based on distance from home (scaled for UI)
-            float scaledDistance = Mathf.Log(planet.distanceFromHome + 1) * 80f; // Logarithmic scaling
-            float xPos = -400 + scaledDistance; // Start from left side
-            
-            // Add some vertical variation for visual appeal
-            float yPos = (planet.planetIndex % 2 == 0) ? 10 : -10;
-            
-            return new Vector2(xPos, yPos);
-        }
-        else
-        {
-            // Simple linear positioning for procedural planets
-            float xPos = -300 + (index * planetSpacing);
-            return new Vector2(xPos, 0);
-        }
-    }
-
-    /// <summary>
-    /// Select a planet and show its information
-    /// </summary>
-    public void SelectPlanet(GameManager.PlanetData planet)
-    {
-        selectedPlanet = planet;
-        
-        // Update visual highlighting for all planet buttons
-        foreach (var planetButton in planetButtons)
-        {
-            if (planetButton != null && planetButton.gameObject != null)
-            {
-                var buttonImage = planetButton.GetComponent<Image>();
-                var outline = planetButton.GetComponent<Outline>();
-                
-                // Add or update outline for selected planet
-                if (planetButton.GetPlanetData().planetIndex == planet.planetIndex)
-                {
-                    // This is the selected planet - add highlight
-                    if (outline == null)
-                        outline = planetButton.gameObject.AddComponent<Outline>();
-                    
-                    outline.effectColor = Color.yellow;
-                    outline.effectDistance = new Vector2(3, 3);
-                    outline.enabled = true;
-                }
-                else
-                {
-                    // Not selected - remove highlight
-                    if (outline != null)
-                        outline.enabled = false;
-                }
-            }
-        }
-        
-        ShowPlanetInfo(planet);
-        UpdateCivilizationList(planet);
-        
-        if (planetInfoPanel != null)
-            planetInfoPanel.SetActive(true);
-    }
-
-    /// <summary>
-    /// Display information about the selected planet
-    /// </summary>
-    private void ShowPlanetInfo(GameManager.PlanetData planet)
-    {
-        planetInfoPanel.SetActive(true);
-        
-        // Update planet info
-        planetNameText.text = planet.planetName;
-        
-        // Update planet type
-        if (planetTypeText != null)
-        {
-            string typeText = planet.planetType.ToString();
-            if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
-            {
-                typeText += " (Planet)";
-            }
-        }
-        
-        // Update distance information
-        if (distanceText != null)
-        {
-            if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
-            {
-                distanceText.text = $"Distance: {planet.distanceFromStar:F2} AU from Star";
-                if (planet.orbitalPeriod > 0)
-                {
-                    distanceText.text += $"\nOrbital Period: {planet.orbitalPeriod:F0} days";
-                }
-                if (planet.averageTemperature != 0)
-                {
-                    distanceText.text += $"\nTemperature: {planet.averageTemperature:F0}°C";
-                }
-            }
-            else
-            {
-                distanceText.text = $"Distance: {planet.distanceFromHome:F2} units from home";
-            }
-        }
-        
-        // Update planet status with description
-        if (planetStatusText != null)
-        {
-            string statusText = "";
-            if (!string.IsNullOrEmpty(planet.description))
-            {
-                statusText = planet.description;
-            }
-            else
-            {
-                statusText = planet.isGenerated ? "Explored" : "Unexplored";
-            }
-            
-            if (planet.hasAtmosphere && !string.IsNullOrEmpty(planet.atmosphereComposition))
-            {
-                statusText += $"\n\nAtmosphere: {planet.atmosphereComposition}";
-            }
-            
-            
-            planetStatusText.text = statusText;
-        }
-        
-        // Update travel button
-        if (GameManager.Instance != null && planet.planetIndex == GameManager.Instance.currentPlanetIndex)
-        {
-            travelButton.GetComponentInChildren<TextMeshProUGUI>().text = "Current Planet";
-            travelButton.interactable = false;
-        }
-        else
-        {
-            string buttonText = planet.isGenerated ? "Travel to Planet" : "Explore Planet";
-            travelButton.GetComponentInChildren<TextMeshProUGUI>().text = buttonText;
-            travelButton.interactable = true;
-            travelButton.onClick.RemoveAllListeners();
-            travelButton.onClick.AddListener(() => ConfirmTravel(planet));
-        }
-        
-        // Update civilizations list
-        UpdateCivilizationList(planet);
-    }
-
-    /// <summary>
-    /// Update the civilization list for the selected planet
-    /// </summary>
-    private void UpdateCivilizationList(GameManager.PlanetData planet)
-    {
-        // Clear existing civilization entries
-        foreach (Transform child in civilizationContainer)
-        {
-            DestroyImmediate(child.gameObject);
-        }
-
-        if (planet.civilizations == null || planet.civilizations.Count == 0)
-        {
-            if (!planet.isGenerated)
-            {
-                CreateCivilizationEntry("Unknown - Planet not explored", Color.gray);
-            }
-            else
-            {
-                CreateCivilizationEntry("No civilizations detected", Color.white);
-            }
-        }
-        else
-        {
-            foreach (var civ in planet.civilizations)
-            {
-                // Use CivData properties that actually exist
-                Color civColor = Color.green; // Default color for active civilizations
-                string civText = civ.civName;
-                if (civ.availableLeaders != null && civ.availableLeaders.Count > 0)
-                {
-                    civText += $" - {civ.availableLeaders[0].leaderName}"; // Use first available leader
-                }
-                CreateCivilizationEntry(civText, civColor);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Create a civilization entry in the list
-    /// </summary>
-    private void CreateCivilizationEntry(string text, Color color)
-    {
-        GameObject entryGO = CreateUIElement("CivEntry", civilizationContainer);
-        TextMeshProUGUI entryText = entryGO.AddComponent<TextMeshProUGUI>();
-        entryText.text = text;
-        entryText.fontSize = 14;
-        entryText.color = color;
-        
-        RectTransform entryRect = entryGO.GetComponent<RectTransform>();
-        entryRect.sizeDelta = new Vector2(0, 25);
-    }
-
-    /// <summary>
-    /// Confirm travel to the selected planet
-    /// </summary>
-    private void ConfirmTravel(GameManager.PlanetData planet)
-    {
-        string message = planet.isExplored ? 
-            $"Travel to {planet.planetName}?" : 
-            $"Explore {planet.planetName}? This will generate a new world.";
-            
-        // TODO: Show confirmation dialog
-        // For now, just travel directly
-        TravelToPlanet(planet);
-    }
-
-    /// <summary>
-    /// Travel to the specified planet
-    /// </summary>
-    private void TravelToPlanet(GameManager.PlanetData planet)
-    {
-        // Check if we have a selected spaceship unit to travel with
-        var selectedUnit = UnitSelectionManager.Instance?.GetSelectedUnit();
-        if (selectedUnit != null)
-        {
-            var combatUnit = selectedUnit.GetComponent<CombatUnit>();
-            if (combatUnit != null && combatUnit.data.unitType == CombatCategory.Spaceship)
-            {
-                // Use space travel system for spaceships
-                int currentPlanet = GameManager.Instance?.currentPlanetIndex ?? 0;
-                bool success = SpaceRouteManager.Instance?.StartSpaceTravel(selectedUnit.gameObject, currentPlanet, planet.planetIndex) ?? false;
-                
-                if (success)
-                {
-Hide();
-                    return;
-                }
-                else
-                {
-                    Debug.LogWarning($"[SpaceMapUI] Failed to start space travel for {selectedUnit.name}");
-                }
-            }
-        }
-        
-        // Fallback: Direct planet switching (for non-spaceship travel or no unit selected)
-        // Show space loading screen IMMEDIATELY so user sees feedback before heavy generation work
-        if (SpaceLoadingPanelController.Instance != null)
-        {
-            SpaceLoadingPanelController.Instance.ShowSpaceLoading($"Traveling to {planet.planetName}...");
-        }
-        else if (GameManager.Instance != null)
-        {
-            GameManager.Instance.ShowSpaceTravel(planet.planetName);
-        }
-        Hide();
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(planet.planetIndex));
-        }
-    }
-
-    /// <summary>
-    /// Show the space map UI
-    /// </summary>
     public void Show()
     {
-        // No more SolarSystemManager. Just show and refresh.
-        gameObject.SetActive(true);
-        if (spaceMapCanvas != null)
-            spaceMapCanvas.gameObject.SetActive(true);
-        spaceMapPanel.SetActive(true);
-
-        if (useWorldSpaceMap && spaceMapWorldController != null)
-        {
-            EnterSpaceMapMode();
-            SetSpaceMapPanelBackgroundVisible(false);
-            ClearPlanetButtonVisuals();
+        gameObject.SetActive(true); if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(true); if (spaceMapPanel != null) spaceMapPanel.SetActive(true);
+        EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false);
+        if (spaceMapWorldController != null)
             spaceMapWorldController.ShowMap(this);
-            RefreshPlanetData();
-            return;
-        }
-
-        ExitSpaceMapMode();
-        SetSpaceMapPanelBackgroundVisible(true);
-        RefreshPlanetData();
-        CreatePlanetButtons();
-        UpdateSpaceTravelVisualization();
+        else
+            Debug.LogError("[SpaceMapUI] Cannot show space map because SpaceMapWorldController is not assigned.");
+        RefreshCivilizations(null);
     }
 
-    /// <summary>
-    /// Hide the space map UI
-    /// </summary>
     public void Hide()
     {
-        if (spaceMapWorldController != null)
-            spaceMapWorldController.HideMap();
-        ExitSpaceMapMode();
-// Hide the entire canvas or root object
-        if (spaceMapCanvas != null)
+        if (spaceMapWorldController != null) spaceMapWorldController.HideMap(); ExitSpaceMapMode();
+        if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(false); else gameObject.SetActive(false);
+    }
+
+    public void SelectPlanet(GameManager.PlanetData planet)
+    {
+        selectedPlanet = planet; selectedShip = null; if (planetInfoPanel != null) planetInfoPanel.SetActive(planet != null);
+        if (planetNameText != null) planetNameText.text = planet != null ? planet.planetName : "No selection";
+        if (planetTypeText != null) planetTypeText.text = planet != null ? $"{planet.celestialBodyType} • {planet.planetType}" : string.Empty;
+        if (planetStatusText != null) planetStatusText.text = planet == null ? string.Empty : BuildPlanetStatus(planet);
+        if (distanceText != null)
         {
-            spaceMapCanvas.gameObject.SetActive(false);
-}
+            int anchorTile = planet != null && spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
+            distanceText.text = planet == null ? string.Empty : $"Anchor hex: {anchorTile}";
+        }
+        if (travelButton != null) travelButton.gameObject.SetActive(planet != null);
+        RefreshCivilizations(planet);
+    }
+
+    public void SelectShip(BaseUnit ship)
+    {
+        selectedShip = ship; selectedPlanet = null; if (planetInfoPanel != null) planetInfoPanel.SetActive(ship != null);
+        if (planetNameText != null) planetNameText.text = ship != null ? ship.name : "No selection";
+        if (planetTypeText != null) planetTypeText.text = ship != null ? "Spacecraft" : string.Empty;
+        if (planetStatusText != null) planetStatusText.text = ship != null ? $"Tile {ship.currentSpaceTileIndex} • MP {ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}" : string.Empty;
+        if (distanceText != null) distanceText.text = ship != null && ship.queuedSpacePath != null ? $"Queued path: {ship.queuedSpacePath.Count} hexes" : string.Empty;
+        if (travelButton != null) travelButton.gameObject.SetActive(false);
+        RefreshCivilizations(null);
+    }
+
+    public void TestCloseButton() => Hide();
+
+    private string BuildPlanetStatus(GameManager.PlanetData planet)
+    {
+        var parts = new List<string>();
+        parts.Add(planet.isHomeWorld ? "Homeworld" : planet.isColonized ? "Colonized" : planet.isExplored ? "Explored" : "Unexplored");
+        parts.Add($"Body ID {planet.celestialBodyId}"); if (planet.parentBodyId >= 0) parts.Add($"Parent {planet.parentBodyId}");
+        if (planet.childMoonIds != null && planet.childMoonIds.Count > 0) parts.Add($"Moons {planet.childMoonIds.Count}");
+        return string.Join(" • ", parts);
+    }
+
+    private void SwitchToPlanet(GameManager.PlanetData planet)
+    {
+        if (planet == null) return; Hide(); if (GameManager.Instance != null) GameManager.Instance.StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(planet.planetIndex));
+    }
+
+    private void RefreshCivilizations(GameManager.PlanetData planet)
+    {
+        if (civilizationContainer == null) return; for (int i = civilizationContainer.childCount - 1; i >= 0; i--) Destroy(civilizationContainer.GetChild(i).gameObject);
+        var names = planet?.civilizationNames; bool any = names != null && names.Count > 0; if (noCivilizationsText != null) noCivilizationsText.gameObject.SetActive(!any);
+        if (!any) return; foreach (string name in names) CreateCivilizationEntry(name);
+    }
+
+    private void CreateCivilizationEntry(string text)
+    {
+        if (civilizationEntryPrefab == null)
+        {
+            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab is not assigned; cannot render civilization entry.");
+            return;
+        }
+
+        GameObject go = Instantiate(civilizationEntryPrefab, civilizationContainer);
+        var label = go.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null)
+            label.text = text;
         else
-        {
-            gameObject.SetActive(false);
-}
+            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab needs a TextMeshProUGUI child to display civilization names.");
     }
-    
-    /// <summary>
-    /// Test method to verify close button functionality
-    /// </summary>
-    [ContextMenu("Test Close Button")]
-    public void TestCloseButton()
+
+    private void ResolveAssignedReferences()
     {
-        if (closeButton != null)
-        {
-            // Test the hide method directly
-            Hide();
-        }
-        else
-        {
-            Debug.LogError("Close button is null!");
-        }
+        if (spaceMapCanvas == null) spaceMapCanvas = GetComponentInParent<Canvas>(true);
+        if (spaceMapWorldController == null) spaceMapWorldController = FindAnyObjectByType<SpaceMapWorldController>(FindObjectsInactive.Include);
     }
 
-    /// <summary>
-    /// Refresh planet data and update UI
-    /// </summary>
-    private void RefreshPlanetData()
+    private void ValidateAssignedReferences()
     {
-        // Update planet button selection highlighting
-        var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
-        if (planetData == null) return;
-        if (useWorldSpaceMap && spaceMapWorldController != null)
-        {
-            spaceMapWorldController.RefreshCurrentPlanetHighlight();
-            spaceMapWorldController.RefreshTravelVisuals();
-            return;
-        }
-        for (int i = 0; i < planetButtons.Count; i++)
-        {
-            if (planetButtons[i] != null)
-            {
-                GameManager.PlanetData planet = planetData.ContainsKey(i) ? planetData[i] : null;
-                if (planet != null)
-                {
-                    Outline outline = planetButtons[i].GetComponent<Outline>();
-                    if (outline != null)
-                    {
-                        outline.enabled = (GameManager.Instance.currentPlanetIndex == planet.planetIndex);
-                    }
-                }
-            }
-        }
-        // Ensure connection lines are visible and properly layered
-        foreach (var line in connectionLines)
-        {
-            if (line != null)
-            {
-                line.transform.SetAsFirstSibling(); // Keep lines behind planets
-            }
-        }
-        
-        // Update space travel visualization
-        UpdateSpaceTravelVisualization();
+        if (spaceMapCanvas == null) Debug.LogWarning("[SpaceMapUI] Space Map Canvas is not assigned. Assign it in the Unity inspector.");
+        if (spaceMapPanel == null) Debug.LogWarning("[SpaceMapUI] Space Map Panel is not assigned. Create the panel manually in Unity and assign it.");
+        if (closeButton == null) Debug.LogWarning("[SpaceMapUI] Close Button is not assigned. Create it manually in Unity and assign it.");
+        if (planetInfoPanel == null) Debug.LogWarning("[SpaceMapUI] Planet/ship Info Panel is not assigned. Create it manually in Unity and assign it.");
+        if (spaceMapWorldController == null) Debug.LogWarning("[SpaceMapUI] SpaceMapWorldController is not assigned. Add one to the scene and assign it.");
     }
-
-    /// <summary>
-    /// Update visual representation of active space travel
-    /// </summary>
-    private void UpdateSpaceTravelVisualization()
-    {
-        if (useWorldSpaceMap && spaceMapWorldController != null)
-        {
-            spaceMapWorldController.RefreshTravelVisuals();
-            return;
-        }
-
-        // Clear existing travel visuals
-        ClearSpaceTravelVisuals();
-
-        // Get active space travels from SpaceRouteManager
-        if (SpaceRouteManager.Instance == null) return;
-
-        var activeTravels = SpaceRouteManager.Instance.GetActiveTravels();
-        var planetData = GameManager.Instance?.GetPlanetData();
-        if (planetData == null) return;
-
-        foreach (var travel in activeTravels)
-        {
-            // Create visual representation for each active travel
-            CreateTravelRouteVisualization(travel, planetData);
-            CreateTravelingSpaceshipIcon(travel, planetData);
-        }
-    }
-
-    /// <summary>
-    /// Clear all space travel visual elements
-    /// </summary>
-    private void ClearSpaceTravelVisuals()
-    {
-        foreach (var route in activeTravelRoutes)
-        {
-            if (route != null) Destroy(route);
-        }
-        activeTravelRoutes.Clear();
-
-        foreach (var ship in travelingSpaceships)
-        {
-            if (ship != null) Destroy(ship);
-        }
-        travelingSpaceships.Clear();
-    }
-
-    /// <summary>
-    /// Create visual route line for active space travel
-    /// </summary>
-    private void CreateTravelRouteVisualization(SpaceRouteManager.SpaceTravelTask travel, Dictionary<int, GameManager.PlanetData> planetData)
-    {
-        if (!planetData.ContainsKey(travel.originPlanetIndex) || !planetData.ContainsKey(travel.destinationPlanetIndex))
-            return;
-
-        // Find positions of origin and destination planets in UI space
-        Vector2 originPos = GetPlanetUIPosition(travel.originPlanetIndex);
-        Vector2 destPos = GetPlanetUIPosition(travel.destinationPlanetIndex);
-
-        if (originPos == Vector2.zero || destPos == Vector2.zero) return;
-
-        // Create animated route line
-        GameObject routeGO = CreateUIElement($"TravelRoute_{travel.taskId}", planetContainer);
-        Image routeImage = routeGO.AddComponent<Image>();
-        
-        // Set animated line appearance
-        routeImage.color = activeTravelRouteColor;
-        routeImage.sprite = null; // Use solid color
-        
-        // Calculate line position, rotation, and scale
-        Vector2 direction = destPos - originPos;
-        float distance = direction.magnitude;
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        
-        Vector2 center = (originPos + destPos) / 2f;
-        
-        RectTransform routeRect = routeGO.GetComponent<RectTransform>();
-        routeRect.anchoredPosition = center;
-        routeRect.sizeDelta = new Vector2(distance, connectionLineWidth * 2f); // Thicker for active routes
-        routeRect.rotation = Quaternion.Euler(0, 0, angle);
-        
-        // Add pulsing animation for active routes
-        StartCoroutine(AnimateActiveTravelRoute(routeImage));
-        
-        activeTravelRoutes.Add(routeGO);
-    }
-
-    /// <summary>
-    /// Create spaceship icon showing current travel position
-    /// </summary>
-    private void CreateTravelingSpaceshipIcon(SpaceRouteManager.SpaceTravelTask travel, Dictionary<int, GameManager.PlanetData> planetData)
-    {
-        if (!planetData.ContainsKey(travel.originPlanetIndex) || !planetData.ContainsKey(travel.destinationPlanetIndex))
-            return;
-
-        // Find positions of origin and destination planets in UI space
-        Vector2 originPos = GetPlanetUIPosition(travel.originPlanetIndex);
-        Vector2 destPos = GetPlanetUIPosition(travel.destinationPlanetIndex);
-
-        if (originPos == Vector2.zero || destPos == Vector2.zero) return;
-
-        // Calculate current position based on travel progress
-        Vector2 currentPos = Vector2.Lerp(originPos, destPos, travel.Progress);
-
-        // Create spaceship icon
-        GameObject shipGO = CreateUIElement($"TravelingShip_{travel.taskId}", planetContainer);
-        Image shipImage = shipGO.AddComponent<Image>();
-        
-        // Use spaceship icon or default circle
-        if (spaceshipIconPrefab != null)
-        {
-            var prefabImage = spaceshipIconPrefab.GetComponent<Image>();
-            if (prefabImage != null && prefabImage.sprite != null)
-            {
-                shipImage.sprite = prefabImage.sprite;
-                shipImage.color = Color.white;
-            }
-        }
-        else
-        {
-            // Default circle icon
-            shipImage.color = Color.yellow;
-        }
-        
-        // Position and size the spaceship icon
-        RectTransform shipRect = shipGO.GetComponent<RectTransform>();
-        shipRect.anchoredPosition = currentPos;
-        shipRect.sizeDelta = Vector2.one * spaceshipIconSize;
-        
-        // Add simple text component showing travel info
-        GameObject textGO = CreateUIElement("TravelText", shipGO.transform);
-        TextMeshProUGUI travelText = textGO.AddComponent<TextMeshProUGUI>();
-        travelText.text = $"{travel.unitName}\n{travel.turnsRemaining}T";
-        travelText.fontSize = 8;
-        travelText.alignment = TextAlignmentOptions.Center;
-        travelText.color = Color.white;
-        
-        RectTransform textRect = textGO.GetComponent<RectTransform>();
-        textRect.anchoredPosition = Vector2.zero;
-        textRect.sizeDelta = new Vector2(60, 30);
-        
-        travelingSpaceships.Add(shipGO);
-    }
-
-    /// <summary>
-    /// Get UI position for a planet by its index
-    /// </summary>
-    private Vector2 GetPlanetUIPosition(int planetIndex)
-    {
-        foreach (var planetButton in planetButtons)
-        {
-            if (planetButton != null && planetButton.GetPlanetData().planetIndex == planetIndex)
-            {
-                var rect = planetButton.GetComponent<RectTransform>();
-                return rect != null ? rect.anchoredPosition : Vector2.zero;
-            }
-        }
-        return Vector2.zero;
-    }
-
-    /// <summary>
-    /// Animate active travel routes with pulsing effect
-    /// </summary>
-    private System.Collections.IEnumerator AnimateActiveTravelRoute(Image routeImage)
-    {
-        while (routeImage != null)
-        {
-            // Pulse the alpha between 0.3 and 1.0
-            float alpha = 0.65f + 0.35f * Mathf.Sin(Time.time * 3f);
-            Color color = routeImage.color;
-            color.a = alpha;
-            routeImage.color = color;
-            
-            yield return null;
-        }
-    }
-}
-
-/// <summary>
-/// Component for individual planet buttons
-/// </summary>
-public class PlanetButton : MonoBehaviour
-{
-    private GameManager.PlanetData planetData;
-    private SpaceMapUI spaceMapUI;
-
-    public void Initialize(GameManager.PlanetData data, SpaceMapUI ui)
-    {
-        planetData = data;
-        spaceMapUI = ui;
-    }
-
-    public GameManager.PlanetData GetPlanetData()
-    {
-        return planetData;
-    }
-}
-
-[System.Serializable]
-public struct PlanetTypeSprite
-{
-    public GameManager.PlanetType planetType;
-    public Sprite icon;
+    private void SetSpaceMapPanelBackgroundVisible(bool visible) { var img = spaceMapPanel != null ? spaceMapPanel.GetComponent<Image>() : null; if (img != null) img.enabled = visible; }
+    private void EnterSpaceMapMode() { spaceMapModeActive = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; }
+    private void ExitSpaceMapMode() { spaceMapModeActive = false; }
 }

@@ -19,6 +19,7 @@ public class SpaceMapPlanetMarker : MonoBehaviour
 
     public GameManager.PlanetData PlanetData { get; private set; }
     public int PlanetIndex => PlanetData != null ? PlanetData.planetIndex : -1;
+    public int AnchorSpaceTileIndex { get; set; } = -1;
 
     public void Initialize(GameManager.PlanetData data, SpaceMapWorldController controller, float radius, Material template)
     {
