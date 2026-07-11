@@ -39,9 +39,8 @@ public class SpaceMapUI : MonoBehaviour
 
     private void Awake()
     {
-        SetupUIReferences();
-        if (spaceMapWorldController == null) spaceMapWorldController = FindAnyObjectByType<SpaceMapWorldController>(FindObjectsInactive.Include);
-        if (spaceMapWorldController == null) spaceMapWorldController = new GameObject("SpaceMapWorldController").AddComponent<SpaceMapWorldController>();
+        ResolveAssignedReferences();
+        ValidateAssignedReferences();
         Hide();
     }
 
@@ -61,7 +60,12 @@ public class SpaceMapUI : MonoBehaviour
     public void Show()
     {
         gameObject.SetActive(true); if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(true); if (spaceMapPanel != null) spaceMapPanel.SetActive(true);
-        EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false); spaceMapWorldController.ShowMap(this); RefreshCivilizations(null);
+        EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false);
+        if (spaceMapWorldController != null)
+            spaceMapWorldController.ShowMap(this);
+        else
+            Debug.LogError("[SpaceMapUI] Cannot show space map because SpaceMapWorldController is not assigned.");
+        RefreshCivilizations(null);
     }
 
     public void Hide()
@@ -76,7 +80,11 @@ public class SpaceMapUI : MonoBehaviour
         if (planetNameText != null) planetNameText.text = planet != null ? planet.planetName : "No selection";
         if (planetTypeText != null) planetTypeText.text = planet != null ? $"{planet.celestialBodyType} • {planet.planetType}" : string.Empty;
         if (planetStatusText != null) planetStatusText.text = planet == null ? string.Empty : BuildPlanetStatus(planet);
-        if (distanceText != null) distanceText.text = planet == null ? string.Empty : $"Anchor hex: {spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex)}";
+        if (distanceText != null)
+        {
+            int anchorTile = planet != null && spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
+            distanceText.text = planet == null ? string.Empty : $"Anchor hex: {anchorTile}";
+        }
         if (travelButton != null) travelButton.gameObject.SetActive(planet != null);
         RefreshCivilizations(planet);
     }
@@ -117,34 +125,34 @@ public class SpaceMapUI : MonoBehaviour
 
     private void CreateCivilizationEntry(string text)
     {
-        GameObject go = civilizationEntryPrefab != null ? Instantiate(civilizationEntryPrefab, civilizationContainer) : CreateUIElement("CivilizationEntry", civilizationContainer);
-        var label = go.GetComponentInChildren<TextMeshProUGUI>() ?? go.AddComponent<TextMeshProUGUI>(); label.text = text; label.fontSize = 14; label.color = Color.white;
+        if (civilizationEntryPrefab == null)
+        {
+            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab is not assigned; cannot render civilization entry.");
+            return;
+        }
+
+        GameObject go = Instantiate(civilizationEntryPrefab, civilizationContainer);
+        var label = go.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null)
+            label.text = text;
+        else
+            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab needs a TextMeshProUGUI child to display civilization names.");
     }
 
-    private void SetupUIReferences()
+    private void ResolveAssignedReferences()
     {
-        if (spaceMapCanvas == null) { spaceMapCanvas = GetComponent<Canvas>() ?? gameObject.AddComponent<Canvas>(); spaceMapCanvas.renderMode = RenderMode.ScreenSpaceOverlay; spaceMapCanvas.sortingOrder = 100; }
-        if (spaceMapCanvas.GetComponent<GraphicRaycaster>() == null) spaceMapCanvas.gameObject.AddComponent<GraphicRaycaster>();
-        if (spaceMapPanel == null) CreateSpaceMapPanel();
+        if (spaceMapCanvas == null) spaceMapCanvas = GetComponentInParent<Canvas>(true);
+        if (spaceMapWorldController == null) spaceMapWorldController = FindAnyObjectByType<SpaceMapWorldController>(FindObjectsInactive.Include);
     }
 
-    private void CreateSpaceMapPanel()
+    private void ValidateAssignedReferences()
     {
-        spaceMapPanel = CreateUIElement("SpaceMapOverlay", spaceMapCanvas.transform); var img = spaceMapPanel.AddComponent<Image>(); img.color = new Color(0f,0f,0f,0.08f);
-        var rect = spaceMapPanel.GetComponent<RectTransform>(); rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
-        var closeGO = CreateUIElement("CloseButton", spaceMapPanel.transform); closeButton = closeGO.AddComponent<Button>(); closeGO.AddComponent<Image>().color = Color.red;
-        var closeText = CreateUIElement("Text", closeGO.transform).AddComponent<TextMeshProUGUI>(); closeText.text = "X"; closeText.alignment = TextAlignmentOptions.Center; closeText.color = Color.white;
-        var cr = closeGO.GetComponent<RectTransform>(); cr.anchorMin = new Vector2(.95f,.92f); cr.anchorMax = new Vector2(.995f,.99f); cr.offsetMin = cr.offsetMax = Vector2.zero;
-        var panel = CreateUIElement("InfoPanel", spaceMapPanel.transform); planetInfoPanel = panel; panel.AddComponent<Image>().color = new Color(0f,0f,.08f,.75f); var pr = panel.GetComponent<RectTransform>(); pr.anchorMin = new Vector2(.72f,.08f); pr.anchorMax = new Vector2(.98f,.55f); pr.offsetMin = pr.offsetMax = Vector2.zero;
-        planetNameText = AddText("Name", panel.transform, .82f, 1f, 22); planetTypeText = AddText("Type", panel.transform, .68f, .82f, 16); planetStatusText = AddText("Status", panel.transform, .38f, .68f, 14); distanceText = AddText("Movement", panel.transform, .22f, .38f, 14);
-        var travelGO = CreateUIElement("ActionButton", panel.transform); travelButton = travelGO.AddComponent<Button>(); travelGO.AddComponent<Image>().color = new Color(.1f,.4f,.9f,.9f); var tr = travelGO.GetComponent<RectTransform>(); tr.anchorMin = new Vector2(.08f,.04f); tr.anchorMax = new Vector2(.92f,.18f); tr.offsetMin = tr.offsetMax = Vector2.zero; var tt = CreateUIElement("Text", travelGO.transform).AddComponent<TextMeshProUGUI>(); tt.text = "Open Planet"; tt.alignment = TextAlignmentOptions.Center; tt.color = Color.white;
+        if (spaceMapCanvas == null) Debug.LogWarning("[SpaceMapUI] Space Map Canvas is not assigned. Assign it in the Unity inspector.");
+        if (spaceMapPanel == null) Debug.LogWarning("[SpaceMapUI] Space Map Panel is not assigned. Create the panel manually in Unity and assign it.");
+        if (closeButton == null) Debug.LogWarning("[SpaceMapUI] Close Button is not assigned. Create it manually in Unity and assign it.");
+        if (planetInfoPanel == null) Debug.LogWarning("[SpaceMapUI] Planet/ship Info Panel is not assigned. Create it manually in Unity and assign it.");
+        if (spaceMapWorldController == null) Debug.LogWarning("[SpaceMapUI] SpaceMapWorldController is not assigned. Add one to the scene and assign it.");
     }
-
-    private TextMeshProUGUI AddText(string name, Transform parent, float minY, float maxY, int size)
-    {
-        var t = CreateUIElement(name, parent).AddComponent<TextMeshProUGUI>(); t.fontSize = size; t.color = Color.white; t.alignment = TextAlignmentOptions.Left; var r = t.GetComponent<RectTransform>(); r.anchorMin = new Vector2(.06f,minY); r.anchorMax = new Vector2(.94f,maxY); r.offsetMin = r.offsetMax = Vector2.zero; return t;
-    }
-    private GameObject CreateUIElement(string name, Transform parent) { var go = new GameObject(name, typeof(RectTransform)); go.transform.SetParent(parent, false); return go; }
     private void SetSpaceMapPanelBackgroundVisible(bool visible) { var img = spaceMapPanel != null ? spaceMapPanel.GetComponent<Image>() : null; if (img != null) img.enabled = visible; }
     private void EnterSpaceMapMode() { spaceMapModeActive = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; }
     private void ExitSpaceMapMode() { spaceMapModeActive = false; }
