@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public enum SpaceLocationType { PlanetSurface, PlanetOrbit, SolarSystemSpace, Destroyed }
-public enum SpaceTerrainType { EmptySpace, Planet, Moon, AsteroidField, DebrisField, Nebula, RadiationZone }
+public enum SpaceTerrainType { EmptySpace, Planet, Moon, AsteroidField, DebrisField, Nebula, RadiationZone, CometIceField, GravityAnomaly }
 
 [Serializable]
 public struct SpaceLocation
@@ -20,8 +20,10 @@ public struct SpaceLocation
     public static SpaceLocation InSpace(int spaceTileIndex) => new SpaceLocation { locationType = SpaceLocationType.SolarSystemSpace, planetIndex = -1, planetaryTileIndex = -1, spaceTileIndex = spaceTileIndex };
 }
 
-[Serializable] public class SpaceHazardData { public string hazardId; public int damagePerTurn; public bool hidden; }
+[Serializable] public class SpaceTerrainData { public string terrainId; public SpaceTerrainType terrainType; public int movementCost = 1; public bool blocksMovement; public int visionModifier; public int defenseModifier; public int damagePerTurn; public bool concealsUnits; public bool permitsImprovementConstruction; }
+[Serializable] public class SpaceHazardData { public string hazardId; public int damagePerTurn; public bool hidden; public bool detected; }
 [Serializable] public class SpaceResourceData { public string resourceId; public int quantity; public bool hidden; }
+[Serializable] public class SpaceResourceDeposit { public int depositId; public string resourceId; public int quantity; public int spaceTileIndex; public bool discovered; public string improvementId; }
 
 [Serializable]
 public class SpaceHexTile
@@ -35,6 +37,9 @@ public class SpaceHexTile
     public int controllingCivilizationId = -1;
     public int planetId = -1;
     public int stationId = -1;
+    public bool isPlanetOrbitSector;
+    public int associatedPlanetId = -1;
+    public int orbitSectorDirection = -1;
     public List<int> spacecraftIds = new List<int>();
     public SpaceHazardData hazard;
     public SpaceResourceData resource;

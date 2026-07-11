@@ -245,6 +245,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int oldAttackPoints = currentAttackPoints;
         currentAttackPoints = ApplyResourceUpkeepToTurnPoints(attackPointsPerTurn);
+        hasUsedSpaceReactionThisTurn = false;
         try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
     }
 
@@ -278,6 +279,8 @@ public abstract class BaseUnit : MonoBehaviour
     public bool canPerformSpaceRecon = false;
     public int reconActionCost = 1;
     public int spaceFleetId = -1;
+    public bool isPackedInSpaceFleet = false;
+    public bool hasUsedSpaceReactionThisTurn = false;
 
     [Tooltip("Which planet this unit belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
