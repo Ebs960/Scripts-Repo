@@ -243,24 +243,25 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Defines how far this ship can travel.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;
 
-    [Header("Space Travel Stats")]
-    [Tooltip("If > 0, use this as absolute speed (AU per turn). Overrides default speed model.")]
-    public float spaceAUPerTurn = 0f;
-    [Tooltip("Multiplier on default speed model (higher = faster). Used when AU/turn is 0.")]
-    public float spaceSpeedMultiplier = 1.0f;
+    [Header("Space Hex Movement Stats")]
+    [Tooltip("Movement points restored each turn while moving on the solar-system hex grid.")]
+    [Range(1, 20)]
+    public int spaceMovementPointsPerTurn = 3;
+    [Tooltip("Sensor range in solar-system hexes.")]
+    [Range(0, 20)]
+    public int spaceVisionRange = 2;
+    [Tooltip("Recon action reveal radius in solar-system hexes.")]
+    [Range(0, 30)]
+    public int spaceReconRange = 5;
+    public bool canPerformSpaceRecon = false;
+    [Range(0, 10)]
+    public int reconActionCost = 1;
+    public int hazardResistance = 0;
+    public bool hasJumpGateAccess = false;
 
     [Header("Orbit Mechanics")]
-    [Tooltip("Movement points consumed when entering orbit from surface.")]
-    [Range(1, 10)]
-    public int orbitEntryCost = 2;
     [Tooltip("Explicitly allow this unit to enter orbit.")]
     public bool canEnterOrbit = false;
-    [Tooltip("Movement points consumed when landing from orbit to surface.")]
-    [Range(1, 10)]
-    public int orbitExitCost = 1;
-    [Tooltip("Movement cost per tile while moving in orbit (usually 1 — no terrain friction in space).")]
-    [Range(1, 5)]
-    public int orbitMovementCost = 1;
     [Tooltip("Whether this unit requires a spaceport on the tile to land (exit orbit). Spaceships typically do NOT.")]
     public bool requiresSpaceportToLand = false;
     [Tooltip("Whether this unit can bombard surface tiles from orbit.")]

@@ -240,7 +240,7 @@ public class UnitMovementController : MonoBehaviour
         {
             var cu = unit as CombatUnit;
             if (cu != null && cu.data != null)
-                orbitCost = cu.data.orbitMovementCost;
+                orbitCost = 1;
         }
 
         // A* when heuristic enabled, Dijkstra (h=0) otherwise.
@@ -360,7 +360,7 @@ public class UnitMovementController : MonoBehaviour
         if (isOrbit)
         {
             var cu = unit as CombatUnit;
-            if (cu != null && cu.data != null) orbitCost = cu.data.orbitMovementCost;
+            if (cu != null && cu.data != null) orbitCost = 1;
         }
 
         bool useHeuristic = useAStarHeuristic && !isOrbit;
@@ -535,7 +535,7 @@ public class UnitMovementController : MonoBehaviour
 
             int movementCost;
             if (unit.currentLayer == TileLayer.Orbit)
-                movementCost = (combatUnit != null && combatUnit.data != null) ? combatUnit.data.orbitMovementCost : BiomeHelper.DefaultOrbitMovementCost;
+                movementCost = (combatUnit != null && combatUnit.data != null) ? 1 : BiomeHelper.DefaultOrbitMovementCost;
             else
                 movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
 

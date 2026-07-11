@@ -704,7 +704,7 @@ public static class BiomeHelper {
     /// <summary>
     /// Movement cost for a unit moving tile-to-tile while in orbit.
     /// Orbit has no terrain friction — all tiles cost the same.
-    /// Individual unit data may override via CombatUnitData.orbitMovementCost.
+    /// Solar-system movement uses SpaceHexTile movementCost; orbit tiles use the default cost.
     /// </summary>
     public const int DefaultOrbitMovementCost = 1;
 
