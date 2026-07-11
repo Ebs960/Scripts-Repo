@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Builds and runs the true world-space space map. The existing SpaceMapUI remains
-/// responsible for panels and travel buttons; this controller owns the 3D flat-map
-/// view, planet markers, camera, and world-space travel visuals.
+/// Sole renderer and interaction controller for the solar-system map. It renders a
+/// dedicated world-space hex grid, 3D planet/moon markers anchored to stable space
+/// tiles, visible spacecraft, selection highlights, and queued hex movement paths.
 /// </summary>
 public class SpaceMapWorldController : MonoBehaviour
 {
@@ -15,448 +15,137 @@ public class SpaceMapWorldController : MonoBehaviour
     [SerializeField] private SpaceMapCameraController cameraController;
     [SerializeField] private Transform mapRoot;
     [SerializeField] private Transform planetRoot;
-    [SerializeField] private Transform routeRoot;
+    [SerializeField] private Transform hexRoot;
+    [SerializeField] private Transform unitRoot;
     [SerializeField] private SpaceMapUI spaceMapUI;
 
     [Header("Planet Visuals")]
     [SerializeField] private SpaceMapPlanetMarker planetMarkerPrefab;
     [SerializeField] private Material planetMaterialTemplate;
-    [SerializeField] private float mapScale = 0.05f;
-    [SerializeField] private float fallbackOrbitSpacing = 35f;
     [SerializeField] private float minPlanetRadius = 1.5f;
     [SerializeField] private float maxPlanetRadius = 5f;
 
-    [Header("Map Plane")]
-    [SerializeField] private bool createBackgroundPlane = true;
-    [SerializeField] private Vector2 backgroundSize = new Vector2(900f, 900f);
-    [SerializeField] private Color backgroundColor = new Color(0.005f, 0.007f, 0.025f, 1f);
+    [Header("Hex Grid")]
+    [SerializeField] private int gridRadius = 12;
+    [SerializeField] private float hexSize = 5f;
+    [SerializeField] private Material hexMaterial;
+    [SerializeField] private Material reachableHexMaterial;
+    [SerializeField] private Color hexColor = new Color(0.1f, 0.5f, 1f, 0.25f);
+    [SerializeField] private Color reachableColor = new Color(0f, 1f, 0.7f, 0.45f);
+    [SerializeField] private Color blockedColor = new Color(1f, 0.15f, 0.1f, 0.35f);
 
-    [Header("Routes")]
-    [SerializeField] private Material routeMaterial;
-    [SerializeField] private Material activeRouteMaterial;
-    [SerializeField] private Color connectionLineColor = new Color(1f, 1f, 1f, 0.25f);
-    [SerializeField] private Color activeRouteColor = Color.cyan;
-    [SerializeField] private float connectionLineWidth = 0.18f;
-    [SerializeField] private float shipMarkerRadius = 0.9f;
-
+    public SpaceHexGrid Grid { get; private set; }
     private readonly Dictionary<int, SpaceMapPlanetMarker> markersByPlanet = new Dictionary<int, SpaceMapPlanetMarker>();
-    private readonly List<GameObject> connectionObjects = new List<GameObject>();
-    private readonly Dictionary<int, GameObject> activeRouteObjects = new Dictionary<int, GameObject>();
-    private readonly Dictionary<int, GameObject> shipObjectsByTask = new Dictionary<int, GameObject>();
-    private readonly Dictionary<Camera, bool> hiddenGameplayCameraStates = new Dictionary<Camera, bool>();
-    private readonly Dictionary<Camera, int> hiddenGameplayCameraCullingMasks = new Dictionary<Camera, int>();
-    private SpaceMapPlanetMarker selectedMarker;
+    private readonly Dictionary<int, GameObject> hexObjects = new Dictionary<int, GameObject>();
+    private readonly Dictionary<Camera, int> hiddenGameplayCameraMasks = new Dictionary<Camera, int>();
+    private BaseUnit selectedShip;
     private bool isVisible;
-    private float nextTravelRefreshTime;
-    private Material defaultLineMaterial;
 
-    private void Awake()
-    {
-        EnsureSceneObjects();
-        SetMapActive(false);
-    }
-
-    private void Update()
-    {
-        if (!isVisible) return;
-        HandleSelectionInput();
-        if (Time.unscaledTime >= nextTravelRefreshTime)
-        {
-            RefreshTravelVisuals();
-            nextTravelRefreshTime = Time.unscaledTime + 0.25f;
-        }
-    }
+    private void Awake() { EnsureSceneObjects(); SetMapActive(false); }
+    private void Update() { if (isVisible) HandleSelectionInput(); }
 
     public void ShowMap(SpaceMapUI ui)
     {
         if (ui != null) spaceMapUI = ui;
-        EnsureSceneObjects();
-        HideGameplayCameras();
-        SetMapActive(true);
-        RebuildPlanets();
-        RefreshTravelVisuals();
-        nextTravelRefreshTime = Time.unscaledTime + 0.25f;
-        CenterOnCurrentPlanet();
+        EnsureSceneObjects(); HideGameplayCameras(); SetMapActive(true); RebuildSpaceMap(); CenterOnCurrentPlanet();
     }
+    public void HideMap() { SetMapActive(false); RestoreGameplayCameras(); }
 
-    public void HideMap()
+    public void RebuildSpaceMap()
     {
-        SetMapActive(false);
-        RestoreGameplayCameras();
+        Grid = new SpaceHexGrid(gridRadius, hexSize);
+        if (SpaceShipMovementController.Instance == null) new GameObject("SpaceShipMovementController").AddComponent<SpaceShipMovementController>();
+        SpaceShipMovementController.Instance.SetGrid(Grid);
+        ClearChildren(hexRoot); ClearChildren(planetRoot); ClearChildren(unitRoot); markersByPlanet.Clear(); hexObjects.Clear();
+        BuildHexVisuals(); RebuildPlanets(); RefreshShipVisuals();
     }
 
     public void RebuildPlanets()
     {
-        ClearPlanets();
-        ClearRouteVisuals();
-        var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
-        if (planetData == null || planetData.Count == 0) return;
-
-        List<GameManager.PlanetData> planets = planetData.Values.OrderBy(p => p.planetIndex).ToList();
-        float maxDistance = Mathf.Max(1f, planets.Where(p => !p.isHomeWorld).Select(p => p.distanceFromStar).DefaultIfEmpty(1f).Max());
-
+        var data = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null; if (data == null) return;
+        var planets = data.Values.OrderBy(p => p.planetIndex).ToList();
         for (int i = 0; i < planets.Count; i++)
         {
-            GameManager.PlanetData planet = planets[i];
-            Vector3 position = GetMapPosition(planet, i, planets.Count, maxDistance);
-            SpaceMapPlanetMarker marker = CreatePlanetMarker(planet, position);
-            markersByPlanet[planet.planetIndex] = marker;
+            var planet = planets[i];
+            Vector3 desired = planet.worldPosition.sqrMagnitude > 0.01f ? new Vector3(planet.worldPosition.x, 0f, planet.worldPosition.z) : RingPosition(i, planets.Count);
+            int tileIndex = Grid.GetNearestTileIndex(desired); var tile = Grid.GetTile(tileIndex); if (tile == null) continue;
+            tile.terrainType = planet.celestialBodyType == GameManager.CelestialBodyType.Moon ? SpaceTerrainType.Moon : SpaceTerrainType.Planet;
+            tile.blocksMovement = true; tile.planetId = planet.celestialBodyId >= 0 ? planet.celestialBodyId : planet.planetIndex;
+            var marker = CreatePlanetMarker(planet, Grid.GetWorldPosition(tileIndex)); marker.AnchorSpaceTileIndex = tileIndex; markersByPlanet[planet.planetIndex] = marker;
         }
-
-        RefreshCurrentPlanetHighlight();
+        RefreshCurrentPlanetHighlight(); RefreshHexVisuals();
     }
 
     public void RefreshCurrentPlanetHighlight()
     {
-        int currentPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : -1;
-        foreach (var kv in markersByPlanet)
-        {
-            bool selected = selectedMarker != null && selectedMarker.PlanetIndex == kv.Key;
-            bool current = kv.Key == currentPlanet;
-            kv.Value.SetSelectionState(selected, current);
-        }
+        int current = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : -1;
+        foreach (var kv in markersByPlanet) kv.Value.SetSelectionState(false, kv.Key == current);
     }
+    public void RefreshTravelVisuals() { RefreshShipVisuals(); RefreshHexVisuals(); }
+    public int GetPlanetAnchorTile(int planetIndex) => markersByPlanet.TryGetValue(planetIndex, out var m) ? m.AnchorSpaceTileIndex : -1;
 
-    public void RefreshTravelVisuals()
-    {
-        if (!isVisible) return;
-        if (connectionObjects.Count == 0)
-            CreateConnectionLines();
-        RefreshActiveTravelVisuals();
-    }
-
-    public void SelectPlanetMarker(SpaceMapPlanetMarker marker)
-    {
-        if (marker == null || marker.PlanetData == null) return;
-        selectedMarker = marker;
-        RefreshCurrentPlanetHighlight();
-        spaceMapUI?.SelectPlanet(marker.PlanetData);
-    }
+    public void SelectPlanetMarker(SpaceMapPlanetMarker marker) { if (marker == null) return; selectedShip = null; spaceMapUI?.SelectPlanet(marker.PlanetData); RefreshCurrentPlanetHighlight(); }
+    public void SelectShip(BaseUnit unit) { selectedShip = unit; HighlightReachableTiles(unit); spaceMapUI?.SelectShip(unit); }
 
     private void HandleSelectionInput()
     {
         if (spaceMapCamera == null || !Input.GetMouseButtonDown(0)) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        Ray ray = spaceMapCamera.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
-        SpaceMapPlanetMarker marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>();
-        if (marker != null) SelectPlanetMarker(marker);
+        Ray ray = spaceMapCamera.ScreenPointToRay(Input.mousePosition); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
+        var ship = hit.collider.GetComponentInParent<BaseUnit>(); if (ship != null && ship.currentSpaceTileIndex >= 0) { SelectShip(ship); return; }
+        var marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>(); if (marker != null) { SelectPlanetMarker(marker); return; }
+        var hex = hit.collider.GetComponent<SpaceHexTileView>(); if (hex != null && selectedShip != null) { SpaceShipMovementController.Instance.QueueMove(selectedShip, hex.tileIndex); RefreshTravelVisuals(); }
+    }
+
+    private void BuildHexVisuals()
+    {
+        foreach (var tile in Grid.tiles)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder); go.name = $"SpaceHex_{tile.tileIndex}_{tile.q}_{tile.r}"; go.transform.SetParent(hexRoot, false);
+            go.transform.position = Grid.GetWorldPosition(tile.tileIndex) - Vector3.up * 0.04f; go.transform.localScale = new Vector3(hexSize * 0.85f, 0.02f, hexSize * 0.85f);
+            go.AddComponent<SpaceHexTileView>().tileIndex = tile.tileIndex; hexObjects[tile.tileIndex] = go;
+        }
+    }
+
+    private void HighlightReachableTiles(BaseUnit unit)
+    {
+        int range = unit != null ? Mathf.Max(0, unit.currentSpaceMovementPoints) : 0;
+        foreach (var tile in Grid.tiles)
+        {
+            bool reachable = unit != null && unit.currentSpaceTileIndex >= 0 && Grid.GetDistance(unit.currentSpaceTileIndex, tile.tileIndex) <= range && !tile.blocksMovement;
+            SetHexColor(tile.tileIndex, reachable ? reachableColor : (tile.blocksMovement ? blockedColor : hexColor));
+        }
+    }
+    private void RefreshHexVisuals() { foreach (var t in Grid.tiles) SetHexColor(t.tileIndex, t.blocksMovement ? blockedColor : hexColor); if (selectedShip != null) HighlightReachableTiles(selectedShip); }
+    private void SetHexColor(int index, Color color) { if (!hexObjects.TryGetValue(index, out var go)) return; var r = go.GetComponent<Renderer>(); if (r != null) { if (r.material == null) r.material = new Material(Shader.Find("Standard")); r.material.color = color; } }
+
+    private void RefreshShipVisuals()
+    {
+        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Exclude)) if (unit.currentSpaceTileIndex >= 0) { unit.transform.SetParent(unitRoot, true); unit.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f; }
     }
 
     private SpaceMapPlanetMarker CreatePlanetMarker(GameManager.PlanetData planet, Vector3 position)
     {
-        SpaceMapPlanetMarker marker;
-        if (planetMarkerPrefab != null)
-        {
-            marker = Instantiate(planetMarkerPrefab, planetRoot);
-        }
-        else
-        {
-            GameObject markerGO = new GameObject("SpaceMapPlanetMarker");
-            markerGO.transform.SetParent(planetRoot, false);
-            marker = markerGO.AddComponent<SpaceMapPlanetMarker>();
-        }
-
-        marker.transform.position = position;
-        marker.Initialize(planet, this, GetPlanetRadius(planet), planetMaterialTemplate);
-        return marker;
+        SpaceMapPlanetMarker marker = planetMarkerPrefab != null ? Instantiate(planetMarkerPrefab, planetRoot) : new GameObject("SpaceMapPlanetMarker").AddComponent<SpaceMapPlanetMarker>();
+        marker.transform.SetParent(planetRoot, false); marker.transform.position = position; marker.Initialize(planet, this, GetPlanetRadius(planet), planetMaterialTemplate); return marker;
     }
-
-    private Vector3 GetMapPosition(GameManager.PlanetData planet, int index, int planetCount, float maxDistanceFromStar)
-    {
-        if (planet.worldPosition.sqrMagnitude > 0.001f)
-            return new Vector3(planet.worldPosition.x, 0f, planet.worldPosition.z) * mapScale;
-
-        if (planet.isHomeWorld)
-            return Vector3.zero;
-
-        float normalizedDistance = maxDistanceFromStar > 0.001f ? Mathf.Log(1f + planet.distanceFromStar) / Mathf.Log(1f + maxDistanceFromStar) : 0.5f;
-        float radius = Mathf.Lerp(fallbackOrbitSpacing, fallbackOrbitSpacing * Mathf.Max(2f, planetCount * 0.65f), normalizedDistance);
-        float angle = (360f / Mathf.Max(planetCount - 1, 1)) * Mathf.Max(0, index - 1) * Mathf.Deg2Rad;
-        return new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-    }
-
-    private float GetPlanetRadius(GameManager.PlanetData planet)
-    {
-        float t = planet.planetSize switch
-        {
-            MapSize.Small => 0.35f,
-            MapSize.Standard => 0.55f,
-            MapSize.Large => 0.85f,
-            _ => 0.55f
-        };
-
-        if (planet.planetType == GameManager.PlanetType.Gas_Giant) t = 1f;
-        if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon) t *= 0.45f;
-        return Mathf.Lerp(minPlanetRadius, maxPlanetRadius, Mathf.Clamp01(t));
-    }
-
-    private void CreateConnectionLines()
-    {
-        ClearConnectionVisuals();
-        SpaceMapPlanetMarker home = markersByPlanet.Values.FirstOrDefault(m => m.PlanetData != null && m.PlanetData.isHomeWorld);
-        if (home == null) return;
-
-        foreach (SpaceMapPlanetMarker marker in markersByPlanet.Values)
-        {
-            if (marker == home) continue;
-            connectionObjects.Add(CreateLineObject($"Connection_{home.PlanetIndex}_{marker.PlanetIndex}", home.transform.position, marker.transform.position, connectionLineColor, connectionLineWidth, routeMaterial));
-        }
-    }
-
-    private void RefreshActiveTravelVisuals()
-    {
-        HashSet<int> seenTaskIds = new HashSet<int>();
-        if (SpaceRouteManager.Instance != null)
-        {
-            foreach (var travel in SpaceRouteManager.Instance.GetActiveTravels())
-            {
-                if (!markersByPlanet.TryGetValue(travel.originPlanetIndex, out var origin)) continue;
-                if (!markersByPlanet.TryGetValue(travel.destinationPlanetIndex, out var destination)) continue;
-
-                seenTaskIds.Add(travel.taskId);
-                Vector3 start = origin.transform.position;
-                Vector3 end = destination.transform.position;
-                Vector3 shipPosition = Vector3.Lerp(start, end, Mathf.Clamp01(travel.Progress));
-
-                if (!activeRouteObjects.TryGetValue(travel.taskId, out GameObject routeGO) || routeGO == null)
-                {
-                    routeGO = CreateLineObject($"ActiveRoute_{travel.taskId}", start, end, activeRouteColor, connectionLineWidth * 2f, activeRouteMaterial);
-                    activeRouteObjects[travel.taskId] = routeGO;
-                }
-                else
-                {
-                    UpdateLineObject(routeGO, start, end, activeRouteColor, connectionLineWidth * 2f);
-                }
-
-                if (!shipObjectsByTask.TryGetValue(travel.taskId, out GameObject shipGO) || shipGO == null)
-                {
-                    shipObjectsByTask[travel.taskId] = CreateShipMarker(travel, shipPosition);
-                }
-                else
-                {
-                    shipGO.transform.position = shipPosition + Vector3.up * 0.75f;
-                    shipGO.name = $"SpaceMapShip_{travel.taskId}_{travel.unitName}";
-                }
-            }
-        }
-
-        RemoveStaleActiveTravelVisuals(seenTaskIds);
-    }
-
-    private GameObject CreateLineObject(string objectName, Vector3 start, Vector3 end, Color color, float width, Material material)
-    {
-        GameObject lineGO = new GameObject(objectName);
-        lineGO.transform.SetParent(routeRoot, false);
-        LineRenderer line = lineGO.AddComponent<LineRenderer>();
-        line.useWorldSpace = true;
-        line.positionCount = 2;
-        line.SetPosition(0, start + Vector3.up * 0.15f);
-        line.SetPosition(1, end + Vector3.up * 0.15f);
-        line.startWidth = width;
-        line.endWidth = width;
-        line.material = material != null ? material : GetDefaultLineMaterial();
-        line.startColor = color;
-        line.endColor = color;
-        return lineGO;
-    }
-
-    private void UpdateLineObject(GameObject lineGO, Vector3 start, Vector3 end, Color color, float width)
-    {
-        if (lineGO == null) return;
-        LineRenderer line = lineGO.GetComponent<LineRenderer>();
-        if (line == null) return;
-        line.positionCount = 2;
-        line.SetPosition(0, start + Vector3.up * 0.15f);
-        line.SetPosition(1, end + Vector3.up * 0.15f);
-        line.startWidth = width;
-        line.endWidth = width;
-        line.startColor = color;
-        line.endColor = color;
-    }
-
-    private GameObject CreateShipMarker(SpaceRouteManager.SpaceTravelTask travel, Vector3 position)
-    {
-        GameObject shipGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        shipGO.name = $"SpaceMapShip_{travel.taskId}_{travel.unitName}";
-        shipGO.transform.SetParent(routeRoot, false);
-        shipGO.transform.position = position + Vector3.up * 0.75f;
-        shipGO.transform.localScale = Vector3.one * shipMarkerRadius;
-        MeshRenderer renderer = shipGO.GetComponent<MeshRenderer>();
-        if (renderer != null)
-        {
-            Material mat = new Material(Shader.Find("Standard"));
-            mat.color = activeRouteColor;
-            renderer.material = mat;
-        }
-        return shipGO;
-    }
-
-    private Material GetDefaultLineMaterial()
-    {
-        if (defaultLineMaterial == null)
-        {
-            Shader shader = Shader.Find("Sprites/Default") ?? Shader.Find("Standard");
-            defaultLineMaterial = new Material(shader);
-            defaultLineMaterial.color = Color.white;
-        }
-        return defaultLineMaterial;
-    }
-
-    private void CenterOnCurrentPlanet()
-    {
-        int currentPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : -1;
-        if (currentPlanet >= 0 && markersByPlanet.TryGetValue(currentPlanet, out var marker) && cameraController != null)
-            cameraController.CenterOn(marker.transform.position);
-    }
+    private Vector3 RingPosition(int i, int count) { if (i == 0) return Vector3.zero; float a = (360f / Mathf.Max(1, count - 1)) * (i - 1) * Mathf.Deg2Rad; float r = Mathf.Lerp(hexSize * 3f, gridRadius * hexSize * 0.75f, i / Mathf.Max(1f, count - 1f)); return new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r); }
+    private float GetPlanetRadius(GameManager.PlanetData planet) { float t = planet.planetSize == MapSize.Small ? .35f : planet.planetSize == MapSize.Large ? .85f : .55f; if (planet.planetType == GameManager.PlanetType.Gas_Giant) t = 1f; if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon) t *= .45f; return Mathf.Lerp(minPlanetRadius, maxPlanetRadius, Mathf.Clamp01(t)); }
 
     private void EnsureSceneObjects()
     {
-        if (mapRoot == null)
-        {
-            Transform existingRoot = transform.Find("SpaceMapWorldRoot");
-            if (existingRoot != null)
-            {
-                mapRoot = existingRoot;
-            }
-            else
-            {
-                GameObject rootGO = new GameObject("SpaceMapWorldRoot");
-                rootGO.transform.SetParent(transform, false);
-                mapRoot = rootGO.transform;
-            }
-        }
-
-        if (planetRoot == null)
-        {
-            GameObject root = new GameObject("SpaceMapPlanets");
-            root.transform.SetParent(mapRoot, false);
-            planetRoot = root.transform;
-        }
-
-        if (routeRoot == null)
-        {
-            GameObject root = new GameObject("SpaceMapRoutes");
-            root.transform.SetParent(mapRoot, false);
-            routeRoot = root.transform;
-        }
-
-        if (spaceMapCamera == null)
-            spaceMapCamera = GetComponentInChildren<Camera>(true);
-
-        if (spaceMapCamera == null)
-        {
-            GameObject cameraGO = new GameObject("SpaceMapCamera");
-            cameraGO.transform.SetParent(mapRoot, false);
-            cameraGO.transform.position = new Vector3(0f, 120f, -0.01f);
-            cameraGO.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            spaceMapCamera = cameraGO.AddComponent<Camera>();
-            spaceMapCamera.orthographic = true;
-            spaceMapCamera.orthographicSize = 120f;
-            spaceMapCamera.clearFlags = CameraClearFlags.SolidColor;
-            spaceMapCamera.backgroundColor = backgroundColor;
-            spaceMapCamera.depth = 100f;
-        }
-
-        if (cameraController == null)
-        {
-            cameraController = spaceMapCamera.GetComponent<SpaceMapCameraController>();
-            if (cameraController == null) cameraController = spaceMapCamera.gameObject.AddComponent<SpaceMapCameraController>();
-        }
-
-        if (createBackgroundPlane && mapRoot.Find("SpaceMapBackgroundPlane") == null)
-        {
-            GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            plane.name = "SpaceMapBackgroundPlane";
-            plane.transform.SetParent(mapRoot, false);
-            plane.transform.localScale = new Vector3(backgroundSize.x / 10f, 1f, backgroundSize.y / 10f);
-            MeshRenderer renderer = plane.GetComponent<MeshRenderer>();
-            if (renderer != null)
-            {
-                Material mat = new Material(Shader.Find("Standard"));
-                mat.color = backgroundColor;
-                renderer.material = mat;
-            }
-        }
+        if (mapRoot == null) { var go = new GameObject("SpaceMapWorldRoot"); go.transform.SetParent(transform, false); mapRoot = go.transform; }
+        if (hexRoot == null) { var go = new GameObject("SpaceHexGrid"); go.transform.SetParent(mapRoot, false); hexRoot = go.transform; }
+        if (planetRoot == null) { var go = new GameObject("SpaceMapPlanets"); go.transform.SetParent(mapRoot, false); planetRoot = go.transform; }
+        if (unitRoot == null) { var go = new GameObject("SpaceMapShips"); go.transform.SetParent(mapRoot, false); unitRoot = go.transform; }
+        if (spaceMapCamera == null) { var go = new GameObject("SpaceMapCamera"); go.transform.SetParent(mapRoot, false); go.transform.position = new Vector3(0f, 140f, 0f); go.transform.rotation = Quaternion.Euler(90f,0f,0f); spaceMapCamera = go.AddComponent<Camera>(); spaceMapCamera.orthographic = true; spaceMapCamera.orthographicSize = 110f; spaceMapCamera.depth = 100f; }
+        if (cameraController == null) cameraController = spaceMapCamera.GetComponent<SpaceMapCameraController>() ?? spaceMapCamera.gameObject.AddComponent<SpaceMapCameraController>();
     }
-
-    private void HideGameplayCameras()
-    {
-        hiddenGameplayCameraStates.Clear();
-        hiddenGameplayCameraCullingMasks.Clear();
-        Camera[] cameras = Camera.allCameras;
-        foreach (Camera cam in cameras)
-        {
-            if (cam == null || cam == spaceMapCamera) continue;
-
-            bool looksLikeGameplayCamera = cam.CompareTag("MainCamera") || cam.GetComponent<PlanetaryCameraManager>() != null;
-            if (!looksLikeGameplayCamera) continue;
-
-            hiddenGameplayCameraStates[cam] = cam.enabled;
-            hiddenGameplayCameraCullingMasks[cam] = cam.cullingMask;
-            cam.cullingMask = 0;
-        }
-    }
-
-    private void RestoreGameplayCameras()
-    {
-        foreach (var kv in hiddenGameplayCameraStates)
-        {
-            if (kv.Key == null) continue;
-            kv.Key.enabled = kv.Value;
-            if (hiddenGameplayCameraCullingMasks.TryGetValue(kv.Key, out int cullingMask))
-                kv.Key.cullingMask = cullingMask;
-        }
-        hiddenGameplayCameraStates.Clear();
-        hiddenGameplayCameraCullingMasks.Clear();
-    }
-
-    private void SetMapActive(bool active)
-    {
-        isVisible = active;
-        if (mapRoot != null) mapRoot.gameObject.SetActive(active);
-        if (spaceMapCamera != null) spaceMapCamera.enabled = active;
-    }
-
-    private void ClearPlanets()
-    {
-        foreach (var marker in markersByPlanet.Values)
-        {
-            if (marker != null) Destroy(marker.gameObject);
-        }
-        markersByPlanet.Clear();
-        selectedMarker = null;
-    }
-
-    private void ClearConnectionVisuals()
-    {
-        foreach (GameObject route in connectionObjects) if (route != null) Destroy(route);
-        connectionObjects.Clear();
-    }
-
-    private void ClearRouteVisuals()
-    {
-        ClearConnectionVisuals();
-        foreach (GameObject route in activeRouteObjects.Values) if (route != null) Destroy(route);
-        foreach (GameObject ship in shipObjectsByTask.Values) if (ship != null) Destroy(ship);
-        activeRouteObjects.Clear();
-        shipObjectsByTask.Clear();
-    }
-
-    private void RemoveStaleActiveTravelVisuals(HashSet<int> activeTaskIds)
-    {
-        List<int> staleRouteIds = activeRouteObjects.Keys.Where(id => !activeTaskIds.Contains(id)).ToList();
-        foreach (int taskId in staleRouteIds)
-        {
-            if (activeRouteObjects.TryGetValue(taskId, out GameObject routeGO) && routeGO != null) Destroy(routeGO);
-            activeRouteObjects.Remove(taskId);
-        }
-
-        List<int> staleShipIds = shipObjectsByTask.Keys.Where(id => !activeTaskIds.Contains(id)).ToList();
-        foreach (int taskId in staleShipIds)
-        {
-            if (shipObjectsByTask.TryGetValue(taskId, out GameObject shipGO) && shipGO != null) Destroy(shipGO);
-            shipObjectsByTask.Remove(taskId);
-        }
-    }
+    private void CenterOnCurrentPlanet() { int current = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : -1; if (current >= 0 && markersByPlanet.TryGetValue(current, out var m)) cameraController?.CenterOn(m.transform.position); }
+    private void SetMapActive(bool active) { isVisible = active; if (mapRoot != null) mapRoot.gameObject.SetActive(active); if (spaceMapCamera != null) spaceMapCamera.enabled = active; }
+    private void HideGameplayCameras() { hiddenGameplayCameraMasks.Clear(); foreach (var cam in Camera.allCameras) if (cam != null && cam != spaceMapCamera && (cam.CompareTag("MainCamera") || cam.GetComponent<PlanetaryCameraManager>() != null)) { hiddenGameplayCameraMasks[cam] = cam.cullingMask; cam.cullingMask = 0; } }
+    private void RestoreGameplayCameras() { foreach (var kv in hiddenGameplayCameraMasks) if (kv.Key != null) kv.Key.cullingMask = kv.Value; hiddenGameplayCameraMasks.Clear(); }
+    private void ClearChildren(Transform root) { if (root == null) return; for (int i = root.childCount - 1; i >= 0; i--) Destroy(root.GetChild(i).gameObject); }
 }
+
+public class SpaceHexTileView : MonoBehaviour { public int tileIndex; }

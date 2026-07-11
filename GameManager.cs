@@ -265,6 +265,9 @@ public class GameManager : MonoBehaviour
     public class PlanetData
     {
         public int planetIndex;
+        public int celestialBodyId;
+        public int parentBodyId = -1;
+        public List<int> childMoonIds = new List<int>();
         public string planetName;
         public PlanetType planetType;
         public CelestialBodyType celestialBodyType;
@@ -296,6 +299,9 @@ public class GameManager : MonoBehaviour
         public PlanetData()
         {
             celestialBodyType = CelestialBodyType.Planet;
+            celestialBodyId = -1;
+            parentBodyId = -1;
+            childMoonIds = new List<int>();
             isExplored = false;
             isColonized = false;
             distanceFromHome = 0f;
@@ -1597,6 +1603,8 @@ public class GameManager : MonoBehaviour
             PlanetData planet = new PlanetData
             {
                 planetIndex = i,
+                celestialBodyId = i,
+                parentBodyId = -1,
                 planetName = name,
                 planetType = GetPlanetType(name),
                 celestialBodyType = (name == "Luna" || name == "Europa" || name == "Titan")
@@ -1614,6 +1622,18 @@ public class GameManager : MonoBehaviour
 
             if (name == "Earth")
                 planet.moonNames.Add("Luna");
+
+            if (planet.celestialBodyType == CelestialBodyType.Moon)
+            {
+                int parentId = name == "Luna" ? realBodies.IndexOf("Earth") :
+                               name == "Europa" ? realBodies.IndexOf("Jupiter") :
+                               name == "Titan" ? realBodies.IndexOf("Saturn") : -1;
+                planet.parentBodyId = parentId;
+                if (parentId >= 0 && planetData.TryGetValue(parentId, out PlanetData parent))
+                {
+                    if (!parent.childMoonIds.Contains(planet.celestialBodyId)) parent.childMoonIds.Add(planet.celestialBodyId);
+                }
+            }
 
             ApplyPlanetConfigToPlanetData(cfg, planet);
 
@@ -2743,6 +2763,12 @@ public class GameManager : MonoBehaviour
                             experience = unit.experience,
                             level = unit.level,
                             hasActedThisTurn = unit.hasActedThisTurn,
+                            spaceLocation = unit.spaceLocation,
+                            currentSpaceMovementPoints = unit.currentSpaceMovementPoints,
+                            currentSpaceTileIndex = unit.currentSpaceTileIndex,
+                            queuedSpacePath = unit.queuedSpacePath != null ? new List<int>(unit.queuedSpacePath) : new List<int>(),
+                            queuedSpacePathCursor = unit.queuedSpacePathCursor,
+                            spaceFleetId = unit.spaceFleetId,
                             posX = unit.transform.position.x,
                             posY = unit.transform.position.y,
                             posZ = unit.transform.position.z,
@@ -3491,6 +3517,12 @@ public class GameManager : MonoBehaviour
                 unit.Initialize(unitData, civ);
                 unit.planetIndex = usd.planetIndex;
                 unit.currentTileIndex = usd.currentTileIndex;
+                unit.spaceLocation = usd.spaceLocation;
+                unit.currentSpaceMovementPoints = usd.currentSpaceMovementPoints;
+                unit.currentSpaceTileIndex = usd.currentSpaceTileIndex;
+                unit.queuedSpacePath = usd.queuedSpacePath != null ? new List<int>(usd.queuedSpacePath) : new List<int>();
+                unit.queuedSpacePathCursor = usd.queuedSpacePathCursor;
+                unit.spaceFleetId = usd.spaceFleetId;
                 unit.RestoreState(usd.currentHealth, usd.experience, usd.level,
                                   usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
 
