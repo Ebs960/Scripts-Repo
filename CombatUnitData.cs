@@ -66,6 +66,12 @@ public enum CombatTargetDomain
     City
 }
 
+public enum SpaceAttackPattern
+{
+    SingleTarget,
+    Blast
+}
+
 public enum TravelCapability
 {
     OrbitOnly,          // Can only enter orbit around current planet
@@ -366,6 +372,16 @@ public class CombatUnitData : ScriptableObject
     public bool canAttackUnderwater = false;
     [Tooltip("Whether this unit can perform a counter-attack when attacked")]
     public bool canCounterAttack = false;
+
+    [Header("Direct Space Combat")]
+    public int directSpaceAttackRange = 1;
+    public bool canDirectlyAttackSpacecraft = true;
+    public bool canCounterAttackInSpace = false;
+    public int spaceCounterAttackRange = 1;
+    public SpaceAttackPattern spaceAttackPattern = SpaceAttackPattern.SingleTarget;
+    public int spaceBlastRadius = 0;
+    public float spaceBlastDamageMultiplier = 0.5f;
+    public bool spaceBlastCanDamageFriendlies = false;
     
     [System.Serializable]
     public struct CategoryBonus
