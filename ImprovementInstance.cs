@@ -500,6 +500,7 @@ public class ImprovementInstance : MonoBehaviour
         {
             eventTileSystem.OnTileClicked += HandleTileClicked;
         }
+        TradeNetworkManager.Instance?.RegisterOrUpdateImprovementNode(this);
     }
 
     private void OnDisable()
@@ -508,6 +509,7 @@ public class ImprovementInstance : MonoBehaviour
         {
             eventTileSystem.OnTileClicked -= HandleTileClicked;
         }
+        TradeNetworkManager.Instance?.RebuildRegistry();
         eventTileSystem = null;
     }
 

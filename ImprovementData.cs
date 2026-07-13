@@ -83,6 +83,14 @@ public class ImprovementUpgradeData
     [Tooltip("Resources this upgrade adds to the civilization stockpile each turn while active.")]
     public ResourceCost[] resourceProductionPerTurn;
 
+    [Header("Trade Network Upgrade Effects")]
+    public int tradeRangeModifier;
+    public int tradeRouteCapacityModifier;
+    public bool grantsTradeRelay;
+    public float tradeRouteGoldModifier;
+    public float tradeRaidChanceReduction;
+    public TradeDomainMask tradeSupportedDomains = TradeDomainMask.None;
+
     [Header("Rural Specialist Slots")]
     [Tooltip("Specialist jobs added by this improvement upgrade.")]
     public SpecialistSlotDefinition[] addedRuralSpecialistSlots;
@@ -299,6 +307,10 @@ public class ImprovementData : ScriptableObject
     public string improvementName;
     public Sprite icon;
     [TextArea] public string description;
+
+    [Header("Trade Network")]
+    [Tooltip("Explicit trade-node/range/capacity contribution from this improvement. No trade behavior should be inferred from names or descriptions.")]
+    public TradeNodeCapability tradeNodeCapability = new TradeNodeCapability();
 
     [Header("Construction")]
     [Tooltip("How many work points required to finish")]

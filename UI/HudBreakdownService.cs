@@ -448,23 +448,15 @@ public class TradeRouteGoldProvider : IYieldProvider
     public List<HudBreakdownService.BreakdownItem> GetBreakdown(Civilization civ)
     {
         var items = new List<HudBreakdownService.BreakdownItem>();
-        if (civ == null) return items;
+        if (civ == null || TradeNetworkManager.Instance == null) return items;
 
-        var routes = civ.GetInterplanetaryTradeRoutes();
-        if (routes == null) return items;
-
-        foreach (var route in routes)
+        foreach (var entry in TradeNetworkManager.Instance.GetProcessedBreakdown(civ))
         {
-            if (route == null) continue;
-
-            int goldIncome = Mathf.RoundToInt(route.goldPerTurn * (1f + civ.goldModifier));
-            if (goldIncome == 0) continue;
-
-            string destination = route.destinationCity != null ? route.destinationCity.cityName : "Unknown";
+            if (entry == null || entry.yields == null || entry.suspended || entry.yields.goldPerTurn == 0) continue;
             items.Add(new HudBreakdownService.BreakdownItem
             {
-                source = $"Trade Route: {destination}",
-                amount = goldIncome,
+                source = $"Trade Route: {entry.label}",
+                amount = entry.yields.goldPerTurn,
                 category = "Trade"
             });
         }
