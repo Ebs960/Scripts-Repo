@@ -4046,8 +4046,6 @@ Destroy(oldTuple.instance);
     }
     
     // --- Trade Routes ---
-    private List<TradeRoute> activeTradeRoutes = new List<TradeRoute>();
-    private const int MAX_TRADE_ROUTES = 1; // Cities start with 1 trade route capacity
     
     /// <summary>
     /// Check if this city can initiate new trade routes
@@ -4055,7 +4053,10 @@ Destroy(oldTuple.instance);
     public bool CanInitiateTradeRoute()
     {
         bool tradeEnabled = owner != null && (owner.tradeEnabled || (TradeManager.Instance != null && TradeManager.Instance.IsTradeEnabledForCivilization(owner)));
-        return tradeEnabled && activeTradeRoutes.Count < MAX_TRADE_ROUTES;
+        if (!tradeEnabled) return false;
+        var manager = TradeNetworkManager.EnsureInstance();
+        var node = manager.RegisterOrUpdateCityNode(this);
+        return node != null && node.canOriginateRoutes && manager.HasCivilizationRouteCapacity(owner);
     }
     
     /// <summary>
@@ -4092,8 +4093,10 @@ Destroy(oldTuple.instance);
     /// </summary>
     public bool HasTradeRouteWith(City other)
     {
-        return activeTradeRoutes.Exists(route => 
-            route.destinationCity == other || route.sourceCity == other);
+        var manager = TradeNetworkManager.EnsureInstance();
+        int thisId = manager.GetCityNodeId(this);
+        int otherId = manager.GetCityNodeId(other);
+        return manager.activeRoutes.Exists(route => (route.sourceNodeId == thisId && route.destinationNodeId == otherId) || (route.sourceNodeId == otherId && route.destinationNodeId == thisId));
     }
     
     /// <summary>
@@ -4101,7 +4104,9 @@ Destroy(oldTuple.instance);
     /// </summary>
     public List<TradeRoute> GetActiveTradeRoutes()
     {
-        return activeTradeRoutes;
+        var manager = TradeNetworkManager.EnsureInstance();
+        int nodeId = manager.GetCityNodeId(this);
+        return new List<TradeRoute>(manager.GetRoutesForCivilization(owner).Where(r => r.sourceNodeId == nodeId));
     }
     
     /// <summary>
@@ -4118,9 +4123,8 @@ Destroy(oldTuple.instance);
         if (!CanEstablishTradeRouteWith(destinationCity, TradeManager.CurrentMaxCityTradeRange))
             return false;
             
-        var newRoute = new TradeRoute(this, destinationCity);
-        activeTradeRoutes.Add(newRoute);
-return true;
+        var manager = TradeNetworkManager.EnsureInstance();
+        return manager.TryCreateRoute(manager.GetCityNodeId(this), manager.GetCityNodeId(destinationCity), owner, out _);
     }
     
     /// <summary>
@@ -4128,27 +4132,16 @@ return true;
     /// </summary>
     public void ProcessTradeRoutes()
     {
-        foreach (var route in activeTradeRoutes)
-        {
+        foreach (var route in TradeNetworkManager.EnsureInstance().GetRoutesForCivilization(owner))
             route.CalculateYields();
-        }
     }
 
     public bool CanEstablishTradeRouteWith(City destinationCity, int maxRange = -1)
     {
-        if (maxRange <= 0)
-            maxRange = TradeManager.CurrentMaxCityTradeRange;
-
         if (destinationCity == null || destinationCity == this) return false;
-
-        bool samePlanet = planetIndex == destinationCity.planetIndex;
-        int tileDistance = samePlanet ? GetTradeTileDistanceTo(destinationCity) : int.MaxValue;
-        bool roadConnected = samePlanet && RoadConnectivityHelper.AreCitiesConnectedByRoad(this, destinationCity, maxRange);
-        bool harborConnected = samePlanet && HasOperationalHarbor() && destinationCity.HasOperationalHarbor() && tileDistance <= maxRange;
-        bool airportConnected = samePlanet && HasOperationalAirport() && destinationCity.HasOperationalAirport() && tileDistance <= TradeManager.CurrentMaxAirportTradeRange;
-        bool spaceportConnected = TradeManager.CanSpacePortTradeBetween(this, destinationCity);
-
-        return roadConnected || harborConnected || airportConnected || spaceportConnected;
+        var manager = TradeNetworkManager.EnsureInstance();
+        var preview = manager.PreviewRoute(this, destinationCity);
+        return preview != null && !preview.suspended;
     }
 
     public bool HasOperationalHarbor()
@@ -4213,13 +4206,14 @@ return true;
     /// </summary>
     public bool CancelTradeRoute(City otherCity)
     {
-        var route = activeTradeRoutes.Find(r => 
-            r.destinationCity == otherCity || r.sourceCity == otherCity);
-            
+        var manager = TradeNetworkManager.EnsureInstance();
+        int thisId = manager.GetCityNodeId(this);
+        int otherId = manager.GetCityNodeId(otherCity);
+        var route = manager.activeRoutes.Find(r => (r.sourceNodeId == thisId && r.destinationNodeId == otherId) || (r.sourceNodeId == otherId && r.destinationNodeId == thisId));
         if (route != null)
         {
-            activeTradeRoutes.Remove(route);
-return true;
+            manager.activeRoutes.Remove(route);
+            return true;
         }
         
         return false;

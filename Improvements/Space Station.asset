@@ -15,6 +15,25 @@ MonoBehaviour:
   improvementName: Space Station
   icon: {fileID: 0}
   description: 
+  tradeNodeCapability:
+    providesTradeNode: 1
+    nodeType: 6
+    supportedDomains: 24
+    tradeRange: 0
+    surfaceTradeRange: 0
+    maritimeTradeRange: 0
+    airTradeRange: 0
+    orbitTradeRange: 3
+    solarSpaceTradeRange: 8
+    interstellarTradeRange: 0
+    routeCapacity: 3
+    canOriginateRoutes: 0
+    canReceiveRoutes: 1
+    canRelayRoutes: 1
+    routeGoldModifier: 0.1
+    raidChanceReduction: 0.05
+    isPlanetaryGateway: 0
+    isOrbitalGateway: 1
   workCost: 1200
   buildGoldCost: 0
   buildResourceCosts:

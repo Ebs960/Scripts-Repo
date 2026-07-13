@@ -97,6 +97,10 @@ public class BuildingData : ScriptableObject
     [Tooltip("Grants spaceport functionality for planet/moon/orbital/interplanetary trade routes.")]
     public bool providesSpaceport;
 
+    [Header("Trade Network")]
+    [Tooltip("Explicit trade-node/range/capacity contribution from this building. No trade behavior should be inferred from names or descriptions.")]
+    public TradeNodeCapability tradeNodeCapability = new TradeNodeCapability();
+
     public bool isScienceBuilding;
 
     public bool isFoodBuilding;
