@@ -4056,7 +4056,7 @@ Destroy(oldTuple.instance);
         if (!tradeEnabled) return false;
         var manager = TradeNetworkManager.EnsureInstance();
         var node = manager.RegisterOrUpdateCityNode(this);
-        return node != null && node.canOriginateRoutes && manager.NodeHasCapacity(node.nodeId);
+        return node != null && node.canOriginateRoutes && manager.HasCivilizationRouteCapacity(owner);
     }
     
     /// <summary>

@@ -130,9 +130,10 @@ public class TradePanel : MonoBehaviour
         sourceCityDropdown.ClearOptions();
 
         var labels = new List<string>();
+        bool civHasCapacity = manager.HasCivilizationRouteCapacity(playerCiv);
         foreach (var node in manager.allTradeNodes)
         {
-            if (node.ownerCivilizationId != playerCiv.GetRuntimeId() || !node.canOriginateRoutes || !manager.NodeHasCapacity(node.nodeId)) continue;
+            if (!civHasCapacity || node.ownerCivilizationId != playerCiv.GetRuntimeId() || !node.canOriginateRoutes) continue;
             availableSourceNodeIds.Add(node.nodeId);
             if (node.city != null) availableSourceCities.Add(node.city);
             labels.Add($"{node.displayName} ({node.nodeType}, P{node.location.planetId})");
