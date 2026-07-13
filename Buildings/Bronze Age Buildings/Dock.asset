@@ -34,6 +34,25 @@ MonoBehaviour:
   providesHarbor: 1
   providesAirport: 0
   providesSpaceport: 0
+  tradeNodeCapability:
+    providesTradeNode: 1
+    nodeType: 3
+    supportedDomains: 3
+    tradeRange: 0
+    surfaceTradeRange: 0
+    maritimeTradeRange: 25
+    airTradeRange: 0
+    orbitTradeRange: 0
+    solarSpaceTradeRange: 0
+    interstellarTradeRange: 0
+    routeCapacity: 1
+    canOriginateRoutes: 1
+    canReceiveRoutes: 1
+    canRelayRoutes: 1
+    routeGoldModifier: 0.05
+    raidChanceReduction: 0.01
+    isPlanetaryGateway: 0
+    isOrbitalGateway: 0
   isScienceBuilding: 0
   isFoodBuilding: 1
   isProductionBuilding: 0

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
 public class TradePanel : MonoBehaviour
 {
@@ -47,6 +48,8 @@ public class TradePanel : MonoBehaviour
     private Civilization playerCiv;
     private List<City> availableSourceCities = new List<City>();
     private List<City> availableDestinationCities = new List<City>();
+    private List<int> availableSourceNodeIds = new List<int>();
+    private List<int> availableDestinationNodeIds = new List<int>();
     private bool isInterplanetaryMode = false;
     
     void Start()
@@ -58,19 +61,13 @@ public class TradePanel : MonoBehaviour
         sourceCityDropdown.onValueChanged.AddListener(OnSourceCitySelected);
         destinationCityDropdown.onValueChanged.AddListener(OnDestinationCitySelected);
         
-        // Set up interplanetary trade listeners
+        // Unified node workflow replaces the old city/interplanetary toggle.
         if (interplanetaryToggle != null)
         {
-            interplanetaryToggle.onValueChanged.AddListener(OnInterplanetaryToggleChanged);
+            interplanetaryToggle.gameObject.SetActive(false);
         }
-        if (originPlanetDropdown != null)
-        {
-            originPlanetDropdown.onValueChanged.AddListener(OnOriginPlanetSelected);
-        }
-        if (destinationPlanetDropdown != null)
-        {
-            destinationPlanetDropdown.onValueChanged.AddListener(OnDestinationPlanetSelected);
-        }
+        if (originPlanetDropdown != null) originPlanetDropdown.gameObject.SetActive(false);
+        if (destinationPlanetDropdown != null) destinationPlanetDropdown.gameObject.SetActive(false);
         
         // Hide panel initially
         if (tradePanel == null)
@@ -126,78 +123,49 @@ public class TradePanel : MonoBehaviour
     /// </summary>
     private void UpdateAvailableSourceCities()
     {
-        if (isInterplanetaryMode)
-        {
-            // For interplanetary trade, populate planet dropdowns
-            UpdateAvailablePlanets();
-            return;
-        }
-        
+        var manager = TradeNetworkManager.EnsureInstance();
+        manager.RebuildRegistry();
         availableSourceCities.Clear();
+        availableSourceNodeIds.Clear();
         sourceCityDropdown.ClearOptions();
-        
-        List<string> cityNames = new List<string>();
-        
-        foreach (City city in playerCiv.cities)
+
+        var labels = new List<string>();
+        bool civHasCapacity = manager.HasCivilizationRouteCapacity(playerCiv);
+        foreach (var node in manager.allTradeNodes)
         {
-            if (city.CanInitiateTradeRoute())
-            {
-                availableSourceCities.Add(city);
-                cityNames.Add($"{city.cityName}");
-            }
+            if (!civHasCapacity || node.ownerCivilizationId != playerCiv.GetRuntimeId() || !node.canOriginateRoutes) continue;
+            availableSourceNodeIds.Add(node.nodeId);
+            if (node.city != null) availableSourceCities.Add(node.city);
+            labels.Add($"{node.displayName} ({node.nodeType}, P{node.location.planetId})");
         }
-        
-        if (cityNames.Count > 0)
-        {
-            sourceCityDropdown.AddOptions(cityNames);
-            OnSourceCitySelected(0);
-        }
-        else
-        {
-            sourceCityDropdown.AddOptions(new List<string> { "No Trading Cities" });
-            establishTradeRouteButton.interactable = false;
-        }
+
+        if (labels.Count > 0) { sourceCityDropdown.AddOptions(labels); OnSourceCitySelected(0); }
+        else { sourceCityDropdown.AddOptions(new List<string> { "No Eligible Trade Nodes" }); establishTradeRouteButton.interactable = false; }
     }
-    
-    /// <summary>
-    /// Update the list of possible trade destinations based on selected source city
-    /// </summary>
+
     private void UpdateAvailableDestinationCities()
     {
-        if (sourceCityDropdown.value < 0 || sourceCityDropdown.value >= availableSourceCities.Count)
-            return;
-            
-        City sourceCity = availableSourceCities[sourceCityDropdown.value];
-        
+        var manager = TradeNetworkManager.EnsureInstance();
+        if (sourceCityDropdown.value < 0 || sourceCityDropdown.value >= availableSourceNodeIds.Count) return;
+        int sourceNodeId = availableSourceNodeIds[sourceCityDropdown.value];
         availableDestinationCities.Clear();
+        availableDestinationNodeIds.Clear();
         destinationCityDropdown.ClearOptions();
-        
-        List<string> cityNames = new List<string>();
-        
-        // Get all cities within trade range (including other civilizations' cities)
-        var citiesInRange = sourceCity.GetCitiesInTradeRange();
-        
-        foreach (City city in citiesInRange)
+
+        var labels = new List<string>();
+        foreach (var node in manager.allTradeNodes)
         {
-            if (city != sourceCity && !sourceCity.HasTradeRouteWith(city))
-            {
-                availableDestinationCities.Add(city);
-                cityNames.Add($"{city.cityName} ({city.owner.civData.civName})");
-            }
+            if (node.nodeId == sourceNodeId || !node.canReceiveRoutes) continue;
+            var preview = manager.PreviewRoute(sourceNodeId, node.nodeId, playerCiv);
+            if (preview == null || preview.suspended) continue;
+            availableDestinationNodeIds.Add(node.nodeId);
+            if (node.city != null) availableDestinationCities.Add(node.city);
+            labels.Add($"{node.displayName} ({node.nodeType}, P{node.location.planetId})");
         }
-        
-        if (cityNames.Count > 0)
-        {
-            destinationCityDropdown.AddOptions(cityNames);
-            OnDestinationCitySelected(0);
-        }
-        else
-        {
-            destinationCityDropdown.AddOptions(new List<string> { "No Available Destinations" });
-            establishTradeRouteButton.interactable = false;
-        }
+        if (labels.Count > 0) { destinationCityDropdown.AddOptions(labels); OnDestinationCitySelected(0); }
+        else { destinationCityDropdown.AddOptions(new List<string> { "No Reachable Destinations" }); establishTradeRouteButton.interactable = false; }
     }
-    
+
     /// <summary>
     /// Update the display of active trade routes
     /// </summary>
@@ -211,21 +179,14 @@ public class TradePanel : MonoBehaviour
                 Destroy(child.gameObject);
             }
             
-            // Create items for city trade routes
-            foreach (City city in playerCiv.cities)
+            // Create items for every unified trade-network route.
+            if (TradeNetworkManager.Instance != null)
             {
-                foreach (TradeRoute route in city.GetActiveTradeRoutes())
+                foreach (TradeRoute route in TradeNetworkManager.Instance.GetRoutesForCivilization(playerCiv))
                 {
                     GameObject item = Instantiate(tradeRouteItemPrefab, tradeRouteListContent);
                     UpdateTradeRouteItem(item, route);
                 }
-            }
-            
-            // Create items for interplanetary trade routes
-            foreach (TradeRoute route in playerCiv.GetInterplanetaryTradeRoutes())
-            {
-                GameObject item = Instantiate(tradeRouteItemPrefab, tradeRouteListContent);
-                UpdateTradeRouteItem(item, route);
             }
         }
     }
@@ -242,35 +203,23 @@ public class TradePanel : MonoBehaviour
         var benefitsText = item.transform.Find("BenefitsText")?.GetComponent<TextMeshProUGUI>();
         var cancelButton = item.transform.Find("CancelButton")?.GetComponent<Button>();
         
+        string routeName = TradeNetworkManager.Instance != null ? TradeNetworkManager.Instance.GetRouteDisplayName(route) : $"Route {route.routeId}";
         if (sourceText != null)
-            sourceText.text = route.isInterplanetaryRoute ? $"Planet {route.originPlanetIndex + 1}" : route.sourceCity.cityName;
+            sourceText.text = routeName;
         if (destText != null)
-            destText.text = route.isInterplanetaryRoute ? $"Planet {route.destinationPlanetIndex + 1}" : route.destinationCity.cityName;
+            destText.text = route.suspended ? $"Suspended: {route.suspensionReason}" : "Active";
         if (benefitsText != null)
-            benefitsText.text = route.isInterplanetaryRoute
-                ? $"+{route.goldPerTurn}g"
-                : $"+{route.goldPerTurn}g, {GetCityTradeConnectionLabel(route)}, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {GetCityTradeRangeLabel(route)}";
+            benefitsText.text = $"+{route.goldPerTurn}g, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {GetCityTradeRangeLabel(route)}";
         
         // Setup cancel button
         if (cancelButton != null)
         {
             cancelButton.onClick.RemoveAllListeners();
-            if (route.isInterplanetaryRoute)
-            {
-                cancelButton.interactable = false;
-            }
-            else
-            {
-                cancelButton.interactable = true;
-                cancelButton.onClick.AddListener(() => {
-                    if (route.sourceCity.CancelTradeRoute(route.destinationCity))
-                    {
-                        UpdateUIState();
-                        if (UIManager.Instance != null)
-                            UIManager.Instance.ShowNotification($"Trade route cancelled between {route.sourceCity.cityName} and {route.destinationCity.cityName}");
-                    }
-                });
-            }
+            cancelButton.interactable = true;
+            cancelButton.onClick.AddListener(() => {
+                if (TradeNetworkManager.Instance != null && TradeNetworkManager.Instance.activeRoutes.Remove(route))
+                    UpdateUIState();
+            });
         }
     }
     
@@ -282,34 +231,21 @@ public class TradePanel : MonoBehaviour
         int totalGold = 0;
         int totalFood = 0;
         int totalProduction = 0;
-        
-        // Add city trade routes
-        foreach (City city in playerCiv.cities)
+        if (TradeNetworkManager.Instance != null)
         {
-            foreach (TradeRoute route in city.GetActiveTradeRoutes())
+            foreach (TradeRoute route in TradeNetworkManager.Instance.GetRoutesForCivilization(playerCiv))
             {
+                if (route == null || route.suspended) continue;
                 totalGold += route.goldPerTurn;
                 totalFood += route.foodPerTurn;
                 totalProduction += route.productionPerTurn;
             }
         }
-        
-        // Add interplanetary trade routes
-        foreach (TradeRoute route in playerCiv.GetInterplanetaryTradeRoutes())
-        {
-            totalGold += route.goldPerTurn;
-            totalFood += route.foodPerTurn;
-            totalProduction += route.productionPerTurn;
-        }
-        
-        if (totalTradeGoldText != null)
-            totalTradeGoldText.text = $"Total Gold: +{totalGold}";
-        if (totalTradeFoodText != null)
-            totalTradeFoodText.text = $"Total Food: +{totalFood}";
-        if (totalTradeProductionText != null)
-            totalTradeProductionText.text = $"Total Production: +{totalProduction}";
+        if (totalTradeGoldText != null) totalTradeGoldText.text = $"Total Gold: +{totalGold}";
+        if (totalTradeFoodText != null) totalTradeFoodText.text = $"Total Food: +{totalFood}";
+        if (totalTradeProductionText != null) totalTradeProductionText.text = $"Total Production: +{totalProduction}";
     }
-    
+
     /// <summary>
     /// Called when a source city is selected
     /// </summary>
@@ -323,82 +259,36 @@ public class TradePanel : MonoBehaviour
     /// </summary>
     private void OnDestinationCitySelected(int index)
     {
-        if (index < 0 || index >= availableDestinationCities.Count)
-            return;
-            
-        City sourceCity = availableSourceCities[sourceCityDropdown.value];
-        City destCity = availableDestinationCities[index];
-        
-        // Calculate and display estimated trade route benefits
-        var simulatedRoute = new TradeRoute(sourceCity, destCity);
-        
+        if (index < 0 || index >= availableDestinationNodeIds.Count) return;
+        var manager = TradeNetworkManager.EnsureInstance();
+        var source = manager.GetNode(availableSourceNodeIds[sourceCityDropdown.value]);
+        var dest = manager.GetNode(availableDestinationNodeIds[index]);
         if (routeBenefitsText != null)
         {
-            routeBenefitsText.text = $"Estimated Benefits:\n" +
-                                    $"Gold: +{simulatedRoute.goldPerTurn}\n" +
-                                    $"Resources: {FormatTradeResources(simulatedRoute.resourcesPerTurn)}\n" +
-                                    $"Raid Chance: {Mathf.RoundToInt(simulatedRoute.raidChance * 100f)}%\n" +
-                                    $"Connection: {GetCityTradeConnectionLabel(simulatedRoute)}\n" +
-                                    $"Range: {GetCityTradeRangeLabel(simulatedRoute)}";
+            routeBenefitsText.text = $"{source?.displayName} → {dest?.displayName}\nPreview uses real node path, capacity, range, gateway, blockade, and risk checks.";
         }
-        
-        if (establishTradeRouteButton != null)
-            establishTradeRouteButton.interactable = true;
+        if (establishTradeRouteButton != null) establishTradeRouteButton.interactable = true;
     }
-    
+
     /// <summary>
     /// Called when the establish trade route button is clicked
     /// </summary>
     private void OnEstablishTradeRouteClicked()
     {
-        if (isInterplanetaryMode)
+        var manager = TradeNetworkManager.EnsureInstance();
+        if (sourceCityDropdown.value < 0 || sourceCityDropdown.value >= availableSourceNodeIds.Count ||
+            destinationCityDropdown.value < 0 || destinationCityDropdown.value >= availableDestinationNodeIds.Count)
+            return;
+
+        int sourceNodeId = availableSourceNodeIds[sourceCityDropdown.value];
+        int destinationNodeId = availableDestinationNodeIds[destinationCityDropdown.value];
+        if (manager.TryCreateRoute(sourceNodeId, destinationNodeId, playerCiv, out var route))
         {
-            // Handle interplanetary trade route creation
-            if (originPlanetDropdown.value < 0 || destinationPlanetDropdown.value < 0)
-                return;
-                
-            int originPlanet = originPlanetDropdown.value;
-            int destPlanet = destinationPlanetDropdown.value;
-            
-            if (originPlanet == destPlanet)
-            {
-return;
-            }
-            if (!TradeManager.CanSpaceTradeBetweenPlanets(originPlanet, destPlanet))
-            {
-                if (UIManager.Instance != null)
-                    UIManager.Instance.ShowNotification("Space trade range is not unlocked for that destination yet.");
-                return;
-            }
-            
-            // Create interplanetary trade route
-            TradeRoute newRoute = new TradeRoute(playerCiv, originPlanet, destPlanet);
-            playerCiv.AddTradeRoute(newRoute);
-UpdateUIState();
-        }
-        else
-        {
-            // Handle city trade route creation (original code)
-            if (sourceCityDropdown.value < 0 || sourceCityDropdown.value >= availableSourceCities.Count ||
-                destinationCityDropdown.value < 0 || destinationCityDropdown.value >= availableDestinationCities.Count)
-                return;
-                
-            City sourceCity = availableSourceCities[sourceCityDropdown.value];
-            City destCity = availableDestinationCities[destinationCityDropdown.value];
-            
-            // Attempt to establish the trade route
-            if (sourceCity.EstablishTradeRoute(destCity))
-            {
-                // Update UI if successful
-                UpdateUIState();
-                
-                // Show notification
-                if (UIManager.Instance != null)
-                    UIManager.Instance.ShowNotification($"Trade route established from {sourceCity.cityName} to {destCity.cityName}");
-            }
+            UpdateUIState();
+            UIManager.Instance?.ShowNotification($"Trade route established: {manager.GetRouteDisplayName(route)}");
         }
     }
-    
+
     /// <summary>
     /// Called when interplanetary toggle is changed
     /// </summary>
@@ -493,7 +383,7 @@ UpdateUIState();
         }
         if (!TradeManager.CanSpaceTradeBetweenPlanets(originIndex, destIndex))
         {
-            routeBenefitsText.text = $"Space trade range locked ({TradeManager.CurrentSpaceTradeRangeScope})";
+            routeBenefitsText.text = "No valid trade gateway route exists in the trade network";
             establishTradeRouteButton.interactable = false;
             return;
         }
@@ -517,9 +407,7 @@ UpdateUIState();
     private string GetCityTradeRangeLabel(TradeRoute route)
     {
         if (route == null) return "Invalid";
-        if (route.usesSpaceportConnection) return TradeManager.CurrentSpaceTradeRangeScope.ToString();
-        int maxRange = route.usesAirportConnection ? TradeManager.CurrentMaxAirportTradeRange : TradeManager.CurrentMaxCityTradeRange;
-        return $"{route.routeDistance}/{maxRange}";
+        return $"{route.routeDistance} cost";
     }
 
     private string FormatTradeResources(List<ResourceCost> resources)
