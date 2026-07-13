@@ -62,9 +62,16 @@ public class SpaceShipMovementController : MonoBehaviour
         while (unit.queuedSpacePathCursor + 1 < unit.queuedSpacePath.Count && unit.currentSpaceMovementPoints > 0)
         {
             int next = unit.queuedSpacePath[unit.queuedSpacePathCursor + 1]; var tile = Grid.GetTile(next); if (tile == null || tile.blocksMovement) break;
-            int cost = Mathf.Max(1, tile.movementCost); if (cost > unit.currentSpaceMovementPoints) break;
+            int cost = GetAbilityModifiedMovementCost(unit, tile); if (cost > unit.currentSpaceMovementPoints) break;
             unit.currentSpaceMovementPoints -= cost; unit.queuedSpacePathCursor++; PlaceOnSpaceTile(unit, next);
         }
+    }
+
+    private int GetAbilityModifiedMovementCost(BaseUnit unit, SpaceHexTile tile)
+    {
+        int cost = Mathf.Max(1, tile != null ? tile.movementCost : 1);
+        float efficiency = unit != null ? unit.GetAbilitySpaceMovementEfficiencyModifier() : 0f;
+        return Mathf.Max(1, Mathf.CeilToInt(cost * Mathf.Max(0.25f, 1f - efficiency)));
     }
 
     public SpaceFleet CreateFleet(IEnumerable<BaseUnit> units, string fleetName = "Fleet")

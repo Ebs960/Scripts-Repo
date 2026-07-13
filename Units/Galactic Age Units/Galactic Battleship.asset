@@ -132,8 +132,15 @@ MonoBehaviour:
   intrinsicStatBonuses: []
   auraBonuses: []
   sightRange: 3
-  xpToNextLevel: 
-  abilitiesByLevel: []
+  xpToNextLevel:
+  - 40
+  - 100
+  - 180
+  abilitiesByLevel:
+  - {fileID: 0}
+  - {fileID: 11400000, guid: 41beee7e0c7c1b65b4e049a26548b1a1, type: 2}
+  - {fileID: 11400000, guid: d1d847b08b9225967a155efb961bd287, type: 2}
+  - {fileID: 11400000, guid: df21ab97191b3575fc13d713fcde70b8, type: 2}
   requiredTechs:
   - {fileID: 11400000, guid: 12c476711184f3d41b28209be7a45df3, type: 2}
   requiredCultures: []

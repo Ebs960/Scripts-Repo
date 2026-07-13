@@ -31,7 +31,8 @@ public class SpaceFleetManager : MonoBehaviour
         fleets.Add(fleet); return fleet;
     }
     public SpaceFleet GetFleet(int fleetId) => fleets.Find(f => f.fleetId == fleetId);
-    public bool CanPack(SpaceFleet fleet, out string reason) { reason = null; if (fleet == null) { reason = "missing fleet"; return false; } if (fleet.admiralId < 0) { reason = "fleet requires an admiral before packing"; return false; } return true; }
+    public bool CanPack(SpaceFleet fleet, out string reason) { reason = null; if (fleet == null) { reason = "missing fleet"; return false; } if (fleet.admiralId < 0) { reason = "fleet requires an admiral before packing"; return false; } var admiral = AdmiralManager.Instance != null ? AdmiralManager.Instance.GetAdmiral(fleet.admiralId) : null; if (admiral != null && (admiral.status == AdmiralStatus.Captured || admiral.status == AdmiralStatus.Killed)) { reason = "fleet admiral is unavailable"; return false; } return true; }
+    public AdmiralFleetLossOutcome ResolveFleetDestroyed(SpaceFleet fleet, int enemyCivilizationId = -1) { if (fleet == null || fleet.admiralId < 0 || AdmiralManager.Instance == null) return AdmiralFleetLossOutcome.Killed; var outcome = AdmiralManager.Instance.ResolveFleetDestroyed(fleet.admiralId, enemyCivilizationId); fleet.admiralId = -1; fleet.isPacked = false; fleet.isDeployed = false; return outcome; }
 }
 
 public class FleetDeploymentManager : MonoBehaviour

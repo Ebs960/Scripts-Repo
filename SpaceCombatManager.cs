@@ -75,7 +75,7 @@ public class SpaceCombatManager : MonoBehaviour
             }
         }
         preview.targetMayCounterAttack = CanCounterAttack(primaryTarget, attacker);
-        preview.predictedCounterDamage = preview.targetMayCounterAttack ? CalculateSpaceCombatDamage(primaryTarget.CurrentSpaceAttack, attacker.CurrentDefense) : 0;
+        preview.predictedCounterDamage = preview.targetMayCounterAttack ? CalculateAbilityModifiedSpaceDamage(primaryTarget, attacker) : 0;
         OnSpaceAttackPreviewed?.Invoke(attacker, primaryTarget, preview);
         return preview;
     }
@@ -93,12 +93,14 @@ public class SpaceCombatManager : MonoBehaviour
             var unit = go != null ? go.GetComponent<CombatUnit>() : null;
             if (unit == null || !damaged.Add(hit.unitId) || hit.predictedDamage <= 0) continue;
             bool died = unit.ApplyDamage(hit.predictedDamage, attacker, false);
+            AwardSpaceCombatExperience(attacker, unit, hit.predictedDamage, died);
             if (unit == primaryTarget) primarySurvived = !died && unit.currentHealth > 0;
         }
         if (primarySurvived && preview.targetMayCounterAttack && preview.predictedCounterDamage > 0)
         {
             primaryTarget.hasUsedSpaceReactionThisTurn = true;
-            attacker.ApplyDamage(preview.predictedCounterDamage, primaryTarget, false);
+            bool counterKilled = attacker.ApplyDamage(preview.predictedCounterDamage, primaryTarget, false);
+            AwardSpaceCombatExperience(primaryTarget, attacker, preview.predictedCounterDamage, counterKilled);
         }
         OnSpaceAttackResolved?.Invoke(attacker, primaryTarget, preview);
         return true;
@@ -106,9 +108,34 @@ public class SpaceCombatManager : MonoBehaviour
 
     public static int CalculateSpaceCombatDamage(int attack, int defense) => Mathf.Max(0, attack - Mathf.Max(0, defense));
 
+    public static int CalculateAbilityModifiedSpaceDamage(CombatUnit attacker, CombatUnit defender)
+    {
+        int attack = attacker != null ? attacker.CurrentSpaceAttack : 0;
+        int defense = defender != null ? defender.CurrentDefense : 0;
+        float damage = CalculateSpaceCombatDamage(attack, defense);
+        if (attacker != null)
+            damage *= attacker.GetAbilityDamageMultiplier() + attacker.GetAbilityAccuracyModifier();
+        damage *= GetAdmiralAttackMultiplier(attacker);
+        return Mathf.Max(0, Mathf.RoundToInt(damage));
+    }
+
+    private static float GetAdmiralAttackMultiplier(CombatUnit attacker)
+    {
+        if (attacker == null || attacker.spaceFleetId < 0 || AdmiralManager.Instance == null || SpaceFleetManager.Instance == null) return 1f;
+        var fleet = SpaceFleetManager.Instance.GetFleet(attacker.spaceFleetId);
+        return fleet == null ? 1f : AdmiralManager.Instance.GetFleetAttackMultiplier(fleet.admiralId);
+    }
+
+    private void AwardSpaceCombatExperience(CombatUnit attacker, CombatUnit defender, int damage, bool defenderDestroyed)
+    {
+        if (attacker == null || damage <= 0) return;
+        attacker.GainExperience(damage);
+        if (defenderDestroyed) attacker.GainExperience(damage);
+    }
+
     private void AddAffected(SpaceCombatPreview preview, CombatUnit attacker, CombatUnit primaryTarget, CombatUnit victim, float multiplier, bool primary)
     {
-        int damage = Mathf.RoundToInt(CalculateSpaceCombatDamage(attacker.CurrentSpaceAttack, victim.CurrentDefense) * multiplier);
+        int damage = Mathf.RoundToInt(CalculateAbilityModifiedSpaceDamage(attacker, victim) * multiplier);
         int tile = GetSpaceTile(victim);
         if (!preview.affectedTileIndices.Contains(tile)) preview.affectedTileIndices.Add(tile);
         preview.affectedUnits.Add(new SpaceCombatAffectedUnit { unitId = victim.gameObject.GetRuntimeId(), spaceTileIndex = tile, predictedDamage = damage, isPrimaryTarget = primary, isFriendlyFire = !AircraftMissionManager.IsHostile(attacker.owner, victim.owner) });

@@ -314,7 +314,7 @@ public class UnitVisionManager : MonoBehaviour
         }
 
         var bonuses = AggregateSightRangeBonuses(unit);
-        range = (range + bonuses.add) * (1f + bonuses.pct);
+        range = (range + bonuses.add + unit.GetAbilitySightRangeModifier()) * (1f + bonuses.pct);
         range += orbitBonus;
 
         return Mathf.Max(0, Mathf.RoundToInt(range));
