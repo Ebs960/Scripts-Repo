@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Space range scopes are deprecated; TradeNetworkManager uses node graph and space-hex path cost.")]
 public enum SpaceTradeRangeScope
 {
     Disabled = 0,
@@ -115,26 +116,22 @@ public class TradeManager : MonoBehaviour
     public static bool CanSpacePortTradeBetween(City source, City destination)
     {
         if (source == null || destination == null) return false;
-        if (!source.HasOperationalSpaceport() || !destination.HasOperationalSpaceport()) return false;
-
-        SpaceTradeRangeScope scope = CurrentSpaceTradeRangeScope;
-        if (scope == SpaceTradeRangeScope.Disabled) return false;
-        if (source.planetIndex == destination.planetIndex) return true;
-        if (scope >= SpaceTradeRangeScope.SolarSystem) return true;
-        if (scope == SpaceTradeRangeScope.EarthMoon)
-            return IsEarthMoonOrOrbitTrade(source.planetIndex, destination.planetIndex);
-
-        return false;
+        var manager = TradeNetworkManager.EnsureInstance();
+        var route = manager.PreviewRoute(source, destination);
+        return route != null && !route.suspended;
     }
 
     public static bool CanSpaceTradeBetweenPlanets(int originPlanetIndex, int destinationPlanetIndex)
     {
         if (originPlanetIndex == destinationPlanetIndex) return false;
-        SpaceTradeRangeScope scope = CurrentSpaceTradeRangeScope;
-        if (scope == SpaceTradeRangeScope.Disabled) return false;
-        if (scope >= SpaceTradeRangeScope.SolarSystem) return true;
-        return scope == SpaceTradeRangeScope.EarthMoon
-               && IsEarthMoonOrOrbitTrade(originPlanetIndex, destinationPlanetIndex);
+        if (CivilizationManager.Instance == null) return false;
+        var manager = TradeNetworkManager.EnsureInstance();
+        foreach (var civ in CivilizationManager.Instance.GetAllCivs())
+        {
+            var route = manager.PreviewRoute(civ, originPlanetIndex, destinationPlanetIndex);
+            if (route != null && !route.suspended) return true;
+        }
+        return false;
     }
 
     private static bool IsEarthMoonOrOrbitTrade(int originPlanetIndex, int destinationPlanetIndex)

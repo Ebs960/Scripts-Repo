@@ -298,7 +298,6 @@ public class Civilization : MonoBehaviour
     }
     
     [Header("Interplanetary Trade")]
-    public List<TradeRoute> interplanetaryTradeRoutes = new List<TradeRoute>();
     
     [Header("Trade System")]
     [Tooltip("When true this civilization may initiate trade routes (set when adopting certain cultures)")]
@@ -2526,59 +2525,19 @@ public class Civilization : MonoBehaviour
 
         ApplyResourceSurplusBonuses(producedResourcesThisTurn, resourceDemandThisTurn);
 
-        // 3.4) Process city trade routes. Routes can be raided; raided routes provide no
-        // gold or copied resources for this turn.
-        foreach (var city in cities)
+        // 3.4) Process all unified trade-network routes once. City, surface relay, orbital, and
+        // interplanetary routes are authoritative in TradeNetworkManager rather than city lists.
+        int tradeGoldBefore = gold;
+        int tradeFoodBefore = food;
+        int tradePolicyBefore = policyPoints;
+        int tradeFaithBefore = faith;
+        if (TradeNetworkManager.Instance != null)
         {
-            if (city == null) continue;
-
-            foreach (var tradeRoute in city.GetActiveTradeRoutes())
-            {
-                if (tradeRoute == null || tradeRoute.isInterplanetaryRoute) continue;
-                if (tradeRoute.sourceCity == null || tradeRoute.sourceCity.owner != this) continue;
-
-                bool routeStillValid = tradeRoute.sourceCity.CanEstablishTradeRouteWith(
-                    tradeRoute.destinationCity,
-                    TradeManager.CurrentMaxCityTradeRange);
-
-                if (!routeStillValid)
-                    continue;
-
-                if (tradeRoute.RollRaidForTurn())
-                    continue;
-
-                gold += tradeRoute.goldPerTurn;
-                food += tradeRoute.foodPerTurn;
-                totalScienceThisTurn += tradeRoute.sciencePerTurn;
-                totalCultureThisTurn += tradeRoute.culturePerTurn;
-                policyPoints += tradeRoute.policyPointsPerTurn;
-                faith += tradeRoute.faithPerTurn;
-
-                totalGoldThisTurn += tradeRoute.goldPerTurn;
-                totalFoodThisTurn += tradeRoute.foodPerTurn;
-                totalPolicyThisTurn += tradeRoute.policyPointsPerTurn;
-                totalFaithThisTurn += tradeRoute.faithPerTurn;
-
-                if (tradeRoute.resourcesPerTurn != null)
-                {
-                    foreach (var resource in tradeRoute.resourcesPerTurn)
-                    {
-                        if (resource == null || resource.resource == null || resource.amount <= 0) continue;
-                        AddResource(resource.resource, resource.amount);
-                    }
-                }
-            }
-        }
-
-        // 3.5) Process interplanetary trade routes
-        foreach (var tradeRoute in interplanetaryTradeRoutes)
-        {
-            if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
-            {
-                int tradeGold = Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
-                gold += tradeGold;
-                totalGoldThisTurn += tradeGold;
-}
+            TradeNetworkManager.Instance.ProcessCivilizationTradeTurn(this);
+            totalGoldThisTurn += Mathf.Max(0, gold - tradeGoldBefore);
+            totalFoodThisTurn += Mathf.Max(0, food - tradeFoodBefore);
+            totalPolicyThisTurn += Mathf.Max(0, policyPoints - tradePolicyBefore);
+            totalFaithThisTurn += Mathf.Max(0, faith - tradeFaithBefore);
         }
 
         // 3.6) Per-unit yields (combat units). Applies after city yields, before research/culture processing.
@@ -3764,12 +3723,17 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void AddTradeRoute(TradeRoute route)
     {
-        if (route != null && route.isInterplanetaryRoute)
+        if (route == null) return;
+        var manager = TradeNetworkManager.EnsureInstance();
+        if (route.sourceNodeId != 0 && route.destinationNodeId != 0)
         {
-            if (!TradeManager.CanSpaceTradeBetweenPlanets(route.originPlanetIndex, route.destinationPlanetIndex))
-                return;
-            interplanetaryTradeRoutes.Add(route);
+            if (!manager.activeRoutes.Contains(route)) manager.activeRoutes.Add(route);
+            return;
         }
+
+        var preview = manager.PreviewRoute(this, route.originPlanetIndex, route.destinationPlanetIndex);
+        if (preview != null && !preview.suspended)
+            manager.TryCreateRoute(preview.sourceNodeId, preview.destinationNodeId, this, out _);
     }
     
     /// <summary>
@@ -3777,7 +3741,9 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public List<TradeRoute> GetInterplanetaryTradeRoutes()
     {
-        return interplanetaryTradeRoutes;
+        return TradeNetworkManager.Instance != null
+            ? new List<TradeRoute>(TradeNetworkManager.Instance.GetRoutesForCivilization(this))
+            : new List<TradeRoute>();
     }
     
     /// <summary>
@@ -3786,9 +3752,9 @@ public class Civilization : MonoBehaviour
     public int GetInterplanetaryTradeIncome()
     {
         int totalGold = 0;
-        foreach (var route in interplanetaryTradeRoutes)
+        foreach (var route in GetInterplanetaryTradeRoutes())
         {
-            if (route != null && route.isInterplanetaryRoute)
+            if (route != null && route.isInterplanetaryRoute && !route.suspended)
                 totalGold += route.goldPerTurn;
         }
         return totalGold;
@@ -4144,15 +4110,6 @@ return true;
                 totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
                 totalPolicyThisTurn += Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier));
                 totalFaithThisTurn += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
-            }
-        }
-
-        if (interplanetaryTradeRoutes != null)
-        {
-            foreach (var tradeRoute in interplanetaryTradeRoutes)
-            {
-                if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
-                    totalGoldThisTurn += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
             }
         }
 
