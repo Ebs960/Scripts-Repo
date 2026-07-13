@@ -9,6 +9,8 @@ using UnityEngine;
 public class ImprovementInstance : MonoBehaviour
 {
     public int tileIndex = -1;
+    [Tooltip("Authoritative space-hex location for orbital/deep-space trade improvements; -1 resolves through the planet anchor for legacy orbital improvements.")]
+    public int spaceTileIndex = -1;
     public ImprovementData data;
     [Header("Placement")]
     [Tooltip("Optional child transform used as the placement root. Its world position will be snapped onto the tile surface.")]

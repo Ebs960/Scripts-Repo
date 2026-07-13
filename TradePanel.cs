@@ -66,14 +66,8 @@ public class TradePanel : MonoBehaviour
         {
             interplanetaryToggle.gameObject.SetActive(false);
         }
-        if (originPlanetDropdown != null)
-        {
-            originPlanetDropdown.onValueChanged.AddListener(OnOriginPlanetSelected);
-        }
-        if (destinationPlanetDropdown != null)
-        {
-            destinationPlanetDropdown.onValueChanged.AddListener(OnDestinationPlanetSelected);
-        }
+        if (originPlanetDropdown != null) originPlanetDropdown.gameObject.SetActive(false);
+        if (destinationPlanetDropdown != null) destinationPlanetDropdown.gameObject.SetActive(false);
         
         // Hide panel initially
         if (tradePanel == null)
@@ -388,7 +382,7 @@ public class TradePanel : MonoBehaviour
         }
         if (!TradeManager.CanSpaceTradeBetweenPlanets(originIndex, destIndex))
         {
-            routeBenefitsText.text = $"Space trade range locked ({TradeManager.CurrentSpaceTradeRangeScope})";
+            routeBenefitsText.text = "No valid trade gateway route exists in the trade network";
             establishTradeRouteButton.interactable = false;
             return;
         }
@@ -412,9 +406,7 @@ public class TradePanel : MonoBehaviour
     private string GetCityTradeRangeLabel(TradeRoute route)
     {
         if (route == null) return "Invalid";
-        if (route.usesSpaceportConnection) return TradeManager.CurrentSpaceTradeRangeScope.ToString();
-        int maxRange = route.usesAirportConnection ? TradeManager.CurrentMaxAirportTradeRange : TradeManager.CurrentMaxCityTradeRange;
-        return $"{route.routeDistance}/{maxRange}";
+        return $"{route.routeDistance} cost";
     }
 
     private string FormatTradeResources(List<ResourceCost> resources)

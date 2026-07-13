@@ -6,16 +6,18 @@ public enum TradeDomainMask
 {
     None = 0,
     PlanetSurface = 1 << 0,
-    PlanetAir = 1 << 1,
-    PlanetOrbit = 1 << 2,
-    SolarSystemSpace = 1 << 3,
-    Interstellar = 1 << 4,
-    All = PlanetSurface | PlanetAir | PlanetOrbit | SolarSystemSpace | Interstellar
+    PlanetMaritime = 1 << 1,
+    PlanetAir = 1 << 2,
+    PlanetOrbit = 1 << 3,
+    SolarSystemSpace = 1 << 4,
+    Interstellar = 1 << 5,
+    All = PlanetSurface | PlanetMaritime | PlanetAir | PlanetOrbit | SolarSystemSpace | Interstellar
 }
 
 public enum TradeMapDomain
 {
     PlanetSurface,
+    PlanetMaritime,
     PlanetAir,
     PlanetOrbit,
     SolarSystemSpace,
@@ -52,6 +54,12 @@ public class TradeNodeCapability
     public TradeNodeType nodeType = TradeNodeType.TradePost;
     public TradeDomainMask supportedDomains = TradeDomainMask.PlanetSurface;
     public int tradeRange;
+    public int surfaceTradeRange;
+    public int maritimeTradeRange;
+    public int airTradeRange;
+    public int orbitTradeRange;
+    public int solarSpaceTradeRange;
+    public int interstellarTradeRange;
     public int routeCapacity;
     public bool canOriginateRoutes;
     public bool canReceiveRoutes = true;
@@ -70,6 +78,12 @@ public class TradeNodeRuntime
     public TradeNodeType nodeType;
     public TradeLocation location;
     public int tradeRange;
+    public int surfaceTradeRange;
+    public int maritimeTradeRange;
+    public int airTradeRange;
+    public int orbitTradeRange;
+    public int solarSpaceTradeRange;
+    public int interstellarTradeRange;
     public int routeCapacity;
     public bool canOriginateRoutes;
     public bool canReceiveRoutes;
@@ -121,5 +135,6 @@ public class TradeTurnBreakdownEntry
     public string label;
     public TradeYield yields = new TradeYield();
     public bool suspended;
+    public bool wasRaidedThisTurn;
     public TradeSuspensionReason suspensionReason;
 }
