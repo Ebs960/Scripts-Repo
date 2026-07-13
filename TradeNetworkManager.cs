@@ -61,7 +61,7 @@ public class TradeNetworkManager : MonoBehaviour
         {
             nodeId = GetImprovementNodeId(improvement), ownerCivilizationId = improvement.owner != null ? improvement.owner.GetRuntimeId() : 0,
             nodeType = cap.nodeType, location = new TradeLocation { domain = MaskToPrimaryDomain(cap.supportedDomains), planetId = improvement.PlanetIndex, planetaryTileIndex = improvement.tileIndex, spaceTileIndex = improvement.spaceTileIndex, starSystemId = 0 },
-            tradeRange = Mathf.Max(0, cap.tradeRange), routeCapacity = Mathf.Max(0, cap.routeCapacity), canOriginateRoutes = cap.canOriginateRoutes,
+            tradeRange = Mathf.Max(0, cap.tradeRange), routeCapacity = Mathf.Max(0, cap.routeCapacity), civilizationRouteCapacityBonus = GetCapabilityCivilizationCapacity(cap), nodeThroughputCapacity = GetCapabilityThroughputCapacity(cap), canOriginateRoutes = cap.canOriginateRoutes,
             canReceiveRoutes = cap.canReceiveRoutes, canRelayRoutes = cap.canRelayRoutes, isOperational = improvement.gameObject.activeInHierarchy && !improvement.IsFortNeutralized,
             supportedDomains = cap.supportedDomains, routeGoldModifier = cap.routeGoldModifier, raidChanceReduction = cap.raidChanceReduction,
             isPlanetaryGateway = cap.isPlanetaryGateway, isOrbitalGateway = cap.isOrbitalGateway, improvement = improvement,
@@ -78,7 +78,7 @@ public class TradeNetworkManager : MonoBehaviour
             nodeId = GetCityNodeId(city), ownerCivilizationId = city.owner != null ? city.owner.GetRuntimeId() : 0,
             nodeType = TradeNodeType.City,
             location = new TradeLocation { domain = TradeMapDomain.PlanetSurface, planetId = city.planetIndex, planetaryTileIndex = city.centerTileIndex, spaceTileIndex = -1, starSystemId = 0 },
-            tradeRange = baseSurfaceRange, surfaceTradeRange = baseSurfaceRange, routeCapacity = 1,
+            tradeRange = baseSurfaceRange, surfaceTradeRange = baseSurfaceRange, routeCapacity = 1, civilizationRouteCapacityBonus = 1,
             canOriginateRoutes = true, canReceiveRoutes = true, canRelayRoutes = false, isOperational = true,
             supportedDomains = TradeDomainMask.PlanetSurface, city = city, displayName = city.cityName
         };
@@ -91,6 +91,7 @@ public class TradeNetworkManager : MonoBehaviour
             if (b.providesSpaceport) { node.supportedDomains |= TradeDomainMask.PlanetOrbit | TradeDomainMask.SolarSystemSpace; node.isPlanetaryGateway = true; node.isOrbitalGateway = true; node.orbitTradeRange = Mathf.Max(node.orbitTradeRange, 3); node.solarSpaceTradeRange = Mathf.Max(node.solarSpaceTradeRange, 3); }
         }
         node.routeCapacity = Mathf.Max(0, node.routeCapacity);
+        node.civilizationRouteCapacityBonus = Mathf.Max(node.civilizationRouteCapacityBonus, node.routeCapacity);
         return node;
     }
 
@@ -100,8 +101,22 @@ public class TradeNetworkManager : MonoBehaviour
         node.supportedDomains |= cap.supportedDomains;
         AddCapabilityRange(node, cap);
         node.routeCapacity += Mathf.Max(0, cap.routeCapacity);
+        node.civilizationRouteCapacityBonus += GetCapabilityCivilizationCapacity(cap);
+        node.nodeThroughputCapacity += GetCapabilityThroughputCapacity(cap);
         node.canOriginateRoutes |= cap.canOriginateRoutes; node.canReceiveRoutes |= cap.canReceiveRoutes; node.canRelayRoutes |= cap.canRelayRoutes;
         node.routeGoldModifier += cap.routeGoldModifier; node.raidChanceReduction += cap.raidChanceReduction; node.isPlanetaryGateway |= cap.isPlanetaryGateway; node.isOrbitalGateway |= cap.isOrbitalGateway;
+    }
+
+    private int GetCapabilityCivilizationCapacity(TradeNodeCapability cap)
+    {
+        if (cap == null) return 0;
+        return Mathf.Max(0, cap.civilizationRouteCapacityBonus > 0 ? cap.civilizationRouteCapacityBonus : cap.routeCapacity);
+    }
+
+    private int GetCapabilityThroughputCapacity(TradeNodeCapability cap)
+    {
+        if (cap == null) return 0;
+        return Mathf.Max(0, cap.nodeThroughputCapacity);
     }
 
     private void AddCapabilityRange(TradeNodeRuntime node, TradeNodeCapability cap)
@@ -119,11 +134,11 @@ public class TradeNetworkManager : MonoBehaviour
     private TradeNodeCapability AggregateImprovementCapability(ImprovementInstance imp)
     {
         var cap = Clone(imp.data.tradeNodeCapability);
-        foreach (var up in imp.EnumerateAppliedUpgrades()) if (up != null) { cap.supportedDomains |= up.tradeSupportedDomains; cap.tradeRange += up.tradeRangeModifier; cap.routeCapacity += up.tradeRouteCapacityModifier; cap.canRelayRoutes |= up.grantsTradeRelay; cap.routeGoldModifier += up.tradeRouteGoldModifier; cap.raidChanceReduction += up.tradeRaidChanceReduction; }
+        foreach (var up in imp.EnumerateAppliedUpgrades()) if (up != null) { cap.supportedDomains |= up.tradeSupportedDomains; cap.tradeRange += up.tradeRangeModifier; cap.routeCapacity += up.tradeRouteCapacityModifier; cap.civilizationRouteCapacityBonus += up.tradeRouteCapacityModifier; cap.canRelayRoutes |= up.grantsTradeRelay; cap.routeGoldModifier += up.tradeRouteGoldModifier; cap.raidChanceReduction += up.tradeRaidChanceReduction; }
         return cap;
     }
 
-    private static TradeNodeCapability Clone(TradeNodeCapability c) => c == null ? new TradeNodeCapability() : new TradeNodeCapability { providesTradeNode = c.providesTradeNode, nodeType = c.nodeType, supportedDomains = c.supportedDomains, tradeRange = c.tradeRange, surfaceTradeRange = c.surfaceTradeRange, maritimeTradeRange = c.maritimeTradeRange, airTradeRange = c.airTradeRange, orbitTradeRange = c.orbitTradeRange, solarSpaceTradeRange = c.solarSpaceTradeRange, interstellarTradeRange = c.interstellarTradeRange, routeCapacity = c.routeCapacity, canOriginateRoutes = c.canOriginateRoutes, canReceiveRoutes = c.canReceiveRoutes, canRelayRoutes = c.canRelayRoutes, routeGoldModifier = c.routeGoldModifier, raidChanceReduction = c.raidChanceReduction, isPlanetaryGateway = c.isPlanetaryGateway, isOrbitalGateway = c.isOrbitalGateway };
+    private static TradeNodeCapability Clone(TradeNodeCapability c) => c == null ? new TradeNodeCapability() : new TradeNodeCapability { providesTradeNode = c.providesTradeNode, nodeType = c.nodeType, supportedDomains = c.supportedDomains, tradeRange = c.tradeRange, surfaceTradeRange = c.surfaceTradeRange, maritimeTradeRange = c.maritimeTradeRange, airTradeRange = c.airTradeRange, orbitTradeRange = c.orbitTradeRange, solarSpaceTradeRange = c.solarSpaceTradeRange, interstellarTradeRange = c.interstellarTradeRange, routeCapacity = c.routeCapacity, civilizationRouteCapacityBonus = c.civilizationRouteCapacityBonus, nodeThroughputCapacity = c.nodeThroughputCapacity, canOriginateRoutes = c.canOriginateRoutes, canReceiveRoutes = c.canReceiveRoutes, canRelayRoutes = c.canRelayRoutes, routeGoldModifier = c.routeGoldModifier, raidChanceReduction = c.raidChanceReduction, isPlanetaryGateway = c.isPlanetaryGateway, isOrbitalGateway = c.isOrbitalGateway };
     private void UpsertNode(TradeNodeRuntime n) { if (n == null || n.nodeId == 0) return; nodesById[n.nodeId] = n; int i = allTradeNodes.FindIndex(x => x.nodeId == n.nodeId); if (i >= 0) allTradeNodes[i] = n; else allTradeNodes.Add(n); }
     public int GetCityNodeId(City c) => c != null ? StableTradeNodeId(TradeNodeType.City, 0, c.planetIndex, c.centerTileIndex, -1, c.cityName) : 0;
     public int GetImprovementNodeId(ImprovementInstance i) => i != null ? StableTradeNodeId(i.data != null ? i.data.tradeNodeCapability.nodeType : TradeNodeType.TradePost, 0, i.PlanetIndex, i.tileIndex, i.spaceTileIndex, i.data != null ? i.data.name : null) : 0;
@@ -435,7 +450,7 @@ public class TradeNetworkManager : MonoBehaviour
         foreach (var node in allTradeNodes)
         {
             if (node == null || !node.isOperational || node.ownerCivilizationId != civId) continue;
-            capacity += Mathf.Max(0, node.routeCapacity);
+            capacity += Mathf.Max(0, node.civilizationRouteCapacityBonus > 0 ? node.civilizationRouteCapacityBonus : node.routeCapacity);
         }
         return capacity;
     }
