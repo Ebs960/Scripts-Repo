@@ -182,8 +182,15 @@ MonoBehaviour:
     cityHappinessPct: 0
     cityDefensePct: 0
   sightRange: 5
-  xpToNextLevel: 
-  abilitiesByLevel: []
+  xpToNextLevel:
+  - 40
+  - 100
+  - 180
+  abilitiesByLevel:
+  - {fileID: 0}
+  - {fileID: 11400000, guid: ef78553c340ff0b48c64dd0bfc3e0738, type: 2}
+  - {fileID: 11400000, guid: 7baa92afd2f1e286bef0c9e5d13ae6c9, type: 2}
+  - {fileID: 11400000, guid: 385ca95fabaed33f9cfb01001c0d7e58, type: 2}
   requiredTechs:
   - {fileID: 11400000, guid: 12c476711184f3d41b28209be7a45df3, type: 2}
   requiredCultures: []

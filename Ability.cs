@@ -10,6 +10,12 @@ public class Ability
     public int attackModifier;
     public int defenseModifier;
     public float damageMultiplier = 1f;
+    public float accuracyModifier;
+    public float spaceMovementEfficiencyModifier;
+    public float repairResistanceModifier;
+    public float carrierLaunchEfficiencyModifier;
+    public int fighterCapacityModifier;
+    public float fleetSupportModifier;
     public CombatUnitData targetUnit;
     public WorkerUnitData targetWorker;
     public bool useTargetUnitCategoryFilter;
@@ -18,6 +24,7 @@ public class Ability
     // New modifiers for health and range
     public int healthModifier;
     public int rangeModifier;
+    public int sightRangeModifier;
     public BoolRequirement cityRequirement;
     public bool useBiomeFilter;
     public Biome biome;

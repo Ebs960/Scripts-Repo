@@ -1288,6 +1288,80 @@ public abstract class BaseUnit : MonoBehaviour
         return total;
     }
 
+
+    public int GetAbilitySightRangeModifier()
+    {
+        int total = 0;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.sightRangeModifier;
+        return total;
+    }
+
+    public float GetAbilityAccuracyModifier()
+    {
+        float total = 0f;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+        {
+            if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
+                continue;
+            total += ability.accuracyModifier;
+        }
+        return total;
+    }
+
+    public float GetAbilitySpaceMovementEfficiencyModifier()
+    {
+        float total = 0f;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.spaceMovementEfficiencyModifier;
+        return Mathf.Clamp(total, 0f, 0.75f);
+    }
+
+    public float GetAbilityRepairResistanceModifier()
+    {
+        float total = 0f;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.repairResistanceModifier;
+        return total;
+    }
+
+    public float GetAbilityCarrierLaunchEfficiencyModifier()
+    {
+        float total = 0f;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.carrierLaunchEfficiencyModifier;
+        return total;
+    }
+
+    public int GetAbilityFighterCapacityModifier()
+    {
+        int total = 0;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.fighterCapacityModifier;
+        return total;
+    }
+
+    public float GetAbilityFleetSupportModifier()
+    {
+        float total = 0f;
+        if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            if (MatchesAbilityLocation(ability))
+                total += ability.fleetSupportModifier;
+        return total;
+    }
+
     public float GetAbilityDamageMultiplier()
     {
         float total = 1f;
