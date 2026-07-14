@@ -205,6 +205,23 @@ MonoBehaviour:
   attackPointsPerTurn: 1
   currentTileIndex: -1
   currentLayer: 0
+  spaceLocation:
+    locationType: 0
+    planetIndex: -1
+    planetaryTileIndex: -1
+    spaceTileIndex: -1
+  spaceMovementPointsPerTurn: 3
+  currentSpaceMovementPoints: 3
+  currentSpaceTileIndex: -1
+  queuedSpacePath: 
+  queuedSpacePathCursor: 0
+  spaceVisionRange: 2
+  spaceReconRange: 5
+  canPerformSpaceRecon: 0
+  reconActionCost: 1
+  spaceFleetId: -1
+  isPackedInSpaceFleet: 0
+  hasUsedSpaceReactionThisTurn: 0
   planetIndex: -1
   moveSpeed: 2
   useAnimationEventForProjectiles: 1
