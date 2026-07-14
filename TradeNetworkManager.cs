@@ -27,10 +27,10 @@ public class TradeNetworkManager : MonoBehaviour
             nodesById.Clear();
             IEnumerable<Civilization> civs = CivilizationManager.Instance != null
                 ? CivilizationManager.Instance.GetAllCivs()
-                : FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+                : FindObjectsByType<Civilization>();
             foreach (var civ in civs)
                 if (civ != null && civ.cities != null) foreach (var city in civ.cities) RegisterOrUpdateCityNode(city);
-            foreach (var imp in FindObjectsByType<ImprovementInstance>(FindObjectsSortMode.None)) RegisterOrUpdateImprovementNode(imp);
+            foreach (var imp in FindObjectsByType<ImprovementInstance>()) RegisterOrUpdateImprovementNode(imp);
             nextRouteId = Mathf.Max(nextRouteId, activeRoutes.Count > 0 ? activeRoutes.Max(r => r != null ? r.routeId : 0) + 1 : 1);
             registryDirty = false;
         }
