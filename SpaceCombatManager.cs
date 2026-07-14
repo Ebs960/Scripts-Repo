@@ -106,6 +106,30 @@ public class SpaceCombatManager : MonoBehaviour
         return true;
     }
 
+    public bool CanDirectAttack(CombatUnit attacker, ISpaceCombatTarget target, out string reason)
+    {
+        reason = null;
+        if (attacker == null || target == null || attacker.data == null) { reason = "missing attacker or target"; return false; }
+        if (target.CurrentHealth <= 0) { reason = "target is destroyed"; return false; }
+        if (!attacker.data.canDirectlyAttackSpacecraft || !attacker.data.canAttackSpace) { reason = "attacker cannot directly attack space targets"; return false; }
+        if (!attacker.HasAttackPoints()) { reason = "attacker has no attack points"; return false; }
+        int aTile = GetSpaceTile(attacker);
+        if (spaceGrid == null || spaceGrid.GetTile(aTile) == null || spaceGrid.GetTile(target.SpaceTileIndex) == null) { reason = "attacker or target has no valid space tile"; return false; }
+        int distance = spaceGrid.GetDistance(aTile, target.SpaceTileIndex);
+        if (distance > Mathf.Max(1, attacker.data.directSpaceAttackRange)) { reason = $"target is out of hex range ({distance}>{attacker.data.directSpaceAttackRange})"; return false; }
+        if (IsLineBlockedByPlanetOrTerrain(aTile, target.SpaceTileIndex)) { reason = "a planet or blocking terrain prevents the attack"; return false; }
+        return true;
+    }
+
+    public bool ResolveDirectAttack(CombatUnit attacker, ISpaceCombatTarget target, out string reason)
+    {
+        if (!CanDirectAttack(attacker, target, out reason)) return false;
+        attacker.TryConsumeAttackPoint();
+        int damage = CalculateSpaceCombatDamage(attacker.CurrentSpaceAttack, target.Defense);
+        target.ApplySpaceDamage(damage, attacker.gameObject.GetRuntimeId());
+        return true;
+    }
+
     public static int CalculateSpaceCombatDamage(int attack, int defense) => Mathf.Max(0, attack - Mathf.Max(0, defense));
 
     public static int CalculateAbilityModifiedSpaceDamage(CombatUnit attacker, CombatUnit defender)

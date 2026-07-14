@@ -7,8 +7,6 @@ public class SpaceShipMovementController : MonoBehaviour
     public static SpaceShipMovementController Instance { get; private set; }
     public SpaceHexGrid Grid { get; private set; } = new SpaceHexGrid(12, 5f);
     public SpaceHexPathfinder Pathfinder { get; private set; }
-    public readonly Dictionary<int, SpaceFleet> fleets = new Dictionary<int, SpaceFleet>();
-    private int nextFleetId = 1;
 
     private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; Pathfinder = new SpaceHexPathfinder(Grid); }
     public void SetGrid(SpaceHexGrid grid) { Grid = grid ?? new SpaceHexGrid(12, 5f); Pathfinder = new SpaceHexPathfinder(Grid); }
@@ -59,17 +57,20 @@ public class SpaceShipMovementController : MonoBehaviour
     private int GetAbilityModifiedMovementCost(BaseUnit unit, SpaceHexTile tile)
     {
         int cost = Mathf.Max(1, tile != null ? tile.movementCost : 1);
+        if (tile != null && SpaceFeatureManager.Instance != null)
+            cost += SpaceFeatureManager.Instance.GetMovementCost(tile.tileIndex, unit);
         float efficiency = unit != null ? unit.GetAbilitySpaceMovementEfficiencyModifier() : 0f;
         return Mathf.Max(1, Mathf.CeilToInt(cost * Mathf.Max(0.25f, 1f - efficiency)));
     }
 
     public SpaceFleet CreateFleet(IEnumerable<BaseUnit> units, string fleetName = "Fleet")
     {
-        var fleet = new SpaceFleet { fleetId = nextFleetId++, fleetName = fleetName, ownerCivilizationId = -1 };
-        foreach (var u in units) if (u != null && u.currentSpaceTileIndex >= 0) { if (fleet.memberUnitIds.Count == 0) { fleet.location = u.spaceLocation; fleet.currentSpaceTileIndex = u.currentSpaceTileIndex; } fleet.memberUnitIds.Add(u.gameObject.GetRuntimeId()); u.spaceFleetId = fleet.fleetId; }
-        fleets[fleet.fleetId] = fleet; return fleet;
+        if (SpaceFleetManager.Instance == null) new GameObject("SpaceFleetManager").AddComponent<SpaceFleetManager>();
+        var members = new List<CombatUnit>();
+        foreach (var u in units) { var c = u as CombatUnit; if (c != null && c.currentSpaceTileIndex >= 0) members.Add(c); }
+        return SpaceFleetManager.Instance.CreateFleet(-1, fleetName, -1, members);
     }
-    public void RemoveFromFleet(BaseUnit unit) { if (unit == null || !fleets.TryGetValue(unit.spaceFleetId, out var f)) return; f.memberUnitIds.Remove(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = -1; }
-    public void MergeFleets(int targetFleetId, int sourceFleetId) { if (!fleets.TryGetValue(targetFleetId, out var t) || !fleets.TryGetValue(sourceFleetId, out var s)) return; foreach (int id in s.memberUnitIds) if (!t.memberUnitIds.Contains(id)) t.memberUnitIds.Add(id); fleets.Remove(sourceFleetId); }
+    public void RemoveFromFleet(BaseUnit unit) { var f = SpaceFleetManager.Instance != null && unit != null ? SpaceFleetManager.Instance.GetFleet(unit.spaceFleetId) : null; if (unit == null || f == null) return; f.memberUnitIds.Remove(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = -1; }
+    public void MergeFleets(int targetFleetId, int sourceFleetId) { var mgr = SpaceFleetManager.Instance; var t = mgr != null ? mgr.GetFleet(targetFleetId) : null; var s = mgr != null ? mgr.GetFleet(sourceFleetId) : null; if (t == null || s == null) return; foreach (int id in s.memberUnitIds) if (!t.memberUnitIds.Contains(id)) t.memberUnitIds.Add(id); mgr.fleets.Remove(s); }
     private void RemoveFromCurrentSpaceTile(BaseUnit unit) { if (unit.currentSpaceTileIndex < 0) return; Grid.GetTile(unit.currentSpaceTileIndex)?.spacecraftIds.Remove(unit.gameObject.GetRuntimeId()); }
 }

@@ -2,6 +2,21 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum SpaceFleetRole { Recon, Patrol, Escort, Strike, Siege, Carrier, Invasion, ConstructionSupport, TradeProtection, Blockade }
+
+[CreateAssetMenu(fileName = "Space Fleet Role Template", menuName = "Data/AI/Space Fleet Role Template")]
+public class SpaceFleetRoleTemplate : ScriptableObject
+{
+    public SpaceFleetRole role;
+    [Range(0f, 1f)] public float scouts;
+    [Range(0f, 1f)] public float directCombatShips;
+    [Range(0f, 1f)] public float areaAttackShips;
+    [Range(0f, 1f)] public float carriers;
+    [Range(0f, 1f)] public float repairShips;
+    [Range(0f, 1f)] public float transports;
+    [Range(0f, 1f)] public float constructionShips;
+}
+
 [Serializable]
 public class SpaceFleet
 {
