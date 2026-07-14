@@ -4124,14 +4124,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 break;
             case 2: // Standard — balanced mix
                 elevationExponent = 1.00f;
-                hillNoiseCutoff = 0.75f;
+                hillNoiseCutoff = 0.70f;
                 mountainNoiseCutoff = 0.90f;
-                flatElevationMin = 22.0f;
-                flatElevationMax = 24.0f;
-                hillElevationMin = 24.5f;
-                hillElevationMax = 28.2f;
-                mountainElevationMin = 30.01f;
-                mountainElevationMax = 34.0f;
+                flatElevationMin = 21.0f;
+                flatElevationMax = 22.0f;
+                hillElevationMin = 22.1f;
+                hillElevationMax = 26.0f;
+                mountainElevationMin = 28.00f;
+                mountainElevationMax = 29.00f;
                 ridgeStrength = 0.06f;
                 terrainWarpStrength = 0.15f;
                 terrainWarpFrequencyMultiplier = 0.7f;
@@ -4143,7 +4143,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 mountainNoiseStrength = 0.14f;
                 basinFrequencyMultiplier = 0.85f;
                 basinCarvingStrength = 0.11f;
-                valleyFrequencyMultiplier = 3.0f;
+                valleyFrequencyMultiplier = 2.0f;
                 valleyCarvingStrength = 0.08f;
                 mesaStrength = 0.1f;
                 escarpmentStrength = 0.07f;
