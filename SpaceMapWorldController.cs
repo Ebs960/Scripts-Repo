@@ -53,7 +53,11 @@ public class SpaceMapWorldController : MonoBehaviour
 
     public void RebuildSpaceMap()
     {
-        Grid = new SpaceHexGrid(gridRadius, hexSize);
+        if (SpaceWorldManager.Instance == null)
+            new GameObject("SpaceWorldManager").AddComponent<SpaceWorldManager>();
+        if (SpaceWorldManager.Instance.Grid == null)
+            SpaceWorldManager.Instance.CreateSystem(GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0, gridRadius, hexSize);
+        Grid = SpaceWorldManager.Instance.Grid;
         if (SpaceShipMovementController.Instance == null) new GameObject("SpaceShipMovementController").AddComponent<SpaceShipMovementController>();
         SpaceShipMovementController.Instance.SetGrid(Grid);
         ClearChildren(hexRoot); ClearChildren(planetRoot); ClearChildren(unitRoot); markersByPlanet.Clear(); hexObjects.Clear();
@@ -71,7 +75,7 @@ public class SpaceMapWorldController : MonoBehaviour
             int tileIndex = Grid.GetNearestTileIndex(desired); var tile = Grid.GetTile(tileIndex); if (tile == null) continue;
             tile.terrainType = planet.celestialBodyType == GameManager.CelestialBodyType.Moon ? SpaceTerrainType.Moon : SpaceTerrainType.Planet;
             tile.blocksMovement = true; tile.planetId = planet.celestialBodyId >= 0 ? planet.celestialBodyId : planet.planetIndex;
-            var marker = CreatePlanetMarker(planet, Grid.GetWorldPosition(tileIndex)); marker.AnchorSpaceTileIndex = tileIndex; markersByPlanet[planet.planetIndex] = marker;
+            var marker = CreatePlanetMarker(planet, Grid.GetWorldPosition(tileIndex)); marker.AnchorSpaceTileIndex = tileIndex; var view = marker.GetComponent<SpacePlanetView>() ?? marker.gameObject.AddComponent<SpacePlanetView>(); view.entityId = tile.planetId; markersByPlanet[planet.planetIndex] = marker;
         }
         RefreshCurrentPlanetHighlight(); RefreshHexVisuals();
     }
@@ -121,7 +125,16 @@ public class SpaceMapWorldController : MonoBehaviour
 
     private void RefreshShipVisuals()
     {
-        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Exclude)) if (unit.currentSpaceTileIndex >= 0) { unit.transform.SetParent(unitRoot, true); unit.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f; }
+        ClearChildren(unitRoot);
+        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Exclude))
+        {
+            if (unit.currentSpaceTileIndex < 0) continue;
+            var proxy = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            proxy.name = $"SpaceShipView_{unit.gameObject.GetRuntimeId()}";
+            proxy.transform.SetParent(unitRoot, false);
+            proxy.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f;
+            proxy.AddComponent<SpaceShipView>().entityId = unit.gameObject.GetRuntimeId();
+        }
     }
 
     private SpaceMapPlanetMarker CreatePlanetMarker(GameManager.PlanetData planet, Vector3 position)

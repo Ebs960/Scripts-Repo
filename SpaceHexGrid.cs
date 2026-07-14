@@ -37,6 +37,8 @@ public class SpaceHexTile
     public int controllingCivilizationId = -1;
     public int planetId = -1;
     public int stationId = -1;
+    public List<int> featureInstanceIds = new List<int>();
+    public List<int> improvementInstanceIds = new List<int>();
     public bool isPlanetOrbitSector;
     public int associatedPlanetId = -1;
     public int orbitSectorDirection = -1;
