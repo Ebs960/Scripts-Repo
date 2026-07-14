@@ -23,6 +23,6 @@ public class SpaceReconFogOfWar : MonoBehaviour
     public bool PerformRecon(BaseUnit unit, SpaceHexGrid grid, int targetTile)
     {
         if (unit == null || !unit.canPerformSpaceRecon || grid == null) return false;
-        RevealRadius(unit.owner != null ? unit.owner.GetInstanceID() : -1, grid, targetTile, unit.spaceReconRange, true); return true;
+        RevealRadius(unit.owner != null ? unit.owner.GetRuntimeId() : -1, grid, targetTile, unit.spaceReconRange, true); return true;
     }
 }

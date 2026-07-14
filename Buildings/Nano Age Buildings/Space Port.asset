@@ -49,7 +49,6 @@ MonoBehaviour:
     orbitTradeRange: 3
     solarSpaceTradeRange: 3
     interstellarTradeRange: 0
-    routeCapacity: 3
     civilizationRouteCapacityBonus: 3
     nodeThroughputCapacity: 0
     canOriginateRoutes: 1

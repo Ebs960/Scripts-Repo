@@ -61,8 +61,6 @@ public class TradeNodeCapability
     public int orbitTradeRange;
     public int solarSpaceTradeRange;
     public int interstellarTradeRange;
-    [Tooltip("Legacy/backward-compatible capacity field. Prefer civilizationRouteCapacityBonus for empire-wide slots and nodeThroughputCapacity for local traffic limits.")]
-    public int routeCapacity;
     public int civilizationRouteCapacityBonus;
     public int nodeThroughputCapacity;
     public bool canOriginateRoutes;
@@ -88,8 +86,6 @@ public class TradeNodeRuntime
     public int orbitTradeRange;
     public int solarSpaceTradeRange;
     public int interstellarTradeRange;
-    [Tooltip("Legacy/backward-compatible capacity field. Prefer civilizationRouteCapacityBonus for empire-wide slots and nodeThroughputCapacity for local traffic limits.")]
-    public int routeCapacity;
     public int civilizationRouteCapacityBonus;
     public int nodeThroughputCapacity;
     public bool canOriginateRoutes;
