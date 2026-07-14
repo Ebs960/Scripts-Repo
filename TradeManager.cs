@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Obsolete("Space range scopes are deprecated; TradeNetworkManager uses node graph and space-hex path cost.")]
 public enum SpaceTradeRangeScope
 {
     Disabled = 0,

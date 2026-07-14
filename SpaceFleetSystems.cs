@@ -11,6 +11,7 @@ public class SpaceFleet
     public int admiralId = -1;
     public List<int> memberUnitIds = new List<int>();
     public int currentSpaceTileIndex = -1;
+    public SpaceLocation location;
     public List<int> queuedPath = new List<int>();
     public int queuedPathCursor;
     public bool isPacked;
@@ -27,7 +28,7 @@ public class SpaceFleetManager : MonoBehaviour
     public SpaceFleet CreateFleet(int ownerCivilizationId, string fleetName, int admiralId, IEnumerable<CombatUnit> members)
     {
         var fleet = new SpaceFleet { fleetId = nextFleetId++, ownerCivilizationId = ownerCivilizationId, fleetName = fleetName, admiralId = admiralId };
-        foreach (var unit in members) if (unit != null) { fleet.memberUnitIds.Add(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = fleet.fleetId; fleet.currentSpaceTileIndex = unit.currentSpaceTileIndex; }
+        foreach (var unit in members) if (unit != null) { fleet.memberUnitIds.Add(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = fleet.fleetId; fleet.currentSpaceTileIndex = unit.currentSpaceTileIndex; fleet.location = unit.spaceLocation; }
         fleets.Add(fleet); return fleet;
     }
     public SpaceFleet GetFleet(int fleetId) => fleets.Find(f => f.fleetId == fleetId);
@@ -57,7 +58,7 @@ public class FleetDeploymentManager : MonoBehaviour
         var members = ResolveMembers(fleet); if (members.Count != fleet.memberUnitIds.Count) { reason = "a fleet member is missing or destroyed"; return false; }
         int center = ChooseCenter(members); foreach (var u in members) if (spaceGrid.GetDistance(center, u.currentSpaceTileIndex) > gatherRadius) { reason = "fleet members are too widely separated"; return false; }
         foreach (var u in members) { u.isPackedInSpaceFleet = true; u.currentSpaceMovementPoints = 0; if (u.gameObject != null) u.gameObject.SetActive(false); }
-        fleet.currentSpaceTileIndex = center; fleet.isPacked = true; fleet.isDeployed = false; return true;
+        fleet.currentSpaceTileIndex = center; fleet.location = SpaceLocation.InSpace(center); fleet.isPacked = true; fleet.isDeployed = false; return true;
     }
     private Dictionary<CombatUnit,int> FindPlacements(SpaceFleet fleet, out string reason)
     {
