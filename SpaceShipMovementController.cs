@@ -2,17 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[Serializable]
-public class SpaceFleet
-{
-    public int fleetId;
-    public int ownerCivilizationId;
-    public string fleetName;
-    public List<int> memberUnitIds = new List<int>();
-    public SpaceLocation location;
-    public List<int> queuedPath = new List<int>();
-}
-
 public class SpaceShipMovementController : MonoBehaviour
 {
     public static SpaceShipMovementController Instance { get; private set; }
@@ -77,7 +66,7 @@ public class SpaceShipMovementController : MonoBehaviour
     public SpaceFleet CreateFleet(IEnumerable<BaseUnit> units, string fleetName = "Fleet")
     {
         var fleet = new SpaceFleet { fleetId = nextFleetId++, fleetName = fleetName, ownerCivilizationId = -1 };
-        foreach (var u in units) if (u != null && u.currentSpaceTileIndex >= 0) { if (fleet.memberUnitIds.Count == 0) fleet.location = u.spaceLocation; fleet.memberUnitIds.Add(u.gameObject.GetRuntimeId()); u.spaceFleetId = fleet.fleetId; }
+        foreach (var u in units) if (u != null && u.currentSpaceTileIndex >= 0) { if (fleet.memberUnitIds.Count == 0) { fleet.location = u.spaceLocation; fleet.currentSpaceTileIndex = u.currentSpaceTileIndex; } fleet.memberUnitIds.Add(u.gameObject.GetRuntimeId()); u.spaceFleetId = fleet.fleetId; }
         fleets[fleet.fleetId] = fleet; return fleet;
     }
     public void RemoveFromFleet(BaseUnit unit) { if (unit == null || !fleets.TryGetValue(unit.spaceFleetId, out var f)) return; f.memberUnitIds.Remove(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = -1; }
