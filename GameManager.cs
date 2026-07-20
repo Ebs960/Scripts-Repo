@@ -3173,9 +3173,9 @@ public class GameManager : MonoBehaviour
             case DistrictData district:
                 return new City.ProdEntry(district, district.productionCost, goldCost, null, district.allowedBiomes, district.requiresCoastal, false, type);
             case EquipmentData equipment:
-                return new City.ProdEntry(equipment, equipment.productionCost, goldCost, null, null, false, false, type);
+                return new City.ProdEntry(equipment, equipment.productionCost, goldCost, null, null, false, false, type, equipment.requiredResourceCosts);
             case GameCombat.ProjectileData projectile:
-                return new City.ProdEntry(projectile, projectile.productionCost, goldCost, projectile.requiredResources, null, false, false, type);
+                return new City.ProdEntry(projectile, projectile.productionCost, goldCost, null, null, false, false, type, projectile.resourceCosts);
             case MissileData missile:
                 return new City.ProdEntry(missile, missile.productionCost, goldCost, null, null, false, false, type);
             default:

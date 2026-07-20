@@ -481,21 +481,15 @@ if (currentCity == null)
             }
         }
         
-        // Equipment: show equipment unlocked by civ/effects
+        // Equipment: producer buildings permanently unlock their declared equipment.
         availableEquipment.Clear();
-        // From civilization inventory and unlocked equipment via civ data
         if (ownerCiv != null)
         {
-            // Equipment types that the civ already has in inventory
-            if (ownerCiv.equipmentInventory != null)
+            foreach (var equipment in ResourceCache.GetAllEquipment())
             {
-                foreach (var kv in ownerCiv.equipmentInventory)
-                {
-                    if (kv.Key != null && !availableEquipment.Contains(kv.Key))
-                        availableEquipment.Add(kv.Key);
-                }
+                if (equipment != null && currentCity.CanProduceEquipment(equipment))
+                    availableEquipment.Add(equipment);
             }
-
         }
         
         // NEW: Projectiles - Load all projectiles that can be produced by this civilization
@@ -506,7 +500,7 @@ if (currentCity == null)
             var allProjectiles = ResourceCache.GetAllProjectiles();
             foreach (var projectile in allProjectiles)
             {
-                if (projectile != null && projectile.CanBeProducedBy(ownerCiv))
+                if (projectile != null && currentCity.CanProduceProjectile(projectile))
                 {
                     availableProjectiles.Add(projectile);
                 }

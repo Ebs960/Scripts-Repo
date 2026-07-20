@@ -32,9 +32,6 @@ namespace GameCombat
     public int productionCost = 10;
     [Tooltip("Gold cost to purchase this projectile type")]
     public int goldCost = 50;
-    [Tooltip("Resources required to produce this projectile")]
-    [System.Obsolete("Use resourceCosts so quantities can be specified and consumed.")]
-    public ResourceData[] requiredResources;
     [Tooltip("Material quantities consumed when this ammunition is produced.")]
     public ResourceCost[] resourceCosts;
     [Tooltip("Technologies required to unlock this projectile")]
@@ -110,15 +107,6 @@ namespace GameCombat
         // Check resource requirements
         if (!ResourceCost.CanAfford(civ, resourceCosts, false))
             return false;
-        if ((resourceCosts == null || resourceCosts.Length == 0) && requiredResources != null)
-        {
-            foreach (var resource in requiredResources)
-            {
-                if (resource != null && civ.GetResourceCount(resource) <= 0)
-                    return false;
-            }
-        }
-        
         return true;
     }
     }
