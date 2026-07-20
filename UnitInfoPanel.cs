@@ -1173,8 +1173,19 @@ UpdateUnitInfoForWorkerUnit();
         }
         else
         {
-            var displayOptions = new List<string> { "Select build option..." };
-            displayOptions.AddRange(options);
+            var displayOptions = new List<TMP_Dropdown.OptionData>
+            {
+                new TMP_Dropdown.OptionData("Select build option...")
+            };
+            for (int i = 0; i < buildOptions.Count; i++)
+            {
+                var buildOption = buildOptions[i];
+                Sprite optionIcon = buildOption.Type == BuildOption.OptionType.Improvement
+                    && buildOption.Improvement != null
+                    ? buildOption.Improvement.GetIcon(civ)
+                    : null;
+                displayOptions.Add(new TMP_Dropdown.OptionData(buildOption.Display, optionIcon));
+            }
             suppressBuildOptionCallback = true;
             buildOptionsDropdown.ClearOptions();
             buildOptionsDropdown.AddOptions(displayOptions);

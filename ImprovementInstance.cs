@@ -370,7 +370,7 @@ public class ImprovementInstance : MonoBehaviour
                 if (ul != null)
                 {
                     ul.Initialize(anchor, data.improvementName, owner != null && owner.civData != null ? owner.civData.civName : "", 0, 0);
-                    ul.SetIcon(data != null ? data.icon : null);
+                    ul.SetIcon(data != null ? data.GetIcon(owner) : null);
                 }
             }
         }
