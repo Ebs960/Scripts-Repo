@@ -2763,6 +2763,8 @@ public class CombatUnit : BaseUnit
         switch (equipmentData.equipmentType)
         {
             case EquipmentType.Weapon:
+                            if (equipmentData.isTwoHanded && equippedShield != null)
+                                equippedShield = null;
                             // Decide whether this weapon should occupy the projectile slot or the main weapon slot (melee uses the main weapon).
                             if (IsProjectileWeapon(equipmentData))
                             {
@@ -2803,6 +2805,12 @@ public class CombatUnit : BaseUnit
                     equippedMiscellaneous = equipmentData;
                     changed = true;
                 }
+                break;
+            case EquipmentType.Head:
+                if (equippedHead != equipmentData) { equippedHead = equipmentData; changed = true; }
+                break;
+            case EquipmentType.Tool:
+                if (equippedTool != equipmentData) { equippedTool = equipmentData; changed = true; }
                 break;
         }
 

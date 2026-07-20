@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Mail Hauberk
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
-  equipmentType: 0
+  equipmentType: 2
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0

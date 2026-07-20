@@ -42,6 +42,8 @@ public abstract class BaseUnit : MonoBehaviour
     [SerializeField] protected EquipmentData _equippedShield;
     [SerializeField] protected EquipmentData _equippedArmor;
     [SerializeField] protected EquipmentData _equippedMiscellaneous;
+    [SerializeField] protected EquipmentData _equippedHead;
+    [SerializeField] protected EquipmentData _equippedTool;
 
     [Header("Editor Equipment")]
     [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode.")]
@@ -823,7 +825,7 @@ public abstract class BaseUnit : MonoBehaviour
         set
         {
             if (_equippedShield == value) return;
-            if (value != null && !IsEquipmentCompatible(value)) return;
+            if (value != null && (!IsEquipmentCompatible(value) || HasTwoHandedWeaponEquipped())) return;
             _equippedShield = value;
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
@@ -856,6 +858,12 @@ public abstract class BaseUnit : MonoBehaviour
         }
     }
 
+    public EquipmentData equippedHead { get => _equippedHead; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedHead = value; if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
+    public EquipmentData equippedTool { get => _equippedTool; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedTool = value; if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
+
+    protected bool HasTwoHandedWeaponEquipped() =>
+        (_equippedWeapon?.isTwoHanded ?? false) || (_equippedProjectileWeapon?.isTwoHanded ?? false);
+
     /// <summary>Check if equipment is compatible with this unit type</summary>
     protected bool IsEquipmentCompatible(EquipmentData equipment)
     {
@@ -868,77 +876,42 @@ public abstract class BaseUnit : MonoBehaviour
 
     #region Equipment Stat Bonuses
 
-    public float EquipmentAttackBonus =>
-        (_equippedWeapon?.attackBonus ?? 0f) +
-        (_equippedShield?.attackBonus ?? 0f) +
-        (_equippedArmor?.attackBonus ?? 0f) +
-        (_equippedMiscellaneous?.attackBonus ?? 0f);
+    private float SumEquipment(System.Func<EquipmentData, float> selector) => EnumerateEquippedItems().Sum(selector);
+
+    public float EquipmentAttackBonus => SumEquipment(item => item.attackBonus);
 
     public float EquipmentMeleeAttackBonus =>
-        (_equippedWeapon?.meleeAttackBonus ?? 0f) +
-        (_equippedShield?.meleeAttackBonus ?? 0f) +
-        (_equippedArmor?.meleeAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.meleeAttackBonus ?? 0f);
+        SumEquipment(item => item.meleeAttackBonus);
 
     public float EquipmentRangedAttackBonus =>
-        (_equippedWeapon?.rangedAttackBonus ?? 0f) +
-        (_equippedShield?.rangedAttackBonus ?? 0f) +
-        (_equippedArmor?.rangedAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.rangedAttackBonus ?? 0f);
+        SumEquipment(item => item.rangedAttackBonus);
 
     public float EquipmentCityAttackBonus =>
-        (_equippedWeapon?.cityAttackBonus ?? 0f) +
-        (_equippedShield?.cityAttackBonus ?? 0f) +
-        (_equippedArmor?.cityAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.cityAttackBonus ?? 0f);
+        SumEquipment(item => item.cityAttackBonus);
 
     public float EquipmentGroundAttackBonus =>
-        (_equippedWeapon?.groundAttackBonus ?? 0f) +
-        (_equippedShield?.groundAttackBonus ?? 0f) +
-        (_equippedArmor?.groundAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.groundAttackBonus ?? 0f);
+        SumEquipment(item => item.groundAttackBonus);
 
     public float EquipmentUnderwaterAttackBonus =>
-        (_equippedWeapon?.underwaterAttackBonus ?? 0f) +
-        (_equippedShield?.underwaterAttackBonus ?? 0f) +
-        (_equippedArmor?.underwaterAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.underwaterAttackBonus ?? 0f);
+        SumEquipment(item => item.underwaterAttackBonus);
 
     public float EquipmentAirAttackBonus =>
-        (_equippedWeapon?.airAttackBonus ?? 0f) +
-        (_equippedShield?.airAttackBonus ?? 0f) +
-        (_equippedArmor?.airAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.airAttackBonus ?? 0f);
+        SumEquipment(item => item.airAttackBonus);
 
     public float EquipmentSpaceAttackBonus =>
-        (_equippedWeapon?.spaceAttackBonus ?? 0f) +
-        (_equippedShield?.spaceAttackBonus ?? 0f) +
-        (_equippedArmor?.spaceAttackBonus ?? 0f) +
-        (_equippedMiscellaneous?.spaceAttackBonus ?? 0f);
+        SumEquipment(item => item.spaceAttackBonus);
 
     public float EquipmentDefenseBonus =>
-        (_equippedWeapon?.defenseBonus ?? 0f) +
-        (_equippedShield?.defenseBonus ?? 0f) +
-        (_equippedArmor?.defenseBonus ?? 0f) +
-        (_equippedMiscellaneous?.defenseBonus ?? 0f);
+        SumEquipment(item => item.defenseBonus);
 
     public float EquipmentHealthBonus =>
-        (_equippedWeapon?.healthBonus ?? 0f) +
-        (_equippedShield?.healthBonus ?? 0f) +
-        (_equippedArmor?.healthBonus ?? 0f) +
-        (_equippedMiscellaneous?.healthBonus ?? 0f);
+        SumEquipment(item => item.healthBonus);
 
     public float EquipmentMoveBonus =>
-        (_equippedWeapon?.movementBonus ?? 0f) +
-        (_equippedShield?.movementBonus ?? 0f) +
-        (_equippedArmor?.movementBonus ?? 0f) +
-        (_equippedMiscellaneous?.movementBonus ?? 0f);
+        SumEquipment(item => item.movementBonus);
 
     public float EquipmentRangeBonus =>
-        (_equippedWeapon?.rangeBonus ?? 0f) +
-        (_equippedShield?.rangeBonus ?? 0f) +
-        (_equippedArmor?.rangeBonus ?? 0f) +
-        (_equippedMiscellaneous?.rangeBonus ?? 0f);
+        SumEquipment(item => item.rangeBonus);
 
     #endregion
 
@@ -964,6 +937,10 @@ public abstract class BaseUnit : MonoBehaviour
             yield return _equippedArmor;
         if (_equippedMiscellaneous != null)
             yield return _equippedMiscellaneous;
+        if (_equippedHead != null)
+            yield return _equippedHead;
+        if (_equippedTool != null)
+            yield return _equippedTool;
     }
 
     public IEnumerable<EquipmentData> EnumerateEquippedItemsForVision()
@@ -1677,6 +1654,8 @@ public abstract class BaseUnit : MonoBehaviour
         ProcessEquipmentSlot(EquipmentType.Weapon, _equippedProjectileWeapon, projectileWeaponHolder);
         ProcessEquipmentSlot(EquipmentType.Shield, _equippedShield, shieldHolder);
         ProcessEquipmentSlot(EquipmentType.Armor, _equippedArmor, armorHolder);
+        ProcessEquipmentSlot(EquipmentType.Head, _equippedHead, armorHolder);
+        ProcessEquipmentSlot(EquipmentType.Tool, _equippedTool, miscHolder);
         ProcessEquipmentSlot(EquipmentType.Miscellaneous, _equippedMiscellaneous, miscHolder);
 
         // Distribute equipment to additional soldiers in the group
@@ -1755,6 +1734,8 @@ public abstract class BaseUnit : MonoBehaviour
         switch (equipmentData.equipmentType)
         {
             case EquipmentType.Weapon:
+                if (equipmentData.isTwoHanded && _equippedShield != null)
+                    equippedShield = null;
                 if (IsProjectileWeapon(equipmentData))
                 {
                     if (_equippedProjectileWeapon != equipmentData)
@@ -1792,6 +1773,12 @@ public abstract class BaseUnit : MonoBehaviour
                     equippedMiscellaneous = equipmentData;
                     changed = true;
                 }
+                break;
+            case EquipmentType.Head:
+                if (_equippedHead != equipmentData) { equippedHead = equipmentData; changed = true; }
+                break;
+            case EquipmentType.Tool:
+                if (_equippedTool != equipmentData) { equippedTool = equipmentData; changed = true; }
                 break;
         }
 
@@ -2034,22 +2021,12 @@ public abstract class BaseUnit : MonoBehaviour
 
     protected virtual bool CanConsumeProjectile(ProjectileData projectile)
     {
-        // The civilization projectile inventory exists, but many test/editor units do not seed it yet.
-        // Enforce ammo counts only when this projectile is already tracked for the owner.
-        if (owner == null || owner.projectileInventory == null || !owner.projectileInventory.ContainsKey(projectile))
-            return true;
-
-        return owner.GetProjectileCount(projectile) > 0;
+        return owner != null && owner.GetProjectileCount(projectile) > 0;
     }
 
     protected virtual bool TryConsumeProjectile(ProjectileData projectile)
     {
-        // The civilization projectile inventory exists, but many test/editor units do not seed it yet.
-        // Consume only when this projectile is already tracked for the owner.
-        if (owner == null || owner.projectileInventory == null || !owner.projectileInventory.ContainsKey(projectile))
-            return true;
-
-        return owner.ConsumeProjectile(projectile, 1);
+        return owner != null && owner.ConsumeProjectile(projectile, 1);
     }
 
     public virtual void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition,
@@ -2091,7 +2068,10 @@ public abstract class BaseUnit : MonoBehaviour
             launched = obj.AddComponent<LaunchedProjectile>();
 
         Vector3 finalTargetPosition = targetUnit != null ? targetUnit.transform.position : targetPosition;
-        launched.Initialize(projectile, this, targetUnit, finalTargetPosition, overrideDamage, spawn.forward, OnProjectileImpact);
+        // The combat calculation supplies the unit/weapon portion. Ammunition contributes its
+        // own flat damage here so projectile assets are mechanically meaningful.
+        int finalDamage = Mathf.Max(0, overrideDamage) + Mathf.RoundToInt(projectile.damage);
+        launched.Initialize(projectile, this, targetUnit, finalTargetPosition, finalDamage, spawn.forward, OnProjectileImpact);
     }
 
     public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition,

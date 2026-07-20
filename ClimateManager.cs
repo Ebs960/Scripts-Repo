@@ -650,7 +650,7 @@ public class ClimateManager : MonoBehaviour
                 {
                     // Sum weather damage reduction from all equipped items (capped at 100%).
                     float equipReduction = 0f;
-                    foreach (var eq in new[] { unit.equippedWeapon, unit.equippedShield, unit.equippedArmor, unit.equippedMiscellaneous })
+                    foreach (var eq in unit.EnumerateEquippedItemsForVision())
                         if (eq != null && eq.reducesWeatherDamage) equipReduction += eq.weatherDamageReduction;
                     equipReduction = Mathf.Clamp01(equipReduction);
 
@@ -692,7 +692,7 @@ public class ClimateManager : MonoBehaviour
                 {
                     // Sum weather damage reduction from all equipped items (capped at 100%).
                     float equipReductionW = 0f;
-                    foreach (var eq in new[] { worker.equippedWeapon, worker.equippedShield, worker.equippedArmor, worker.equippedMiscellaneous })
+                    foreach (var eq in worker.EnumerateEquippedItemsForVision())
                         if (eq != null && eq.reducesWeatherDamage) equipReductionW += eq.weatherDamageReduction;
                     equipReductionW = Mathf.Clamp01(equipReductionW);
 

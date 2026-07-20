@@ -747,8 +747,7 @@ public class WorkerUnit : BaseUnit
         }
 
         // Equipment bonuses
-        EquipmentData[] eqs = { _equippedWeapon, _equippedShield, _equippedArmor, _equippedMiscellaneous };
-        foreach (var eq in eqs)
+        foreach (var eq in EnumerateEquippedItems())
         {
             if (eq == null || eq.targetUnit == EquipmentTarget.CombatUnit) continue;
             a.workAdd += eq.workPointsBonus;

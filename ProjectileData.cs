@@ -33,13 +33,17 @@ namespace GameCombat
     [Tooltip("Gold cost to purchase this projectile type")]
     public int goldCost = 50;
     [Tooltip("Resources required to produce this projectile")]
+    [System.Obsolete("Use resourceCosts so quantities can be specified and consumed.")]
     public ResourceData[] requiredResources;
+    [Tooltip("Material quantities consumed when this ammunition is produced.")]
+    public ResourceCost[] resourceCosts;
     [Tooltip("Technologies required to unlock this projectile")]
     public TechData[] requiredTechs;
     [Tooltip("Cultures required to unlock this projectile")]
     public CultureData[] requiredCultures;
     
     [Header("Damage & Effects")]
+    [Tooltip("Flat ammunition damage added after the unit and weapon ranged-damage calculation.")]
     public float damage = 10f;
 
     [Tooltip("Status effect applied on hit (replaces legacy string-based statusEffectName)")]
@@ -104,7 +108,9 @@ namespace GameCombat
         }
         
         // Check resource requirements
-        if (requiredResources != null)
+        if (!ResourceCost.CanAfford(civ, resourceCosts, false))
+            return false;
+        if ((resourceCosts == null || resourceCosts.Length == 0) && requiredResources != null)
         {
             foreach (var resource in requiredResources)
             {

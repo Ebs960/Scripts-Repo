@@ -25,7 +25,7 @@ MonoBehaviour:
   isTwoHanded: 1
   targetUnit: 0
   attackBonusAgainst:
-  - unitType: 24
+  - unitType: 25
     value: 1
   defenseBonusAgainst: []
   combatModifiersAgainst: []

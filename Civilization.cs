@@ -4600,8 +4600,11 @@ return true;
             return false;
         }
         
-        // Consume required resources
-        if (projectile.requiredResources != null)
+        if (!ResourceCost.Consume(this, projectile.resourceCosts, false))
+            return false;
+
+        // Backward-compatible consumption for assets not migrated to quantified costs yet.
+        if ((projectile.resourceCosts == null || projectile.resourceCosts.Length == 0) && projectile.requiredResources != null)
         {
             foreach (var resource in projectile.requiredResources)
             {
