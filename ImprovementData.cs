@@ -295,6 +295,8 @@ public struct ImprovementVisualOverride
 {
     [Tooltip("Civilization that uses this improvement visual override.")]
     public CivData civ;
+    [Tooltip("Override icon for this civilization. Leave empty to use the default improvement icon.")]
+    public Sprite icon;
     public GameObject constructionPrefab;
     public GameObject completePrefab;
     public GameObject destroyedPrefab;
@@ -495,6 +497,23 @@ public class ImprovementData : ScriptableObject
     public GameObject GetConstructionPrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Construction);
     public GameObject GetCompletePrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Complete);
     public GameObject GetDestroyedPrefab(Civilization civ) => GetVisualPrefab(civ, VisualPrefabKind.Destroyed);
+
+    /// <summary>
+    /// Returns the icon configured for the civilization, falling back to the default icon.
+    /// </summary>
+    public Sprite GetIcon(Civilization civ)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var visualOverride in civVisualOverrides)
+            {
+                if (visualOverride.civ == civ.civData && visualOverride.icon != null)
+                    return visualOverride.icon;
+            }
+        }
+
+        return icon;
+    }
 
     private enum VisualPrefabKind { Construction, Complete, Destroyed }
 
