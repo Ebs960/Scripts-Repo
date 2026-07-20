@@ -1184,7 +1184,7 @@ UpdateUnitInfoForWorkerUnit();
                     && buildOption.Improvement != null
                     ? buildOption.Improvement.GetIcon(civ)
                     : null;
-                displayOptions.Add(new TMP_Dropdown.OptionData(buildOption.Display, optionIcon));
+                displayOptions.Add(new TMP_Dropdown.OptionData(buildOption.Display, optionIcon, Color.white));
             }
             suppressBuildOptionCallback = true;
             buildOptionsDropdown.ClearOptions();

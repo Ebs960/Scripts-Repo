@@ -16,9 +16,19 @@ MonoBehaviour:
   icon: {fileID: 0}
   category: 0
   productionCost: 10
+  goldCost: 0
+  requiredResourceCosts: []
+  upkeepPerTurn: []
+  substituteResourceGroups: []
+  requiredManufacturingCapabilities: []
   goldCost: 50
   requiredTechs: []
   requiredCultures: []
+  requiredBuildings:
+  - scope: 0
+    building: {fileID: 11400000, guid: b2a4de63f86c436d9fd343907f2d4307, type: 2}
+    useBuildingCategoryFilter: 0
+    buildingCategory: 0
   damage: 2.5
   statusEffect: {fileID: 0}
   statusEffectDuration: 0

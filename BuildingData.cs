@@ -82,13 +82,13 @@ public class BuildingData : ScriptableObject
     public ResourceCost[] dismantleResourceRefunds;
 
     [Header("Equipment Production")]
-    [Tooltip("Equipment produced when this building is completed (one-time, not recurring)")]
+    [Tooltip("Equipment types permanently unlocked for production while this building is operational. Produce Immediately may still grant the initial quantity.")]
     public EquipmentProduction[] equipmentProduction;
     [Tooltip("Permanent manufacturing capability tags granted to this city (for example Bowyer or IronForge).")]
     public string[] manufacturingCapabilities;
 
     [Header("Projectile Production")]
-    [Tooltip("Projectiles produced when this building is completed (one-time, not recurring)")]
+    [Tooltip("Projectile types permanently unlocked for production while this building is operational. Produce Immediately may still grant the initial quantity.")]
     public ProjectileProduction[] projectileProduction;
 
     [Header("Special Flags")]

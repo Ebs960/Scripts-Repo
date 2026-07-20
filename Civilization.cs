@@ -4603,22 +4603,6 @@ return true;
         if (!ResourceCost.Consume(this, projectile.resourceCosts, false))
             return false;
 
-        // Backward-compatible consumption for assets not migrated to quantified costs yet.
-        if ((projectile.resourceCosts == null || projectile.resourceCosts.Length == 0) && projectile.requiredResources != null)
-        {
-            foreach (var resource in projectile.requiredResources)
-            {
-                if (resource != null)
-                {
-                    if (!ConsumeResource(resource, count))
-                    {
-                        Debug.LogWarning($"{civData.civName} lacks {resource.resourceName} to produce {projectile.projectileName}!");
-                        return false;
-                    }
-                }
-            }
-        }
-        
         // Add to inventory
         AddProjectile(projectile, count);
         return true;

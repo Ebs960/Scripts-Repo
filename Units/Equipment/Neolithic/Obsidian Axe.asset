@@ -33,7 +33,17 @@ MonoBehaviour:
   requiredTechs:
   - {fileID: 11400000, guid: 3f605ba1460d7674ba2587a74833bd8b, type: 2}
   requiredCultures: []
+  requiredBuildings:
+  - scope: 0
+    building: {fileID: 11400000, guid: a06776ae073f3aa42bf0394f85d35345, type: 2}
+    useBuildingCategoryFilter: 0
+    buildingCategory: 0
   productionCost: 8
+  goldCost: 0
+  requiredResourceCosts: []
+  upkeepPerTurn: []
+  substituteResourceGroups: []
+  requiredManufacturingCapabilities: []
   attackBonus: 2
   defenseBonus: 0
   healthBonus: 0

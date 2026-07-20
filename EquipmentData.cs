@@ -1,5 +1,6 @@
 using UnityEngine;
 using GameCombat;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Types of equipment that can be equipped by units
@@ -28,6 +29,13 @@ public struct UnitTypeFloat
 {
     public CombatCategory unitType;
     public float value;
+}
+
+[System.Serializable]
+public class SubstituteResourceGroup
+{
+    [Tooltip("Alternative resource costs for this requirement. Production consumes the first affordable alternative.")]
+    public ResourceCost[] alternatives;
 }
 
 [CreateAssetMenu(fileName = "NewEquipmentData", menuName = "Data/Equipment Data")]
@@ -89,13 +97,19 @@ public class EquipmentData : ScriptableObject
     public TechData[] requiredTechs;
     [Tooltip("Cultures required to unlock this equipment (optional)")]
     public CultureData[] requiredCultures;
+    [Tooltip("Operational building requirements for the city producing this equipment.")]
+    public CityBuildingRequirement[] requiredBuildings;
     public int productionCost;
     [Tooltip("Gold price when this item is purchased instantly; not required for normal production.")]
     public int goldCost;
     [Tooltip("Material quantities consumed when production completes.")]
-    public ResourceCost[] resourceCosts;
+    [FormerlySerializedAs("resourceCosts")]
+    public ResourceCost[] requiredResourceCosts;
     [Tooltip("Optional material quantities consumed each turn while this equipment is in use.")]
-    public ResourceCost[] resourceUpkeepPerTurn;
+    [FormerlySerializedAs("resourceUpkeepPerTurn")]
+    public ResourceCost[] upkeepPerTurn;
+    [Tooltip("Optional groups of substitute materials. Every group must have at least one affordable alternative.")]
+    public SubstituteResourceGroup[] substituteResourceGroups;
     [Tooltip("Manufacturing capability tags that the producing city must provide.")]
     public string[] requiredManufacturingCapabilities;
 
@@ -229,6 +243,21 @@ public class EquipmentData : ScriptableObject
             }
         }
 
-        return ResourceCost.CanAfford(civ, resourceCosts, false);
+        if (!ResourceCost.CanAfford(civ, requiredResourceCosts, false)) return false;
+        if (substituteResourceGroups != null)
+        {
+            foreach (var group in substituteResourceGroups)
+                if (group != null && !ResourceCost.CanAfford(civ, group.alternatives, true)) return false;
+        }
+        return true;
+    }
+
+    public bool ConsumeProductionResources(Civilization civ)
+    {
+        if (!CanBeProducedBy(civ) || !ResourceCost.Consume(civ, requiredResourceCosts, false)) return false;
+        if (substituteResourceGroups != null)
+            foreach (var group in substituteResourceGroups)
+                if (group != null && !ResourceCost.Consume(civ, group.alternatives, true)) return false;
+        return true;
     }
 }

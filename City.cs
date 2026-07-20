@@ -1408,20 +1408,20 @@ if (UIManager.Instance != null)
         {
             // Equipment is produced like other items: consumes production points over time
             // Validate equipment-specific production prereqs via EquipmentData
-            if (!eq.CanBeProducedBy(owner)) return false;
-            if (!HasManufacturingCapabilities(eq.requiredManufacturingCapabilities)) return false;
-            if (!ResourceCost.Consume(owner, eq.resourceCosts, false)) return false;
-            productionQueue.Add(new ProdEntry(eq, eq.productionCost, eq.goldCost, null, null, false, false, ProdEntry.Type.Equipment));
+            if (!CanProduceEquipment(eq)) return false;
+            if (!eq.ConsumeProductionResources(owner)) return false;
+            productionQueue.Add(new ProdEntry(eq, eq.productionCost, eq.goldCost, null, null, false, false,
+                                              ProdEntry.Type.Equipment, eq.requiredResourceCosts));
             return true;
         }
         if (d is GameCombat.ProjectileData projectile)
         {
             // Projectiles are produced like equipment: consumes production points over time
-            if (!projectile.CanBeProducedBy(owner)) return false;
+            if (!CanProduceProjectile(projectile)) return false;
             if (!ResourceCost.Consume(owner, projectile.resourceCosts, false)) return false;
             productionQueue.Add(new ProdEntry(projectile, projectile.productionCost, projectile.goldCost, 
-                                            projectile.requiredResources, null, false, false, 
-                                            ProdEntry.Type.Projectile));
+                                            null, null, false, false,
+                                            ProdEntry.Type.Projectile, projectile.resourceCosts));
             return true;
         }
         if (d is MissileData missileData)
@@ -1705,7 +1705,7 @@ if (UIManager.Instance != null)
                 Debug.LogWarning($"Cannot buy {e.equipmentName} - requirements not met");
                 return false;
             }
-            if (!HasManufacturingCapabilities(e.requiredManufacturingCapabilities)) return false;
+            if (!CanProduceEquipment(e)) return false;
         }
         
         if (!(d is CombatUnitData) && !(d is WorkerUnitData) && owner.gold < cost) return false;
@@ -1727,6 +1727,10 @@ if (UIManager.Instance != null)
         {
             if (!buildingToBuy.CanPayBuildCosts(owner)) return false;
             if (!buildingToBuy.ConsumeBuildCosts(owner)) return false;
+        }
+        else if (d is EquipmentData equipmentToBuy)
+        {
+            if (!equipmentToBuy.ConsumeProductionResources(owner)) return false;
         }
         
         if (d is CombatUnitData unitToBuy)
@@ -2083,27 +2087,13 @@ Destroy(oldTuple.instance);
             {
                 if (production.equipment != null && production.quantity > 0)
                 {
-                    // Optionally produce immediately or enqueue
+                    // Producer buildings permanently expose their declared equipment in the city UI.
+                    // The quantity is only used for an explicitly requested initial grant.
                     if (production.produceImmediately)
                     {
                         bool ok = owner.ProduceEquipment(production.equipment, production.quantity);
                         if (!ok)
                             Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
-                    }
-                    else
-                    {
-                        int prodCost = production.productionCostOverride > 0 ? production.productionCostOverride : production.equipment.productionCost;
-                        int goldCost = production.goldCostOverride > 0 ? production.goldCostOverride : 0;
-                        for (int i = 0; i < production.quantity; i++)
-                        {
-                            // Validate production prerequisites using EquipmentData
-                            if (!production.equipment.CanBeProducedBy(owner))
-                            {
-                                Debug.LogWarning($"Building {b.buildingName} could not enqueue {production.equipment.equipmentName} production in {cityName} - requirements not met");
-                                break;
-                            }
-                            productionQueue.Add(new ProdEntry(production.equipment, prodCost, goldCost, null, null, false, false, ProdEntry.Type.Equipment));
-                        }
                     }
                 }
             }
@@ -2121,20 +2111,6 @@ Destroy(oldTuple.instance);
                         bool ok = owner.ProduceProjectile(production.projectile, production.quantity);
                         if (!ok)
                             Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.projectile.projectileName} to {owner.civData.civName}");
-                    }
-                    else
-                    {
-                        int prodCost = production.productionCostOverride > 0 ? production.productionCostOverride : production.projectile.productionCost;
-                        int goldCost = production.goldCostOverride > 0 ? production.goldCostOverride : 0;
-                        for (int i = 0; i < production.quantity; i++)
-                        {
-                            if (!production.projectile.CanBeProducedBy(owner))
-                            {
-                                Debug.LogWarning($"Building {b.buildingName} could not enqueue {production.projectile.projectileName} production in {cityName} - requirements not met");
-                                break;
-                            }
-                            productionQueue.Add(new ProdEntry(production.projectile, prodCost, goldCost, production.projectile.requiredResources, null, false, false, ProdEntry.Type.Projectile));
-                        }
                     }
                 }
             }
@@ -3980,6 +3956,28 @@ Destroy(oldTuple.instance);
         foreach (string required in requiredCapabilities)
             if (!string.IsNullOrWhiteSpace(required) && !available.Contains(required.Trim())) return false;
         return true;
+    }
+
+    public bool CanProduceEquipment(EquipmentData equipment)
+    {
+        if (equipment == null || owner == null || !equipment.CanBeProducedBy(owner)) return false;
+        if (!AreBuildingRequirementsMet(equipment.requiredBuildings)) return false;
+        if (!HasManufacturingCapabilities(equipment.requiredManufacturingCapabilities)) return false;
+
+        // A producer's equipmentProduction list is a permanent city unlock, not a build-completion batch.
+        bool explicitlyUnlocked = HasOperationalBuilding(building =>
+            building.equipmentProduction != null && System.Array.Exists(building.equipmentProduction,
+                production => production != null && production.equipment == equipment));
+        return explicitlyUnlocked || (equipment.requiredBuildings != null && equipment.requiredBuildings.Length > 0)
+            || (equipment.requiredManufacturingCapabilities != null && equipment.requiredManufacturingCapabilities.Length > 0);
+    }
+
+    public bool CanProduceProjectile(GameCombat.ProjectileData projectile)
+    {
+        if (projectile == null || owner == null || !projectile.CanBeProducedBy(owner)) return false;
+        return HasOperationalBuilding(building =>
+            building.projectileProduction != null && System.Array.Exists(building.projectileProduction,
+                production => production != null && production.projectile == projectile));
     }
     
     // Helper method to get all district data (for UI/inspection)
