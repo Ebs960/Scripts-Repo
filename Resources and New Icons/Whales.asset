@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ed310fad27a924692a460fb6087d15, type: 3}
+  m_Name: Whales
+  m_EditorClassIdentifier: Assembly-CSharp::ResourceData
+  resourceName: Whales
+  icon: {fileID: 0}
+  prefab: {fileID: 0}
+  category: 3
+  selectSound: {fileID: 0}
+  selectPitchVariation: 0.1
+  allowedPlanetTypes: 00000000
+  blockedPlanetTypes: 
+  allowedSpawnLayers: 1
+  hillRequirement: 0
+  mountainRequirement: 0
+  flatLandRequirement: 0
+  allowedBiomes: 000000000a000000
+  allowedUnderwaterBiomes: 
+  spawnChance: 0
+  isOrbitalResource: 0
+  requiredTechsToReveal:
+  - {fileID: 11400000, guid: e08dba9323c763740a39d60a322535c5, type: 2}
+  requiredCulturesToReveal: []
+  foodPerTurn: 1
+  productionPerTurn: 0
+  goldPerTurn: 5
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  surplusYieldPerResource:
+    food: 0
+    production: 0
+    gold: 5
+    science: 0
+    culture: 0
+    policyPoints: 0
+    faith: 0
+    applyProductionToAllCities: 0
+  happinessPerSurplusResource: 0
+  forageFood: 10
+  forageGold: 50
+  forageScience: 0
+  forageCulture: 0
+  foragePolicyPoints: 0
+  forageFaith: 0
+  canBeForaged: 1
+  requiredTech: {fileID: 11400000, guid: e08dba9323c763740a39d60a322535c5, type: 2}
+  requiresSpecialHarvester: 1
+  regrowthTime: 3

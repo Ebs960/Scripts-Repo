@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Fishing Canoes
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: Fishing Canoes
+  icon: {fileID: 0}
+  description: 
+  tradeNodeCapability:
+    providesTradeNode: 0
+    nodeType: 1
+    supportedDomains: 1
+    tradeRange: 0
+    surfaceTradeRange: 0
+    maritimeTradeRange: 0
+    airTradeRange: 0
+    orbitTradeRange: 0
+    solarSpaceTradeRange: 0
+    interstellarTradeRange: 0
+    civilizationRouteCapacityBonus: 0
+    nodeThroughputCapacity: 0
+    canOriginateRoutes: 0
+    canReceiveRoutes: 1
+    canRelayRoutes: 0
+    routeGoldModifier: 0
+    raidChanceReduction: 0
+    isPlanetaryGateway: 0
+    isOrbitalGateway: 0
+  workCost: 0
+  buildGoldCost: 0
+  buildResourceCosts: []
+  constructionPrefab: {fileID: 0}
+  completePrefab: {fileID: 0}
+  destroyedPrefab: {fileID: 0}
+  civVisualOverrides:
+  - civ: {fileID: 0}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  hasSubstituteBuildCosts: 0
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
+  isShelter: 0
+  shelterCapacity: 0
+  needsCity: 0
+  requiresControlledTerritory: 0
+  canBuildInNeutralTerritory: 0
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  requiredResources:
+  - {fileID: 0}
+  hasSubstituteRequiredResources: 0
+  requiredTechs: []
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  isMissileSilo: 0
+  siloMissileCapacity: 5
+  allowedMissileTypes: []
+  foodPerTurn: 1
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  auraBonuses: []
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empireFaithModifier: 0
+  empirePolicyPointsModifier: 0
+  resourceProductionPerTurn: []
+  ruralSpecialistSlots: []
+  movementSpeedBonus: 0
+  isRoad: 0
+  connectedGoldPerTurn: 0
+  connectedProductionPerTurn: 0
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  isFort: 0
+  fortAttack: 0
+  fortDefense: 0
+  fortHitPoints: 100
+  fortAttackRange: 1
+  fortAutoFireOnEnemyEntry: 1
+  fortAttacksPerTurn: 1
+  grantsZoneOfControl: 0
+  blocksZoneOfControl: 0
+  replacesImprovements: []
+  availableUpgrades: []
