@@ -1409,13 +1409,16 @@ if (UIManager.Instance != null)
             // Equipment is produced like other items: consumes production points over time
             // Validate equipment-specific production prereqs via EquipmentData
             if (!eq.CanBeProducedBy(owner)) return false;
-            productionQueue.Add(new ProdEntry(eq, eq.productionCost, 0, null, null, false, false, ProdEntry.Type.Equipment));
+            if (!HasManufacturingCapabilities(eq.requiredManufacturingCapabilities)) return false;
+            if (!ResourceCost.Consume(owner, eq.resourceCosts, false)) return false;
+            productionQueue.Add(new ProdEntry(eq, eq.productionCost, eq.goldCost, null, null, false, false, ProdEntry.Type.Equipment));
             return true;
         }
         if (d is GameCombat.ProjectileData projectile)
         {
             // Projectiles are produced like equipment: consumes production points over time
             if (!projectile.CanBeProducedBy(owner)) return false;
+            if (!ResourceCost.Consume(owner, projectile.resourceCosts, false)) return false;
             productionQueue.Add(new ProdEntry(projectile, projectile.productionCost, projectile.goldCost, 
                                             projectile.requiredResources, null, false, false, 
                                             ProdEntry.Type.Projectile));
@@ -1695,13 +1698,14 @@ if (UIManager.Instance != null)
         }
         else if (d is EquipmentData e)
         {
-            cost = e.productionCost;
+            cost = e.goldCost;
             // Equipment may have civ-level requirements
             if (!e.CanBeProducedBy(owner))
             {
                 Debug.LogWarning($"Cannot buy {e.equipmentName} - requirements not met");
                 return false;
             }
+            if (!HasManufacturingCapabilities(e.requiredManufacturingCapabilities)) return false;
         }
         
         if (!(d is CombatUnitData) && !(d is WorkerUnitData) && owner.gold < cost) return false;
@@ -3961,6 +3965,21 @@ Destroy(oldTuple.instance);
             result.Add(data);
         }
         return result;
+    }
+
+    public bool HasManufacturingCapabilities(string[] requiredCapabilities)
+    {
+        if (requiredCapabilities == null || requiredCapabilities.Length == 0) return true;
+        var available = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        foreach (var (building, _) in builtBuildings)
+        {
+            if (building?.manufacturingCapabilities == null) continue;
+            foreach (string capability in building.manufacturingCapabilities)
+                if (!string.IsNullOrWhiteSpace(capability)) available.Add(capability.Trim());
+        }
+        foreach (string required in requiredCapabilities)
+            if (!string.IsNullOrWhiteSpace(required) && !available.Contains(required.Trim())) return false;
+        return true;
     }
     
     // Helper method to get all district data (for UI/inspection)

@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Leather Armor
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
-  equipmentType: 2
+  equipmentType: 5
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0

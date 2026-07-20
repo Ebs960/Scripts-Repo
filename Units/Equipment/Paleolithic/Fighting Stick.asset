@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Fighting Stick
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 8796189513657384495, guid: c7e14eb52fa54c54a8495e6c77ce7c59, type: 3}
-  equipmentType: 0
+  equipmentType: 4
   projectileData: {fileID: 0}
   projectileSpawnName: ProjectileSpawn
   useEquipmentProjectileSpawn: 1

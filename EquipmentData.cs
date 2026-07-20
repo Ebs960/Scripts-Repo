@@ -6,11 +6,14 @@ using GameCombat;
 /// </summary>
 public enum EquipmentType
 {
-    Weapon,
-    Shield,
-    Armor,
-    Miscellaneous,
-    Tool
+    Weapon = 0,
+    Shield = 1,
+    Body = 2,
+    Armor = Body, // Legacy serialized name/value; new assets should use Body.
+    Miscellaneous = 3,
+    Tool = 4,
+    Utility = Tool,
+    Head = 5
 }
 
 public enum EquipmentTarget
@@ -87,6 +90,14 @@ public class EquipmentData : ScriptableObject
     [Tooltip("Cultures required to unlock this equipment (optional)")]
     public CultureData[] requiredCultures;
     public int productionCost;
+    [Tooltip("Gold price when this item is purchased instantly; not required for normal production.")]
+    public int goldCost;
+    [Tooltip("Material quantities consumed when production completes.")]
+    public ResourceCost[] resourceCosts;
+    [Tooltip("Optional material quantities consumed each turn while this equipment is in use.")]
+    public ResourceCost[] resourceUpkeepPerTurn;
+    [Tooltip("Manufacturing capability tags that the producing city must provide.")]
+    public string[] requiredManufacturingCapabilities;
 
     [Header("Stat Bonuses")]
     [Tooltip("Flat attack bonus provided by this equipment (can be fractional)")]
@@ -218,20 +229,6 @@ public class EquipmentData : ScriptableObject
             }
         }
 
-        // Check if civilization has enough gold for production cost
-        if (productionCost > 0 && civ.gold < productionCost)
-            return false;
-
-        // TODO: Add resource requirement checks when resource system is implemented
-        // if (requiredResources != null && requiredResources.Length > 0)
-        // {
-        //     foreach (var resource in requiredResources)
-        //     {
-        //         if (!civ.HasResource(resource, 1))
-        //             return false;
-        //     }
-        // }
-
-        return true;
+        return ResourceCost.CanAfford(civ, resourceCosts, false);
     }
 }

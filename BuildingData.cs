@@ -84,6 +84,8 @@ public class BuildingData : ScriptableObject
     [Header("Equipment Production")]
     [Tooltip("Equipment produced when this building is completed (one-time, not recurring)")]
     public EquipmentProduction[] equipmentProduction;
+    [Tooltip("Permanent manufacturing capability tags granted to this city (for example Bowyer or IronForge).")]
+    public string[] manufacturingCapabilities;
 
     [Header("Projectile Production")]
     [Tooltip("Projectiles produced when this building is completed (one-time, not recurring)")]

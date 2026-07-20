@@ -22,13 +22,13 @@ MonoBehaviour:
   usesProjectiles: 1
   projectileSpawnName: Projectile Spawn
   useEquipmentProjectileSpawn: 1
-  isTwoHanded: 0
+  isTwoHanded: 1
   targetUnit: 0
   attackBonusAgainst: []
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 04000000
+  allowedUnitTypes: 05000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 711c0dbb390171a4ba77a2c273be5190, type: 2}

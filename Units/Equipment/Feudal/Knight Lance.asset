@@ -28,7 +28,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 02000000
+  allowedUnitTypes: 16000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 024f0e0799c277347b4acb9a07166585, type: 2}
