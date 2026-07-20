@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Octopus
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
   resourceName: Octopus
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 3ed58fa6f541f7f4e97d9aa59fbce9d4, type: 3}
   prefab: {fileID: 0}
   category: 3
   selectSound: {fileID: 0}

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Fish
   m_EditorClassIdentifier: Assembly-CSharp::ResourceData
   resourceName: Fish
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: cc4333984bad3b447b527ad7ff0eaa94, type: 3}
   prefab: {fileID: 0}
   category: 3
   selectSound: {fileID: 0}
