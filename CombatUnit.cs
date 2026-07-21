@@ -777,9 +777,7 @@ public class CombatUnit : BaseUnit
     {
         if (owner == null || data == null || target == null) return 0;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        float total = unitBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
         return Mathf.RoundToInt(total);
     }
 
@@ -787,28 +785,24 @@ public class CombatUnit : BaseUnit
     {
         if (owner == null || data == null || target == null) return 0f;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        return unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+        return unitBonuses.attackPct;
     }
 
     public int GetSituationalAttackAddAgainst(BaseUnit target, AttackType attackType)
     {
         if (owner == null || data == null || target == null) return 0;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        float total = unitBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
         switch (attackType)
         {
             case AttackType.Melee:
-                total += unitBonuses.meleeAttackAdd + equipmentBonuses.meleeAttackAdd;
+                total += unitBonuses.meleeAttackAdd;
                 break;
             case AttackType.Ranged:
-                total += unitBonuses.rangedAttackAdd + equipmentBonuses.rangedAttackAdd;
+                total += unitBonuses.rangedAttackAdd;
                 break;
             case AttackType.City:
-                total += unitBonuses.cityAttackAdd + equipmentBonuses.cityAttackAdd;
+                total += unitBonuses.cityAttackAdd;
                 break;
         }
         return Mathf.RoundToInt(total);
@@ -818,19 +812,17 @@ public class CombatUnit : BaseUnit
     {
         if (owner == null || data == null || target == null) return 0f;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        float total = unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+        float total = unitBonuses.attackPct;
         switch (attackType)
         {
             case AttackType.Melee:
-                total += unitBonuses.meleeAttackPct + equipmentBonuses.meleeAttackPct;
+                total += unitBonuses.meleeAttackPct;
                 break;
             case AttackType.Ranged:
-                total += unitBonuses.rangedAttackPct + equipmentBonuses.rangedAttackPct;
+                total += unitBonuses.rangedAttackPct;
                 break;
             case AttackType.City:
-                total += unitBonuses.cityAttackPct + equipmentBonuses.cityAttackPct;
+                total += unitBonuses.cityAttackPct;
                 break;
         }
         return total;
@@ -840,18 +832,14 @@ public class CombatUnit : BaseUnit
     {
         if (owner == null || data == null || target == null) return 0;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        float total = unitBonuses.attackAdd + equipmentBonuses.attackAdd + directEquipmentBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
+        float total = unitBonuses.attackAdd + GetTargetedAbilityAttackModifierAgainst(target);
         CombatTargetDomain bonusDomain = GetAttackDomainForTarget(targetDomain);
         float scratchPct = 0f;
         AddDomainBonuses(unitBonuses, bonusDomain, ref total, ref scratchPct);
-        AddDomainBonuses(equipmentBonuses, bonusDomain, ref total, ref scratchPct);
         if (includeLegacyTypedBonuses)
         {
             scratchPct = 0f;
             AddLegacyTypedUnitBonuses(unitBonuses, legacyFallbackType, ref total, ref scratchPct);
-            AddLegacyTypedEquipBonuses(equipmentBonuses, legacyFallbackType, ref total, ref scratchPct);
         }
         return Mathf.RoundToInt(total);
     }
@@ -860,18 +848,14 @@ public class CombatUnit : BaseUnit
     {
         if (owner == null || data == null || target == null) return 0f;
         var unitBonuses = AggregateTargetedCombatBonuses(owner, data, target);
-        var equipmentBonuses = AggregateAllEquippedTargetedBonusesLocal(owner, target);
-        var directEquipmentBonuses = AggregateEquippedItemTargetedModifiers(target);
-        float total = unitBonuses.attackPct + equipmentBonuses.attackPct + directEquipmentBonuses.attackPct;
+        float total = unitBonuses.attackPct;
         CombatTargetDomain bonusDomain = GetAttackDomainForTarget(targetDomain);
         float scratchAdd = 0f;
         AddDomainBonuses(unitBonuses, bonusDomain, ref scratchAdd, ref total);
-        AddDomainBonuses(equipmentBonuses, bonusDomain, ref scratchAdd, ref total);
         if (includeLegacyTypedBonuses)
         {
             scratchAdd = 0f;
             AddLegacyTypedUnitBonuses(unitBonuses, legacyFallbackType, ref scratchAdd, ref total);
-            AddLegacyTypedEquipBonuses(equipmentBonuses, legacyFallbackType, ref scratchAdd, ref total);
         }
         return total;
     }
@@ -1416,6 +1400,111 @@ public class CombatUnit : BaseUnit
         return valF;
     }
 
+    private float GetUnitBaseAttackFloat(CombatTargetDomain targetDomain, AttackType legacyFallbackType, out bool usingLegacyTypedFallback)
+    {
+        if (targetDomain == CombatTargetDomain.NavalSurface && !UsesGroundAttackAgainstSurfaceNavalTarget())
+        {
+            usingLegacyTypedFallback = true;
+            return GetAttackTypeBaseValue(legacyFallbackType) + GetAbilityAttackModifier();
+        }
+
+        targetDomain = GetAttackDomainForTarget(targetDomain);
+        float domainBaseValue = GetDomainBaseAttackValue(targetDomain);
+        usingLegacyTypedFallback = domainBaseValue <= 0f && targetDomain != CombatTargetDomain.City;
+        return (usingLegacyTypedFallback ? GetAttackTypeBaseValue(legacyFallbackType) : domainBaseValue)
+            + GetAbilityAttackModifier();
+    }
+
+    private float GetActiveWeaponBaseAttackContribution(EquipmentData activeWeapon, CombatTargetDomain targetDomain, AttackType legacyFallbackType, bool usingLegacyTypedFallback)
+    {
+        if (activeWeapon == null)
+            return 0f;
+
+        float contribution = activeWeapon.attackBonus;
+        if (targetDomain == CombatTargetDomain.NavalSurface && !UsesGroundAttackAgainstSurfaceNavalTarget())
+            return contribution + GetTypedWeaponAttackBonus(activeWeapon, legacyFallbackType);
+
+        targetDomain = GetAttackDomainForTarget(targetDomain);
+        contribution += GetDomainWeaponAttackBonus(activeWeapon, targetDomain);
+        if (usingLegacyTypedFallback)
+            contribution += GetTypedWeaponAttackBonus(activeWeapon, legacyFallbackType);
+        return contribution;
+    }
+
+    private static float GetTypedWeaponAttackBonus(EquipmentData weapon, AttackType attackType)
+    {
+        return attackType switch
+        {
+            AttackType.Melee => weapon.meleeAttackBonus,
+            AttackType.Ranged => weapon.rangedAttackBonus,
+            AttackType.City => weapon.cityAttackBonus,
+            _ => 0f,
+        };
+    }
+
+    private static float GetDomainWeaponAttackBonus(EquipmentData weapon, CombatTargetDomain targetDomain)
+    {
+        return targetDomain switch
+        {
+            CombatTargetDomain.Ground => weapon.groundAttackBonus,
+            CombatTargetDomain.Underwater => weapon.underwaterAttackBonus,
+            CombatTargetDomain.Air => weapon.airAttackBonus,
+            CombatTargetDomain.Space => weapon.spaceAttackBonus,
+            _ => 0f,
+        };
+    }
+
+    private void GetWeaponTargetedAttackBonusesAgainst(EquipmentData activeWeapon, BaseUnit target, CombatTargetDomain targetDomain,
+        AttackType legacyFallbackType, bool includeLegacyTypedBonuses, out float attackAdd, out float attackPct)
+    {
+        attackAdd = 0f;
+        attackPct = 0f;
+        if (activeWeapon == null || owner == null || target == null)
+            return;
+
+        EquipAgg equipmentBonuses = AggregateTargetedEquipBonuses(owner, activeWeapon, target);
+        attackAdd = equipmentBonuses.attackAdd;
+        attackPct = equipmentBonuses.attackPct;
+
+        CombatTargetDomain bonusDomain = GetAttackDomainForTarget(targetDomain);
+        AddDomainBonuses(equipmentBonuses, bonusDomain, ref attackAdd, ref attackPct);
+        if (includeLegacyTypedBonuses)
+            AddLegacyTypedEquipBonuses(equipmentBonuses, legacyFallbackType, ref attackAdd, ref attackPct);
+
+        if (target is CombatUnit combatTarget && combatTarget.data != null && activeWeapon.attackBonusAgainst != null)
+        {
+            foreach (var entry in activeWeapon.attackBonusAgainst)
+                if (entry.unitType == combatTarget.data.unitType)
+                    attackAdd += entry.value;
+        }
+
+        if (activeWeapon.combatModifiersAgainst == null)
+            return;
+
+        foreach (var modifier in activeWeapon.combatModifiersAgainst)
+        {
+            if (!Civilization.MatchesCombatBonusOpponent(target, modifier.targetUnit, modifier.targetWorker,
+                modifier.useTargetUnitCategoryFilter, modifier.targetUnitCategory))
+                continue;
+            attackAdd += modifier.attackAdd;
+            attackPct += modifier.attackPct;
+        }
+    }
+
+    private float GetTargetedAttackValue(EquipmentData activeWeapon, BaseUnit target, CombatTargetDomain targetDomain,
+        AttackType attackType, float unitBaseAdd = 0f)
+    {
+        float unitBase = GetUnitBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback) + unitBaseAdd;
+        float unitAttack = (unitBase + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback))
+            * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
+
+        float weaponBase = GetActiveWeaponBaseAttackContribution(activeWeapon, targetDomain, attackType, usingLegacyTypedFallback);
+        GetWeaponTargetedAttackBonusesAgainst(activeWeapon, target, targetDomain, attackType, usingLegacyTypedFallback,
+            out float weaponAttackAdd, out float weaponAttackPct);
+        float weaponAttack = (weaponBase + weaponAttackAdd) * (1f + weaponAttackPct);
+        return unitAttack + weaponAttack;
+    }
+
     public override int CurrentMeleeAttack
     {
         get
@@ -1867,8 +1956,7 @@ public class CombatUnit : BaseUnit
 
         AttackType attackType = activeWeapon != null && IsProjectileWeapon(activeWeapon) ? AttackType.Ranged : AttackType.Melee;
         CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(target);
-        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
+        float attackerValue = GetTargetedAttackValue(activeWeapon, target, targetDomain, attackType);
         attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = target.GetBaseDefenseFloat();
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
@@ -1974,8 +2062,7 @@ public class CombatUnit : BaseUnit
         
         AttackType attackType = isRangedAttack ? AttackType.Ranged : AttackType.Melee;
         CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
-        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback) + combatBonus;
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(target, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(target, targetDomain, attackType, usingLegacyTypedFallback));
+        float attackerValue = GetTargetedAttackValue(activeWeapon, target, targetDomain, attackType, combatBonus);
         attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = target.CurrentDefense;
         defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
@@ -2110,8 +2197,8 @@ public class CombatUnit : BaseUnit
         float dmgMul = GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(attacker);
         AttackType attackType = AttackType.Melee;
         CombatTargetDomain targetDomain = GetTargetDomainForCombatUnit(attacker);
-        float attackerValue = GetBaseAttackFloat(targetDomain, attackType, out bool usingLegacyTypedFallback);
-        attackerValue = (attackerValue + GetSituationalAttackAddAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback)) * (1f + GetSituationalAttackPctAgainst(attacker, targetDomain, attackType, usingLegacyTypedFallback));
+        EquipmentData activeWeapon = equippedWeapon;
+        float attackerValue = GetTargetedAttackValue(activeWeapon, attacker, targetDomain, attackType);
         attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
         float defenderValue = attacker.GetBaseDefenseFloat();
         defenderValue = (defenderValue + attacker.GetSituationalDefenseAddAgainst(this)) * (1f + attacker.GetSituationalDefensePctAgainst(this));
@@ -2122,7 +2209,7 @@ public class CombatUnit : BaseUnit
 
         damage = ApplySharedMeleeCombatModifiers(damage, attacker);
 
-    var ctxCounter = new BaseUnit.AttackContext { attacker = this, defender = attacker, weapon = null, damage = damage, isMelee = true, isRanged = false };
+    var ctxCounter = new BaseUnit.AttackContext { attacker = this, defender = attacker, weapon = activeWeapon, damage = damage, isMelee = true, isRanged = false };
     bool counterDidKill = PerformAttack(ctxCounter);
     }
 
