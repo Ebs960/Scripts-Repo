@@ -1325,9 +1325,10 @@ public class ImprovementManager : MonoBehaviour
         var instanceObject = tileData.improvementInstanceObject;
 
         // Optional destroyed prefab
-        if (reason == ImprovementRemovalReason.Destroyed && data.destroyedPrefab != null)
+        var destroyedPrefab = reason == ImprovementRemovalReason.Destroyed ? data.GetDestroyedPrefab(owner) : null;
+        if (destroyedPrefab != null)
         {
-            var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
+            var go = Instantiate(destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
             try { var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
             var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
             if (planetGen != null) go.transform.SetParent(planetGen.transform, true);

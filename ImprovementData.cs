@@ -302,6 +302,18 @@ public struct ImprovementVisualOverride
     public GameObject destroyedPrefab;
 }
 
+[System.Serializable]
+public struct ImprovementCultureGroupVisualOverride
+{
+    [Tooltip("Culture group that uses this improvement visual override.")]
+    public CultureGroup cultureGroup;
+    [Tooltip("Override icon for this culture group. Leave empty to continue through the visual fallback chain.")]
+    public Sprite icon;
+    public GameObject constructionPrefab;
+    public GameObject completePrefab;
+    public GameObject destroyedPrefab;
+}
+
 [CreateAssetMenu(fileName = "NewImprovementData", menuName = "Data/Improvement Data")]
 public class ImprovementData : ScriptableObject
 {
@@ -327,8 +339,10 @@ public class ImprovementData : ScriptableObject
     public GameObject completePrefab;
     [Tooltip("Prefab to spawn if destroyed")]
     public GameObject destroyedPrefab;
-    [Tooltip("Optional per-civilization prefab overrides for this improvement.")]
+    [Tooltip("Optional per-civilization visual overrides. Assigned fields take priority over culture-group and default visuals.")]
     public ImprovementVisualOverride[] civVisualOverrides;
+    [Tooltip("Optional culture-group visual overrides. Assigned fields are used when a civilization-specific field is not assigned.")]
+    public ImprovementCultureGroupVisualOverride[] cultureGroupVisualOverrides;
     [Tooltip("If true, only one valid entry in Build Resource Costs must be paid instead of every listed cost.")]
     public bool hasSubstituteBuildCosts = false;
 
@@ -503,14 +517,11 @@ public class ImprovementData : ScriptableObject
     /// </summary>
     public Sprite GetIcon(Civilization civ)
     {
-        if (civVisualOverrides != null && civ != null && civ.civData != null)
-        {
-            foreach (var visualOverride in civVisualOverrides)
-            {
-                if (visualOverride.civ == civ.civData && visualOverride.icon != null)
-                    return visualOverride.icon;
-            }
-        }
+        if (TryGetCivVisualOverride(civ, out var civOverride) && civOverride.icon != null)
+            return civOverride.icon;
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.icon != null)
+            return cultureGroupOverride.icon;
 
         return icon;
     }
@@ -519,26 +530,16 @@ public class ImprovementData : ScriptableObject
 
     private GameObject GetVisualPrefab(Civilization civ, VisualPrefabKind kind)
     {
-        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        if (TryGetCivVisualOverride(civ, out var civOverride))
         {
-            foreach (var visualOverride in civVisualOverrides)
-            {
-                if (visualOverride.civ != civ.civData) continue;
-                GameObject overridePrefab = null;
-                switch (kind)
-                {
-                    case VisualPrefabKind.Construction:
-                        overridePrefab = visualOverride.constructionPrefab;
-                        break;
-                    case VisualPrefabKind.Complete:
-                        overridePrefab = visualOverride.completePrefab;
-                        break;
-                    case VisualPrefabKind.Destroyed:
-                        overridePrefab = visualOverride.destroyedPrefab;
-                        break;
-                }
-                if (overridePrefab != null) return overridePrefab;
-            }
+            GameObject civPrefab = GetPrefab(civOverride, kind);
+            if (civPrefab != null) return civPrefab;
+        }
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride))
+        {
+            GameObject cultureGroupPrefab = GetPrefab(cultureGroupOverride, kind);
+            if (cultureGroupPrefab != null) return cultureGroupPrefab;
         }
 
         switch (kind)
@@ -551,6 +552,60 @@ public class ImprovementData : ScriptableObject
                 return destroyedPrefab;
             default:
                 return null;
+        }
+    }
+
+    private bool TryGetCivVisualOverride(Civilization civ, out ImprovementVisualOverride visualOverride)
+    {
+        if (civVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var candidate in civVisualOverrides)
+            {
+                if (candidate.civ != civ.civData) continue;
+                visualOverride = candidate;
+                return true;
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
+    private bool TryGetCultureGroupVisualOverride(Civilization civ, out ImprovementCultureGroupVisualOverride visualOverride)
+    {
+        if (cultureGroupVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            foreach (var candidate in cultureGroupVisualOverrides)
+            {
+                if (candidate.cultureGroup != civ.civData.cultureGroup) continue;
+                visualOverride = candidate;
+                return true;
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
+    private static GameObject GetPrefab(ImprovementVisualOverride visualOverride, VisualPrefabKind kind)
+    {
+        switch (kind)
+        {
+            case VisualPrefabKind.Construction: return visualOverride.constructionPrefab;
+            case VisualPrefabKind.Complete: return visualOverride.completePrefab;
+            case VisualPrefabKind.Destroyed: return visualOverride.destroyedPrefab;
+            default: return null;
+        }
+    }
+
+    private static GameObject GetPrefab(ImprovementCultureGroupVisualOverride visualOverride, VisualPrefabKind kind)
+    {
+        switch (kind)
+        {
+            case VisualPrefabKind.Construction: return visualOverride.constructionPrefab;
+            case VisualPrefabKind.Complete: return visualOverride.completePrefab;
+            case VisualPrefabKind.Destroyed: return visualOverride.destroyedPrefab;
+            default: return null;
         }
     }
 

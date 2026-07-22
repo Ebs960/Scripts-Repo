@@ -81,7 +81,10 @@ public class PlacementPreview : MonoBehaviour
         onCancelCallback = onCancel;
         suppressConfirmUntilMouseReleased = true;
         ResetDebugState();
-        SpawnGhost(improvement != null ? (improvement.GetCompletePrefab(null) != null ? improvement.GetCompletePrefab(null) : improvement.GetConstructionPrefab(null)) : null);
+        var previewPrefab = improvement != null ? improvement.GetCompletePrefab(worker != null ? worker.owner : null) : null;
+        if (previewPrefab == null && improvement != null)
+            previewPrefab = improvement.GetConstructionPrefab(worker != null ? worker.owner : null);
+        SpawnGhost(previewPrefab);
         DebugLog($"Enter improvement mode | improvement={improvement?.improvementName ?? "null"} workerTile={worker?.currentTileIndex ?? -1} planet={worker?.planetIndex ?? -1}");
     }
 
