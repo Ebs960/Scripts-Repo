@@ -37,11 +37,11 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         if (target != null)
         {
             var combat = target.GetComponentInParent<CombatUnit>();
-            if (combat != null && combat.data != null) icon = combat.data.icon;
+            if (combat != null && combat.data != null) icon = combat.data.GetIcon(combat.owner);
             else
             {
                 var worker = target.GetComponentInParent<WorkerUnit>();
-                if (worker != null && worker.data != null) icon = worker.data.icon;
+                if (worker != null && worker.data != null) icon = worker.data.GetIcon(worker.owner);
             }
         }
 

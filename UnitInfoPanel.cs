@@ -580,8 +580,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
         SetUnitDescription(currentCombatUnit.data.description, currentCombatUnit.data.unitName);
 
         // Display unit icon
-        if (unitIconImage != null && currentCombatUnit.data.icon != null)
-            unitIconImage.sprite = currentCombatUnit.data.icon;
+        if (unitIconImage != null && currentCombatUnit.data.GetIcon(currentCombatUnit.owner) != null)
+            unitIconImage.sprite = currentCombatUnit.data.GetIcon(currentCombatUnit.owner);
         levelText.text = $"{currentCombatUnit.level}";
         experienceText.text = $"XP: {currentCombatUnit.experience}/{currentCombatUnit.data.xpToNextLevel[currentCombatUnit.level - 1]}";
         
@@ -628,7 +628,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         // Display worker icon (was missing, causing stale/blank icon in worker panel)
         if (unitIconImage != null)
-            unitIconImage.sprite = currentWorkerUnit.data != null ? currentWorkerUnit.data.icon : null;
+            unitIconImage.sprite = currentWorkerUnit.data != null ? currentWorkerUnit.data.GetIcon(currentWorkerUnit.owner) : null;
         
         healthText.text = $"{currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
         movePointsText.text = $"{currentWorkerUnit.currentMovePoints}";

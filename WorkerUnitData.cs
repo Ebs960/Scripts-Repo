@@ -8,6 +8,9 @@ public struct WorkerUnitVisualOverride
     [Tooltip("Civilization that uses this visual override.")]
     public CivData civ;
 
+    [Tooltip("Override icon for this civilization.")]
+    public Sprite icon;
+
     [Tooltip("Optional Addressables fallback for this civ's worker prefab. Direct prefab references are used first.")]
     public string addressableAddress;
 
@@ -26,6 +29,20 @@ public struct WorkerUnitVisualOverride
 
     [Range(0.1f, 10f)]
     public float formationSpacing;
+}
+
+[System.Serializable]
+public struct WorkerUnitCultureGroupVisualOverride
+{
+    public CultureGroup cultureGroup;
+    public Sprite icon;
+    public string addressableAddress;
+    public GameObject prefab;
+    public bool overrideSoldierDisplay;
+    [Range(1, 12)] public int soldierCount;
+    public FormationType formationType;
+    public SoldierVariant[] soldierVariants;
+    [Range(0.1f, 10f)] public float formationSpacing;
 }
 
  [CreateAssetMenu(fileName = "NewWorkerUnitData", menuName = "Data/Worker Unit Data")]
@@ -222,6 +239,8 @@ public class WorkerUnitData : ScriptableObject
     [Header("Civilization Visual Overrides")]
     [Tooltip("Optional per-civilization visual overrides. Use these when the gameplay unit stays the same but the art should change by civ.")]
     public WorkerUnitVisualOverride[] civVisualOverrides;
+    [Tooltip("Optional culture-group visual overrides used when a civilization-specific field is not assigned.")]
+    public WorkerUnitCultureGroupVisualOverride[] cultureGroupVisualOverrides;
 
     [Header("Build Options")]
     public RouteType[] buildableRoutes;
@@ -381,7 +400,7 @@ public class WorkerUnitData : ScriptableObject
         return true;
     }
 
-    private bool TryGetVisualOverride(Civilization civ, out WorkerUnitVisualOverride visualOverride)
+    private bool TryGetCivVisualOverride(Civilization civ, out WorkerUnitVisualOverride visualOverride)
     {
         if (civVisualOverrides != null && civ != null && civ.civData != null)
         {
@@ -399,9 +418,34 @@ public class WorkerUnitData : ScriptableObject
         return false;
     }
 
+    private bool TryGetCultureGroupVisualOverride(Civilization civ, out WorkerUnitCultureGroupVisualOverride visualOverride)
+    {
+        if (cultureGroupVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            for (int i = 0; i < cultureGroupVisualOverrides.Length; i++)
+            {
+                if (cultureGroupVisualOverrides[i].cultureGroup != civ.civData.cultureGroup) continue;
+                visualOverride = cultureGroupVisualOverrides[i];
+                return true;
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
+    public Sprite GetIcon(Civilization civ)
+    {
+        if (TryGetCivVisualOverride(civ, out var civOverride) && civOverride.icon != null)
+            return civOverride.icon;
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.icon != null)
+            return cultureGroupOverride.icon;
+        return icon;
+    }
+
     public GameObject GetPrefab(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride))
+        if (TryGetCivVisualOverride(civ, out var visualOverride))
         {
             if (visualOverride.prefab != null)
                 return visualOverride.prefab;
@@ -413,6 +457,19 @@ public class WorkerUnitData : ScriptableObject
                     var loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(visualOverride.addressableAddress);
                     if (loaded != null) return loaded;
                 }
+            }
+        }
+
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride))
+        {
+            if (cultureGroupOverride.prefab != null)
+                return cultureGroupOverride.prefab;
+
+            if (!string.IsNullOrWhiteSpace(cultureGroupOverride.addressableAddress) && AddressableUnitLoader.Instance != null)
+            {
+                var loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(cultureGroupOverride.addressableAddress);
+                if (loaded != null) return loaded;
             }
         }
 
@@ -430,32 +487,44 @@ public class WorkerUnitData : ScriptableObject
 
     public int GetSoldierCount(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride))
+        if (TryGetCivVisualOverride(civ, out var visualOverride) && visualOverride.overrideSoldierDisplay)
             return Mathf.Max(1, visualOverride.soldierCount);
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.overrideSoldierDisplay)
+            return Mathf.Max(1, cultureGroupOverride.soldierCount);
 
         return soldierCount;
     }
 
     public FormationType GetFormationType(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride))
+        if (TryGetCivVisualOverride(civ, out var visualOverride) && visualOverride.overrideSoldierDisplay)
             return visualOverride.formationType;
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.overrideSoldierDisplay)
+            return cultureGroupOverride.formationType;
 
         return formationType;
     }
 
     public SoldierVariant[] GetSoldierVariants(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride))
+        if (TryGetCivVisualOverride(civ, out var visualOverride) && visualOverride.overrideSoldierDisplay)
             return visualOverride.soldierVariants;
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.overrideSoldierDisplay)
+            return cultureGroupOverride.soldierVariants;
 
         return soldierVariants;
     }
 
     public float GetFormationSpacing(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride))
+        if (TryGetCivVisualOverride(civ, out var visualOverride) && visualOverride.overrideSoldierDisplay)
             return Mathf.Max(0.1f, visualOverride.formationSpacing);
+
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.overrideSoldierDisplay)
+            return Mathf.Max(0.1f, cultureGroupOverride.formationSpacing);
 
         return formationSpacing;
     }

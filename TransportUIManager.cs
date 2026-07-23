@@ -255,9 +255,9 @@ public class TransportUIManager : MonoBehaviour
             
             // Set icon if available
             Image buttonImage = buttonObj.GetComponentInChildren<Image>();
-            if (buttonImage != null && unit.data.icon != null)
+            if (buttonImage != null && unit.data.GetIcon(unit.owner) != null)
             {
-                buttonImage.sprite = unit.data.icon;
+                buttonImage.sprite = unit.data.GetIcon(unit.owner);
             }
             
             // Set up button click handler
@@ -433,4 +433,4 @@ public class TransportUIManager : MonoBehaviour
         PopulateTransportedUnitsList();
     }
 
-} 
+}

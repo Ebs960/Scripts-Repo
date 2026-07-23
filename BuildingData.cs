@@ -39,6 +39,14 @@ public struct BuildingVisualOverride
     public Sprite icon;
 }
 
+[System.Serializable]
+public struct BuildingCultureGroupVisualOverride
+{
+    public CultureGroup cultureGroup;
+    public GameObject buildingPrefab;
+    public Sprite icon;
+}
+
 [CreateAssetMenu(menuName="Data/Building Data")]
 public class BuildingData : ScriptableObject
 {
@@ -49,8 +57,10 @@ public class BuildingData : ScriptableObject
 
     [Header("Prefab")]
     public GameObject buildingPrefab;
-    [Tooltip("Optional per-civilization prefab overrides for this building.")]
+    [Tooltip("Optional per-civilization visual overrides. Assigned fields take priority over culture-group and default visuals.")]
     public BuildingVisualOverride[] civVisualOverrides;
+    [Tooltip("Optional culture-group visual overrides used when a civilization-specific field is not assigned.")]
+    public BuildingCultureGroupVisualOverride[] cultureGroupVisualOverrides;
 
     [Header("Replacement (Upgrade)")]
     [Tooltip("If non-null, this building will replace the specified older building when completed")]
@@ -255,7 +265,7 @@ public class BuildingData : ScriptableObject
     [Tooltip("If >0, increases herd food storage capacity when this building is present for a herd")]
     public int herdStorageBonus = 0;
 
-    private bool TryGetVisualOverride(Civilization civ, out BuildingVisualOverride visualOverride)
+    private bool TryGetCivVisualOverride(Civilization civ, out BuildingVisualOverride visualOverride)
     {
         if (civVisualOverrides != null && civ != null && civ.civData != null)
         {
@@ -273,18 +283,38 @@ public class BuildingData : ScriptableObject
         return false;
     }
 
+    private bool TryGetCultureGroupVisualOverride(Civilization civ, out BuildingCultureGroupVisualOverride visualOverride)
+    {
+        if (cultureGroupVisualOverrides != null && civ != null && civ.civData != null)
+        {
+            for (int i = 0; i < cultureGroupVisualOverrides.Length; i++)
+            {
+                if (cultureGroupVisualOverrides[i].cultureGroup != civ.civData.cultureGroup) continue;
+                visualOverride = cultureGroupVisualOverrides[i];
+                return true;
+            }
+        }
+
+        visualOverride = default;
+        return false;
+    }
+
     public GameObject GetBuildingPrefab(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride) && visualOverride.buildingPrefab != null)
-            return visualOverride.buildingPrefab;
+        if (TryGetCivVisualOverride(civ, out var civOverride) && civOverride.buildingPrefab != null)
+            return civOverride.buildingPrefab;
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.buildingPrefab != null)
+            return cultureGroupOverride.buildingPrefab;
 
         return buildingPrefab;
     }
 
     public Sprite GetIcon(Civilization civ)
     {
-        if (TryGetVisualOverride(civ, out var visualOverride) && visualOverride.icon != null)
-            return visualOverride.icon;
+        if (TryGetCivVisualOverride(civ, out var civOverride) && civOverride.icon != null)
+            return civOverride.icon;
+        if (TryGetCultureGroupVisualOverride(civ, out var cultureGroupOverride) && cultureGroupOverride.icon != null)
+            return cultureGroupOverride.icon;
 
         return icon;
     }

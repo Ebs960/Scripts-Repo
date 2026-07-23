@@ -24,9 +24,9 @@ public class TransportUnitButton : MonoBehaviour
             unitNameText.text = unit.data.unitName;
         }
         
-        if (unitIconImage != null && unit.data.icon != null)
+        if (unitIconImage != null && unit.data.GetIcon(unit.owner) != null)
         {
-            unitIconImage.sprite = unit.data.icon;
+            unitIconImage.sprite = unit.data.GetIcon(unit.owner);
         }
         
         // Set up button click handler
@@ -42,4 +42,4 @@ public class TransportUnitButton : MonoBehaviour
             });
         }
     }
-} 
+}

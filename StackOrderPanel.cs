@@ -249,8 +249,8 @@ public class StackOrderPanel : MonoBehaviour
 
     private static Sprite GetUnitIcon(BaseUnit unit)
     {
-        if (unit is CombatUnit cu && cu.data != null) return cu.data.icon;
-        if (unit is WorkerUnit wu && wu.data != null) return wu.data.icon;
+        if (unit is CombatUnit cu && cu.data != null) return cu.data.GetIcon(cu.owner);
+        if (unit is WorkerUnit wu && wu.data != null) return wu.data.GetIcon(wu.owner);
         return null;
     }
 }

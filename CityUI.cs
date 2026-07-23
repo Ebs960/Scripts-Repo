@@ -557,13 +557,13 @@ if (currentCity == null)
         // Display Combat Units in units container
         foreach (var unit in availableUnits.OrderBy(u => u.productionCost))
         {
-            CreateBuildOptionButton(unit, unit.icon, unit.unitName, unit.productionCost, unitsContainer);
+            CreateBuildOptionButton(unit, unit.GetIcon(currentCity != null ? currentCity.owner : null), unit.unitName, unit.productionCost, unitsContainer);
         }
         
         // Display Worker Units also in units container
         foreach (var workerUnit in availableWorkerUnits.OrderBy(w => w.productionCost))
         {
-            CreateBuildOptionButton(workerUnit, workerUnit.icon, workerUnit.unitName, workerUnit.productionCost, unitsContainer);
+            CreateBuildOptionButton(workerUnit, workerUnit.GetIcon(currentCity != null ? currentCity.owner : null), workerUnit.unitName, workerUnit.productionCost, unitsContainer);
         }
         
         // Equipment options
