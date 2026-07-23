@@ -35,8 +35,8 @@ public class StoredUnitButton : MonoBehaviour
             Sprite s = null;
             var cu = unit as CombatUnit;
             var wu = unit as WorkerUnit;
-            if (cu != null && cu.data != null) s = cu.data.icon;
-            else if (wu != null && wu.data != null) s = wu.data.icon;
+            if (cu != null && cu.data != null) s = cu.data.GetIcon(cu.owner);
+            else if (wu != null && wu.data != null) s = wu.data.GetIcon(wu.owner);
             unitIconImage.sprite = s;
             unitIconImage.gameObject.SetActive(s != null);
         }
