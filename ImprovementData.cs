@@ -371,9 +371,8 @@ public class ImprovementData : ScriptableObject
     public Biome[] allowedBiomes;
     [Tooltip("Which underwater floor biomes this improvement can be placed on (checked against HexTileData.underwaterBiome). Leave empty to disallow underwater placement.")]
     public Biome[] allowedUnderwaterBiomes;
-    public ResourceData[] requiredResources;
-    [Tooltip("If true, only one resource in Required Resources must be present instead of every listed resource.")]
-    public bool hasSubstituteRequiredResources = false;
+    [Tooltip("If set, this improvement can only be built on a tile whose resource deposit (HexTileData.resource) matches one of these. Leave empty to allow building regardless of the tile's resource deposit.")]
+    public ResourceData[] requiredTileResourceDeposits;
 
     [Header("Tech & Culture Requirements")]
     [Tooltip("All these techs must be researched to unlock this improvement")]

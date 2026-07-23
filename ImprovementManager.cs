@@ -250,7 +250,9 @@ public class ImprovementManager : MonoBehaviour
         }
         
         if (!data.AreRequirementsMet(owner)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: requirements unmet for {data.improvementName}"); return false; }
-        if (!ResourceCost.HasRequiredResources(owner, data.requiredResources, data.hasSubstituteRequiredResources)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: required resources missing for {data.improvementName}"); return false; }
+        if (data.requiredTileResourceDeposits != null && data.requiredTileResourceDeposits.Length > 0 &&
+            (td.resource == null || System.Array.IndexOf(data.requiredTileResourceDeposits, td.resource) < 0))
+            { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: required tile resource deposit missing for {data.improvementName} tile={tileIndex}"); return false; }
 
         // Territory control checks
         bool isOwnedByBuilder = td.owner == owner;
