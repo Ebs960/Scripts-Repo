@@ -641,15 +641,15 @@ public class Herd : MonoBehaviour
         public ScriptableObject data;
         public int remainingPts;
         public int goldCost;
-        public ResourceData[] requiredResources;
+        public ResourceData[] requiredTileResourceDeposits;
         public Biome[] requiredTerrains;
 
-        public ProdEntry(ScriptableObject d, int prodCost, int gCost, ResourceData[] reqRes, Biome[] reqTerrains)
+        public ProdEntry(ScriptableObject d, int prodCost, int gCost, ResourceData[] reqTileResourceDeposits, Biome[] reqTerrains)
         {
             data = d;
             remainingPts = prodCost;
             goldCost = gCost;
-            requiredResources = reqRes;
+            requiredTileResourceDeposits = reqTileResourceDeposits;
             requiredTerrains = reqTerrains;
         }
 
@@ -897,13 +897,21 @@ public class Herd : MonoBehaviour
         {
             if (!b.buildableByHerd) return false;
             if (!b.AreRequirementsMet(owner)) return false;
-            // Check resource stockpile requirements
-            if (b.requiredResources != null && b.requiredResources.Length > 0)
+            // Tile resource deposit requirement: herd tile or a neighbor must have a matching resource deposit
+            if (b.requiredTileResourceDeposits != null && b.requiredTileResourceDeposits.Length > 0)
             {
-                foreach (var r in b.requiredResources)
+                var tsDeposit = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                if (tsDeposit == null) return false;
+                bool foundDeposit = false;
+                var depositTiles = new List<int>();
+                if (currentTileIndex >= 0) { depositTiles.Add(currentTileIndex); foreach (var n in tsDeposit.GetNeighbors(currentTileIndex)) depositTiles.Add(n); }
+                foreach (var t in depositTiles)
                 {
-                    if (owner.GetResourceCount(r) <= 0) return false;
+                    var td = tsDeposit.GetTileData(t);
+                    if (td == null || td.resource == null) continue;
+                    if (System.Array.IndexOf(b.requiredTileResourceDeposits, td.resource) >= 0) { foundDeposit = true; break; }
                 }
+                if (!foundDeposit) return false;
             }
             // Terrain requirements: ensure herd occupies or neighbors a tile matching required terrains
             if (b.requiredTerrains != null && b.requiredTerrains.Length > 0)
@@ -923,7 +931,7 @@ public class Herd : MonoBehaviour
                 if (!found) return false;
             }
 
-            var entry = new ProdEntry(b, b.productionCost, b.goldCost, b.requiredResources, b.requiredTerrains);
+            var entry = new ProdEntry(b, b.productionCost, b.goldCost, b.requiredTileResourceDeposits, b.requiredTerrains);
             productionQueue.Add(entry);
             return true;
         }
@@ -974,19 +982,6 @@ public class Herd : MonoBehaviour
         {
             // Refund gold if any
             try { if (entry.goldCost > 0) owner.AddGold(entry.goldCost); } catch { }
-            // Refund one unit of each required resource (building requirements are single-unit checks in current design)
-            try
-            {
-                if (entry.requiredResources != null)
-                {
-                    foreach (var r in entry.requiredResources)
-                    {
-                        if (r == null) continue;
-                        try { owner.AddResource(r, 1); } catch { }
-                    }
-                }
-            }
-            catch { }
         }
 
         productionQueue.RemoveAt(index);

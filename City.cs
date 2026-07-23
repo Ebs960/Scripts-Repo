@@ -24,20 +24,20 @@ public class City : MonoBehaviour
         public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, DistrictData, EquipmentData, ProjectileData, or MissileData
         public int        remainingPts;    // turns left in production
         public int        goldCost;        // for instant buy
-        public ResourceData[] requiredResources;
+        public ResourceData[] requiredTileResourceDeposits;
         public ResourceCost[] requiredResourceCosts;
         public Biome[]    requiredTerrains;
         public bool       reqCoast;        // Requires coastal city
         public bool       reqHarbor;       // Requires harbor building
 
         public ProdEntry(ScriptableObject d, int prodCost, int gCost,
-                        ResourceData[] reqRes, Biome[] reqTerrains, 
+                        ResourceData[] reqTileResourceDeposits, Biome[] reqTerrains, 
                         bool coast, bool harbor, Type t, ResourceCost[] reqResourceCosts = null)
         {
             data = d;
             remainingPts = prodCost;
             goldCost     = gCost;
-            requiredResources = reqRes;
+            requiredTileResourceDeposits = reqTileResourceDeposits;
             requiredResourceCosts = reqResourceCosts;
             requiredTerrains  = reqTerrains;
             reqCoast = coast;
@@ -1395,11 +1395,11 @@ if (UIManager.Instance != null)
                 Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
                 return false;
             }
-            if (!CanProduce(b.requiredResources, b.requiredTerrains, null, false, b.hasSubstituteRequiredResources)) return false;
+            if (!CanProduce(b.requiredTileResourceDeposits, b.requiredTerrains)) return false;
             if (!b.CanPayBuildCosts(owner)) return false;
             if (!b.ConsumeBuildCosts(owner)) return false;
             productionQueue.Add(new ProdEntry(b, b.productionCost, b.goldCost,
-                                            b.requiredResources, b.requiredTerrains,
+                                            b.requiredTileResourceDeposits, b.requiredTerrains,
                                             false, false, // Buildings don't need coast/harbor
                                             ProdEntry.Type.Building));
             return true;
@@ -1619,9 +1619,8 @@ if (UIManager.Instance != null)
     /// </summary>
     public bool BuyProduction(ScriptableObject d) {
         int cost = 0;
-        ResourceData[] reqRes = null;
+        ResourceData[] reqTileResourceDeposits = null;
         ResourceCost[] reqResourceCosts = null;
-        bool hasSubstituteRequiredResources = false;
         bool hasSubstituteResourceCosts = false;
         Biome[] reqTerr = null;
         bool requiresCoast = false;
@@ -1654,8 +1653,7 @@ if (UIManager.Instance != null)
         }
         else if (d is BuildingData b) {
             cost = b.goldCost;
-            reqRes = b.requiredResources;
-            hasSubstituteRequiredResources = b.hasSubstituteRequiredResources;
+            reqTileResourceDeposits = b.requiredTileResourceDeposits;
             reqTerr = b.requiredTerrains;
             isHarborBuilding = b.providesHarbor;
             // Tech requirements
@@ -1721,7 +1719,7 @@ if (UIManager.Instance != null)
         }
         
         // Validate other requirements
-        if (!CanProduce(reqRes, reqTerr, reqResourceCosts, hasSubstituteResourceCosts, hasSubstituteRequiredResources)) return false;
+        if (!CanProduce(reqTileResourceDeposits, reqTerr, reqResourceCosts, hasSubstituteResourceCosts)) return false;
 
         if (d is BuildingData buildingToBuy)
         {
@@ -1844,12 +1842,26 @@ if (UIManager.Instance != null)
     /// <summary>
     /// Ensure empire resources and city‐radius biomes satisfy requirements.
     /// </summary>
-    private bool CanProduce(ResourceData[] reqRes, Biome[] reqTerrains, ResourceCost[] reqResourceCosts = null, bool hasSubstituteResourceCosts = false, bool hasSubstituteRequiredResources = false) {
-        // Resources
-        if (!ResourceCost.HasRequiredResources(owner, reqRes, hasSubstituteRequiredResources)) return false;
-        
+    private bool CanProduce(ResourceData[] reqTileResourceDeposits, Biome[] reqTerrains, ResourceCost[] reqResourceCosts = null, bool hasSubstituteResourceCosts = false) {
         // Resource amount requirements
         if (!ResourceCost.CanAfford(owner, reqResourceCosts, hasSubstituteResourceCosts)) return false;
+
+        // Tile resource deposit requirement: city radius must contain a tile whose resource deposit matches one of these.
+        if (reqTileResourceDeposits != null && reqTileResourceDeposits.Length > 0) {
+            if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
+            var tsDeposit = TileSys;
+            if (tsDeposit == null) return false;
+
+            bool foundDeposit = false;
+            foreach (int n in tsDeposit.GetNeighbors(centerTileIndex)) {
+                var tdOpt2 = tsDeposit.GetTileData(n);
+                if (tdOpt2 == null || tdOpt2.resource == null) continue;
+                if (System.Array.IndexOf(reqTileResourceDeposits, tdOpt2.resource) >= 0) {
+                    foundDeposit = true; break;
+                }
+            }
+            if (!foundDeposit) return false;
+        }
 
         // Terrains
         if (reqTerrains != null && reqTerrains.Length > 0) {

@@ -257,24 +257,6 @@ public class ResourceCost
         return true;
     }
 
-    public static bool HasRequiredResources(Civilization civ, ResourceData[] resources, bool hasSubstituteResources = false)
-    {
-        if (civ == null) return false;
-        if (resources == null || resources.Length == 0) return true;
-
-        bool sawValidResource = false;
-        foreach (var resource in resources)
-        {
-            if (resource == null) continue;
-            sawValidResource = true;
-            bool hasResource = civ.GetResourceCount(resource) > 0;
-            if (hasSubstituteResources && hasResource) return true;
-            if (!hasSubstituteResources && !hasResource) return false;
-        }
-
-        return !hasSubstituteResources || !sawValidResource;
-    }
-
     public static string FormatCosts(ResourceCost[] costs, bool hasSubstituteCosts = false)
     {
         if (costs == null || costs.Length == 0) return string.Empty;

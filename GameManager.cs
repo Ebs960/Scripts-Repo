@@ -3169,7 +3169,7 @@ public class GameManager : MonoBehaviour
             case WorkerUnitData worker:
                 return new City.ProdEntry(worker, worker.productionCost, goldCost, null, worker.requiredTerrains, worker.requiresCoastalCity, worker.requiresHarbor, type, worker.requiredResourceCosts);
             case BuildingData building:
-                return new City.ProdEntry(building, building.productionCost, goldCost, building.requiredResources, building.requiredTerrains, false, false, type);
+                return new City.ProdEntry(building, building.productionCost, goldCost, building.requiredTileResourceDeposits, building.requiredTerrains, false, false, type);
             case DistrictData district:
                 return new City.ProdEntry(district, district.productionCost, goldCost, null, district.allowedBiomes, district.requiresCoastal, false, type);
             case EquipmentData equipment:
@@ -3292,7 +3292,7 @@ public class GameManager : MonoBehaviour
                                 {
                                     if (pe == null || string.IsNullOrWhiteSpace(pe.dataName)) continue;
                                     if (!buildingLookup.TryGetValue(pe.dataName, out var bd) || bd == null) continue;
-                                    var entry = new Herd.ProdEntry(bd, bd.productionCost, bd.goldCost, bd.requiredResources, bd.requiredTerrains);
+                                    var entry = new Herd.ProdEntry(bd, bd.productionCost, bd.goldCost, bd.requiredTileResourceDeposits, bd.requiredTerrains);
                                     entry.remainingPts = pe.remainingPts;
                                     entry.goldCost = pe.goldCost;
                                     targetHerd.productionQueue.Add(entry);

@@ -78,10 +78,8 @@ public class BuildingData : ScriptableObject
     [Tooltip("If true, only one valid entry in Build Resource Costs must be paid instead of every listed cost.")]
     public bool hasSubstituteBuildCosts = false;
     public bool requiresAdjacentTile;    // e.g., walls, farms
-    [Tooltip("Must have these resources in empire stockpile")]
-    public ResourceData[] requiredResources;
-    [Tooltip("If true, only one resource in Required Resources must be present instead of every listed resource.")]
-    public bool hasSubstituteRequiredResources = false;
+    [Tooltip("City must control (or be adjacent to) a tile whose resource deposit (HexTileData.resource) matches one of these. Leave empty to allow building regardless of the tile's resource deposit.")]
+    public ResourceData[] requiredTileResourceDeposits;
     [Tooltip("City must control at least one tile of these biomes")]
     public Biome[] requiredTerrains;
     public Biome[] allowedBiomes;
