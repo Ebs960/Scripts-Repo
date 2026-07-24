@@ -172,6 +172,8 @@ MonoBehaviour:
   _equippedShield: {fileID: 0}
   _equippedArmor: {fileID: 0}
   _equippedMiscellaneous: {fileID: 0}
+  _equippedHead: {fileID: 0}
+  _equippedTool: {fileID: 0}
   updateEquipmentInEditor: 1
   _activeProjectile: {fileID: 0}
   unitLabelPrefab: {fileID: 2985757512682955238, guid: 34179e55795ab524d985e7c20dba34dd, type: 3}

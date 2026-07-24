@@ -263,6 +263,36 @@ public class BuildingData : ScriptableObject
     [Tooltip("If >0, increases herd food storage capacity when this building is present for a herd")]
     public int herdStorageBonus = 0;
 
+    [Header("Natural Disaster Self-Resistance")]
+    [Tooltip("Percent chance reduction against this specific building being damaged by an earthquake. 0.10 = 10% less likely. Separate from attritionBonuses, which grants resistance to others.")]
+    [Range(0f, 1f)] public float earthquakeChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction this building takes from earthquakes. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float earthquakeDamageReductionPct = 0f;
+    [Tooltip("Percent chance reduction against this specific building being damaged by a flood. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float floodChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction this building takes from floods. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float floodDamageReductionPct = 0f;
+    [Tooltip("Percent chance reduction against this specific building being damaged by a storm. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float stormChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction this building takes from storms. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float stormDamageReductionPct = 0f;
+
+    public float GetDisasterChanceReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeChanceReductionPct,
+        NaturalDisasterType.Flood => floodChanceReductionPct,
+        NaturalDisasterType.Storm => stormChanceReductionPct,
+        _ => 0f
+    };
+
+    public float GetDisasterDamageReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeDamageReductionPct,
+        NaturalDisasterType.Flood => floodDamageReductionPct,
+        NaturalDisasterType.Storm => stormDamageReductionPct,
+        _ => 0f
+    };
+
     private bool TryGetCivVisualOverride(Civilization civ, out BuildingVisualOverride visualOverride)
     {
         if (civVisualOverrides != null && civ != null && civ.civData != null)

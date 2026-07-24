@@ -1,0 +1,376 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
+  m_Name: Fishing Boats
+  m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
+  improvementName: Fishing Boats
+  icon: {fileID: 21300000, guid: f72b3799f161e074a9eb5f06c953f9ef, type: 3}
+  description: 
+  tradeNodeCapability:
+    providesTradeNode: 0
+    nodeType: 1
+    supportedDomains: 1
+    tradeRange: 0
+    surfaceTradeRange: 0
+    maritimeTradeRange: 0
+    airTradeRange: 0
+    orbitTradeRange: 0
+    solarSpaceTradeRange: 0
+    interstellarTradeRange: 0
+    civilizationRouteCapacityBonus: 0
+    nodeThroughputCapacity: 0
+    canOriginateRoutes: 0
+    canReceiveRoutes: 1
+    canRelayRoutes: 0
+    routeGoldModifier: 0
+    raidChanceReduction: 0
+    isPlanetaryGateway: 0
+    isOrbitalGateway: 0
+  workCost: 30
+  buildGoldCost: 0
+  buildResourceCosts: []
+  constructionPrefab: {fileID: 0}
+  completePrefab: {fileID: 0}
+  destroyedPrefab: {fileID: 0}
+  civVisualOverrides: []
+  cultureGroupVisualOverrides:
+  - cultureGroup: 0
+    icon: {fileID: 21300000, guid: 0735586373c987644a79e041e133afe3, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 2
+    icon: {fileID: 21300000, guid: f6d9e4791facef942ad0c43736d1f550, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 3
+    icon: {fileID: 21300000, guid: 4009fbdff59575944a18190ec013971c, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 10
+    icon: {fileID: 21300000, guid: fcc125bef26475744baf41af25e8561e, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 13
+    icon: {fileID: 21300000, guid: 6645060202542fe4ca5e4cfd1cac1d8c, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 9
+    icon: {fileID: 21300000, guid: 42d0dd938d677eb458aea689b1345ae7, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 4
+    icon: {fileID: 21300000, guid: f72b3799f161e074a9eb5f06c953f9ef, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 12
+    icon: {fileID: 21300000, guid: c2723ddbe80877f4a8e0e012e2a4d349, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  hasSubstituteBuildCosts: 0
+  canBeDismantled: 1
+  dismantleGoldRefund: 0
+  dismantleResourceRefunds: []
+  isShelter: 0
+  shelterCapacity: 0
+  needsCity: 0
+  requiresControlledTerritory: 0
+  canBuildInNeutralTerritory: 0
+  canBuildInEnemyTerritory: 0
+  allowedBiomes: 
+  allowedUnderwaterBiomes: 
+  requiredTileResourceDeposits:
+  - {fileID: 11400000, guid: f279b25755ec0914896b32aa5625ac8f, type: 2}
+  - {fileID: 11400000, guid: 0ce1dc3f7c2203f418b4d5315a0707b9, type: 2}
+  - {fileID: 11400000, guid: c46e3e10ec73afe4dac7bd3f6d466e7f, type: 2}
+  - {fileID: 11400000, guid: 6e842d67f0390824f9a63d859b022754, type: 2}
+  requiredTechs:
+  - {fileID: 11400000, guid: e08dba9323c763740a39d60a322535c5, type: 2}
+  requiredCultures: []
+  isUnderwaterImprovement: 0
+  isOrbitalImprovement: 0
+  isMissileSilo: 0
+  siloMissileCapacity: 5
+  allowedMissileTypes: []
+  earthquakeChanceReductionPct: 0
+  earthquakeDamageReductionPct: 0
+  floodChanceReductionPct: 0
+  floodDamageReductionPct: 0
+  stormChanceReductionPct: 0
+  stormDamageReductionPct: 0
+  foodPerTurn: 2
+  productionPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  policyPointsPerTurn: 0
+  faithPerTurn: 0
+  auraBonuses: []
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empireFaithModifier: 0
+  empirePolicyPointsModifier: 0
+  resourceProductionPerTurn: []
+  ruralSpecialistSlots:
+  - slotId: Fisherman
+    displayName: Fisherman
+    icon: {fileID: 0}
+    jobType: 1
+    food: 1
+    production: 0
+    gold: 0
+    science: 0
+    culture: 0
+    faith: 0
+    policyPoints: 0
+    order: 0
+    militaryXP: 0
+    administration: 0
+    requiresWorkedTile: 0
+    consumesPopulation: 0
+  movementSpeedBonus: 0
+  isRoad: 0
+  connectedGoldPerTurn: 0
+  connectedProductionPerTurn: 0
+  connectedSciencePerTurn: 0
+  connectedCulturePerTurn: 0
+  connectedFaithPerTurn: 0
+  connectedPolicyPointsPerTurn: 0
+  isTrap: 0
+  trapDamage: 20
+  trapAffectsAnimalsOnly: 1
+  trapAffectedCategories: 
+  trapImmobilize: 0
+  trapImmobilizeTurns: 1
+  trapMaxTriggers: 1
+  trapConsumeOnDeplete: 1
+  trapFriendlySafe: 1
+  isFort: 0
+  fortAttack: 0
+  fortDefense: 0
+  fortHitPoints: 100
+  fortAttackRange: 1
+  fortAutoFireOnEnemyEntry: 1
+  fortAttacksPerTurn: 1
+  grantsZoneOfControl: 0
+  blocksZoneOfControl: 0
+  replacesImprovements:
+  - {fileID: 11400000, guid: bf721641fec11a143b26d44558090609, type: 2}
+  availableUpgrades:
+  - upgradeName: Woven Net Racks
+    upgradeId: 
+    icon: {fileID: 21300000, guid: 63cf02256c3b1b046bdea1ed4c09245b, type: 3}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    civVisualOverrides: []
+    requiredTech: {fileID: 11400000, guid: b34ee9f2dfac717488c210846f61f257, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 40
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: 9839eec9e190b4940869115c136d9589, type: 2}
+      amount: 1
+    hasSubstituteCosts: 0
+    additionalFood: 1
+    additionalProduction: 0
+    additionalGold: 0
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 0
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
+  - upgradeName: Woven Net Racks
+    upgradeId: 
+    icon: {fileID: 21300000, guid: 63cf02256c3b1b046bdea1ed4c09245b, type: 3}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    civVisualOverrides: []
+    requiredTech: {fileID: 11400000, guid: b34ee9f2dfac717488c210846f61f257, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 40
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: 9839eec9e190b4940869115c136d9589, type: 2}
+      amount: 1
+    hasSubstituteCosts: 0
+    additionalFood: 0
+    additionalProduction: 0
+    additionalGold: 1
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 0
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
+  - upgradeName: Stone Anchor
+    upgradeId: 
+    icon: {fileID: 21300000, guid: 50799d02229b53b489df9bf55035ab10, type: 3}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    civVisualOverrides: []
+    requiredTech: {fileID: 11400000, guid: 5f3e0d72a1f67af4c8915a7a5f4ceebd, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 40
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: e427caeeba215d640a24944aa420566b, type: 2}
+      amount: 1
+    hasSubstituteCosts: 0
+    additionalFood: 0
+    additionalProduction: 0
+    additionalGold: 0
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    isSwitchableOption: 1
+    upgradeSlot: 
+    upgradePath: anchor
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 0
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0

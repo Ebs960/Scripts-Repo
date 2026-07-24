@@ -135,10 +135,38 @@ public class ImprovementUpgradeData
     public int maxUpgradesInSlot = 0;
     [Tooltip("If true, building this upgrade removes lower-tier upgrades in the same slot/path from active persisted effects.")]
     public bool supersedesLowerTiersInPath = true;
-    [Tooltip("Specific upgrade ids/names that prevent this upgrade from being built when already present.")]
-    public string[] blockedByUpgradeIds;
-    [Tooltip("Specific upgrade ids/names that this upgrade blocks after being built.")]
-    public string[] blocksUpgradeIds;
+    [Tooltip("Specific upgrade ids/names that are mutually exclusive with this one. If either upgrade is built, the other cannot be built. Only needs to be listed on one side of the pair.")]
+    public string[] mutuallyExclusiveUpgradeIds;
+
+    [Header("Natural Disaster Resistance")]
+    [Tooltip("Additional percent chance reduction against being damaged by an earthquake. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float earthquakeChanceReductionPct = 0f;
+    [Tooltip("Additional percent damage reduction from earthquakes. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float earthquakeDamageReductionPct = 0f;
+    [Tooltip("Additional percent chance reduction against being damaged by a flood. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float floodChanceReductionPct = 0f;
+    [Tooltip("Additional percent damage reduction from floods. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float floodDamageReductionPct = 0f;
+    [Tooltip("Additional percent chance reduction against being damaged by a storm. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float stormChanceReductionPct = 0f;
+    [Tooltip("Additional percent damage reduction from storms. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float stormDamageReductionPct = 0f;
+
+    public float GetDisasterChanceReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeChanceReductionPct,
+        NaturalDisasterType.Flood => floodChanceReductionPct,
+        NaturalDisasterType.Storm => stormChanceReductionPct,
+        _ => 0f
+    };
+
+    public float GetDisasterDamageReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeDamageReductionPct,
+        NaturalDisasterType.Flood => floodDamageReductionPct,
+        NaturalDisasterType.Storm => stormDamageReductionPct,
+        _ => 0f
+    };
 
     public string GetUpgradeKey()
     {
@@ -378,6 +406,36 @@ public class ImprovementData : ScriptableObject
     public int siloMissileCapacity = 5;
     [Tooltip("Specific missile types this silo is allowed to store. Leave empty to allow all types.")]
     public MissileData[] allowedMissileTypes;
+
+    [Header("Natural Disaster Resistance")]
+    [Tooltip("Percent chance reduction against being damaged by an earthquake. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float earthquakeChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction from earthquakes. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float earthquakeDamageReductionPct = 0f;
+    [Tooltip("Percent chance reduction against being damaged by a flood. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float floodChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction from floods. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float floodDamageReductionPct = 0f;
+    [Tooltip("Percent chance reduction against being damaged by a storm. 0.10 = 10% less likely.")]
+    [Range(0f, 1f)] public float stormChanceReductionPct = 0f;
+    [Tooltip("Percent damage reduction from storms. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float stormDamageReductionPct = 0f;
+
+    public float GetDisasterChanceReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeChanceReductionPct,
+        NaturalDisasterType.Flood => floodChanceReductionPct,
+        NaturalDisasterType.Storm => stormChanceReductionPct,
+        _ => 0f
+    };
+
+    public float GetDisasterDamageReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeDamageReductionPct,
+        NaturalDisasterType.Flood => floodDamageReductionPct,
+        NaturalDisasterType.Storm => stormDamageReductionPct,
+        _ => 0f
+    };
 
     [Header("Yield Bonus (per turn)")]
     public int foodPerTurn;

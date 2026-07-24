@@ -47,6 +47,8 @@ public class ImprovementManager : MonoBehaviour
     private readonly List<UnitJob> unitJobs = new();
     // Parallel pipeline for worker-built worker units
     private readonly List<WorkerJob> workerJobs = new();
+    // Free, fixed-duration (1 turn) worker repair jobs for tiles damaged by natural disasters
+    private readonly List<RepairJob> repairJobs = new();
     
     // Planet generator reference
     private PlanetGenerator planetGenerator;
@@ -176,10 +178,14 @@ public class ImprovementManager : MonoBehaviour
 
     void OnEnable()
     {
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.OnRoundStarted += HandleRoundStartedForRepairs;
     }
 
     void OnDisable()
     {
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.OnRoundStarted -= HandleRoundStartedForRepairs;
     }
 
     void OnDestroy()
@@ -1086,6 +1092,83 @@ public class ImprovementManager : MonoBehaviour
         {
             if (remainingWork < 0) remainingWork = 0;
         }
+    }
+
+    /// <summary>
+    /// Represents a free, worker-initiated repair of a natural-disaster-damaged tile improvement.
+    /// Always resolves after exactly 1 turn regardless of worker work points.
+    /// </summary>
+    private class RepairJob
+    {
+        public int tileIndex;
+        public int planetIndex;
+        public Civilization owner;
+        public int turnsRemaining;
+
+        public RepairJob(int tileIndex, int planetIndex, Civilization owner)
+        {
+            this.tileIndex = tileIndex;
+            this.planetIndex = planetIndex;
+            this.owner = owner;
+            this.turnsRemaining = 1;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if a repair job is already in progress for the given tile.
+    /// </summary>
+    public bool IsRepairJobActive(int tileIndex, int planetIndex = -1)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        return repairJobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex);
+    }
+
+    /// <summary>
+    /// Returns true if the improvement on this tile is currently disaster-damaged and not already being repaired.
+    /// </summary>
+    public bool CanRepairDisasterDamageAt(int tileIndex, int planetIndex = -1)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (tileData == null || !tileData.HasImprovement || !tileData.isDisasterDamaged) return false;
+        return !IsRepairJobActive(tileIndex, planetIndex);
+    }
+
+    /// <summary>
+    /// Starts a free repair job for a disaster-damaged tile improvement. Resolves after 1 turn.
+    /// </summary>
+    public bool StartRepairJob(int tileIndex, Civilization owner, int planetIndex = -1)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        if (!CanRepairDisasterDamageAt(tileIndex, planetIndex)) return false;
+
+        repairJobs.Add(new RepairJob(tileIndex, planetIndex, owner));
+        return true;
+    }
+
+    private void HandleRoundStartedForRepairs(int round)
+    {
+        if (repairJobs.Count == 0) return;
+        for (int i = repairJobs.Count - 1; i >= 0; i--)
+        {
+            var job = repairJobs[i];
+            job.turnsRemaining--;
+            if (job.turnsRemaining > 0) continue;
+
+            CompleteRepairJob(job);
+            repairJobs.RemoveAt(i);
+        }
+    }
+
+    private void CompleteRepairJob(RepairJob job)
+    {
+        var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
+        if (tileData == null) return;
+
+        tileData.isDisasterDamaged = false;
+        ts?.SetTileData(job.tileIndex, tileData);
     }
 
     /// <summary>

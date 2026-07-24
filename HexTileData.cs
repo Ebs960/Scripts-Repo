@@ -89,6 +89,12 @@ public class HexTileData
     /// <summary>True when this tile currently has active missile radiation pollution.</summary>
     public bool IsPolluted => pollutionLevel > 0 && pollutionTurnsRemaining > 0;
 
+    // --- Natural Disasters ---
+    [Tooltip("True when this tile's improvement has been damaged by a natural disaster. Damaged improvements produce no yield until repaired by a worker (free, takes 1 turn).")]
+    public bool isDisasterDamaged = false;
+    [Tooltip("The type of natural disaster that most recently damaged this tile's improvement.")]
+    public NaturalDisasterType lastDisasterType;
+
     // --- Static Features ---
     [Tooltip("Improvement built here, if any")]
     public ImprovementData improvement;
@@ -428,7 +434,7 @@ public class HexTileData
             y.Faith = Mathf.RoundToInt((y.Faith + tileAgg.faithAdd) * (1f + tileAgg.faithPct));
         }
 
-        if (HasImprovement)
+        if (HasImprovement && !isDisasterDamaged)
         {
             int f = improvement.foodPerTurn;
             int p = improvement.productionPerTurn;
@@ -460,7 +466,7 @@ public class HexTileData
         }
 
         // Add contributions from any built upgrades on this improvement (additional yields)
-        if (HasImprovement && builtUpgrades != null && builtUpgrades.Count > 0 && improvement != null && improvement.availableUpgrades != null)
+        if (HasImprovement && !isDisasterDamaged && builtUpgrades != null && builtUpgrades.Count > 0 && improvement != null && improvement.availableUpgrades != null)
         {
             foreach (var built in builtUpgrades)
             {

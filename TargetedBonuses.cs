@@ -805,6 +805,20 @@ public class AttritionModifierBonus
     public float famineDamageReductionPct;
     [Tooltip("Percent reduction to biome/environmental damage from damaging terrain tiles like desert, tundra, lava, and similar hazards. 0.10 = 10% reduction.")]
     public float biomeDamageReductionPct;
+
+    [Header("Natural Disaster Reductions")]
+    [Tooltip("Percent chance reduction against earthquakes striking owned tiles/buildings. 0.10 = 10% reduction.")]
+    public float earthquakeChanceReductionPct;
+    [Tooltip("Percent damage reduction from earthquakes. 0.10 = 10% reduction.")]
+    public float earthquakeDamageReductionPct;
+    [Tooltip("Percent chance reduction against floods striking owned tiles/buildings. 0.10 = 10% reduction.")]
+    public float floodChanceReductionPct;
+    [Tooltip("Percent damage reduction from floods. 0.10 = 10% reduction.")]
+    public float floodDamageReductionPct;
+    [Tooltip("Percent chance reduction against storms striking owned tiles/buildings. 0.10 = 10% reduction.")]
+    public float stormChanceReductionPct;
+    [Tooltip("Percent damage reduction from storms. 0.10 = 10% reduction.")]
+    public float stormDamageReductionPct;
 }
 
 public struct AttritionModifierTotals
@@ -812,10 +826,44 @@ public struct AttritionModifierTotals
     public float winterDamageReductionPct;
     public float famineDamageReductionPct;
     public float biomeDamageReductionPct;
+    public float earthquakeChanceReductionPct;
+    public float earthquakeDamageReductionPct;
+    public float floodChanceReductionPct;
+    public float floodDamageReductionPct;
+    public float stormChanceReductionPct;
+    public float stormDamageReductionPct;
 
     public float WinterDamageMultiplier => Mathf.Max(0f, 1f - winterDamageReductionPct);
     public float FamineDamageMultiplier => Mathf.Max(0f, 1f - famineDamageReductionPct);
     public float BiomeDamageMultiplier => Mathf.Max(0f, 1f - biomeDamageReductionPct);
+    public float EarthquakeChanceMultiplier => Mathf.Max(0f, 1f - earthquakeChanceReductionPct);
+    public float EarthquakeDamageMultiplier => Mathf.Max(0f, 1f - earthquakeDamageReductionPct);
+    public float FloodChanceMultiplier => Mathf.Max(0f, 1f - floodChanceReductionPct);
+    public float FloodDamageMultiplier => Mathf.Max(0f, 1f - floodDamageReductionPct);
+    public float StormChanceMultiplier => Mathf.Max(0f, 1f - stormChanceReductionPct);
+    public float StormDamageMultiplier => Mathf.Max(0f, 1f - stormDamageReductionPct);
+
+    public float GetChanceMultiplier(NaturalDisasterType type)
+    {
+        return type switch
+        {
+            NaturalDisasterType.Earthquake => EarthquakeChanceMultiplier,
+            NaturalDisasterType.Flood => FloodChanceMultiplier,
+            NaturalDisasterType.Storm => StormChanceMultiplier,
+            _ => 1f
+        };
+    }
+
+    public float GetDamageMultiplier(NaturalDisasterType type)
+    {
+        return type switch
+        {
+            NaturalDisasterType.Earthquake => EarthquakeDamageMultiplier,
+            NaturalDisasterType.Flood => FloodDamageMultiplier,
+            NaturalDisasterType.Storm => StormDamageMultiplier,
+            _ => 1f
+        };
+    }
 }
 
 [System.Serializable]

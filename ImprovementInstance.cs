@@ -249,6 +249,24 @@ public class ImprovementInstance : MonoBehaviour
         }
     }
 
+    /// <summary>Combined chance-of-damage reduction (0-1) from this improvement's base data plus any applied upgrades, for the given disaster type.</summary>
+    public float GetDisasterChanceReduction(NaturalDisasterType type)
+    {
+        float reduction = data != null ? data.GetDisasterChanceReductionPct(type) : 0f;
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+            if (upgrade != null) reduction += upgrade.GetDisasterChanceReductionPct(type);
+        return Mathf.Clamp01(reduction);
+    }
+
+    /// <summary>Combined damage reduction (0-1) from this improvement's base data plus any applied upgrades, for the given disaster type.</summary>
+    public float GetDisasterDamageReduction(NaturalDisasterType type)
+    {
+        float reduction = data != null ? data.GetDisasterDamageReductionPct(type) : 0f;
+        foreach (var upgrade in EnumerateAppliedUpgrades())
+            if (upgrade != null) reduction += upgrade.GetDisasterDamageReductionPct(type);
+        return Mathf.Clamp01(reduction);
+    }
+
     public IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
     {
         if (data?.auraBonuses != null)

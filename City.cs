@@ -144,6 +144,8 @@ public class City : MonoBehaviour
     [System.NonSerialized] private List<bool> buildingUpkeepSatisfied = new List<bool>();
     [System.NonSerialized] private List<ResourceUpkeepFailureBehavior> buildingUpkeepFailureBehavior = new List<ResourceUpkeepFailureBehavior>();
     [System.NonSerialized] private List<float> buildingUpkeepFailureMultiplier = new List<float>();
+    [System.NonSerialized] private List<bool> buildingDisasterDamaged = new List<bool>();
+    [System.NonSerialized] private List<int> buildingRepairTurnsRemaining = new List<int>();
     // Track (DistrictData, its spawned GameObject, tile index) for districts
     public List<(DistrictData data, GameObject instance, int tileIndex)> builtDistricts = new List<(DistrictData, GameObject, int)>();
     public List<CombatUnitData> producedUnits = new List<CombatUnitData>();
@@ -204,6 +206,10 @@ public class City : MonoBehaviour
 
     [Tooltip("Immunity cooldowns: disease → remaining immune turns after recovery.")]
     public Dictionary<DiseaseData, int> diseaseImmunities = new Dictionary<DiseaseData, int>();
+
+    [Header("Natural Disasters")]
+    [Tooltip("Active natural disaster city-wide effects (temporary yield penalty / population loss) currently afflicting this city.")]
+    public List<NaturalDisasterCityEffect> activeDisasterEffects = new List<NaturalDisasterCityEffect>();
 
     [HideInInspector]
     public float faminePopulationLossProgress = 0f;
@@ -587,6 +593,8 @@ if (UIManager.Instance != null)
 
         // 1b) Apply disease yield penalties
         ApplyDiseaseYieldPenalties();
+        // 1c) Apply natural disaster yield penalties
+        ApplyDisasterYieldPenalties();
         
         // 2) Process loyalty
         ProcessLoyalty();
@@ -604,6 +612,9 @@ if (UIManager.Instance != null)
         orderRating = Mathf.Max(0, orderRating - unemploymentOrderPenalty);
         // 5b) Apply disease morale/loyalty/population effects
         ApplyDiseaseTurnEffects();
+        // 5c) Apply natural disaster population effects and tick building repairs
+        ApplyDisasterTurnEffects();
+        TickBuildingRepairs();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
         // Surrender is handled in TakeDamage() when a unit attacks
         // If defense reaches 0 from other means, check for units on tile
@@ -727,6 +738,32 @@ if (UIManager.Instance != null)
     }
 
     /// <summary>
+    /// Applies a uniform yield penalty to all cached yields based on active natural disaster city effects.
+    /// </summary>
+    private void ApplyDisasterYieldPenalties()
+    {
+        if (activeDisasterEffects == null || activeDisasterEffects.Count == 0) return;
+
+        float CivDamageMultiplier(NaturalDisasterType type) =>
+            owner != null ? owner.GetAttritionModifierTotals(this, null).GetDamageMultiplier(type) : 1f;
+
+        float penalty = 0f;
+        foreach (var effect in activeDisasterEffects)
+        {
+            if (effect == null || effect.data == null) continue;
+            penalty += effect.data.cityYieldPenaltyPct * CivDamageMultiplier(effect.data.disasterType);
+        }
+
+        float mult = Mathf.Clamp01(1f - penalty);
+        cachedFood       = Mathf.RoundToInt(cachedFood * mult);
+        cachedProduction = Mathf.RoundToInt(cachedProduction * mult);
+        cachedGold       = Mathf.RoundToInt(cachedGold * mult);
+        cachedScience    = Mathf.RoundToInt(cachedScience * mult);
+        cachedCulture    = Mathf.RoundToInt(cachedCulture * mult);
+        cachedFaith      = Mathf.RoundToInt(cachedFaith * mult);
+    }
+
+    /// <summary>
     /// Applies per-turn disease effects: population loss, morale drop, loyalty drop.
     /// Also ticks disease durations and handles recovery/immunity.
     /// </summary>
@@ -775,6 +812,53 @@ if (UIManager.Instance != null)
         }
         foreach (var key in expiredKeys)
             diseaseImmunities.Remove(key);
+    }
+
+    /// <summary>
+    /// Applies this city's active natural disaster effects for the turn: accumulates population loss
+    /// and ticks/removes expired effects. Mirrors ApplyDiseaseTurnEffects.
+    /// </summary>
+    private void ApplyDisasterTurnEffects()
+    {
+        if (activeDisasterEffects == null || activeDisasterEffects.Count == 0) return;
+
+        for (int i = activeDisasterEffects.Count - 1; i >= 0; i--)
+        {
+            var effect = activeDisasterEffects[i];
+            if (effect == null || effect.data == null) { activeDisasterEffects.RemoveAt(i); continue; }
+
+            if (effect.data.cityPopulationLossPerTurn > 0f)
+            {
+                effect.accumulatedPopulationLoss += effect.data.cityPopulationLossPerTurn;
+                while (effect.accumulatedPopulationLoss >= 1f && level > 1)
+                {
+                    level--;
+                    effect.accumulatedPopulationLoss -= 1f;
+                }
+            }
+
+            if (!effect.TickDuration())
+                activeDisasterEffects.RemoveAt(i);
+        }
+    }
+
+    /// <summary>
+    /// Applies (or refreshes) a natural disaster's city-wide effect on this city. Mirrors InfectWithDisease:
+    /// if the same disaster type is already active, its duration is simply refreshed rather than stacking.
+    /// </summary>
+    public void ApplyNaturalDisasterEffect(NaturalDisasterData disaster)
+    {
+        if (disaster == null) return;
+
+        var existing = activeDisasterEffects?.Find(e => e != null && e.data == disaster);
+        if (existing != null)
+        {
+            existing.turnsRemaining = Mathf.Max(existing.turnsRemaining, disaster.cityEffectDuration);
+            return;
+        }
+
+        activeDisasterEffects ??= new List<NaturalDisasterCityEffect>();
+        activeDisasterEffects.Add(new NaturalDisasterCityEffect(disaster, disaster.cityEffectDuration));
     }
 
     /// <summary>
@@ -2531,6 +2615,8 @@ Destroy(oldTuple.instance);
             buildingUpkeepSatisfied.Add(true);
             buildingUpkeepFailureBehavior.Add(ResourceUpkeepFailureBehavior.Deactivate);
             buildingUpkeepFailureMultiplier.Add(1f);
+            buildingDisasterDamaged.Add(false);
+            buildingRepairTurnsRemaining.Add(-1);
         }
 
         if (buildingUpkeepSatisfied.Count > count)
@@ -2538,6 +2624,8 @@ Destroy(oldTuple.instance);
             buildingUpkeepSatisfied.RemoveRange(count, buildingUpkeepSatisfied.Count - count);
             buildingUpkeepFailureBehavior.RemoveRange(count, buildingUpkeepFailureBehavior.Count - count);
             buildingUpkeepFailureMultiplier.RemoveRange(count, buildingUpkeepFailureMultiplier.Count - count);
+            buildingDisasterDamaged.RemoveRange(count, buildingDisasterDamaged.Count - count);
+            buildingRepairTurnsRemaining.RemoveRange(count, buildingRepairTurnsRemaining.Count - count);
         }
     }
 
@@ -2569,6 +2657,9 @@ Destroy(oldTuple.instance);
         if (buildingIndex < 0 || buildingIndex >= buildingUpkeepSatisfied.Count)
             return false;
 
+        if (buildingDisasterDamaged[buildingIndex])
+            return true;
+
         return !buildingUpkeepSatisfied[buildingIndex] && buildingUpkeepFailureBehavior[buildingIndex] == ResourceUpkeepFailureBehavior.Deactivate;
     }
 
@@ -2578,6 +2669,9 @@ Destroy(oldTuple.instance);
         if (buildingIndex < 0 || buildingIndex >= buildingUpkeepSatisfied.Count)
             return 1f;
 
+        if (buildingDisasterDamaged[buildingIndex])
+            return 0f;
+
         if (buildingUpkeepSatisfied[buildingIndex])
             return 1f;
 
@@ -2585,6 +2679,67 @@ Destroy(oldTuple.instance);
             return 0f;
 
         return Mathf.Clamp01(buildingUpkeepFailureMultiplier[buildingIndex]);
+    }
+
+    /// <summary>Returns true if the building at this index has been damaged by a natural disaster and is non-operational.</summary>
+    public bool IsBuildingDisasterDamaged(int buildingIndex)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingDisasterDamaged.Count)
+            return false;
+        return buildingDisasterDamaged[buildingIndex];
+    }
+
+    /// <summary>Marks (or clears) a building as disaster-damaged. Clearing also cancels any in-progress repair.</summary>
+    public void SetBuildingDisasterDamaged(int buildingIndex, bool damaged)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingDisasterDamaged.Count)
+            return;
+
+        buildingDisasterDamaged[buildingIndex] = damaged;
+        if (!damaged)
+            buildingRepairTurnsRemaining[buildingIndex] = -1;
+    }
+
+    /// <summary>Returns the index of the first built building matching the given data, or -1 if not found.</summary>
+    public int GetBuildingIndex(BuildingData data)
+    {
+        if (data == null || builtBuildings == null) return -1;
+        return builtBuildings.FindIndex(b => b.data == data);
+    }
+
+    /// <summary>Returns true if the building at this index is disaster-damaged and not already being repaired.</summary>
+    public bool CanRepairDamagedBuilding(int buildingIndex)
+    {
+        EnsureBuildingUpkeepState();
+        if (buildingIndex < 0 || buildingIndex >= buildingDisasterDamaged.Count)
+            return false;
+        return buildingDisasterDamaged[buildingIndex] && buildingRepairTurnsRemaining[buildingIndex] < 0;
+    }
+
+    /// <summary>Starts a free, 1-turn repair job for a disaster-damaged building.</summary>
+    public bool StartBuildingRepair(int buildingIndex)
+    {
+        if (!CanRepairDamagedBuilding(buildingIndex))
+            return false;
+        buildingRepairTurnsRemaining[buildingIndex] = 1;
+        return true;
+    }
+
+    /// <summary>Ticks any in-progress building repair jobs by one turn, clearing disaster damage on completion.</summary>
+    private void TickBuildingRepairs()
+    {
+        EnsureBuildingUpkeepState();
+        for (int i = 0; i < buildingRepairTurnsRemaining.Count; i++)
+        {
+            if (buildingRepairTurnsRemaining[i] < 0)
+                continue;
+
+            buildingRepairTurnsRemaining[i]--;
+            if (buildingRepairTurnsRemaining[i] <= 0)
+                SetBuildingDisasterDamaged(i, false);
+        }
     }
 
     public IEnumerable<(BuildingData data, GameObject instance, float upkeepMultiplier)> EnumerateOperationalBuildings()
@@ -2603,6 +2758,26 @@ Destroy(oldTuple.instance);
                 continue;
 
             yield return (data, instance, GetBuildingOperationalMultiplier(i));
+        }
+    }
+
+    /// <summary>Same as EnumerateOperationalBuildings, but also yields the building's index (needed to target repairs/damage).</summary>
+    public IEnumerable<(int index, BuildingData data, GameObject instance, float upkeepMultiplier)> EnumerateOperationalBuildingsWithIndex()
+    {
+        EnsureBuildingUpkeepState();
+        if (builtBuildings == null)
+            yield break;
+
+        for (int i = 0; i < builtBuildings.Count; i++)
+        {
+            if (IsBuildingDeactivated(i))
+                continue;
+
+            var (data, instance) = builtBuildings[i];
+            if (data == null)
+                continue;
+
+            yield return (i, data, instance, GetBuildingOperationalMultiplier(i));
         }
     }
 

@@ -165,6 +165,22 @@ public class EquipmentData : ScriptableObject
     [Range(0f, 1f)]
     public float weatherDamageReduction = 0f;
 
+    [Header("Natural Disaster Resistance")]
+    [Tooltip("Percent damage reduction from earthquakes while this equipment is worn. 0.10 = 10% less damage. Reductions from all equipped items are added together, then capped at 1 (100%).")]
+    [Range(0f, 1f)] public float earthquakeDamageReductionPct = 0f;
+    [Tooltip("Percent damage reduction from floods while this equipment is worn. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float floodDamageReductionPct = 0f;
+    [Tooltip("Percent damage reduction from storms while this equipment is worn. 0.10 = 10% less damage.")]
+    [Range(0f, 1f)] public float stormDamageReductionPct = 0f;
+
+    public float GetDisasterDamageReductionPct(NaturalDisasterType type) => type switch
+    {
+        NaturalDisasterType.Earthquake => earthquakeDamageReductionPct,
+        NaturalDisasterType.Flood => floodDamageReductionPct,
+        NaturalDisasterType.Storm => stormDamageReductionPct,
+        _ => 0f
+    };
+
     public bool IsValidForUnit(CombatUnit unit, Civilization civ = null)
     {
         if (unit == null) return false;

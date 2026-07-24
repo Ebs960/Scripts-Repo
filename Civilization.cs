@@ -1931,6 +1931,12 @@ public class Civilization : MonoBehaviour
         totals.winterDamageReductionPct += bonus.winterDamageReductionPct;
         totals.famineDamageReductionPct += bonus.famineDamageReductionPct;
         totals.biomeDamageReductionPct += bonus.biomeDamageReductionPct;
+        totals.earthquakeChanceReductionPct += bonus.earthquakeChanceReductionPct;
+        totals.earthquakeDamageReductionPct += bonus.earthquakeDamageReductionPct;
+        totals.floodChanceReductionPct += bonus.floodChanceReductionPct;
+        totals.floodDamageReductionPct += bonus.floodDamageReductionPct;
+        totals.stormChanceReductionPct += bonus.stormChanceReductionPct;
+        totals.stormDamageReductionPct += bonus.stormDamageReductionPct;
     }
 
     public AttritionModifierTotals GetAttritionModifierTotals(City cityContext = null, Herd herdContext = null)

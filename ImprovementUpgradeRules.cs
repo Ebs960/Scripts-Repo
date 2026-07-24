@@ -58,7 +58,7 @@ public static class ImprovementUpgradeRules
             return false;
         }
 
-        if (ContainsKey(upgrade.blockedByUpgradeIds, builtKeys))
+        if (ContainsKey(upgrade.mutuallyExclusiveUpgradeIds, builtKeys))
         {
             reason = "Blocked by another upgrade choice.";
             return false;
@@ -70,7 +70,7 @@ public static class ImprovementUpgradeRules
             if (built == null) continue;
             string builtKey = GetKey(built);
 
-            if (ContainsKey(built.blocksUpgradeIds, upgradeKey))
+            if (ContainsKey(built.mutuallyExclusiveUpgradeIds, upgradeKey))
             {
                 reason = "Blocked by another upgrade choice.";
                 return false;

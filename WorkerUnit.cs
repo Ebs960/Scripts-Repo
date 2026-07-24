@@ -504,6 +504,36 @@ public class WorkerUnit : BaseUnit
         return true;
     }
 
+    /// <summary>Can this worker repair natural-disaster damage on the given tile (adjacent or current)?</summary>
+    public bool CanRepairDisasterDamageAt(int tileIndex)
+    {
+        if (ImprovementManager.Instance == null) return false;
+        if (!IsAdjacentOrSame(tileIndex)) return false;
+        return ImprovementManager.Instance.CanRepairDisasterDamageAt(tileIndex, planetIndex);
+    }
+
+    /// <summary>Starts a free, 1-turn repair job for natural-disaster damage on the given tile.</summary>
+    public void RepairDisasterDamageAt(int tileIndex)
+    {
+        if (!CanRepairDisasterDamageAt(tileIndex)) return;
+        ImprovementManager.Instance.StartRepairJob(tileIndex, owner, planetIndex);
+    }
+
+    /// <summary>Can this worker repair a natural-disaster-damaged building in the given city? Worker must be on the city's center tile.</summary>
+    public bool CanRepairDamagedBuildingInCity(City city, int buildingIndex)
+    {
+        if (city == null) return false;
+        if (planetIndex != city.planetIndex || currentTileIndex != city.centerTileIndex) return false;
+        return city.CanRepairDamagedBuilding(buildingIndex);
+    }
+
+    /// <summary>Starts a free, 1-turn repair job for a natural-disaster-damaged building in the given city.</summary>
+    public void RepairDamagedBuildingInCity(City city, int buildingIndex)
+    {
+        if (!CanRepairDamagedBuildingInCity(city, buildingIndex)) return;
+        city.StartBuildingRepair(buildingIndex);
+    }
+
     #endregion
 
     #region Stats and Bonuses
