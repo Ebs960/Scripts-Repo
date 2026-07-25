@@ -227,9 +227,9 @@ MonoBehaviour:
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 0
-    isSwitchableOption: 0
+    isSwitchableOption: 1
     upgradeSlot: 
-    upgradePath: 
+    upgradePath: nets
     exclusiveGroupId: 
     pathTier: 0
     allowMultipleInSlot: 0
@@ -301,7 +301,9 @@ MonoBehaviour:
     allowMultipleInSlot: 0
     maxUpgradesInSlot: 0
     supersedesLowerTiersInPath: 0
-    mutuallyExclusiveUpgradeIds: []
+    mutuallyExclusiveUpgradeIds:
+    - Woven Net Racks
+    - Weighted Fishing Nets
     earthquakeChanceReductionPct: 0
     earthquakeDamageReductionPct: 0
     floodChanceReductionPct: 0
@@ -368,6 +370,140 @@ MonoBehaviour:
     maxUpgradesInSlot: 0
     supersedesLowerTiersInPath: 0
     mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0.25
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0.25
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0.3
+    stormDamageReductionPct: 0
+  - upgradeName: Trap Basket Array
+    upgradeId: 
+    icon: {fileID: 21300000, guid: 27af081e9c7bbe545ab76503e962ccec, type: 3}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    civVisualOverrides: []
+    requiredTech: {fileID: 11400000, guid: b34ee9f2dfac717488c210846f61f257, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 40
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: 9839eec9e190b4940869115c136d9589, type: 2}
+      amount: 1
+    hasSubstituteCosts: 0
+    additionalFood: 0
+    additionalProduction: 0
+    additionalGold: 1
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    isSwitchableOption: 1
+    upgradeSlot: 
+    upgradePath: traps
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 0
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
+  - upgradeName: Weighted Fishing Nets
+    upgradeId: 
+    icon: {fileID: 21300000, guid: 8e6f85ac2335e514c99781837166cad2, type: 3}
+    description: 
+    makesVisualChange: 0
+    attachPrefabs: []
+    attachLocalPositions: []
+    attachLocalEulerAngles: []
+    replacePrefab: {fileID: 0}
+    civVisualOverrides: []
+    requiredTech: {fileID: 11400000, guid: e2403fb374533274784d565fb7260306, type: 2}
+    requiredCulture: {fileID: 0}
+    goldCost: 40
+    resourceCosts:
+    - resource: {fileID: 11400000, guid: 9839eec9e190b4940869115c136d9589, type: 2}
+      amount: 1
+    hasSubstituteCosts: 0
+    additionalFood: 2
+    additionalProduction: 0
+    additionalGold: 0
+    additionalScience: 0
+    additionalCulture: 0
+    additionalPolicyPoints: 0
+    additionalFaith: 0
+    additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
+    defenseAdd: 0
+    defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
+    grantsZoneOfControl: 0
+    blocksZoneOfControl: 0
+    uniqueUpgrade: 0
+    isSwitchableOption: 1
+    upgradeSlot: 
+    upgradePath: nets
+    exclusiveGroupId: 
+    pathTier: 1
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds:
+    - Trap Basket Array
+    - Bait Basket
     earthquakeChanceReductionPct: 0
     earthquakeDamageReductionPct: 0
     floodChanceReductionPct: 0

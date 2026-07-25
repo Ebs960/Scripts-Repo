@@ -229,7 +229,7 @@ MonoBehaviour:
     uniqueUpgrade: 0
     isSwitchableOption: 0
     upgradeSlot: 
-    upgradePath: 
+    upgradePath: nets
     exclusiveGroupId: 
     pathTier: 0
     allowMultipleInSlot: 0
@@ -242,9 +242,9 @@ MonoBehaviour:
     floodDamageReductionPct: 0
     stormChanceReductionPct: 0
     stormDamageReductionPct: 0
-  - upgradeName: Woven Net Racks
+  - upgradeName: Trap Basket Array
     upgradeId: 
-    icon: {fileID: 21300000, guid: 63cf02256c3b1b046bdea1ed4c09245b, type: 3}
+    icon: {fileID: 21300000, guid: 27af081e9c7bbe545ab76503e962ccec, type: 3}
     description: 
     makesVisualChange: 0
     attachPrefabs: []
@@ -295,13 +295,14 @@ MonoBehaviour:
     uniqueUpgrade: 0
     isSwitchableOption: 0
     upgradeSlot: 
-    upgradePath: 
+    upgradePath: traps
     exclusiveGroupId: 
     pathTier: 0
     allowMultipleInSlot: 0
     maxUpgradesInSlot: 0
     supersedesLowerTiersInPath: 0
-    mutuallyExclusiveUpgradeIds: []
+    mutuallyExclusiveUpgradeIds:
+    - Woven Net Racks
     earthquakeChanceReductionPct: 0
     earthquakeDamageReductionPct: 0
     floodChanceReductionPct: 0
@@ -368,9 +369,9 @@ MonoBehaviour:
     maxUpgradesInSlot: 0
     supersedesLowerTiersInPath: 0
     mutuallyExclusiveUpgradeIds: []
-    earthquakeChanceReductionPct: 0
+    earthquakeChanceReductionPct: 0.25
     earthquakeDamageReductionPct: 0
-    floodChanceReductionPct: 0
+    floodChanceReductionPct: 0.25
     floodDamageReductionPct: 0
-    stormChanceReductionPct: 0
+    stormChanceReductionPct: 0.3
     stormDamageReductionPct: 0
