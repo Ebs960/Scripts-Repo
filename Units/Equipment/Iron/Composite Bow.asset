@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.composite.bow
   equipmentName: Composite Bow
-  description: "Composite Bow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 1521f95a90a80e74390f1640131c4f50, type: 3}
   equipmentPrefab: {fileID: 6699692670475189323, guid: 07da1c7efa8a8bb4c9d30115bf9279ff, type: 3}
   equipmentAge: 4

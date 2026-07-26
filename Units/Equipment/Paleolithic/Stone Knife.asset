@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.stone.knife
   equipmentName: Stone Knife
-  description: "Stone Knife: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 463e221dcdfd81646b05eb1a167dde6e, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.pot.helmet
   equipmentName: Pot Helmet
-  description: "Pot Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: dda9491a1b88d4541ae9a13b865fadda, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 10

@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.flint.axe
   equipmentName: Flint Axe
-  description: "Flint Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 85674b91c22dfca478d58c45fe966f36, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 1

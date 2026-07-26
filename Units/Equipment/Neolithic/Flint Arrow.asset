@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.flint.arrow
   projectileName: Flint Arrow
-  description: "Flint Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   projectileAge: 1
   icon: {fileID: 21300000, guid: 7d691c1991178e74a9298bc0a4cda684, type: 3}
   category: 0

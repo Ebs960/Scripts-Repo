@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.equipment.wood.club
   m_EditorClassIdentifier:
   equipmentName: Wood Club
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 0
   rarity: 0
   gameplayTags:

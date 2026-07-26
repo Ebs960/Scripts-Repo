@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.wheel.lock.musket
   equipmentName: Wheel-Lock Musket
-  description: "Wheel-Lock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 00c405a8894bc4440999c6c14f59cc16, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 10

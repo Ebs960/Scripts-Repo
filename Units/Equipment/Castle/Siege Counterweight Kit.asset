@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.siege.counterweight.kit
   equipmentName: Siege Counterweight Kit
-  description: "Siege Counterweight Kit: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 8774e08efda41874d9bc7b1a3d03422f, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

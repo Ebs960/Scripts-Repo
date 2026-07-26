@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.plug.bayonet
   equipmentName: Plug Bayonet
-  description: "Plug Bayonet: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: aed0a11101e4e19489f3cf149843ce47, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 10

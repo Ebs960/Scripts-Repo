@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.equipment.iron.chestplate
   m_EditorClassIdentifier:
   equipmentName: Iron Chestplate
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 4
   rarity: 0
   gameplayTags:

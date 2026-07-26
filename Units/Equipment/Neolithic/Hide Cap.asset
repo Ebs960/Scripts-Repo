@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.hide.cap
   equipmentName: Hide Cap
-  description: "Hide Cap: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 639ef6c14f3f79d46a135348fb8db435, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 1

@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.equipment.wood.shield
   m_EditorClassIdentifier:
   equipmentName: Wood Shield
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 1
   rarity: 0
   gameplayTags:

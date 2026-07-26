@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.arbalest
   equipmentName: Arbalest
-  description: "Arbalest: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: f390f56e5c912c645b1131a322b1774e, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 9

@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.steel.pike
   equipmentName: Steel Pike
-  description: "Steel Pike: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 9ef49844d4584db4c804b5e300bde4ce, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

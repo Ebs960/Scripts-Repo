@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.bronze.curved.sword
   equipmentName: Bronze Curved Sword
-  description: "Bronze Curved Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: a86b138200922944498b11427aa75a3e, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

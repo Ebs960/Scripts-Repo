@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.steel.breastplate
   equipmentName: Steel Breastplate
-  description: "Steel Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 61012f2af2fd5804d85b23cece9dfc68, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

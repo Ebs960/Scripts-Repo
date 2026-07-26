@@ -54,7 +54,6 @@ public class EquipmentData : ScriptableObject
     [Tooltip("Stable, generator-owned identifier. Never derive save-game identity from the display name.")]
     public string stableId;
     public string equipmentName;
-    [TextArea(2, 5)] public string description;
     public Sprite icon;
     [Tooltip("3D model that will be instantiated when this equipment is attached to a unit")]
     public GameObject equipmentPrefab;

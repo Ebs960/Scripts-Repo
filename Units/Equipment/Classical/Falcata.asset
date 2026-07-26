@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.falcata
   equipmentName: Falcata
-  description: "Falcata: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: f2778853c126e5947b2ad45971795b7c, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 5

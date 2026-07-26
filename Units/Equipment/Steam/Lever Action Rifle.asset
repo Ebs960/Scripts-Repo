@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.lever.action.rifle
   equipmentName: Lever Action Rifle
-  description: "Lever Action Rifle: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 2ede467b76c6d4d45a8bf991d3c546e7, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 12

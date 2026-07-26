@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.flintlock.carbine
   equipmentName: Flintlock Carbine
-  description: "Flintlock Carbine: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 7fc489d5a1201324487f13d6dca67889, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 11

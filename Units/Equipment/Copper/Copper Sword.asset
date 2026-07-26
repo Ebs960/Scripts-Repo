@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.sword
   equipmentName: Copper Sword
-  description: "Copper Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 084bcd0cc9b78ab4784d55d26ea5f8d0, type: 3}
   equipmentPrefab: {fileID: 7710034824581246751, guid: 1e8fb9c5e1af6384a8db6b807f0fa11b, type: 3}
   equipmentAge: 2

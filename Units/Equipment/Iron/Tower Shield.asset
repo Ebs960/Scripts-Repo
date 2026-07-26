@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.tower.shield
   equipmentName: Tower Shield
-  description: "Tower Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 77d9e65c80a11db42a070dc0a3595fd4, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4

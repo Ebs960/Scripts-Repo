@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.equipment.stone.axe
   m_EditorClassIdentifier:
   equipmentName: Stone Axe
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 1
   rarity: 0
   gameplayTags:

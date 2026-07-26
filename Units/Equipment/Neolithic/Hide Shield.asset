@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.hide.shield
   equipmentName: Hide Shield
-  description: "Hide Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 3b8f80a288b99704e9e1c54f8382e42d, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 1
