@@ -11,46 +11,78 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Flint Spear
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.flint.spear
   equipmentName: Flint Spear
-  icon: {fileID: 0}
-  equipmentPrefab: {fileID: 2439332583970785748, guid: 963a5423947c705489fa1cd77c32482b, type: 3}
+  description: "Flint Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: aaca8a96201c13049a7e6b2a2af36d0d, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 1
+  rarity: 2
+  gameplayTags:
+  - weapon
+  - anti-cavalry
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
-  useEquipmentProjectileSpawn: 0
-  isTwoHanded: 1
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 0
   targetUnit: 0
-  attackBonusAgainst:
-  - unitType: 25
-    value: 2.2
+  attackBonusAgainst: []
   defenseBonusAgainst: []
-  combatModifiersAgainst: []
+  combatModifiersAgainst:
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 21
+    attackAdd: 1
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 22
+    attackAdd: 1
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes: 00000000
+  allowedUnitTypes:
+  - 0
+  - 7
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 3f605ba1460d7674ba2587a74833bd8b, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: a06776ae073f3aa42bf0394f85d35345, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 10
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 24
+  goldCost: 42
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
-  attackBonus: 2
+  attackBonus: 0
+  meleeAttackBonus: 2
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -59,3 +91,6 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   reducesWeatherDamage: 0
   weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

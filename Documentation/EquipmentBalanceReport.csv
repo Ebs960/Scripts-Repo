@@ -1,0 +1,148 @@
+stableId,displayName,age,kind,slot,role,productionCost,goldCost,basePowerBudget,powerClass,targeted,tradeoffs,reviewStatus
+projectile.bronze.arrow,Bronze Arrow,BronzeAge,Projectile,Ammunition,ammunition contribution,14,24,0.12,standard,False,,Requires Unity simulation
+equipment.bronze.axe,Bronze Axe,BronzeAge,Equipment,Weapon,general purpose equipment,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.breastplate,Bronze Breastplate,BronzeAge,Equipment,Body,durability,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.curved.sword,Bronze Curved Sword,BronzeAge,Equipment,Weapon,general purpose equipment,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.helmet,Bronze Helmet,BronzeAge,Equipment,Head,minor durability,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.lance,Bronze Lance,BronzeAge,Equipment,Weapon,general purpose equipment,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.mace,Bronze Mace,BronzeAge,Equipment,Weapon,armor-breaking melee weapon,40,70,0.2,specialized,True,,Requires Unity simulation
+projectile.bronze.poison.arrow,Bronze Poison Arrow,BronzeAge,Projectile,Ammunition,damage-over-time ammunition,14,24,0.12,specialized,False,,Requires Unity simulation
+equipment.bronze.shield,Bronze Shield,BronzeAge,Equipment,Shield,general and ranged protection,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.spear,Bronze Spear,BronzeAge,Equipment,Weapon,anti-cavalry specialization,40,70,0.2,specialized,True,,Requires Unity simulation
+equipment.bronze.sword,Bronze Sword,BronzeAge,Equipment,Weapon,general purpose equipment,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.two.handed.axe,Bronze Two-Handed Axe,BronzeAge,Equipment,Weapon,general purpose equipment,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.war.standard,Bronze War Standard,BronzeAge,Equipment,Miscellaneous,friendly morale aura,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.bronze.warhammer,Bronze Warhammer,BronzeAge,Equipment,Weapon,armor-breaking melee weapon,40,70,0.2,specialized,True,,Requires Unity simulation
+projectile.flaming.arrow,Flaming Arrow,BronzeAge,Projectile,Ammunition,incendiary ammunition,14,24,0.12,specialized,False,,Requires Unity simulation
+equipment.leather.breastplate,Leather Breastplate,BronzeAge,Equipment,Body,durability,40,70,0.2,standard,False,,Requires Unity simulation
+equipment.leather.shield,Leather Shield,BronzeAge,Equipment,Shield,general and ranged protection,40,70,0.2,standard,False,,Requires Unity simulation
+projectile.bodkin.arrows,Bodkin Arrows,CastleAge,Projectile,Ammunition,narrow armor penetration,28,49,0.12,specialized,True,,Requires Unity simulation
+equipment.great.helm,Great Helm,CastleAge,Equipment,Head,minor durability,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.great.sword,Great Sword,CastleAge,Equipment,Weapon,general purpose equipment,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.iron.halberd,Iron Halberd,CastleAge,Equipment,Weapon,anti-cavalry specialization,80,140,0.2,specialized,True,,Requires Unity simulation
+equipment.longbow,Longbow,CastleAge,Equipment,Weapon,general purpose equipment,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.siege.counterweight.kit,Siege Counterweight Kit,CastleAge,Equipment,Miscellaneous,battlefield utility,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.steel.breastplate,Steel Breastplate,CastleAge,Equipment,Body,durability,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.steel.buckler,Steel Buckler,CastleAge,Equipment,Shield,general and ranged protection,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.steel.halberd,Steel Halberd,CastleAge,Equipment,Weapon,anti-cavalry specialization,80,140,0.2,specialized,True,,Requires Unity simulation
+projectile.steel.javelin,Steel Javelin,CastleAge,Projectile,Ammunition,ammunition contribution,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.steel.pike,Steel Pike,CastleAge,Equipment,Weapon,anti-cavalry specialization,80,140,0.2,specialized,True,,Requires Unity simulation
+equipment.steel.spear,Steel Spear,CastleAge,Equipment,Weapon,anti-cavalry specialization,80,140,0.2,specialized,True,,Requires Unity simulation
+equipment.steel.sword,Steel Sword,CastleAge,Equipment,Weapon,general purpose equipment,80,140,0.2,standard,False,,Requires Unity simulation
+equipment.caltrops,Caltrops,ClassicalAge,Equipment,Miscellaneous,anti-cavalry defensive utility,56,98,0.2,specialized,True,,Requires Unity simulation
+equipment.falcata,Falcata,ClassicalAge,Equipment,Weapon,general purpose equipment,56,98,0.2,standard,False,,Requires Unity simulation
+equipment.falx,Falx,ClassicalAge,Equipment,Weapon,armor-breaking melee weapon,56,98,0.2,specialized,True,,Requires Unity simulation
+equipment.iron.horse.armor,Iron Horse Armor,ClassicalAge,Equipment,Body,durability,56,98,0.2,standard,False,,Requires Unity simulation
+equipment.lamellar.breastplate,Lamellar Breastplate,ClassicalAge,Equipment,Body,durability,56,98,0.2,standard,False,,Requires Unity simulation
+projectile.pilum,Pilum,ClassicalAge,Projectile,Ammunition,ammunition contribution,56,98,0.2,standard,False,,Requires Unity simulation
+equipment.reinforced.torsion.cables,Reinforced Torsion Cables,ClassicalAge,Equipment,Miscellaneous,battlefield utility,56,98,0.2,standard,False,,Requires Unity simulation
+equipment.backsword,Backsword,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.buff.coat,Buff Coat,ColonialAge,Equipment,Body,durability,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.demi.lance,Demi Lance,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.half.pike,Half Pike,ColonialAge,Equipment,Weapon,anti-cavalry specialization,96,168,0.2,specialized,True,,Requires Unity simulation
+equipment.matchlock.musket,Matchlock Musket,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.partisan,Partisan,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.plug.bayonet,Plug Bayonet,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.pot.helmet,Pot Helmet,ColonialAge,Equipment,Head,minor durability,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.steel.cuirass,Steel Cuirass,ColonialAge,Equipment,Body,durability,96,168,0.2,standard,False,,Requires Unity simulation
+equipment.wheel.lock.musket,Wheel-Lock Musket,ColonialAge,Equipment,Weapon,general purpose equipment,96,168,0.2,standard,False,,Requires Unity simulation
+projectile.copper.arrow,Copper Arrow,CopperAge,Projectile,Ammunition,ammunition contribution,11,20,0.12,standard,False,,Requires Unity simulation
+equipment.copper.axe,Copper Axe,CopperAge,Equipment,Weapon,general purpose equipment,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.copper.helmet,Copper Helmet,CopperAge,Equipment,Head,minor durability,32,56,0.2,standard,False,,Requires Unity simulation
+projectile.copper.javelin,Copper Javelin,CopperAge,Projectile,Ammunition,ammunition contribution,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.copper.shield,Copper Shield,CopperAge,Equipment,Shield,general and ranged protection,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.copper.spear,Copper Spear,CopperAge,Equipment,Weapon,anti-cavalry specialization,32,56,0.2,specialized,True,,Requires Unity simulation
+equipment.copper.sword,Copper Sword,CopperAge,Equipment,Weapon,general purpose equipment,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.copper.tools,Copper Tools,CopperAge,Equipment,Tool,worker output,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.copper.war.banner,Copper War Banner,CopperAge,Equipment,Miscellaneous,friendly morale aura,32,56,0.2,standard,False,,Requires Unity simulation
+equipment.iron.lance,Iron Lance,DarkAge,Equipment,Weapon,general purpose equipment,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.mail.helmet,Mail Helmet,DarkAge,Equipment,Head,minor durability,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.mail.horse.armor,Mail Horse Armor,DarkAge,Equipment,Body,durability,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.mail.shirt,Mail Shirt,DarkAge,Equipment,Body,durability,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.padded.coat,Padded Coat,DarkAge,Equipment,Body,durability,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.recurve.bow,Recurve Bow,DarkAge,Equipment,Weapon,general purpose equipment,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.throwing.axe,Throwing Axe,DarkAge,Equipment,Weapon,general purpose equipment,64,112,0.2,standard,False,,Requires Unity simulation
+equipment.two.headed.axe,Two-Headed Axe,DarkAge,Equipment,Weapon,general purpose equipment,64,112,0.2,standard,False,,Requires Unity simulation
+projectile.chain.shot,Chain Shot,EnlightenmentAge,Projectile,Ammunition,ammunition contribution,36,64,0.12,standard,False,,Requires Unity simulation
+equipment.flintlock.carbine,Flintlock Carbine,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+equipment.flintlock.musket,Flintlock Musket,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+equipment.flintlock.pistol,Flintlock Pistol,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+projectile.grape.shot,Grape Shot,EnlightenmentAge,Projectile,Ammunition,anti-personnel ammunition,36,64,0.12,specialized,True,,Requires Unity simulation
+projectile.grenade,Grenade,EnlightenmentAge,Projectile,Ammunition,ammunition contribution,36,64,0.12,standard,False,,Requires Unity simulation
+equipment.sabre,Sabre,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+equipment.socket.bayonet,Socket Bayonet,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+equipment.sword.bayonet,Sword Bayonet,EnlightenmentAge,Equipment,Weapon,general purpose equipment,104,182,0.2,standard,False,,Requires Unity simulation
+equipment.billhook,Billhook,FeudalAge,Equipment,Weapon,general purpose equipment,72,126,0.2,standard,False,,Requires Unity simulation
+projectile.crossbow.bolts,Crossbow Bolts,FeudalAge,Projectile,Ammunition,ammunition contribution,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.crossbow,Crossbow,FeudalAge,Equipment,Weapon,general purpose equipment,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.gambeson,Gambeson,FeudalAge,Equipment,Body,durability,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.kite.shield,Kite Shield,FeudalAge,Equipment,Shield,general and ranged protection,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.knight.lance,Knight Lance,FeudalAge,Equipment,Weapon,general purpose equipment,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.long.sword,Long Sword,FeudalAge,Equipment,Weapon,general purpose equipment,72,126,0.2,standard,False,,Requires Unity simulation
+equipment.pavise,Pavise,FeudalAge,Equipment,Shield,general and ranged protection,72,126,0.2,standard,False,-1 movement reflects encumbrance,Requires Unity simulation
+equipment.bolt.action.rifle,Bolt Action Rifle,ImperialAge,Equipment,Weapon,general purpose equipment,120,210,0.2,standard,False,,Requires Unity simulation
+projectile.high.explosive.shell,High Explosive Shell,ImperialAge,Projectile,Ammunition,incendiary ammunition,42,74,0.12,specialized,False,,Requires Unity simulation
+equipment.needle.gun,Needle Gun,ImperialAge,Equipment,Weapon,general purpose equipment,120,210,0.2,standard,False,,Requires Unity simulation
+equipment.rifle.cartridge,Rifle Cartridge,ImperialAge,Equipment,Weapon,general purpose equipment,120,210,0.2,standard,False,,Requires Unity simulation
+projectile.shrapnel.shell,Shrapnel Shell,ImperialAge,Projectile,Ammunition,anti-personnel ammunition,42,74,0.12,specialized,True,,Requires Unity simulation
+equipment.stripper.clip,Stripper Clip,ImperialAge,Equipment,Miscellaneous,battlefield utility,120,210,0.2,standard,False,,Requires Unity simulation
+projectile.torpedo,Torpedo,ImperialAge,Projectile,Ammunition,narrow armor penetration,42,74,0.12,specialized,True,,Requires Unity simulation
+projectile.barbed.iron.javelin,Barbed Iron Javelin,IronAge,Projectile,Ammunition,ammunition contribution,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.composite.bow,Composite Bow,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.hooked.iron.spear,Hooked Iron Spear,IronAge,Equipment,Weapon,anti-cavalry specialization,48,84,0.2,specialized,True,,Requires Unity simulation
+projectile.iron.arrow,Iron Arrow,IronAge,Projectile,Ammunition,ammunition contribution,17,29,0.12,standard,False,,Requires Unity simulation
+equipment.iron.axe,Iron Axe,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.breastplate,Iron Breastplate,IronAge,Equipment,Body,durability,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.curved.sword,Iron Curved Sword,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.helmet,Iron Helmet,IronAge,Equipment,Head,minor durability,48,84,0.2,standard,False,,Requires Unity simulation
+projectile.iron.javelin,Iron Javelin,IronAge,Projectile,Ammunition,ammunition contribution,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.mace,Iron Mace,IronAge,Equipment,Weapon,armor-breaking melee weapon,48,84,0.2,specialized,True,,Requires Unity simulation
+equipment.iron.shield,Iron Shield,IronAge,Equipment,Shield,general and ranged protection,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.short.sword,Iron Short Sword,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.spear,Iron Spear,IronAge,Equipment,Weapon,anti-cavalry specialization,48,84,0.2,specialized,True,,Requires Unity simulation
+equipment.iron.sword,Iron Sword,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.tools,Iron Tools,IronAge,Equipment,Tool,worker output,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.two.handed.axe,Iron Two Handed Axe,IronAge,Equipment,Weapon,general purpose equipment,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.iron.warhammer,Iron Warhammer,IronAge,Equipment,Weapon,armor-breaking melee weapon,48,84,0.2,specialized,True,,Requires Unity simulation
+equipment.long.iron.spear,Long Iron Spear,IronAge,Equipment,Weapon,anti-cavalry specialization,48,84,0.2,specialized,True,,Requires Unity simulation
+projectile.poisoned.iron.arrow,Poisoned Iron Arrow,IronAge,Projectile,Ammunition,damage-over-time ammunition,17,29,0.12,specialized,False,,Requires Unity simulation
+equipment.round.iron.shield,Round Iron Shield,IronAge,Equipment,Shield,general and ranged protection,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.scale.armor,Scale Armor,IronAge,Equipment,Body,durability,48,84,0.2,standard,False,,Requires Unity simulation
+equipment.tower.shield,Tower Shield,IronAge,Equipment,Shield,general and ranged protection,48,84,0.2,standard,False,-1 movement reflects encumbrance,Requires Unity simulation
+equipment.atlatl,Atlatl,NeolithicAge,Equipment,Weapon,general purpose equipment,24,42,0.2,standard,False,,Requires Unity simulation
+projectile.flint.arrow,Flint Arrow,NeolithicAge,Projectile,Ammunition,ammunition contribution,8,15,0.12,standard,False,,Requires Unity simulation
+equipment.flint.axe,Flint Axe,NeolithicAge,Equipment,Weapon,general purpose equipment,24,42,0.2,standard,False,,Requires Unity simulation
+equipment.flint.spear,Flint Spear,NeolithicAge,Equipment,Weapon,anti-cavalry specialization,24,42,0.2,specialized,True,,Requires Unity simulation
+equipment.hide.cap,Hide Cap,NeolithicAge,Equipment,Head,minor durability,24,42,0.2,standard,False,,Requires Unity simulation
+equipment.hide.shield,Hide Shield,NeolithicAge,Equipment,Shield,general and ranged protection,24,42,0.2,standard,False,,Requires Unity simulation
+equipment.obsidian.club,Obsidian Club,NeolithicAge,Equipment,Weapon,general purpose equipment,24,42,0.2,standard,False,,Requires Unity simulation
+projectile.poisoned.flint.arrow,Poisoned Flint Arrow,NeolithicAge,Projectile,Ammunition,damage-over-time ammunition,8,15,0.12,specialized,False,,Requires Unity simulation
+equipment.polished.stone.adze,Polished Stone Adze,NeolithicAge,Equipment,Tool,worker output,24,42,0.2,standard,False,,Requires Unity simulation
+equipment.simple.bow,Simple Bow,NeolithicAge,Equipment,Weapon,general purpose equipment,24,42,0.2,standard,False,,Requires Unity simulation
+projectile.stone.arrow,Stone Arrow,NeolithicAge,Projectile,Ammunition,ammunition contribution,8,15,0.12,standard,False,,Requires Unity simulation
+equipment.bone.war.charm,Bone War Charm,PaleolithicAge,Equipment,Miscellaneous,battlefield utility,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.fire.hardened.wooden.spear,Fire Hardened Wooden Spear,PaleolithicAge,Equipment,Weapon,anti-cavalry specialization,16,28,0.2,specialized,True,,Requires Unity simulation
+equipment.hand.axe,Hand Axe,PaleolithicAge,Equipment,Tool,worker output,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.stone.club,Stone Club,PaleolithicAge,Equipment,Weapon,general purpose equipment,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.stone.knife,Stone Knife,PaleolithicAge,Equipment,Weapon,general purpose equipment,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.stone.spear,Stone Spear,PaleolithicAge,Equipment,Weapon,anti-cavalry specialization,16,28,0.2,specialized,True,,Requires Unity simulation
+equipment.warm.hide.wrap,Warm Hide Wrap,PaleolithicAge,Equipment,Body,cold-weather protection,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.wooden.club,Wooden Club,PaleolithicAge,Equipment,Weapon,general purpose equipment,16,28,0.2,standard,False,,Requires Unity simulation
+equipment.wooden.spear,Wooden Spear,PaleolithicAge,Equipment,Weapon,anti-cavalry specialization,16,28,0.2,specialized,True,,Requires Unity simulation
+equipment.arbalest,Arbalest,RenaissanceAge,Equipment,Weapon,general purpose equipment,88,154,0.2,standard,False,,Requires Unity simulation
+projectile.armor.piercing.crossbow.bolt,Armor Piercing Crossbow Bolt,RenaissanceAge,Projectile,Ammunition,narrow armor penetration,88,154,0.2,standard,True,,Requires Unity simulation
+equipment.arquebus,Arquebus,RenaissanceAge,Equipment,Weapon,general purpose equipment,88,154,0.2,standard,False,,Requires Unity simulation
+projectile.barbed.crossbow.bolt,Barbed Crossbow Bolt,RenaissanceAge,Projectile,Ammunition,ammunition contribution,88,154,0.2,standard,False,,Requires Unity simulation
+equipment.full.plate,Full Plate,RenaissanceAge,Equipment,Body,durability,88,154,0.2,standard,False,-1 movement reflects encumbrance,Requires Unity simulation
+equipment.half.plate,Half Plate,RenaissanceAge,Equipment,Body,durability,88,154,0.2,standard,False,,Requires Unity simulation
+equipment.plate.horse.armor,Plate Horse Armor,RenaissanceAge,Equipment,Body,durability,88,154,0.2,standard,False,,Requires Unity simulation
+equipment.rapier,Rapier,RenaissanceAge,Equipment,Weapon,general purpose equipment,88,154,0.2,standard,False,,Requires Unity simulation
+projectile.armor.piercing.shells,Armor-Piercing Shells,SteamAge,Projectile,Ammunition,narrow armor penetration,39,69,0.12,specialized,True,,Requires Unity simulation
+equipment.breech.loading.carbine,Breech Loading Carbine,SteamAge,Equipment,Weapon,general purpose equipment,112,196,0.2,standard,False,,Requires Unity simulation
+equipment.breech.loading.rifle,Breech Loading Rifle,SteamAge,Equipment,Weapon,general purpose equipment,112,196,0.2,standard,False,,Requires Unity simulation
+projectile.canister.shot,Canister Shot,SteamAge,Projectile,Ammunition,anti-personnel ammunition,39,69,0.12,specialized,True,,Requires Unity simulation
+projectile.explosive.shells,Explosive Shells,SteamAge,Projectile,Ammunition,incendiary ammunition,39,69,0.12,specialized,False,,Requires Unity simulation
+equipment.lever.action.rifle,Lever Action Rifle,SteamAge,Equipment,Weapon,general purpose equipment,112,196,0.2,standard,False,,Requires Unity simulation
+projectile.minie.ball,Minie Ball,SteamAge,Projectile,Ammunition,ammunition contribution,39,69,0.12,standard,False,,Requires Unity simulation
+equipment.percussion.cap.musket,Percussion Cap Musket,SteamAge,Equipment,Weapon,general purpose equipment,112,196,0.2,standard,False,,Requires Unity simulation
+equipment.revolver,Revolver,SteamAge,Equipment,Weapon,general purpose equipment,112,196,0.2,standard,False,,Requires Unity simulation

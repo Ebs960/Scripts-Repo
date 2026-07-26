@@ -12,7 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e5433f08a6f4374490f6b305cf9efcf, type: 3}
   m_Name: Longbow Arrow
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
+  stableId: legacy.projectile.longbow.arrow
   projectileName: Longbow Arrow
+  description: "Legacy projectile retained for existing unit and weapon references."
+  projectileAge: 0
   icon: {fileID: 0}
   category: 0
   productionCost: 18

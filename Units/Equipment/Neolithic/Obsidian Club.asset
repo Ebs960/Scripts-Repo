@@ -11,48 +11,63 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Obsidian Club
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.obsidian.club
   equipmentName: Obsidian Club
-  icon: {fileID: 0}
+  description: "Obsidian Club: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: 4795673e3fa517448aedf0618b039c99, type: 3}
   equipmentPrefab: {fileID: 0}
+  equipmentAge: 1
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
-  useEquipmentProjectileSpawn: 0
-  isTwoHanded: 1
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 0
   targetUnit: 0
-  attackBonusAgainst:
-  - unitType: 0
-    value: 1
-  - unitType: 1
-    value: 1
+  attackBonusAgainst: []
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 03000000
+  allowedUnitTypes:
+  - 1
+  - 2
+  - 3
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 3f605ba1460d7674ba2587a74833bd8b, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: a06776ae073f3aa42bf0394f85d35345, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 4
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 24
+  goldCost: 42
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
-  attackBonus: 2
+  attackBonus: 0
+  meleeAttackBonus: 3
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -61,3 +76,6 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   reducesWeatherDamage: 0
   weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

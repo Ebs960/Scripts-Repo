@@ -12,27 +12,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e5433f08a6f4374490f6b305cf9efcf, type: 3}
   m_Name: Bronze Arrow
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
+  stableId: projectile.bronze.arrow
   projectileName: Bronze Arrow
-  icon: {fileID: 0}
+  description: "Bronze Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  projectileAge: 3
+  icon: {fileID: 21300000, guid: 0206f1e81ab3e9f4ba14fa4395a6c30f, type: 3}
   category: 0
-  productionCost: 15
-  goldCost: 0
-  requiredResourceCosts: []
-  upkeepPerTurn: []
-  substituteResourceGroups: []
-  requiredManufacturingCapabilities: []
-  goldCost: 60
+  productionCost: 14
+  goldCost: 24
+  resourceCosts: []
   requiredTechs:
   - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: b2a4de63f86c436d9fd343907f2d4307, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  damage: 3
+  damage: 2
   statusEffect: {fileID: 0}
+  onHitEffects: []
   statusEffectDuration: 0
-  statusEffectName: 
-  launchSound: {fileID: 8300000, guid: 037220d162d62884b9f7b0076bb5b9a6, type: 3}
-  impactSound: {fileID: 8300000, guid: bc22cac934bd28d4bbcfa1ae098ef936, type: 3}
+  statusEffectName:
+  projectilePrefab: {fileID: 0}
+  heldProjectilePrefab: {fileID: 0}
+  impactVfxPrefab: {fileID: 0}
+  launchSound: {fileID: 0}
+  impactSound: {fileID: 0}
+  launchSpeed: 18
+  flightArcHeight: 0.75
+  maxFlightDuration: 1.25
+  rotateAlongVelocity: 1
+  heldLocalPosition: {x: 0, y: 0, z: 0}
+  heldLocalEulerAngles: {x: 0, y: 0, z: 0}
+  heldLocalScale: {x: 1, y: 1, z: 1}
+  nockedLocalPosition: {x: 0, y: 0, z: 0}
+  nockedLocalEulerAngles: {x: 0, y: 0, z: 0}
+  nockedLocalScale: {x: 1, y: 1, z: 1}

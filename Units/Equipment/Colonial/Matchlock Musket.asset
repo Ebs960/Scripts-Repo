@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Matchlock Musket
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.matchlock.musket
+  equipmentName: Matchlock Musket
+  description: "Matchlock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: 69fbf1d93fb8b90458b4cbf124baaa43, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 10
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
+  equipmentType: 0
+  category: 5
+  projectileData: {fileID: 0}
+  projectileCategory: 2
+  usesProjectiles: 1
+  projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 0
+  targetUnit: 0
+  attackBonusAgainst: []
+  defenseBonusAgainst: []
+  combatModifiersAgainst: []
+  workPointsBonus: 0
+  allowedUnitTypes:
+  - 14
+  - 24
+  minimumLevel: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: 84effc4f2443c0640adf9630297cb922, type: 2}
+  requiredCultures: []
+  requiredBuildings: []
+  productionCost: 96
+  goldCost: 168
+  requiredResourceCosts: []
+  upkeepPerTurn: []
+  substituteResourceGroups: []
+  requiredManufacturingCapabilities: []
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 8
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
+  defenseBonus: 0
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities:
+  - {fileID: 11400000, guid: 16d3cd865efade1c49bb413d6b78c8cd, type: 2}
+  onHitEffects: []
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

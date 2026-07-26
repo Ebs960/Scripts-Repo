@@ -24,6 +24,15 @@ public enum EquipmentTarget
     Both
 }
 
+public enum EquipmentRarity
+{
+    Common = 0,
+    Uncommon = 1,
+    Rare = 2,
+    Elite = 3,
+    Legendary = 4
+}
+
 [System.Serializable]
 public struct UnitTypeFloat
 {
@@ -42,10 +51,16 @@ public class SubstituteResourceGroup
 public class EquipmentData : ScriptableObject
 {
     [Header("Identity")]
+    [Tooltip("Stable, generator-owned identifier. Never derive save-game identity from the display name.")]
+    public string stableId;
     public string equipmentName;
+    [TextArea(2, 5)] public string description;
     public Sprite icon;
     [Tooltip("3D model that will be instantiated when this equipment is attached to a unit")]
     public GameObject equipmentPrefab;
+    public TechAge equipmentAge;
+    public EquipmentRarity rarity = EquipmentRarity.Common;
+    public string[] gameplayTags;
 
     [Header("Type")]
     [Tooltip("Equipment slot this item will occupy")]
@@ -146,6 +161,10 @@ public class EquipmentData : ScriptableObject
     public EquipmentStatBonus[] conditionalStatBonuses;
     [Tooltip("Auras projected by units while this equipment is equipped.")]
     public UnitAuraBonus[] auraBonuses;
+    [Tooltip("Passive abilities supplied only while this item is equipped.")]
+    public AbilityData[] grantedAbilities;
+    [Tooltip("Shared effects evaluated by the combat hit pipeline.")]
+    public StatusEffectApplication[] onHitEffects;
 
     [Header("Per-Turn Yields (optional)")]
     [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]

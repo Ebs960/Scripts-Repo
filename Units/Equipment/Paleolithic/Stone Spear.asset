@@ -11,46 +11,78 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Stone Spear
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.stone.spear
   equipmentName: Stone Spear
-  icon: {fileID: 0}
-  equipmentPrefab: {fileID: 1435970405429590110, guid: 3b19b47f0a7a69e4d9d1394bbe4a7bf7, type: 3}
+  description: "Stone Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: 470719d82d0606d49bc84ad823318bef, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 0
+  rarity: 2
+  gameplayTags:
+  - weapon
+  - anti-cavalry
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
-  useEquipmentProjectileSpawn: 0
-  isTwoHanded: 1
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 0
   targetUnit: 0
-  attackBonusAgainst:
-  - unitType: 25
-    value: 1
+  attackBonusAgainst: []
   defenseBonusAgainst: []
-  combatModifiersAgainst: []
+  combatModifiersAgainst:
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 21
+    attackAdd: 1
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 22
+    attackAdd: 1
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes: 00000000
+  allowedUnitTypes:
+  - 0
+  - 7
   minimumLevel: 1
   requiredTechs:
-  - {fileID: 11400000, guid: f26334ec00b86d64e9179772671f6d79, type: 2}
+  - {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: 1c260bf3627dd386c4fe0d2a9c87171a, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 10
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 16
+  goldCost: 28
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
-  attackBonus: 1
+  attackBonus: 0
+  meleeAttackBonus: 1
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -59,3 +91,6 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   reducesWeatherDamage: 0
   weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0
