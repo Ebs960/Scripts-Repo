@@ -67,6 +67,18 @@ public abstract class BaseUnit : MonoBehaviour
     // Backwards-compatible equipped reference and abilities
     public EquipmentData equipped { get; protected set; }
     public List<Ability> unlockedAbilities { get; protected set; } = new List<Ability>();
+    [System.NonSerialized] private readonly List<Ability> equipmentGrantedAbilities = new List<Ability>();
+    public IReadOnlyList<Ability> EquipmentGrantedAbilities => equipmentGrantedAbilities;
+
+    protected IEnumerable<Ability> EffectiveAbilities
+    {
+        get
+        {
+            if (unlockedAbilities != null)
+                foreach (var ability in unlockedAbilities) if (ability != null) yield return ability;
+            foreach (var ability in equipmentGrantedAbilities) if (ability != null) yield return ability;
+        }
+    }
     
     public event System.Action OnEquipmentChanged;
 
@@ -498,7 +510,7 @@ public abstract class BaseUnit : MonoBehaviour
 
     // ── Status Effect API ──
 
-    public void ApplyStatusEffect(StatusEffectData data, BaseUnit source = null)
+    public void ApplyStatusEffect(StatusEffectData data, BaseUnit source = null, int durationOverride = -1, float magnitudeMultiplier = 1f)
     {
         if (data == null) return;
 
@@ -512,11 +524,11 @@ public abstract class BaseUnit : MonoBehaviour
                     activeStatusEffects.Remove(existing);
                     break;
                 case StatusEffectStacking.Refresh:
-                    existing.remainingTurns = data.baseDuration;
+                    existing.remainingTurns = durationOverride >= 0 ? durationOverride : data.baseDuration;
                     return;
                 case StatusEffectStacking.Stack:
-                    existing.magnitude += data.magnitude;
-                    existing.remainingTurns = Mathf.Max(existing.remainingTurns, data.baseDuration);
+                    existing.magnitude += data.magnitude * Mathf.Max(0f, magnitudeMultiplier);
+                    existing.remainingTurns = Mathf.Max(existing.remainingTurns, durationOverride >= 0 ? durationOverride : data.baseDuration);
                     return;
                 case StatusEffectStacking.Ignore:
                     return;
@@ -524,6 +536,8 @@ public abstract class BaseUnit : MonoBehaviour
         }
 
         var effect = new StatusEffect(data, source);
+        if (durationOverride >= 0) effect.remainingTurns = durationOverride;
+        effect.magnitude *= Mathf.Max(0f, magnitudeMultiplier);
         activeStatusEffects.Add(effect);
 
         // Spawn VFX
@@ -802,6 +816,7 @@ public abstract class BaseUnit : MonoBehaviour
             if (_equippedWeapon == value) return;
             if (value != null && !IsEquipmentCompatible(value)) return;
             _equippedWeapon = value;
+            RebuildEquipmentGrantedAbilities();
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
         }
@@ -814,6 +829,7 @@ public abstract class BaseUnit : MonoBehaviour
         {
             if (_equippedProjectileWeapon == value) return;
             _equippedProjectileWeapon = value;
+            RebuildEquipmentGrantedAbilities();
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
         }
@@ -827,6 +843,7 @@ public abstract class BaseUnit : MonoBehaviour
             if (_equippedShield == value) return;
             if (value != null && (!IsEquipmentCompatible(value) || HasTwoHandedWeaponEquipped())) return;
             _equippedShield = value;
+            RebuildEquipmentGrantedAbilities();
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
         }
@@ -840,6 +857,7 @@ public abstract class BaseUnit : MonoBehaviour
             if (_equippedArmor == value) return;
             if (value != null && !IsEquipmentCompatible(value)) return;
             _equippedArmor = value;
+            RebuildEquipmentGrantedAbilities();
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
         }
@@ -853,13 +871,27 @@ public abstract class BaseUnit : MonoBehaviour
             if (_equippedMiscellaneous == value) return;
             if (value != null && !IsEquipmentCompatible(value)) return;
             _equippedMiscellaneous = value;
+            RebuildEquipmentGrantedAbilities();
             if (Application.isPlaying || updateEquipmentInEditor)
                 UpdateEquipmentVisuals();
         }
     }
 
-    public EquipmentData equippedHead { get => _equippedHead; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedHead = value; if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
-    public EquipmentData equippedTool { get => _equippedTool; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedTool = value; if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
+    public EquipmentData equippedHead { get => _equippedHead; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedHead = value; RebuildEquipmentGrantedAbilities(); if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
+    public EquipmentData equippedTool { get => _equippedTool; set { if (value != null && !IsEquipmentCompatible(value)) return; _equippedTool = value; RebuildEquipmentGrantedAbilities(); if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals(); } }
+
+    protected void RebuildEquipmentGrantedAbilities()
+    {
+        equipmentGrantedAbilities.Clear();
+        foreach (var item in EnumerateEquippedItems())
+        {
+            if (item.grantedAbilities == null) continue;
+            foreach (var data in item.grantedAbilities)
+                if (data != null) equipmentGrantedAbilities.Add(data.CreateAbility());
+        }
+    }
+
+    public void RefreshEquipmentGrantedAbilities() => RebuildEquipmentGrantedAbilities();
 
     protected bool HasTwoHandedWeaponEquipped() =>
         (_equippedWeapon?.isTwoHanded ?? false) || (_equippedProjectileWeapon?.isTwoHanded ?? false);
@@ -1084,7 +1116,7 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual IEnumerable<UnitAuraBonus> EnumerateOwnedAuraBonuses()
     {
         if (unlockedAbilities != null)
-            foreach (var ability in unlockedAbilities)
+            foreach (var ability in EffectiveAbilities)
                 if (ability != null && MatchesAbilityLocation(ability) && ability.auraBonuses != null)
                     foreach (var aura in ability.auraBonuses)
                         if (aura != null) yield return aura;
@@ -1193,7 +1225,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null || target == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1208,7 +1240,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null || attacker == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1223,7 +1255,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1236,7 +1268,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1249,7 +1281,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.healthModifier;
         return total;
@@ -1259,7 +1291,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.rangeModifier;
         return total;
@@ -1270,7 +1302,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.sightRangeModifier;
         return total;
@@ -1280,7 +1312,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 0f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1293,7 +1325,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 0f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.spaceMovementEfficiencyModifier;
         return Mathf.Clamp(total, 0f, 0.75f);
@@ -1303,7 +1335,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 0f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.repairResistanceModifier;
         return total;
@@ -1313,7 +1345,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 0f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.carrierLaunchEfficiencyModifier;
         return total;
@@ -1323,7 +1355,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         int total = 0;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.fighterCapacityModifier;
         return total;
@@ -1333,7 +1365,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 0f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
             if (MatchesAbilityLocation(ability))
                 total += ability.fleetSupportModifier;
         return total;
@@ -1343,7 +1375,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 1f;
         if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -1356,7 +1388,7 @@ public abstract class BaseUnit : MonoBehaviour
     {
         float total = 1f;
         if (unlockedAbilities == null || target == null) return total;
-        foreach (var ability in unlockedAbilities)
+        foreach (var ability in EffectiveAbilities)
         {
             if (!AbilityHasCombatTargetFilter(ability) || !MatchesAbilityLocation(ability))
                 continue;
@@ -2123,14 +2155,60 @@ public abstract class BaseUnit : MonoBehaviour
             return;
 
         bool died = projectile.TargetUnit.ApplyDamage(projectile.Damage, this, false);
-        if (projectile.ProjectileData != null && projectile.ProjectileData.statusEffect != null && projectile.TargetUnit.currentHealth > 0)
-            projectile.TargetUnit.ApplyStatusEffect(projectile.ProjectileData.statusEffect);
+        if (projectile.TargetUnit.currentHealth > 0 && projectile.ProjectileData != null)
+        {
+            // Kept as a guaranteed application for every pre-existing projectile asset.
+            if (projectile.ProjectileData.statusEffect != null)
+                projectile.TargetUnit.ApplyStatusEffect(projectile.ProjectileData.statusEffect, this);
+            ApplyStatusEffectApplications(projectile.ProjectileData.onHitEffects, projectile.TargetUnit, false);
+            ApplyStatusEffectApplications(CurrentProjectileWeapon?.onHitEffects, projectile.TargetUnit, false);
+        }
 
         if (this is CombatUnit combatUnit)
         {
             combatUnit.GainExperience(projectile.Damage);
             if (died)
                 combatUnit.GainExperience(projectile.Damage);
+        }
+    }
+
+    public void ApplyStatusEffectApplications(StatusEffectApplication[] applications, BaseUnit target, bool isMelee)
+    {
+        if (applications == null || target == null) return;
+        foreach (var application in applications)
+        {
+            if (application == null) continue;
+            if (application.effect == null || (application.meleeOnly && !isMelee) || (application.rangedOnly && isMelee)) continue;
+            if (application.useTargetCategoryFilter && (!(target is CombatUnit combatTarget) || combatTarget.data == null || combatTarget.data.unitType != application.targetCategory)) continue;
+            if (application.useTargetDomainFilter && !MatchesStatusDomain(application.targetDomain, target)) continue;
+            if (Random.value > application.Chance) continue;
+            if (application.applyToTarget)
+                target.ApplyStatusEffect(application.effect, this, application.durationOverride, application.MagnitudeMultiplier);
+            if (application.applyToSelf)
+                ApplyStatusEffect(application.effect, this, application.durationOverride, application.MagnitudeMultiplier);
+        }
+    }
+
+    private static bool MatchesStatusDomain(CombatTargetDomain filter, BaseUnit target)
+    {
+        if (!(target is CombatUnit unit) || unit.data == null) return filter == CombatTargetDomain.Ground;
+        switch (unit.data.unitType)
+        {
+            case CombatCategory.Submarine: return filter == CombatTargetDomain.Underwater;
+            case CombatCategory.HeavyShip:
+            case CombatCategory.LightShip:
+            case CombatCategory.TorpedoShip:
+            case CombatCategory.Boat:
+            case CombatCategory.SeaCrawler: return filter == CombatTargetDomain.NavalSurface;
+            case CombatCategory.Aircraft:
+            case CombatCategory.Fighter:
+            case CombatCategory.Bomber:
+            case CombatCategory.GroundAttack:
+            case CombatCategory.Helicopter:
+            case CombatCategory.SeaPlane: return filter == CombatTargetDomain.Air;
+            case CombatCategory.Spaceship:
+            case CombatCategory.SpaceCarrier: return filter == CombatTargetDomain.Space;
+            default: return filter == CombatTargetDomain.Ground;
         }
     }
 
@@ -2185,6 +2263,8 @@ public abstract class BaseUnit : MonoBehaviour
             SetAnimatorTriggerForFormation(hitHash);
 
         currentHealth -= damageAmount;
+        if (attackerIsMelee && attacker != null && currentHealth > 0)
+            attacker.ApplyStatusEffectApplications(attacker.equippedWeapon?.onHitEffects, this, true);
         ShowHealthChangePopup(-Mathf.Abs(damageAmount));
         // Update multi-soldier attrition visuals
         if (soldierGroup != null) soldierGroup.UpdateAttrition(currentHealth, MaxHealth);

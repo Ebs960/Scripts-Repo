@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Iron Two Handed Axe
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.iron.two.handed.axe
+  equipmentName: Iron Two Handed Axe
+  description: "Iron Two Handed Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: c6b73abd726adaa4183b0f8311e4a028, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 4
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
+  equipmentType: 0
+  category: 5
+  projectileData: {fileID: 0}
+  projectileCategory: 0
+  usesProjectiles: 0
+  projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 1
+  targetUnit: 0
+  attackBonusAgainst: []
+  defenseBonusAgainst: []
+  combatModifiersAgainst: []
+  workPointsBonus: 0
+  allowedUnitTypes:
+  - 1
+  - 2
+  - 3
+  minimumLevel: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
+  requiredCultures: []
+  requiredBuildings: []
+  productionCost: 48
+  goldCost: 84
+  requiredResourceCosts: []
+  upkeepPerTurn: []
+  substituteResourceGroups: []
+  requiredManufacturingCapabilities: []
+  attackBonus: 0
+  meleeAttackBonus: 4
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
+  defenseBonus: 0
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

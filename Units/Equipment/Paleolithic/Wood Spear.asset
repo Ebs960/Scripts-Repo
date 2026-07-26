@@ -11,8 +11,14 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Wood Spear
-  m_EditorClassIdentifier: 
+  stableId: legacy.equipment.wood.spear
+  m_EditorClassIdentifier:
   equipmentName: Wood Spear
+  description: "Legacy equipment retained in place to preserve existing unit references."
+  equipmentAge: 0
+  rarity: 0
+  gameplayTags:
+  - legacy
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 1175738298557715584, guid: fd2b6fa9b0841a344b4b66ee8ce848bc, type: 3}
   equipmentType: 0

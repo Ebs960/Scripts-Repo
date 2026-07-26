@@ -11,8 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2e5433f08a6f4374490f6b305cf9efcf, type: 3}
   m_Name: Flint Arrow
-  m_EditorClassIdentifier: 
+  stableId: legacy.projectile.flint.arrow
+  m_EditorClassIdentifier:
   projectileName: Flint Arrow
+  description: "Legacy data asset retained in place to preserve existing references."
   icon: {fileID: 0}
   category: 0
   productionCost: 10
@@ -22,6 +24,6 @@ MonoBehaviour:
   damage: 2
   statusEffect: {fileID: 0}
   statusEffectDuration: 0
-  statusEffectName: 
+  statusEffectName:
   launchSound: {fileID: 8300000, guid: 037220d162d62884b9f7b0076bb5b9a6, type: 3}
   impactSound: {fileID: 8300000, guid: bc22cac934bd28d4bbcfa1ae098ef936, type: 3}

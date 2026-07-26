@@ -12,15 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Copper Axe
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.copper.axe
   equipmentName: Copper Axe
-  icon: {fileID: 0}
-  equipmentPrefab: {fileID: 2146553975180569922, guid: c8577accb5d966f49b44cb3f04581dfc, type: 3}
+  description: "Copper Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: f0218d12e9dcfad4199ee098dc416722, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 2
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
   useEquipmentProjectileSpawn: 1
   isTwoHanded: 0
   targetUnit: 0
@@ -28,27 +36,38 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 02000000
+  allowedUnitTypes:
+  - 1
+  - 2
+  - 3
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: 7672c1e920afbd64ba74403eb535c133, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 15
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 32
+  goldCost: 56
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
-  attackBonus: 2.5
+  attackBonus: 0
+  meleeAttackBonus: 3
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -57,3 +76,6 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   reducesWeatherDamage: 0
   weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

@@ -12,7 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Leather Shield
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: legacy.equipment.leather.shield
   equipmentName: Leather Shield
+  description: "Legacy equipment retained in place to preserve existing unit references."
+  equipmentAge: 4
+  rarity: 0
+  gameplayTags:
+  - legacy
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
   equipmentType: 1

@@ -11,10 +11,16 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Fighting Stick
-  m_EditorClassIdentifier: 
+  stableId: legacy.equipment.fighting.stick
+  m_EditorClassIdentifier:
   equipmentName: Fighting Stick
+  description: "Legacy equipment retained in place to preserve existing unit references."
+  equipmentAge: 0
+  rarity: 0
+  gameplayTags:
+  - legacy
   icon: {fileID: 0}
-  equipmentPrefab: {fileID: 8796189513657384495, guid: c7e14eb52fa54c54a8495e6c77ce7c59, type: 3}
+  equipmentPrefab: {fileID: 0}
   equipmentType: 4
   projectileData: {fileID: 0}
   projectileSpawnName: ProjectileSpawn

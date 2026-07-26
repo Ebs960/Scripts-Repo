@@ -377,6 +377,7 @@ public class CombatUnit : BaseUnit
                 _equippedMiscellaneous = data.defaultMiscellaneous;
             }
         }
+        RebuildEquipmentGrantedAbilities();
         // Always update visuals
         UpdateEquipmentVisuals();
     }
@@ -3094,6 +3095,7 @@ public class CombatUnit : BaseUnit
     {
         if (weapon == null) return;
     _equippedWeapon = weapon;
+        RebuildEquipmentGrantedAbilities();
         UpdateEquipmentVisuals();
         RecalculateStats();
         RaiseEquipmentChanged();
@@ -3110,6 +3112,7 @@ public class CombatUnit : BaseUnit
     {
         if (weapon == null) return;
         _equippedProjectileWeapon = weapon;
+        RebuildEquipmentGrantedAbilities();
         UpdateEquipmentVisuals();
         RecalculateStats();
         RaiseEquipmentChanged();

@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e5433f08a6f4374490f6b305cf9efcf, type: 3}
+  m_Name: High Explosive Shell
+  m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
+  stableId: projectile.high.explosive.shell
+  projectileName: High Explosive Shell
+  description: "High Explosive Shell: incendiary ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  projectileAge: 13
+  icon: {fileID: 21300000, guid: 1e7b825c1bab7b04e94bd921c64e8902, type: 3}
+  category: 3
+  productionCost: 42
+  goldCost: 74
+  resourceCosts: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 41fc12c0783860946bb766519f649041, type: 2}
+  requiredCultures: []
+  damage: 5
+  statusEffect: {fileID: 0}
+  onHitEffects:
+  - effect: {fileID: 11400000, guid: 1f2c0ea8ca2bb2288b29679cc3f4f82b, type: 2}
+    applicationChance: 0.3
+    durationOverride: 2
+    magnitudeMultiplier: 1.0
+    meleeOnly: 0
+    rangedOnly: 1
+    applyToSelf: 0
+    applyToTarget: 1
+    useTargetCategoryFilter: 0
+    targetCategory: 0
+    useTargetDomainFilter: 0
+    targetDomain: 0
+  statusEffectDuration: 0
+  statusEffectName:
+  projectilePrefab: {fileID: 0}
+  heldProjectilePrefab: {fileID: 0}
+  impactVfxPrefab: {fileID: 0}
+  launchSound: {fileID: 0}
+  impactSound: {fileID: 0}
+  launchSpeed: 18
+  flightArcHeight: 0.75
+  maxFlightDuration: 1.25
+  rotateAlongVelocity: 1
+  heldLocalPosition: {x: 0, y: 0, z: 0}
+  heldLocalEulerAngles: {x: 0, y: 0, z: 0}
+  heldLocalScale: {x: 1, y: 1, z: 1}
+  nockedLocalPosition: {x: 0, y: 0, z: 0}
+  nockedLocalEulerAngles: {x: 0, y: 0, z: 0}
+  nockedLocalScale: {x: 1, y: 1, z: 1}

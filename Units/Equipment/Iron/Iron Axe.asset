@@ -12,15 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Iron Axe
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.iron.axe
   equipmentName: Iron Axe
-  icon: {fileID: 0}
+  description: "Iron Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: 170805b9e3366254884f79d530d9eac0, type: 3}
   equipmentPrefab: {fileID: 0}
+  equipmentAge: 4
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
   useEquipmentProjectileSpawn: 1
   isTwoHanded: 0
   targetUnit: 0
@@ -28,26 +36,38 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 02000000
+  allowedUnitTypes:
+  - 1
+  - 2
+  - 3
   minimumLevel: 1
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: d9e3aec3f8bc271abfe2021551f8e824, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 20
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 48
+  goldCost: 84
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
-  attackBonus: 4
+  attackBonus: 0
+  meleeAttackBonus: 4
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
@@ -56,3 +76,6 @@ MonoBehaviour:
   policyPointsPerTurn: 0
   reducesWeatherDamage: 0
   weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0
