@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: legacy.projectile.crossbow.bolt
   projectileName: Crossbow Bolt
-  description: "Legacy projectile retained for existing unit and weapon references."
   projectileAge: 0
   icon: {fileID: 0}
   category: 1

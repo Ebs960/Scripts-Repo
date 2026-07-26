@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.lance
   equipmentName: Iron Lance
-  description: "Iron Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: d666daa1a61a21e4b8a57daccf3848e8, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 6

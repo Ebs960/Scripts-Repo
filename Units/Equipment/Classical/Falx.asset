@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.falx
   equipmentName: Falx
-  description: "Falx: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 5fd8ec91465fa994c99a602059439efd, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 5

@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.warhammer
   equipmentName: Iron Warhammer
-  description: "Iron Warhammer: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 43853efee6c159047bd3d380d8cdbdb2, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4

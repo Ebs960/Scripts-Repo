@@ -22,7 +22,6 @@ namespace GameCombat
     [Header("Identity")]
     public string stableId;
     public string projectileName;
-    [TextArea(2, 5)] public string description;
     public TechAge projectileAge;
     public Sprite icon;
     [Tooltip("Category of projectile - determines which weapons can use it")]

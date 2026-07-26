@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.bronze.warhammer
   equipmentName: Bronze Warhammer
-  description: "Bronze Warhammer: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 46d2ef49c35b8354dbe84acf991f4b40, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

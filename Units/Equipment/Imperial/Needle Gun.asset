@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.needle.gun
   equipmentName: Needle Gun
-  description: "Needle Gun: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 888855c5c69ecdd41a136f4552b67813, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 13

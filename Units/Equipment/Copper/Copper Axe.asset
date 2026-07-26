@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.axe
   equipmentName: Copper Axe
-  description: "Copper Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: f0218d12e9dcfad4199ee098dc416722, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2

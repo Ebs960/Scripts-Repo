@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.great.helm
   equipmentName: Great Helm
-  description: "Great Helm: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: d4757d03b81f0414486783d50b7f170d, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

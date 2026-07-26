@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.flintlock.musket
   equipmentName: Flintlock Musket
-  description: "Flintlock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: cc8f2d07cb6be344eafad09ed67d3bac, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 11

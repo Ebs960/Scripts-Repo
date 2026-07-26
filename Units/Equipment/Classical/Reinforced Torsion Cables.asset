@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.reinforced.torsion.cables
   equipmentName: Reinforced Torsion Cables
-  description: "Reinforced Torsion Cables: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: d490eff10162f7e468784a0feac8ee34, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 5

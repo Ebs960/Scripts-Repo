@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.warm.hide.wrap
   equipmentName: Warm Hide Wrap
-  description: "Warm Hide Wrap: cold-weather protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 12197c2cad46cef419fea0bfc52cf048, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

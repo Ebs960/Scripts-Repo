@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: legacy.equipment.bronze.throwing.spear
   equipmentName: Bronze Throwing Spear
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 3
   rarity: 0
   gameplayTags:

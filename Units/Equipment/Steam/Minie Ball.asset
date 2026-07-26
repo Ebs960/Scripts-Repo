@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.minie.ball
   projectileName: Minie Ball
-  description: "Minie Ball: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   projectileAge: 12
   icon: {fileID: 21300000, guid: 8d526ddf3479d514991b0ef24c3c8afb, type: 3}
   category: 2

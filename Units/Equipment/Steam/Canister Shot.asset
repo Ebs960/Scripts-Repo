@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.canister.shot
   projectileName: Canister Shot
-  description: "Canister Shot: anti-personnel ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   projectileAge: 12
   icon: {fileID: 21300000, guid: 94d68936a734dee438626a8962e5d726, type: 3}
   category: 3

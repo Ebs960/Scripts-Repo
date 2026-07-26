@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: legacy.equipment.leather.armor
   equipmentName: Leather Armor
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 4
   rarity: 0
   gameplayTags:

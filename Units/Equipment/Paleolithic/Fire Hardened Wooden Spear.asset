@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.fire.hardened.wooden.spear
   equipmentName: Fire Hardened Wooden Spear
-  description: "Fire Hardened Wooden Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 80658e592b57d3543b16d575ffa46b2c, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

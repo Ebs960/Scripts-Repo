@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.knight.lance
   equipmentName: Knight Lance
-  description: "Knight Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 276e5a510c9bd094f9e46482fa6e3841, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 7

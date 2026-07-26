@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.spear
   equipmentName: Copper Spear
-  description: "Copper Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: dd9aa15f534584f478e84b4a4c198936, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2

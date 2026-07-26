@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.chain.shot
   projectileName: Chain Shot
-  description: "Chain Shot: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   projectileAge: 11
   icon: {fileID: 21300000, guid: 84167c6912d5c2942a5dfe9705a5ea1b, type: 3}
   category: 3

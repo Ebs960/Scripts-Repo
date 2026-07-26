@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.shield
   equipmentName: Copper Shield
-  description: "Copper Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: efda55c611b15b6429fa5cb35bbf5c62, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2

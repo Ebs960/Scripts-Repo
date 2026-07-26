@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.war.banner
   equipmentName: Copper War Banner
-  description: "Copper War Banner: friendly morale aura. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: cf1517d0af170df46acc3a951c945015, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2

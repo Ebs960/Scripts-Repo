@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.bronze.war.standard
   equipmentName: Bronze War Standard
-  description: "Bronze War Standard: friendly morale aura. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: fab2afe0d56a04c409c138f681b2bd69, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

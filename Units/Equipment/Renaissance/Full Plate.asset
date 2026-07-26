@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.full.plate
   equipmentName: Full Plate
-  description: "Full Plate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
   icon: {fileID: 21300000, guid: 9972635aac203884aa40a6d9992335d4, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 9

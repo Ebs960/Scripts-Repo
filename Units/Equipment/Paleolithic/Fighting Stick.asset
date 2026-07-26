@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.equipment.fighting.stick
   m_EditorClassIdentifier:
   equipmentName: Fighting Stick
-  description: "Legacy equipment retained in place to preserve existing unit references."
   equipmentAge: 0
   rarity: 0
   gameplayTags:

@@ -5,7 +5,6 @@
     {
       "stableId": "projectile.bronze.arrow",
       "displayName": "Bronze Arrow",
-      "description": "Bronze Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Arrow.asset",
       "assetKind": "Projectile",
@@ -60,7 +59,6 @@
     {
       "stableId": "equipment.bronze.axe",
       "displayName": "Bronze Axe",
-      "description": "Bronze Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Axe.asset",
       "assetKind": "Equipment",
@@ -119,7 +117,6 @@
     {
       "stableId": "equipment.bronze.breastplate",
       "displayName": "Bronze Breastplate",
-      "description": "Bronze Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Breastplate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Breastplate.asset",
       "assetKind": "Equipment",
@@ -174,7 +171,6 @@
     {
       "stableId": "equipment.bronze.curved.sword",
       "displayName": "Bronze Curved Sword",
-      "description": "Bronze Curved Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Curved Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Curved Sword.asset",
       "assetKind": "Equipment",
@@ -233,7 +229,6 @@
     {
       "stableId": "equipment.bronze.helmet",
       "displayName": "Bronze Helmet",
-      "description": "Bronze Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Helmet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Helmet.asset",
       "assetKind": "Equipment",
@@ -288,7 +283,6 @@
     {
       "stableId": "equipment.bronze.lance",
       "displayName": "Bronze Lance",
-      "description": "Bronze Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Lance Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Lance.asset",
       "assetKind": "Equipment",
@@ -346,7 +340,6 @@
     {
       "stableId": "equipment.bronze.mace",
       "displayName": "Bronze Mace",
-      "description": "Bronze Mace: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Mace Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Mace.asset",
       "assetKind": "Equipment",
@@ -413,7 +406,6 @@
     {
       "stableId": "projectile.bronze.poison.arrow",
       "displayName": "Bronze Poison Arrow",
-      "description": "Bronze Poison Arrow: damage-over-time ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Poison Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Poison Arrow.asset",
       "assetKind": "Projectile",
@@ -481,7 +473,6 @@
     {
       "stableId": "equipment.bronze.shield",
       "displayName": "Bronze Shield",
-      "description": "Bronze Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Shield.asset",
       "assetKind": "Equipment",
@@ -536,7 +527,6 @@
     {
       "stableId": "equipment.bronze.spear",
       "displayName": "Bronze Spear",
-      "description": "Bronze Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Spear.asset",
       "assetKind": "Equipment",
@@ -603,7 +593,6 @@
     {
       "stableId": "equipment.bronze.sword",
       "displayName": "Bronze Sword",
-      "description": "Bronze Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Sword.asset",
       "assetKind": "Equipment",
@@ -662,7 +651,6 @@
     {
       "stableId": "equipment.bronze.two.handed.axe",
       "displayName": "Bronze Two-Handed Axe",
-      "description": "Bronze Two-Handed Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Two-Handed Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Two-Handed Axe.asset",
       "assetKind": "Equipment",
@@ -721,7 +709,6 @@
     {
       "stableId": "equipment.bronze.war.standard",
       "displayName": "Bronze War Standard",
-      "description": "Bronze War Standard: friendly morale aura. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze War Standard Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze War Standard.asset",
       "assetKind": "Equipment",
@@ -783,7 +770,6 @@
     {
       "stableId": "equipment.bronze.warhammer",
       "displayName": "Bronze Warhammer",
-      "description": "Bronze Warhammer: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Warhammer Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Bronze Warhammer.asset",
       "assetKind": "Equipment",
@@ -850,7 +836,6 @@
     {
       "stableId": "projectile.flaming.arrow",
       "displayName": "Flaming Arrow",
-      "description": "Flaming Arrow: incendiary ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Flaming Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Flaming Arrow.asset",
       "assetKind": "Projectile",
@@ -918,7 +903,6 @@
     {
       "stableId": "equipment.leather.breastplate",
       "displayName": "Leather Breastplate",
-      "description": "Leather Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Leather Breastplate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Leather Breastplate.asset",
       "assetKind": "Equipment",
@@ -973,7 +957,6 @@
     {
       "stableId": "equipment.leather.shield",
       "displayName": "Leather Shield",
-      "description": "Leather Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Leather Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Bronze/Leather Shield.asset",
       "assetKind": "Equipment",
@@ -1028,7 +1011,6 @@
     {
       "stableId": "projectile.bodkin.arrows",
       "displayName": "Bodkin Arrows",
-      "description": "Bodkin Arrows: narrow armor penetration. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Bodkin Arrows Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Bodkin Arrows.asset",
       "assetKind": "Projectile",
@@ -1093,7 +1075,6 @@
     {
       "stableId": "equipment.great.helm",
       "displayName": "Great Helm",
-      "description": "Great Helm: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Great Helm Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Great Helm.asset",
       "assetKind": "Equipment",
@@ -1148,7 +1129,6 @@
     {
       "stableId": "equipment.great.sword",
       "displayName": "Great Sword",
-      "description": "Great Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Great Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Great Sword.asset",
       "assetKind": "Equipment",
@@ -1207,7 +1187,6 @@
     {
       "stableId": "equipment.iron.halberd",
       "displayName": "Iron Halberd",
-      "description": "Iron Halberd: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Iron Halberd Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Iron Halberd.asset",
       "assetKind": "Equipment",
@@ -1274,7 +1253,6 @@
     {
       "stableId": "equipment.longbow",
       "displayName": "Longbow",
-      "description": "Longbow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Longbow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Longbow.asset",
       "assetKind": "Equipment",
@@ -1333,7 +1311,6 @@
     {
       "stableId": "equipment.siege.counterweight.kit",
       "displayName": "Siege Counterweight Kit",
-      "description": "Siege Counterweight Kit: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Siege Counterweight Kit Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Siege Counterweight Kit.asset",
       "assetKind": "Equipment",
@@ -1388,7 +1365,6 @@
     {
       "stableId": "equipment.steel.breastplate",
       "displayName": "Steel Breastplate",
-      "description": "Steel Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Breastplate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Breastplate.asset",
       "assetKind": "Equipment",
@@ -1443,7 +1419,6 @@
     {
       "stableId": "equipment.steel.buckler",
       "displayName": "Steel Buckler",
-      "description": "Steel Buckler: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Buckler Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Buckler.asset",
       "assetKind": "Equipment",
@@ -1498,7 +1473,6 @@
     {
       "stableId": "equipment.steel.halberd",
       "displayName": "Steel Halberd",
-      "description": "Steel Halberd: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Halberd Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Halberd.asset",
       "assetKind": "Equipment",
@@ -1565,7 +1539,6 @@
     {
       "stableId": "projectile.steel.javelin",
       "displayName": "Steel Javelin",
-      "description": "Steel Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Javelin Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Javelin.asset",
       "assetKind": "Projectile",
@@ -1620,7 +1593,6 @@
     {
       "stableId": "equipment.steel.pike",
       "displayName": "Steel Pike",
-      "description": "Steel Pike: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Pike Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Pike.asset",
       "assetKind": "Equipment",
@@ -1687,7 +1659,6 @@
     {
       "stableId": "equipment.steel.spear",
       "displayName": "Steel Spear",
-      "description": "Steel Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Spear.asset",
       "assetKind": "Equipment",
@@ -1754,7 +1725,6 @@
     {
       "stableId": "equipment.steel.sword",
       "displayName": "Steel Sword",
-      "description": "Steel Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Castle/Steel Sword.asset",
       "assetKind": "Equipment",
@@ -1813,7 +1783,6 @@
     {
       "stableId": "equipment.caltrops",
       "displayName": "Caltrops",
-      "description": "Caltrops: anti-cavalry defensive utility. Its narrow modifier applies only to its equipment contribution.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Caltrops Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Caltrops.asset",
       "assetKind": "Equipment",
@@ -1877,7 +1846,6 @@
     {
       "stableId": "equipment.falcata",
       "displayName": "Falcata",
-      "description": "Falcata: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Falcata Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Falcata.asset",
       "assetKind": "Equipment",
@@ -1936,7 +1904,6 @@
     {
       "stableId": "equipment.falx",
       "displayName": "Falx",
-      "description": "Falx: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Falx Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Falx.asset",
       "assetKind": "Equipment",
@@ -2003,7 +1970,6 @@
     {
       "stableId": "equipment.iron.horse.armor",
       "displayName": "Iron Horse Armor",
-      "description": "Iron Horse Armor: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Iron Horse Armor Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Iron Horse Armor.asset",
       "assetKind": "Equipment",
@@ -2063,7 +2029,6 @@
     {
       "stableId": "equipment.lamellar.breastplate",
       "displayName": "Lamellar Breastplate",
-      "description": "Lamellar Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Lamellar Breastplate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Lamellar Breastplate.asset",
       "assetKind": "Equipment",
@@ -2118,7 +2083,6 @@
     {
       "stableId": "projectile.pilum",
       "displayName": "Pilum",
-      "description": "Pilum: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Pilum Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Pilum.asset",
       "assetKind": "Projectile",
@@ -2173,7 +2137,6 @@
     {
       "stableId": "equipment.reinforced.torsion.cables",
       "displayName": "Reinforced Torsion Cables",
-      "description": "Reinforced Torsion Cables: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Classical/Reinforced Torsion Cables Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Classical/Reinforced Torsion Cables.asset",
       "assetKind": "Equipment",
@@ -2228,7 +2191,6 @@
     {
       "stableId": "equipment.backsword",
       "displayName": "Backsword",
-      "description": "Backsword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Backsword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Backsword.asset",
       "assetKind": "Equipment",
@@ -2287,7 +2249,6 @@
     {
       "stableId": "equipment.buff.coat",
       "displayName": "Buff Coat",
-      "description": "Buff Coat: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Buff Coat Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Buff Coat.asset",
       "assetKind": "Equipment",
@@ -2342,7 +2303,6 @@
     {
       "stableId": "equipment.demi.lance",
       "displayName": "Demi Lance",
-      "description": "Demi Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Demi Lance Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Demi Lance.asset",
       "assetKind": "Equipment",
@@ -2400,7 +2360,6 @@
     {
       "stableId": "equipment.half.pike",
       "displayName": "Half Pike",
-      "description": "Half Pike: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Half Pike Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Half Pike.asset",
       "assetKind": "Equipment",
@@ -2467,7 +2426,6 @@
     {
       "stableId": "equipment.matchlock.musket",
       "displayName": "Matchlock Musket",
-      "description": "Matchlock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Matchlock Musket Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Matchlock Musket.asset",
       "assetKind": "Equipment",
@@ -2525,7 +2483,6 @@
     {
       "stableId": "equipment.partisan",
       "displayName": "Partisan",
-      "description": "Partisan: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Partisan Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Partisan.asset",
       "assetKind": "Equipment",
@@ -2583,7 +2540,6 @@
     {
       "stableId": "equipment.plug.bayonet",
       "displayName": "Plug Bayonet",
-      "description": "Plug Bayonet: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Plug Bayonet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Plug Bayonet.asset",
       "assetKind": "Equipment",
@@ -2642,7 +2598,6 @@
     {
       "stableId": "equipment.pot.helmet",
       "displayName": "Pot Helmet",
-      "description": "Pot Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Pot Helmet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Pot Helmet.asset",
       "assetKind": "Equipment",
@@ -2697,7 +2652,6 @@
     {
       "stableId": "equipment.steel.cuirass",
       "displayName": "Steel Cuirass",
-      "description": "Steel Cuirass: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Steel Cuirass Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Steel Cuirass.asset",
       "assetKind": "Equipment",
@@ -2752,7 +2706,6 @@
     {
       "stableId": "equipment.wheel.lock.musket",
       "displayName": "Wheel-Lock Musket",
-      "description": "Wheel-Lock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Wheel-Lock Musket Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Colonial/Wheel-Lock Musket.asset",
       "assetKind": "Equipment",
@@ -2810,7 +2763,6 @@
     {
       "stableId": "projectile.copper.arrow",
       "displayName": "Copper Arrow",
-      "description": "Copper Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Arrow.asset",
       "assetKind": "Projectile",
@@ -2865,7 +2817,6 @@
     {
       "stableId": "equipment.copper.axe",
       "displayName": "Copper Axe",
-      "description": "Copper Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Axe.asset",
       "assetKind": "Equipment",
@@ -2924,7 +2875,6 @@
     {
       "stableId": "equipment.copper.helmet",
       "displayName": "Copper Helmet",
-      "description": "Copper Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Helmet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Helmet.asset",
       "assetKind": "Equipment",
@@ -2979,7 +2929,6 @@
     {
       "stableId": "projectile.copper.javelin",
       "displayName": "Copper Javelin",
-      "description": "Copper Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Javelin Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Javelin.asset",
       "assetKind": "Projectile",
@@ -3034,7 +2983,6 @@
     {
       "stableId": "equipment.copper.shield",
       "displayName": "Copper Shield",
-      "description": "Copper Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Shield.asset",
       "assetKind": "Equipment",
@@ -3089,7 +3037,6 @@
     {
       "stableId": "equipment.copper.spear",
       "displayName": "Copper Spear",
-      "description": "Copper Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Spear.asset",
       "assetKind": "Equipment",
@@ -3156,7 +3103,6 @@
     {
       "stableId": "equipment.copper.sword",
       "displayName": "Copper Sword",
-      "description": "Copper Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Sword.asset",
       "assetKind": "Equipment",
@@ -3215,7 +3161,6 @@
     {
       "stableId": "equipment.copper.tools",
       "displayName": "Copper Tools",
-      "description": "Copper Tools: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Tools Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper Tools.asset",
       "assetKind": "Equipment",
@@ -3270,7 +3215,6 @@
     {
       "stableId": "equipment.copper.war.banner",
       "displayName": "Copper War Banner",
-      "description": "Copper War Banner: friendly morale aura. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper War Banner Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Copper/Copper War Banner.asset",
       "assetKind": "Equipment",
@@ -3332,7 +3276,6 @@
     {
       "stableId": "equipment.iron.lance",
       "displayName": "Iron Lance",
-      "description": "Iron Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Iron Lance Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Iron Lance.asset",
       "assetKind": "Equipment",
@@ -3390,7 +3333,6 @@
     {
       "stableId": "equipment.mail.helmet",
       "displayName": "Mail Helmet",
-      "description": "Mail Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Helmet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Helmet.asset",
       "assetKind": "Equipment",
@@ -3445,7 +3387,6 @@
     {
       "stableId": "equipment.mail.horse.armor",
       "displayName": "Mail Horse Armor",
-      "description": "Mail Horse Armor: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Horse Armor Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Horse Armor.asset",
       "assetKind": "Equipment",
@@ -3505,7 +3446,6 @@
     {
       "stableId": "equipment.mail.shirt",
       "displayName": "Mail Shirt",
-      "description": "Mail Shirt: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Shirt Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Mail Shirt.asset",
       "assetKind": "Equipment",
@@ -3560,7 +3500,6 @@
     {
       "stableId": "equipment.padded.coat",
       "displayName": "Padded Coat",
-      "description": "Padded Coat: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Padded Coat Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Padded Coat.asset",
       "assetKind": "Equipment",
@@ -3615,7 +3554,6 @@
     {
       "stableId": "equipment.recurve.bow",
       "displayName": "Recurve Bow",
-      "description": "Recurve Bow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Recurve Bow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Recurve Bow.asset",
       "assetKind": "Equipment",
@@ -3674,7 +3612,6 @@
     {
       "stableId": "equipment.throwing.axe",
       "displayName": "Throwing Axe",
-      "description": "Throwing Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Throwing Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Throwing Axe.asset",
       "assetKind": "Equipment",
@@ -3733,7 +3670,6 @@
     {
       "stableId": "equipment.two.headed.axe",
       "displayName": "Two-Headed Axe",
-      "description": "Two-Headed Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Dark/Two-Headed Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Dark/Two-Headed Axe.asset",
       "assetKind": "Equipment",
@@ -3792,7 +3728,6 @@
     {
       "stableId": "projectile.chain.shot",
       "displayName": "Chain Shot",
-      "description": "Chain Shot: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Chain Shot Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Chain Shot.asset",
       "assetKind": "Projectile",
@@ -3847,7 +3782,6 @@
     {
       "stableId": "equipment.flintlock.carbine",
       "displayName": "Flintlock Carbine",
-      "description": "Flintlock Carbine: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Carbine Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Carbine.asset",
       "assetKind": "Equipment",
@@ -3905,7 +3839,6 @@
     {
       "stableId": "equipment.flintlock.musket",
       "displayName": "Flintlock Musket",
-      "description": "Flintlock Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Musket Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Musket.asset",
       "assetKind": "Equipment",
@@ -3963,7 +3896,6 @@
     {
       "stableId": "equipment.flintlock.pistol",
       "displayName": "Flintlock Pistol",
-      "description": "Flintlock Pistol: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Pistol Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Flintlock Pistol.asset",
       "assetKind": "Equipment",
@@ -4021,7 +3953,6 @@
     {
       "stableId": "projectile.grape.shot",
       "displayName": "Grape Shot",
-      "description": "Grape Shot: anti-personnel ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Grape Shot Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Grape Shot.asset",
       "assetKind": "Projectile",
@@ -4086,7 +4017,6 @@
     {
       "stableId": "projectile.grenade",
       "displayName": "Grenade",
-      "description": "Grenade: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Grenade Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Grenade.asset",
       "assetKind": "Projectile",
@@ -4141,7 +4071,6 @@
     {
       "stableId": "equipment.sabre",
       "displayName": "Sabre",
-      "description": "Sabre: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Sabre Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Sabre.asset",
       "assetKind": "Equipment",
@@ -4200,7 +4129,6 @@
     {
       "stableId": "equipment.socket.bayonet",
       "displayName": "Socket Bayonet",
-      "description": "Socket Bayonet: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Socket Bayonet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Socket Bayonet.asset",
       "assetKind": "Equipment",
@@ -4259,7 +4187,6 @@
     {
       "stableId": "equipment.sword.bayonet",
       "displayName": "Sword Bayonet",
-      "description": "Sword Bayonet: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Sword Bayonet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Enlightenment/Sword Bayonet.asset",
       "assetKind": "Equipment",
@@ -4318,7 +4245,6 @@
     {
       "stableId": "equipment.billhook",
       "displayName": "Billhook",
-      "description": "Billhook: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Billhook Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Billhook.asset",
       "assetKind": "Equipment",
@@ -4376,7 +4302,6 @@
     {
       "stableId": "projectile.crossbow.bolts",
       "displayName": "Crossbow Bolts",
-      "description": "Crossbow Bolts: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Crossbow Bolts Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Crossbow Bolts.asset",
       "assetKind": "Projectile",
@@ -4431,7 +4356,6 @@
     {
       "stableId": "equipment.crossbow",
       "displayName": "Crossbow",
-      "description": "Crossbow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Crossbow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Crossbow.asset",
       "assetKind": "Equipment",
@@ -4490,7 +4414,6 @@
     {
       "stableId": "equipment.gambeson",
       "displayName": "Gambeson",
-      "description": "Gambeson: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Gambeson Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Gambeson.asset",
       "assetKind": "Equipment",
@@ -4545,7 +4468,6 @@
     {
       "stableId": "equipment.kite.shield",
       "displayName": "Kite Shield",
-      "description": "Kite Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Kite Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Kite Shield.asset",
       "assetKind": "Equipment",
@@ -4600,7 +4522,6 @@
     {
       "stableId": "equipment.knight.lance",
       "displayName": "Knight Lance",
-      "description": "Knight Lance: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Knight Lance Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Knight Lance.asset",
       "assetKind": "Equipment",
@@ -4658,7 +4579,6 @@
     {
       "stableId": "equipment.long.sword",
       "displayName": "Long Sword",
-      "description": "Long Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Long Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Long Sword.asset",
       "assetKind": "Equipment",
@@ -4717,7 +4637,6 @@
     {
       "stableId": "equipment.pavise",
       "displayName": "Pavise",
-      "description": "Pavise: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Pavise Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Feudal/Pavise.asset",
       "assetKind": "Equipment",
@@ -4774,7 +4693,6 @@
     {
       "stableId": "equipment.bolt.action.rifle",
       "displayName": "Bolt Action Rifle",
-      "description": "Bolt Action Rifle: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Bolt Action Rifle Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Bolt Action Rifle.asset",
       "assetKind": "Equipment",
@@ -4832,7 +4750,6 @@
     {
       "stableId": "projectile.high.explosive.shell",
       "displayName": "High Explosive Shell",
-      "description": "High Explosive Shell: incendiary ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/High Explosive Shell Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/High Explosive Shell.asset",
       "assetKind": "Projectile",
@@ -4900,7 +4817,6 @@
     {
       "stableId": "equipment.needle.gun",
       "displayName": "Needle Gun",
-      "description": "Needle Gun: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Needle Gun Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Needle Gun.asset",
       "assetKind": "Equipment",
@@ -4959,7 +4875,6 @@
     {
       "stableId": "equipment.rifle.cartridge",
       "displayName": "Rifle Cartridge",
-      "description": "Rifle Cartridge: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Rifle Cartridge Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Rifle Cartridge.asset",
       "assetKind": "Equipment",
@@ -5017,7 +4932,6 @@
     {
       "stableId": "projectile.shrapnel.shell",
       "displayName": "Shrapnel Shell",
-      "description": "Shrapnel Shell: anti-personnel ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Shrapnel Shell Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Shrapnel Shell.asset",
       "assetKind": "Projectile",
@@ -5082,7 +4996,6 @@
     {
       "stableId": "equipment.stripper.clip",
       "displayName": "Stripper Clip",
-      "description": "Stripper Clip: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Stripper Clip Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Stripper Clip.asset",
       "assetKind": "Equipment",
@@ -5137,7 +5050,6 @@
     {
       "stableId": "projectile.torpedo",
       "displayName": "Torpedo",
-      "description": "Torpedo: narrow armor penetration. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Torpedo Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Imperial/Torpedo.asset",
       "assetKind": "Projectile",
@@ -5200,7 +5112,6 @@
     {
       "stableId": "projectile.barbed.iron.javelin",
       "displayName": "Barbed Iron Javelin",
-      "description": "Barbed Iron Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Barbed Iron Javelin Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Barbed Iron Javelin.asset",
       "assetKind": "Projectile",
@@ -5255,7 +5166,6 @@
     {
       "stableId": "equipment.composite.bow",
       "displayName": "Composite Bow",
-      "description": "Composite Bow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Composite Bow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Composite Bow.asset",
       "assetKind": "Equipment",
@@ -5314,7 +5224,6 @@
     {
       "stableId": "equipment.hooked.iron.spear",
       "displayName": "Hooked Iron Spear",
-      "description": "Hooked Iron Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Hooked Iron Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Hooked Iron Spear.asset",
       "assetKind": "Equipment",
@@ -5381,7 +5290,6 @@
     {
       "stableId": "projectile.iron.arrow",
       "displayName": "Iron Arrow",
-      "description": "Iron Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Arrow.asset",
       "assetKind": "Projectile",
@@ -5436,7 +5344,6 @@
     {
       "stableId": "equipment.iron.axe",
       "displayName": "Iron Axe",
-      "description": "Iron Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Axe.asset",
       "assetKind": "Equipment",
@@ -5495,7 +5402,6 @@
     {
       "stableId": "equipment.iron.breastplate",
       "displayName": "Iron Breastplate",
-      "description": "Iron Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Breastplate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Breastplate.asset",
       "assetKind": "Equipment",
@@ -5550,7 +5456,6 @@
     {
       "stableId": "equipment.iron.curved.sword",
       "displayName": "Iron Curved Sword",
-      "description": "Iron Curved Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Curved Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Curved Sword.asset",
       "assetKind": "Equipment",
@@ -5609,7 +5514,6 @@
     {
       "stableId": "equipment.iron.helmet",
       "displayName": "Iron Helmet",
-      "description": "Iron Helmet: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Helmet Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Helmet.asset",
       "assetKind": "Equipment",
@@ -5664,7 +5568,6 @@
     {
       "stableId": "projectile.iron.javelin",
       "displayName": "Iron Javelin",
-      "description": "Iron Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Javelin Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Javelin.asset",
       "assetKind": "Projectile",
@@ -5719,7 +5622,6 @@
     {
       "stableId": "equipment.iron.mace",
       "displayName": "Iron Mace",
-      "description": "Iron Mace: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Mace Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Mace.asset",
       "assetKind": "Equipment",
@@ -5786,7 +5688,6 @@
     {
       "stableId": "equipment.iron.shield",
       "displayName": "Iron Shield",
-      "description": "Iron Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Shield.asset",
       "assetKind": "Equipment",
@@ -5841,7 +5742,6 @@
     {
       "stableId": "equipment.iron.short.sword",
       "displayName": "Iron Short Sword",
-      "description": "Iron Short Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Short Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Short Sword.asset",
       "assetKind": "Equipment",
@@ -5900,7 +5800,6 @@
     {
       "stableId": "equipment.iron.spear",
       "displayName": "Iron Spear",
-      "description": "Iron Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Spear.asset",
       "assetKind": "Equipment",
@@ -5967,7 +5866,6 @@
     {
       "stableId": "equipment.iron.sword",
       "displayName": "Iron Sword",
-      "description": "Iron Sword: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Sword Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Sword.asset",
       "assetKind": "Equipment",
@@ -6026,7 +5924,6 @@
     {
       "stableId": "equipment.iron.tools",
       "displayName": "Iron Tools",
-      "description": "Iron Tools: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Tools Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Tools.asset",
       "assetKind": "Equipment",
@@ -6081,7 +5978,6 @@
     {
       "stableId": "equipment.iron.two.handed.axe",
       "displayName": "Iron Two Handed Axe",
-      "description": "Iron Two Handed Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Two Handed Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Two Handed Axe.asset",
       "assetKind": "Equipment",
@@ -6140,7 +6036,6 @@
     {
       "stableId": "equipment.iron.warhammer",
       "displayName": "Iron Warhammer",
-      "description": "Iron Warhammer: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Warhammer Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Iron Warhammer.asset",
       "assetKind": "Equipment",
@@ -6207,7 +6102,6 @@
     {
       "stableId": "equipment.long.iron.spear",
       "displayName": "Long Iron Spear",
-      "description": "Long Iron Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Long Iron Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Long Iron Spear.asset",
       "assetKind": "Equipment",
@@ -6274,7 +6168,6 @@
     {
       "stableId": "projectile.poisoned.iron.arrow",
       "displayName": "Poisoned Iron Arrow",
-      "description": "Poisoned Iron Arrow: damage-over-time ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Poisoned Iron Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Poisoned Iron Arrow.asset",
       "assetKind": "Projectile",
@@ -6342,7 +6235,6 @@
     {
       "stableId": "equipment.round.iron.shield",
       "displayName": "Round Iron Shield",
-      "description": "Round Iron Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Round Iron Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Round Iron Shield.asset",
       "assetKind": "Equipment",
@@ -6397,7 +6289,6 @@
     {
       "stableId": "equipment.scale.armor",
       "displayName": "Scale Armor",
-      "description": "Scale Armor: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Scale Armor Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Scale Armor.asset",
       "assetKind": "Equipment",
@@ -6452,7 +6343,6 @@
     {
       "stableId": "equipment.tower.shield",
       "displayName": "Tower Shield",
-      "description": "Tower Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Iron/Tower Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Iron/Tower Shield.asset",
       "assetKind": "Equipment",
@@ -6509,7 +6399,6 @@
     {
       "stableId": "equipment.atlatl",
       "displayName": "Atlatl",
-      "description": "Atlatl: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Atlatl Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Atlatl.asset",
       "assetKind": "Equipment",
@@ -6568,7 +6457,6 @@
     {
       "stableId": "projectile.flint.arrow",
       "displayName": "Flint Arrow",
-      "description": "Flint Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Arrow.asset",
       "assetKind": "Projectile",
@@ -6623,7 +6511,6 @@
     {
       "stableId": "equipment.flint.axe",
       "displayName": "Flint Axe",
-      "description": "Flint Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Axe.asset",
       "assetKind": "Equipment",
@@ -6682,7 +6569,6 @@
     {
       "stableId": "equipment.flint.spear",
       "displayName": "Flint Spear",
-      "description": "Flint Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Flint Spear.asset",
       "assetKind": "Equipment",
@@ -6749,7 +6635,6 @@
     {
       "stableId": "equipment.hide.cap",
       "displayName": "Hide Cap",
-      "description": "Hide Cap: minor durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Hide Cap Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Hide Cap.asset",
       "assetKind": "Equipment",
@@ -6804,7 +6689,6 @@
     {
       "stableId": "equipment.hide.shield",
       "displayName": "Hide Shield",
-      "description": "Hide Shield: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Hide Shield Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Hide Shield.asset",
       "assetKind": "Equipment",
@@ -6859,7 +6743,6 @@
     {
       "stableId": "equipment.obsidian.club",
       "displayName": "Obsidian Club",
-      "description": "Obsidian Club: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Obsidian Club Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Obsidian Club.asset",
       "assetKind": "Equipment",
@@ -6918,7 +6801,6 @@
     {
       "stableId": "projectile.poisoned.flint.arrow",
       "displayName": "Poisoned Flint Arrow",
-      "description": "Poisoned Flint Arrow: damage-over-time ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Poisoned Flint Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Poisoned Flint Arrow.asset",
       "assetKind": "Projectile",
@@ -6986,7 +6868,6 @@
     {
       "stableId": "equipment.polished.stone.adze",
       "displayName": "Polished Stone Adze",
-      "description": "Polished Stone Adze: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Polished Stone Adze Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Polished Stone Adze.asset",
       "assetKind": "Equipment",
@@ -7041,7 +6922,6 @@
     {
       "stableId": "equipment.simple.bow",
       "displayName": "Simple Bow",
-      "description": "Simple Bow: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Simple Bow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Simple Bow.asset",
       "assetKind": "Equipment",
@@ -7100,7 +6980,6 @@
     {
       "stableId": "projectile.stone.arrow",
       "displayName": "Stone Arrow",
-      "description": "Stone Arrow: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Stone Arrow Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Neolithic/Stone Arrow.asset",
       "assetKind": "Projectile",
@@ -7155,7 +7034,6 @@
     {
       "stableId": "equipment.bone.war.charm",
       "displayName": "Bone War Charm",
-      "description": "Bone War Charm: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Bone War Charm Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Bone War Charm.asset",
       "assetKind": "Equipment",
@@ -7210,7 +7088,6 @@
     {
       "stableId": "equipment.fire.hardened.wooden.spear",
       "displayName": "Fire Hardened Wooden Spear",
-      "description": "Fire Hardened Wooden Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Fire Hardened Wooden Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Fire Hardened Wooden Spear.asset",
       "assetKind": "Equipment",
@@ -7277,7 +7154,6 @@
     {
       "stableId": "equipment.hand.axe",
       "displayName": "Hand Axe",
-      "description": "Hand Axe: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Hand Axe Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Hand Axe.asset",
       "assetKind": "Equipment",
@@ -7332,7 +7208,6 @@
     {
       "stableId": "equipment.stone.club",
       "displayName": "Stone Club",
-      "description": "Stone Club: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Club Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Club.asset",
       "assetKind": "Equipment",
@@ -7391,7 +7266,6 @@
     {
       "stableId": "equipment.stone.knife",
       "displayName": "Stone Knife",
-      "description": "Stone Knife: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Knife Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Knife.asset",
       "assetKind": "Equipment",
@@ -7450,7 +7324,6 @@
     {
       "stableId": "equipment.stone.spear",
       "displayName": "Stone Spear",
-      "description": "Stone Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Stone Spear.asset",
       "assetKind": "Equipment",
@@ -7517,7 +7390,6 @@
     {
       "stableId": "equipment.warm.hide.wrap",
       "displayName": "Warm Hide Wrap",
-      "description": "Warm Hide Wrap: cold-weather protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Warm Hide Wrap Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Warm Hide Wrap.asset",
       "assetKind": "Equipment",
@@ -7572,7 +7444,6 @@
     {
       "stableId": "equipment.wooden.club",
       "displayName": "Wooden Club",
-      "description": "Wooden Club: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Wooden Club Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Wooden Club.asset",
       "assetKind": "Equipment",
@@ -7631,7 +7502,6 @@
     {
       "stableId": "equipment.wooden.spear",
       "displayName": "Wooden Spear",
-      "description": "Wooden Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Wooden Spear Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Paleolithic/Wooden Spear.asset",
       "assetKind": "Equipment",
@@ -7698,7 +7568,6 @@
     {
       "stableId": "equipment.arbalest",
       "displayName": "Arbalest",
-      "description": "Arbalest: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Arbalest Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Arbalest.asset",
       "assetKind": "Equipment",
@@ -7757,7 +7626,6 @@
     {
       "stableId": "projectile.armor.piercing.crossbow.bolt",
       "displayName": "Armor Piercing Crossbow Bolt",
-      "description": "Armor Piercing Crossbow Bolt: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Armor Piercing Crossbow Bolt Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Armor Piercing Crossbow Bolt.asset",
       "assetKind": "Projectile",
@@ -7822,7 +7690,6 @@
     {
       "stableId": "equipment.arquebus",
       "displayName": "Arquebus",
-      "description": "Arquebus: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Arquebus Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Arquebus.asset",
       "assetKind": "Equipment",
@@ -7880,7 +7747,6 @@
     {
       "stableId": "projectile.barbed.crossbow.bolt",
       "displayName": "Barbed Crossbow Bolt",
-      "description": "Barbed Crossbow Bolt: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Barbed Crossbow Bolt Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Barbed Crossbow Bolt.asset",
       "assetKind": "Projectile",
@@ -7935,7 +7801,6 @@
     {
       "stableId": "equipment.full.plate",
       "displayName": "Full Plate",
-      "description": "Full Plate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Full Plate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Full Plate.asset",
       "assetKind": "Equipment",
@@ -7996,7 +7861,6 @@
     {
       "stableId": "equipment.half.plate",
       "displayName": "Half Plate",
-      "description": "Half Plate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Half Plate Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Half Plate.asset",
       "assetKind": "Equipment",
@@ -8055,7 +7919,6 @@
     {
       "stableId": "equipment.plate.horse.armor",
       "displayName": "Plate Horse Armor",
-      "description": "Plate Horse Armor: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Plate Horse Armor Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Plate Horse Armor.asset",
       "assetKind": "Equipment",
@@ -8115,7 +7978,6 @@
     {
       "stableId": "equipment.rapier",
       "displayName": "Rapier",
-      "description": "Rapier: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Rapier Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Renaissance/Rapier.asset",
       "assetKind": "Equipment",
@@ -8174,7 +8036,6 @@
     {
       "stableId": "projectile.armor.piercing.shells",
       "displayName": "Armor-Piercing Shells",
-      "description": "Armor-Piercing Shells: narrow armor penetration. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Armor-Piercing Shells Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Armor-Piercing Shells.asset",
       "assetKind": "Projectile",
@@ -8239,7 +8100,6 @@
     {
       "stableId": "equipment.breech.loading.carbine",
       "displayName": "Breech Loading Carbine",
-      "description": "Breech Loading Carbine: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Breech Loading Carbine Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Breech Loading Carbine.asset",
       "assetKind": "Equipment",
@@ -8297,7 +8157,6 @@
     {
       "stableId": "equipment.breech.loading.rifle",
       "displayName": "Breech Loading Rifle",
-      "description": "Breech Loading Rifle: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Breech Loading Rifle Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Breech Loading Rifle.asset",
       "assetKind": "Equipment",
@@ -8355,7 +8214,6 @@
     {
       "stableId": "projectile.canister.shot",
       "displayName": "Canister Shot",
-      "description": "Canister Shot: anti-personnel ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Canister Shot Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Canister Shot.asset",
       "assetKind": "Projectile",
@@ -8420,7 +8278,6 @@
     {
       "stableId": "projectile.explosive.shells",
       "displayName": "Explosive Shells",
-      "description": "Explosive Shells: incendiary ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Explosive Shells Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Explosive Shells.asset",
       "assetKind": "Projectile",
@@ -8488,7 +8345,6 @@
     {
       "stableId": "equipment.lever.action.rifle",
       "displayName": "Lever Action Rifle",
-      "description": "Lever Action Rifle: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Lever Action Rifle Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Lever Action Rifle.asset",
       "assetKind": "Equipment",
@@ -8546,7 +8402,6 @@
     {
       "stableId": "projectile.minie.ball",
       "displayName": "Minie Ball",
-      "description": "Minie Ball: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Minie Ball Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Minie Ball.asset",
       "assetKind": "Projectile",
@@ -8601,7 +8456,6 @@
     {
       "stableId": "equipment.percussion.cap.musket",
       "displayName": "Percussion Cap Musket",
-      "description": "Percussion Cap Musket: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Percussion Cap Musket Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Percussion Cap Musket.asset",
       "assetKind": "Equipment",
@@ -8659,7 +8513,6 @@
     {
       "stableId": "equipment.revolver",
       "displayName": "Revolver",
-      "description": "Revolver: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics.",
       "iconPath": "Assets/Scripts Repo/Units/Equipment/Steam/Revolver Icon.png",
       "outputAssetPath": "Assets/Scripts Repo/Units/Equipment/Steam/Revolver.asset",
       "assetKind": "Equipment",
