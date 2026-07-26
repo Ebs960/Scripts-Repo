@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.reinforced.torsion.cables
   equipmentName: Reinforced Torsion Cables
-  description: "Reinforced Torsion Cables: battlefield utility. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Reinforced Torsion Cables: battlefield utility. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: d490eff10162f7e468784a0feac8ee34, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 5
@@ -22,7 +23,7 @@ MonoBehaviour:
   gameplayTags:
   - miscellaneous
   - battlefield
-  equipmentType: 3
+  equipmentType: 2
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 6e755b419b540af499f6e68ca6343410, type: 2}

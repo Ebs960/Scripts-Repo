@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.flintlock.carbine
   equipmentName: Flintlock Carbine
-  description: "Flintlock Carbine: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Flintlock Carbine: general purpose equipment. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 7fc489d5a1201324487f13d6dca67889, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 11
@@ -36,9 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 14
-  - 24
+  allowedUnitTypes: 0e00000018000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 0f4f4e4a49239b749aac37d1d0971e81, type: 2}

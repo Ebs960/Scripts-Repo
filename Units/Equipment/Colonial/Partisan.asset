@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.partisan
   equipmentName: Partisan
-  description: "Partisan: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Partisan: general purpose equipment. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 097bbaf117b4a9d4a937e9f0bb3039c5, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 10
@@ -36,9 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 0
-  - 7
+  allowedUnitTypes: 0000000007000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 84effc4f2443c0640adf9630297cb922, type: 2}

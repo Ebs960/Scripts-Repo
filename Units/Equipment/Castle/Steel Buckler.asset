@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.steel.buckler
   equipmentName: Steel Buckler
-  description: "Steel Buckler: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Steel Buckler: general and ranged protection. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 8c2177ac6ba21e04fba5218981cce190, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: aa2a1819cf87a2c4bae774495eec0d98, type: 2}

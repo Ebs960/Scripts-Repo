@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.barbed.iron.javelin
   projectileName: Barbed Iron Javelin
-  description: "Barbed Iron Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Barbed Iron Javelin: ammunition contribution. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 4
   icon: {fileID: 21300000, guid: 5e1a8f32bb58e324991889f4149c15b1, type: 3}
   category: 5
@@ -28,7 +29,7 @@ MonoBehaviour:
   statusEffect: {fileID: 0}
   onHitEffects: []
   statusEffectDuration: 0
-  statusEffectName:
+  statusEffectName: 
   projectilePrefab: {fileID: 0}
   heldProjectilePrefab: {fileID: 0}
   impactVfxPrefab: {fileID: 0}

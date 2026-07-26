@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.scale.armor
   equipmentName: Scale Armor
-  description: "Scale Armor: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Scale Armor: durability. Values are budgeted against same-age unit
+    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: d5f71ffe326b43a4ba67aec9cd65b36a, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}

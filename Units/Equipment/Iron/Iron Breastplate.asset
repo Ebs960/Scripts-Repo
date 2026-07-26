@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.breastplate
   equipmentName: Iron Breastplate
-  description: "Iron Breastplate: durability. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Iron Breastplate: durability. Values are budgeted against same-age
+    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 5985eacd67c9da14eac5c4a61a5a2a9a, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}

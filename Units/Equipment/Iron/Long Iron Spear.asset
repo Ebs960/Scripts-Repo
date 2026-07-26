@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.long.iron.spear
   equipmentName: Long Iron Spear
-  description: "Long Iron Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Long Iron Spear: anti-cavalry specialization. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 7bd60b73db9d45849b50f5f9b06ee91b, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4
@@ -52,9 +53,7 @@ MonoBehaviour:
     attackPct: 0.15
     defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 0
-  - 7
+  allowedUnitTypes: 0000000007000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}

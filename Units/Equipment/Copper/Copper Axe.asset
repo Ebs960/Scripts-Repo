@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.axe
   equipmentName: Copper Axe
-  description: "Copper Axe: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Copper Axe: general purpose equipment. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: f0218d12e9dcfad4199ee098dc416722, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2
@@ -36,10 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 1
-  - 2
-  - 3
+  allowedUnitTypes: 010000000200000003000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}

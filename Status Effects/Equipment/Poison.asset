@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Poison
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectData
   effectName: Poison
-  description: Takes 2 damage per turn; refreshed by subsequent applications.
+  description: Takes damage at the start of each turn.
   icon: {fileID: 0}
   effectType: 0
   stacking: 1

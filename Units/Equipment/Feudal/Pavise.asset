@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.pavise
   equipmentName: Pavise
-  description: "Pavise: general and ranged protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Pavise: general and ranged protection. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 041c235894671f44294c98467535add9, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 7
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: b6bde9e102207a0468f2cd6141db14f8, type: 2}

@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.warhammer
   equipmentName: Iron Warhammer
-  description: "Iron Warhammer: armor-breaking melee weapon. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Iron Warhammer: armor-breaking melee weapon. Values are budgeted
+    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 43853efee6c159047bd3d380d8cdbdb2, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4
@@ -44,10 +45,7 @@ MonoBehaviour:
     attackPct: 0.12
     defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 1
-  - 2
-  - 3
+  allowedUnitTypes: 010000000200000003000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
@@ -75,19 +73,7 @@ MonoBehaviour:
   conditionalStatBonuses: []
   auraBonuses: []
   grantedAbilities: []
-  onHitEffects:
-  - effect: {fileID: 11400000, guid: 798ba2263b4c4084d8db976714c17808, type: 2}
-    applicationChance: 0.25
-    durationOverride: 2
-    magnitudeMultiplier: 1
-    meleeOnly: 1
-    rangedOnly: 0
-    applyToSelf: 0
-    applyToTarget: 1
-    useTargetCategoryFilter: 0
-    targetCategory: 0
-    useTargetDomainFilter: 0
-    targetDomain: 0
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0

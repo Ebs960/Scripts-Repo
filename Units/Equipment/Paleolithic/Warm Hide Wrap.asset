@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.warm.hide.wrap
   equipmentName: Warm Hide Wrap
-  description: "Warm Hide Wrap: cold-weather protection. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Warm Hide Wrap: cold-weather protection. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 12197c2cad46cef419fea0bfc52cf048, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}

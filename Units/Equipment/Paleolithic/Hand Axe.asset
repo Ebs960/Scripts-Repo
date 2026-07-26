@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.hand.axe
   equipmentName: Hand Axe
-  description: "Hand Axe: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Hand Axe: worker output. Values are budgeted against same-age unit
+    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 208f0ecb53d92544ba7722303373c2c1, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0
@@ -22,7 +23,7 @@ MonoBehaviour:
   gameplayTags:
   - tool
   - worker
-  equipmentType: 4
+  equipmentType: 3
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 1
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}

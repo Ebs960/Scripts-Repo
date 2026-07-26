@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Burn
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectData
   effectName: Burn
-  description: Takes 3 fire damage per turn; refreshed by subsequent applications.
+  description: Takes fire damage at the start of each turn.
   icon: {fileID: 0}
   effectType: 1
   stacking: 1
   baseDuration: 2
-  magnitude: 3
+  magnitude: 2
   ticksPerTurn: 1
   persistentVFX: {fileID: 0}
   applyVFX: {fileID: 0}

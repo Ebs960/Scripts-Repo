@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.tools
   equipmentName: Copper Tools
-  description: "Copper Tools: worker output. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Copper Tools: worker output. Values are budgeted against same-age
+    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: d57d8b02d27a4064b898281e861e5be1, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2
@@ -22,7 +23,7 @@ MonoBehaviour:
   gameplayTags:
   - tool
   - worker
-  equipmentType: 4
+  equipmentType: 3
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 1
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}

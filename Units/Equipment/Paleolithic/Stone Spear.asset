@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.stone.spear
   equipmentName: Stone Spear
-  description: "Stone Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Stone Spear: anti-cavalry specialization. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 470719d82d0606d49bc84ad823318bef, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0
@@ -52,9 +53,7 @@ MonoBehaviour:
     attackPct: 0.15
     defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 0
-  - 7
+  allowedUnitTypes: 0000000007000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}

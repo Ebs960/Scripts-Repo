@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.war.banner
   equipmentName: Copper War Banner
-  description: "Copper War Banner: friendly morale aura. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Copper War Banner: friendly morale aura. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: cf1517d0af170df46acc3a951c945015, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2
@@ -22,7 +23,7 @@ MonoBehaviour:
   gameplayTags:
   - miscellaneous
   - friendly
-  equipmentType: 3
+  equipmentType: 2
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
@@ -36,7 +37,7 @@ MonoBehaviour:
   defenseBonusAgainst: []
   combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: []
+  allowedUnitTypes: 
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}
@@ -62,7 +63,57 @@ MonoBehaviour:
   rangeBonus: 0
   sightRangeBonus: 0
   conditionalStatBonuses: []
-  auraBonuses: []
+  auraBonuses:
+  - radius: 1
+    includeSelf: 0
+    targetRelationship: 0
+    targetCombatUnit: {fileID: 0}
+    targetWorkerUnit: {fileID: 0}
+    useTargetUnitCategoryFilter: 0
+    targetUnitCategory: 0
+    attackAdd: 0
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
+    defenseAdd: 0
+    healthAdd: 0
+    rangeAdd: 0
+    attackPct: 0.06
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
+    defensePct: 0.04
+    healthPct: 0
+    rangePct: 0
+    healingRatePct: 0
+    cityFoodAdd: 0
+    cityProductionAdd: 0
+    cityGoldAdd: 0
+    cityScienceAdd: 0
+    cityCultureAdd: 0
+    cityFaithAdd: 0
+    cityPolicyPointsAdd: 0
+    cityOrderAdd: 0
+    cityHappinessAdd: 0
+    cityDefenseAdd: 0
+    cityFoodPct: 0
+    cityProductionPct: 0
+    cityGoldPct: 0
+    citySciencePct: 0
+    cityCulturePct: 0
+    cityFaithPct: 0
+    cityPolicyPointsPct: 0
+    cityOrderPct: 0
+    cityHappinessPct: 0
+    cityDefensePct: 0
   grantedAbilities:
   - {fileID: 11400000, guid: f09851458fa3e72d865f68f3dbeec262, type: 2}
   onHitEffects: []

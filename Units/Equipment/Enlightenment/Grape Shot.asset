@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.grape.shot
   projectileName: Grape Shot
-  description: "Grape Shot: anti-personnel ammunition. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Grape Shot: anti-personnel ammunition. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 11
   icon: {fileID: 21300000, guid: dbe7769f4d9faaa45b59792fbf0a187e, type: 3}
   category: 3
@@ -26,21 +27,9 @@ MonoBehaviour:
   requiredCultures: []
   damage: 4
   statusEffect: {fileID: 0}
-  onHitEffects:
-  - effect: {fileID: 11400000, guid: 04443ada7aca04441ea6644db5d447e1, type: 2}
-    applicationChance: 0.3
-    durationOverride: 1
-    magnitudeMultiplier: 1
-    meleeOnly: 0
-    rangedOnly: 1
-    applyToSelf: 0
-    applyToTarget: 1
-    useTargetCategoryFilter: 0
-    targetCategory: 0
-    useTargetDomainFilter: 0
-    targetDomain: 0
+  onHitEffects: []
   statusEffectDuration: 0
-  statusEffectName:
+  statusEffectName: 
   projectilePrefab: {fileID: 0}
   heldProjectilePrefab: {fileID: 0}
   impactVfxPrefab: {fileID: 0}

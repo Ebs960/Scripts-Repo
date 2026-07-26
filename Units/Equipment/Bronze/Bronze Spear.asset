@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.bronze.spear
   equipmentName: Bronze Spear
-  description: "Bronze Spear: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  description: 'Bronze Spear: anti-cavalry specialization. Values are budgeted against
+    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: c2d12e90c6cf4af469e7868ab64e1431, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3
@@ -52,9 +53,7 @@ MonoBehaviour:
     attackPct: 0.15
     defensePct: 0
   workPointsBonus: 0
-  allowedUnitTypes:
-  - 0
-  - 7
+  allowedUnitTypes: 0000000007000000
   minimumLevel: 1
   requiredTechs:
   - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
