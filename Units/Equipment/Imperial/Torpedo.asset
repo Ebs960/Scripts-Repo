@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.torpedo
   projectileName: Torpedo
-  description: 'Torpedo: narrow armor penetration. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   projectileAge: 13
   icon: {fileID: 21300000, guid: 35cb494e32f65964783500572244cb60, type: 3}
   category: 3

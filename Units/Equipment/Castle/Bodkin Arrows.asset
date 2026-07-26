@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.bodkin.arrows
   projectileName: Bodkin Arrows
-  description: 'Bodkin Arrows: narrow armor penetration. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 8
   icon: {fileID: 21300000, guid: c7495cb2f07cf5a4782881c4b766a548, type: 3}
   category: 0

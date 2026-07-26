@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.hand.axe
   equipmentName: Hand Axe
-  description: 'Hand Axe: worker output. Values are budgeted against same-age unit
-    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 208f0ecb53d92544ba7722303373c2c1, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

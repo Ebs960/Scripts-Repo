@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.steel.sword
   equipmentName: Steel Sword
-  description: 'Steel Sword: general purpose equipment. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 08c09ed0aa241664abdf5e0ef3a9ff0a, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

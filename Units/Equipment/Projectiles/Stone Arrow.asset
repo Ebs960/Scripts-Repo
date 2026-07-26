@@ -14,7 +14,6 @@ MonoBehaviour:
   stableId: legacy.projectile.stone.arrow
   m_EditorClassIdentifier:
   projectileName: Stone Arrow
-  description: "Legacy data asset retained in place to preserve existing references."
   icon: {fileID: 0}
   category: 0
   productionCost: 10

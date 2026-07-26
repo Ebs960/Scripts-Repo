@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.shrapnel.shell
   projectileName: Shrapnel Shell
-  description: 'Shrapnel Shell: anti-personnel ammunition. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 13
   icon: {fileID: 21300000, guid: 61fef065b655c684b9de03bee661be81, type: 3}
   category: 3

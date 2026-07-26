@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.kite.shield
   equipmentName: Kite Shield
-  description: 'Kite Shield: general and ranged protection. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 7fecc6212389feb46b3a9e3a42667b43, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 7

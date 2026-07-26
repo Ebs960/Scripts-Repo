@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.wooden.spear
   equipmentName: Wooden Spear
-  description: 'Wooden Spear: anti-cavalry specialization. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: f21052f68eaafe144a017d8ca94aaf98, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

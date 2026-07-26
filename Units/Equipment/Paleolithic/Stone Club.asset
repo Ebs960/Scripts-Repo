@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.stone.club
   equipmentName: Stone Club
-  description: 'Stone Club: general purpose equipment. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 411303de1c6e42045b8cda4917e6c9d9, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 0

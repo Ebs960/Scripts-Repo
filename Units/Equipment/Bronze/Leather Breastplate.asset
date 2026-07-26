@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.leather.breastplate
   equipmentName: Leather Breastplate
-  description: 'Leather Breastplate: durability. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 7496ff7db5fb81a499ba487b482ca4f6, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

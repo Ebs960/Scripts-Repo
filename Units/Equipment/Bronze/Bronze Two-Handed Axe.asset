@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.bronze.two.handed.axe
   equipmentName: Bronze Two-Handed Axe
-  description: 'Bronze Two-Handed Axe: general purpose equipment. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: a7bf70515b470f948aa8ba479f0a28e9, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

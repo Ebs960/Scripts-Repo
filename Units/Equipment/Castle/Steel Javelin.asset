@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.steel.javelin
   projectileName: Steel Javelin
-  description: 'Steel Javelin: ammunition contribution. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 8
   icon: {fileID: 21300000, guid: 78ed6768d0b161e4dbac746e32c73aa8, type: 3}
   category: 5

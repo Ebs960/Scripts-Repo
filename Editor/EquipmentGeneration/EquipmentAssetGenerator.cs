@@ -46,7 +46,7 @@ public static class EquipmentAssetGenerator
     [Serializable] private class Manifest { public int schemaVersion; public Record[] records; }
     [Serializable] private class Record
     {
-        public string stableId, displayName, description, iconPath, outputAssetPath, assetKind, age, equipmentType, targetUnitKind, role, projectileCategory, notes;
+        public string stableId, displayName, iconPath, outputAssetPath, assetKind, age, equipmentType, targetUnitKind, role, projectileCategory, notes;
         public string[] allowedCombatCategories, requiredTechnologyNames, requiredCultureNames, gameplayTags;
         public int productionCost, goldCost, projectileDamage;
         public bool twoHanded, usesProjectiles;
@@ -142,7 +142,6 @@ public static class EquipmentAssetGenerator
         var so = new SerializedObject(a); // SerializedObject keeps this batch compatible with renamed/backward-compatible fields.
         so.FindProperty("stableId").stringValue = r.stableId;
         so.FindProperty("equipmentName").stringValue = r.displayName;
-        so.FindProperty("description").stringValue = r.description;
         so.FindProperty("icon").objectReferenceValue = icon;
         so.FindProperty("equipmentAge").enumValueIndex = ParseEnum<TechAge>(r.age);
         so.FindProperty("equipmentType").enumValueIndex = ParseEnum<EquipmentType>(r.equipmentType);
@@ -176,7 +175,7 @@ public static class EquipmentAssetGenerator
     {
         Undo.RecordObject(a, "Update projectile"); var so = new SerializedObject(a);
         so.FindProperty("stableId").stringValue = r.stableId; so.FindProperty("projectileName").stringValue = r.displayName;
-        so.FindProperty("description").stringValue = r.description; so.FindProperty("icon").objectReferenceValue = icon;
+        so.FindProperty("icon").objectReferenceValue = icon;
         so.FindProperty("projectileAge").enumValueIndex = ParseEnum<TechAge>(r.age);
         so.FindProperty("category").enumValueIndex = ParseEnum<ProjectileCategory>(r.projectileCategory);
         so.FindProperty("productionCost").intValue = r.productionCost; so.FindProperty("goldCost").intValue = r.goldCost;
@@ -248,7 +247,7 @@ public static class EquipmentAssetGenerator
         var missingAssets=m.records.Where(x=>!materialized.Contains(x.stableId)).ToArray();
         var duplicateAssets=equipment.Select(x=>x.stableId).Concat(projectiles.Select(x=>x.stableId)).Where(x=>!string.IsNullOrEmpty(x)).GroupBy(x=>x).Where(g=>g.Count()>1).Select(g=>g.Key).ToArray();
         var invalidProjectiles=projectiles.Where(x=>string.IsNullOrEmpty(x.stableId)||string.IsNullOrEmpty(x.projectileName)||x.icon==null).ToArray();
-        var invalidEquipment=equipment.Where(x=>string.IsNullOrEmpty(x.stableId)||string.IsNullOrEmpty(x.equipmentName)||string.IsNullOrEmpty(x.description)||x.icon==null).ToArray();
+        var invalidEquipment=equipment.Where(x=>string.IsNullOrEmpty(x.stableId)||string.IsNullOrEmpty(x.equipmentName)||x.icon==null).ToArray();
         var text=$"# Equipment validation\n\n- Manifest records: {m.records.Length}\n- Materialized equipment: {equipment.Count}\n- Materialized projectiles: {projectiles.Count}\n- Duplicate manifest stable IDs: {ids.Length}\n- Duplicate asset stable IDs: {duplicateAssets.Length}\n- Missing icons: {missingIcons.Length}\n- Missing materialized assets: {missingAssets.Length}\n- Invalid equipment assets: {invalidEquipment.Length}\n- Invalid projectile assets: {invalidProjectiles.Length}\n- Balance validation requested: {includeBalance}\n";
         File.WriteAllText(ResultsPath,text); AssetDatabase.Refresh();
         if(ids.Length>0||duplicateAssets.Length>0||missingIcons.Length>0||missingAssets.Length>0||invalidEquipment.Length>0||invalidProjectiles.Length>0) Debug.LogError(text); else Debug.Log(text);

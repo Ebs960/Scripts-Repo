@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.leather.shield
   equipmentName: Leather Shield
-  description: 'Leather Shield: general and ranged protection. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 6b96e5062d9b1134cba1d2ce076d006e, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 3

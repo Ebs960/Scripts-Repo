@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.grape.shot
   projectileName: Grape Shot
-  description: 'Grape Shot: anti-personnel ammunition. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 11
   icon: {fileID: 21300000, guid: dbe7769f4d9faaa45b59792fbf0a187e, type: 3}
   category: 3

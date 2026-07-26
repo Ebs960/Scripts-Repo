@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.copper.tools
   equipmentName: Copper Tools
-  description: 'Copper Tools: worker output. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: d57d8b02d27a4064b898281e861e5be1, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 2

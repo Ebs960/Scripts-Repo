@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.caltrops
   equipmentName: Caltrops
-  description: 'Caltrops: anti-cavalry defensive utility. Its narrow modifier applies
-    only to its equipment contribution.'
   icon: {fileID: 21300000, guid: 200ef6385818b6e40b00d6c4720d8da0, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 5

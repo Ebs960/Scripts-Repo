@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.sabre
   equipmentName: Sabre
-  description: 'Sabre: general purpose equipment. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 1c4870fada1976546b0eebc3c2c51e89, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 11

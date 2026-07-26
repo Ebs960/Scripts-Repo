@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.rifle.cartridge
   equipmentName: Rifle Cartridge
-  description: 'Rifle Cartridge: general purpose equipment. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 70e9677c50eeca443ad62f3b54de54c8, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 13

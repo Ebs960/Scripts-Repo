@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.simple.bow
   equipmentName: Simple Bow
-  description: 'Simple Bow: general purpose equipment. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: b1354862b5f0d8c4ea7c0dec783cbc12, type: 3}
   equipmentPrefab: {fileID: 6699692670475189323, guid: 07da1c7efa8a8bb4c9d30115bf9279ff, type: 3}
   equipmentAge: 1

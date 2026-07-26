@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: legacy.projectile.longbow.arrow
   projectileName: Longbow Arrow
-  description: "Legacy projectile retained for existing unit and weapon references."
   projectileAge: 0
   icon: {fileID: 0}
   category: 0

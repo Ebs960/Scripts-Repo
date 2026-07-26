@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.grenade
   projectileName: Grenade
-  description: 'Grenade: ammunition contribution. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   projectileAge: 11
   icon: {fileID: 21300000, guid: 226d9e5e5cea38b4c9d6f82f9bad9e85, type: 3}
   category: 3

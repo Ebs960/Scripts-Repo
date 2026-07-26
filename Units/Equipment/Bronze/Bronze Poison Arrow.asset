@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.bronze.poison.arrow
   projectileName: Bronze Poison Arrow
-  description: 'Bronze Poison Arrow: damage-over-time ammunition. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 3
   icon: {fileID: 21300000, guid: 655d8f7f60a581d408bd60bf47eeb7ca, type: 3}
   category: 0

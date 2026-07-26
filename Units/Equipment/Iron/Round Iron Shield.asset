@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.round.iron.shield
   equipmentName: Round Iron Shield
-  description: 'Round Iron Shield: general and ranged protection. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: e6ac3f67e7fcda342802d6b45947b1e5, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4

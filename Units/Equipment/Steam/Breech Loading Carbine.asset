@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.breech.loading.carbine
   equipmentName: Breech Loading Carbine
-  description: 'Breech Loading Carbine: general purpose equipment. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: e690d3d47a24cc94183b9879c1abf9ac, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 12

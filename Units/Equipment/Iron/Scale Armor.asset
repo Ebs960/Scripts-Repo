@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.scale.armor
   equipmentName: Scale Armor
-  description: 'Scale Armor: durability. Values are budgeted against same-age unit
-    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: d5f71ffe326b43a4ba67aec9cd65b36a, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4

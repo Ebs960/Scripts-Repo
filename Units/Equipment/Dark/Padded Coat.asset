@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.padded.coat
   equipmentName: Padded Coat
-  description: 'Padded Coat: durability. Values are budgeted against same-age unit
-    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 27e6f3e9a5a12a34aa45333d55ed7a62, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 6

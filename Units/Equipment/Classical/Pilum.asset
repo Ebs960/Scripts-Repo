@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.pilum
   projectileName: Pilum
-  description: 'Pilum: ammunition contribution. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   projectileAge: 5
   icon: {fileID: 21300000, guid: 6470fb371aeb8b54cad4b9b5b0f8bada, type: 3}
   category: 5

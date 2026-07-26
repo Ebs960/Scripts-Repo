@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.polished.stone.adze
   equipmentName: Polished Stone Adze
-  description: 'Polished Stone Adze: worker output. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: ac132aec26c1768449734e0dd06d6885, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 1

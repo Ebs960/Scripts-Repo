@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.stripper.clip
   equipmentName: Stripper Clip
-  description: 'Stripper Clip: battlefield utility. Values are budgeted against same-age
-    unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 3421f99069a1de745803c8d8af33a5ec, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 13

@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.high.explosive.shell
   projectileName: High Explosive Shell
-  description: 'High Explosive Shell: incendiary ammunition. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 13
   icon: {fileID: 21300000, guid: 1e7b825c1bab7b04e94bd921c64e8902, type: 3}
   category: 3

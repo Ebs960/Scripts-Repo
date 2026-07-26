@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.half.pike
   equipmentName: Half Pike
-  description: 'Half Pike: anti-cavalry specialization. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: ddcfd7a281506704fb885e60eee59e06, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 10

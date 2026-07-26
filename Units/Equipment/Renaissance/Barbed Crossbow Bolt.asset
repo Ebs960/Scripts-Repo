@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
   stableId: projectile.barbed.crossbow.bolt
   projectileName: Barbed Crossbow Bolt
-  description: 'Barbed Crossbow Bolt: ammunition contribution. Values are budgeted
-    against same-age unit medians and deliberately preserve unit base statistics.'
   projectileAge: 9
   icon: {fileID: 21300000, guid: f7fd31d310db0a546bd155532c235ead, type: 3}
   category: 1

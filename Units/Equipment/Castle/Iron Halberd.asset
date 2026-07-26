@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.halberd
   equipmentName: Iron Halberd
-  description: 'Iron Halberd: anti-cavalry specialization. Values are budgeted against
-    same-age unit medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 73f1cb7c3edf87a42941a16b4e7c4f00, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 8

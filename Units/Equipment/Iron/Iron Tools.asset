@@ -14,8 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: equipment.iron.tools
   equipmentName: Iron Tools
-  description: 'Iron Tools: worker output. Values are budgeted against same-age unit
-    medians and deliberately preserve unit base statistics.'
   icon: {fileID: 21300000, guid: 2e3b334e782695747823cb849b595076, type: 3}
   equipmentPrefab: {fileID: 0}
   equipmentAge: 4
