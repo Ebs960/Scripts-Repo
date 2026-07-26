@@ -189,6 +189,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f09851458fa3e72d865f68f3dbeec262, type: 2}
   - {fileID: 11400000, guid: 700fb9d3837374d584d473fca6dc1d07, type: 2}
   - {fileID: 11400000, guid: 16d3cd865efade1c49bb413d6b78c8cd, type: 2}
+  - {fileID: 11400000, guid: 823d645655367ae8ff60cd23c1f5a1ea, type: 2}
+  - {fileID: 11400000, guid: ebe04113400bcdaaf6d5a96507d4a328, type: 2}
+  - {fileID: 11400000, guid: 472daf8df0c0c83ed215d09d6a3a5939, type: 2}
+  - {fileID: 11400000, guid: 263ae866d3b093fa7b60b8272883ad99, type: 2}
+  - {fileID: 11400000, guid: 8a600a644e98dacf88b23824b16af8b6, type: 2}
+  - {fileID: 11400000, guid: f61786d6fc52caadb0265bfa49fb1425, type: 2}
+  - {fileID: 11400000, guid: 282b08cf44e76ea19a28e90f0b576c4c, type: 2}
+  - {fileID: 11400000, guid: ced419d8492f9979597fef3a6c5ef825, type: 2}
+  - {fileID: 11400000, guid: 04a125cf221bc49dc9b3a88be107db53, type: 2}
+  - {fileID: 11400000, guid: 43d58395a7ded8946a8b60716e3a89fc, type: 2}
+  - {fileID: 11400000, guid: 6d6889d858bb7c3bf03ca67df92d8b2a, type: 2}
+  - {fileID: 11400000, guid: 4d55ca70b9727e5ac12f0211e6dd33de, type: 2}
   equipmentStatusEffects:
   - {fileID: 11400000, guid: 7ac463eb460fb05ae73aa5057a1831ea, type: 2}
   - {fileID: 11400000, guid: 1f2c0ea8ca2bb2288b29679cc3f4f82b, type: 2}

@@ -62,7 +62,8 @@ MonoBehaviour:
   sightRangeBonus: 0
   conditionalStatBonuses: []
   auraBonuses: []
-  grantedAbilities: []
+  grantedAbilities:
+  - {fileID: 11400000, guid: f09851458fa3e72d865f68f3dbeec262, type: 2}
   onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
