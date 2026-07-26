@@ -20,7 +20,10 @@ namespace GameCombat
     public class ProjectileData : ScriptableObject
     {
     [Header("Identity")]
+    public string stableId;
     public string projectileName;
+    [TextArea(2, 5)] public string description;
+    public TechAge projectileAge;
     public Sprite icon;
     [Tooltip("Category of projectile - determines which weapons can use it")]
     public ProjectileCategory category = ProjectileCategory.Arrow;
@@ -45,6 +48,8 @@ namespace GameCombat
 
     [Tooltip("Status effect applied on hit (replaces legacy string-based statusEffectName)")]
     public StatusEffectData statusEffect;
+    [Tooltip("Chance-based and filtered hit effects. The legacy statusEffect remains a guaranteed application.")]
+    public StatusEffectApplication[] onHitEffects;
 
     [System.Obsolete("Use statusEffect (StatusEffectData) instead")]
     [HideInInspector]

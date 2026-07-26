@@ -11,8 +11,14 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Wood Shield
-  m_EditorClassIdentifier: 
+  stableId: legacy.equipment.wood.shield
+  m_EditorClassIdentifier:
   equipmentName: Wood Shield
+  description: "Legacy equipment retained in place to preserve existing unit references."
+  equipmentAge: 1
+  rarity: 0
+  gameplayTags:
+  - legacy
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 57809271367815738, guid: e2b62a08b5c8a5e4b96a8a4aef67a746, type: 3}
   equipmentType: 1

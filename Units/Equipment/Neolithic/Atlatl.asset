@@ -11,45 +11,71 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
   m_Name: Atlatl
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.atlatl
   equipmentName: Atlatl
-  icon: {fileID: 0}
-  equipmentPrefab: {fileID: 6829155209905909234, guid: 0714d74695b726249b87bee7f04681c2, type: 3}
+  description: "Atlatl: general purpose equipment. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: db6f229a837c7be4f872fa032fcf7df0, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 1
+  rarity: 0
+  gameplayTags:
+  - weapon
+  - general
   equipmentType: 0
+  category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
   usesProjectiles: 0
   projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
   useEquipmentProjectileSpawn: 1
   isTwoHanded: 0
   targetUnit: 0
   attackBonusAgainst: []
   defenseBonusAgainst: []
+  combatModifiersAgainst: []
   workPointsBonus: 0
-  allowedUnitTypes: 07000000
+  allowedUnitTypes:
+  - 1
+  - 2
+  - 3
   minimumLevel: 1
   requiredTechs:
-  - {fileID: 11400000, guid: d1d183d8f2efc3b4bb3f7179dcdd0f52, type: 2}
+  - {fileID: 11400000, guid: 3f605ba1460d7674ba2587a74833bd8b, type: 2}
   requiredCultures: []
-  requiredBuildings:
-  - scope: 0
-    building: {fileID: 11400000, guid: a06776ae073f3aa42bf0394f85d35345, type: 2}
-    useBuildingCategoryFilter: 0
-    buildingCategory: 0
-  productionCost: 7
-  goldCost: 0
+  requiredBuildings: []
+  productionCost: 24
+  goldCost: 42
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
   attackBonus: 0
+  meleeAttackBonus: 3
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
   culturePerTurn: 0
   faithPerTurn: 0
   policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0

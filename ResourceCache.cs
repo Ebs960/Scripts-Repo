@@ -18,6 +18,18 @@ public static class ResourceCache
     // Optional ResearchDatabase instance. Can be set at runtime via SetResearchDatabase()
     private static ResearchDatabase _researchDatabase = null;
     private static ReligionDatabase _religionDatabase = null;
+    private static EquipmentDatabase _equipmentDatabase = null;
+
+    public static void SetEquipmentDatabase(EquipmentDatabase db)
+    {
+        _equipmentDatabase = db;
+        _allEquipment = db != null ? db.equipment : null;
+        _allProjectiles = db != null ? db.projectiles : null;
+        _equipmentLoaded = db != null;
+        _projectilesLoaded = db != null;
+    }
+
+    public static EquipmentDatabase GetEquipmentDatabase() => _equipmentDatabase;
 
     /// <summary>
     /// Assign a ResearchDatabase at runtime (useful for GameManager/TechManager wiring).
@@ -427,7 +439,11 @@ public static class ResourceCache
     {
         if (!_projectilesLoaded)
         {
-            _allProjectiles = Resources.LoadAll<ProjectileData>("Projectiles");
+            if (_equipmentDatabase == null)
+                _equipmentDatabase = Resources.Load<EquipmentDatabase>("Equipment/EquipmentDatabase");
+            _allProjectiles = _equipmentDatabase != null && _equipmentDatabase.projectiles != null
+                ? _equipmentDatabase.projectiles
+                : Resources.LoadAll<ProjectileData>("Projectiles");
             _projectilesLoaded = true;
         }
     }
@@ -473,7 +489,11 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_equipmentLoaded)
         {
-            _allEquipment = Resources.LoadAll<EquipmentData>("Equipment");
+            if (_equipmentDatabase == null)
+                _equipmentDatabase = Resources.Load<EquipmentDatabase>("Equipment/EquipmentDatabase");
+            _allEquipment = _equipmentDatabase != null && _equipmentDatabase.equipment != null
+                ? _equipmentDatabase.equipment
+                : Resources.LoadAll<EquipmentData>("Equipment");
             _equipmentLoaded = true;
         }
         return _allEquipment ?? new EquipmentData[0];
@@ -745,4 +765,3 @@ public static class ResourceCache
         }
     }
 }
-

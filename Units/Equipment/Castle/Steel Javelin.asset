@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e5433f08a6f4374490f6b305cf9efcf, type: 3}
+  m_Name: Steel Javelin
+  m_EditorClassIdentifier: Assembly-CSharp::GameCombat.ProjectileData
+  stableId: projectile.steel.javelin
+  projectileName: Steel Javelin
+  description: "Steel Javelin: ammunition contribution. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  projectileAge: 8
+  icon: {fileID: 21300000, guid: 78ed6768d0b161e4dbac746e32c73aa8, type: 3}
+  category: 5
+  productionCost: 80
+  goldCost: 140
+  resourceCosts: []
+  requiredTechs:
+  - {fileID: 11400000, guid: aa2a1819cf87a2c4bae774495eec0d98, type: 2}
+  requiredCultures: []
+  damage: 3
+  statusEffect: {fileID: 0}
+  onHitEffects: []
+  statusEffectDuration: 0
+  statusEffectName:
+  projectilePrefab: {fileID: 0}
+  heldProjectilePrefab: {fileID: 0}
+  impactVfxPrefab: {fileID: 0}
+  launchSound: {fileID: 0}
+  impactSound: {fileID: 0}
+  launchSpeed: 18
+  flightArcHeight: 0.75
+  maxFlightDuration: 1.25
+  rotateAlongVelocity: 1
+  heldLocalPosition: {x: 0, y: 0, z: 0}
+  heldLocalEulerAngles: {x: 0, y: 0, z: 0}
+  heldLocalScale: {x: 1, y: 1, z: 1}
+  nockedLocalPosition: {x: 0, y: 0, z: 0}
+  nockedLocalEulerAngles: {x: 0, y: 0, z: 0}
+  nockedLocalScale: {x: 1, y: 1, z: 1}

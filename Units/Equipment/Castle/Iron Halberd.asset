@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d829dba301d0fda4a97b989185c8de0d, type: 3}
+  m_Name: Iron Halberd
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  stableId: equipment.iron.halberd
+  equipmentName: Iron Halberd
+  description: "Iron Halberd: anti-cavalry specialization. Values are budgeted against same-age unit medians and deliberately preserve unit base statistics."
+  icon: {fileID: 21300000, guid: 73f1cb7c3edf87a42941a16b4e7c4f00, type: 3}
+  equipmentPrefab: {fileID: 0}
+  equipmentAge: 8
+  rarity: 2
+  gameplayTags:
+  - weapon
+  - anti-cavalry
+  equipmentType: 0
+  category: 5
+  projectileData: {fileID: 0}
+  projectileCategory: 0
+  usesProjectiles: 0
+  projectileSpawnName: ProjectileSpawn
+  projectileNockName: ProjectileNock
+  useEquipmentProjectileSpawn: 1
+  isTwoHanded: 1
+  targetUnit: 0
+  attackBonusAgainst: []
+  defenseBonusAgainst: []
+  combatModifiersAgainst:
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 21
+    attackAdd: 2
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
+  - targetUnit: {fileID: 0}
+    targetWorker: {fileID: 0}
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 22
+    attackAdd: 2
+    defenseAdd: 0
+    attackPct: 0.15
+    defensePct: 0
+  workPointsBonus: 0
+  allowedUnitTypes:
+  - 0
+  - 7
+  minimumLevel: 1
+  requiredTechs:
+  - {fileID: 11400000, guid: aa2a1819cf87a2c4bae774495eec0d98, type: 2}
+  requiredCultures: []
+  requiredBuildings: []
+  productionCost: 80
+  goldCost: 140
+  requiredResourceCosts: []
+  upkeepPerTurn: []
+  substituteResourceGroups: []
+  requiredManufacturingCapabilities: []
+  attackBonus: 0
+  meleeAttackBonus: 5
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  groundAttackBonus: 0
+  underwaterAttackBonus: 0
+  airAttackBonus: 0
+  spaceAttackBonus: 0
+  defenseBonus: 0
+  healthBonus: 0
+  movementBonus: 0
+  rangeBonus: 0
+  sightRangeBonus: 0
+  conditionalStatBonuses: []
+  auraBonuses: []
+  grantedAbilities: []
+  onHitEffects: []
+  foodPerTurn: 0
+  goldPerTurn: 0
+  sciencePerTurn: 0
+  culturePerTurn: 0
+  faithPerTurn: 0
+  policyPointsPerTurn: 0
+  reducesWeatherDamage: 0
+  weatherDamageReduction: 0
+  earthquakeDamageReductionPct: 0
+  floodDamageReductionPct: 0
+  stormDamageReductionPct: 0
