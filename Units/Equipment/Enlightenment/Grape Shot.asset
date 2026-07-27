@@ -25,7 +25,19 @@ MonoBehaviour:
   requiredCultures: []
   damage: 3
   statusEffect: {fileID: 0}
-  onHitEffects: []
+  onHitEffects:
+  - effect: {fileID: 11400000, guid: 04443ada7aca04441ea6644db5d447e1, type: 2}
+    applicationChance: 0.4
+    durationOverride: 1
+    magnitudeMultiplier: 1
+    meleeOnly: 0
+    rangedOnly: 1
+    applyToSelf: 0
+    applyToTarget: 1
+    useTargetCategoryFilter: 0
+    targetCategory: 0
+    useTargetDomainFilter: 0
+    targetDomain: 0
   statusEffectDuration: 0
   statusEffectName: 
   projectilePrefab: {fileID: 0}
