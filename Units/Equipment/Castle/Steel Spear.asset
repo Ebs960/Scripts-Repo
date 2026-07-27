@@ -33,23 +33,7 @@ MonoBehaviour:
   targetUnit: 0
   attackBonusAgainst: []
   defenseBonusAgainst: []
-  combatModifiersAgainst:
-  - targetUnit: {fileID: 0}
-    targetWorker: {fileID: 0}
-    useTargetUnitCategoryFilter: 1
-    targetUnitCategory: 21
-    attackAdd: 2
-    defenseAdd: 0
-    attackPct: 0.15
-    defensePct: 0
-  - targetUnit: {fileID: 0}
-    targetWorker: {fileID: 0}
-    useTargetUnitCategoryFilter: 1
-    targetUnitCategory: 22
-    attackAdd: 2
-    defenseAdd: 0
-    attackPct: 0.15
-    defensePct: 0
+  combatModifiersAgainst: []
   workPointsBonus: 0
   allowedUnitTypes: 0000000007000000
   minimumLevel: 1

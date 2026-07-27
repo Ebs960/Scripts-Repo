@@ -21,7 +21,7 @@ MonoBehaviour:
   gameplayTags:
   - head
   - minor
-  equipmentType: 4
+  equipmentType: 5
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0
@@ -55,7 +55,7 @@ MonoBehaviour:
   underwaterAttackBonus: 0
   airAttackBonus: 0
   spaceAttackBonus: 0
-  defenseBonus: 1
+  defenseBonus: 2
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0

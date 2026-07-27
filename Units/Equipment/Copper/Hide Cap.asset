@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hide Cap
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: legacy.equipment.hide.cap
-  equipmentName: Hide Cap
+  equipmentName: Reinforced Hide Cap
   equipmentAge: 2
   rarity: 0
   gameplayTags:
