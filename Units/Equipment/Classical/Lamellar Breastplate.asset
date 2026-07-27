@@ -55,15 +55,14 @@ MonoBehaviour:
   underwaterAttackBonus: 0
   airAttackBonus: 0
   spaceAttackBonus: 0
-  defenseBonus: 5
-  healthBonus: 10
+  defenseBonus: 7
+  healthBonus: 12
   movementBonus: 0
   rangeBonus: 0
   sightRangeBonus: 0
   conditionalStatBonuses: []
   auraBonuses: []
-  grantedAbilities:
-  - {fileID: 11400000, guid: 700fb9d3837374d584d473fca6dc1d07, type: 2}
+  grantedAbilities: []
   onHitEffects: []
   foodPerTurn: 0
   goldPerTurn: 0

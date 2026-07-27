@@ -21,7 +21,7 @@ MonoBehaviour:
   gameplayTags:
   - head
   - minor
-  equipmentType: 4
+  equipmentType: 5
   category: 5
   projectileData: {fileID: 0}
   projectileCategory: 0

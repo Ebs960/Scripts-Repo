@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Leather Helmet
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
   stableId: legacy.equipment.leather.helmet
-  equipmentName: Leather Armor
+  equipmentName: Leather Helmet
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
   equipmentType: 5
