@@ -24,8 +24,8 @@ MonoBehaviour:
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
-  projectileCategory: 0
-  usesProjectiles: 0
+  projectileCategory: 5
+  usesProjectiles: 1
   projectileSpawnName: ProjectileSpawn
   projectileNockName: ProjectileNock
   useEquipmentProjectileSpawn: 1
@@ -48,8 +48,8 @@ MonoBehaviour:
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
   attackBonus: 0
-  meleeAttackBonus: 5
-  rangedAttackBonus: 0
+  meleeAttackBonus: 1
+  rangedAttackBonus: 5
   cityAttackBonus: 0
   groundAttackBonus: 0
   underwaterAttackBonus: 0
@@ -58,7 +58,7 @@ MonoBehaviour:
   defenseBonus: 0
   healthBonus: 0
   movementBonus: 0
-  rangeBonus: 0
+  rangeBonus: 1
   sightRangeBonus: 0
   conditionalStatBonuses: []
   auraBonuses: []

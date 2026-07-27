@@ -57,7 +57,7 @@ MonoBehaviour:
   spaceAttackBonus: 0
   defenseBonus: 3
   healthBonus: 0
-  movementBonus: 0
+  movementBonus: 1
   rangeBonus: 0
   sightRangeBonus: 0
   conditionalStatBonuses: []

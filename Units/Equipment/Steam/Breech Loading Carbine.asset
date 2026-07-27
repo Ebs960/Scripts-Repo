@@ -49,7 +49,7 @@ MonoBehaviour:
   requiredManufacturingCapabilities: []
   attackBonus: 0
   meleeAttackBonus: 0
-  rangedAttackBonus: 9
+  rangedAttackBonus: 8
   cityAttackBonus: 0
   groundAttackBonus: 0
   underwaterAttackBonus: 0
@@ -57,7 +57,7 @@ MonoBehaviour:
   spaceAttackBonus: 0
   defenseBonus: 0
   healthBonus: 0
-  movementBonus: 0
+  movementBonus: 1
   rangeBonus: 0
   sightRangeBonus: 0
   conditionalStatBonuses: []

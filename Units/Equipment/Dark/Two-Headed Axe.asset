@@ -29,7 +29,7 @@ MonoBehaviour:
   projectileSpawnName: ProjectileSpawn
   projectileNockName: ProjectileNock
   useEquipmentProjectileSpawn: 1
-  isTwoHanded: 0
+  isTwoHanded: 1
   targetUnit: 0
   attackBonusAgainst: []
   defenseBonusAgainst: []
@@ -48,7 +48,7 @@ MonoBehaviour:
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
   attackBonus: 0
-  meleeAttackBonus: 5
+  meleeAttackBonus: 7
   rangedAttackBonus: 0
   cityAttackBonus: 0
   groundAttackBonus: 0

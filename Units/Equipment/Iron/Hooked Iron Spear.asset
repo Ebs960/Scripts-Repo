@@ -64,7 +64,7 @@ MonoBehaviour:
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
   attackBonus: 0
-  meleeAttackBonus: 3
+  meleeAttackBonus: 2
   rangedAttackBonus: 0
   cityAttackBonus: 0
   groundAttackBonus: 0

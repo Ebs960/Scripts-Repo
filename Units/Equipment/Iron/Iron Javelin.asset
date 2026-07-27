@@ -23,7 +23,7 @@ MonoBehaviour:
   requiredTechs:
   - {fileID: 11400000, guid: 2023476bbb8e50e419dff323215dacb2, type: 2}
   requiredCultures: []
-  damage: 2
+  damage: 3
   statusEffect: {fileID: 0}
   onHitEffects: []
   statusEffectDuration: 0

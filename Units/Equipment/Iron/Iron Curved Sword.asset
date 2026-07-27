@@ -55,7 +55,7 @@ MonoBehaviour:
   underwaterAttackBonus: 0
   airAttackBonus: 0
   spaceAttackBonus: 0
-  defenseBonus: 0
+  defenseBonus: 1
   healthBonus: 0
   movementBonus: 0
   rangeBonus: 0

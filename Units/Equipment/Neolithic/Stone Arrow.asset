@@ -33,7 +33,7 @@ MonoBehaviour:
   impactVfxPrefab: {fileID: 0}
   launchSound: {fileID: 0}
   impactSound: {fileID: 0}
-  launchSpeed: 18
+  launchSpeed: 20
   flightArcHeight: 0.75
   maxFlightDuration: 1.25
   rotateAlongVelocity: 1

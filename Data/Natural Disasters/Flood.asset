@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7477d1bf1f6379045ba9e62b3d60d086, type: 3}
+  m_Name: Flood
+  m_EditorClassIdentifier: Assembly-CSharp::NaturalDisasterData
+  disasterName: Flood
+  disasterType: 1
+  icon: {fileID: 0}
+  description: Rising waters spread across a wide area, damaging improvements and
+    buildings while sparing fortified structures.
+  baseChancePerTurn: 0.02
+  areaRadius: 2
+  useSeasonFilter: 1
+  seasons:
+  - 0
+  - 1
+  unitDamage: 5
+  improvementDamageChance: 0.6
+  fortDamageAmount: 5
+  buildingDamageChance: 0.35
+  cityYieldPenaltyPct: 0.25
+  cityEffectDuration: 4
+  cityPopulationLossPerTurn: 0.25
