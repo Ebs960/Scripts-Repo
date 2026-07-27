@@ -46,8 +46,8 @@ MonoBehaviour:
     building: {fileID: 11400000, guid: 7a4a03ba081c22547b1f8b4a7f807c26, type: 2}
     useBuildingCategoryFilter: 0
     buildingCategory: 0
-  productionCost: 0
-  goldCost: 0
+  productionCost: 36
+  goldCost: 63
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []

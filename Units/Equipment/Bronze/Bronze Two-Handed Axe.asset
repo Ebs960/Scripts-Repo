@@ -41,14 +41,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
   requiredCultures: []
   requiredBuildings: []
-  productionCost: 40
-  goldCost: 70
+  productionCost: 48
+  goldCost: 84
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
   requiredManufacturingCapabilities: []
   attackBonus: 0
-  meleeAttackBonus: 4
+  meleeAttackBonus: 5
   rangedAttackBonus: 0
   cityAttackBonus: 0
   groundAttackBonus: 0

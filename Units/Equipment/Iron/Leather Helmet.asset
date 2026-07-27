@@ -16,6 +16,7 @@ MonoBehaviour:
   equipmentName: Leather Helmet
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
+  equipmentAge: 4
   equipmentType: 5
   category: 5
   projectileData: {fileID: 0}
@@ -42,8 +43,8 @@ MonoBehaviour:
     building: {fileID: 11400000, guid: 7a4a03ba081c22547b1f8b4a7f807c26, type: 2}
     useBuildingCategoryFilter: 0
     buildingCategory: 0
-  productionCost: 0
-  goldCost: 0
+  productionCost: 24
+  goldCost: 42
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []

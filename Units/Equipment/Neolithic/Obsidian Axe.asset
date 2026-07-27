@@ -44,7 +44,7 @@ MonoBehaviour:
     useBuildingCategoryFilter: 0
     buildingCategory: 0
   productionCost: 8
-  goldCost: 0
+  goldCost: 14
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
