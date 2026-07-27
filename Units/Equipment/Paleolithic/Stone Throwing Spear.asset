@@ -16,6 +16,7 @@ MonoBehaviour:
   equipmentName: Throwing Spear
   icon: {fileID: 0}
   equipmentPrefab: {fileID: 0}
+  equipmentAge: 0
   equipmentType: 0
   category: 5
   projectileData: {fileID: 0}
@@ -42,7 +43,7 @@ MonoBehaviour:
     useBuildingCategoryFilter: 0
     buildingCategory: 0
   productionCost: 8
-  goldCost: 0
+  goldCost: 14
   requiredResourceCosts: []
   upkeepPerTurn: []
   substituteResourceGroups: []
