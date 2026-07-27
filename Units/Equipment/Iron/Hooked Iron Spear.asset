@@ -79,7 +79,19 @@ MonoBehaviour:
   conditionalStatBonuses: []
   auraBonuses: []
   grantedAbilities: []
-  onHitEffects: []
+  onHitEffects:
+  - effect: {fileID: 11400000, guid: a92b00e7d0c94faca68989119a2907af, type: 2}
+    applicationChance: 0.35
+    durationOverride: 1
+    magnitudeMultiplier: 1
+    meleeOnly: 1
+    rangedOnly: 0
+    applyToSelf: 0
+    applyToTarget: 1
+    useTargetCategoryFilter: 0
+    targetCategory: 0
+    useTargetDomainFilter: 0
+    targetDomain: 0
   foodPerTurn: 0
   goldPerTurn: 0
   sciencePerTurn: 0
