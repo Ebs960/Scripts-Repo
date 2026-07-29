@@ -1446,6 +1446,27 @@ public class ImprovementManager : MonoBehaviour
         return true;
     }
 
+    public City FindAdministeringCity(Civilization civilization, int tileIndex, int planetIndex)
+    {
+        if (civilization?.cities == null) return null;
+        int resolvedPlanet = ResolvePlanetIndex(planetIndex);
+        var candidates = civilization.cities.Where(city => city != null && city.planetIndex == resolvedPlanet).ToList();
+        var exact = candidates.FirstOrDefault(city => city.centerTileIndex == tileIndex);
+        if (exact != null) return exact;
+        var workable = candidates.FirstOrDefault(city => city.IsTileWorkableByThisCity(tileIndex));
+        if (workable != null) return workable;
+        var tileData = GetTileDataAcrossAllPlanets(tileIndex, resolvedPlanet);
+        if (tileData?.improvementOwner != civilization) return null;
+        var tileSystem = TileSystem.GetForPlanet(resolvedPlanet) ?? TileSystem.Instance;
+        return tileSystem == null ? candidates.FirstOrDefault() : candidates
+            .OrderBy(city =>
+            {
+                int distance = tileSystem.GetTileDistance(city.centerTileIndex, tileIndex);
+                return distance < 0 ? int.MaxValue : distance;
+            })
+            .FirstOrDefault();
+    }
+
     private void RemoveImprovementInternal(int tileIndex, int planetIndex, Civilization refundCiv, ImprovementRemovalReason reason, bool refundCosts)
     {
         if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
@@ -1659,7 +1680,8 @@ public class ImprovementManager : MonoBehaviour
     private static void RestoreUpgradePayment(Civilization actor, int originalGold, Dictionary<ResourceData, int> originalResources)
     {
         if (actor == null) return;
-        actor.gold = originalGold;
+        int goldDelta = originalGold - actor.gold;
+        if (goldDelta != 0) actor.AddGold(goldDelta);
         foreach (var pair in originalResources)
         {
             int missing = pair.Value - actor.GetResourceCount(pair.Key);

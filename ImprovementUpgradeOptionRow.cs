@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Prefab-facing view for one improvement option. Locked and installed options remain visible
 /// so the player can see the complete contents of a slot and why an option cannot be selected.
 /// </summary>
-public class ImprovementUpgradeOptionRow : MonoBehaviour
+public class ImprovementUpgradeOptionRow : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI nameText;
@@ -21,6 +22,8 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour
     [SerializeField] private Color availableColor = Color.white;
     [SerializeField] private Color unavailableColor = new Color(0.65f, 0.65f, 0.65f, 1f);
     [SerializeField] private Color installedColor = new Color(0.75f, 0.85f, 0.7f, 1f);
+    private ImprovementUpgradeData boundUpgrade;
+    private ImprovementUpgradeEvaluation boundEvaluation;
 
     private void Awake()
     {
@@ -85,6 +88,8 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour
     {
         if (upgrade == null) return;
         EnsureVisualTree();
+        boundUpgrade = upgrade;
+        boundEvaluation = evaluation;
 
         if (icon != null)
         {
@@ -115,6 +120,23 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour
         }
     }
 
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (boundUpgrade == null || TooltipSystem.Instance == null) return;
+        string details = boundUpgrade.description;
+        string effects = BuildEffectsText(boundUpgrade);
+        string cost = BuildCostText(boundUpgrade);
+        if (!string.IsNullOrWhiteSpace(boundEvaluation.Reason))
+            details += $"\n\n{boundEvaluation.Reason}";
+        details += $"\n\nEffects: {effects}\nCost: {cost}";
+        TooltipSystem.Instance.ShowSimpleTooltip(boundUpgrade.upgradeName, details);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        TooltipSystem.Instance?.RequestHideTooltip();
+    }
+
     private static string BuildCostText(ImprovementUpgradeData upgrade)
     {
         var parts = new List<string>();
@@ -126,21 +148,6 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour
 
     private static string BuildEffectsText(ImprovementUpgradeData upgrade)
     {
-        var parts = new List<string>();
-        AddYield(parts, upgrade.additionalFood, "Food");
-        AddYield(parts, upgrade.additionalProduction, "Production");
-        AddYield(parts, upgrade.additionalGold, "Gold");
-        AddYield(parts, upgrade.additionalScience, "Science");
-        AddYield(parts, upgrade.additionalCulture, "Culture");
-        AddYield(parts, upgrade.additionalFaith, "Faith");
-        AddYield(parts, upgrade.additionalPolicyPoints, "Policy");
-        if (upgrade.additionalShelterCapacity != 0)
-            parts.Add($"{upgrade.additionalShelterCapacity:+#;-#} Storage");
-        return parts.Count == 0 ? "No direct yield change" : string.Join(" • ", parts);
-    }
-
-    private static void AddYield(List<string> parts, int value, string label)
-    {
-        if (value != 0) parts.Add($"{value:+#;-#} {label}");
+        return ImprovementUpgradeEffectFormatter.Format(upgrade);
     }
 }

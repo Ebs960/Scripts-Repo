@@ -1,6 +1,16 @@
 // Assets/Scripts/Data/ImprovementData.cs
 using UnityEngine;
 
+[System.Flags]
+public enum ImprovementStorageType
+{
+    None = 0,
+    Units = 1 << 0,
+    Aircraft = 1 << 1,
+    Missiles = 1 << 2,
+    Garrison = 1 << 3
+}
+
 [System.Serializable]
 public struct ImprovementUpgradeVisualOverride
 {
@@ -366,6 +376,8 @@ public class ImprovementData : ScriptableObject
     public bool isShelter = false;
     [Tooltip("How many units this shelter can store inside. 0 = cannot store (only shelters from weather).")]
     public int shelterCapacity = 0;
+    [Tooltip("Explicit storage categories exposed by this improvement in the City Unit Storage UI.")]
+    public ImprovementStorageType storageTypes = ImprovementStorageType.None;
     
     [Header("Territory Requirements")]
     [Tooltip("Must be built within a city's direct influence")]
