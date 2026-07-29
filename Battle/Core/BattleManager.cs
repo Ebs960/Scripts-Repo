@@ -108,6 +108,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         ActiveBattle = state.Session;
 
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleDeployment);
+        BattleStarted?.Invoke(ActiveBattle);
         RaiseBattleStarted(ActiveBattle);
 
         // MVP: manual mode uses headless simulation until full tactical presentation is connected.
