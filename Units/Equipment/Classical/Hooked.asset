@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e73ac0ca2f9c0f641aec026e5e6b673e, type: 3}
   m_Name: Hooked
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectData
-  effectName: 
-  description: 
+  effectName: Hooked
+  description: Unit has -2 Movement for 2 turns
   icon: {fileID: 0}
-  effectType: 0
+  effectType: 4
   stacking: 1
-  baseDuration: 3
-  magnitude: 5
+  baseDuration: 2
+  magnitude: 2
   ticksPerTurn: 0
   persistentVFX: {fileID: 0}
   applyVFX: {fileID: 0}
