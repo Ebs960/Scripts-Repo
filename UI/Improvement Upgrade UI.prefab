@@ -701,8 +701,12 @@ MonoBehaviour:
   storedUnitsContainer: {fileID: 8728631452296435444}
   storedUnitButtonPrefab: {fileID: 7785709622282477901, guid: e9ee80e68c6ae074ca1d51e2ea6a8624, type: 3}
   capacityText: {fileID: 8135333304876103276}
+  dismantleButton: {fileID: 0}
+  dismantleRefundText: {fileID: 0}
   upgradeButtonContainer: {fileID: 6618404218062190048}
-  upgradeButtonPrefab: {fileID: 8524890866242625676}
+  upgradeButtonPrefab: {fileID: 100000, guid: 208f2eb9bf69438f9645973543995247, type: 3}
+  upgradeSlotSectionPrefab: {fileID: 200000, guid: 6e937d1248264b5091cb667b134982d4, type: 3}
+  closeButton: {fileID: 8169973994453515210}
   slideDuration: 0.5
   offscreenPadding: 12
 --- !u!1 &3129268870009838496
