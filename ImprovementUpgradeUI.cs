@@ -5,6 +5,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class ImprovementUpgradeUI : MonoBehaviour
 {
@@ -12,6 +14,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
     [SerializeField] private GameObject upgradePanel;
     [SerializeField] private TextMeshProUGUI improvementNameText;
     [SerializeField] private TextMeshProUGUI improvementYieldsText;
+    [SerializeField] private Image improvementIconImage;
     [Header("Stored Units UI")]
     [SerializeField] private Transform storedUnitsContainer;
     [SerializeField] private GameObject storedUnitButtonPrefab;
@@ -26,6 +29,17 @@ public class ImprovementUpgradeUI : MonoBehaviour
     [SerializeField] private GameObject upgradeSlotSectionPrefab;
     [SerializeField] private Button closeButton;
 
+    [Header("Context Actions")]
+    [SerializeField] private Button manageSpecialistsButton;
+    [SerializeField] private Button openCityStorageButton;
+    [SerializeField] private TextMeshProUGUI emptyStateText;
+
+    [Header("Replacement Confirmation")]
+    [SerializeField] private GameObject replacementConfirmationPanel;
+    [SerializeField] private TextMeshProUGUI replacementConfirmationText;
+    [SerializeField] private Button confirmReplacementButton;
+    [SerializeField] private Button cancelReplacementButton;
+
     private ImprovementData currentImprovement;
     private int currentTileIndex = -1;
     private int currentPlanetIndex = -1;
@@ -33,6 +47,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private List<GameObject> upgradeButtons = new List<GameObject>();
     private List<GameObject> upgradeSlotSections = new List<GameObject>();
     private List<GameObject> storedUnitButtons = new List<GameObject>();
+    private ImprovementUpgradeData pendingUpgrade;
 
     // Slide animation fields
     [Header("Slide Settings")]
@@ -48,11 +63,14 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     private void Awake()
     {
+        EnsureSupplementalUI();
         if (closeButton != null)
         {
             closeButton.onClick.RemoveListener(HidePanel);
             closeButton.onClick.AddListener(HidePanel);
         }
+        WireContextActions();
+        WireReplacementConfirmation();
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
     }
@@ -71,6 +89,15 @@ public class ImprovementUpgradeUI : MonoBehaviour
         }
 
         // Initial subscription left minimal here; subscriptions are ensured when showing the panel
+    }
+
+    private void Update()
+    {
+        if (Keyboard.current == null || !Keyboard.current.escapeKey.wasPressedThisFrame) return;
+        if (replacementConfirmationPanel != null && replacementConfirmationPanel.activeSelf)
+            CloseReplacementConfirmation();
+        else if (upgradePanel != null && upgradePanel.activeSelf)
+            HidePanel();
     }
 
     private void OnDisable()
@@ -113,9 +140,15 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
         if (improvementNameText != null)
             improvementNameText.text = improvement.improvementName;
+        if (improvementIconImage != null)
+        {
+            improvementIconImage.sprite = improvement.GetIcon(civ);
+            improvementIconImage.enabled = improvementIconImage.sprite != null;
+        }
 
         PopulateUpgradeOptions();
         RefreshDismantleUI();
+        RefreshContextActions();
 
         // Populate yields summary
         if (improvementYieldsText != null)
@@ -241,6 +274,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     private void DoClearAndHide()
     {
+        CloseReplacementConfirmation();
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
         // Unsubscribe from tile clicks when panel is hidden
@@ -277,8 +311,16 @@ public class ImprovementUpgradeUI : MonoBehaviour
     {
         ClearUpgradeButtons();
 
-        if (currentImprovement == null || currentImprovement.availableUpgrades == null)
+        if (currentImprovement == null || currentImprovement.availableUpgrades == null || currentImprovement.availableUpgrades.Length == 0)
+        {
+            if (emptyStateText != null)
+            {
+                emptyStateText.gameObject.SetActive(true);
+                emptyStateText.text = "No options are available for this improvement.";
+            }
             return;
+        }
+        if (emptyStateText != null) emptyStateText.gameObject.SetActive(false);
 
         var tileData = GetCurrentTileData();
 
@@ -443,6 +485,30 @@ public class ImprovementUpgradeUI : MonoBehaviour
             return;
         }
 
+        var replacements = ImprovementUpgradeRules.GetSupersededUpgradeKeys(currentImprovement, GetCurrentTileData(), upgrade);
+        if (replacements.Count > 0 && replacementConfirmationPanel != null)
+        {
+            pendingUpgrade = upgrade;
+            replacementConfirmationPanel.SetActive(true);
+            if (replacementConfirmationText != null)
+            {
+                var replacedNames = currentImprovement.availableUpgrades
+                    .Where(candidate => candidate != null && replacements.Contains(ImprovementUpgradeRules.GetKey(candidate)))
+                    .Select(candidate => candidate.upgradeName);
+                replacementConfirmationText.text =
+                    $"Replace {string.Join(", ", replacedNames)} with {upgrade.upgradeName}?\nThe full listed cost will be charged.";
+            }
+            if (cancelReplacementButton != null) EventSystem.current?.SetSelectedGameObject(cancelReplacementButton.gameObject);
+            return;
+        }
+
+        PurchaseUpgrade(upgrade);
+    }
+
+    private void PurchaseUpgrade(ImprovementUpgradeData upgrade)
+    {
+        string reason;
+
         if (ImprovementManager.Instance == null)
         {
             UIManager.Instance?.ShowNotification("The improvement system is unavailable.");
@@ -451,13 +517,196 @@ public class ImprovementUpgradeUI : MonoBehaviour
         if (ImprovementManager.Instance.TryPurchaseAndApplyUpgrade(
                 currentTileIndex, currentPlanetIndex, currentCiv, upgrade, out reason))
         {
-            PopulateUpgradeOptions();
-            RefreshDismantleUI();
+            ShowUpgradePanel(currentImprovement, currentTileIndex, currentCiv, currentPlanetIndex);
         }
         else if (!string.IsNullOrEmpty(reason))
         {
             UIManager.Instance?.ShowNotification(reason);
         }
+    }
+
+    private void WireContextActions()
+    {
+        if (manageSpecialistsButton != null)
+        {
+            manageSpecialistsButton.onClick.RemoveAllListeners();
+            manageSpecialistsButton.onClick.AddListener(OpenCitizenAssignment);
+        }
+        if (openCityStorageButton != null)
+        {
+            openCityStorageButton.onClick.RemoveAllListeners();
+            openCityStorageButton.onClick.AddListener(OpenCityStorage);
+        }
+    }
+
+    private void WireReplacementConfirmation()
+    {
+        if (replacementConfirmationPanel != null) replacementConfirmationPanel.SetActive(false);
+        if (confirmReplacementButton != null)
+        {
+            confirmReplacementButton.onClick.RemoveAllListeners();
+            confirmReplacementButton.onClick.AddListener(() =>
+            {
+                var upgrade = pendingUpgrade;
+                CloseReplacementConfirmation();
+                if (upgrade != null) PurchaseUpgrade(upgrade);
+            });
+        }
+        if (cancelReplacementButton != null)
+        {
+            cancelReplacementButton.onClick.RemoveAllListeners();
+            cancelReplacementButton.onClick.AddListener(CloseReplacementConfirmation);
+        }
+    }
+
+    private void CloseReplacementConfirmation()
+    {
+        pendingUpgrade = null;
+        if (replacementConfirmationPanel != null) replacementConfirmationPanel.SetActive(false);
+    }
+
+    private void RefreshContextActions()
+    {
+        City city = FindOwningCity();
+        bool hasSpecialistSlots = false;
+        var instance = GetCurrentTileData()?.improvementInstanceObject?.GetComponent<ImprovementInstance>();
+        if (instance != null) hasSpecialistSlots = instance.GetActiveRuralSpecialistSlots().Any(slot => slot != null);
+        if (manageSpecialistsButton != null)
+        {
+            manageSpecialistsButton.gameObject.SetActive(currentImprovement != null);
+            manageSpecialistsButton.interactable = city != null && hasSpecialistSlots;
+            BindTooltip(manageSpecialistsButton, "Manage Specialists", city == null
+                ? "No city administers this improvement."
+                : hasSpecialistSlots ? "Open citizen assignment focused on this improvement." : "This improvement has no rural specialist slots.");
+        }
+        if (openCityStorageButton != null)
+        {
+            bool hasStorage = currentImprovement != null && (currentImprovement.storageTypes != ImprovementStorageType.None ||
+                currentImprovement.isShelter || currentImprovement.isMissileSilo);
+            openCityStorageButton.gameObject.SetActive(currentImprovement != null);
+            openCityStorageButton.interactable = city != null && hasStorage;
+            BindTooltip(openCityStorageButton, "Open City Storage", city == null
+                ? "No city administers this improvement."
+                : hasStorage ? "Open the administering city's Unit Storage tab." : "This improvement has no supported storage capability.");
+        }
+    }
+
+    private City FindOwningCity()
+    {
+        return ImprovementManager.Instance?.FindAdministeringCity(currentCiv, currentTileIndex, currentPlanetIndex);
+    }
+
+    private void OpenCitizenAssignment()
+    {
+        City city = FindOwningCity();
+        if (city == null) return;
+        int tileIndex = currentTileIndex;
+        HidePanel();
+        CityTileOverlayController.Instance?.EnterCityAssignmentMode(city, tileIndex);
+    }
+
+    private void BindTooltip(Button button, string title, string description)
+    {
+        if (button == null) return;
+        var tooltip = button.GetComponent<SimpleTooltipTarget>() ?? button.gameObject.AddComponent<SimpleTooltipTarget>();
+        tooltip.Bind(title, description);
+    }
+
+    private void OpenCityStorage()
+    {
+        City city = FindOwningCity();
+        if (city == null) return;
+        HidePanel();
+        var cityUI = FindFirstObjectByType<CityUI>(FindObjectsInactive.Include);
+        cityUI?.ShowForCityTab(city, CityUITab.UnitStorage);
+    }
+
+    private void EnsureSupplementalUI()
+    {
+        if (upgradePanel == null) return;
+        var parent = upgradePanel.transform;
+        improvementIconImage ??= CreatePanelImage(parent, "Improvement Icon", new Vector2(0f, 1f), new Vector2(18f, -18f), new Vector2(72f, 72f));
+        emptyStateText ??= CreatePanelText(parent, "Empty State", "No options are available for this improvement.",
+            new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(420f, 48f), 16f, TextAlignmentOptions.Center);
+        emptyStateText.gameObject.SetActive(false);
+
+        manageSpecialistsButton ??= CreatePanelButton(parent, "Manage Specialists", new Vector2(1f, 0f), new Vector2(-390f, 18f), new Vector2(170f, 34f));
+        openCityStorageButton ??= CreatePanelButton(parent, "Open City Storage", new Vector2(1f, 0f), new Vector2(-210f, 18f), new Vector2(170f, 34f));
+        dismantleButton ??= CreatePanelButton(parent, "Dismantle", new Vector2(0f, 0f), new Vector2(18f, 18f), new Vector2(130f, 34f));
+        dismantleRefundText ??= CreatePanelText(parent, "Dismantle Status", string.Empty,
+            new Vector2(0f, 0f), new Vector2(155f, 18f), new Vector2(250f, 42f), 12f, TextAlignmentOptions.Left);
+
+        if (replacementConfirmationPanel == null)
+        {
+            replacementConfirmationPanel = new GameObject("Replacement Confirmation", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            replacementConfirmationPanel.transform.SetParent(parent, false);
+            var rect = (RectTransform)replacementConfirmationPanel.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            replacementConfirmationPanel.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.72f);
+            var dialog = new GameObject("Dialog", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            dialog.transform.SetParent(rect, false);
+            var dialogRect = (RectTransform)dialog.transform;
+            dialogRect.anchorMin = dialogRect.anchorMax = new Vector2(0.5f, 0.5f);
+            dialogRect.sizeDelta = new Vector2(460f, 170f);
+            dialog.GetComponent<Image>().color = new Color(0.08f, 0.08f, 0.08f, 0.98f);
+            replacementConfirmationText = CreatePanelText(dialogRect, "Message", "Confirm replacement?",
+                new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(420f, 80f), 17f, TextAlignmentOptions.Center);
+            confirmReplacementButton = CreatePanelButton(dialogRect, "Confirm", new Vector2(0.5f, 0f), new Vector2(-80f, 18f), new Vector2(140f, 36f));
+            cancelReplacementButton = CreatePanelButton(dialogRect, "Cancel", new Vector2(0.5f, 0f), new Vector2(80f, 18f), new Vector2(140f, 36f));
+        }
+    }
+
+    private Button CreatePanelButton(Transform parent, string label, Vector2 anchor, Vector2 position, Vector2 size)
+    {
+        var child = new GameObject(label + " Button", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        child.transform.SetParent(parent, false);
+        var rect = (RectTransform)child.transform;
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.pivot = anchor;
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        var image = child.GetComponent<Image>();
+        image.color = new Color(0.72f, 0.67f, 0.52f, 0.96f);
+        var button = child.GetComponent<Button>();
+        button.targetGraphic = image;
+        var text = CreatePanelText(rect, "Label", label, new Vector2(0.5f, 0.5f), Vector2.zero, size, 14f, TextAlignmentOptions.Center);
+        text.color = Color.black;
+        return button;
+    }
+
+    private Image CreatePanelImage(Transform parent, string objectName, Vector2 anchor, Vector2 position, Vector2 size)
+    {
+        var child = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        child.transform.SetParent(parent, false);
+        var rect = (RectTransform)child.transform;
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.pivot = anchor;
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        var image = child.GetComponent<Image>();
+        image.preserveAspect = true;
+        return image;
+    }
+
+    private TextMeshProUGUI CreatePanelText(Transform parent, string objectName, string value, Vector2 anchor,
+        Vector2 position, Vector2 size, float fontSize, TextAlignmentOptions alignment)
+    {
+        var child = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        child.transform.SetParent(parent, false);
+        var rect = (RectTransform)child.transform;
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.pivot = anchor;
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        var text = child.GetComponent<TextMeshProUGUI>();
+        text.text = value;
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.enableWordWrapping = true;
+        text.raycastTarget = false;
+        return text;
     }
 
     private HexTileData GetCurrentTileData()

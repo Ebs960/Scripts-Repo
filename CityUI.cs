@@ -210,6 +210,12 @@ currentCity = city;
             CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
 }
 
+    public void ShowForCityTab(City city, CityUITab tab)
+    {
+        ShowForCity(city);
+        tabController?.SelectTab(tab);
+    }
+
     private void OnOpenCitizenAssignmentClicked()
     {
         if (currentCity == null) return;
