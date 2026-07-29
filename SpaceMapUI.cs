@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Overlay-only UI for the mandatory world-space solar-system map. Rendering,
@@ -47,14 +48,20 @@ public class SpaceMapUI : MonoBehaviour
     private void Start()
     {
         if (closeButton != null) { closeButton.onClick.RemoveAllListeners(); closeButton.onClick.AddListener(Hide); }
-        if (travelButton != null) { travelButton.onClick.RemoveAllListeners(); travelButton.onClick.AddListener(() => { if (selectedPlanet != null) SwitchToPlanet(selectedPlanet); }); }
-        if (cancelButton != null) { cancelButton.onClick.RemoveAllListeners(); cancelButton.onClick.AddListener(() => SelectPlanet(null)); }
+        if (travelButton != null)
+        {
+            travelButton.onClick.RemoveAllListeners();
+            travelButton.onClick.AddListener(() => { if (selectedPlanet != null) SwitchToPlanet(selectedPlanet); });
+            var label = travelButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.text = "View Planet";
+        }
+        if (cancelButton != null) { cancelButton.onClick.RemoveAllListeners(); cancelButton.onClick.AddListener(ClearSelection); }
     }
 
     private void Update()
     {
         if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil) return;
-        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M)) Hide();
+        if (Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.mKey.wasPressedThisFrame)) Hide();
     }
 
     public void Show()
@@ -83,7 +90,7 @@ public class SpaceMapUI : MonoBehaviour
         if (distanceText != null)
         {
             int anchorTile = planet != null && spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
-            distanceText.text = planet == null ? string.Empty : $"Anchor hex: {anchorTile}";
+            distanceText.text = planet == null ? string.Empty : anchorTile >= 0 ? $"System location: hex {anchorTile}" : "System location unavailable";
         }
         if (travelButton != null) travelButton.gameObject.SetActive(planet != null);
         RefreshCivilizations(planet);
@@ -101,6 +108,14 @@ public class SpaceMapUI : MonoBehaviour
     }
 
     public void TestCloseButton() => Hide();
+
+    private void ClearSelection()
+    {
+        selectedPlanet = null;
+        selectedShip = null;
+        spaceMapWorldController?.ClearSelection();
+        SelectPlanet(null);
+    }
 
     private string BuildPlanetStatus(GameManager.PlanetData planet)
     {
@@ -143,6 +158,7 @@ public class SpaceMapUI : MonoBehaviour
     {
         if (spaceMapCanvas == null) spaceMapCanvas = GetComponentInParent<Canvas>(true);
         if (spaceMapWorldController == null) spaceMapWorldController = FindAnyObjectByType<SpaceMapWorldController>(FindObjectsInactive.Include);
+        if (spaceMapWorldController == null) spaceMapWorldController = gameObject.AddComponent<SpaceMapWorldController>();
     }
 
     private void ValidateAssignedReferences()

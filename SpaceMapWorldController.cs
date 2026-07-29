@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Sole renderer and interaction controller for the solar-system map. It renders a
@@ -17,6 +18,7 @@ public class SpaceMapWorldController : MonoBehaviour
     [SerializeField] private Transform planetRoot;
     [SerializeField] private Transform hexRoot;
     [SerializeField] private Transform unitRoot;
+    [SerializeField] private Transform routeRoot;
     [SerializeField] private SpaceMapUI spaceMapUI;
 
     [Header("Planet Visuals")]
@@ -39,7 +41,12 @@ public class SpaceMapWorldController : MonoBehaviour
     private readonly Dictionary<int, GameObject> hexObjects = new Dictionary<int, GameObject>();
     private readonly Dictionary<Camera, int> hiddenGameplayCameraMasks = new Dictionary<Camera, int>();
     private BaseUnit selectedShip;
+    private int selectedPlanetIndex = -1;
+    private int pendingDestinationTile = -1;
     private bool isVisible;
+    private Material fallbackHexMaterial;
+    private Material routeMaterial;
+    private readonly MaterialPropertyBlock colorProperties = new MaterialPropertyBlock();
 
     private void Awake() { EnsureSceneObjects(); SetMapActive(false); }
     private void Update() { if (isVisible) HandleSelectionInput(); }
@@ -57,11 +64,14 @@ public class SpaceMapWorldController : MonoBehaviour
             new GameObject("SpaceWorldManager").AddComponent<SpaceWorldManager>();
         if (SpaceWorldManager.Instance.Grid == null)
             SpaceWorldManager.Instance.CreateSystem(GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0, gridRadius, hexSize);
+        var previousGrid = Grid;
         Grid = SpaceWorldManager.Instance.Grid;
         if (SpaceShipMovementController.Instance == null) new GameObject("SpaceShipMovementController").AddComponent<SpaceShipMovementController>();
         SpaceShipMovementController.Instance.SetGrid(Grid);
-        ClearChildren(hexRoot); ClearChildren(planetRoot); ClearChildren(unitRoot); markersByPlanet.Clear(); hexObjects.Clear();
-        BuildHexVisuals(); RebuildPlanets(); RefreshShipVisuals();
+        bool rebuildHexes = previousGrid != Grid || hexObjects.Count != Grid.tiles.Count;
+        if (rebuildHexes) { ClearChildren(hexRoot); hexObjects.Clear(); BuildHexVisuals(); }
+        ClearChildren(planetRoot); ClearChildren(unitRoot); ClearChildren(routeRoot); markersByPlanet.Clear();
+        RebuildPlanets(); RefreshShipVisuals(); RefreshRouteVisuals();
     }
 
     public void RebuildPlanets()
@@ -83,22 +93,37 @@ public class SpaceMapWorldController : MonoBehaviour
     public void RefreshCurrentPlanetHighlight()
     {
         int current = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : -1;
-        foreach (var kv in markersByPlanet) kv.Value.SetSelectionState(false, kv.Key == current);
+        foreach (var kv in markersByPlanet) kv.Value.SetSelectionState(kv.Key == selectedPlanetIndex, kv.Key == current);
     }
-    public void RefreshTravelVisuals() { RefreshShipVisuals(); RefreshHexVisuals(); }
+    public void RefreshTravelVisuals() { RefreshShipVisuals(); RefreshHexVisuals(); RefreshRouteVisuals(); }
     public int GetPlanetAnchorTile(int planetIndex) => markersByPlanet.TryGetValue(planetIndex, out var m) ? m.AnchorSpaceTileIndex : -1;
 
-    public void SelectPlanetMarker(SpaceMapPlanetMarker marker) { if (marker == null) return; selectedShip = null; spaceMapUI?.SelectPlanet(marker.PlanetData); RefreshCurrentPlanetHighlight(); }
-    public void SelectShip(BaseUnit unit) { selectedShip = unit; HighlightReachableTiles(unit); spaceMapUI?.SelectShip(unit); }
+    public void SelectPlanetMarker(SpaceMapPlanetMarker marker) { if (marker == null) return; selectedShip = null; pendingDestinationTile = -1; selectedPlanetIndex = marker.PlanetIndex; spaceMapUI?.SelectPlanet(marker.PlanetData); RefreshCurrentPlanetHighlight(); RefreshRouteVisuals(); }
+    public void SelectShip(BaseUnit unit) { selectedShip = unit; selectedPlanetIndex = -1; pendingDestinationTile = -1; RefreshCurrentPlanetHighlight(); HighlightReachableTiles(unit); RefreshRouteVisuals(); spaceMapUI?.SelectShip(unit); }
+    public void ClearSelection() { selectedShip = null; selectedPlanetIndex = -1; pendingDestinationTile = -1; RefreshCurrentPlanetHighlight(); RefreshHexVisuals(); RefreshRouteVisuals(); }
 
     private void HandleSelectionInput()
     {
-        if (spaceMapCamera == null || !Input.GetMouseButtonDown(0)) return;
+        if (spaceMapCamera == null || Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        Ray ray = spaceMapCamera.ScreenPointToRay(Input.mousePosition); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
+        Ray ray = spaceMapCamera.ScreenPointToRay(Mouse.current.position.ReadValue()); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
         var ship = hit.collider.GetComponentInParent<BaseUnit>(); if (ship != null && ship.currentSpaceTileIndex >= 0) { SelectShip(ship); return; }
         var marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>(); if (marker != null) { SelectPlanetMarker(marker); return; }
-        var hex = hit.collider.GetComponent<SpaceHexTileView>(); if (hex != null && selectedShip != null) { SpaceShipMovementController.Instance.QueueMove(selectedShip, hex.tileIndex); RefreshTravelVisuals(); }
+        var hex = hit.collider.GetComponent<SpaceHexTileView>();
+        if (hex != null && selectedShip != null)
+        {
+            if (pendingDestinationTile != hex.tileIndex)
+            {
+                pendingDestinationTile = hex.tileIndex;
+                SetHexColor(hex.tileIndex, Color.yellow);
+                UIManager.Instance?.ShowNotification("Click the destination again to confirm the space movement order.");
+                return;
+            }
+            pendingDestinationTile = -1;
+            bool queued = SpaceShipMovementController.Instance.QueueMove(selectedShip, hex.tileIndex);
+            if (!queued) UIManager.Instance?.ShowNotification("No valid space route is available to that destination.");
+            RefreshTravelVisuals();
+        }
     }
 
     private void BuildHexVisuals()
@@ -121,7 +146,21 @@ public class SpaceMapWorldController : MonoBehaviour
         }
     }
     private void RefreshHexVisuals() { foreach (var t in Grid.tiles) SetHexColor(t.tileIndex, t.blocksMovement ? blockedColor : hexColor); if (selectedShip != null) HighlightReachableTiles(selectedShip); }
-    private void SetHexColor(int index, Color color) { if (!hexObjects.TryGetValue(index, out var go)) return; var r = go.GetComponent<Renderer>(); if (r != null) { if (r.material == null) r.material = new Material(Shader.Find("Standard")); r.material.color = color; } }
+    private void SetHexColor(int index, Color color)
+    {
+        if (!hexObjects.TryGetValue(index, out var go)) return;
+        var renderer = go.GetComponent<Renderer>();
+        if (renderer == null) return;
+        if (renderer.sharedMaterial == null)
+        {
+            fallbackHexMaterial ??= new Material(Shader.Find("Standard"));
+            renderer.sharedMaterial = fallbackHexMaterial;
+        }
+        renderer.GetPropertyBlock(colorProperties);
+        colorProperties.SetColor("_Color", color);
+        colorProperties.SetColor("_BaseColor", color);
+        renderer.SetPropertyBlock(colorProperties);
+    }
 
     private void RefreshShipVisuals()
     {
@@ -135,6 +174,24 @@ public class SpaceMapWorldController : MonoBehaviour
             proxy.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f;
             proxy.AddComponent<SpaceShipView>().entityId = unit.gameObject.GetRuntimeId();
         }
+    }
+
+    private void RefreshRouteVisuals()
+    {
+        ClearChildren(routeRoot);
+        if (selectedShip == null || selectedShip.queuedSpacePath == null || selectedShip.queuedSpacePath.Count < 2) return;
+        var route = new GameObject("SelectedShipRoute");
+        route.transform.SetParent(routeRoot, false);
+        var line = route.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.widthMultiplier = 0.35f;
+        line.positionCount = selectedShip.queuedSpacePath.Count;
+        line.startColor = reachableColor;
+        line.endColor = Color.cyan;
+        routeMaterial ??= new Material(Shader.Find("Sprites/Default"));
+        line.sharedMaterial = routeMaterial;
+        for (int i = 0; i < selectedShip.queuedSpacePath.Count; i++)
+            line.SetPosition(i, Grid.GetWorldPosition(selectedShip.queuedSpacePath[i]) + Vector3.up * 0.45f);
     }
 
     private SpaceMapPlanetMarker CreatePlanetMarker(GameManager.PlanetData planet, Vector3 position)
@@ -151,6 +208,7 @@ public class SpaceMapWorldController : MonoBehaviour
         if (hexRoot == null) { var go = new GameObject("SpaceHexGrid"); go.transform.SetParent(mapRoot, false); hexRoot = go.transform; }
         if (planetRoot == null) { var go = new GameObject("SpaceMapPlanets"); go.transform.SetParent(mapRoot, false); planetRoot = go.transform; }
         if (unitRoot == null) { var go = new GameObject("SpaceMapShips"); go.transform.SetParent(mapRoot, false); unitRoot = go.transform; }
+        if (routeRoot == null) { var go = new GameObject("SpaceMapRoutes"); go.transform.SetParent(mapRoot, false); routeRoot = go.transform; }
         if (spaceMapCamera == null) { var go = new GameObject("SpaceMapCamera"); go.transform.SetParent(mapRoot, false); go.transform.position = new Vector3(0f, 140f, 0f); go.transform.rotation = Quaternion.Euler(90f,0f,0f); spaceMapCamera = go.AddComponent<Camera>(); spaceMapCamera.orthographic = true; spaceMapCamera.orthographicSize = 110f; spaceMapCamera.depth = 100f; }
         if (cameraController == null) cameraController = spaceMapCamera.GetComponent<SpaceMapCameraController>() ?? spaceMapCamera.gameObject.AddComponent<SpaceMapCameraController>();
     }
@@ -159,6 +217,7 @@ public class SpaceMapWorldController : MonoBehaviour
     private void HideGameplayCameras() { hiddenGameplayCameraMasks.Clear(); foreach (var cam in Camera.allCameras) if (cam != null && cam != spaceMapCamera && (cam.CompareTag("MainCamera") || cam.GetComponent<PlanetaryCameraManager>() != null)) { hiddenGameplayCameraMasks[cam] = cam.cullingMask; cam.cullingMask = 0; } }
     private void RestoreGameplayCameras() { foreach (var kv in hiddenGameplayCameraMasks) if (kv.Key != null) kv.Key.cullingMask = kv.Value; hiddenGameplayCameraMasks.Clear(); }
     private void ClearChildren(Transform root) { if (root == null) return; for (int i = root.childCount - 1; i >= 0; i--) Destroy(root.GetChild(i).gameObject); }
+    private void OnDestroy() { RestoreGameplayCameras(); if (fallbackHexMaterial != null) Destroy(fallbackHexMaterial); if (routeMaterial != null) Destroy(routeMaterial); }
 }
 
 public class SpaceHexTileView : MonoBehaviour { public int tileIndex; }

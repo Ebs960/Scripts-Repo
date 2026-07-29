@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Missile Base
   m_EditorClassIdentifier: Assembly-CSharp::ImprovementData
   improvementName: Missile Base
-  icon: {fileID: 0}
-  description: 
+  icon: {fileID: 21300000, guid: 8466e1f8896b7bb4f83a4bc0b97344c2, type: 3}
+  description: A fortified strategic missile silo with protected unit and missile storage.
   workCost: 1000
   buildGoldCost: 0
   buildResourceCosts: []
@@ -22,12 +22,54 @@ MonoBehaviour:
   completePrefab: {fileID: 0}
   destroyedPrefab: {fileID: 0}
   civVisualOverrides: []
+  cultureGroupVisualOverrides:
+  - cultureGroup: 0
+    icon: {fileID: 21300000, guid: 8466e1f8896b7bb4f83a4bc0b97344c2, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 2
+    icon: {fileID: 21300000, guid: 8598d1f501ad68d4f99484cf53f648ad, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 3
+    icon: {fileID: 21300000, guid: 282e6b248ebc68d4483b3d052e43d57e, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 4
+    icon: {fileID: 21300000, guid: 1700f3a6b6aba9f4591160ccf8d08f75, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 10
+    icon: {fileID: 21300000, guid: a3278353541faf642b9d3482d59662d4, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 9
+    icon: {fileID: 21300000, guid: 711e9d28ebafdca4eaa7c1c597f96159, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 12
+    icon: {fileID: 21300000, guid: 15bde31548867574dadde6e9cfce8ea8, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
+  - cultureGroup: 13
+    icon: {fileID: 21300000, guid: 5549a5871f78daa4cb330a1f4a650502, type: 3}
+    constructionPrefab: {fileID: 0}
+    completePrefab: {fileID: 0}
+    destroyedPrefab: {fileID: 0}
   hasSubstituteBuildCosts: 0
   canBeDismantled: 1
   dismantleGoldRefund: 0
   dismantleResourceRefunds: []
   isShelter: 1
   shelterCapacity: 2
+  storageTypes: 5
   needsCity: 0
   requiresControlledTerritory: 0
   canBuildInNeutralTerritory: 1
