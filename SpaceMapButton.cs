@@ -55,6 +55,11 @@ public class SpaceMapButton : MonoBehaviour
 
         // Find existing SpaceMapUI in scene (DON'T CREATE NEW ONES!)
         spaceMapUI = FindSpaceMapUIInScene();
+        if (spaceMapUI == null && spaceMapUIPrefab != null)
+        {
+            var instance = Instantiate(spaceMapUIPrefab);
+            spaceMapUI = instance.GetComponentInChildren<SpaceMapUI>(true);
+        }
         if (spaceMapUI == null)
         {
             Debug.LogError("[SpaceMapButton] No SpaceMapUI found in scene! Make sure you have a SpaceMapUI component in your scene.");
@@ -119,16 +124,18 @@ foreach (var ui in allSpaceMapUIs)
 
         if (tradeButton != null)
         {
-            // This assumes you have a panel to show. A more robust solution would be needed.
-            tradeButton.onClick.AddListener(() => { });
+            tradeButton.interactable = false;
+            var tooltip = tradeButton.GetComponent<SimpleTooltipTarget>() ?? tradeButton.gameObject.AddComponent<SimpleTooltipTarget>();
+            tooltip.Bind("Trade", "Space trade controls are not available yet.");
             if (UIManager.Instance != null)
                 UIManager.Instance.WireUIInteractions(tradeButton.gameObject);
         }
 
         if (ruinsButton != null)
         {
-            // We might not have a specific panel for ruins.
-            ruinsButton.onClick.AddListener(() => { });
+            ruinsButton.interactable = false;
+            var tooltip = ruinsButton.GetComponent<SimpleTooltipTarget>() ?? ruinsButton.gameObject.AddComponent<SimpleTooltipTarget>();
+            tooltip.Bind("Ruins", "Space ruins controls are not available yet.");
             if (UIManager.Instance != null)
                 UIManager.Instance.WireUIInteractions(ruinsButton.gameObject);
         }

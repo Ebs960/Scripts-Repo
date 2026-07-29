@@ -57,8 +57,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -87,8 +87,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -178,8 +178,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -208,8 +208,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_ShowMaskGraphic: 0
 --- !u!1 &1346166245492537467
 GameObject:
@@ -266,8 +266,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -403,8 +403,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -478,8 +478,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -574,6 +574,7 @@ GameObject:
   - component: {fileID: 6746078252101196949}
   - component: {fileID: 4541726755039903339}
   - component: {fileID: 553217273028318777}
+  - component: {fileID: 990001}
   m_Layer: 5
   m_Name: Space Map UI
   m_TagString: Untagged
@@ -590,7 +591,7 @@ RectTransform:
   m_GameObject: {fileID: 2477449896065806276}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6120689400113302893}
@@ -634,14 +635,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
+  m_Name:
+  m_EditorClassIdentifier:
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -657,8 +658,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
   m_BlockingMask:
@@ -719,8 +720,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -858,8 +859,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -888,8 +889,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2a4db7a114972834c8e4117be1d82ba3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -984,8 +985,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0, b: 0, a: 1}
   m_RaycastTarget: 1
@@ -1014,8 +1015,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -1103,8 +1104,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -1242,8 +1243,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -1383,8 +1384,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -1413,81 +1414,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 72f7699bb3b2aeb46ac820361d246b83, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   spaceMapCanvas: {fileID: 6746078252101196949}
   spaceMapPanel: {fileID: 5104274031852503463}
   closeButton: {fileID: 8847864171080962211}
   titleText: {fileID: 3556129010466312655}
-  planetContainer: {fileID: 6120689400113302893}
-  planetButtonPrefab: {fileID: 5270766637273427699, guid: 85531ebad56158245a462c8d6a023ce1, type: 3}
-  solarSystemView: {fileID: 6120689400113302893}
   planetInfoPanel: {fileID: 8716278235557008769}
   planetNameText: {fileID: 3328129959939345461}
   planetTypeText: {fileID: 8271815384400150580}
   planetStatusText: {fileID: 6418839484985751360}
   distanceText: {fileID: 6527489678942516657}
-  planetIcon: {fileID: 8735085599040755046}
   travelButton: {fileID: 7632916098147829588}
-  cancelButton: {fileID: 8847864171080962211}
+  cancelButton: {fileID: 5446520579351355667}
   civilizationContainer: {fileID: 6981393493367761443}
   civilizationEntryPrefab: {fileID: 5270766637273427699, guid: 85531ebad56158245a462c8d6a023ce1, type: 3}
   noCivilizationsText: {fileID: 4371035408362018200}
-  planetSpacing: 160
-  connectionLineWidth: 2
-  connectionLineColor: {r: 1, g: 1, b: 1, a: 0.3}
-  spaceshipIconPrefab: {fileID: 0}
-  activeTravelRouteColor: {r: 0, g: 1, b: 1, a: 1}
-  spaceshipIconSize: 20
-  planetTypeIcons:
-  - planetType: 0
-    icon: {fileID: 21300000, guid: 667e02de13eefb84e9142d89ffd4d80e, type: 3}
-  - planetType: 1
-    icon: {fileID: 21300000, guid: 6d3d2b4617d124146aa3654667259fc5, type: 3}
-  - planetType: 2
-    icon: {fileID: 21300000, guid: c459b55e50e4f494e90f627354d76be7, type: 3}
-  - planetType: 3
-    icon: {fileID: 21300000, guid: 39388561769054745a2b2f8c91453abd, type: 3}
-  - planetType: 4
-    icon: {fileID: 21300000, guid: 3c4af162bf347874794264d04f0e1a1d, type: 3}
-  - planetType: 5
-    icon: {fileID: 21300000, guid: 4c1f7b02184b33a4584d8d0520c6951e, type: 3}
-  - planetType: 6
-    icon: {fileID: 21300000, guid: 31195c33f4ec3de43a490c4806e96ceb, type: 3}
-  - planetType: 8
-    icon: {fileID: 21300000, guid: d739320fb3e722246a249e8376be7458, type: 3}
-  - planetType: 9
-    icon: {fileID: 21300000, guid: 485c5ca7a12373f43a8c4a705842e9c2, type: 3}
-  - planetType: 10
-    icon: {fileID: 21300000, guid: 819368662e63097429227cacabed0ca0, type: 3}
-  - planetType: 11
-    icon: {fileID: 21300000, guid: 6debafff39a9e2e42b11057dfcf7080a, type: 3}
-  - planetType: 12
-    icon: {fileID: 21300000, guid: bcc354c6b302b2544899ef4bfe66b90f, type: 3}
-  - planetType: 13
-    icon: {fileID: 21300000, guid: 47cf403104512d74d8d4674818a2c171, type: 3}
-  - planetType: 14
-    icon: {fileID: 21300000, guid: 7aa18195bb22b0d429dbfb3c0d66dfad, type: 3}
-  - planetType: 15
-    icon: {fileID: 21300000, guid: 717338973919a444aa06948fd895ef98, type: 3}
-  - planetType: 16
-    icon: {fileID: 21300000, guid: 34099a46aeab24d4d89204606ac92303, type: 3}
-  - planetType: 17
-    icon: {fileID: 21300000, guid: 2cf5516cad501d646a53e33c79761015, type: 3}
-  - planetType: 18
-    icon: {fileID: 21300000, guid: 3ffd625be6449a34d93713f88d194c37, type: 3}
-  - planetType: 24
-    icon: {fileID: 21300000, guid: c3d2f0b6b4937244d8ffcace6d60b78b, type: 3}
-  - planetType: 23
-    icon: {fileID: 21300000, guid: 436ad8b3a52c85c49b6749848488346d, type: 3}
-  - planetType: 21
-    icon: {fileID: 21300000, guid: 68969add7933c164b803b35ce13c15c0, type: 3}
-  - planetType: 22
-    icon: {fileID: 21300000, guid: 00c49574bca32f6408fb68af2b8b7c6a, type: 3}
-  - planetType: 20
-    icon: {fileID: 21300000, guid: ac908339ee4f1b844938cb6d0642bb47, type: 3}
-  - planetType: 19
-    icon: {fileID: 21300000, guid: 09f02be4450afdb41afaf2ec8580719d, type: 3}
+  spaceMapWorldController: {fileID: 990001}
 --- !u!1 &5499287250042140443
 GameObject:
   m_ObjectHideFlags: 0
@@ -1579,8 +1522,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -1663,8 +1606,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.14901961, g: 0.19607843, b: 0.38039216, a: 1}
   m_RaycastTarget: 1
@@ -1740,8 +1683,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -1770,8 +1713,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2a4db7a114972834c8e4117be1d82ba3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -1864,8 +1807,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2005,8 +1948,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2035,8 +1978,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -2124,8 +2067,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2263,8 +2206,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2400,8 +2343,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2566,8 +2509,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_IgnoreLayout: 0
   m_MinWidth: 50
   m_MinHeight: 50
@@ -2586,8 +2529,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Padding:
     m_Left: 0
     m_Right: 0
@@ -2610,8 +2553,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_HorizontalFit: 1
   m_VerticalFit: 1
 --- !u!1 &8966728613500376226
@@ -2673,8 +2616,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0.392}
   m_RaycastTarget: 1
@@ -2703,8 +2646,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1aa08ab6e0800fa44ae55d278d1423e3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Content: {fileID: 6981393493367761443}
   m_Horizontal: 1
   m_Vertical: 1
@@ -2778,8 +2721,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -2798,3 +2741,33 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &990001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2477449896065806276}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5f1fccbc56144a78f180497a29dfacb, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceMapWorldController
+  spaceMapCamera: {fileID: 0}
+  cameraController: {fileID: 0}
+  mapRoot: {fileID: 0}
+  planetRoot: {fileID: 0}
+  hexRoot: {fileID: 0}
+  unitRoot: {fileID: 0}
+  spaceMapUI: {fileID: 4873263753826445772}
+  planetMarkerPrefab: {fileID: 0}
+  planetMaterialTemplate: {fileID: 0}
+  minPlanetRadius: 1.5
+  maxPlanetRadius: 5
+  gridRadius: 12
+  hexSize: 5
+  hexMaterial: {fileID: 0}
+  reachableHexMaterial: {fileID: 0}
+  hexColor: {r: 0.1, g: 0.5, b: 1, a: 0.25}
+  reachableColor: {r: 0, g: 1, b: 0.7, a: 0.45}
+  blockedColor: {r: 1, g: 0.15, b: 0.1, a: 0.35}
