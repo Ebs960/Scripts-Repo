@@ -107,7 +107,9 @@ public class SpaceMapWorldController : MonoBehaviour
         if (spaceMapCamera == null || Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         Ray ray = spaceMapCamera.ScreenPointToRay(Mouse.current.position.ReadValue()); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
-        var ship = hit.collider.GetComponentInParent<BaseUnit>(); if (ship != null && ship.currentSpaceTileIndex >= 0) { SelectShip(ship); return; }
+        var shipView = hit.collider.GetComponentInParent<SpaceShipView>();
+        var ship = shipView != null ? shipView.Unit : hit.collider.GetComponentInParent<BaseUnit>();
+        if (ship != null && ship.currentSpaceTileIndex >= 0) { SelectShip(ship); return; }
         var marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>(); if (marker != null) { SelectPlanetMarker(marker); return; }
         var hex = hit.collider.GetComponent<SpaceHexTileView>();
         if (hex != null && selectedShip != null)
@@ -172,7 +174,7 @@ public class SpaceMapWorldController : MonoBehaviour
             proxy.name = $"SpaceShipView_{unit.gameObject.GetRuntimeId()}";
             proxy.transform.SetParent(unitRoot, false);
             proxy.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f;
-            proxy.AddComponent<SpaceShipView>().entityId = unit.gameObject.GetRuntimeId();
+            proxy.AddComponent<SpaceShipView>().Initialize(unit);
         }
     }
 
@@ -185,13 +187,14 @@ public class SpaceMapWorldController : MonoBehaviour
         var line = route.AddComponent<LineRenderer>();
         line.useWorldSpace = true;
         line.widthMultiplier = 0.35f;
-        line.positionCount = selectedShip.queuedSpacePath.Count;
+        int firstPathIndex = Mathf.Clamp(selectedShip.queuedSpacePathCursor, 0, selectedShip.queuedSpacePath.Count - 1);
+        line.positionCount = selectedShip.queuedSpacePath.Count - firstPathIndex;
         line.startColor = reachableColor;
         line.endColor = Color.cyan;
         routeMaterial ??= new Material(Shader.Find("Sprites/Default"));
         line.sharedMaterial = routeMaterial;
-        for (int i = 0; i < selectedShip.queuedSpacePath.Count; i++)
-            line.SetPosition(i, Grid.GetWorldPosition(selectedShip.queuedSpacePath[i]) + Vector3.up * 0.45f);
+        for (int i = firstPathIndex; i < selectedShip.queuedSpacePath.Count; i++)
+            line.SetPosition(i - firstPathIndex, Grid.GetWorldPosition(selectedShip.queuedSpacePath[i]) + Vector3.up * 0.45f);
     }
 
     private SpaceMapPlanetMarker CreatePlanetMarker(GameManager.PlanetData planet, Vector3 position)

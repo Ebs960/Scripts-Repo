@@ -61,7 +61,9 @@ public class SpaceMapUI : MonoBehaviour
     private void Update()
     {
         if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil) return;
-        if (Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.mKey.wasPressedThisFrame)) Hide();
+        bool keyboardClose = Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.mKey.wasPressedThisFrame);
+        bool gamepadClose = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
+        if (keyboardClose || gamepadClose) Hide();
     }
 
     public void Show()
@@ -102,7 +104,13 @@ public class SpaceMapUI : MonoBehaviour
         if (planetNameText != null) planetNameText.text = ship != null ? ship.name : "No selection";
         if (planetTypeText != null) planetTypeText.text = ship != null ? "Spacecraft" : string.Empty;
         if (planetStatusText != null) planetStatusText.text = ship != null ? $"Tile {ship.currentSpaceTileIndex} • MP {ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}" : string.Empty;
-        if (distanceText != null) distanceText.text = ship != null && ship.queuedSpacePath != null ? $"Queued path: {ship.queuedSpacePath.Count} hexes" : string.Empty;
+        if (distanceText != null)
+        {
+            int remaining = ship != null && ship.queuedSpacePath != null
+                ? Mathf.Max(0, ship.queuedSpacePath.Count - 1 - ship.queuedSpacePathCursor)
+                : 0;
+            distanceText.text = remaining > 0 ? $"Remaining route: {remaining} hexes" : "No queued route";
+        }
         if (travelButton != null) travelButton.gameObject.SetActive(false);
         RefreshCivilizations(null);
     }
@@ -121,7 +129,7 @@ public class SpaceMapUI : MonoBehaviour
     {
         var parts = new List<string>();
         parts.Add(planet.isHomeWorld ? "Homeworld" : planet.isColonized ? "Colonized" : planet.isExplored ? "Explored" : "Unexplored");
-        parts.Add($"Body ID {planet.celestialBodyId}"); if (planet.parentBodyId >= 0) parts.Add($"Parent {planet.parentBodyId}");
+        parts.Add($"Size: {planet.planetSize}");
         if (planet.childMoonIds != null && planet.childMoonIds.Count > 0) parts.Add($"Moons {planet.childMoonIds.Count}");
         return string.Join(" • ", parts);
     }

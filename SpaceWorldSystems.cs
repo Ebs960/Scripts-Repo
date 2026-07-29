@@ -36,7 +36,17 @@ public class SpaceWorldManager : MonoBehaviour
     public SpaceWorldState SaveSystem() => CurrentSystem;
 }
 
-public class SpaceShipView : MonoBehaviour { public int entityId; }
+public class SpaceShipView : MonoBehaviour
+{
+    public int entityId;
+    public BaseUnit Unit { get; private set; }
+
+    public void Initialize(BaseUnit unit)
+    {
+        Unit = unit;
+        entityId = unit != null ? unit.gameObject.GetRuntimeId() : -1;
+    }
+}
 public class SpaceFeatureView : MonoBehaviour { public int entityId; }
 public class SpaceImprovementView : MonoBehaviour { public int entityId; }
 public class SpacePlanetView : MonoBehaviour { public int entityId; }

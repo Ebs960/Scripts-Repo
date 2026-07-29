@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Camera input for the true world-space space map. Supports arrow/WASD panning,
-/// mouse-drag panning against a flat XZ plane, and optional orthographic zoom.
+/// middle-mouse drag panning against a flat XZ plane, and optional orthographic zoom.
 /// </summary>
 public class SpaceMapCameraController : MonoBehaviour
 {
@@ -51,11 +51,18 @@ public class SpaceMapCameraController : MonoBehaviour
     private void HandleKeyboardPan()
     {
         Vector3 pan = Vector3.zero;
-        if (Keyboard.current == null) return;
-        if (Keyboard.current.leftArrowKey.isPressed || (enableWasd && Keyboard.current.aKey.isPressed)) pan.x -= 1f;
-        if (Keyboard.current.rightArrowKey.isPressed || (enableWasd && Keyboard.current.dKey.isPressed)) pan.x += 1f;
-        if (Keyboard.current.upArrowKey.isPressed || (enableWasd && Keyboard.current.wKey.isPressed)) pan.z += 1f;
-        if (Keyboard.current.downArrowKey.isPressed || (enableWasd && Keyboard.current.sKey.isPressed)) pan.z -= 1f;
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.leftArrowKey.isPressed || (enableWasd && Keyboard.current.aKey.isPressed)) pan.x -= 1f;
+            if (Keyboard.current.rightArrowKey.isPressed || (enableWasd && Keyboard.current.dKey.isPressed)) pan.x += 1f;
+            if (Keyboard.current.upArrowKey.isPressed || (enableWasd && Keyboard.current.wKey.isPressed)) pan.z += 1f;
+            if (Keyboard.current.downArrowKey.isPressed || (enableWasd && Keyboard.current.sKey.isPressed)) pan.z -= 1f;
+        }
+        if (Gamepad.current != null)
+        {
+            Vector2 stick = Gamepad.current.leftStick.ReadValue();
+            pan += new Vector3(stick.x, 0f, stick.y);
+        }
         if (pan.sqrMagnitude > 0.001f)
             targetCamera.transform.position += pan.normalized * keyboardPanSpeed * Time.unscaledDeltaTime;
     }
@@ -65,16 +72,16 @@ public class SpaceMapCameraController : MonoBehaviour
         if (!enableMouseDrag) return;
 
         if (Mouse.current == null) return;
-        if (Mouse.current.leftButton.wasPressedThisFrame && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()) && TryGetMouseWorldPoint(out lastDragWorldPoint))
+        if (Mouse.current.middleButton.wasPressedThisFrame && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()) && TryGetMouseWorldPoint(out lastDragWorldPoint))
         {
             dragging = true;
         }
-        else if (Mouse.current.leftButton.wasReleasedThisFrame)
+        else if (Mouse.current.middleButton.wasReleasedThisFrame)
         {
             dragging = false;
         }
 
-        if (!dragging || !Mouse.current.leftButton.isPressed || !TryGetMouseWorldPoint(out Vector3 currentPoint))
+        if (!dragging || !Mouse.current.middleButton.isPressed || !TryGetMouseWorldPoint(out Vector3 currentPoint))
             return;
 
         Vector3 delta = (lastDragWorldPoint - currentPoint) * mouseDragSpeed;
@@ -86,8 +93,9 @@ public class SpaceMapCameraController : MonoBehaviour
     {
         if (!enableScrollZoom || !targetCamera.orthographic) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        if (Mouse.current == null) return;
-        float scroll = Mouse.current.scroll.ReadValue().y / 120f;
+        float scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y / 120f : 0f;
+        if (Gamepad.current != null)
+            scroll += Gamepad.current.rightStick.ReadValue().y * Time.unscaledDeltaTime * 10f;
         if (Mathf.Abs(scroll) <= 0.001f) return;
         targetCamera.orthographicSize = Mathf.Clamp(targetCamera.orthographicSize - scroll * zoomSpeed, minOrthographicSize, maxOrthographicSize);
     }
