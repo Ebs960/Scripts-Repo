@@ -46,6 +46,7 @@ public sealed class BattleTurnController
             u.HasActed = false;
             u.IsDefending = false;
             u.IsWaiting = false;
+            u.HasAttackedThisTurn = false;
             u.CurrentMovePoints = u.Snapshot.TacticalMovePoints;
             u.CurrentActionPoints = u.Snapshot.TacticalActionPoints;
             u.CounterAttackedThisActivation = false;

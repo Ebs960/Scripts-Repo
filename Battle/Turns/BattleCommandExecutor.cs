@@ -29,7 +29,8 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
-        if (!unit.CanAct(session.ActiveSide))
+        bool allowPostAttackMove = command is BattleMoveCommand && CanUsePostAttackMove(unit, session.ActiveSide);
+        if (!unit.CanAct(session.ActiveSide) && !allowPostAttackMove)
         {
             reason = "unit cannot act";
             return false;
@@ -68,6 +69,21 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
+        if (unit.HasAttackedThisTurn)
+        {
+            if (!(unit.Snapshot?.TacticalProfile?.canMoveAfterAttacking ?? false))
+            {
+                reason = "cannot move after attacking";
+                return false;
+            }
+
+            if (unit.HasMoved)
+            {
+                reason = "already moved";
+                return false;
+            }
+        }
+
         if (unit.CurrentMovePoints <= 0)
         {
             reason = "no move points";
@@ -97,6 +113,18 @@ public sealed class BattleCommandExecutor
         if (attack.AttackFromCell != attacker.CellIndex)
         {
             reason = "attacker position mismatch";
+            return false;
+        }
+
+        if (attacker.HasAttackedThisTurn)
+        {
+            reason = "already attacked";
+            return false;
+        }
+
+        if (attacker.HasMoved && !(attacker.Snapshot?.TacticalProfile?.canAttackAfterMoving ?? true))
+        {
+            reason = "cannot attack after moving";
             return false;
         }
 
@@ -139,6 +167,7 @@ public sealed class BattleCommandExecutor
         ApplyDamage(occupancy, defender, result.Damage);
 
         attacker.HasActed = true;
+    attacker.HasAttackedThisTurn = true;
         attacker.CurrentActionPoints = 0;
         attacker.IsDefending = false;
 
@@ -236,6 +265,19 @@ public sealed class BattleCommandExecutor
     private static bool CanCounterAttack(BattleUnitState unit)
     {
         return !unit.CounterAttackedThisActivation && unit.Snapshot.MeleeAttack > 0;
+    }
+
+    private static bool CanUsePostAttackMove(BattleUnitState unit, BattleSide activeSide)
+    {
+        if (unit == null)
+            return false;
+
+        return unit.Side == activeSide
+            && unit.IsAliveAndActive
+            && unit.HasAttackedThisTurn
+            && !unit.HasMoved
+            && unit.CurrentMovePoints > 0
+            && (unit.Snapshot?.TacticalProfile?.canMoveAfterAttacking ?? false);
     }
 
     private static void ApplyDamage(BattleOccupancy occupancy, BattleUnitState target, int damage)

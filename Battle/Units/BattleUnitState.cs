@@ -19,6 +19,7 @@ public sealed class BattleUnitState
     public bool IsReserve;
     public bool HasRetreated;
     public bool IsDead;
+    public bool HasAttackedThisTurn;
 
     public bool CounterAttackedThisActivation;
 
