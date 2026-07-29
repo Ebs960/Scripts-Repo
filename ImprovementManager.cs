@@ -1386,15 +1386,63 @@ public class ImprovementManager : MonoBehaviour
 
     public bool DismantleImprovement(int tileIndex, Civilization actor, int planetIndex = -1)
     {
+        if (!CanDismantleImprovement(tileIndex, actor, planetIndex, out string reason))
+        {
+            if (!string.IsNullOrEmpty(reason) && actor != null && actor.isPlayerControlled && UIManager.Instance != null)
+                UIManager.Instance.ShowNotification(reason);
+            return false;
+        }
+
         int resolvedPlanet = planetIndex >= 0 ? planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var ts = TileSystem.GetForPlanet(resolvedPlanet) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (tileData == null || tileData.improvement == null) return false;
-        if (!tileData.improvement.canBeDismantled) return false;
-        if (actor != null && tileData.improvementOwner != null && tileData.improvementOwner != actor) return false;
 
         var refundCiv = tileData.improvementOwner ?? actor;
         RemoveImprovementInternal(tileIndex, resolvedPlanet, refundCiv, ImprovementRemovalReason.Dismantled, true);
+        return true;
+    }
+
+    public bool CanDismantleImprovement(int tileIndex, Civilization actor, int planetIndex, out string reason)
+    {
+        reason = string.Empty;
+        int resolvedPlanet = planetIndex >= 0 ? planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(resolvedPlanet) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (tileData == null || tileData.improvement == null)
+        {
+            reason = "There is no improvement to dismantle.";
+            return false;
+        }
+        if (!tileData.improvement.canBeDismantled)
+        {
+            reason = "This improvement cannot be dismantled.";
+            return false;
+        }
+        if (actor != null && tileData.improvementOwner != null && tileData.improvementOwner != actor)
+        {
+            reason = "Only the owner can dismantle this improvement.";
+            return false;
+        }
+
+        var instance = tileData.improvementInstanceObject != null
+            ? tileData.improvementInstanceObject.GetComponent<ImprovementInstance>()
+            : null;
+        int storedUnitCount = instance?.storedUnits?.Count ?? 0;
+        if (storedUnitCount > 0)
+        {
+            reason = $"Move {storedUnitCount} stored unit{(storedUnitCount == 1 ? string.Empty : "s")} before dismantling.";
+            return false;
+        }
+
+        int storedMissileCount = MissileManager.Instance != null
+            ? MissileManager.Instance.GetSiloMissiles(resolvedPlanet, tileIndex).Count
+            : 0;
+        if (storedMissileCount > 0)
+        {
+            reason = $"Move {storedMissileCount} stored missile{(storedMissileCount == 1 ? string.Empty : "s")} before dismantling.";
+            return false;
+        }
+
         return true;
     }
 
@@ -1564,8 +1612,64 @@ public class ImprovementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Apply an improvement upgrade to a tile (visual + persist). Caller must have already consumed requirements (ConsumeRequirements).
-    /// Used by AI to upgrade improvements. Returns true if applied.
+    /// Purchases and applies an improvement upgrade as one authoritative player-facing transaction.
+    /// Costs are restored if applying the upgrade fails after payment.
+    /// </summary>
+    public bool TryPurchaseAndApplyUpgrade(int tileIndex, int planetIndex, Civilization actor, ImprovementUpgradeData upgrade, out string reason)
+    {
+        reason = string.Empty;
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var tileData = GetTileDataAcrossAllPlanets(tileIndex, planetIndex);
+        var evaluation = ImprovementUpgradeRules.Evaluate(tileData?.improvement, tileData, upgrade, actor);
+        if (!evaluation.IsInteractable)
+        {
+            reason = evaluation.Reason;
+            return false;
+        }
+
+        int originalGold = actor.gold;
+        var originalResources = new Dictionary<ResourceData, int>();
+        if (upgrade.resourceCosts != null)
+        {
+            foreach (var cost in upgrade.resourceCosts)
+            {
+                if (cost?.resource == null || originalResources.ContainsKey(cost.resource)) continue;
+                originalResources[cost.resource] = actor.GetResourceCount(cost.resource);
+            }
+        }
+
+        if (!upgrade.ConsumeRequirements(actor))
+        {
+            reason = "The upgrade cost could not be paid.";
+            RestoreUpgradePayment(actor, originalGold, originalResources);
+            return false;
+        }
+
+        if (!ApplyUpgradeToTile(tileIndex, planetIndex, upgrade))
+        {
+            RestoreUpgradePayment(actor, originalGold, originalResources);
+            reason = "The upgrade could not be applied. No resources were spent.";
+            return false;
+        }
+
+        ApplyImprovementYieldsForTile(tileIndex, actor, planetIndex);
+        return true;
+    }
+
+    private static void RestoreUpgradePayment(Civilization actor, int originalGold, Dictionary<ResourceData, int> originalResources)
+    {
+        if (actor == null) return;
+        actor.gold = originalGold;
+        foreach (var pair in originalResources)
+        {
+            int missing = pair.Value - actor.GetResourceCount(pair.Key);
+            if (missing > 0) actor.AddResource(pair.Key, missing);
+        }
+    }
+
+    /// <summary>
+    /// Apply an improvement upgrade to a tile (visual + persistence). This method does not charge costs.
+    /// Used by AI after it pays separately and by TryPurchaseAndApplyUpgrade for player actions.
     /// </summary>
     public bool ApplyUpgradeToTile(int tileIndex, int planetIndex, ImprovementUpgradeData upgrade)
     {
