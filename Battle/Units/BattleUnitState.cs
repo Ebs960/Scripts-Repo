@@ -1,0 +1,36 @@
+using System.Collections.Generic;
+
+public sealed class BattleUnitState
+{
+    public int UnitId;
+    public BattleUnitSnapshot Snapshot;
+
+    public BattleSide Side;
+    public int CellIndex;
+
+    public int CurrentHealth;
+    public int CurrentMovePoints;
+    public int CurrentActionPoints;
+
+    public bool HasMoved;
+    public bool HasActed;
+    public bool IsDefending;
+    public bool IsWaiting;
+    public bool IsReserve;
+    public bool HasRetreated;
+    public bool IsDead;
+
+    public bool CounterAttackedThisActivation;
+
+    public readonly List<BattleStatusEffect> StatusEffects = new();
+
+    public bool IsAliveAndActive => !IsDead && !HasRetreated && !IsReserve && CurrentHealth > 0;
+
+    public bool CanAct(BattleSide activeSide)
+    {
+        return Side == activeSide
+            && IsAliveAndActive
+            && !HasActed
+            && CurrentActionPoints > 0;
+    }
+}

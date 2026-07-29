@@ -135,6 +135,10 @@ public class CombatUnitData : ScriptableObject
     [TextArea] public string description;
     public CombatCategory unitType;
 
+    [Header("Tactical Battle")]
+    [Tooltip("Optional tactical profile used by the turn-based battle system. If empty, safe defaults are inferred.")]
+    public TacticalUnitProfile tacticalUnitProfile;
+
     [Header("Audio")]
     [Tooltip("Sound played when this unit is selected/clicked on the map. Leave empty for no sound.")]
     public AudioClip selectSound;

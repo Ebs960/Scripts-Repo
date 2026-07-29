@@ -511,7 +511,8 @@ public class CivilizationManager : MonoBehaviour
                     CombatUnit bestTarget = FindBestBombardTarget(civ, unit);
                     if (bestTarget != null && unit.CanAttack(bestTarget))
                     {
-                        unit.Attack(bestTarget);
+                        if (!TryRouteTacticalEngagement(unit, bestTarget))
+                            unit.Attack(bestTarget);
                         continue;
                     }
                 }
@@ -524,7 +525,8 @@ public class CivilizationManager : MonoBehaviour
             CombatUnit surfaceTarget = FindBestAttackTargetIncludingAnimals(civ, unit);
             if (surfaceTarget != null && unit.CanAttack(surfaceTarget))
             {
-                unit.Attack(surfaceTarget);
+                if (!TryRouteTacticalEngagement(unit, surfaceTarget))
+                    unit.Attack(surfaceTarget);
                 continue;
             }
 
@@ -916,6 +918,31 @@ public class CivilizationManager : MonoBehaviour
             if (food > bestFood) { bestFood = food; best = animal; }
         }
         return best;
+    }
+
+    private bool TryRouteTacticalEngagement(CombatUnit attacker, CombatUnit defender)
+    {
+        if (attacker == null || defender == null)
+            return false;
+
+        var mode = EngagementModeResolver.ResolveEngagementMode(attacker, defender);
+        if (mode != EngagementMode.TacticalLandBattle)
+            return false;
+
+        var manager = BattleManager.GetOrCreate();
+        var preview = manager.RequestEngagement(attacker, defender);
+        if (preview == null || !preview.IsValid)
+            return false;
+
+        bool attackerPlayer = attacker.owner != null && attacker.owner.isPlayerControlled;
+        bool defenderPlayer = defender.owner != null && defender.owner.isPlayerControlled;
+
+        if (attackerPlayer || defenderPlayer)
+            manager.BeginManualBattle(preview);
+        else
+            manager.AutoResolve(preview);
+
+        return true;
     }
 
     /// <summary>

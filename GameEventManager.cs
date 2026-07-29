@@ -35,6 +35,15 @@ public class GameEventManager : MonoBehaviour
     public event Action<CombatEventArgs> OnDamageApplied;
     public event Action<CombatEventArgs> OnUnitKilled;
     public event Action<UnitLostEventArgs> OnUnitLost;
+
+    // Tactical battle lifecycle events
+    public event Action<EngagementPreview> OnBattlePreviewOpened;
+    public event Action OnBattlePreviewClosed;
+    public event Action<int> OnBattleStarted;
+    public event Action<int> OnBattleRoundStarted;
+    public event Action<BattleSide> OnBattleSideTurnStarted;
+    public event Action<int, BattleResolutionType, BattleSide> OnBattleResolved;
+    public event Action OnBattleClosed;
     
     // Resource Events
     public event Action<ResourceEventArgs> OnResourceHarvested;
@@ -398,6 +407,41 @@ public class GameEventManager : MonoBehaviour
         args.Setup(unit, killer, tileIndex, planetIndex);
         OnUnitLost.Invoke(args);
         ReturnUnitLostEventArgs(args);
+    }
+
+    public void RaiseBattlePreviewOpened(EngagementPreview preview)
+    {
+        OnBattlePreviewOpened?.Invoke(preview);
+    }
+
+    public void RaiseBattlePreviewClosed()
+    {
+        OnBattlePreviewClosed?.Invoke();
+    }
+
+    public void RaiseBattleStarted(int battleId)
+    {
+        OnBattleStarted?.Invoke(battleId);
+    }
+
+    public void RaiseBattleRoundStarted(int round)
+    {
+        OnBattleRoundStarted?.Invoke(round);
+    }
+
+    public void RaiseBattleSideTurnStarted(BattleSide side)
+    {
+        OnBattleSideTurnStarted?.Invoke(side);
+    }
+
+    public void RaiseBattleResolved(int battleId, BattleResolutionType resolutionType, BattleSide winner)
+    {
+        OnBattleResolved?.Invoke(battleId, resolutionType, winner);
+    }
+
+    public void RaiseBattleClosed()
+    {
+        OnBattleClosed?.Invoke();
     }
     
     // Resource events

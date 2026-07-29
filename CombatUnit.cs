@@ -2288,6 +2288,20 @@ public class CombatUnit : BaseUnit
             LevelUp();
     }
 
+    public override void ApplyBattleExperience(int gainedExperience)
+    {
+        if (gainedExperience <= 0)
+            return;
+
+        GainExperience(gainedExperience);
+    }
+
+    public override void MarkCampaignActionConsumedByBattle()
+    {
+        ConsumeAction();
+        TryConsumeAttackPoint();
+    }
+
     /// <summary>
     /// Called by projectiles or other external systems when this unit's attack caused a kill.
     /// Awards XP for the kill.

@@ -197,6 +197,31 @@ public abstract class BaseUnit : MonoBehaviour
         Debug.LogWarning($"[BaseUnit] Attack(BaseUnit) not overridden on {GetType().Name} (target={target?.GetType().Name})");
     }
 
+    public virtual void ApplyBattleHealth(int finalHealth)
+    {
+        int oldHealth = currentHealth;
+        currentHealth = Mathf.Clamp(finalHealth, 0, MaxHealth);
+        try { GameEventManager.Instance?.RaiseHealthChanged(this, oldHealth, currentHealth, MaxHealth); } catch { }
+        UpdateUnitLabel();
+    }
+
+    public virtual void ApplyBattleExperience(int experience)
+    {
+    }
+
+    public virtual void MarkCampaignActionConsumedByBattle()
+    {
+        TryConsumeAttackPoint();
+    }
+
+    public virtual void ClearCampaignOrdersForBattle()
+    {
+        moveOrderPath = null;
+        moveOrderNextStep = 0;
+        try { UnitMovementController.Instance?.StopMoveForUnit(this); } catch { }
+        UpdateWalkingState(false);
+    }
+
     #region Core Unit Fields
 
     [Header("Unit UI")]

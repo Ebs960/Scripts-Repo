@@ -338,6 +338,9 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleInput()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+            return;
+
         if (IsPointerOverUIBlockingGameplay())
             return;
 
@@ -1305,8 +1308,9 @@ public class UnitSelectionManager : MonoBehaviour
                         int maxSteps = Mathf.FloorToInt((selectedUnit is CombatUnit sc) ? sc.CurrentRange : (selectedUnit is WorkerUnit sw ? sw.BaseRange : 0f));
                         if (tileSteps <= maxSteps)
                         {
-                            // In range now — perform unified attack
-                            selectedUnit.Attack(tgt);
+                            // In range now — route through tactical engagement if eligible
+                            if (!TryRouteTacticalEngagement(selectedUnit, tgt))
+                                selectedUnit.Attack(tgt);
                             pendingAttackTarget = null;
                         }
                     }
@@ -1431,7 +1435,8 @@ public class UnitSelectionManager : MonoBehaviour
                 selectedUnit.moveOrderNextStep = 0;
                 pendingAttackTarget = null;
                 ClearPreviewVisuals();
-                selectedUnit.Attack(targetUnit);
+                if (!TryRouteTacticalEngagement(selectedUnit, targetUnit))
+                    selectedUnit.Attack(targetUnit);
                 ShowQueuedPathPreviewIfAny();
                 return;
             }
@@ -1718,5 +1723,31 @@ public class UnitSelectionManager : MonoBehaviour
         src.pitch = 1f + Random.Range(-pitchVar, pitchVar);
         src.Play();
         Destroy(go, clip.length + 0.1f);
+    }
+
+    private bool TryRouteTacticalEngagement(BaseUnit attacker, BaseUnit defender)
+    {
+        if (attacker is not CombatUnit atkCombat || defender is not CombatUnit defCombat)
+            return false;
+
+        var mode = EngagementModeResolver.ResolveEngagementMode(attacker, defender);
+        if (mode != EngagementMode.TacticalLandBattle)
+            return false;
+
+        var manager = BattleManager.GetOrCreate();
+        var preview = manager.RequestEngagement(atkCombat, defCombat);
+        if (preview == null || !preview.IsValid)
+            return false;
+
+        bool attackerPlayer = atkCombat.owner != null && atkCombat.owner.isPlayerControlled;
+        bool defenderPlayer = defCombat.owner != null && defCombat.owner.isPlayerControlled;
+
+        if (attackerPlayer || defenderPlayer)
+            manager.BeginManualBattle(preview);
+        else
+            manager.AutoResolve(preview);
+
+        pendingAttackTarget = null;
+        return true;
     }
 }

@@ -569,6 +569,12 @@ HideSaveLoadUI();
 
     public void SaveGame()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+        {
+            UpdateSaveStatus("Saving is disabled while a tactical battle is active.");
+            return;
+        }
+
         if (selectedSaveSlot < 0 || selectedSaveSlot >= maxSaveSlots)
         {
             UpdateSaveStatus("Please select a save slot first.");

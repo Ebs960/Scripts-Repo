@@ -126,6 +126,12 @@ public class TurnManager : MonoBehaviour
     /// </summary>
     public void AdvanceTurn()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+        {
+            Debug.Log("[TurnManager] AdvanceTurn blocked because campaign interaction is locked by battle mode.");
+            return;
+        }
+
         StartCoroutine(AdvanceTurnCoroutine());
     }
 
@@ -162,6 +168,9 @@ public class TurnManager : MonoBehaviour
 
     private IEnumerator AdvanceTurnCoroutine()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+            yield break;
+
         if (!turnsStarted)
         {
             Debug.LogWarning("TurnManager: AdvanceTurn called before StartTurns()!");
@@ -323,6 +332,12 @@ public class TurnManager : MonoBehaviour
     /// </summary>
     public void EndPlayerTurn()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+        {
+            Debug.Log("[TurnManager] EndPlayerTurn ignored while battle interaction mode is active.");
+            return;
+        }
+
         AdvanceTurn();
     }
 

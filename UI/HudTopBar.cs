@@ -311,6 +311,9 @@ public class HudTopBar : MonoBehaviour
 
     public void OnEndTurnButtonClicked()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+            return;
+
         if (TurnManager.Instance == null)
         {
             Debug.LogWarning("HudTopBar: TurnManager missing; cannot end turn.");
@@ -335,6 +338,7 @@ public class HudTopBar : MonoBehaviour
             return;
 
         bool canEndTurn = currentCiv != null && currentCiv.isPlayerControlled;
+        canEndTurn &= GameInteractionStateService.GetOrCreate().Mode == GameInteractionMode.Campaign;
         var activeCiv = TurnManager.Instance != null ? TurnManager.Instance.GetCurrentCivilization() : null;
         if (activeCiv != null)
             canEndTurn &= activeCiv == currentCiv;

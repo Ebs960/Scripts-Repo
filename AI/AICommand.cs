@@ -90,7 +90,27 @@ public class AIAttackCommand : AICommand
     {
         if (unit is CombatUnit cu)
         {
-            if (target is CombatUnit ct) cu.Attack(ct);
+            if (target is CombatUnit ct)
+            {
+                var mode = EngagementModeResolver.ResolveEngagementMode(cu, ct);
+                if (mode == EngagementMode.TacticalLandBattle)
+                {
+                    var manager = BattleManager.GetOrCreate();
+                    var preview = manager.RequestEngagement(cu, ct);
+                    if (preview != null && preview.IsValid)
+                    {
+                        bool attackerPlayer = cu.owner != null && cu.owner.isPlayerControlled;
+                        bool defenderPlayer = ct.owner != null && ct.owner.isPlayerControlled;
+                        if (attackerPlayer || defenderPlayer)
+                            manager.BeginManualBattle(preview);
+                        else
+                            manager.AutoResolve(preview);
+                        return;
+                    }
+                }
+
+                cu.Attack(ct);
+            }
             else if (target is WorkerUnit wt) cu.Attack(wt);
         }
         else if (unit is WorkerUnit wu)
