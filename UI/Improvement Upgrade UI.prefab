@@ -698,11 +698,23 @@ MonoBehaviour:
   upgradePanel: {fileID: 2838706520879156029}
   improvementNameText: {fileID: 4424413107237659618}
   improvementYieldsText: {fileID: 6684317352056508638}
+  improvementIconImage: {fileID: 0}
   storedUnitsContainer: {fileID: 8728631452296435444}
   storedUnitButtonPrefab: {fileID: 7785709622282477901, guid: e9ee80e68c6ae074ca1d51e2ea6a8624, type: 3}
   capacityText: {fileID: 8135333304876103276}
+  dismantleButton: {fileID: 0}
+  dismantleRefundText: {fileID: 0}
   upgradeButtonContainer: {fileID: 6618404218062190048}
-  upgradeButtonPrefab: {fileID: 8524890866242625676}
+  upgradeButtonPrefab: {fileID: 100000, guid: 208f2eb9bf69438f9645973543995247, type: 3}
+  upgradeSlotSectionPrefab: {fileID: 200000, guid: 6e937d1248264b5091cb667b134982d4, type: 3}
+  closeButton: {fileID: 8169973994453515210}
+  manageSpecialistsButton: {fileID: 0}
+  openCityStorageButton: {fileID: 0}
+  emptyStateText: {fileID: 0}
+  replacementConfirmationPanel: {fileID: 0}
+  replacementConfirmationText: {fileID: 0}
+  confirmReplacementButton: {fileID: 0}
+  cancelReplacementButton: {fileID: 0}
   slideDuration: 0.5
   offscreenPadding: 12
 --- !u!1 &3129268870009838496

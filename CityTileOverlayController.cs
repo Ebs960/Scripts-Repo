@@ -28,13 +28,22 @@ public class CityTileOverlayController : MonoBehaviour
 
     public void EnterCityAssignmentMode(City city)
     {
+        EnterCityAssignmentMode(city, -1);
+    }
+
+    public void EnterCityAssignmentMode(City city, int selectedTileIndex)
+    {
         ExitCityAssignmentMode();
         currentCity = city;
         if (currentCity == null) return;
         CenterCameraOnCity(currentCity);
         SubscribeToTileClicks(currentCity.planetIndex);
         BuildOverlayForCity(currentCity);
-        if (assignmentPanel != null) assignmentPanel.ShowForCity(currentCity);
+        if (assignmentPanel != null)
+        {
+            if (selectedTileIndex >= 0) assignmentPanel.ShowForTile(currentCity, selectedTileIndex);
+            else assignmentPanel.ShowForCity(currentCity);
+        }
     }
 
     public void ExitCityAssignmentMode()

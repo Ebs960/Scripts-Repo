@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Sole renderer and interaction controller for the solar-system map. It renders a
@@ -93,9 +94,9 @@ public class SpaceMapWorldController : MonoBehaviour
 
     private void HandleSelectionInput()
     {
-        if (spaceMapCamera == null || !Input.GetMouseButtonDown(0)) return;
+        if (spaceMapCamera == null || Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        Ray ray = spaceMapCamera.ScreenPointToRay(Input.mousePosition); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
+        Ray ray = spaceMapCamera.ScreenPointToRay(Mouse.current.position.ReadValue()); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
         var ship = hit.collider.GetComponentInParent<BaseUnit>(); if (ship != null && ship.currentSpaceTileIndex >= 0) { SelectShip(ship); return; }
         var marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>(); if (marker != null) { SelectPlanetMarker(marker); return; }
         var hex = hit.collider.GetComponent<SpaceHexTileView>(); if (hex != null && selectedShip != null) { SpaceShipMovementController.Instance.QueueMove(selectedShip, hex.tileIndex); RefreshTravelVisuals(); }
