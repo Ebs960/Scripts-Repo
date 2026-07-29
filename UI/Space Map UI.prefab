@@ -2759,6 +2759,7 @@ MonoBehaviour:
   planetRoot: {fileID: 0}
   hexRoot: {fileID: 0}
   unitRoot: {fileID: 0}
+  routeRoot: {fileID: 0}
   spaceMapUI: {fileID: 4873263753826445772}
   planetMarkerPrefab: {fileID: 0}
   planetMaterialTemplate: {fileID: 0}

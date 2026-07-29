@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Camera input for the true world-space space map. Supports arrow/WASD panning,
-/// mouse-drag panning against a flat XZ plane, and optional orthographic zoom.
+/// middle-mouse drag panning against a flat XZ plane, and optional orthographic zoom.
 /// </summary>
 public class SpaceMapCameraController : MonoBehaviour
 {
@@ -50,10 +51,18 @@ public class SpaceMapCameraController : MonoBehaviour
     private void HandleKeyboardPan()
     {
         Vector3 pan = Vector3.zero;
-        if (Input.GetKey(KeyCode.LeftArrow) || (enableWasd && Input.GetKey(KeyCode.A))) pan.x -= 1f;
-        if (Input.GetKey(KeyCode.RightArrow) || (enableWasd && Input.GetKey(KeyCode.D))) pan.x += 1f;
-        if (Input.GetKey(KeyCode.UpArrow) || (enableWasd && Input.GetKey(KeyCode.W))) pan.z += 1f;
-        if (Input.GetKey(KeyCode.DownArrow) || (enableWasd && Input.GetKey(KeyCode.S))) pan.z -= 1f;
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.leftArrowKey.isPressed || (enableWasd && Keyboard.current.aKey.isPressed)) pan.x -= 1f;
+            if (Keyboard.current.rightArrowKey.isPressed || (enableWasd && Keyboard.current.dKey.isPressed)) pan.x += 1f;
+            if (Keyboard.current.upArrowKey.isPressed || (enableWasd && Keyboard.current.wKey.isPressed)) pan.z += 1f;
+            if (Keyboard.current.downArrowKey.isPressed || (enableWasd && Keyboard.current.sKey.isPressed)) pan.z -= 1f;
+        }
+        if (Gamepad.current != null)
+        {
+            Vector2 stick = Gamepad.current.leftStick.ReadValue();
+            pan += new Vector3(stick.x, 0f, stick.y);
+        }
         if (pan.sqrMagnitude > 0.001f)
             targetCamera.transform.position += pan.normalized * keyboardPanSpeed * Time.unscaledDeltaTime;
     }
@@ -62,16 +71,17 @@ public class SpaceMapCameraController : MonoBehaviour
     {
         if (!enableMouseDrag) return;
 
-        if (Input.GetMouseButtonDown(0) && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()) && TryGetMouseWorldPoint(out lastDragWorldPoint))
+        if (Mouse.current == null) return;
+        if (Mouse.current.middleButton.wasPressedThisFrame && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()) && TryGetMouseWorldPoint(out lastDragWorldPoint))
         {
             dragging = true;
         }
-        else if (Input.GetMouseButtonUp(0))
+        else if (Mouse.current.middleButton.wasReleasedThisFrame)
         {
             dragging = false;
         }
 
-        if (!dragging || !Input.GetMouseButton(0) || !TryGetMouseWorldPoint(out Vector3 currentPoint))
+        if (!dragging || !Mouse.current.middleButton.isPressed || !TryGetMouseWorldPoint(out Vector3 currentPoint))
             return;
 
         Vector3 delta = (lastDragWorldPoint - currentPoint) * mouseDragSpeed;
@@ -83,7 +93,9 @@ public class SpaceMapCameraController : MonoBehaviour
     {
         if (!enableScrollZoom || !targetCamera.orthographic) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        float scroll = Input.mouseScrollDelta.y;
+        float scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y / 120f : 0f;
+        if (Gamepad.current != null)
+            scroll += Gamepad.current.rightStick.ReadValue().y * Time.unscaledDeltaTime * 10f;
         if (Mathf.Abs(scroll) <= 0.001f) return;
         targetCamera.orthographicSize = Mathf.Clamp(targetCamera.orthographicSize - scroll * zoomSpeed, minOrthographicSize, maxOrthographicSize);
     }
@@ -91,7 +103,8 @@ public class SpaceMapCameraController : MonoBehaviour
     private bool TryGetMouseWorldPoint(out Vector3 worldPoint)
     {
         worldPoint = Vector3.zero;
-        Ray ray = targetCamera.ScreenPointToRay(Input.mousePosition);
+        if (Mouse.current == null) return false;
+        Ray ray = targetCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (!mapPlane.Raycast(ray, out float enter)) return false;
         worldPoint = ray.GetPoint(enter);
         return true;
