@@ -37,9 +37,9 @@ public sealed class BattleMapBuilder
                 Biome = td != null ? td.biome : Biome.Plains,
                 IsPassable = td != null && td.isPassable,
                 IsWater = td != null && td.IsWaterTile,
-                IsForest = td != null && (td.biome == Biome.Forest || td.biome == Biome.Jungle),
+                IsForest = td != null && (td.biome == Biome.Temperate || td.biome == Biome.Tropical),
                 HasRiver = td != null && td.isRiver,
-                HasSoftCover = td != null && (td.biome == Biome.Forest || td.biome == Biome.Jungle),
+                HasSoftCover = td != null && (td.biome == Biome.Temperate || td.biome == Biome.Tropical),
                 HasHardCover = td != null && td.improvementDefenseAdd > 0,
             };
 

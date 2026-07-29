@@ -79,7 +79,7 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour, IPointerEnterHandler, 
         var text = child.GetComponent<TextMeshProUGUI>();
         text.text = value;
         text.fontSize = fontSize;
-        text.enableWordWrapping = true;
+        text.textWrappingMode = TextWrappingModes.Normal;
         text.raycastTarget = false;
         return text;
     }
