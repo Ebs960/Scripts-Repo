@@ -617,7 +617,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         City city = FindOwningCity();
         if (city == null) return;
         HidePanel();
-        var cityUI = FindFirstObjectByType<CityUI>(FindObjectsInactive.Include);
+        var cityUI = FindAnyObjectByType<CityUI>(FindObjectsInactive.Include);
         cityUI?.ShowForCityTab(city, CityUITab.UnitStorage);
     }
 
@@ -704,7 +704,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         text.text = value;
         text.fontSize = fontSize;
         text.alignment = alignment;
-        text.enableWordWrapping = true;
+        text.textWrappingMode = TextWrappingModes.Normal;
         text.raycastTarget = false;
         return text;
     }
