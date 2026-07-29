@@ -1,6 +1,28 @@
 using System.Collections.Generic;
 using System.Linq;
 
+public enum ImprovementUpgradeAvailability
+{
+    Available,
+    Installed,
+    Locked,
+    Unaffordable,
+    Invalid
+}
+
+public readonly struct ImprovementUpgradeEvaluation
+{
+    public ImprovementUpgradeAvailability Availability { get; }
+    public string Reason { get; }
+    public bool IsInteractable => Availability == ImprovementUpgradeAvailability.Available;
+
+    public ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability availability, string reason)
+    {
+        Availability = availability;
+        Reason = reason ?? string.Empty;
+    }
+}
+
 public static class ImprovementUpgradeRules
 {
     public static string GetKey(ImprovementUpgradeData upgrade)
@@ -17,29 +39,44 @@ public static class ImprovementUpgradeRules
 
     public static bool CanApplyUpgrade(ImprovementData improvement, HexTileData tileData, ImprovementUpgradeData upgrade, Civilization civ, out string reason)
     {
-        reason = string.Empty;
-        if (upgrade == null)
-        {
-            reason = "No upgrade selected.";
-            return false;
-        }
+        var evaluation = Evaluate(improvement, tileData, upgrade, civ);
+        reason = evaluation.Reason;
+        return evaluation.IsInteractable;
+    }
 
-        if (!PassesPathRules(improvement, tileData, upgrade, out reason))
-            return false;
+    public static ImprovementUpgradeEvaluation Evaluate(ImprovementData improvement, HexTileData tileData, ImprovementUpgradeData upgrade, Civilization civ)
+    {
+        if (upgrade == null)
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Invalid, "No upgrade selected.");
+
+        string key = GetKey(upgrade);
+        if (upgrade.uniqueUpgrade && tileData?.builtUpgrades != null && tileData.builtUpgrades.Contains(key))
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Installed, "Installed");
 
         if (tileData == null || tileData.improvementInstanceObject == null)
-        {
-            reason = "This improvement is not ready for upgrades.";
-            return false;
-        }
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Invalid, "This improvement is not ready for upgrades.");
 
-        if (!upgrade.CanBuild(civ))
-        {
-            reason = "Requirements or costs are not met.";
-            return false;
-        }
+        if (!PassesPathRules(improvement, tileData, upgrade, out string pathReason))
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Locked, pathReason);
 
-        return true;
+        if (civ == null)
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Invalid, "No civilization selected.");
+        if (upgrade.requiredTech != null && !civ.researchedTechs.Contains(upgrade.requiredTech))
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Locked, $"Requires technology: {upgrade.requiredTech.techName}");
+        if (upgrade.requiredCulture != null && !civ.researchedCultures.Contains(upgrade.requiredCulture))
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Locked, $"Requires culture: {upgrade.requiredCulture.cultureName}");
+        if (civ.gold < upgrade.goldCost)
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Unaffordable, $"Requires {upgrade.goldCost} Gold (available: {civ.gold}).");
+        if (!ResourceCost.CanAfford(civ, upgrade.resourceCosts, upgrade.hasSubstituteCosts))
+            return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Unaffordable, $"Requires {ResourceCost.FormatCosts(upgrade.resourceCosts, upgrade.hasSubstituteCosts)}.");
+
+        return new ImprovementUpgradeEvaluation(ImprovementUpgradeAvailability.Available, string.Empty);
+    }
+
+    public static string GetDisplaySlot(ImprovementUpgradeData upgrade)
+    {
+        string slot = GetEffectiveSlot(upgrade);
+        return string.IsNullOrWhiteSpace(slot) ? "General" : slot;
     }
 
     public static bool PassesPathRules(ImprovementData improvement, HexTileData tileData, ImprovementUpgradeData upgrade, out string reason)

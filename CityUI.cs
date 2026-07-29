@@ -50,6 +50,21 @@ public class CityUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI orderCrimeSummaryText;
     [SerializeField] private bool autoOpenCitizenAssignmentOverlayOnCityClick = false;
 
+    [Header("City Feature Tabs")]
+    [SerializeField] private CityUITabController tabController;
+
+    [Header("Buildings & Specialists Tab")]
+    [SerializeField] private TextMeshProUGUI buildingSlotSummaryText;
+    [SerializeField] private TextMeshProUGUI specialistSlotSummaryText;
+
+    [Header("Crime & Disease Tab")]
+    [SerializeField] private TextMeshProUGUI citySecuritySummaryText;
+    [SerializeField] private TextMeshProUGUI diseaseSummaryText;
+
+    [Header("Unit Storage Tab")]
+    [SerializeField] private TextMeshProUGUI unitStorageSummaryText;
+    [SerializeField] private TextMeshProUGUI missileStorageSummaryText;
+
     [Header("Missile Launch")]
     [Tooltip("Button shown when the city has stored missiles ready to launch. Opens MissilePanelUI.")]
     [SerializeField] private Button launchMissileButton;
@@ -118,6 +133,8 @@ public class CityUI : MonoBehaviour
             openCitizenAssignmentButton.onClick.RemoveAllListeners();
             openCitizenAssignmentButton.onClick.AddListener(OnOpenCitizenAssignmentClicked);
         }
+        if (tabController != null)
+            tabController.TabChanged += OnCityTabChanged;
     }
 
     private void EnsureCapitalControls()
@@ -186,6 +203,7 @@ currentCity = city;
         }
 
         CityCameraFocus.Instance?.FocusCity(currentCity);
+        tabController?.ResetToDefault();
         RefreshUI();
         gameObject.SetActive(true);
         if (autoOpenCitizenAssignmentOverlayOnCityClick)
@@ -249,6 +267,7 @@ if (currentCity == null)
         policyPointsPerTurnText.text = $"Policy: {currentCity.GetPolicyPointPerTurn():+#;-#;0}/turn";
         faithPerTurnText.text = $"Faith: {currentCity.GetFaithPerTurn():+#;-#;0}/turn";
         RefreshCitizenAssignmentSummary();
+        RefreshFeatureTabSummaries();
 
         // Update Governor Display
         UpdateGovernorDisplay();
@@ -278,6 +297,144 @@ if (currentCity == null)
 
         // Populate disease list
         PopulateDiseaseList();
+    }
+
+    private void OnDestroy()
+    {
+        if (tabController != null)
+            tabController.TabChanged -= OnCityTabChanged;
+    }
+
+    private void OnCityTabChanged(CityUITab tab)
+    {
+        if (tab == CityUITab.BuildingsAndSpecialists ||
+            tab == CityUITab.CrimeAndDisease ||
+            tab == CityUITab.UnitStorage)
+        {
+            RefreshFeatureTabSummaries();
+        }
+    }
+
+    private void RefreshFeatureTabSummaries()
+    {
+        if (currentCity == null) return;
+        RefreshBuildingAndSpecialistSummary();
+        RefreshCrimeAndDiseaseSummary();
+        RefreshUnitStorageSummary();
+    }
+
+    private void RefreshBuildingAndSpecialistSummary()
+    {
+        if (buildingSlotSummaryText != null)
+        {
+            var lines = new List<string>();
+            foreach (CitySlotType slotType in System.Enum.GetValues(typeof(CitySlotType)))
+            {
+                int capacity = currentCity.GetBuildingSlotCapacity(slotType);
+                int used = currentCity.GetUsedBuildingSlots(slotType);
+                if (capacity > 0 || used > 0)
+                    lines.Add($"{slotType}: {used}/{capacity}");
+            }
+            buildingSlotSummaryText.text = lines.Count > 0
+                ? string.Join("\n", lines)
+                : "No building slots";
+        }
+
+        if (specialistSlotSummaryText == null) return;
+
+        int ruralSlots = 0;
+        var tileSystem = TileSystem.GetForPlanet(currentCity.planetIndex) ?? TileSystem.Instance;
+        if (tileSystem != null)
+        {
+            foreach (int tileIndex in currentCity.GetWorkableTileIndexes())
+            {
+                var tile = tileSystem.GetTileData(tileIndex);
+                var improvement = tile?.improvementInstanceObject != null
+                    ? tile.improvementInstanceObject.GetComponent<ImprovementInstance>()
+                    : null;
+                if (improvement == null) continue;
+                foreach (var slot in improvement.GetActiveRuralSpecialistSlots())
+                    if (slot != null) ruralSlots++;
+            }
+        }
+
+        int urbanSlots = 0;
+        foreach (var building in currentCity.GetBuildings())
+            if (building?.urbanSpecialistSlots != null) urbanSlots += building.urbanSpecialistSlots.Length;
+        foreach (var district in currentCity.GetDistricts())
+            if (district?.urbanSpecialistSlots != null) urbanSlots += district.urbanSpecialistSlots.Length;
+
+        int assignedRural = currentCity.GetAssignedCount(CityCitizenJobType.RuralSpecialist);
+        int assignedUrban = currentCity.GetAssignedCount(CityCitizenJobType.UrbanSpecialist);
+        specialistSlotSummaryText.text =
+            $"Rural Specialists: {assignedRural}/{ruralSlots}\n" +
+            $"Urban Specialists: {assignedUrban}/{urbanSlots}";
+    }
+
+    private void RefreshCrimeAndDiseaseSummary()
+    {
+        if (citySecuritySummaryText != null)
+        {
+            citySecuritySummaryText.text =
+                $"Order: {currentCity.orderRating}/{currentCity.maxOrder}\n" +
+                $"Morale: {currentCity.moraleRating}/{currentCity.maxMorale}\n" +
+                $"Loyalty: {currentCity.loyalty:0}/{100}\n" +
+                $"Defense: {currentCity.defenseRating}/{currentCity.maxDefense}\n" +
+                $"Unemployment Order Penalty: -{currentCity.GetUnemploymentOrderPenaltyPerTurn()}/turn\n" +
+                $"Bandit Risk from Unemployment: +{currentCity.CachedBanditRiskFromUnemployment}";
+        }
+
+        if (diseaseSummaryText != null)
+        {
+            int activeDiseaseCount = currentCity.activeDiseases?.Count(d => d != null && d.data != null) ?? 0;
+            diseaseSummaryText.text = activeDiseaseCount == 0
+                ? "No active diseases"
+                : $"Active Diseases: {activeDiseaseCount}";
+        }
+    }
+
+    private void RefreshUnitStorageSummary()
+    {
+        int garrisonedCombatUnits = 0;
+        int basedAircraft = 0;
+        int garrisonedWorkers = 0;
+
+        if (currentCity.owner != null)
+        {
+            if (currentCity.owner.combatUnits != null)
+            {
+                foreach (var unit in currentCity.owner.combatUnits)
+                {
+                    if (unit == null || unit.planetIndex != currentCity.planetIndex ||
+                        unit.currentTileIndex != currentCity.centerTileIndex) continue;
+                    garrisonedCombatUnits++;
+                    if (unit.data != null && CombatUnitData.IsAirCategory(unit.data.unitType))
+                        basedAircraft++;
+                }
+            }
+
+            if (currentCity.owner.workerUnits != null)
+            {
+                foreach (var worker in currentCity.owner.workerUnits)
+                    if (worker != null && worker.planetIndex == currentCity.planetIndex &&
+                        worker.currentTileIndex == currentCity.centerTileIndex) garrisonedWorkers++;
+            }
+        }
+
+        if (unitStorageSummaryText != null)
+        {
+            unitStorageSummaryText.text =
+                $"Garrisoned Units: {garrisonedCombatUnits}\n" +
+                $"Based Aircraft: {basedAircraft}\n" +
+                $"Workers in City: {garrisonedWorkers}";
+        }
+
+        if (missileStorageSummaryText != null)
+        {
+            int storedMissiles = currentCity.storedMissiles?.Count ?? 0;
+            missileStorageSummaryText.text =
+                $"Missiles: {storedMissiles}/{currentCity.maxMissileStorage}";
+        }
     }
 
     private void PopulateDiseaseList()
