@@ -33,7 +33,7 @@ public static class BattleDeploymentBuilder
         for (int i = 0; i < scores.Count; i++)
         {
             var cell = map.Cells[scores[i].cellIndex];
-            if (!cell.IsPassable || cell.IsWater)
+            if (!SupportsAnyDomain(cell))
                 continue;
 
             if (assignedA < zoneCount)
@@ -49,7 +49,7 @@ public static class BattleDeploymentBuilder
         for (int i = scores.Count - 1; i >= 0; i--)
         {
             var cell = map.Cells[scores[i].cellIndex];
-            if (!cell.IsPassable || cell.IsWater || cell.DeploymentOwner.HasValue)
+            if (!SupportsAnyDomain(cell) || cell.DeploymentOwner.HasValue)
                 continue;
 
             if (assignedD < zoneCount)
@@ -62,4 +62,8 @@ public static class BattleDeploymentBuilder
             break;
         }
     }
+
+    private static bool SupportsAnyDomain(BattleCell cell) =>
+        cell.SupportsLand || cell.SupportsNavalSurface || cell.SupportsUnderwater ||
+        cell.SupportsAir || cell.SupportsOrbit || cell.SupportsSpace;
 }

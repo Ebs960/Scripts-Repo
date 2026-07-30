@@ -6,6 +6,8 @@ public sealed class BattleReinforcementGroup
     public int OriginCampaignTile;
     public int EntryCellIndex;
     public int AvailableFromRound;
+    public BattleDomain Domain;
+    public BattleEntryMethod EntryMethod;
 
     public readonly List<BattleUnitSnapshot> Units = new();
 }

@@ -26,21 +26,18 @@ public sealed class BattleParticipantCollector
             return false;
         }
 
-        if (preview.Mode != EngagementMode.TacticalLandBattle)
+        if (preview.Mode != EngagementMode.TacticalBattle)
         {
             preview.RejectionReason = "engagement mode not tactical";
             return false;
         }
 
+        // A single planetary battle space cannot mix tile indices from different
+        // planets. Interplanetary scripted attacks use the documented fallback
+        // until the campaign exposes a shared deep-space region identifier.
         if (attacker.planetIndex != defender.planetIndex)
         {
-            preview.RejectionReason = "cross planet";
-            return false;
-        }
-
-        if (attacker.currentLayer != TileLayer.Surface || defender.currentLayer != TileLayer.Surface)
-        {
-            preview.RejectionReason = "non surface layer";
+            preview.RejectionReason = "different battle-space regions";
             return false;
         }
 
@@ -102,6 +99,9 @@ public sealed class BattleParticipantCollector
             return;
 
         var queue = new Queue<(int tile, int depth)>();
+        var participants = new HashSet<int>();
+        AddRuntimeIds(preview.AttackerUnits, participants);
+        AddRuntimeIds(preview.DefenderUnits, participants);
         var seen = new HashSet<int> { preview.AnchorTile };
         queue.Enqueue((preview.AnchorTile, 0));
 
@@ -112,11 +112,13 @@ public sealed class BattleParticipantCollector
                 continue;
 
             var occ = TileOccupancyManager.GetForPlanet(preview.PlanetIndex) ?? TileOccupancyManager.Instance;
-            var units = occ != null ? occ.GetAllOccupantObjects(tile, TileLayer.Surface) : null;
-            if (units != null)
+            foreach (TileLayer layer in System.Enum.GetValues(typeof(TileLayer)))
             {
-                var attackerReserve = new BattleReinforcementGroup { Side = BattleSide.Attacker, OriginCampaignTile = tile, AvailableFromRound = ruleset.reinforcementStartRound };
-                var defenderReserve = new BattleReinforcementGroup { Side = BattleSide.Defender, OriginCampaignTile = tile, AvailableFromRound = ruleset.reinforcementStartRound };
+                var units = occ != null ? occ.GetAllOccupantObjects(tile, layer) : null;
+                if (units == null) continue;
+                var domain = DomainForLayer(layer);
+                var attackerReserve = NewReserve(BattleSide.Attacker, tile, domain);
+                var defenderReserve = NewReserve(BattleSide.Defender, tile, domain);
 
                 for (int i = 0; i < units.Count; i++)
                 {
@@ -127,14 +129,20 @@ public sealed class BattleParticipantCollector
                     if (cu == preview.Attacker || cu == preview.Defender)
                         continue;
 
+                    int runtimeId = cu.gameObject != null ? cu.gameObject.GetRuntimeId() : 0;
+                    if (runtimeId != 0 && !participants.Add(runtimeId))
+                        continue;
+
                     if (cu.owner == attackerCiv)
                     {
                         var profile = BattleProfileInference.Resolve(cu.data);
+                        SetReserveDomain(attackerReserve, BattleDomainResolver.Resolve(cu));
                         attackerReserve.Units.Add(new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1));
                     }
                     else if (cu.owner == defenderCiv)
                     {
                         var profile = BattleProfileInference.Resolve(cu.data);
+                        SetReserveDomain(defenderReserve, BattleDomainResolver.Resolve(cu));
                         defenderReserve.Units.Add(new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1));
                     }
                 }
@@ -152,6 +160,53 @@ public sealed class BattleParticipantCollector
                     queue.Enqueue((neigh[i], depth + 1));
             }
         }
+    }
+
+    private BattleReinforcementGroup NewReserve(BattleSide side, int tile, BattleDomain domain) => new()
+    {
+        Side = side,
+        OriginCampaignTile = tile,
+        AvailableFromRound = ruleset.reinforcementStartRound,
+        Domain = domain,
+        EntryMethod = domain switch
+        {
+            BattleDomain.NavalSurface => BattleEntryMethod.NavalEdge,
+            BattleDomain.Underwater => BattleEntryMethod.UnderwaterEdge,
+            BattleDomain.Air => BattleEntryMethod.AirArrival,
+            BattleDomain.Orbit => BattleEntryMethod.OrbitalArrival,
+            BattleDomain.Space => BattleEntryMethod.SpaceArrival,
+            _ => BattleEntryMethod.LandEdge,
+        },
+    };
+
+    private static BattleDomain DomainForLayer(TileLayer layer) => layer switch
+    {
+        TileLayer.Underwater => BattleDomain.Underwater,
+        TileLayer.Atmosphere => BattleDomain.Air,
+        TileLayer.Orbit => BattleDomain.Orbit,
+        _ => BattleDomain.Land,
+    };
+
+    private static void SetReserveDomain(BattleReinforcementGroup group, BattleDomain domain)
+    {
+        if (group.Units.Count > 0) return;
+        group.Domain = domain;
+        group.EntryMethod = domain switch
+        {
+            BattleDomain.NavalSurface => BattleEntryMethod.NavalEdge,
+            BattleDomain.Underwater => BattleEntryMethod.UnderwaterEdge,
+            BattleDomain.Air => BattleEntryMethod.AirArrival,
+            BattleDomain.Orbit => BattleEntryMethod.OrbitalArrival,
+            BattleDomain.Space => BattleEntryMethod.SpaceArrival,
+            _ => BattleEntryMethod.LandEdge,
+        };
+    }
+
+    private static void AddRuntimeIds(List<BattleUnitSnapshot> snapshots, HashSet<int> ids)
+    {
+        for (int i = 0; i < snapshots.Count; i++)
+            if (snapshots[i].CampaignRuntimeId != 0)
+                ids.Add(snapshots[i].CampaignRuntimeId);
     }
 }
 

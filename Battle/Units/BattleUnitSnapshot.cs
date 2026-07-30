@@ -21,6 +21,7 @@ public sealed class BattleUnitSnapshot
     public readonly int TacticalActionPoints;
 
     public readonly TacticalUnitProfile TacticalProfile;
+    public readonly BattleDomain Domain;
 
     public readonly int Experience;
     public readonly int Level;
@@ -50,6 +51,7 @@ public sealed class BattleUnitSnapshot
         Range = source != null ? source.CurrentRange : 1f;
 
         TacticalProfile = tacticalProfile;
+        Domain = BattleDomainResolver.Resolve(source);
         TacticalMovePoints = tacticalMovePoints;
         TacticalActionPoints = tacticalActionPoints;
 

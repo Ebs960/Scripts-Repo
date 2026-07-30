@@ -38,10 +38,47 @@ public enum BattleCommandType
     Retreat,
     Deploy,
     Reinforce,
+    Embark,
+    Disembark,
+    LaunchAircraft,
+    RecoverAircraft,
+}
+
+/// <summary>Independent occupancy/movement domains used by every tactical battle.</summary>
+public enum BattleDomain
+{
+    Land,
+    NavalSurface,
+    Underwater,
+    Air,
+    Orbit,
+    Space,
+}
+
+public enum BattleDetectionLevel { Undetected, Suspected, Detected, Identified }
+
+public enum BattleEntryMethod
+{
+    LandEdge, NavalEdge, UnderwaterEdge, AirArrival, CarrierLaunch,
+    AirbaseLaunch, AmphibiousLanding, TransportDisembark, OrbitalArrival, SpaceArrival,
+}
+
+[Flags]
+public enum BattleDomainMask
+{
+    None = 0,
+    Land = 1 << 0,
+    NavalSurface = 1 << 1,
+    Underwater = 1 << 2,
+    Air = 1 << 3,
+    Orbit = 1 << 4,
+    Space = 1 << 5,
+    All = Land | NavalSurface | Underwater | Air | Orbit | Space,
 }
 
 public enum EngagementMode
 {
+    TacticalBattle,
     TacticalLandBattle,
     LegacyDirectAttack,
     AirMission,

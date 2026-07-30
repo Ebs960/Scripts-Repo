@@ -21,6 +21,14 @@ public sealed class BattleUnitState
     public bool IsDead;
     public bool HasAttackedThisTurn;
 
+    public BattleDomain Domain => Snapshot != null ? Snapshot.Domain : BattleDomain.Land;
+    public int OccupancyBand;
+    public bool IsEmbarked;
+    public int CarrierOrTransportBattleUnitId = -1;
+    public readonly List<int> EmbarkedBattleUnitIds = new();
+    public int FuelOrEndurance = -1;
+    public bool RevealedByAttack;
+
     public bool CounterAttackedThisActivation;
 
     public readonly List<BattleStatusEffect> StatusEffects = new();
