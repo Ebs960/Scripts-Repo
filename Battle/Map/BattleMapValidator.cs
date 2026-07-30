@@ -23,7 +23,7 @@ public static class BattleMapValidator
         for (int i = 0; i < map.Cells.Count; i++)
         {
             var c = map.Cells[i];
-            if (!c.IsPassable || c.IsWater)
+            if (!SupportsAnyDomain(c))
                 continue;
 
             if (c.DeploymentOwner == BattleSide.Attacker)
@@ -68,7 +68,7 @@ public static class BattleMapValidator
         var first = -1;
         for (int i = 0; i < map.Cells.Count; i++)
         {
-            if (map.Cells[i].IsPassable)
+            if (SupportsAnyDomain(map.Cells[i]))
             {
                 first = i;
                 break;
@@ -96,7 +96,7 @@ public static class BattleMapValidator
                 if (n < 0 || n >= map.Cells.Count)
                     continue;
 
-                if (!map.Cells[n].IsPassable)
+                if (!SupportsAnyDomain(map.Cells[n]))
                     continue;
 
                 if (seen.Add(n))
@@ -106,10 +106,14 @@ public static class BattleMapValidator
 
         for (int i = 0; i < map.Cells.Count; i++)
         {
-            if (map.Cells[i].IsPassable && !seen.Contains(i))
+            if (SupportsAnyDomain(map.Cells[i]) && !seen.Contains(i))
                 return false;
         }
 
         return true;
     }
+
+    private static bool SupportsAnyDomain(BattleCell cell) =>
+        cell.SupportsLand || cell.SupportsNavalSurface || cell.SupportsUnderwater ||
+        cell.SupportsAir || cell.SupportsOrbit || cell.SupportsSpace;
 }

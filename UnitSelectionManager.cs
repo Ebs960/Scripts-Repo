@@ -1731,7 +1731,7 @@ public class UnitSelectionManager : MonoBehaviour
             return false;
 
         var mode = EngagementModeResolver.ResolveEngagementMode(attacker, defender);
-        if (mode != EngagementMode.TacticalLandBattle)
+        if (mode != EngagementMode.TacticalBattle)
             return false;
 
         var manager = BattleManager.GetOrCreate();

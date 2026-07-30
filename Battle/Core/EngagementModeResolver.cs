@@ -11,27 +11,12 @@ public static class EngagementModeResolver
         if (atkCombat.currentHealth <= 0 || defCombat.currentHealth <= 0)
             return EngagementMode.Unsupported;
 
-        if (atkCombat.planetIndex != defCombat.planetIndex)
-            return EngagementMode.LegacyDirectAttack;
-
-        if (atkCombat.currentLayer != TileLayer.Surface || defCombat.currentLayer != TileLayer.Surface)
-            return atkCombat.currentLayer switch
-            {
-                TileLayer.Atmosphere => EngagementMode.AirMission,
-                TileLayer.Orbit => EngagementMode.OrbitalAttack,
-                TileLayer.Underwater => EngagementMode.NavalCombat,
-                _ => EngagementMode.LegacyDirectAttack,
-            };
-
-        if (atkCombat.data != null && (atkCombat.data.unitType == CombatCategory.Aircraft || atkCombat.data.unitType == CombatCategory.Spaceship || CombatUnitData.IsNavalCategory(atkCombat.data.unitType)))
-            return EngagementMode.LegacyDirectAttack;
-
-        if (defCombat.data != null && defCombat.data.unitType == CombatCategory.Animal)
-            return EngagementMode.LegacyDirectAttack;
-
         if (!AircraftMissionManager.IsHostile(atkCombat.owner, defCombat.owner))
             return EngagementMode.Unsupported;
 
-        return EngagementMode.TacticalLandBattle;
+        // Every ordinary hostile CombatUnit engagement enters the same framework.
+        // Map construction may still reject corrupt or genuinely unsupported data,
+        // at which point callers retain their explicit migration fallback.
+        return EngagementMode.TacticalBattle;
     }
 }

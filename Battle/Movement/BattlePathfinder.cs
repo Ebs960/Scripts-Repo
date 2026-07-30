@@ -46,13 +46,10 @@ public sealed class BattlePathfinder
             {
                 int n = cell.NeighborIndices[i];
                 var targetCell = session.Map.GetCell(n);
-                if (targetCell == null || !targetCell.IsPassable)
+                if (targetCell == null || !targetCell.Supports(unit.Domain))
                     continue;
 
-                if (targetCell.IsWater)
-                    continue;
-
-                if (occupancy.IsOccupied(n) && n != destination)
+                if (occupancy.IsOccupied(n, unit.Domain, unit.OccupancyBand) && n != destination)
                     continue;
 
                 int stepCost = ComputeStepCost(cell, targetCell, unit, session);
@@ -95,6 +92,11 @@ public sealed class BattlePathfinder
     private int ComputeStepCost(BattleCell from, BattleCell to, BattleUnitState unit, BattleSession session)
     {
         int cost = 1;
+
+        // Terrain modifiers are deliberately land-only. Other domains share the
+        // command/path interface without inheriting forests, rivers, or cliffs.
+        if (unit.Domain != BattleDomain.Land)
+            return cost;
 
         int delta = to.ElevationLevel - from.ElevationLevel;
         if (delta >= ruleset.cliffDeltaThreshold && !(unit.Snapshot?.TacticalProfile?.canCrossCliffs ?? false))

@@ -335,7 +335,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (u.Side != side)
                 continue;
 
-            int slot = FindFreeDeploymentCell(map, occupancy, side);
+            int slot = FindFreeDeploymentCell(map, occupancy, side, u);
             if (slot < 0)
             {
                 u.IsReserve = true;
@@ -354,7 +354,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
-    private static int FindFreeDeploymentCell(BattleMap map, BattleOccupancy occupancy, BattleSide side)
+    private static int FindFreeDeploymentCell(BattleMap map, BattleOccupancy occupancy, BattleSide side, BattleUnitState unit)
     {
         for (int i = 0; i < map.Cells.Count; i++)
         {
@@ -362,10 +362,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (c.DeploymentOwner != side)
                 continue;
 
-            if (!c.IsPassable || c.IsWater)
+            if (!c.Supports(unit.Domain))
                 continue;
 
-            if (!occupancy.IsOccupied(i))
+            if (!occupancy.IsOccupied(i, unit.Domain, unit.OccupancyBand))
                 return i;
         }
 

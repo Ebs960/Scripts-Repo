@@ -93,7 +93,7 @@ public class AIAttackCommand : AICommand
             if (target is CombatUnit ct)
             {
                 var mode = EngagementModeResolver.ResolveEngagementMode(cu, ct);
-                if (mode == EngagementMode.TacticalLandBattle)
+                if (mode == EngagementMode.TacticalBattle)
                 {
                     var manager = BattleManager.GetOrCreate();
                     var preview = manager.RequestEngagement(cu, ct);

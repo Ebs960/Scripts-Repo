@@ -12,6 +12,15 @@ public sealed class BattleCell
 
     public bool IsPassable;
     public bool IsWater;
+    public bool SupportsLand;
+    public bool SupportsNavalSurface;
+    public bool SupportsUnderwater;
+    public bool SupportsAir = true;
+    public bool SupportsOrbit = true;
+    public bool SupportsSpace;
+    public int WaterDepthLevel;
+    public bool HasPort;
+    public bool HasBeach;
     public bool IsForest;
     public bool HasRiver;
     public bool HasHardCover;
@@ -24,6 +33,20 @@ public sealed class BattleCell
     private readonly HashSet<int> cliffNeighbors = new();
 
     public bool IsCliffTowardNeighbor(int neighborIndex) => cliffNeighbors.Contains(neighborIndex);
+
+    public bool Supports(BattleDomain domain)
+    {
+        return domain switch
+        {
+            BattleDomain.Land => SupportsLand,
+            BattleDomain.NavalSurface => SupportsNavalSurface,
+            BattleDomain.Underwater => SupportsUnderwater,
+            BattleDomain.Air => SupportsAir,
+            BattleDomain.Orbit => SupportsOrbit,
+            BattleDomain.Space => SupportsSpace,
+            _ => false,
+        };
+    }
 
     public void SetCliffTowardNeighbor(int neighborIndex, bool isCliff)
     {

@@ -5,12 +5,15 @@ public sealed class BattleCommandExecutor
     private readonly BattleMovementService movementService;
     private readonly BattleCombatResolver combatResolver;
     private readonly BattleLineOfSight los;
+    private readonly BattleDetectionService detection = new();
+    private readonly BattleTargetingService targeting;
 
     public BattleCommandExecutor(BattleMovementService movementService, BattleCombatResolver combatResolver, BattleLineOfSight los)
     {
         this.movementService = movementService;
         this.combatResolver = combatResolver;
         this.los = los;
+        targeting = new BattleTargetingService(detection);
     }
 
     public bool Execute(BattleSession session, BattleOccupancy occupancy, BattleCommand command, out string reason)
@@ -128,6 +131,14 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
+
+        var targetCheck = targeting.CanTarget(session, attacker, defender, attack.IsRanged);
+        if (!targetCheck.Allowed)
+        {
+            reason = targetCheck.Reason;
+            return false;
+        }
+
         int distance = session.MapDistance(attacker.CellIndex, defender.CellIndex);
         if (!attack.IsRanged && distance > 1)
         {
@@ -170,6 +181,7 @@ public sealed class BattleCommandExecutor
     attacker.HasAttackedThisTurn = true;
         attacker.CurrentActionPoints = 0;
         attacker.IsDefending = false;
+        attacker.RevealedByAttack = true;
 
         if (!defender.IsDead && !attack.IsRanged && CanCounterAttack(defender))
         {
@@ -200,7 +212,7 @@ public sealed class BattleCommandExecutor
     {
         reason = string.Empty;
         var cell = session.Map.GetCell(retreat.ExitCell);
-        if (cell == null || !cell.IsPassable)
+        if (cell == null || !cell.Supports(unit.Domain))
         {
             reason = "invalid retreat exit";
             return false;

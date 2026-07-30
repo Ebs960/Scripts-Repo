@@ -21,6 +21,16 @@ public sealed class TacticalUnitProfile : ScriptableObject
     public bool usesIndirectFire;
     public int minimumRange;
 
+    [Header("Multi-domain combat")]
+    [Tooltip("Domains this unit's primary tactical weapon can target.")]
+    public BattleDomainMask targetDomains = BattleDomainMask.Land;
+    public int sensorRange;
+    public BattleDomainMask sensorDomains = BattleDomainMask.None;
+    public int stealth;
+    public bool isTransport;
+    public bool isCarrier;
+    public int transportCapacity;
+
     public float highGroundMultiplier = 1f;
     public float coverEffectivenessMultiplier = 1f;
 }

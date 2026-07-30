@@ -9,7 +9,7 @@ public static class BattleObjectiveBuilder
         for (int i = 0; i < map.Cells.Count; i++)
         {
             var c = map.Cells[i];
-            if (!c.IsPassable || c.IsWater)
+            if (!SupportsAnyDomain(c))
                 continue;
 
             if (c.DeploymentOwner == BattleSide.Defender)
@@ -24,7 +24,7 @@ public static class BattleObjectiveBuilder
             for (int i = 0; i < map.Cells.Count; i++)
             {
                 var c = map.Cells[i];
-                if (c.IsPassable && !c.IsWater)
+                if (SupportsAnyDomain(c))
                 {
                     candidate = i;
                     break;
@@ -41,4 +41,8 @@ public static class BattleObjectiveBuilder
             Owner = BattleSide.Defender,
         };
     }
+
+    private static bool SupportsAnyDomain(BattleCell cell) =>
+        cell.SupportsLand || cell.SupportsNavalSurface || cell.SupportsUnderwater ||
+        cell.SupportsAir || cell.SupportsOrbit || cell.SupportsSpace;
 }
