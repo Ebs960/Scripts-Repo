@@ -3,6 +3,7 @@ using UnityEngine;
 
 public sealed class BattleResultApplier
 {
+    private readonly IBattleCampaignPlacementService placement = new BattleCampaignPlacementService();
     public void Apply(BattleResult result, EngagementPreview preview)
     {
         if (result == null)
@@ -18,16 +19,15 @@ public sealed class BattleResultApplier
 
             unit.ClearCampaignOrdersForBattle();
             unit.MarkCampaignActionConsumedByBattle();
-            unit.ApplyBattleHealth(outcome.FinalHealth);
             unit.ApplyBattleExperience(outcome.ExperienceGained);
 
             if (outcome.Died)
             {
-                // Route through existing damage/death flow for cleanup and events.
-                if (unit.currentHealth > 0)
-                    unit.ApplyDamage(unit.currentHealth + 1);
+                unit.KillFromBattle();
                 continue;
             }
+
+            unit.ApplyBattleHealth(outcome.FinalHealth);
 
             TryRepositionSurvivor(preview, unit, outcome);
         }
@@ -57,21 +57,21 @@ public sealed class BattleResultApplier
         }
     }
 
-    private static void TryRepositionSurvivor(EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
+    private void TryRepositionSurvivor(EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
     {
-        var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
-        if (ts == null)
-            return;
-
         int tile = outcome.SuggestedCampaignTile >= 0 ? outcome.SuggestedCampaignTile : unit.currentTileIndex;
+        if (preview.Theater == BattleTheater.DeepSpace)
+            tile = unit.currentSpaceTileIndex >= 0 ? unit.currentSpaceTileIndex : preview.AnchorTile;
         if (tile < 0)
             tile = preview.AnchorTile;
 
-        var td = ts.GetTileData(tile);
-        if (td == null || !td.isPassable)
-            return;
-
-        unit.currentTileIndex = tile;
-        unit.transform.position = ts.GetTileSurfacePosition(tile);
+        placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
+        {
+            PlanetIndex = preview.PlanetIndex,
+            CampaignTileIndex = tile,
+            SpaceTileIndex = preview.Theater == BattleTheater.DeepSpace ? tile : -1,
+            Layer = unit.currentLayer,
+            PreferredStackSlot = outcome.SuggestedStackSlot,
+        }, out _);
     }
 }

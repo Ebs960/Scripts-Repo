@@ -12,11 +12,13 @@ public sealed class BattleMapBuilder
 
     public BattleMap Build(EngagementPreview preview)
     {
+        if (preview.Theater == BattleTheater.DeepSpace)
+            return BuildSpaceMap(preview);
         var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
         if (ts == null)
             return null;
 
-        int targetCells = ruleset.GetTargetCellCount(preview.TotalUnits);
+        int targetCells = ruleset.GetTargetCellCount(preview.TotalUnits, new System.Random(preview.RandomSeed));
         var selected = SelectConnectedTiles(ts, preview.AnchorTile, targetCells);
         if (selected.Count == 0)
             return null;
@@ -67,6 +69,34 @@ public sealed class BattleMapBuilder
         }
 
         BattleElevationResolver.QuantizeElevations(map, ts);
+        return map;
+    }
+
+    private BattleMap BuildSpaceMap(EngagementPreview preview)
+    {
+        var grid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid
+            : (SpaceCombatManager.Instance != null ? SpaceCombatManager.Instance.spaceGrid : null);
+        if (grid == null || grid.GetTile(preview.AnchorTile) == null) return null;
+        int target = ruleset.GetTargetCellCount(preview.TotalUnits, new System.Random(preview.RandomSeed));
+        var selected = new List<int>(); var seen = new HashSet<int>(); var queue = new Queue<int>();
+        seen.Add(preview.AnchorTile); queue.Enqueue(preview.AnchorTile);
+        while (queue.Count > 0 && selected.Count < target)
+        {
+            int tile = queue.Dequeue(); selected.Add(tile);
+            foreach (int n in grid.GetNeighbors(tile)) if (seen.Add(n)) queue.Enqueue(n);
+        }
+        var map = new BattleMap(); var indices = new Dictionary<int, int>();
+        for (int i = 0; i < selected.Count; i++)
+        {
+            indices[selected[i]] = i; var source = grid.GetTile(selected[i]);
+            map.AddCell(new BattleCell { BattleIndex = i, CampaignTileIndex = selected[i], IsPassable = !source.blocksMovement,
+                SupportsSpace = !source.blocksMovement, SupportsAir = false, SupportsOrbit = false });
+        }
+        for (int i = 0; i < selected.Count; i++)
+        {
+            var neighbors = new List<int>(); foreach (int n in grid.GetNeighbors(selected[i])) if (indices.TryGetValue(n, out int mapped)) neighbors.Add(mapped);
+            map.Cells[i].NeighborIndices = neighbors.ToArray();
+        }
         return map;
     }
 

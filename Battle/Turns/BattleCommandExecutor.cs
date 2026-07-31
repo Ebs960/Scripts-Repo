@@ -51,9 +51,17 @@ public sealed class BattleCommandExecutor
                 unit.CurrentActionPoints = 0;
                 return true;
             case BattleWaitCommand:
-                unit.IsWaiting = true;
-                unit.HasActed = true;
-                unit.CurrentActionPoints = 0;
+                if (!unit.HasWaitedThisTurn)
+                {
+                    unit.IsWaiting = true;
+                    unit.HasWaitedThisTurn = true;
+                }
+                else
+                {
+                    unit.IsDefending = true;
+                    unit.HasActed = true;
+                    unit.CurrentActionPoints = 0;
+                }
                 return true;
             case BattleRetreatCommand retreat:
                 return ExecuteRetreat(session, occupancy, unit, retreat, out reason);
@@ -170,7 +178,7 @@ public sealed class BattleCommandExecutor
             soft,
             hard,
             defender.IsDefending,
-            HasExposed(attacker),
+            HasExposed(defender),
             0,
             session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId);
 
@@ -196,7 +204,7 @@ public sealed class BattleCommandExecutor
                 false,
                 false,
                 attacker.IsDefending,
-                HasExposed(defender),
+                HasExposed(attacker),
                 0,
                 session.RandomSeed + session.CurrentRound + defender.UnitId + attacker.UnitId + 31);
 

@@ -32,24 +32,36 @@ public sealed class BattleParticipantCollector
             return false;
         }
 
+        var decision = BattleTheaterResolver.ResolveBattleTheater(attacker, defender);
+        if (!decision.IsValid)
+        {
+            preview.RejectionReason = decision.RejectionReason;
+            return false;
+        }
+        preview.Theater = decision.Theater;
+        preview.SpaceRegionId = decision.SpaceRegionId;
+        preview.AllowsManualBattle = decision.AllowsManualBattle;
+        preview.AllowsRetreat = decision.AllowsRetreat;
+        preview.AllowsCancel = decision.AllowsCancel;
+
         // A single planetary battle space cannot mix tile indices from different
         // planets. Interplanetary scripted attacks use the documented fallback
         // until the campaign exposes a shared deep-space region identifier.
-        if (attacker.planetIndex != defender.planetIndex)
+        if (decision.Theater != BattleTheater.DeepSpace && attacker.planetIndex != defender.planetIndex)
         {
             preview.RejectionReason = "different battle-space regions";
             return false;
         }
 
-        preview.PlanetIndex = attacker.planetIndex;
-        preview.AnchorTile = defender.currentTileIndex;
-        preview.RandomSeed = attacker.gameObject.GetRuntimeId() ^ defender.gameObject.GetRuntimeId() ^ Time.frameCount;
+        preview.PlanetIndex = decision.PlanetIndex;
+        preview.AnchorTile = decision.Theater == BattleTheater.DeepSpace ? defender.currentSpaceTileIndex : defender.currentTileIndex;
+        preview.RandomSeed = BattleSeedBuilder.Build(attacker, defender, decision, GameManager.Instance != null ? GameManager.Instance.currentTurn : 0);
 
         var attackerUnits = CollectStackCombatUnits(attacker);
         var defenderUnits = CollectStackCombatUnits(defender);
 
-        AddSnapshots(attackerUnits, preview.AttackerUnits);
-        AddSnapshots(defenderUnits, preview.DefenderUnits);
+        AddSnapshots(attackerUnits, preview.AttackerUnits, preview.Theater);
+        AddSnapshots(defenderUnits, preview.DefenderUnits, preview.Theater);
 
         if (preview.AttackerUnits.Count == 0 || preview.DefenderUnits.Count == 0)
         {
@@ -64,12 +76,14 @@ public sealed class BattleParticipantCollector
         return true;
     }
 
-    private void AddSnapshots(List<CombatUnit> sourceUnits, List<BattleUnitSnapshot> snapshots)
+    private void AddSnapshots(List<CombatUnit> sourceUnits, List<BattleUnitSnapshot> snapshots, BattleTheater theater)
     {
         for (int i = 0; i < sourceUnits.Count; i++)
         {
             var cu = sourceUnits[i];
             if (cu == null || cu.currentHealth <= 0)
+                continue;
+            if (!BattleTheaterResolver.AllowsDomain(theater, BattleDomainResolver.Resolve(cu)))
                 continue;
 
             var profile = BattleProfileInference.Resolve(cu.data);
@@ -94,6 +108,8 @@ public sealed class BattleParticipantCollector
 
     private void BuildReinforcements(EngagementPreview preview, Civilization attackerCiv, Civilization defenderCiv)
     {
+        if (preview.Theater == BattleTheater.DeepSpace)
+            return;
         var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
         if (ts == null)
             return;
@@ -117,8 +133,8 @@ public sealed class BattleParticipantCollector
                 var units = occ != null ? occ.GetAllOccupantObjects(tile, layer) : null;
                 if (units == null) continue;
                 var domain = DomainForLayer(layer);
-                var attackerReserve = NewReserve(BattleSide.Attacker, tile, domain);
-                var defenderReserve = NewReserve(BattleSide.Defender, tile, domain);
+                var attackerReserve = NewReserve(BattleSide.Attacker, tile, domain, preview.Theater);
+                var defenderReserve = NewReserve(BattleSide.Defender, tile, domain, preview.Theater);
 
                 for (int i = 0; i < units.Count; i++)
                 {
@@ -127,6 +143,15 @@ public sealed class BattleParticipantCollector
                         continue;
 
                     if (cu == preview.Attacker || cu == preview.Defender)
+                        continue;
+
+                    BattleDomain candidateDomain = BattleDomainResolver.Resolve(cu);
+                    // Underwater air support requires an explicit carrier/naval assignment;
+                    // transported aircraft satisfy that relationship, arbitrary nearby air does not.
+                    bool assignedNavalAircraft = candidateDomain == BattleDomain.Air && cu.IsTransported
+                        && cu.TransportingUnit != null
+                        && BattleDomainResolver.Resolve(cu.TransportingUnit) == BattleDomain.NavalSurface;
+                    if (!BattleTheaterResolver.AllowsDomain(preview.Theater, candidateDomain, assignedNavalAircraft))
                         continue;
 
                     int runtimeId = cu.gameObject != null ? cu.gameObject.GetRuntimeId() : 0;
@@ -162,9 +187,12 @@ public sealed class BattleParticipantCollector
         }
     }
 
-    private BattleReinforcementGroup NewReserve(BattleSide side, int tile, BattleDomain domain) => new()
+    private BattleReinforcementGroup NewReserve(BattleSide side, int tile, BattleDomain domain, BattleTheater theater) => new()
     {
+        ReinforcementGroupId = StableGroupId(side, tile, domain),
+        FormationId = StableGroupId(side, tile, domain),
         Side = side,
+        Theater = theater,
         OriginCampaignTile = tile,
         AvailableFromRound = ruleset.reinforcementStartRound,
         Domain = domain,
@@ -178,6 +206,9 @@ public sealed class BattleParticipantCollector
             _ => BattleEntryMethod.LandEdge,
         },
     };
+
+    private static int StableGroupId(BattleSide side, int tile, BattleDomain domain)
+    { unchecked { return ((tile + 1) * 397) ^ ((int)side * 31) ^ (int)domain; } }
 
     private static BattleDomain DomainForLayer(TileLayer layer) => layer switch
     {

@@ -13,7 +13,7 @@ public readonly struct BattleCombatContext
     public readonly bool DefenderHasSoftCover;
     public readonly bool DefenderHasHardCover;
     public readonly bool DefenderIsDefending;
-    public readonly bool AttackerIsExposed;
+    public readonly bool DefenderIsExposed;
 
     public readonly int FlankingCount;
     public readonly int RandomSeed;
@@ -29,7 +29,7 @@ public readonly struct BattleCombatContext
         bool defenderHasSoftCover,
         bool defenderHasHardCover,
         bool defenderIsDefending,
-        bool attackerIsExposed,
+        bool defenderIsExposed,
         int flankingCount,
         int randomSeed)
     {
@@ -43,7 +43,7 @@ public readonly struct BattleCombatContext
         DefenderHasSoftCover = defenderHasSoftCover;
         DefenderHasHardCover = defenderHasHardCover;
         DefenderIsDefending = defenderIsDefending;
-        AttackerIsExposed = attackerIsExposed;
+        DefenderIsExposed = defenderIsExposed;
         FlankingCount = flankingCount;
         RandomSeed = randomSeed;
     }

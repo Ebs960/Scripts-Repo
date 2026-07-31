@@ -16,7 +16,9 @@ public sealed class BattleUnitState
     public bool HasActed;
     public bool IsDefending;
     public bool IsWaiting;
+    public bool HasWaitedThisTurn;
     public bool IsReserve;
+    public int ReinforcementGroupId;
     public bool HasRetreated;
     public bool IsDead;
     public bool HasAttackedThisTurn;

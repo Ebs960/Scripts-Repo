@@ -205,6 +205,17 @@ public abstract class BaseUnit : MonoBehaviour
         UpdateUnitLabel();
     }
 
+    private bool battleDeathHandled;
+
+    /// <summary>Runs normal campaign death cleanup exactly once for a tactical casualty.</summary>
+    public virtual void KillFromBattle(BaseUnit killer = null)
+    {
+        if (battleDeathHandled) return;
+        battleDeathHandled = true;
+        if (currentHealth <= 0) currentHealth = 1;
+        ApplyDamage(currentHealth, killer, false);
+    }
+
     public virtual void ApplyBattleExperience(int experience)
     {
     }
