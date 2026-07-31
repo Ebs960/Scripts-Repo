@@ -25,6 +25,33 @@ public sealed class BattleSession
     private readonly List<BattleUnitState> units;
     private readonly List<BattleReinforcementGroup> reinforcements;
 
+    // Preserve the original planetary-battle API for callers that do not need to
+    // select a theater explicitly, including existing battle tests.
+    public BattleSession(
+        int battleId,
+        int planetIndex,
+        int strategicAnchorTile,
+        int maxRounds,
+        int randomSeed,
+        BattleMap map,
+        List<BattleUnitState> unitStates,
+        BattleObjective objective,
+        List<BattleReinforcementGroup> reinforcementGroups)
+        : this(
+            battleId,
+            BattleTheater.PlanetaryJoint,
+            planetIndex,
+            -1,
+            strategicAnchorTile,
+            maxRounds,
+            randomSeed,
+            map,
+            unitStates,
+            objective,
+            reinforcementGroups)
+    {
+    }
+
     public BattleSession(
         int battleId,
         BattleTheater theater,
