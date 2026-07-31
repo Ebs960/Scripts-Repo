@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 public sealed class BattleAIEvaluator
 {
-    public BattleCommand PickBestCommand(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy)
+    public BattleCommand PickBestCommand(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
     {
         if (session == null || unit == null || !unit.CanAct(session.ActiveSide))
             return null;
@@ -15,9 +15,15 @@ public sealed class BattleAIEvaluator
             var enemy = session.Units[i];
             if (enemy == null || !enemy.IsAliveAndActive || enemy.Side == unit.Side)
                 continue;
+            if (detection != null && !detection.CanDirectlyTarget(unit.Side, enemy))
+                continue;
 
             int dist = session.MapDistance(unit.CellIndex, enemy.CellIndex);
-            if (dist <= 1)
+            int weaponIndex = BattleTargetingService.FindWeaponIndex(unit, enemy, dist);
+            if (weaponIndex < 0)
+                continue;
+            var weapon = BattleTargetingService.GetWeapon(unit, weaponIndex);
+            if (!weapon.usesRangedAttack)
             {
                 var attack = new BattleAttackCommand
                 {
@@ -26,13 +32,14 @@ public sealed class BattleAIEvaluator
                     TargetUnitId = enemy.UnitId,
                     AttackFromCell = unit.CellIndex,
                     IsRanged = false,
+                    WeaponIndex = weaponIndex,
                 };
                 float score = 20f + (enemy.CurrentHealth <= unit.Snapshot.MeleeAttack ? 10f : 0f);
                 candidates.Add(new BattleAICandidate(attack, score));
                 continue;
             }
 
-            if (dist <= (int)unit.Snapshot.Range)
+            else
             {
                 var attack = new BattleAttackCommand
                 {
@@ -41,6 +48,7 @@ public sealed class BattleAIEvaluator
                     TargetUnitId = enemy.UnitId,
                     AttackFromCell = unit.CellIndex,
                     IsRanged = true,
+                    WeaponIndex = weaponIndex,
                 };
                 float score = 15f;
                 candidates.Add(new BattleAICandidate(attack, score));

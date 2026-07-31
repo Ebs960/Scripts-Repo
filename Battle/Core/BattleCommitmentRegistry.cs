@@ -3,9 +3,12 @@ using System.Collections.Generic;
 public sealed class BattleCommitment
 {
     public int CampaignRuntimeId;
-    public int FormationId;
+    public string FormationId;
     public int BattleId;
     public BattleTheater Theater;
+    public int CarrierOrTransportRuntimeId = -1;
+    public string CommanderAssignmentId;
+    public int CampaignTurn;
 }
 
 public sealed class BattleCommitmentRegistry
@@ -14,8 +17,19 @@ public sealed class BattleCommitmentRegistry
     public bool IsCommitted(int runtimeId) => runtimeId != 0 && commitments.ContainsKey(runtimeId);
     public bool TryCommit(BattleCommitment commitment)
     {
-        if (commitment == null || commitment.CampaignRuntimeId == 0 || commitments.ContainsKey(commitment.CampaignRuntimeId)) return false;
-        commitments.Add(commitment.CampaignRuntimeId, commitment); return true;
+        if (commitment == null || commitment.CampaignRuntimeId == 0 || commitments.ContainsKey(commitment.CampaignRuntimeId))
+            return false;
+
+        int relationshipId = commitment.CarrierOrTransportRuntimeId;
+        if (relationshipId > 0
+            && relationshipId != commitment.CampaignRuntimeId
+            && commitments.ContainsKey(relationshipId))
+            return false;
+
+        commitments.Add(commitment.CampaignRuntimeId, commitment);
+        if (relationshipId > 0 && relationshipId != commitment.CampaignRuntimeId)
+            commitments.Add(relationshipId, commitment);
+        return true;
     }
     public void ReleaseBattle(int battleId)
     {

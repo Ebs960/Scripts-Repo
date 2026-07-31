@@ -13,6 +13,7 @@ public sealed class EngagementPreview
 
     public EngagementMode Mode;
     public BattleTheater Theater;
+    public PlanetaryBattleEnvironment PlanetaryEnvironment;
     public int SpaceRegionId = -1;
     public bool AllowsManualBattle;
     public bool AllowsRetreat;

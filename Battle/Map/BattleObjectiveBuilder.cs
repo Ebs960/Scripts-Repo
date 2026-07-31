@@ -5,6 +5,7 @@ public static class BattleObjectiveBuilder
     public static BattleObjective BuildObjective(BattleMap map)
     {
         int candidate = -1;
+        BattleObjectiveType type = BattleObjectiveType.Elimination;
 
         for (int i = 0; i < map.Cells.Count; i++)
         {
@@ -12,9 +13,22 @@ public static class BattleObjectiveBuilder
             if (!SupportsAnyDomain(c))
                 continue;
 
+            if (c.DeploymentOwner == BattleSide.Defender && c.HasPort)
+            {
+                candidate = i;
+                type = BattleObjectiveType.PortCapture;
+                break;
+            }
+            if (c.DeploymentOwner == BattleSide.Defender && c.HasBeach)
+            {
+                candidate = i;
+                type = BattleObjectiveType.Beachhead;
+                break;
+            }
             if (c.DeploymentOwner == BattleSide.Defender)
             {
                 candidate = i;
+                type = c.SupportsNavalSurface && !c.SupportsLand ? BattleObjectiveType.NavalControl : BattleObjectiveType.LandControl;
                 break;
             }
         }
@@ -39,6 +53,7 @@ public static class BattleObjectiveBuilder
         {
             CellIndex = candidate,
             Owner = BattleSide.Defender,
+            Type = type,
         };
     }
 

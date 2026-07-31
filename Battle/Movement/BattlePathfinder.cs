@@ -42,6 +42,14 @@ public sealed class BattlePathfinder
             if (cell?.NeighborIndices == null)
                 continue;
 
+            // Entering hostile land ZOC is legal, but a unit that entered it cannot
+            // use that cell to continue its movement during the same activation.
+            if (current != unit.CellIndex
+                && unit.Domain == BattleDomain.Land
+                && !BattleZoneOfControl.IgnoresZoc(unit)
+                && BattleZoneOfControl.IsEnemyZocCell(session, unit, current))
+                continue;
+
             for (int i = 0; i < cell.NeighborIndices.Length; i++)
             {
                 int n = cell.NeighborIndices[i];
@@ -113,9 +121,6 @@ public sealed class BattlePathfinder
             var role = unit.Snapshot?.TacticalProfile != null ? unit.Snapshot.TacticalProfile.role : BattleRole.LineInfantry;
             cost += role == BattleRole.HeavyInfantry || role == BattleRole.Cavalry ? ruleset.forestMoveCostHeavy : ruleset.forestMoveCostDefault;
         }
-
-        if (!BattleZoneOfControl.IgnoresZoc(unit) && BattleZoneOfControl.IsEnemyZocCell(session, unit, to.BattleIndex))
-            cost += 99;
 
         return cost;
     }

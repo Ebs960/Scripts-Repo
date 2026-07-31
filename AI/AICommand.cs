@@ -101,9 +101,7 @@ public class AIAttackCommand : AICommand
                     {
                         bool attackerPlayer = cu.owner != null && cu.owner.isPlayerControlled;
                         bool defenderPlayer = ct.owner != null && ct.owner.isPlayerControlled;
-                        if (attackerPlayer || defenderPlayer)
-                            manager.BeginManualBattle(preview);
-                        else
+                        if (!attackerPlayer && !defenderPlayer)
                             manager.AutoResolve(preview);
                         return;
                     }

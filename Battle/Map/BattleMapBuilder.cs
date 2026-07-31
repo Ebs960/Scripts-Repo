@@ -69,7 +69,30 @@ public sealed class BattleMapBuilder
         }
 
         BattleElevationResolver.QuantizeElevations(map, ts);
+        preview.PlanetaryEnvironment = ClassifyPlanetaryEnvironment(map);
         return map;
+    }
+
+    private static PlanetaryBattleEnvironment ClassifyPlanetaryEnvironment(BattleMap map)
+    {
+        int water = 0;
+        int land = 0;
+        bool hasPort = false;
+        bool hasBeach = false;
+        for (int i = 0; i < map.Cells.Count; i++)
+        {
+            var cell = map.Cells[i];
+            if (cell.IsWater) water++; else land++;
+            hasPort |= cell.HasPort;
+            hasBeach |= cell.HasBeach;
+        }
+        if (hasPort) return PlanetaryBattleEnvironment.Port;
+        if (hasBeach && water > 0 && land > 0) return PlanetaryBattleEnvironment.Amphibious;
+        if (water == 0) return PlanetaryBattleEnvironment.Inland;
+        if (land == 0) return PlanetaryBattleEnvironment.OpenOcean;
+        if (water > land * 2) return PlanetaryBattleEnvironment.Archipelago;
+        if (land > water * 2) return PlanetaryBattleEnvironment.Coastal;
+        return PlanetaryBattleEnvironment.Mixed;
     }
 
     private BattleMap BuildSpaceMap(EngagementPreview preview)

@@ -1,8 +1,256 @@
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public sealed class BattleHUD : MonoBehaviour
 {
+    private BattleManager manager;
+    private GameObject root;
+    private TextMeshProUGUI status;
+    private TextMeshProUGUI selected;
+    private TextMeshProUGUI unitSelector;
+    private TMP_InputField cellInput;
+    private TextMeshProUGUI targetSelector;
+    private int selectedUnitId = -1;
+    private int selectedUnitIndex;
+    private int selectedTargetIndex;
+
+    public static BattleHUD GetOrCreate(BattleManager manager)
+    {
+        var existing = manager.GetComponent<BattleHUD>();
+        return existing != null ? existing : manager.gameObject.AddComponent<BattleHUD>();
+    }
+
+    public void Bind(BattleManager battleManager)
+    {
+        manager = battleManager;
+        Build();
+        manager.BattleStarted += OnBattleStarted;
+        manager.BattlePreviewClosed += Refresh;
+        root.SetActive(manager.ActiveBattle != null);
+    }
+
+    private void OnDestroy()
+    {
+        if (manager != null)
+        {
+            manager.BattleStarted -= OnBattleStarted;
+            manager.BattlePreviewClosed -= Refresh;
+        }
+    }
+
     public void Bind(BattleSession session)
     {
+        Build();
+        root.SetActive(session != null);
+        Refresh();
+    }
+
+    private void OnBattleStarted(BattleSession session) => Bind(session);
+
+    private void Build()
+    {
+        if (root != null)
+            return;
+
+        root = new GameObject("Battle HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 510;
+        root.GetComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        root.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920f, 1080f);
+        var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
+        panel.transform.SetParent(root.transform, false);
+        var panelRect = panel.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0f, 0f);
+        panelRect.anchorMax = new Vector2(0f, 1f);
+        panelRect.pivot = new Vector2(0f, 0.5f);
+        panelRect.sizeDelta = new Vector2(380f, 0f);
+        panel.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.1f, 0.96f);
+
+        status = CreateText(panel.transform, "Status", new Vector2(0f, 1f), new Vector2(16f, -16f), new Vector2(348f, 90f), 18f);
+        selected = CreateText(panel.transform, "Selected", new Vector2(0f, 1f), new Vector2(16f, -115f), new Vector2(348f, 90f), 15f);
+        unitSelector = CreateText(panel.transform, "Unit Selector", new Vector2(0f, 1f), new Vector2(16f, -215f), new Vector2(348f, 30f), 15f);
+        CreateButton(panel.transform, "Prev Unit", new Vector2(16f, -250f), PreviousUnit, 112f);
+        CreateButton(panel.transform, "Next Unit", new Vector2(142f, -250f), NextUnit, 112f);
+        targetSelector = CreateText(panel.transform, "Target Selector", new Vector2(0f, 1f), new Vector2(16f, -295f), new Vector2(348f, 30f), 15f);
+        CreateButton(panel.transform, "Prev Target", new Vector2(16f, -330f), PreviousTarget, 112f);
+        CreateButton(panel.transform, "Next Target", new Vector2(142f, -330f), NextTarget, 112f);
+        cellInput = CreateInput(panel.transform, "Cell", new Vector2(16f, -375f));
+
+        CreateButton(panel.transform, "Move", new Vector2(16f, -425f), Move);
+        CreateButton(panel.transform, "Attack", new Vector2(142f, -425f), Attack);
+        CreateButton(panel.transform, "Defend", new Vector2(268f, -425f), Defend);
+        CreateButton(panel.transform, "Wait", new Vector2(16f, -475f), Wait);
+        CreateButton(panel.transform, "End Unit", new Vector2(142f, -475f), EndUnit);
+        CreateButton(panel.transform, "Retreat", new Vector2(268f, -475f), Retreat);
+        CreateButton(panel.transform, "Confirm Deployment", new Vector2(16f, -525f), ConfirmDeployment, 230f);
+        CreateButton(panel.transform, "End Side", new Vector2(252f, -525f), EndSide, 112f);
+        CreateButton(panel.transform, "Embark", new Vector2(16f, -575f), Embark);
+        CreateButton(panel.transform, "Disembark", new Vector2(142f, -575f), Disembark);
+        CreateButton(panel.transform, "Launch", new Vector2(268f, -575f), Launch);
+        CreateButton(panel.transform, "Recover", new Vector2(16f, -625f), Recover);
+        CreateButton(panel.transform, "Dive", new Vector2(142f, -625f), Dive);
+        CreateButton(panel.transform, "Shallow", new Vector2(268f, -625f), Shallow);
+        root.SetActive(false);
+    }
+
+    private void Refresh()
+    {
+        if (manager == null || manager.ActiveBattle == null)
+        {
+            if (root != null) root.SetActive(false);
+            return;
+        }
+
+        root.SetActive(true);
+        var session = manager.ActiveBattle;
+        status.text = $"{session.Theater}\nRound {session.CurrentRound} | {session.ActiveSide}\nPhase: {session.Phase}";
+        var units = manager.GetUnitsForActiveSide();
+        if (units.Count > 0)
+        {
+            selectedUnitIndex = Mathf.Clamp(selectedUnitIndex, 0, units.Count - 1);
+            for (int i = 0; i < units.Count; i++)
+                if (units[i].UnitId == selectedUnitId) selectedUnitIndex = i;
+            selectedUnitId = units[selectedUnitIndex].UnitId;
+            unitSelector.text = $"Unit: {units[selectedUnitIndex].UnitId} ({units[selectedUnitIndex].Domain}, HP {units[selectedUnitIndex].CurrentHealth})";
+        }
+        else { selectedUnitId = -1; unitSelector.text = "No active units"; }
+        RefreshTargets();
+        ShowSelected();
+    }
+
+    private void PreviousUnit()
+    {
+        var units = manager?.GetUnitsForActiveSide();
+        if (units == null || units.Count == 0)
+            return;
+        selectedUnitIndex = (selectedUnitIndex - 1 + units.Count) % units.Count;
+        selectedUnitId = units[selectedUnitIndex].UnitId;
+        RefreshTargets();
+        ShowSelected();
+    }
+
+    private void NextUnit()
+    {
+        var units = manager?.GetUnitsForActiveSide();
+        if (units == null || units.Count == 0) return;
+        selectedUnitIndex = (selectedUnitIndex + 1) % units.Count;
+        selectedUnitId = units[selectedUnitIndex].UnitId;
+        RefreshTargets();
+        ShowSelected();
+    }
+
+    private void RefreshTargets()
+    {
+        var targets = manager?.GetVisibleEnemyUnits(selectedUnitId);
+        if (targets == null || targets.Count == 0) { selectedTargetIndex = 0; targetSelector.text = "No detected targets"; return; }
+        selectedTargetIndex = Mathf.Clamp(selectedTargetIndex, 0, targets.Count - 1);
+        targetSelector.text = $"Target: {targets[selectedTargetIndex].UnitId} ({targets[selectedTargetIndex].Domain}, HP {targets[selectedTargetIndex].CurrentHealth})";
+    }
+
+    private void PreviousTarget() { CycleTarget(-1); }
+    private void NextTarget() { CycleTarget(1); }
+    private void CycleTarget(int direction)
+    {
+        var targets = manager?.GetVisibleEnemyUnits(selectedUnitId);
+        if (targets == null || targets.Count == 0) return;
+        selectedTargetIndex = (selectedTargetIndex + direction + targets.Count) % targets.Count;
+        RefreshTargets();
+    }
+
+    private void ShowSelected()
+    {
+        var unit = FindSelectedUnit();
+        selected.text = unit == null ? "No unit selected" :
+            $"Unit {unit.UnitId} | {unit.Domain}\nHP {unit.CurrentHealth}/{unit.Snapshot.MaximumHealth} | Move {unit.CurrentMovePoints} | AP {unit.CurrentActionPoints}\nCell {unit.CellIndex} | Waiting {unit.IsWaiting} | Defending {unit.IsDefending}";
+    }
+
+    private BattleUnitState FindSelectedUnit()
+    {
+        var units = manager?.GetUnitsForActiveSide();
+        if (units == null) return null;
+        for (int i = 0; i < units.Count; i++) if (units[i].UnitId == selectedUnitId) return units[i];
+        return null;
+    }
+
+    private void Move()
+    {
+        if (int.TryParse(cellInput.text, out int cell))
+            Submit(manager.TryMoveUnit(selectedUnitId, cell, out string reason), reason);
+        else Notify("Enter a destination cell index.");
+    }
+
+    private void Attack()
+    {
+        var targets = manager?.GetVisibleEnemyUnits(selectedUnitId);
+        if (targets == null || selectedTargetIndex < 0 || selectedTargetIndex >= targets.Count) { Notify("Select a detected target."); return; }
+        var unit = FindSelectedUnit();
+        bool ranged = unit != null && manager.ActiveBattle.MapDistance(unit.CellIndex, targets[selectedTargetIndex].CellIndex) > 1;
+        Submit(manager.TryAttackUnit(selectedUnitId, targets[selectedTargetIndex].UnitId, ranged, out string reason), reason);
+    }
+
+    private void Defend() { Submit(manager.TryDefendUnit(selectedUnitId, out string reason), reason); }
+    private void Wait() { Submit(manager.TryWaitUnit(selectedUnitId, out string reason), reason); }
+    private void EndUnit() { Submit(manager.EndUnitActivation(selectedUnitId, out string reason), reason); }
+    private void Retreat()
+    {
+        if (int.TryParse(cellInput.text, out int exit)) Submit(manager.TryRetreatUnit(selectedUnitId, exit, out string reason), reason);
+        else Notify("Enter a retreat exit cell index.");
+    }
+    private void Embark()
+    {
+        if (int.TryParse(cellInput.text, out int transportId)) Submit(manager.TryEmbarkUnit(selectedUnitId, transportId, out string reason), reason);
+        else Notify("Enter a transport unit ID.");
+    }
+    private void Disembark()
+    {
+        if (int.TryParse(cellInput.text, out int cell)) Submit(manager.TryDisembarkUnit(selectedUnitId, cell, out string reason), reason);
+        else Notify("Enter a destination cell index.");
+    }
+    private void Launch()
+    {
+        if (int.TryParse(cellInput.text, out int aircraftId)) Submit(manager.TryLaunchAircraft(selectedUnitId, aircraftId, FindSelectedUnit()?.CellIndex ?? -1, out string reason), reason);
+        else Notify("Enter an embarked aircraft unit ID.");
+    }
+    private void Recover()
+    {
+        if (int.TryParse(cellInput.text, out int carrierId)) Submit(manager.TryRecoverAircraft(selectedUnitId, carrierId, out string reason), reason);
+        else Notify("Enter a carrier unit ID.");
+    }
+    private void Dive() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Deep, out string reason), reason); }
+    private void Shallow() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Shallow, out string reason), reason); }
+    private void ConfirmDeployment() { Submit(manager.ConfirmDeployment(out string reason), reason); }
+    private void EndSide() { manager?.EndPlayerSideTurn(); Refresh(); }
+
+    private void Submit(bool success, string reason)
+    {
+        if (!success) Notify(reason);
+        Refresh();
+    }
+    private static void Notify(string text) => UIManager.Instance?.ShowNotification(text);
+
+    private static TextMeshProUGUI CreateText(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, float fontSize)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI)); go.transform.SetParent(parent, false);
+        var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = anchor; rect.pivot = anchor; rect.anchoredPosition = position; rect.sizeDelta = size;
+        var text = go.GetComponent<TextMeshProUGUI>(); text.font = TMP_Settings.defaultFontAsset; text.fontSize = fontSize; text.color = Color.white; return text;
+    }
+
+    private static TMP_InputField CreateInput(Transform parent, string label, Vector2 position)
+    {
+        var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(TMP_InputField)); go.transform.SetParent(parent, false);
+        var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f); rect.pivot = new Vector2(0f, 1f); rect.anchoredPosition = position; rect.sizeDelta = new Vector2(348f, 36f);
+        go.GetComponent<Image>().color = new Color(0.2f, 0.25f, 0.3f, 1f);
+        var text = CreateText(go.transform, "Text", new Vector2(0f, 0.5f), new Vector2(10f, 0f), new Vector2(320f, 30f), 15f); text.alignment = TextAlignmentOptions.Left;
+        var input = go.GetComponent<TMP_InputField>(); input.textComponent = text; input.contentType = TMP_InputField.ContentType.IntegerNumber; input.placeholder = text; text.text = "Cell index"; return input;
+    }
+
+    private static void CreateButton(Transform parent, string label, Vector2 position, UnityEngine.Events.UnityAction action, float width = 112f)
+    {
+        var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button)); go.transform.SetParent(parent, false);
+        var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f); rect.pivot = new Vector2(0f, 1f); rect.anchoredPosition = position; rect.sizeDelta = new Vector2(width, 36f);
+        go.GetComponent<Image>().color = new Color(0.72f, 0.67f, 0.52f, 1f); go.GetComponent<Button>().onClick.AddListener(action);
+        var text = CreateText(go.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(width - 8f, 30f), 13f); text.alignment = TextAlignmentOptions.Center; text.color = Color.black; text.text = label;
     }
 }

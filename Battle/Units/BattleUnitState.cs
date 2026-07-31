@@ -29,19 +29,23 @@ public sealed class BattleUnitState
     public int CarrierOrTransportBattleUnitId = -1;
     public readonly List<int> EmbarkedBattleUnitIds = new();
     public int FuelOrEndurance = -1;
+    public BattleDepthBand DepthBand;
+    public float CommanderAttackMultiplier = 1f;
+    public float CommanderDefenseMultiplier = 1f;
     public bool RevealedByAttack;
 
     public bool CounterAttackedThisActivation;
 
     public readonly List<BattleStatusEffect> StatusEffects = new();
 
-    public bool IsAliveAndActive => !IsDead && !HasRetreated && !IsReserve && CurrentHealth > 0;
+    public bool IsAliveAndActive => !IsDead && !HasRetreated && !IsReserve && !IsEmbarked && CurrentHealth > 0;
 
     public bool CanAct(BattleSide activeSide)
     {
         return Side == activeSide
             && IsAliveAndActive
             && !HasActed
+            && !IsWaiting
             && CurrentActionPoints > 0;
     }
 }

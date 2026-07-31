@@ -4,6 +4,12 @@ using UnityEngine;
 
 public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 {
+    [Serializable]
+    private sealed class BattleSaveMarker
+    {
+        public bool hasActiveBattle;
+    }
+
     public static BattleManager Instance { get; private set; }
 
     [Header("Config")]
@@ -12,19 +18,24 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public BattleState ActiveBattleState { get; private set; }
     public BattleSession ActiveBattle => ActiveBattleState?.Session;
     public bool IsBattleActive => ActiveBattleState != null;
+    public EngagementPreview PendingPreview => pendingPreview;
+    public BattleResult PendingResult => pendingResult;
 
     public string SaveKey => "BattleManager";
 
     private BattleParticipantCollector participantCollector;
     private BattleMapBuilder mapBuilder;
     private BattleResultApplier resultApplier = new();
+    private readonly PreBattleRetreatService preBattleRetreat = new();
     private EngagementPreview pendingPreview;
+    private BattleResult pendingResult;
     private int nextBattleId = 1;
     private readonly BattleCommitmentRegistry commitments = new();
 
     public event Action<EngagementPreview> BattlePreviewOpened;
     public event Action BattlePreviewClosed;
     public event Action<BattleSession> BattleStarted;
+    public event Action<BattleSession> BattleStateChanged;
     public event Action<BattleResult> BattleResolved;
 
     private void Awake()
@@ -43,6 +54,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         participantCollector = new BattleParticipantCollector(ruleset);
         mapBuilder = new BattleMapBuilder(ruleset);
+        BattlePreviewUI.GetOrCreate(this).Bind(this);
+        BattleHUD.GetOrCreate(this).Bind(this);
+        BattlePresenter.GetOrCreate(this).Bind(this);
+        BattleResultUI.GetOrCreate(this).Bind(this);
 
         SaveGameRegistry.Register(this);
         GameInteractionStateService.GetOrCreate();
@@ -58,7 +73,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public EngagementPreview RequestEngagement(CombatUnit attacker, CombatUnit defender)
     {
-        if (IsBattleActive)
+        if (IsBattleActive || pendingResult != null)
         {
             return new EngagementPreview
             {
@@ -83,6 +98,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         preview.ApproachDirectionXZ = ResolveApproachDirection(preview);
         BattleDeploymentBuilder.BuildDeploymentZones(preview.Map, preview, ruleset.deploymentDepthCells);
+        AssignReinforcementEntries(preview);
         preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
 
         int deployA = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.AttackerUnits.Count);
@@ -115,7 +131,74 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         RaiseBattleStarted(ActiveBattle);
 
         state.TurnController.BeginBattle(state.Session);
-        // Manual authority intentionally stops in deployment until ConfirmDeployment.
+        NotifyBattleStateChanged();
+    }
+
+    public bool BeginPendingManualBattle()
+    {
+        if (pendingPreview == null || !pendingPreview.IsValid || IsBattleActive)
+            return false;
+
+        BeginManualBattle(pendingPreview);
+        return IsBattleActive;
+    }
+
+    public bool AutoResolvePendingPreview(out BattleResult result)
+    {
+        result = null;
+        if (pendingPreview == null || !pendingPreview.IsValid || IsBattleActive)
+            return false;
+
+        result = AutoResolve(pendingPreview);
+        return result.ResolutionType != BattleResolutionType.Invalid;
+    }
+
+    public bool RetreatPendingPreview(out string reason)
+    {
+        if (pendingPreview == null || !pendingPreview.AllowsRetreat || IsBattleActive)
+        {
+            reason = "pre-battle retreat is unavailable";
+            return false;
+        }
+
+        if (!preBattleRetreat.TryRetreat(pendingPreview, out reason))
+            return false;
+
+        CancelPreview();
+        return true;
+    }
+
+    public bool TryAssignGovernorCommander(BattleSide side, int governorId, out string reason)
+    {
+        reason = string.Empty;
+        if (pendingPreview == null || IsBattleActive)
+        {
+            reason = "commander assignment is unavailable";
+            return false;
+        }
+
+        var snapshots = side == BattleSide.Attacker ? pendingPreview.AttackerUnits : pendingPreview.DefenderUnits;
+        var owner = side == BattleSide.Attacker ? pendingPreview.Attacker?.owner : pendingPreview.Defender?.owner;
+        if (snapshots.Count == 0 || owner == null)
+        {
+            reason = "formation has no eligible commander";
+            return false;
+        }
+
+        Governor governor = null;
+        for (int i = 0; i < owner.governors.Count; i++)
+            if (owner.governors[i] != null && owner.governors[i].Id == governorId)
+            {
+                governor = owner.governors[i];
+                break;
+            }
+        if (governor == null)
+        {
+            reason = "governor not found";
+            return false;
+        }
+
+        return MilitaryCommanderAssignmentService.GetOrCreate().TryAssignGovernor(owner, governor, snapshots[0].FormationId, CommandRole.OverallCommander, out reason);
     }
 
     public BattleResult AutoResolve(EngagementPreview preview)
@@ -140,6 +223,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         try
         {
             resultApplier.Apply(result, pendingPreview);
+            AwardCommanderExperience(result);
             BattleResolved?.Invoke(result);
             RaiseBattleResolved(result);
         }
@@ -148,10 +232,20 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             commitments.ReleaseBattle(result != null ? result.BattleId : ActiveBattle.BattleId);
             ActiveBattleState = null;
             pendingPreview = null;
-            GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
+            pendingResult = result;
+            GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleResult);
             BattlePreviewClosed?.Invoke();
-            RaiseBattleClosed();
         }
+    }
+
+    public void ContinueAfterBattleResult()
+    {
+        if (pendingResult == null)
+            return;
+
+        pendingResult = null;
+        GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
+        RaiseBattleClosed();
     }
 
     public void CancelPreview()
@@ -170,6 +264,163 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment) { reason = "no battle awaiting deployment"; return false; }
         ActiveBattleState.TurnController.BeginRound(ActiveBattle);
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleActive);
+        ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Attacker);
+        ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Defender);
+        NotifyBattleStateChanged();
+        return true;
+    }
+
+    public IReadOnlyList<BattleUnitState> GetUnitsForActiveSide()
+    {
+        if (ActiveBattle == null)
+            return System.Array.Empty<BattleUnitState>();
+
+        var result = new List<BattleUnitState>();
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+        {
+            var unit = ActiveBattle.Units[i];
+            if (unit != null && unit.Side == ActiveBattle.ActiveSide && unit.IsAliveAndActive)
+                result.Add(unit);
+        }
+        return result;
+    }
+
+    public IReadOnlyList<BattleUnitState> GetVisibleEnemyUnits(int unitId)
+    {
+        if (ActiveBattleState == null)
+            return System.Array.Empty<BattleUnitState>();
+
+        var attacker = FindUnit(unitId);
+        if (attacker == null)
+            return System.Array.Empty<BattleUnitState>();
+
+        var result = new List<BattleUnitState>();
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+        {
+            var unit = ActiveBattle.Units[i];
+            if (unit != null && unit.Side != attacker.Side && unit.IsAliveAndActive
+                && ActiveBattleState.DetectionService.CanDirectlyTarget(attacker.Side, unit))
+                result.Add(unit);
+        }
+        return result;
+    }
+
+    public bool TryGetMovePath(int unitId, int destination, out List<int> path)
+    {
+        path = null;
+        var unit = FindUnit(unitId);
+        return ActiveBattleState != null && unit != null && unit.CanAct(ActiveBattle.ActiveSide)
+            && ActiveBattleState.MovementService.TryGetPath(ActiveBattle, unit, destination, ActiveBattleState.Occupancy, out path);
+    }
+
+    public bool TryMoveUnit(int unitId, int destination, out string reason)
+    {
+        reason = string.Empty;
+        if (!TryGetMovePath(unitId, destination, out var path))
+        {
+            reason = "invalid move";
+            return false;
+        }
+        return TrySubmitPlayerCommand(new BattleMoveCommand { UnitId = unitId, CommandType = BattleCommandType.Move, Path = path }, out reason);
+    }
+
+    public bool TryAttackUnit(int unitId, int targetUnitId, bool ranged, out string reason)
+    {
+        var unit = FindUnit(unitId);
+        var target = FindUnit(targetUnitId);
+        if (unit == null || target == null)
+        {
+            reason = "unit not found";
+            return false;
+        }
+        int distance = ActiveBattle.MapDistance(unit.CellIndex, target.CellIndex);
+        int weaponIndex = BattleTargetingService.FindWeaponIndex(unit, target, distance);
+        if (weaponIndex < 0)
+        {
+            reason = "no compatible weapon";
+            return false;
+        }
+        var weapon = BattleTargetingService.GetWeapon(unit, weaponIndex);
+        return TrySubmitPlayerCommand(new BattleAttackCommand
+        {
+            UnitId = unitId,
+            CommandType = weapon.usesRangedAttack ? BattleCommandType.RangedAttack : BattleCommandType.MeleeAttack,
+            TargetUnitId = targetUnitId,
+            AttackFromCell = unit.CellIndex,
+            IsRanged = weapon.usesRangedAttack,
+            WeaponIndex = weaponIndex,
+        }, out reason);
+    }
+
+    public bool TryDefendUnit(int unitId, out string reason) => TrySubmitPlayerCommand(new BattleDefendCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.Defend,
+    }, out reason);
+
+    public bool TryWaitUnit(int unitId, out string reason) => TrySubmitPlayerCommand(new BattleWaitCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.Wait,
+    }, out reason);
+
+    public bool TryRetreatUnit(int unitId, int exitCell, out string reason) => TrySubmitPlayerCommand(new BattleRetreatCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.Retreat,
+        ExitCell = exitCell,
+    }, out reason);
+
+    public bool TryEmbarkUnit(int unitId, int transportUnitId, out string reason) => TrySubmitPlayerCommand(new BattleEmbarkCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.Embark,
+        TransportUnitId = transportUnitId,
+    }, out reason);
+
+    public bool TryDisembarkUnit(int unitId, int destinationCell, out string reason) => TrySubmitPlayerCommand(new BattleDisembarkCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.Disembark,
+        DestinationCell = destinationCell,
+    }, out reason);
+
+    public bool TryLaunchAircraft(int carrierUnitId, int aircraftUnitId, int launchCell, out string reason) => TrySubmitPlayerCommand(new BattleLaunchAircraftCommand
+    {
+        UnitId = carrierUnitId,
+        CommandType = BattleCommandType.LaunchAircraft,
+        AircraftUnitId = aircraftUnitId,
+        LaunchCell = launchCell,
+    }, out reason);
+
+    public bool TryRecoverAircraft(int aircraftUnitId, int carrierUnitId, out string reason) => TrySubmitPlayerCommand(new BattleRecoverAircraftCommand
+    {
+        UnitId = aircraftUnitId,
+        CommandType = BattleCommandType.RecoverAircraft,
+        CarrierUnitId = carrierUnitId,
+    }, out reason);
+
+    public bool TryChangeDepth(int unitId, BattleDepthBand depth, out string reason) => TrySubmitPlayerCommand(new BattleChangeDepthCommand
+    {
+        UnitId = unitId,
+        CommandType = BattleCommandType.ChangeDepth,
+        Depth = depth,
+    }, out reason);
+
+    public bool EndUnitActivation(int unitId, out string reason)
+    {
+        reason = string.Empty;
+        var unit = FindUnit(unitId);
+        if (unit == null || ActiveBattle == null || !unit.CanAct(ActiveBattle.ActiveSide))
+        {
+            reason = "unit cannot end activation";
+            return false;
+        }
+
+        unit.HasActed = true;
+        unit.CurrentActionPoints = 0;
+        unit.CurrentMovePoints = 0;
+        NotifyBattleStateChanged();
         return true;
     }
 
@@ -178,15 +429,88 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
         { reason = "battle is not accepting commands"; return false; }
         bool ok = ActiveBattleState.CommandExecutor.Execute(ActiveBattle, ActiveBattleState.Occupancy, command, out reason);
-        if (ok) ActiveBattleState.ActionLog.Add(BattleCommandLog.Format(ActiveBattle, command));
+        if (ok)
+        {
+            ActiveBattleState.ActionLog.Add(BattleCommandLog.Format(ActiveBattle, command));
+            ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command));
+            NotifyBattleStateChanged();
+        }
         return ok;
     }
 
-    public void EndPlayerSideTurn() { if (ActiveBattleState != null) ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle); }
+    public void EndPlayerSideTurn()
+    {
+        if (ActiveBattleState == null || !IsHumanControlledSide(ActiveBattle.ActiveSide))
+            return;
+
+        ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
+        AdvanceManualFlow();
+        NotifyBattleStateChanged();
+    }
     public void RunAISideTurn()
     {
         if (ActiveBattleState == null) return;
-        ActiveBattleState.AiController.ExecuteSide(ActiveBattle, ActiveBattleState.CommandExecutor, ActiveBattleState.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out _);
+        ActiveBattleState.AiController.ExecuteSide(ActiveBattle, ActiveBattleState.CommandExecutor, ActiveBattleState.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out _,
+            command => ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command)));
+        NotifyBattleStateChanged();
+    }
+
+    private void AdvanceManualFlow()
+    {
+        while (ActiveBattleState != null)
+        {
+            if (ActiveBattle.Phase == BattlePhase.RoundEnd)
+            {
+                new BattleStatusService().ProcessRoundEnd(ActiveBattle);
+                ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Attacker);
+                ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Defender);
+                var winner = TryResolveWinner(ActiveBattle, allowObjectiveVictory: true);
+                if (winner.HasValue)
+                {
+                    FinishActiveBattle(BuildResult(ActiveBattle, winner.Value, false, BattleResolutionType.ObjectiveCaptured));
+                    return;
+                }
+
+                new BattleReinforcementController().DeployRoundReinforcements(ActiveBattle, ActiveBattleState.Occupancy, ActiveBattle.CurrentRound + 1);
+                if (!ActiveBattleState.TurnController.EndRoundAndAdvance(ActiveBattle))
+                {
+                    FinishActiveBattle(BuildResult(ActiveBattle, BattleSide.Defender, false, BattleResolutionType.DefenderHeld));
+                    return;
+                }
+                ActiveBattleState.TurnController.BeginRound(ActiveBattle);
+                continue;
+            }
+
+            if (IsHumanControlledSide(ActiveBattle.ActiveSide))
+                return;
+
+            RunAISideTurn();
+            ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
+        }
+    }
+
+    private bool IsHumanControlledSide(BattleSide side)
+    {
+        if (pendingPreview == null)
+            return false;
+        var source = side == BattleSide.Attacker ? pendingPreview.Attacker : pendingPreview.Defender;
+        return source != null && source.owner != null && source.owner.isPlayerControlled;
+    }
+
+    private BattleUnitState FindUnit(int unitId)
+    {
+        if (ActiveBattle == null)
+            return null;
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+            if (ActiveBattle.Units[i]?.UnitId == unitId)
+                return ActiveBattle.Units[i];
+        return null;
+    }
+
+    private void NotifyBattleStateChanged()
+    {
+        if (ActiveBattle != null)
+            BattleStateChanged?.Invoke(ActiveBattle);
     }
 
     private BattleState BuildBattleState(EngagementPreview preview)
@@ -214,13 +538,39 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < units.Count; i++)
         {
             int runtimeId = units[i].Snapshot.CampaignRuntimeId;
-            if (!commitments.TryCommit(new BattleCommitment { CampaignRuntimeId = runtimeId, BattleId = session.BattleId, Theater = preview.Theater }))
+            var commanderAssignment = MilitaryCommanderAssignmentService.GetOrCreate().GetAssignment(units[i].Snapshot.FormationId);
+            if (commanderAssignment != null)
+            {
+                units[i].CommanderAttackMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetAttackMultiplier(units[i].Snapshot.FormationId);
+                units[i].CommanderDefenseMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetDefenseMultiplier(units[i].Snapshot.FormationId);
+            }
+            var sourceUnit = units[i].Snapshot.SourceUnit;
+            int transportRuntimeId = sourceUnit != null
+                && sourceUnit.IsTransported
+                && sourceUnit.TransportingUnit != null
+                && sourceUnit.TransportingUnit.gameObject != null
+                ? sourceUnit.TransportingUnit.gameObject.GetRuntimeId()
+                : -1;
+            if (!commitments.TryCommit(new BattleCommitment
+            {
+                CampaignRuntimeId = runtimeId,
+                FormationId = units[i].Snapshot.FormationId,
+                BattleId = session.BattleId,
+                Theater = preview.Theater,
+                CarrierOrTransportRuntimeId = transportRuntimeId,
+                CommanderAssignmentId = commanderAssignment?.AssignmentId,
+                CampaignTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0,
+            }))
             { commitments.ReleaseBattle(session.BattleId); return null; }
         }
 
         var movementService = new BattleMovementService(new BattlePathfinder(ruleset));
         var resolver = new BattleCombatResolver(ruleset);
-        var commandExecutor = new BattleCommandExecutor(movementService, resolver, new BattleLineOfSight());
+        var detectionService = new BattleDetectionService();
+        var commandExecutor = new BattleCommandExecutor(movementService, resolver, new BattleLineOfSight(), detectionService);
+        var replayLog = new BattleReplayLog { BattleId = session.BattleId, Seed = session.RandomSeed, Theater = session.Theater };
+        for (int i = 0; i < units.Count; i++)
+            replayLog.InitialParticipantRuntimeIds.Add(units[i].Snapshot.CampaignRuntimeId);
 
         return new BattleState
         {
@@ -229,8 +579,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             MovementService = movementService,
             CombatResolver = resolver,
             CommandExecutor = commandExecutor,
+            DetectionService = detectionService,
+            ReplayLog = replayLog,
             TurnController = new BattleTurnController(ruleset),
-            AiController = new BattleAIController(),
+            AiController = new BattleAIController(detectionService),
         };
     }
 
@@ -252,12 +604,13 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             for (int sideStep = 0; sideStep < 2; sideStep++)
             {
                 RaiseBattleSideTurnStarted(session.ActiveSide);
-                ai.ExecuteSide(session, state.CommandExecutor, state.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out int executed);
+                ai.ExecuteSide(session, state.CommandExecutor, state.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out int executed,
+                    command => state.ReplayLog.Commands.Add(BattleCommandRecord.From(session, command)));
                 totalCommands += executed;
                 if (totalCommands > ruleset.maxAutoResolveTotalCommands)
                     break;
 
-                var winner = TryResolveWinner(session);
+                var winner = TryResolveWinner(session, allowObjectiveVictory: false);
                 if (winner.HasValue)
                     return BuildResult(session, winner.Value, wasAutoResolved);
 
@@ -266,6 +619,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
             if (totalCommands > ruleset.maxAutoResolveTotalCommands)
                 return BuildResult(session, BattleSide.Defender, true, BattleResolutionType.Invalid);
+
+            new BattleStatusService().ProcessRoundEnd(session);
+            state.DetectionService.Update(session, BattleSide.Attacker);
+            state.DetectionService.Update(session, BattleSide.Defender);
+
+            var roundEndWinner = TryResolveWinner(session, allowObjectiveVictory: true);
+            if (roundEndWinner.HasValue)
+                return BuildResult(session, roundEndWinner.Value, wasAutoResolved, BattleResolutionType.ObjectiveCaptured);
 
             reinforcements.DeployRoundReinforcements(session, state.Occupancy, session.CurrentRound + 1);
 
@@ -276,7 +637,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
-    private static BattleSide? TryResolveWinner(BattleSession session)
+    private static BattleSide? TryResolveWinner(BattleSession session, bool allowObjectiveVictory)
     {
         bool attackerAlive = false;
         bool defenderAlive = false;
@@ -313,10 +674,31 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             }
         }
 
-        if (attackerOnObjective && session.Phase == BattlePhase.RoundEnd)
+        if (allowObjectiveVictory && attackerOnObjective && session.Phase == BattlePhase.RoundEnd)
             return BattleSide.Attacker;
 
         return null;
+    }
+
+    private void AwardCommanderExperience(BattleResult result)
+    {
+        if (ActiveBattle == null || result == null)
+            return;
+
+        var awardedFormations = new HashSet<string>();
+        var commanderService = MilitaryCommanderAssignmentService.GetOrCreate();
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+        {
+            var unit = ActiveBattle.Units[i];
+            string formationId = unit?.Snapshot?.FormationId;
+            if (string.IsNullOrEmpty(formationId) || !awardedFormations.Add(formationId))
+                continue;
+
+            int experience = unit.Side == result.WinningSide ? 20 : 8;
+            if (unit.IsDead)
+                experience = 4;
+            commanderService.AwardBattleExperience(formationId, experience);
+        }
     }
 
     private static BattleResult BuildResult(BattleSession session, BattleSide winner, bool wasAutoResolved, BattleResolutionType forcedType = BattleResolutionType.AutoResolved)
@@ -338,16 +720,29 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             result.UnitOutcomes.Add(new BattleUnitOutcome
             {
                 CampaignRuntimeId = u.Snapshot.CampaignRuntimeId,
+                Side = u.Side,
                 FinalHealth = Mathf.Max(0, u.CurrentHealth),
                 Died = u.IsDead || u.CurrentHealth <= 0,
                 Retreated = u.HasRetreated,
                 ExperienceGained = u.IsDead ? 0 : Mathf.Max(1, u.Snapshot.Level),
+                IsEmbarked = u.IsEmbarked,
+                CarrierOrTransportCampaignRuntimeId = GetCarrierCampaignRuntimeId(session, u),
                 SuggestedCampaignTile = u.Snapshot.StartingCampaignTile,
                 SuggestedStackSlot = u.Snapshot.StartingStackSlot,
             });
         }
 
         return result;
+    }
+
+    private static int GetCarrierCampaignRuntimeId(BattleSession session, BattleUnitState unit)
+    {
+        if (unit == null || !unit.IsEmbarked)
+            return -1;
+        for (int i = 0; i < session.Units.Count; i++)
+            if (session.Units[i]?.UnitId == unit.CarrierOrTransportBattleUnitId)
+                return session.Units[i].Snapshot.CampaignRuntimeId;
+        return -1;
     }
 
     private static Vector2 ResolveApproachDirection(EngagementPreview preview)
@@ -363,6 +758,35 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return Vector2.right;
 
         return d.normalized;
+    }
+
+    private static void AssignReinforcementEntries(EngagementPreview preview)
+    {
+        if (preview?.Map == null)
+            return;
+
+        var tileSystem = preview.Theater == BattleTheater.DeepSpace ? null : (TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance);
+        for (int groupIndex = 0; groupIndex < preview.Reinforcements.Count; groupIndex++)
+        {
+            var group = preview.Reinforcements[groupIndex];
+            group.EntryCellIndex = -1;
+            int bestDistance = int.MaxValue;
+            for (int cellIndex = 0; cellIndex < preview.Map.Cells.Count; cellIndex++)
+            {
+                var cell = preview.Map.Cells[cellIndex];
+                if (!cell.IsReinforcementEntry || cell.DeploymentOwner != group.Side || !cell.Supports(group.Domain))
+                    continue;
+
+                int distance = tileSystem != null
+                    ? tileSystem.GetWrappedHexDistance(group.OriginCampaignTile, cell.CampaignTileIndex)
+                    : Mathf.Abs(group.OriginSpaceRegion - cell.CampaignTileIndex);
+                if (distance < bestDistance || (distance == bestDistance && cellIndex < group.EntryCellIndex))
+                {
+                    bestDistance = distance;
+                    group.EntryCellIndex = cellIndex;
+                }
+            }
+        }
     }
 
     private static void AutoDeployUnits(BattleMap map, List<BattleUnitState> units, BattleOccupancy occupancy, BattleSide side, int maxInitial)
@@ -413,13 +837,24 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public string CaptureStateJson()
     {
-        return "{}";
+        if (IsBattleActive || pendingPreview != null || pendingResult != null)
+            throw new InvalidOperationException("Active tactical battles cannot be saved.");
+
+        return JsonUtility.ToJson(new BattleSaveMarker { hasActiveBattle = false });
     }
 
     public void RestoreStateJson(string json)
     {
+        var marker = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<BattleSaveMarker>(json);
+        if (marker != null && marker.hasActiveBattle)
+        {
+            Debug.LogError("[BattleManager] Refusing to discard an active tactical battle from a save file.");
+            return;
+        }
+
         ActiveBattleState = null;
         pendingPreview = null;
+        pendingResult = null;
         commitments.Clear();
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
     }

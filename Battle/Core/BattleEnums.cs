@@ -24,6 +24,29 @@ public enum BattleTheater
     DeepSpace,
 }
 
+public enum PlanetaryBattleEnvironment
+{
+    Inland,
+    Coastal,
+    OpenOcean,
+    Archipelago,
+    Island,
+    Port,
+    Amphibious,
+    Mixed,
+}
+
+public enum BattleObjectiveType
+{
+    Elimination,
+    LandControl,
+    PortCapture,
+    Beachhead,
+    NavalControl,
+    Escape,
+    RegionControl,
+}
+
 public enum BattleResolutionType
 {
     Elimination,
@@ -49,6 +72,7 @@ public enum BattleCommandType
     Disembark,
     LaunchAircraft,
     RecoverAircraft,
+    ChangeDepth,
 }
 
 /// <summary>Independent occupancy/movement domains used by every tactical battle.</summary>
@@ -63,6 +87,13 @@ public enum BattleDomain
 }
 
 public enum BattleDetectionLevel { Undetected, Suspected, Detected, Identified }
+
+public enum BattleDepthBand
+{
+    Surface,
+    Shallow,
+    Deep,
+}
 
 public enum BattleEntryMethod
 {
@@ -143,6 +174,7 @@ public struct BattleObjective
 {
     public int CellIndex;
     public BattleSide Owner;
+    public BattleObjectiveType Type;
 }
 
 public enum GameInteractionMode

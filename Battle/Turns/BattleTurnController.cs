@@ -20,6 +20,9 @@ public sealed class BattleTurnController
 
     public void EndCurrentSide(BattleSession session)
     {
+        if (ReleaseDelayedActivations(session))
+            return;
+
         if (session.ActiveSide == BattleSide.Attacker)
         {
             session.StartSide(BattleSide.Defender);
@@ -27,6 +30,38 @@ public sealed class BattleTurnController
         }
 
         session.MoveToRoundEnd();
+    }
+
+    public bool ReleaseDelayedActivations(BattleSession session)
+    {
+        if (session == null)
+            return false;
+
+        bool hasNormalActivation = false;
+        bool hasDelayedActivation = false;
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var unit = session.Units[i];
+            if (unit == null || unit.Side != session.ActiveSide || !unit.IsAliveAndActive || unit.HasActed || unit.CurrentActionPoints <= 0)
+                continue;
+
+            if (unit.IsWaiting)
+                hasDelayedActivation = true;
+            else
+                hasNormalActivation = true;
+        }
+
+        if (hasNormalActivation || !hasDelayedActivation)
+            return false;
+
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var unit = session.Units[i];
+            if (unit != null && unit.Side == session.ActiveSide && unit.IsWaiting)
+                unit.IsWaiting = false;
+        }
+
+        return true;
     }
 
     public bool EndRoundAndAdvance(BattleSession session)

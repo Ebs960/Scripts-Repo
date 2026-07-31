@@ -25,7 +25,23 @@ public sealed class BattleMovementService
         unit.CurrentMovePoints -= moveCost;
         unit.HasMoved = true;
         unit.IsDefending = false;
+        if (unit.Domain == BattleDomain.Land
+            && !BattleZoneOfControl.IgnoresZoc(unit)
+            && BattleZoneOfControl.IsEnemyZocCell(session, unit, destination))
+            unit.CurrentMovePoints = 0;
         path = computedPath;
         return true;
+    }
+
+    public bool TryGetPath(BattleSession session, BattleUnitState unit, int destination, BattleOccupancy occupancy, out List<int> path)
+    {
+        path = null;
+        if (session == null || unit == null || occupancy == null)
+            return false;
+
+        if (!pathfinder.TryFindPath(session, unit, destination, occupancy, out path, out int cost))
+            return false;
+
+        return cost <= unit.CurrentMovePoints;
     }
 }

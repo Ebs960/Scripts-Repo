@@ -27,6 +27,7 @@ public sealed class BattleCell
     public bool HasSoftCover;
 
     public BattleSide? DeploymentOwner;
+    public BattleSide? RetreatExitForSide;
     public bool IsObjective;
     public bool IsReinforcementEntry;
 

@@ -60,6 +60,9 @@ public sealed class BattleParticipantCollector
         var attackerUnits = CollectStackCombatUnits(attacker);
         var defenderUnits = CollectStackCombatUnits(defender);
 
+        AssignFormationIdentity(attacker, attackerUnits);
+        AssignFormationIdentity(defender, defenderUnits);
+
         AddSnapshots(attackerUnits, preview.AttackerUnits, preview.Theater);
         AddSnapshots(defenderUnits, preview.DefenderUnits, preview.Theater);
 
@@ -109,7 +112,10 @@ public sealed class BattleParticipantCollector
     private void BuildReinforcements(EngagementPreview preview, Civilization attackerCiv, Civilization defenderCiv)
     {
         if (preview.Theater == BattleTheater.DeepSpace)
+        {
+            BuildSpaceReinforcements(preview, attackerCiv, defenderCiv);
             return;
+        }
         var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
         if (ts == null)
             return;
@@ -133,8 +139,6 @@ public sealed class BattleParticipantCollector
                 var units = occ != null ? occ.GetAllOccupantObjects(tile, layer) : null;
                 if (units == null) continue;
                 var domain = DomainForLayer(layer);
-                var attackerReserve = NewReserve(BattleSide.Attacker, tile, domain, preview.Theater);
-                var defenderReserve = NewReserve(BattleSide.Defender, tile, domain, preview.Theater);
 
                 for (int i = 0; i < units.Count; i++)
                 {
@@ -161,21 +165,18 @@ public sealed class BattleParticipantCollector
                     if (cu.owner == attackerCiv)
                     {
                         var profile = BattleProfileInference.Resolve(cu.data);
-                        SetReserveDomain(attackerReserve, BattleDomainResolver.Resolve(cu));
-                        attackerReserve.Units.Add(new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1));
+                        var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
+                        GetOrCreateReserve(preview, BattleSide.Attacker, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
+                            .Units.Add(snapshot);
                     }
                     else if (cu.owner == defenderCiv)
                     {
                         var profile = BattleProfileInference.Resolve(cu.data);
-                        SetReserveDomain(defenderReserve, BattleDomainResolver.Resolve(cu));
-                        defenderReserve.Units.Add(new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1));
+                        var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
+                        GetOrCreateReserve(preview, BattleSide.Defender, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
+                            .Units.Add(snapshot);
                     }
                 }
-
-                if (attackerReserve.Units.Count > 0)
-                    preview.Reinforcements.Add(attackerReserve);
-                if (defenderReserve.Units.Count > 0)
-                    preview.Reinforcements.Add(defenderReserve);
             }
 
             var neigh = ts.GetNeighbors(tile);
@@ -187,10 +188,71 @@ public sealed class BattleParticipantCollector
         }
     }
 
-    private BattleReinforcementGroup NewReserve(BattleSide side, int tile, BattleDomain domain, BattleTheater theater) => new()
+    private BattleReinforcementGroup GetOrCreateReserve(
+        EngagementPreview preview,
+        BattleSide side,
+        int tile,
+        BattleDomain domain,
+        BattleTheater theater,
+        string formationId)
     {
-        ReinforcementGroupId = StableGroupId(side, tile, domain),
-        FormationId = StableGroupId(side, tile, domain),
+        for (int i = 0; i < preview.Reinforcements.Count; i++)
+        {
+            var group = preview.Reinforcements[i];
+            if (group.Side == side
+                && group.OriginCampaignTile == tile
+                && group.Domain == domain
+                && group.Theater == theater
+                && group.FormationId == formationId)
+                return group;
+        }
+
+        var reserve = NewReserve(side, tile, domain, theater, formationId);
+        preview.Reinforcements.Add(reserve);
+        return reserve;
+    }
+
+    private void BuildSpaceReinforcements(EngagementPreview preview, Civilization attackerCiv, Civilization defenderCiv)
+    {
+        var grid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid
+            : (SpaceCombatManager.Instance != null ? SpaceCombatManager.Instance.spaceGrid : null);
+        if (grid == null)
+            return;
+
+        var participants = new HashSet<int>();
+        AddRuntimeIds(preview.AttackerUnits, participants);
+        AddRuntimeIds(preview.DefenderUnits, participants);
+
+        foreach (var unit in UnitRegistry.GetCombatUnits())
+        {
+            if (unit == null || unit.currentHealth <= 0 || !BattleTheaterResolver.IsOnSpaceMap(unit))
+                continue;
+
+            int runtimeId = unit.gameObject != null ? unit.gameObject.GetRuntimeId() : 0;
+            if (runtimeId == 0 || participants.Contains(runtimeId))
+                continue;
+            if (grid.GetDistance(unit.currentSpaceTileIndex, preview.AnchorTile) > ruleset.reinforcementRadius)
+                continue;
+            if (unit.owner != attackerCiv && unit.owner != defenderCiv)
+                continue;
+            if (!BattleTheaterResolver.AllowsDomain(BattleTheater.DeepSpace, BattleDomainResolver.Resolve(unit)))
+                continue;
+
+            participants.Add(runtimeId);
+            unit.EnsureMilitaryFormationIdentity();
+            var profile = BattleProfileInference.Resolve(unit.data);
+            var snapshot = new BattleUnitSnapshot(unit, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
+            BattleSide side = unit.owner == attackerCiv ? BattleSide.Attacker : BattleSide.Defender;
+            var group = GetOrCreateReserve(preview, side, unit.currentSpaceTileIndex, BattleDomain.Space, BattleTheater.DeepSpace, snapshot.FormationId);
+            group.OriginSpaceRegion = unit.currentSpaceTileIndex;
+            group.Units.Add(snapshot);
+        }
+    }
+
+    private BattleReinforcementGroup NewReserve(BattleSide side, int tile, BattleDomain domain, BattleTheater theater, string formationId) => new()
+    {
+        ReinforcementGroupId = StableReserveGroupId(side, tile, domain, formationId),
+        FormationId = formationId,
         Side = side,
         Theater = theater,
         OriginCampaignTile = tile,
@@ -207,9 +269,6 @@ public sealed class BattleParticipantCollector
         },
     };
 
-    private static int StableGroupId(BattleSide side, int tile, BattleDomain domain)
-    { unchecked { return ((tile + 1) * 397) ^ ((int)side * 31) ^ (int)domain; } }
-
     private static BattleDomain DomainForLayer(TileLayer layer) => layer switch
     {
         TileLayer.Underwater => BattleDomain.Underwater,
@@ -218,20 +277,43 @@ public sealed class BattleParticipantCollector
         _ => BattleDomain.Land,
     };
 
-    private static void SetReserveDomain(BattleReinforcementGroup group, BattleDomain domain)
+    private static int StableReserveGroupId(BattleSide side, int tile, BattleDomain domain, string formationId)
     {
-        if (group.Units.Count > 0) return;
-        group.Domain = domain;
-        group.EntryMethod = domain switch
+        unchecked
         {
-            BattleDomain.NavalSurface => BattleEntryMethod.NavalEdge,
-            BattleDomain.Underwater => BattleEntryMethod.UnderwaterEdge,
-            BattleDomain.Air => BattleEntryMethod.AirArrival,
-            BattleDomain.Orbit => BattleEntryMethod.OrbitalArrival,
-            BattleDomain.Space => BattleEntryMethod.SpaceArrival,
-            _ => BattleEntryMethod.LandEdge,
-        };
+            int hash = ((tile + 1) * 397) ^ ((int)side * 31) ^ (int)domain;
+            if (!string.IsNullOrEmpty(formationId))
+            {
+                for (int i = 0; i < formationId.Length; i++)
+                    hash = (hash * 31) ^ formationId[i];
+            }
+            return hash;
+        }
     }
+
+    private static void AssignFormationIdentity(CombatUnit root, List<CombatUnit> members)
+    {
+        if (root == null || members == null)
+            return;
+
+        string formationId = root.EnsureMilitaryFormationIdentity();
+        MilitaryFormationType formationType = ResolveFormationType(root);
+        for (int i = 0; i < members.Count; i++)
+        {
+            if (members[i] != null)
+                members[i].AssignMilitaryFormation(formationId, formationType, root.MilitaryFormationName);
+        }
+    }
+
+    private static MilitaryFormationType ResolveFormationType(CombatUnit unit) => BattleDomainResolver.Resolve(unit) switch
+    {
+        BattleDomain.NavalSurface => MilitaryFormationType.SurfaceFleet,
+        BattleDomain.Underwater => MilitaryFormationType.UnderwaterGroup,
+        BattleDomain.Air => MilitaryFormationType.AirWing,
+        BattleDomain.Orbit => MilitaryFormationType.OrbitalForce,
+        BattleDomain.Space => MilitaryFormationType.SpaceFleet,
+        _ => MilitaryFormationType.Army,
+    };
 
     private static void AddRuntimeIds(List<BattleUnitSnapshot> snapshots, HashSet<int> ids)
     {

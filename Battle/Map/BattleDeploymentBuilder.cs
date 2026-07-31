@@ -11,9 +11,19 @@ public static class BattleDeploymentBuilder
         if (preview.Theater == BattleTheater.DeepSpace)
         {
             int count = Mathf.Max(1, depth * 3);
-            for (int i = 0; i < map.CellCount && i < count; i++) map.Cells[i].DeploymentOwner = BattleSide.Attacker;
+            for (int i = 0; i < map.CellCount && i < count; i++)
+            {
+                map.Cells[i].DeploymentOwner = BattleSide.Attacker;
+                map.Cells[i].IsReinforcementEntry = true;
+            }
             for (int i = map.CellCount - 1, assigned = 0; i >= 0 && assigned < count; i--)
-                if (!map.Cells[i].DeploymentOwner.HasValue) { map.Cells[i].DeploymentOwner = BattleSide.Defender; assigned++; }
+                if (!map.Cells[i].DeploymentOwner.HasValue)
+                {
+                    map.Cells[i].DeploymentOwner = BattleSide.Defender;
+                    map.Cells[i].IsReinforcementEntry = true;
+                    assigned++;
+                }
+            AssignRetreatExits(map);
             return;
         }
 
@@ -48,6 +58,7 @@ public static class BattleDeploymentBuilder
             if (assignedA < zoneCount)
             {
                 cell.DeploymentOwner = BattleSide.Attacker;
+                cell.IsReinforcementEntry = true;
                 assignedA++;
                 continue;
             }
@@ -64,11 +75,24 @@ public static class BattleDeploymentBuilder
             if (assignedD < zoneCount)
             {
                 cell.DeploymentOwner = BattleSide.Defender;
+                cell.IsReinforcementEntry = true;
                 assignedD++;
                 continue;
             }
 
             break;
+        }
+
+        AssignRetreatExits(map);
+    }
+
+    private static void AssignRetreatExits(BattleMap map)
+    {
+        for (int i = 0; i < map.Cells.Count; i++)
+        {
+            var cell = map.Cells[i];
+            if (cell.DeploymentOwner.HasValue)
+                cell.RetreatExitForSide = cell.DeploymentOwner;
         }
     }
 

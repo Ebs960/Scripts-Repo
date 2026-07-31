@@ -1,5 +1,15 @@
 using UnityEngine;
 
+[System.Serializable]
+public sealed class TacticalWeaponProfile
+{
+    public EquipmentData equipment;
+    public BattleDomainMask targetDomains = BattleDomainMask.Land;
+    public int minimumRange;
+    public int maximumRange = 1;
+    public bool usesRangedAttack;
+}
+
 [CreateAssetMenu(menuName = "Data/Tactical Unit Profile")]
 public sealed class TacticalUnitProfile : ScriptableObject
 {
@@ -30,6 +40,7 @@ public sealed class TacticalUnitProfile : ScriptableObject
     public bool isTransport;
     public bool isCarrier;
     public int transportCapacity;
+    public TacticalWeaponProfile[] weapons;
 
     public float highGroundMultiplier = 1f;
     public float coverEffectivenessMultiplier = 1f;

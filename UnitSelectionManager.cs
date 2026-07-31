@@ -1742,9 +1742,7 @@ public class UnitSelectionManager : MonoBehaviour
         bool attackerPlayer = atkCombat.owner != null && atkCombat.owner.isPlayerControlled;
         bool defenderPlayer = defCombat.owner != null && defCombat.owner.isPlayerControlled;
 
-        if (attackerPlayer || defenderPlayer)
-            manager.BeginManualBattle(preview);
-        else
+        if (!attackerPlayer && !defenderPlayer)
             manager.AutoResolve(preview);
 
         pendingAttackTarget = null;

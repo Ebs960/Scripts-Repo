@@ -1,6 +1,16 @@
 // Assets/Scripts Repo/CombatUnitData.cs
 using UnityEngine;
 
+public enum MilitaryFormationType
+{
+    Army,
+    SurfaceFleet,
+    UnderwaterGroup,
+    AirWing,
+    OrbitalForce,
+    SpaceFleet,
+}
+
 public enum CombatCategory
 {
     Spearman = 0,

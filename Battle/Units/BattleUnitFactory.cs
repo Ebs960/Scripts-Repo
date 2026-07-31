@@ -52,6 +52,7 @@ public static class BattleUnitFactory
             IsReserve = false,
             HasRetreated = false,
             IsDead = snap.StartingHealth <= 0,
+            DepthBand = snap.Domain == BattleDomain.Underwater ? BattleDepthBand.Shallow : BattleDepthBand.Surface,
         };
     }
 }

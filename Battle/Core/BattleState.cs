@@ -9,6 +9,8 @@ public sealed class BattleState
     public BattleMovementService MovementService;
     public BattleCombatResolver CombatResolver;
     public BattleOccupancy Occupancy;
+    public BattleDetectionService DetectionService;
+    public BattleReplayLog ReplayLog;
 
     public readonly List<string> ActionLog = new();
 }

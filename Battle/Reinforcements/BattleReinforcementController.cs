@@ -28,13 +28,16 @@ public sealed class BattleReinforcementController
     private static int FindEntry(BattleSession session, BattleOccupancy occupancy, BattleUnitState unit, BattleReinforcementGroup group)
     {
         if (!BattleTheaterResolver.AllowsDomain(session.Theater, unit.Domain, group.EntryMethod == BattleEntryMethod.CarrierLaunch)) return -1;
-        if (group.EntryCellIndex >= 0 && occupancy.CanEnter(unit, group.EntryCellIndex, session.Map)) return group.EntryCellIndex;
-        for (int i = 0; i < session.Map.Cells.Count; i++)
-        {
-            var cell = session.Map.Cells[i];
-            if (cell.DeploymentOwner != group.Side || !cell.Supports(unit.Domain)) continue;
-            if (occupancy.CanEnter(unit, i, session.Map)) return i;
-        }
-        return -1;
+        if (group.EntryCellIndex < 0)
+            return -1;
+
+        var cell = session.Map.GetCell(group.EntryCellIndex);
+        return cell != null
+            && cell.IsReinforcementEntry
+            && cell.DeploymentOwner == group.Side
+            && cell.Supports(unit.Domain)
+            && occupancy.CanEnter(unit, group.EntryCellIndex, session.Map)
+            ? group.EntryCellIndex
+            : -1;
     }
 }

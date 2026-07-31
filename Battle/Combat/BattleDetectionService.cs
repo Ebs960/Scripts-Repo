@@ -28,8 +28,14 @@ public sealed class BattleDetectionService
             {
                 if (target.Side == observingSide || !target.IsAliveAndActive) continue;
                 if ((profile.sensorDomains & BattleDomainResolver.ToMask(target.Domain)) == 0) continue;
-                if (session.MapDistance(detector.CellIndex, target.CellIndex) <= profile.sensorRange + (target.RevealedByAttack ? 1 : 0))
-                    Reveal(observingSide, target);
+                int distance = session.MapDistance(detector.CellIndex, target.CellIndex);
+                int depthPenalty = target.DepthBand == BattleDepthBand.Deep ? 3 : target.DepthBand == BattleDepthBand.Shallow ? 1 : 0;
+                int stealth = target.Snapshot?.TacticalProfile != null ? target.Snapshot.TacticalProfile.stealth : 0;
+                int effectiveRange = profile.sensorRange - depthPenalty - stealth + (target.RevealedByAttack ? 1 : 0);
+                if (distance <= effectiveRange)
+                    Reveal(observingSide, target, target.RevealedByAttack ? BattleDetectionLevel.Identified : BattleDetectionLevel.Detected);
+                else if (distance <= effectiveRange + 2)
+                    Reveal(observingSide, target, BattleDetectionLevel.Suspected);
             }
         }
     }

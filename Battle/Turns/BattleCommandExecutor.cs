@@ -5,15 +5,20 @@ public sealed class BattleCommandExecutor
     private readonly BattleMovementService movementService;
     private readonly BattleCombatResolver combatResolver;
     private readonly BattleLineOfSight los;
-    private readonly BattleDetectionService detection = new();
+    private readonly BattleDetectionService detection;
     private readonly BattleTargetingService targeting;
 
-    public BattleCommandExecutor(BattleMovementService movementService, BattleCombatResolver combatResolver, BattleLineOfSight los)
+    public BattleCommandExecutor(
+        BattleMovementService movementService,
+        BattleCombatResolver combatResolver,
+        BattleLineOfSight los,
+        BattleDetectionService detection = null)
     {
         this.movementService = movementService;
         this.combatResolver = combatResolver;
         this.los = los;
-        targeting = new BattleTargetingService(detection);
+        this.detection = detection ?? new BattleDetectionService();
+        targeting = new BattleTargetingService(this.detection);
     }
 
     public bool Execute(BattleSession session, BattleOccupancy occupancy, BattleCommand command, out string reason)
@@ -32,8 +37,9 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
+        bool isEmbarkedAction = command is BattleDisembarkCommand;
         bool allowPostAttackMove = command is BattleMoveCommand && CanUsePostAttackMove(unit, session.ActiveSide);
-        if (!unit.CanAct(session.ActiveSide) && !allowPostAttackMove)
+        if (!unit.CanAct(session.ActiveSide) && !allowPostAttackMove && !isEmbarkedAction)
         {
             reason = "unit cannot act";
             return false;
@@ -65,6 +71,16 @@ public sealed class BattleCommandExecutor
                 return true;
             case BattleRetreatCommand retreat:
                 return ExecuteRetreat(session, occupancy, unit, retreat, out reason);
+            case BattleEmbarkCommand embark:
+                return ExecuteEmbark(session, occupancy, unit, embark, out reason);
+            case BattleDisembarkCommand disembark:
+                return ExecuteDisembark(session, occupancy, unit, disembark, out reason);
+            case BattleLaunchAircraftCommand launch:
+                return ExecuteLaunchAircraft(session, occupancy, unit, launch, out reason);
+            case BattleRecoverAircraftCommand recover:
+                return ExecuteRecoverAircraft(session, occupancy, unit, recover, out reason);
+            case BattleChangeDepthCommand changeDepth:
+                return ExecuteChangeDepth(session, unit, changeDepth, out reason);
             default:
                 reason = "unsupported command";
                 return false;
@@ -140,17 +156,10 @@ public sealed class BattleCommandExecutor
         }
 
 
-        var targetCheck = targeting.CanTarget(session, attacker, defender, attack.IsRanged);
+        var targetCheck = targeting.CanTarget(session, attacker, defender, attack.IsRanged, attack.WeaponIndex);
         if (!targetCheck.Allowed)
         {
-            reason = targetCheck.Reason;
-            return false;
-        }
-
-        int distance = session.MapDistance(attacker.CellIndex, defender.CellIndex);
-        if (!attack.IsRanged && distance > 1)
-        {
-            reason = "melee out of range";
+            reason = !attack.IsRanged && targetCheck.Reason == "target out of range" ? "melee out of range" : targetCheck.Reason;
             return false;
         }
 
@@ -182,8 +191,8 @@ public sealed class BattleCommandExecutor
             0,
             session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId);
 
-        var result = combatResolver.Resolve(context);
-        ApplyDamage(occupancy, defender, result.Damage);
+        var result = combatResolver.Resolve(context, session.Random);
+        ApplyDamage(session, occupancy, defender, result.Damage);
 
         attacker.HasActed = true;
     attacker.HasAttackedThisTurn = true;
@@ -191,13 +200,19 @@ public sealed class BattleCommandExecutor
         attacker.IsDefending = false;
         attacker.RevealedByAttack = true;
 
-        if (!defender.IsDead && !attack.IsRanged && CanCounterAttack(defender))
+        int counterDistance = session.MapDistance(defender.CellIndex, attacker.CellIndex);
+        int counterWeaponIndex = BattleTargetingService.FindWeaponIndex(defender, attacker, counterDistance);
+        var counterWeapon = BattleTargetingService.GetWeapon(defender, counterWeaponIndex);
+        var counterTargetCheck = counterWeaponIndex >= 0
+            ? targeting.CanTarget(session, defender, attacker, counterWeapon.usesRangedAttack, counterWeaponIndex)
+            : new TargetingResult(false, "no compatible counterattack weapon");
+        if (!defender.IsDead && CanCounterAttack(defender) && counterTargetCheck.Allowed)
         {
             var counterContext = new BattleCombatContext(
                 defender,
                 attacker,
-                true,
-                false,
+                !counterWeapon.usesRangedAttack,
+                counterWeapon.usesRangedAttack,
                 true,
                 defenderCell != null ? defenderCell.ElevationLevel : 1,
                 attackerCell != null ? attackerCell.ElevationLevel : 1,
@@ -208,8 +223,8 @@ public sealed class BattleCommandExecutor
                 0,
                 session.RandomSeed + session.CurrentRound + defender.UnitId + attacker.UnitId + 31);
 
-            var counter = combatResolver.Resolve(counterContext);
-            ApplyDamage(occupancy, attacker, counter.Damage);
+            var counter = combatResolver.Resolve(counterContext, session.Random);
+            ApplyDamage(session, occupancy, attacker, counter.Damage);
             defender.CounterAttackedThisActivation = true;
         }
 
@@ -223,6 +238,12 @@ public sealed class BattleCommandExecutor
         if (cell == null || !cell.Supports(unit.Domain))
         {
             reason = "invalid retreat exit";
+            return false;
+        }
+
+        if (cell.RetreatExitForSide != unit.Side)
+        {
+            reason = "not a valid retreat exit";
             return false;
         }
 
@@ -260,6 +281,205 @@ public sealed class BattleCommandExecutor
         return true;
     }
 
+    private static bool ExecuteEmbark(BattleSession session, BattleOccupancy occupancy, BattleUnitState passenger, BattleEmbarkCommand command, out string reason)
+    {
+        reason = string.Empty;
+        var transport = FindUnit(session, command.TransportUnitId);
+        if (!CanCarry(passenger, transport, out reason))
+            return false;
+        if (!AreSameOrAdjacent(session, passenger.CellIndex, transport.CellIndex))
+        {
+            reason = "transport is not adjacent";
+            return false;
+        }
+
+        occupancy.Remove(passenger);
+        passenger.IsEmbarked = true;
+        passenger.CarrierOrTransportBattleUnitId = transport.UnitId;
+        passenger.CellIndex = -1;
+        transport.EmbarkedBattleUnitIds.Add(passenger.UnitId);
+        passenger.HasActed = true;
+        passenger.CurrentActionPoints = 0;
+        passenger.CurrentMovePoints = 0;
+        return true;
+    }
+
+    private static bool ExecuteDisembark(BattleSession session, BattleOccupancy occupancy, BattleUnitState passenger, BattleDisembarkCommand command, out string reason)
+    {
+        reason = string.Empty;
+        var transport = FindUnit(session, passenger.CarrierOrTransportBattleUnitId);
+        if (transport == null || !passenger.IsEmbarked || !transport.EmbarkedBattleUnitIds.Contains(passenger.UnitId))
+        {
+            reason = "unit is not embarked";
+            return false;
+        }
+
+        var destination = session.Map.GetCell(command.DestinationCell);
+        if (destination == null || !destination.Supports(passenger.Domain))
+        {
+            reason = "invalid disembark destination";
+            return false;
+        }
+        if (!AreSameOrAdjacent(session, transport.CellIndex, command.DestinationCell))
+        {
+            reason = "disembark destination is not adjacent";
+            return false;
+        }
+        if (passenger.Domain == BattleDomain.Land && !destination.HasBeach && !destination.HasPort && !session.Map.GetCell(transport.CellIndex).SupportsLand)
+        {
+            reason = "land disembark requires a beach or port";
+            return false;
+        }
+        if (!occupancy.TryMove(passenger, command.DestinationCell, session.Map))
+        {
+            reason = "disembark destination is blocked";
+            return false;
+        }
+
+        passenger.IsEmbarked = false;
+        passenger.CarrierOrTransportBattleUnitId = -1;
+        transport.EmbarkedBattleUnitIds.Remove(passenger.UnitId);
+        passenger.HasActed = true;
+        passenger.CurrentActionPoints = 0;
+        passenger.CurrentMovePoints = 0;
+        return true;
+    }
+
+    private static bool ExecuteLaunchAircraft(BattleSession session, BattleOccupancy occupancy, BattleUnitState carrier, BattleLaunchAircraftCommand command, out string reason)
+    {
+        reason = string.Empty;
+        var aircraft = FindUnit(session, command.AircraftUnitId);
+        if (aircraft == null || !aircraft.IsEmbarked || aircraft.CarrierOrTransportBattleUnitId != carrier.UnitId)
+        {
+            reason = "aircraft is not assigned to this carrier";
+            return false;
+        }
+        if (aircraft.Domain != BattleDomain.Air && aircraft.Domain != BattleDomain.Space)
+        {
+            reason = "only aircraft or space craft can launch";
+            return false;
+        }
+        var launchCell = session.Map.GetCell(command.LaunchCell);
+        if (launchCell == null || !launchCell.Supports(aircraft.Domain) || !AreSameOrAdjacent(session, carrier.CellIndex, command.LaunchCell))
+        {
+            reason = "invalid launch cell";
+            return false;
+        }
+        if (!occupancy.TryMove(aircraft, command.LaunchCell, session.Map))
+        {
+            reason = "launch cell is blocked";
+            return false;
+        }
+
+        aircraft.IsEmbarked = false;
+        aircraft.CarrierOrTransportBattleUnitId = -1;
+        carrier.EmbarkedBattleUnitIds.Remove(aircraft.UnitId);
+        carrier.HasActed = true;
+        carrier.CurrentActionPoints = 0;
+        return true;
+    }
+
+    private static bool ExecuteRecoverAircraft(BattleSession session, BattleOccupancy occupancy, BattleUnitState aircraft, BattleRecoverAircraftCommand command, out string reason)
+    {
+        reason = string.Empty;
+        var carrier = FindUnit(session, command.CarrierUnitId);
+        if (aircraft.Domain != BattleDomain.Air && aircraft.Domain != BattleDomain.Space)
+        {
+            reason = "only aircraft or space craft can recover";
+            return false;
+        }
+        if (!CanCarry(aircraft, carrier, out reason))
+            return false;
+        if (!AreSameOrAdjacent(session, aircraft.CellIndex, carrier.CellIndex))
+        {
+            reason = "carrier is not in recovery range";
+            return false;
+        }
+
+        occupancy.Remove(aircraft);
+        aircraft.IsEmbarked = true;
+        aircraft.CarrierOrTransportBattleUnitId = carrier.UnitId;
+        aircraft.CellIndex = -1;
+        carrier.EmbarkedBattleUnitIds.Add(aircraft.UnitId);
+        aircraft.HasActed = true;
+        aircraft.CurrentActionPoints = 0;
+        aircraft.CurrentMovePoints = 0;
+        return true;
+    }
+
+    private static bool ExecuteChangeDepth(BattleSession session, BattleUnitState unit, BattleChangeDepthCommand command, out string reason)
+    {
+        reason = string.Empty;
+        if (session.Theater != BattleTheater.Underwater || unit.Domain != BattleDomain.Underwater)
+        {
+            reason = "unit cannot change underwater depth";
+            return false;
+        }
+        var cell = session.Map.GetCell(unit.CellIndex);
+        if (cell == null || !cell.SupportsUnderwater)
+        {
+            reason = "invalid underwater location";
+            return false;
+        }
+        if (command.Depth == BattleDepthBand.Surface)
+        {
+            reason = "underwater units must surface through a separate transition";
+            return false;
+        }
+        if (command.Depth == BattleDepthBand.Deep && cell.WaterDepthLevel < 2)
+        {
+            reason = "water is too shallow to dive deep";
+            return false;
+        }
+        if (unit.DepthBand == command.Depth)
+        {
+            reason = "unit is already at that depth";
+            return false;
+        }
+
+        unit.DepthBand = command.Depth;
+        unit.HasActed = true;
+        unit.CurrentActionPoints = 0;
+        unit.CurrentMovePoints = 0;
+        return true;
+    }
+
+    private static bool CanCarry(BattleUnitState passenger, BattleUnitState transport, out string reason)
+    {
+        reason = string.Empty;
+        if (passenger == null || transport == null || passenger.Side != transport.Side || transport.IsEmbarked)
+        {
+            reason = "invalid transport";
+            return false;
+        }
+        var data = transport.Snapshot?.UnitData;
+        var passengerData = passenger.Snapshot?.UnitData;
+        if (data == null || passengerData == null || !data.isTransport || !data.CanCarryUnitCategory(passengerData.unitType))
+        {
+            reason = "transport cannot carry this unit";
+            return false;
+        }
+        if (transport.EmbarkedBattleUnitIds.Count >= data.transportCapacity)
+        {
+            reason = "transport capacity is full";
+            return false;
+        }
+        return true;
+    }
+
+    private static bool AreSameOrAdjacent(BattleSession session, int fromCell, int toCell)
+    {
+        if (fromCell == toCell)
+            return true;
+        var from = session.Map.GetCell(fromCell);
+        if (from?.NeighborIndices == null)
+            return false;
+        for (int i = 0; i < from.NeighborIndices.Length; i++)
+            if (from.NeighborIndices[i] == toCell)
+                return true;
+        return false;
+    }
+
     private static BattleUnitState FindUnit(BattleSession session, int unitId)
     {
         for (int i = 0; i < session.Units.Count; i++)
@@ -284,7 +504,7 @@ public sealed class BattleCommandExecutor
 
     private static bool CanCounterAttack(BattleUnitState unit)
     {
-        return !unit.CounterAttackedThisActivation && unit.Snapshot.MeleeAttack > 0;
+        return !unit.CounterAttackedThisActivation && unit.Snapshot.Weapons.Count > 0;
     }
 
     private static bool CanUsePostAttackMove(BattleUnitState unit, BattleSide activeSide)
@@ -300,7 +520,7 @@ public sealed class BattleCommandExecutor
             && (unit.Snapshot?.TacticalProfile?.canMoveAfterAttacking ?? false);
     }
 
-    private static void ApplyDamage(BattleOccupancy occupancy, BattleUnitState target, int damage)
+    private static void ApplyDamage(BattleSession session, BattleOccupancy occupancy, BattleUnitState target, int damage)
     {
         target.CurrentHealth -= damage;
         if (target.CurrentHealth <= 0)
@@ -308,6 +528,71 @@ public sealed class BattleCommandExecutor
             target.CurrentHealth = 0;
             target.IsDead = true;
             occupancy.Remove(target);
+            ResolveCargoOnHostDestroyed(session, occupancy, target);
         }
+    }
+
+    private static void ResolveCargoOnHostDestroyed(BattleSession session, BattleOccupancy occupancy, BattleUnitState host)
+    {
+        if (host.EmbarkedBattleUnitIds.Count == 0)
+            return;
+
+        var cargoIds = new List<int>(host.EmbarkedBattleUnitIds);
+        host.EmbarkedBattleUnitIds.Clear();
+        for (int i = 0; i < cargoIds.Count; i++)
+        {
+            var cargo = FindUnit(session, cargoIds[i]);
+            if (cargo == null || cargo.IsDead)
+                continue;
+
+            cargo.IsEmbarked = false;
+            cargo.CarrierOrTransportBattleUnitId = -1;
+            bool rescuedByCarrier = TryRecoverToFriendlyCarrier(session, cargo, host.Side, host.CellIndex);
+            bool canDeploy = !rescuedByCarrier
+                && session.Map.GetCell(host.CellIndex)?.Supports(cargo.Domain) == true
+                && session.Random.NextUnitFloat() < 0.35f
+                && occupancy.TryMove(cargo, host.CellIndex, session.Map);
+
+            if (rescuedByCarrier)
+                continue;
+
+            if (canDeploy)
+            {
+                cargo.CurrentHealth = System.Math.Max(1, cargo.CurrentHealth / 2);
+                cargo.StatusEffects.Add(new BattleStatusEffect { Type = BattleStatusEffectType.Exposed, RemainingRounds = 1 });
+                cargo.HasActed = true;
+                cargo.CurrentActionPoints = 0;
+                cargo.CurrentMovePoints = 0;
+                continue;
+            }
+
+            cargo.CurrentHealth = 0;
+            cargo.IsDead = true;
+            occupancy.Remove(cargo);
+        }
+    }
+
+    private static bool TryRecoverToFriendlyCarrier(BattleSession session, BattleUnitState cargo, BattleSide side, int hostCell)
+    {
+        if (cargo.Domain != BattleDomain.Air && cargo.Domain != BattleDomain.Space)
+            return false;
+
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var carrier = session.Units[i];
+            if (carrier == null || carrier.IsDead || carrier.Side != side || carrier.IsEmbarked)
+                continue;
+            if (!AreSameOrAdjacent(session, hostCell, carrier.CellIndex))
+                continue;
+            if (!CanCarry(cargo, carrier, out _))
+                continue;
+
+            cargo.IsEmbarked = true;
+            cargo.CarrierOrTransportBattleUnitId = carrier.UnitId;
+            cargo.CellIndex = -1;
+            carrier.EmbarkedBattleUnitIds.Add(cargo.UnitId);
+            return true;
+        }
+        return false;
     }
 }

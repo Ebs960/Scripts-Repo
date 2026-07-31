@@ -1106,6 +1106,8 @@ for (int i = 0; i < maxSaveSlots; i++)
     public void PerformAutosave()
     {
         if (!enableAutosave) return;
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+            return;
         
         try
         {

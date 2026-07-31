@@ -10,6 +10,7 @@ public sealed class BattleResultApplier
             return;
 
         var byId = BuildUnitLookup(preview);
+        var deferredCargo = new List<BattleUnitOutcome>();
 
         for (int i = 0; i < result.UnitOutcomes.Count; i++)
         {
@@ -29,7 +30,27 @@ public sealed class BattleResultApplier
 
             unit.ApplyBattleHealth(outcome.FinalHealth);
 
-            TryRepositionSurvivor(preview, unit, outcome);
+            if (outcome.IsEmbarked)
+            {
+                deferredCargo.Add(outcome);
+                continue;
+            }
+
+            TryRepositionSurvivor(result, preview, unit, outcome);
+        }
+
+        for (int i = 0; i < deferredCargo.Count; i++)
+        {
+            var outcome = deferredCargo[i];
+            if (!byId.TryGetValue(outcome.CampaignRuntimeId, out var cargo) || cargo == null)
+                continue;
+            if (byId.TryGetValue(outcome.CarrierOrTransportCampaignRuntimeId, out var carrier)
+                && carrier != null
+                && carrier.currentHealth > 0
+                && carrier.TryRestoreBattleCargo(cargo))
+                continue;
+
+            TryRepositionSurvivor(result, preview, cargo, outcome);
         }
     }
 
@@ -57,21 +78,68 @@ public sealed class BattleResultApplier
         }
     }
 
-    private void TryRepositionSurvivor(EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
+    private void TryRepositionSurvivor(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
     {
-        int tile = outcome.SuggestedCampaignTile >= 0 ? outcome.SuggestedCampaignTile : unit.currentTileIndex;
         if (preview.Theater == BattleTheater.DeepSpace)
-            tile = unit.currentSpaceTileIndex >= 0 ? unit.currentSpaceTileIndex : preview.AnchorTile;
-        if (tile < 0)
-            tile = preview.AnchorTile;
-
-        placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
         {
-            PlanetIndex = preview.PlanetIndex,
-            CampaignTileIndex = tile,
-            SpaceTileIndex = preview.Theater == BattleTheater.DeepSpace ? tile : -1,
-            Layer = unit.currentLayer,
-            PreferredStackSlot = outcome.SuggestedStackSlot,
-        }, out _);
+            int spaceTile = unit.currentSpaceTileIndex >= 0 ? unit.currentSpaceTileIndex : preview.AnchorTile;
+            placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
+            {
+                PlanetIndex = preview.PlanetIndex,
+                SpaceTileIndex = spaceTile,
+                Layer = unit.currentLayer,
+                PreferredStackSlot = outcome.SuggestedStackSlot,
+            }, out _);
+            return;
+        }
+
+        foreach (int tile in GetPlacementCandidates(result, preview, unit, outcome))
+        {
+            if (placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
+            {
+                PlanetIndex = preview.PlanetIndex,
+                CampaignTileIndex = tile,
+                Layer = unit.currentLayer,
+                PreferredStackSlot = outcome.SuggestedStackSlot,
+            }, out _))
+                return;
+        }
+    }
+
+    private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
+    {
+        int startingTile = outcome.SuggestedCampaignTile >= 0 ? outcome.SuggestedCampaignTile : unit.currentTileIndex;
+        bool winner = outcome.Side == result.WinningSide;
+        int preferredTile = winner
+            ? (outcome.Side == BattleSide.Attacker ? preview.AnchorTile : startingTile)
+            : startingTile;
+
+        if (winner && outcome.Side == BattleSide.Defender)
+            preferredTile = preview.AnchorTile;
+
+        if (preferredTile >= 0)
+            yield return preferredTile;
+
+        bool mustWithdraw = !winner || outcome.Retreated;
+        if (!mustWithdraw && startingTile >= 0 && startingTile != preferredTile)
+            yield return startingTile;
+
+        var tileSystem = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
+        int retreatOrigin = startingTile >= 0 ? startingTile : preview.AnchorTile;
+        if (tileSystem == null || retreatOrigin < 0)
+            yield break;
+
+        int[] neighbors = tileSystem.GetNeighbors(retreatOrigin);
+        System.Array.Sort(neighbors);
+        for (int i = 0; i < neighbors.Length; i++)
+        {
+            int candidate = neighbors[i];
+            if (candidate == preview.AnchorTile || candidate == preferredTile)
+                continue;
+
+            var tile = tileSystem.GetTileData(candidate);
+            if (UnitLayerRules.CanUnitUseTileOnLayer(unit, tile, unit.currentLayer))
+                yield return candidate;
+        }
     }
 }

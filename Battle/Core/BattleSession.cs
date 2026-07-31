@@ -21,6 +21,7 @@ public sealed class BattleSession
     public IReadOnlyList<BattleReinforcementGroup> Reinforcements => reinforcements;
 
     public int RandomSeed { get; }
+    public BattleDeterministicRandom Random { get; }
 
     private readonly List<BattleUnitState> units;
     private readonly List<BattleReinforcementGroup> reinforcements;
@@ -72,6 +73,7 @@ public sealed class BattleSession
         StrategicAnchorTile = strategicAnchorTile;
         MaximumRounds = maxRounds;
         RandomSeed = randomSeed;
+        Random = new BattleDeterministicRandom(randomSeed);
         Map = map;
         units = unitStates;
         Objective = objective;

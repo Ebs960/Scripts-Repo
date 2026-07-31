@@ -3,7 +3,7 @@ using System.Collections.Generic;
 public sealed class BattleReinforcementGroup
 {
     public int ReinforcementGroupId;
-    public int FormationId;
+    public string FormationId;
     public BattleSide Side;
     public BattleTheater Theater;
     public int OriginCampaignTile;

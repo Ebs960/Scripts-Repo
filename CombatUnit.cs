@@ -80,6 +80,35 @@ public class CombatUnit : BaseUnit
     private const float MELEE_ENGAGEMENT_RANGE = 2.5f; // Distance to consider "in melee range"
 
     [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
+
+    [Header("Military Formation")]
+    [SerializeField] private string militaryFormationId;
+    [SerializeField] private MilitaryFormationType militaryFormationType;
+    [SerializeField] private string militaryFormationName;
+
+    public string MilitaryFormationId => militaryFormationId;
+    public MilitaryFormationType MilitaryFormationType => militaryFormationType;
+    public string MilitaryFormationName => militaryFormationName;
+
+    public string EnsureMilitaryFormationIdentity()
+    {
+        if (string.IsNullOrEmpty(militaryFormationId))
+            militaryFormationId = System.Guid.NewGuid().ToString("N");
+
+        return militaryFormationId;
+    }
+
+    public void AssignMilitaryFormation(string formationId, MilitaryFormationType formationType, string formationName = null)
+    {
+        if (string.IsNullOrEmpty(formationId))
+            return;
+
+        militaryFormationId = formationId;
+        militaryFormationType = formationType;
+        if (!string.IsNullOrEmpty(formationName))
+            militaryFormationName = formationName;
+    }
+
     [System.NonSerialized] private bool goldMaintenanceSatisfied = true;
     public bool IsGoldMaintenanceSatisfied => goldMaintenanceSatisfied;
 
@@ -2651,6 +2680,32 @@ public class CombatUnit : BaseUnit
         // Fire event for UI updates
         OnUnitLoaded.Invoke(unit);
 
+        return true;
+    }
+
+    /// <summary>Restores a tactical battle cargo relationship without requiring campaign-map adjacency.</summary>
+    public bool TryRestoreBattleCargo(CombatUnit unit)
+    {
+        if (unit == null || unit == this || data == null || unit.data == null || !data.isTransport || !data.CanCarryUnitCategory(unit.data.unitType))
+            return false;
+        if (transportedUnits.Contains(unit))
+            return true;
+        if (transportedUnits.Count >= data.transportCapacity)
+            return false;
+        if (unit.owner != owner)
+            return false;
+
+        var occupancy = TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance;
+        try { occupancy?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId()); } catch { }
+        transportedUnits.Add(unit);
+        unit.currentTileIndex = currentTileIndex;
+        unit.planetIndex = planetIndex;
+        unit.currentLayer = currentLayer;
+        unit.IsTransported = true;
+        unit.TransportingUnit = this;
+        unit.gameObject.SetActive(false);
+        unit.OnLoadedIntoTransport.Invoke(this);
+        OnUnitLoaded.Invoke(unit);
         return true;
     }
 

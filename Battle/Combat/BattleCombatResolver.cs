@@ -11,6 +11,11 @@ public sealed class BattleCombatResolver
 
     public BattleCombatResult Resolve(in BattleCombatContext ctx)
     {
+        return Resolve(ctx, new BattleDeterministicRandom(ctx.RandomSeed));
+    }
+
+    public BattleCombatResult Resolve(in BattleCombatContext ctx, BattleDeterministicRandom random)
+    {
         int attackStrength = ctx.IsRanged ? ctx.Attacker.Snapshot.RangedAttack : ctx.Attacker.Snapshot.MeleeAttack;
         int defenseStrength = ctx.Defender.Snapshot.Defense;
 
@@ -28,8 +33,8 @@ public sealed class BattleCombatResolver
 
         float flankMul = 1f + (0.05f * Mathf.Max(0, ctx.FlankingCount));
 
-        float effectiveAttack = attackStrength * highGroundAttack * flankMul;
-        float effectiveDefense = defenseStrength * highGroundDefense * coverMul * defendMul * exposedMul;
+        float effectiveAttack = attackStrength * highGroundAttack * flankMul * ctx.Attacker.CommanderAttackMultiplier;
+        float effectiveDefense = defenseStrength * highGroundDefense * coverMul * defendMul * exposedMul * ctx.Defender.CommanderDefenseMultiplier;
 
         float scale = Mathf.Max(1f, Mathf.Max(effectiveAttack, effectiveDefense));
         float normalizedAdvantage = (effectiveAttack - effectiveDefense) / scale;
@@ -38,8 +43,7 @@ public sealed class BattleCombatResolver
         float damagePct = Mathf.Lerp(ruleset.minDamagePercent, ruleset.maxDamagePercent, t);
         int damage = Mathf.RoundToInt(ctx.Defender.Snapshot.MaximumHealth * damagePct);
 
-        var rng = new System.Random(ctx.RandomSeed ^ (ctx.Attacker.UnitId * 92821) ^ (ctx.Defender.UnitId * 31337));
-        float jitter = 0.95f + ((float)rng.NextDouble() * 0.1f);
+        float jitter = 0.95f + ((random ?? new BattleDeterministicRandom(ctx.RandomSeed)).NextUnitFloat() * 0.1f);
         damage = Mathf.Max(1, Mathf.RoundToInt(damage * jitter));
 
         bool dead = ctx.Defender.CurrentHealth - damage <= 0;
