@@ -4,6 +4,8 @@ public sealed class BattleSession
 {
     public int BattleId { get; }
     public int PlanetIndex { get; }
+    public BattleTheater Theater { get; }
+    public int SpaceRegionId { get; }
     public int StrategicAnchorTile { get; }
 
     public BattlePhase Phase { get; private set; }
@@ -25,7 +27,9 @@ public sealed class BattleSession
 
     public BattleSession(
         int battleId,
+        BattleTheater theater,
         int planetIndex,
+        int spaceRegionId,
         int strategicAnchorTile,
         int maxRounds,
         int randomSeed,
@@ -35,7 +39,9 @@ public sealed class BattleSession
         List<BattleReinforcementGroup> reinforcementGroups)
     {
         BattleId = battleId;
+        Theater = theater;
         PlanetIndex = planetIndex;
+        SpaceRegionId = spaceRegionId;
         StrategicAnchorTile = strategicAnchorTile;
         MaximumRounds = maxRounds;
         RandomSeed = randomSeed;

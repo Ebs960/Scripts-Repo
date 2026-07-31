@@ -24,7 +24,7 @@ public sealed class BattleCombatResolver
             coverMul *= ruleset.softCoverDefenseMultiplier;
 
         float defendMul = ctx.DefenderIsDefending ? ruleset.defendMultiplier : 1f;
-        float exposedMul = ctx.AttackerIsExposed ? ruleset.exposedDefenseMultiplier : 1f;
+        float exposedMul = ctx.DefenderIsExposed ? ruleset.exposedDefenseMultiplier : 1f;
 
         float flankMul = 1f + (0.05f * Mathf.Max(0, ctx.FlankingCount));
 

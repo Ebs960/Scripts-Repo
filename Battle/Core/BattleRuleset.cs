@@ -49,14 +49,15 @@ public sealed class BattleRuleset : ScriptableObject
     public int maxAutoResolveCommandsPerRound = 512;
     public int maxAutoResolveTotalCommands = 4096;
 
-    public int GetTargetCellCount(int participantCount)
+    public int GetTargetCellCount(int participantCount, System.Random rng = null)
     {
+        rng ??= new System.Random(0);
         if (participantCount <= 4)
-            return Random.Range(smallMapMinCells, smallMapMaxCells + 1);
+            return rng.Next(smallMapMinCells, smallMapMaxCells + 1);
         if (participantCount <= 8)
-            return Random.Range(mediumMapMinCells, mediumMapMaxCells + 1);
+            return rng.Next(mediumMapMinCells, mediumMapMaxCells + 1);
         if (participantCount <= 14)
-            return Random.Range(largeMapMinCells, largeMapMaxCells + 1);
-        return Random.Range(hugeMapMinCells, hugeMapMaxCells + 1);
+            return rng.Next(largeMapMinCells, largeMapMaxCells + 1);
+        return rng.Next(hugeMapMinCells, hugeMapMaxCells + 1);
     }
 }

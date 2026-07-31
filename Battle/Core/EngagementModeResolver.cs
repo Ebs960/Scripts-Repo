@@ -14,9 +14,7 @@ public static class EngagementModeResolver
         if (!AircraftMissionManager.IsHostile(atkCombat.owner, defCombat.owner))
             return EngagementMode.Unsupported;
 
-        // Every ordinary hostile CombatUnit engagement enters the same framework.
-        // Map construction may still reject corrupt or genuinely unsupported data,
-        // at which point callers retain their explicit migration fallback.
-        return EngagementMode.TacticalBattle;
+        return BattleTheaterResolver.ResolveBattleTheater(atkCombat, defCombat).IsValid
+            ? EngagementMode.TacticalBattle : EngagementMode.Unsupported;
     }
 }

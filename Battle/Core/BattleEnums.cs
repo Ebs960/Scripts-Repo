@@ -17,6 +17,13 @@ public enum BattleSide
     Defender,
 }
 
+public enum BattleTheater
+{
+    PlanetaryJoint,
+    Underwater,
+    DeepSpace,
+}
+
 public enum BattleResolutionType
 {
     Elimination,

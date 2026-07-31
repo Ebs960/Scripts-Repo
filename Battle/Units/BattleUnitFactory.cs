@@ -20,6 +20,20 @@ public static class BattleUnitFactory
         return result;
     }
 
+    public static void AppendReserves(List<BattleUnitState> states, List<BattleReinforcementGroup> groups)
+    {
+        int nextId = states.Count + 1;
+        for (int g = 0; g < groups.Count; g++)
+        for (int i = 0; i < groups[g].Units.Count; i++)
+        {
+            var state = Create(nextId++, groups[g].Units[i], groups[g].Side);
+            state.IsReserve = true;
+            state.CellIndex = -1;
+            state.ReinforcementGroupId = groups[g].ReinforcementGroupId;
+            states.Add(state);
+        }
+    }
+
     private static BattleUnitState Create(int id, BattleUnitSnapshot snap, BattleSide side)
     {
         return new BattleUnitState

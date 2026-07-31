@@ -9,8 +9,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     [Header("Config")]
     [SerializeField] private BattleRuleset ruleset;
 
-    public BattleSession ActiveBattle { get; private set; }
-    public bool IsBattleActive => ActiveBattle != null;
+    public BattleState ActiveBattleState { get; private set; }
+    public BattleSession ActiveBattle => ActiveBattleState?.Session;
+    public bool IsBattleActive => ActiveBattleState != null;
 
     public string SaveKey => "BattleManager";
 
@@ -19,6 +20,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     private BattleResultApplier resultApplier = new();
     private EngagementPreview pendingPreview;
     private int nextBattleId = 1;
+    private readonly BattleCommitmentRegistry commitments = new();
 
     public event Action<EngagementPreview> BattlePreviewOpened;
     public event Action BattlePreviewClosed;
@@ -105,15 +107,15 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return;
 
         var state = BuildBattleState(preview);
-        ActiveBattle = state.Session;
+        if (state == null) return;
+        ActiveBattleState = state;
 
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleDeployment);
         BattleStarted?.Invoke(ActiveBattle);
         RaiseBattleStarted(ActiveBattle);
 
-        // MVP: manual mode uses headless simulation until full tactical presentation is connected.
-        var result = SimulateBattle(state, wasAutoResolved: false);
-        FinishActiveBattle(result);
+        state.TurnController.BeginBattle(state.Session);
+        // Manual authority intentionally stops in deployment until ConfirmDeployment.
     }
 
     public BattleResult AutoResolve(EngagementPreview preview)
@@ -122,7 +124,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return new BattleResult { ResolutionType = BattleResolutionType.Invalid, WasAutoResolved = true };
 
         var state = BuildBattleState(preview);
-        ActiveBattle = state.Session;
+        if (state == null) return new BattleResult { ResolutionType = BattleResolutionType.Invalid, WasAutoResolved = true };
+        ActiveBattleState = state;
 
         var result = SimulateBattle(state, wasAutoResolved: true);
         FinishActiveBattle(result);
@@ -142,7 +145,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
         finally
         {
-            ActiveBattle = null;
+            commitments.ReleaseBattle(result != null ? result.BattleId : ActiveBattle.BattleId);
+            ActiveBattleState = null;
             pendingPreview = null;
             GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
             BattlePreviewClosed?.Invoke();
@@ -160,9 +164,35 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         RaiseBattlePreviewClosed();
     }
 
+    public bool ConfirmDeployment(out string reason)
+    {
+        reason = string.Empty;
+        if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment) { reason = "no battle awaiting deployment"; return false; }
+        ActiveBattleState.TurnController.BeginRound(ActiveBattle);
+        GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleActive);
+        return true;
+    }
+
+    public bool TrySubmitPlayerCommand(BattleCommand command, out string reason)
+    {
+        if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
+        { reason = "battle is not accepting commands"; return false; }
+        bool ok = ActiveBattleState.CommandExecutor.Execute(ActiveBattle, ActiveBattleState.Occupancy, command, out reason);
+        if (ok) ActiveBattleState.ActionLog.Add(BattleCommandLog.Format(ActiveBattle, command));
+        return ok;
+    }
+
+    public void EndPlayerSideTurn() { if (ActiveBattleState != null) ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle); }
+    public void RunAISideTurn()
+    {
+        if (ActiveBattleState == null) return;
+        ActiveBattleState.AiController.ExecuteSide(ActiveBattle, ActiveBattleState.CommandExecutor, ActiveBattleState.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out _);
+    }
+
     private BattleState BuildBattleState(EngagementPreview preview)
     {
         var units = BattleUnitFactory.CreateStates(preview.AttackerUnits, preview.DefenderUnits);
+        BattleUnitFactory.AppendReserves(units, preview.Reinforcements);
         var occupancy = new BattleOccupancy();
 
         AutoDeployUnits(preview.Map, units, occupancy, BattleSide.Attacker, ruleset.maxInitialUnitsPerSide);
@@ -170,7 +200,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         var session = new BattleSession(
             nextBattleId++,
+            preview.Theater,
             preview.PlanetIndex,
+            preview.SpaceRegionId,
             preview.AnchorTile,
             ruleset.maxRounds,
             preview.RandomSeed,
@@ -178,6 +210,13 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             units,
             preview.Objective,
             preview.Reinforcements);
+
+        for (int i = 0; i < units.Count; i++)
+        {
+            int runtimeId = units[i].Snapshot.CampaignRuntimeId;
+            if (!commitments.TryCommit(new BattleCommitment { CampaignRuntimeId = runtimeId, BattleId = session.BattleId, Theater = preview.Theater }))
+            { commitments.ReleaseBattle(session.BattleId); return null; }
+        }
 
         var movementService = new BattleMovementService(new BattlePathfinder(ruleset));
         var resolver = new BattleCombatResolver(ruleset);
@@ -228,7 +267,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (totalCommands > ruleset.maxAutoResolveTotalCommands)
                 return BuildResult(session, BattleSide.Defender, true, BattleResolutionType.Invalid);
 
-            reinforcements.DeployRoundReinforcements(session, session.CurrentRound + 1);
+            reinforcements.DeployRoundReinforcements(session, state.Occupancy, session.CurrentRound + 1);
 
             if (!turns.EndRoundAndAdvance(session))
                 return BuildResult(session, BattleSide.Defender, wasAutoResolved, BattleResolutionType.DefenderHeld);
@@ -245,7 +284,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < session.Units.Count; i++)
         {
             var u = session.Units[i];
-            if (!u.IsAliveAndActive)
+            if (u == null || u.IsDead || u.HasRetreated || u.CurrentHealth <= 0)
                 continue;
 
             if (u.Side == BattleSide.Attacker)
@@ -332,7 +371,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < units.Count && deployed < maxInitial; i++)
         {
             var u = units[i];
-            if (u.Side != side)
+            if (u.Side != side || u.IsReserve)
                 continue;
 
             int slot = FindFreeDeploymentCell(map, occupancy, side, u);
@@ -379,8 +418,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public void RestoreStateJson(string json)
     {
-        ActiveBattle = null;
+        ActiveBattleState = null;
         pendingPreview = null;
+        commitments.Clear();
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
     }
 

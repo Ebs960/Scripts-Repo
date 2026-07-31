@@ -12,6 +12,11 @@ public sealed class EngagementPreview
     public CombatUnit Defender;
 
     public EngagementMode Mode;
+    public BattleTheater Theater;
+    public int SpaceRegionId = -1;
+    public bool AllowsManualBattle;
+    public bool AllowsRetreat;
+    public bool AllowsCancel;
     public int RandomSeed;
 
     public readonly List<BattleUnitSnapshot> AttackerUnits = new();
