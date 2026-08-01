@@ -25,16 +25,20 @@ public sealed class BattleAIController
                 if (unit == null || !unit.CanAct(session.ActiveSide))
                     continue;
 
-                var command = evaluator.PickBestCommand(session, unit, occupancy, detection);
-                if (command == null)
-                    continue;
-
-                if (executor.Execute(session, occupancy, command, out _))
+                // Candidates are ordered by tactical value. If the preferred
+                // action becomes illegal (LOS, occupancy, ammo, detection), try
+                // the next legal command instead of abandoning the activation.
+                var candidates = evaluator.BuildCandidates(session, unit, occupancy, detection);
+                for (int c = 0; c < candidates.Count; c++)
                 {
+                    var command = candidates[c].Command;
+                    if (!executor.Execute(session, occupancy, command, out _))
+                        continue;
                     onExecuted?.Invoke(command);
                     any = true;
                     executedThisPass = true;
                     commandsExecuted++;
+                    break;
                 }
             }
 

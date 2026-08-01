@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 public sealed class BattleCommandExecutor
 {
@@ -80,7 +81,7 @@ public sealed class BattleCommandExecutor
             case BattleRecoverAircraftCommand recover:
                 return ExecuteRecoverAircraft(session, occupancy, unit, recover, out reason);
             case BattleChangeDepthCommand changeDepth:
-                return ExecuteChangeDepth(session, unit, changeDepth, out reason);
+                return ExecuteChangeDepth(session, occupancy, unit, changeDepth, out reason);
             default:
                 reason = "unsupported command";
                 return false;
@@ -163,7 +164,10 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
-        if (attack.IsRanged)
+        var selectedWeapon = BattleTargetingService.GetWeapon(attacker, attack.WeaponIndex);
+        if (!IsWeaponReady(attacker, attack.WeaponIndex, out reason))
+            return false;
+        if (attack.IsRanged && !(selectedWeapon?.usesIndirectFire ?? false))
         {
             if (!los.HasLineOfSight(session, attacker, defender, out var losReason))
             {
@@ -189,7 +193,8 @@ public sealed class BattleCommandExecutor
             defender.IsDefending,
             HasExposed(defender),
             0,
-            session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId);
+            session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId,
+            selectedWeapon);
 
         var result = combatResolver.Resolve(context, session.Random);
         ApplyDamage(session, occupancy, defender, result.Damage);
@@ -199,6 +204,7 @@ public sealed class BattleCommandExecutor
         attacker.CurrentActionPoints = 0;
         attacker.IsDefending = false;
         attacker.RevealedByAttack = true;
+        ConsumeWeapon(attacker, attack.WeaponIndex, selectedWeapon);
 
         int counterDistance = session.MapDistance(defender.CellIndex, attacker.CellIndex);
         int counterWeaponIndex = BattleTargetingService.FindWeaponIndex(defender, attacker, counterDistance);
@@ -221,11 +227,13 @@ public sealed class BattleCommandExecutor
                 attacker.IsDefending,
                 HasExposed(attacker),
                 0,
-                session.RandomSeed + session.CurrentRound + defender.UnitId + attacker.UnitId + 31);
+                session.RandomSeed + session.CurrentRound + defender.UnitId + attacker.UnitId + 31,
+                counterWeapon);
 
             var counter = combatResolver.Resolve(counterContext, session.Random);
             ApplyDamage(session, occupancy, attacker, counter.Damage);
             defender.CounterAttackedThisActivation = true;
+            ConsumeWeapon(defender, counterWeaponIndex, counterWeapon);
         }
 
         return true;
@@ -407,7 +415,7 @@ public sealed class BattleCommandExecutor
         return true;
     }
 
-    private static bool ExecuteChangeDepth(BattleSession session, BattleUnitState unit, BattleChangeDepthCommand command, out string reason)
+    private static bool ExecuteChangeDepth(BattleSession session, BattleOccupancy occupancy, BattleUnitState unit, BattleChangeDepthCommand command, out string reason)
     {
         reason = string.Empty;
         if (session.Theater != BattleTheater.Underwater || unit.Domain != BattleDomain.Underwater)
@@ -437,7 +445,28 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
+        int oldBand = unit.OccupancyBand;
+        int newBand = command.Depth == BattleDepthBand.Deep ? 2 : 1;
+        if (occupancy.IsOccupied(unit.CellIndex, unit.Domain, newBand))
+        {
+            reason = "requested depth is occupied";
+            return false;
+        }
+
+        int cellIndex = unit.CellIndex;
+        occupancy.Remove(unit);
         unit.DepthBand = command.Depth;
+        unit.OccupancyBand = newBand;
+        if (!occupancy.TryMove(unit, cellIndex, session.Map))
+        {
+            // This should only be reachable if map state changed between the
+            // validation and move. Restore the previous depth atomically.
+            unit.OccupancyBand = oldBand;
+            unit.DepthBand = oldBand >= 2 ? BattleDepthBand.Deep : BattleDepthBand.Shallow;
+            occupancy.TryMove(unit, cellIndex, session.Map);
+            reason = "unable to change depth";
+            return false;
+        }
         unit.HasActed = true;
         unit.CurrentActionPoints = 0;
         unit.CurrentMovePoints = 0;
@@ -504,7 +533,28 @@ public sealed class BattleCommandExecutor
 
     private static bool CanCounterAttack(BattleUnitState unit)
     {
-        return !unit.CounterAttackedThisActivation && unit.Snapshot.Weapons.Count > 0;
+        if (unit.CounterAttackedThisActivation || unit.Snapshot.Weapons.Count == 0)
+            return false;
+        for (int i = 0; i < unit.Snapshot.Weapons.Count; i++)
+            if (IsWeaponReady(unit, i, out _)) return true;
+        return false;
+    }
+
+    private static bool IsWeaponReady(BattleUnitState unit, int index, out string reason)
+    {
+        reason = string.Empty;
+        if (unit == null || index < 0 || index >= unit.WeaponAmmo.Count || index >= unit.WeaponCooldowns.Count)
+        { reason = "weapon state unavailable"; return false; }
+        if (unit.WeaponAmmo[index] == 0) { reason = "weapon is out of ammunition"; return false; }
+        if (unit.WeaponCooldowns[index] > 0) { reason = "weapon is cooling down"; return false; }
+        return true;
+    }
+
+    private static void ConsumeWeapon(BattleUnitState unit, int index, TacticalWeaponProfile weapon)
+    {
+        if (unit == null || index < 0 || index >= unit.WeaponAmmo.Count) return;
+        if (unit.WeaponAmmo[index] > 0) unit.WeaponAmmo[index]--;
+        unit.WeaponCooldowns[index] = weapon != null ? Mathf.Max(0, weapon.cooldownRounds) : 0;
     }
 
     private static bool CanUsePostAttackMove(BattleUnitState unit, BattleSide activeSide)
@@ -527,12 +577,16 @@ public sealed class BattleCommandExecutor
         {
             target.CurrentHealth = 0;
             target.IsDead = true;
+            // Preserve the host's battlefield position before occupancy.Remove
+            // resets CellIndex. Cargo survival and carrier recovery are resolved
+            // from the destruction location, not from the sentinel cell -1.
+            int destroyedAtCell = target.CellIndex;
             occupancy.Remove(target);
-            ResolveCargoOnHostDestroyed(session, occupancy, target);
+            ResolveCargoOnHostDestroyed(session, occupancy, target, destroyedAtCell);
         }
     }
 
-    private static void ResolveCargoOnHostDestroyed(BattleSession session, BattleOccupancy occupancy, BattleUnitState host)
+    private static void ResolveCargoOnHostDestroyed(BattleSession session, BattleOccupancy occupancy, BattleUnitState host, int destroyedAtCell)
     {
         if (host.EmbarkedBattleUnitIds.Count == 0)
             return;
@@ -547,11 +601,11 @@ public sealed class BattleCommandExecutor
 
             cargo.IsEmbarked = false;
             cargo.CarrierOrTransportBattleUnitId = -1;
-            bool rescuedByCarrier = TryRecoverToFriendlyCarrier(session, cargo, host.Side, host.CellIndex);
+            bool rescuedByCarrier = TryRecoverToFriendlyCarrier(session, cargo, host.Side, destroyedAtCell);
             bool canDeploy = !rescuedByCarrier
-                && session.Map.GetCell(host.CellIndex)?.Supports(cargo.Domain) == true
+                && session.Map.GetCell(destroyedAtCell)?.Supports(cargo.Domain) == true
                 && session.Random.NextUnitFloat() < 0.35f
-                && occupancy.TryMove(cargo, host.CellIndex, session.Map);
+                && occupancy.TryMove(cargo, destroyedAtCell, session.Map);
 
             if (rescuedByCarrier)
                 continue;

@@ -17,6 +17,8 @@ public sealed class BattleCombatResolver
     public BattleCombatResult Resolve(in BattleCombatContext ctx, BattleDeterministicRandom random)
     {
         int attackStrength = ctx.IsRanged ? ctx.Attacker.Snapshot.RangedAttack : ctx.Attacker.Snapshot.MeleeAttack;
+        attackStrength = Mathf.Max(0, Mathf.RoundToInt((attackStrength + GetDomainWeaponBonus(ctx.Weapon, ctx.Defender.Domain))
+            * (ctx.Weapon != null ? Mathf.Max(0.01f, ctx.Weapon.attackMultiplier) : 1f)));
         int defenseStrength = ctx.Defender.Snapshot.Defense;
 
         float highGroundAttack = ctx.AttackerElevation > ctx.DefenderElevation ? ruleset.highGroundAttackMultiplier : 1f;
@@ -48,5 +50,21 @@ public sealed class BattleCombatResolver
 
         bool dead = ctx.Defender.CurrentHealth - damage <= 0;
         return new BattleCombatResult(damage, dead, effectiveAttack, effectiveDefense);
+    }
+
+    private static float GetDomainWeaponBonus(TacticalWeaponProfile weapon, BattleDomain target)
+    {
+        var equipment = weapon?.equipment;
+        if (equipment == null) return 0f;
+        float bonus = equipment.attackBonus + (weapon.usesRangedAttack ? equipment.rangedAttackBonus : equipment.meleeAttackBonus);
+        bonus += target switch
+        {
+            BattleDomain.Underwater => equipment.underwaterAttackBonus,
+            BattleDomain.Air => equipment.airAttackBonus,
+            BattleDomain.Orbit => equipment.spaceAttackBonus,
+            BattleDomain.Space => equipment.spaceAttackBonus,
+            _ => equipment.groundAttackBonus,
+        };
+        return bonus;
     }
 }

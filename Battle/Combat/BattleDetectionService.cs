@@ -19,24 +19,28 @@ public sealed class BattleDetectionService
 
     public void Update(BattleSession session, BattleSide observingSide)
     {
-        foreach (var detector in session.Units)
+        foreach (var target in session.Units)
         {
-            if (detector.Side != observingSide || !detector.IsAliveAndActive) continue;
-            var profile = detector.Snapshot?.TacticalProfile;
-            if (profile == null || profile.sensorRange <= 0) continue;
-            foreach (var target in session.Units)
+            if (target.Side == observingSide || !target.IsAliveAndActive) continue;
+            BattleDetectionLevel best = BattleDetectionLevel.Undetected;
+            foreach (var detector in session.Units)
             {
-                if (target.Side == observingSide || !target.IsAliveAndActive) continue;
+                if (detector.Side != observingSide || !detector.IsAliveAndActive) continue;
+                var profile = detector.Snapshot?.TacticalProfile;
+                if (profile == null || profile.sensorRange <= 0) continue;
                 if ((profile.sensorDomains & BattleDomainResolver.ToMask(target.Domain)) == 0) continue;
                 int distance = session.MapDistance(detector.CellIndex, target.CellIndex);
                 int depthPenalty = target.DepthBand == BattleDepthBand.Deep ? 3 : target.DepthBand == BattleDepthBand.Shallow ? 1 : 0;
                 int stealth = target.Snapshot?.TacticalProfile != null ? target.Snapshot.TacticalProfile.stealth : 0;
                 int effectiveRange = profile.sensorRange - depthPenalty - stealth + (target.RevealedByAttack ? 1 : 0);
                 if (distance <= effectiveRange)
-                    Reveal(observingSide, target, target.RevealedByAttack ? BattleDetectionLevel.Identified : BattleDetectionLevel.Detected);
+                    best = target.RevealedByAttack ? BattleDetectionLevel.Identified : BattleDetectionLevel.Detected;
                 else if (distance <= effectiveRange + 2)
-                    Reveal(observingSide, target, BattleDetectionLevel.Suspected);
+                    best = best == BattleDetectionLevel.Undetected ? BattleDetectionLevel.Suspected : best;
             }
+            var key = (observingSide, target.UnitId);
+            if (best == BattleDetectionLevel.Undetected) levels.Remove(key);
+            else levels[key] = best;
         }
     }
 }

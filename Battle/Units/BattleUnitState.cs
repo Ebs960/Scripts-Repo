@@ -28,6 +28,8 @@ public sealed class BattleUnitState
     public bool IsEmbarked;
     public int CarrierOrTransportBattleUnitId = -1;
     public readonly List<int> EmbarkedBattleUnitIds = new();
+    public readonly List<int> WeaponAmmo = new();
+    public readonly List<int> WeaponCooldowns = new();
     public int FuelOrEndurance = -1;
     public BattleDepthBand DepthBand;
     public float CommanderAttackMultiplier = 1f;

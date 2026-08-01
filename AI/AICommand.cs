@@ -99,10 +99,6 @@ public class AIAttackCommand : AICommand
                     var preview = manager.RequestEngagement(cu, ct);
                     if (preview != null && preview.IsValid)
                     {
-                        bool attackerPlayer = cu.owner != null && cu.owner.isPlayerControlled;
-                        bool defenderPlayer = ct.owner != null && ct.owner.isPlayerControlled;
-                        if (!attackerPlayer && !defenderPlayer)
-                            manager.AutoResolve(preview);
                         return;
                     }
                 }
