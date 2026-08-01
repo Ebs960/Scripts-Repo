@@ -8,6 +8,10 @@ public sealed class TacticalWeaponProfile
     public int minimumRange;
     public int maximumRange = 1;
     public bool usesRangedAttack;
+    [Min(0.01f)] public float attackMultiplier = 1f;
+    public bool usesIndirectFire;
+    [Tooltip("-1 means unlimited tactical ammunition.")] public int ammunition = -1;
+    [Min(0)] public int cooldownRounds;
 }
 
 [CreateAssetMenu(menuName = "Data/Tactical Unit Profile")]

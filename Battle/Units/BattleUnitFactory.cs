@@ -36,7 +36,7 @@ public static class BattleUnitFactory
 
     private static BattleUnitState Create(int id, BattleUnitSnapshot snap, BattleSide side)
     {
-        return new BattleUnitState
+        var state = new BattleUnitState
         {
             UnitId = id,
             Snapshot = snap,
@@ -53,6 +53,13 @@ public static class BattleUnitFactory
             HasRetreated = false,
             IsDead = snap.StartingHealth <= 0,
             DepthBand = snap.Domain == BattleDomain.Underwater ? BattleDepthBand.Shallow : BattleDepthBand.Surface,
+            OccupancyBand = snap.Domain == BattleDomain.Underwater ? 1 : 0,
         };
+        for (int i = 0; i < snap.Weapons.Count; i++)
+        {
+            state.WeaponAmmo.Add(snap.Weapons[i] != null ? snap.Weapons[i].ammunition : -1);
+            state.WeaponCooldowns.Add(0);
+        }
+        return state;
     }
 }

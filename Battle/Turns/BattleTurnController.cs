@@ -86,6 +86,9 @@ public sealed class BattleTurnController
             u.CurrentMovePoints = u.Snapshot.TacticalMovePoints;
             u.CurrentActionPoints = u.Snapshot.TacticalActionPoints;
             u.CounterAttackedThisActivation = false;
+            u.RevealedByAttack = false;
+            for (int weapon = 0; weapon < u.WeaponCooldowns.Count; weapon++)
+                if (u.WeaponCooldowns[weapon] > 0) u.WeaponCooldowns[weapon]--;
         }
     }
 }

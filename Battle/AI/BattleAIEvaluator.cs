@@ -4,10 +4,52 @@ public sealed class BattleAIEvaluator
 {
     public BattleCommand PickBestCommand(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
     {
+        var candidates = BuildCandidates(session, unit, occupancy, detection);
+        return candidates.Count > 0 ? candidates[0].Command : null;
+    }
+
+    public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
+    {
         if (session == null || unit == null || !unit.CanAct(session.ActiveSide))
-            return null;
+            return new List<BattleAICandidate>();
 
         var candidates = new List<BattleAICandidate>(16);
+
+        // Damaged units prefer a real friendly edge exit when one is adjacent.
+        if (unit.CurrentHealth * 4 <= unit.Snapshot.MaximumHealth)
+        {
+            var current = session.Map.GetCell(unit.CellIndex);
+            if (current?.NeighborIndices != null)
+                for (int i = 0; i < current.NeighborIndices.Length; i++)
+                {
+                    var exit = session.Map.GetCell(current.NeighborIndices[i]);
+                    if (exit?.RetreatExitForSide != unit.Side || !exit.Supports(unit.Domain))
+                        continue;
+                    candidates.Add(new BattleAICandidate(new BattleRetreatCommand
+                    {
+                        UnitId = unit.UnitId,
+                        CommandType = BattleCommandType.Retreat,
+                        ExitCell = exit.BattleIndex,
+                    }, 40f));
+                }
+        }
+
+        // Submarines use the depth layer tactically: dive when exposed and
+        // surface to shallow water when deep weapons have no detected target.
+        if (session.Theater == BattleTheater.Underwater && unit.Domain == BattleDomain.Underwater)
+        {
+            var current = session.Map.GetCell(unit.CellIndex);
+            if (unit.DepthBand == BattleDepthBand.Shallow && current != null && current.WaterDepthLevel >= 2)
+                candidates.Add(new BattleAICandidate(new BattleChangeDepthCommand
+                {
+                    UnitId = unit.UnitId, CommandType = BattleCommandType.ChangeDepth, Depth = BattleDepthBand.Deep,
+                }, unit.RevealedByAttack ? 18f : 3f));
+            else if (unit.DepthBand == BattleDepthBand.Deep)
+                candidates.Add(new BattleAICandidate(new BattleChangeDepthCommand
+                {
+                    UnitId = unit.UnitId, CommandType = BattleCommandType.ChangeDepth, Depth = BattleDepthBand.Shallow,
+                }, 2f));
+        }
 
         // Attack candidates first
         for (int i = 0; i < session.Units.Count; i++)
@@ -91,20 +133,21 @@ public sealed class BattleAIEvaluator
             }
         }
 
-        // Defend fallback
+        // Wait preserves a delayed activation; defend remains the guaranteed
+        // legal fallback if every theater-specific command fails.
+        candidates.Add(new BattleAICandidate(new BattleWaitCommand
+        {
+            UnitId = unit.UnitId,
+            CommandType = BattleCommandType.Wait,
+        }, 2f));
+
         candidates.Add(new BattleAICandidate(new BattleDefendCommand
         {
             UnitId = unit.UnitId,
             CommandType = BattleCommandType.Defend,
         }, 1f));
 
-        BattleAICandidate best = candidates[0];
-        for (int i = 1; i < candidates.Count; i++)
-        {
-            if (candidates[i].Score > best.Score)
-                best = candidates[i];
-        }
-
-        return best.Command;
+        candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
+        return candidates;
     }
 }

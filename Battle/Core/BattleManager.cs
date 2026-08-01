@@ -29,6 +29,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     private readonly PreBattleRetreatService preBattleRetreat = new();
     private EngagementPreview pendingPreview;
     private BattleResult pendingResult;
+    private bool resolvingAiOnlyBattle;
     private int nextBattleId = 1;
     private readonly BattleCommitmentRegistry commitments = new();
 
@@ -73,7 +74,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public EngagementPreview RequestEngagement(CombatUnit attacker, CombatUnit defender)
     {
-        if (IsBattleActive || pendingResult != null)
+        if (IsBattleActive || pendingPreview != null || pendingResult != null)
         {
             return new EngagementPreview
             {
@@ -111,6 +112,27 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
 
         pendingPreview = preview;
+
+        // Battles with no human participant are campaign simulation. Resolve
+        // them here so every attack entry point gets identical behaviour and
+        // no preview, deployment screen, or Continue prompt can block the AI.
+        if (!IsPlayerInvolved(preview))
+        {
+            preview.AllowsManualBattle = false;
+            preview.AllowsRetreat = false;
+            preview.AllowsCancel = false;
+            resolvingAiOnlyBattle = true;
+            try
+            {
+                AutoResolve(preview);
+            }
+            finally
+            {
+                resolvingAiOnlyBattle = false;
+            }
+            return preview;
+        }
+
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattlePreview);
         BattlePreviewOpened?.Invoke(preview);
         RaiseBattlePreviewOpened(preview);
@@ -119,14 +141,22 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public void BeginManualBattle(EngagementPreview preview)
     {
-        if (preview == null || !preview.IsValid)
+        if (preview == null || !preview.IsValid || IsBattleActive || pendingResult != null)
+            return;
+
+        // A preview is a reservation for one engagement.  Do not allow a stale UI
+        // (or another caller) to start a different engagement over that reservation.
+        if (!ReferenceEquals(preview, pendingPreview))
             return;
 
         var state = BuildBattleState(preview);
         if (state == null) return;
         ActiveBattleState = state;
+        pendingPreview = preview;
 
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleDeployment);
+        BattlePreviewClosed?.Invoke();
+        RaiseBattlePreviewClosed();
         BattleStarted?.Invoke(ActiveBattle);
         RaiseBattleStarted(ActiveBattle);
 
@@ -203,7 +233,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public BattleResult AutoResolve(EngagementPreview preview)
     {
-        if (preview == null || !preview.IsValid)
+        if (preview == null || !preview.IsValid || IsBattleActive || pendingResult != null
+            || !ReferenceEquals(preview, pendingPreview))
             return new BattleResult { ResolutionType = BattleResolutionType.Invalid, WasAutoResolved = true };
 
         var state = BuildBattleState(preview);
@@ -232,9 +263,12 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             commitments.ReleaseBattle(result != null ? result.BattleId : ActiveBattle.BattleId);
             ActiveBattleState = null;
             pendingPreview = null;
-            pendingResult = result;
-            GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleResult);
+            pendingResult = resolvingAiOnlyBattle ? null : result;
+            GameInteractionStateService.GetOrCreate().SetMode(
+                resolvingAiOnlyBattle ? GameInteractionMode.Campaign : GameInteractionMode.BattleResult);
             BattlePreviewClosed?.Invoke();
+            if (resolvingAiOnlyBattle)
+                RaiseBattleClosed();
         }
     }
 
@@ -250,9 +284,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public void CancelPreview()
     {
+        // The preview remains the campaign context used to apply an active
+        // battle's result.  Clearing it mid-battle corrupts ownership and
+        // placement decisions, so Cancel is strictly a pre-battle operation.
+        if (IsBattleActive)
+            return;
+
         pendingPreview = null;
-        if (!IsBattleActive)
-            GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
+        GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.Campaign);
 
         BattlePreviewClosed?.Invoke();
         RaiseBattlePreviewClosed();
@@ -266,6 +305,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleActive);
         ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Attacker);
         ActiveBattleState.DetectionService.Update(ActiveBattle, BattleSide.Defender);
+        AdvanceManualFlow();
         NotifyBattleStateChanged();
         return true;
     }
@@ -305,6 +345,44 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         return result;
     }
 
+    public BattleUnitState GetUnitAtCell(int cellIndex)
+    {
+        if (ActiveBattle == null)
+            return null;
+        // Prefer the active side so stacked air/surface/underwater layers remain
+        // straightforward to select from a single tactical cell.
+        for (int pass = 0; pass < 2; pass++)
+            for (int i = 0; i < ActiveBattle.Units.Count; i++)
+            {
+                var unit = ActiveBattle.Units[i];
+                if (unit == null || !unit.IsAliveAndActive || unit.CellIndex != cellIndex)
+                    continue;
+                if (pass == 0 && unit.Side != ActiveBattle.ActiveSide)
+                    continue;
+                return unit;
+            }
+        return null;
+    }
+
+    public bool TryDeployUnit(int unitId, int destinationCell, out string reason)
+    {
+        reason = string.Empty;
+        if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
+        { reason = "battle is not in deployment"; return false; }
+        var unit = FindUnit(unitId);
+        var cell = ActiveBattle.Map.GetCell(destinationCell);
+        if (unit == null || unit.IsReserve || unit.IsEmbarked || unit.Side != BattleSide.Attacker && unit.Side != BattleSide.Defender)
+        { reason = "unit is unavailable for deployment"; return false; }
+        if (!IsHumanControlledSide(unit.Side))
+        { reason = "cannot deploy an AI-controlled unit"; return false; }
+        if (cell == null || cell.DeploymentOwner != unit.Side || !cell.Supports(unit.Domain))
+        { reason = "cell is outside this side's deployment zone"; return false; }
+        if (!ActiveBattleState.Occupancy.TryMove(unit, destinationCell, ActiveBattle.Map))
+        { reason = "deployment cell is occupied"; return false; }
+        NotifyBattleStateChanged();
+        return true;
+    }
+
     public bool TryGetMovePath(int unitId, int destination, out List<int> path)
     {
         path = null;
@@ -340,7 +418,16 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             reason = "no compatible weapon";
             return false;
         }
+        return TryAttackUnitWithWeapon(unitId, targetUnitId, weaponIndex, out reason);
+    }
+
+    public bool TryAttackUnitWithWeapon(int unitId, int targetUnitId, int weaponIndex, out string reason)
+    {
+        var unit = FindUnit(unitId);
+        var target = FindUnit(targetUnitId);
         var weapon = BattleTargetingService.GetWeapon(unit, weaponIndex);
+        if (unit == null || target == null || weapon == null)
+        { reason = "weapon or target not found"; return false; }
         return TrySubmitPlayerCommand(new BattleAttackCommand
         {
             UnitId = unitId,
@@ -428,6 +515,11 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     {
         if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
         { reason = "battle is not accepting commands"; return false; }
+        if (!IsHumanControlledSide(ActiveBattle.ActiveSide))
+        { reason = "active side is AI-controlled"; return false; }
+        var commandedUnit = command != null ? FindUnit(command.UnitId) : null;
+        if (commandedUnit == null || commandedUnit.Side != ActiveBattle.ActiveSide)
+        { reason = "unit is not controlled by the active side"; return false; }
         bool ok = ActiveBattleState.CommandExecutor.Execute(ActiveBattle, ActiveBattleState.Occupancy, command, out reason);
         if (ok)
         {
@@ -497,6 +589,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         return source != null && source.owner != null && source.owner.isPlayerControlled;
     }
 
+    private static bool IsPlayerInvolved(EngagementPreview preview)
+    {
+        if (preview == null)
+            return false;
+        return (preview.Attacker != null && preview.Attacker.owner != null && preview.Attacker.owner.isPlayerControlled)
+            || (preview.Defender != null && preview.Defender.owner != null && preview.Defender.owner.isPlayerControlled);
+    }
+
     private BattleUnitState FindUnit(int unitId)
     {
         if (ActiveBattle == null)
@@ -518,6 +618,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         var units = BattleUnitFactory.CreateStates(preview.AttackerUnits, preview.DefenderUnits);
         BattleUnitFactory.AppendReserves(units, preview.Reinforcements);
         var occupancy = new BattleOccupancy();
+
+        InitializeTacticalCargo(units);
 
         AutoDeployUnits(preview.Map, units, occupancy, BattleSide.Attacker, ruleset.maxInitialUnitsPerSide);
         AutoDeployUnits(preview.Map, units, occupancy, BattleSide.Defender, ruleset.maxInitialUnitsPerSide);
@@ -584,6 +686,28 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             TurnController = new BattleTurnController(ruleset),
             AiController = new BattleAIController(detectionService),
         };
+    }
+
+    private static void InitializeTacticalCargo(List<BattleUnitState> units)
+    {
+        var byCampaignUnit = new Dictionary<CombatUnit, BattleUnitState>();
+        for (int i = 0; i < units.Count; i++)
+            if (units[i]?.Snapshot?.SourceUnit != null)
+                byCampaignUnit[units[i].Snapshot.SourceUnit] = units[i];
+
+        for (int i = 0; i < units.Count; i++)
+        {
+            var cargo = units[i];
+            var source = cargo?.Snapshot?.SourceUnit;
+            if (source == null || !source.IsTransported || source.TransportingUnit == null
+                || !byCampaignUnit.TryGetValue(source.TransportingUnit, out var host))
+                continue;
+            cargo.IsEmbarked = true;
+            cargo.CarrierOrTransportBattleUnitId = host.UnitId;
+            cargo.CellIndex = -1;
+            if (!host.EmbarkedBattleUnitIds.Contains(cargo.UnitId))
+                host.EmbarkedBattleUnitIds.Add(cargo.UnitId);
+        }
     }
 
     private BattleResult SimulateBattle(BattleState state, bool wasAutoResolved)
@@ -667,7 +791,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < session.Units.Count; i++)
         {
             var u = session.Units[i];
-            if (u.IsAliveAndActive && u.Side == BattleSide.Attacker && u.CellIndex == session.Objective.CellIndex)
+            if (u.IsAliveAndActive && u.Side == BattleSide.Attacker
+                && u.CellIndex == session.Objective.CellIndex
+                && CanCaptureObjective(u, session.Objective.Type, session.Theater))
             {
                 attackerOnObjective = true;
                 break;
@@ -678,6 +804,27 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return BattleSide.Attacker;
 
         return null;
+    }
+
+    private static bool CanCaptureObjective(BattleUnitState unit, BattleObjectiveType objectiveType, BattleTheater theater)
+    {
+        if (unit == null)
+            return false;
+        return objectiveType switch
+        {
+            BattleObjectiveType.LandControl => unit.Domain == BattleDomain.Land,
+            BattleObjectiveType.PortCapture => unit.Domain == BattleDomain.Land,
+            BattleObjectiveType.Beachhead => unit.Domain == BattleDomain.Land,
+            BattleObjectiveType.NavalControl => unit.Domain == BattleDomain.NavalSurface,
+            BattleObjectiveType.RegionControl => theater == BattleTheater.DeepSpace
+                ? unit.Domain == BattleDomain.Space
+                : theater == BattleTheater.Underwater
+                    ? unit.Domain == BattleDomain.Underwater
+                    : unit.Domain == BattleDomain.Land || unit.Domain == BattleDomain.NavalSurface,
+            BattleObjectiveType.Escape => false,
+            BattleObjectiveType.Elimination => false,
+            _ => false,
+        };
     }
 
     private void AwardCommanderExperience(BattleResult result)
@@ -747,6 +894,18 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     private static Vector2 ResolveApproachDirection(EngagementPreview preview)
     {
+        if (preview.Theater == BattleTheater.DeepSpace)
+        {
+            var spaceGrid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid
+                : (SpaceCombatManager.Instance != null ? SpaceCombatManager.Instance.spaceGrid : null);
+            if (spaceGrid == null || preview.Attacker == null || preview.Defender == null)
+                return Vector2.right;
+            Vector3 atkSpace = spaceGrid.GetWorldPosition(preview.Attacker.currentSpaceTileIndex);
+            Vector3 defSpace = spaceGrid.GetWorldPosition(preview.Defender.currentSpaceTileIndex);
+            Vector2 spaceDirection = new Vector2(defSpace.x - atkSpace.x, defSpace.z - atkSpace.z);
+            return spaceDirection.sqrMagnitude < 0.0001f ? Vector2.right : spaceDirection.normalized;
+        }
+
         var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
         if (ts == null || preview.Attacker == null || preview.Defender == null)
             return Vector2.right;
@@ -795,7 +954,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < units.Count && deployed < maxInitial; i++)
         {
             var u = units[i];
-            if (u.Side != side || u.IsReserve)
+            if (u.Side != side || u.IsReserve || u.IsEmbarked)
                 continue;
 
             int slot = FindFreeDeploymentCell(map, occupancy, side, u);
@@ -812,7 +971,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         for (int i = 0; i < units.Count; i++)
         {
             var u = units[i];
-            if (u.Side == side && u.CellIndex < 0)
+            if (u.Side == side && u.CellIndex < 0 && !u.IsEmbarked)
                 u.IsReserve = true;
         }
     }

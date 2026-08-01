@@ -86,7 +86,11 @@ public sealed class BattleParticipantCollector
             var cu = sourceUnits[i];
             if (cu == null || cu.currentHealth <= 0)
                 continue;
-            if (!BattleTheaterResolver.AllowsDomain(theater, BattleDomainResolver.Resolve(cu)))
+            BattleDomain domain = BattleDomainResolver.Resolve(cu);
+            bool assignedNavalAircraft = domain == BattleDomain.Air && cu.IsTransported
+                && cu.TransportingUnit != null
+                && BattleDomainResolver.Resolve(cu.TransportingUnit) == BattleDomain.NavalSurface;
+            if (!BattleTheaterResolver.AllowsDomain(theater, domain, assignedNavalAircraft))
                 continue;
 
             var profile = BattleProfileInference.Resolve(cu.data);
@@ -98,15 +102,27 @@ public sealed class BattleParticipantCollector
 
     private static List<CombatUnit> CollectStackCombatUnits(CombatUnit root)
     {
-        var list = new List<CombatUnit> { root };
+        var list = new List<CombatUnit>();
+        var seen = new HashSet<CombatUnit>();
+        AddUnitAndCargo(root, list, seen);
         var stacked = root.GetStackedUnits();
         for (int i = 0; i < stacked.Count; i++)
         {
             if (stacked[i] is CombatUnit cu)
-                list.Add(cu);
+                AddUnitAndCargo(cu, list, seen);
         }
 
         return list;
+    }
+
+    private static void AddUnitAndCargo(CombatUnit unit, List<CombatUnit> result, HashSet<CombatUnit> seen)
+    {
+        if (unit == null || !seen.Add(unit))
+            return;
+        result.Add(unit);
+        var cargo = unit.GetTransportedUnits();
+        for (int i = 0; i < cargo.Count; i++)
+            AddUnitAndCargo(cargo[i], result, seen);
     }
 
     private void BuildReinforcements(EngagementPreview preview, Civilization attackerCiv, Civilization defenderCiv)

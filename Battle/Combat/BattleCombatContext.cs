@@ -17,6 +17,7 @@ public readonly struct BattleCombatContext
 
     public readonly int FlankingCount;
     public readonly int RandomSeed;
+    public readonly TacticalWeaponProfile Weapon;
 
     public BattleCombatContext(
         BattleUnitState attacker,
@@ -31,7 +32,8 @@ public readonly struct BattleCombatContext
         bool defenderIsDefending,
         bool defenderIsExposed,
         int flankingCount,
-        int randomSeed)
+        int randomSeed,
+        TacticalWeaponProfile weapon = null)
     {
         Attacker = attacker;
         Defender = defender;
@@ -46,6 +48,7 @@ public readonly struct BattleCombatContext
         DefenderIsExposed = defenderIsExposed;
         FlankingCount = flankingCount;
         RandomSeed = randomSeed;
+        Weapon = weapon;
     }
 }
 
