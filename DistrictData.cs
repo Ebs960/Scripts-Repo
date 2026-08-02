@@ -3,6 +3,7 @@ using UnityEngine;
 [CreateAssetMenu(menuName="Data/Districts")]
 public class DistrictData : ScriptableObject
 {
+    [Tooltip("Allows this coastal district to act as a tactical port.")] public bool isPort;
     [Header("Identity")]
     public string districtName;
     [TextArea] public string description;
@@ -42,4 +43,4 @@ public class DistrictData : ScriptableObject
 
     [Header("Buildings")]
     public BuildingData[] possibleBuildings;
-} 
+}

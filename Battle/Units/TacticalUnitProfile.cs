@@ -8,6 +8,10 @@ public sealed class TacticalWeaponProfile
     public int minimumRange;
     public int maximumRange = 1;
     public bool usesRangedAttack;
+    [Min(0.01f)] public float attackMultiplier = 1f;
+    public bool usesIndirectFire;
+    [Tooltip("-1 means unlimited tactical ammunition.")] public int ammunition = -1;
+    [Min(0)] public int cooldownRounds;
 }
 
 [CreateAssetMenu(menuName = "Data/Tactical Unit Profile")]
@@ -35,11 +39,13 @@ public sealed class TacticalUnitProfile : ScriptableObject
     [Tooltip("Domains this unit's primary tactical weapon can target.")]
     public BattleDomainMask targetDomains = BattleDomainMask.Land;
     public int sensorRange;
+    [Min(0)] public int activeSensorRangeBonus = 2;
     public BattleDomainMask sensorDomains = BattleDomainMask.None;
     public int stealth;
     public bool isTransport;
     public bool isCarrier;
     public int transportCapacity;
+    [Tooltip("Rounds an aircraft can remain launched; -1 means unlimited.")] public int tacticalFuelRounds = -1;
     public TacticalWeaponProfile[] weapons;
 
     public float highGroundMultiplier = 1f;

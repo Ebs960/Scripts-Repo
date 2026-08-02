@@ -18,6 +18,11 @@ public sealed class BattleResultApplier
             if (!byId.TryGetValue(outcome.CampaignRuntimeId, out var unit) || unit == null)
                 continue;
 
+            // A queued reinforcement that never crossed a tactical entry edge
+            // retains its campaign orders, action, XP, health, and location.
+            if (!outcome.Participated)
+                continue;
+
             unit.ClearCampaignOrdersForBattle();
             unit.MarkCampaignActionConsumedByBattle();
             unit.ApplyBattleExperience(outcome.ExperienceGained);
@@ -109,12 +114,16 @@ public sealed class BattleResultApplier
     private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
     {
         int startingTile = outcome.SuggestedCampaignTile >= 0 ? outcome.SuggestedCampaignTile : unit.currentTileIndex;
+        if (outcome.Retreated && outcome.WithdrawalCampaignTile >= 0)
+            yield return outcome.WithdrawalCampaignTile;
         bool winner = outcome.Side == result.WinningSide;
-        int preferredTile = winner
+        int preferredTile = outcome.Retreated && outcome.WithdrawalCampaignTile >= 0
+            ? outcome.WithdrawalCampaignTile
+            : winner
             ? (outcome.Side == BattleSide.Attacker ? preview.AnchorTile : startingTile)
             : startingTile;
 
-        if (winner && outcome.Side == BattleSide.Defender)
+        if (!outcome.Retreated && winner && outcome.Side == BattleSide.Defender)
             preferredTile = preview.AnchorTile;
 
         if (preferredTile >= 0)

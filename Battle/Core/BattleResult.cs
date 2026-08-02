@@ -20,6 +20,8 @@ public sealed class BattleUnitOutcome
     public int FinalHealth;
     public bool Died;
     public bool Retreated;
+    public bool Participated;
+    public int WithdrawalCampaignTile = -1;
 
     public int ExperienceGained;
 
