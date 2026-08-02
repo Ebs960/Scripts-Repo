@@ -1079,6 +1079,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         {
             var u = units[i];
             if (u.Side == side && u.CellIndex < 0 && !u.IsEmbarked)
+            {
                 u.IsReserve = true;
                 u.HasEnteredBattle = false;
             }
