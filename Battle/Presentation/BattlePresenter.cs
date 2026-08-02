@@ -139,7 +139,7 @@ public sealed class BattlePresenter : MonoBehaviour
         for (int i = 0; i < cellButtons.Count; i++)
         {
             var cell = session.Map.GetCell(i);
-            var unit = GetDisplayedUnitAtCell(i);
+            var unit = manager.GetUnitAtCell(i);
             var label = cellButtons[i].GetComponentInChildren<TextMeshProUGUI>();
             var text = new StringBuilder();
             text.Append('C').Append(i);
