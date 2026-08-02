@@ -49,6 +49,8 @@ public sealed class BattleMapBuilder
                 HasRiver = td != null && td.isRiver,
                 HasSoftCover = td != null && (td.biome == Biome.Temperate || td.biome == Biome.Tropical),
                 HasHardCover = td != null && td.improvementDefenseAdd > 0,
+                HasPort = td != null && ((td.improvement != null && td.improvement.isPort)
+                    || (td.district != null && td.district.isPort)),
             };
 
             map.AddCell(cell);
@@ -66,6 +68,21 @@ public sealed class BattleMapBuilder
             }
 
             cell.NeighborIndices = neigh.ToArray();
+        }
+
+        // Beaches belong to passable coastal land cells, never arbitrary water.
+        // Deep water requires a water cell surrounded predominantly by water.
+        for (int i = 0; i < map.Cells.Count; i++)
+        {
+            var cell = map.Cells[i];
+            int waterNeighbors = 0;
+            for (int n = 0; n < cell.NeighborIndices.Length; n++)
+                if (map.GetCell(cell.NeighborIndices[n])?.IsWater == true) waterNeighbors++;
+            cell.HasBeach = cell.SupportsLand && waterNeighbors > 0;
+            if (cell.IsWater)
+                cell.WaterDepthLevel = waterNeighbors >= Mathf.Max(3, cell.NeighborIndices.Length - 1) ? 2 : 1;
+            // A port must have actual navigable coastal access.
+            if (cell.HasPort && waterNeighbors == 0) cell.HasPort = false;
         }
 
         BattleElevationResolver.QuantizeElevations(map, ts);

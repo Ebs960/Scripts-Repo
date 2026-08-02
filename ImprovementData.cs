@@ -337,6 +337,7 @@ public struct ImprovementCultureGroupVisualOverride
 [CreateAssetMenu(fileName = "NewImprovementData", menuName = "Data/Improvement Data")]
 public class ImprovementData : ScriptableObject
 {
+    [Tooltip("Allows this coastal improvement to act as a tactical port.")] public bool isPort;
     [Header("Identity")]
     public string improvementName;
     public Sprite icon;

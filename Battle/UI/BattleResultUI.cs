@@ -52,6 +52,15 @@ public sealed class BattleResultUI : MonoBehaviour
 
     private void Show(BattleResult result)
     {
+        // Background AI-vs-AI engagements publish campaign events but must not
+        // interrupt the player with a tactical result modal.
+        var preview = manager != null ? manager.PendingPreview : null;
+        bool playerInvolved = preview != null
+            && ((preview.Attacker != null && preview.Attacker.owner != null && preview.Attacker.owner.isPlayerControlled)
+                || (preview.Defender != null && preview.Defender.owner != null && preview.Defender.owner.isPlayerControlled));
+        if (!playerInvolved)
+            return;
+
         Build();
         int attackerLosses = 0;
         int defenderLosses = 0;

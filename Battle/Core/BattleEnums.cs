@@ -73,6 +73,7 @@ public enum BattleCommandType
     LaunchAircraft,
     RecoverAircraft,
     ChangeDepth,
+    ActiveDetection,
 }
 
 /// <summary>Independent occupancy/movement domains used by every tactical battle.</summary>

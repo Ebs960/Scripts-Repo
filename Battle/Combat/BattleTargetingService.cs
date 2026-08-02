@@ -53,6 +53,8 @@ public sealed class BattleTargetingService
         {
             var weapon = attacker.Snapshot.Weapons[i];
             if (weapon != null
+                && (i >= attacker.WeaponAmmo.Count || attacker.WeaponAmmo[i] != 0)
+                && (i >= attacker.WeaponCooldowns.Count || attacker.WeaponCooldowns[i] <= 0)
                 && (weapon.targetDomains & targetDomain) != 0
                 && distance >= weapon.minimumRange
                 && distance <= weapon.maximumRange)

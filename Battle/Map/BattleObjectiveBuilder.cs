@@ -28,7 +28,14 @@ public static class BattleObjectiveBuilder
             if (c.DeploymentOwner == BattleSide.Defender)
             {
                 candidate = i;
-                type = c.SupportsNavalSurface && !c.SupportsLand ? BattleObjectiveType.NavalControl : BattleObjectiveType.LandControl;
+                if (c.SupportsSpace && !c.SupportsLand && !c.SupportsNavalSurface)
+                    type = BattleObjectiveType.RegionControl;
+                else if (c.SupportsUnderwater && !c.SupportsLand && !c.SupportsNavalSurface)
+                    type = BattleObjectiveType.RegionControl;
+                else
+                    type = c.SupportsNavalSurface && !c.SupportsLand
+                        ? BattleObjectiveType.NavalControl
+                        : BattleObjectiveType.LandControl;
                 break;
             }
         }

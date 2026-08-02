@@ -1739,12 +1739,6 @@ public class UnitSelectionManager : MonoBehaviour
         if (preview == null || !preview.IsValid)
             return false;
 
-        bool attackerPlayer = atkCombat.owner != null && atkCombat.owner.isPlayerControlled;
-        bool defenderPlayer = defCombat.owner != null && defCombat.owner.isPlayerControlled;
-
-        if (!attackerPlayer && !defenderPlayer)
-            manager.AutoResolve(preview);
-
         pendingAttackTarget = null;
         return true;
     }

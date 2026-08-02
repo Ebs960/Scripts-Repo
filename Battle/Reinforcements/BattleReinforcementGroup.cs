@@ -8,6 +8,7 @@ public sealed class BattleReinforcementGroup
     public BattleTheater Theater;
     public int OriginCampaignTile;
     public int EntryCellIndex = -1;
+    public readonly List<int> EntryCellIndices = new();
     public int AvailableFromRound;
     public int EarliestEntryRound { get => AvailableFromRound; set => AvailableFromRound = value; }
     public int OriginSpaceRegion = -1;

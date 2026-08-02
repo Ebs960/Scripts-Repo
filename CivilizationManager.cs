@@ -934,12 +934,6 @@ public class CivilizationManager : MonoBehaviour
         if (preview == null || !preview.IsValid)
             return false;
 
-        bool attackerPlayer = attacker.owner != null && attacker.owner.isPlayerControlled;
-        bool defenderPlayer = defender.owner != null && defender.owner.isPlayerControlled;
-
-        if (!attackerPlayer && !defenderPlayer)
-            manager.AutoResolve(preview);
-
         return true;
     }
 

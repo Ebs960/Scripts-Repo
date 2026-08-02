@@ -86,7 +86,11 @@ public sealed class BattleParticipantCollector
             var cu = sourceUnits[i];
             if (cu == null || cu.currentHealth <= 0)
                 continue;
-            if (!BattleTheaterResolver.AllowsDomain(theater, BattleDomainResolver.Resolve(cu)))
+            BattleDomain domain = BattleDomainResolver.Resolve(cu);
+            bool assignedNavalAircraft = domain == BattleDomain.Air && cu.IsTransported
+                && cu.TransportingUnit != null
+                && BattleDomainResolver.Resolve(cu.TransportingUnit) == BattleDomain.NavalSurface;
+            if (!BattleTheaterResolver.AllowsDomain(theater, domain, assignedNavalAircraft))
                 continue;
 
             var profile = BattleProfileInference.Resolve(cu.data);
@@ -98,15 +102,27 @@ public sealed class BattleParticipantCollector
 
     private static List<CombatUnit> CollectStackCombatUnits(CombatUnit root)
     {
-        var list = new List<CombatUnit> { root };
+        var list = new List<CombatUnit>();
+        var seen = new HashSet<CombatUnit>();
+        AddUnitAndCargo(root, list, seen);
         var stacked = root.GetStackedUnits();
         for (int i = 0; i < stacked.Count; i++)
         {
             if (stacked[i] is CombatUnit cu)
-                list.Add(cu);
+                AddUnitAndCargo(cu, list, seen);
         }
 
         return list;
+    }
+
+    private static void AddUnitAndCargo(CombatUnit unit, List<CombatUnit> result, HashSet<CombatUnit> seen)
+    {
+        if (unit == null || !seen.Add(unit))
+            return;
+        result.Add(unit);
+        var cargo = unit.GetTransportedUnits();
+        for (int i = 0; i < cargo.Count; i++)
+            AddUnitAndCargo(cargo[i], result, seen);
     }
 
     private void BuildReinforcements(EngagementPreview preview, Civilization attackerCiv, Civilization defenderCiv)
@@ -164,6 +180,7 @@ public sealed class BattleParticipantCollector
 
                     if (cu.owner == attackerCiv)
                     {
+                        if (!HasStrategicAccess(preview, cu, tile, ts)) continue;
                         var profile = BattleProfileInference.Resolve(cu.data);
                         var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
                         GetOrCreateReserve(preview, BattleSide.Attacker, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
@@ -171,6 +188,7 @@ public sealed class BattleParticipantCollector
                     }
                     else if (cu.owner == defenderCiv)
                     {
+                        if (!HasStrategicAccess(preview, cu, tile, ts)) continue;
                         var profile = BattleProfileInference.Resolve(cu.data);
                         var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
                         GetOrCreateReserve(preview, BattleSide.Defender, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
@@ -186,6 +204,39 @@ public sealed class BattleParticipantCollector
                     queue.Enqueue((neigh[i], depth + 1));
             }
         }
+    }
+
+    private bool HasStrategicAccess(EngagementPreview preview, CombatUnit unit, int origin, TileSystem tileSystem)
+    {
+        BattleDomain domain = BattleDomainResolver.Resolve(unit);
+        if (domain == BattleDomain.Orbit)
+            return unit.planetIndex == preview.PlanetIndex;
+        if (domain == BattleDomain.Air)
+        {
+            bool carrierAssigned = unit.IsTransported && unit.TransportingUnit != null;
+            int range = Mathf.Max(1, unit.data != null ? unit.data.baseMovePoints : 1);
+            return carrierAssigned || tileSystem.GetWrappedHexDistance(origin, preview.AnchorTile) <= range;
+        }
+
+        var seen = new HashSet<int> { origin };
+        var queue = new Queue<(int tile, int distance)>();
+        queue.Enqueue((origin, 0));
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current.tile == preview.AnchorTile) return true;
+            if (current.distance >= ruleset.reinforcementRadius) continue;
+            var neighbors = tileSystem.GetNeighbors(current.tile);
+            for (int i = 0; i < neighbors.Length; i++)
+            {
+                int next = neighbors[i];
+                if (!seen.Add(next)) continue;
+                var data = tileSystem.GetTileData(next);
+                if (data == null || !UnitLayerRules.CanUnitUseTileOnLayer(unit, data, unit.currentLayer)) continue;
+                queue.Enqueue((next, current.distance + 1));
+            }
+        }
+        return false;
     }
 
     private BattleReinforcementGroup GetOrCreateReserve(
@@ -231,7 +282,8 @@ public sealed class BattleParticipantCollector
             int runtimeId = unit.gameObject != null ? unit.gameObject.GetRuntimeId() : 0;
             if (runtimeId == 0 || participants.Contains(runtimeId))
                 continue;
-            if (grid.GetDistance(unit.currentSpaceTileIndex, preview.AnchorTile) > ruleset.reinforcementRadius)
+            var route = new SpaceHexPathfinder(grid).FindPath(unit.currentSpaceTileIndex, preview.AnchorTile);
+            if (route == null || route.Count == 0 || route.Count - 1 > ruleset.reinforcementRadius)
                 continue;
             if (unit.owner != attackerCiv && unit.owner != defenderCiv)
                 continue;
