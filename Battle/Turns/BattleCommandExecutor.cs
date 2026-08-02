@@ -38,7 +38,7 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
-        bool isEmbarkedAction = command is BattleDisembarkCommand;
+        bool isEmbarkedAction = command is BattleDisembarkCommand && unit.IsEmbarked && unit.Side == session.ActiveSide;
         bool allowPostAttackMove = command is BattleMoveCommand && CanUsePostAttackMove(unit, session.ActiveSide);
         if (!unit.CanAct(session.ActiveSide) && !allowPostAttackMove && !isEmbarkedAction)
         {
@@ -82,6 +82,12 @@ public sealed class BattleCommandExecutor
                 return ExecuteRecoverAircraft(session, occupancy, unit, recover, out reason);
             case BattleChangeDepthCommand changeDepth:
                 return ExecuteChangeDepth(session, occupancy, unit, changeDepth, out reason);
+            case BattleActiveDetectionCommand:
+                if (unit.Snapshot?.TacticalProfile == null || unit.Snapshot.TacticalProfile.sensorRange <= 0)
+                { reason = "unit has no active sensor"; return false; }
+                detection.ActiveScan(session, unit);
+                unit.HasActed = true; unit.CurrentActionPoints = 0;
+                return true;
             default:
                 reason = "unsupported command";
                 return false;
@@ -283,6 +289,7 @@ public sealed class BattleCommandExecutor
 
         occupancy.Remove(unit);
         unit.HasRetreated = true;
+        unit.WithdrawalCampaignTile = cell.CampaignTileIndex;
         unit.HasActed = true;
         unit.CurrentActionPoints = 0;
         unit.CurrentMovePoints = 0;
@@ -338,13 +345,14 @@ public sealed class BattleCommandExecutor
             reason = "land disembark requires a beach or port";
             return false;
         }
+        passenger.IsEmbarked = false;
         if (!occupancy.TryMove(passenger, command.DestinationCell, session.Map))
         {
+            passenger.IsEmbarked = true;
             reason = "disembark destination is blocked";
             return false;
         }
 
-        passenger.IsEmbarked = false;
         passenger.CarrierOrTransportBattleUnitId = -1;
         transport.EmbarkedBattleUnitIds.Remove(passenger.UnitId);
         passenger.HasActed = true;
@@ -373,13 +381,14 @@ public sealed class BattleCommandExecutor
             reason = "invalid launch cell";
             return false;
         }
+        aircraft.IsEmbarked = false;
         if (!occupancy.TryMove(aircraft, command.LaunchCell, session.Map))
         {
+            aircraft.IsEmbarked = true;
             reason = "launch cell is blocked";
             return false;
         }
 
-        aircraft.IsEmbarked = false;
         aircraft.CarrierOrTransportBattleUnitId = -1;
         carrier.EmbarkedBattleUnitIds.Remove(aircraft.UnitId);
         carrier.HasActed = true;

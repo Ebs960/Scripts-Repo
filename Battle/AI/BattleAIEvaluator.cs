@@ -10,10 +10,60 @@ public sealed class BattleAIEvaluator
 
     public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
     {
-        if (session == null || unit == null || !unit.CanAct(session.ActiveSide))
+        bool embarkedActivation = unit != null && unit.Side == session?.ActiveSide && unit.IsEmbarked
+            && !unit.IsDead && unit.CurrentActionPoints > 0;
+        if (session == null || unit == null || (!unit.CanAct(session.ActiveSide) && !embarkedActivation))
             return new List<BattleAICandidate>();
 
         var candidates = new List<BattleAICandidate>(16);
+
+        if (unit.Snapshot?.TacticalProfile != null && unit.Snapshot.TacticalProfile.sensorRange > 0)
+            candidates.Add(new BattleAICandidate(new BattleActiveDetectionCommand
+            { UnitId = unit.UnitId, CommandType = BattleCommandType.ActiveDetection }, 6f));
+
+        if (unit.IsEmbarked)
+        {
+            BattleUnitState host = null;
+            for (int i = 0; i < session.Units.Count; i++)
+                if (session.Units[i]?.UnitId == unit.CarrierOrTransportBattleUnitId) { host = session.Units[i]; break; }
+            var hostCell = host != null ? session.Map.GetCell(host.CellIndex) : null;
+            if (hostCell?.NeighborIndices != null)
+                for (int i = 0; i < hostCell.NeighborIndices.Length; i++)
+                {
+                    var destination = session.Map.GetCell(hostCell.NeighborIndices[i]);
+                    if (destination == null || !destination.Supports(unit.Domain)
+                        || occupancy.IsOccupied(destination.BattleIndex, unit.Domain, unit.OccupancyBand)) continue;
+                    BattleCommand command = unit.Domain == BattleDomain.Air || unit.Domain == BattleDomain.Space
+                        ? new BattleLaunchAircraftCommand { UnitId = host.UnitId, CommandType = BattleCommandType.LaunchAircraft, AircraftUnitId = unit.UnitId, LaunchCell = destination.BattleIndex }
+                        : new BattleDisembarkCommand { UnitId = unit.UnitId, CommandType = BattleCommandType.Disembark, DestinationCell = destination.BattleIndex };
+                    candidates.Add(new BattleAICandidate(command, destination.IsObjective ? 30f : 14f));
+                }
+            candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
+            return candidates;
+        }
+
+        // Recover aircraft before fuel/endurance expires.
+        if ((unit.Domain == BattleDomain.Air || unit.Domain == BattleDomain.Space) && unit.FuelOrEndurance >= 0 && unit.FuelOrEndurance <= 1)
+            for (int i = 0; i < session.Units.Count; i++)
+            {
+                var carrier = session.Units[i];
+                if (carrier == null || carrier.Side != unit.Side || carrier.IsDead || carrier.IsEmbarked) continue;
+                if (session.MapDistance(unit.CellIndex, carrier.CellIndex) > 1) continue;
+                candidates.Add(new BattleAICandidate(new BattleRecoverAircraftCommand
+                { UnitId = unit.UnitId, CommandType = BattleCommandType.RecoverAircraft, CarrierUnitId = carrier.UnitId }, 50f));
+            }
+
+        // Land and air units can board a compatible adjacent transport.
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var transport = session.Units[i];
+            if (transport == null || transport.Side != unit.Side || transport.IsDead || transport.IsEmbarked) continue;
+            if (session.MapDistance(unit.CellIndex, transport.CellIndex) > 1) continue;
+            var data = transport.Snapshot?.UnitData;
+            if (data == null || !data.isTransport || unit.Snapshot?.UnitData == null || !data.CanCarryUnitCategory(unit.Snapshot.UnitData.unitType)) continue;
+            candidates.Add(new BattleAICandidate(new BattleEmbarkCommand
+            { UnitId = unit.UnitId, CommandType = BattleCommandType.Embark, TransportUnitId = transport.UnitId }, 4f));
+        }
 
         // Damaged units prefer a real friendly edge exit when one is adjacent.
         if (unit.CurrentHealth * 4 <= unit.Snapshot.MaximumHealth)

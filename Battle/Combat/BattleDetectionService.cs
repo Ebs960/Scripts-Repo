@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>Stores fog-of-war knowledge per observing side; hidden positions are never global.</summary>
 public sealed class BattleDetectionService
@@ -16,6 +17,24 @@ public sealed class BattleDetectionService
     public bool CanDirectlyTarget(BattleSide side, BattleUnitState target) => GetLevel(side, target) >= BattleDetectionLevel.Detected;
     public void Reveal(BattleSide side, BattleUnitState target, BattleDetectionLevel level = BattleDetectionLevel.Detected)
     { if (target != null && level > GetLevel(side, target)) levels[(side, target.UnitId)] = level; }
+
+    public bool ActiveScan(BattleSession session, BattleUnitState scanner)
+    {
+        var profile = scanner?.Snapshot?.TacticalProfile;
+        if (session == null || scanner == null || profile == null || profile.sensorRange <= 0) return false;
+        bool contact = false;
+        int range = profile.sensorRange + Mathf.Max(0, profile.activeSensorRangeBonus);
+        foreach (var target in session.Units)
+        {
+            if (target == null || target.Side == scanner.Side || !target.IsAliveAndActive) continue;
+            if ((profile.sensorDomains & BattleDomainResolver.ToMask(target.Domain)) == 0) continue;
+            int depthPenalty = target.DepthBand == BattleDepthBand.Deep ? 2 : 0;
+            if (session.MapDistance(scanner.CellIndex, target.CellIndex) <= range - depthPenalty)
+            { levels[(scanner.Side, target.UnitId)] = BattleDetectionLevel.Identified; contact = true; }
+        }
+        scanner.RevealedByAttack = true; // active emissions reveal the scanner.
+        return contact;
+    }
 
     public void Update(BattleSession session, BattleSide observingSide)
     {

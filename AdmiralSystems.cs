@@ -55,8 +55,9 @@ public class AdmiralInstance
     public int capturedByCivilizationId = -1;
 }
 
-public class AdmiralManager : MonoBehaviour
+public class AdmiralManager : MonoBehaviour, ISaveGameParticipant
 {
+    [Serializable] private sealed class SaveData { public List<AdmiralInstance> admirals = new List<AdmiralInstance>(); public int nextAdmiralId; }
     public static AdmiralManager Instance { get; private set; }
     public List<AdmiralInstance> admirals = new List<AdmiralInstance>();
     public int experiencePerLevel = 100;
@@ -68,8 +69,11 @@ public class AdmiralManager : MonoBehaviour
     public int woundedTurns = 3;
     public float woundedFleetAttackPenalty = 0.15f;
     private int nextAdmiralId = 1;
-    private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; }
-    private void OnDestroy() { if (Instance == this) Instance = null; }
+    public string SaveKey => "AdmiralManager_v1";
+    private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; SaveGameRegistry.Register(this); }
+    private void OnDestroy() { if (Instance == this) Instance = null; SaveGameRegistry.Unregister(this); }
+    public string CaptureStateJson() => JsonUtility.ToJson(new SaveData { admirals = new List<AdmiralInstance>(admirals), nextAdmiralId = nextAdmiralId });
+    public void RestoreStateJson(string json) { var data = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<SaveData>(json); admirals = data?.admirals ?? new List<AdmiralInstance>(); nextAdmiralId = data != null ? Mathf.Max(1, data.nextAdmiralId) : 1; }
     public AdmiralInstance CreateAdmiral(AdmiralData data, int ownerCivilizationId)
     {
         var admiral = new AdmiralInstance { admiralId = nextAdmiralId++, admiralName = data != null ? data.admiralName : "Admiral", ownerCivilizationId = ownerCivilizationId, command = data != null ? data.command : 3, tactics = data != null ? data.tactics : 1, logistics = data != null ? data.logistics : 1, engineering = data != null ? data.engineering : 1, recon = data != null ? data.recon : 1 };

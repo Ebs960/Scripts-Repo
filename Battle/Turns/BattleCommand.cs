@@ -57,3 +57,5 @@ public sealed class BattleChangeDepthCommand : BattleCommand
 {
     public BattleDepthBand Depth;
 }
+
+public sealed class BattleActiveDetectionCommand : BattleCommand { }

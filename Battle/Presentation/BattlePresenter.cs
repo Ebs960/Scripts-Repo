@@ -17,8 +17,38 @@ public sealed class BattlePresenter : MonoBehaviour
     private readonly HashSet<int> attackOverlay = new();
     private int selectedCell = -1;
     private int renderedCellCount = -1;
+    private BattleDomain? visibleDomain;
+    private float zoom = 1f;
 
     public event Action<int> CellClicked;
+    public string VisibleLayerName => visibleDomain?.ToString() ?? "All";
+
+    public void CycleLayer()
+    {
+        visibleDomain = visibleDomain switch
+        {
+            null => BattleDomain.Land,
+            BattleDomain.Land => BattleDomain.NavalSurface,
+            BattleDomain.NavalSurface => BattleDomain.Underwater,
+            BattleDomain.Underwater => BattleDomain.Air,
+            BattleDomain.Air => BattleDomain.Orbit,
+            BattleDomain.Orbit => BattleDomain.Space,
+            _ => null,
+        };
+        RefreshCells();
+    }
+
+    public void AdjustZoom(float delta)
+    {
+        zoom = Mathf.Clamp(zoom + delta, .65f, 1.6f);
+        if (board != null) board.localScale = Vector3.one * zoom;
+    }
+
+    public BattleUnitState GetDisplayedUnitAtCell(int cell)
+    {
+        var unit = manager != null ? manager.GetUnitAtCell(cell) : null;
+        return unit != null && (!visibleDomain.HasValue || unit.Domain == visibleDomain.Value) ? unit : null;
+    }
 
     public static BattlePresenter GetOrCreate(BattleManager manager)
     {

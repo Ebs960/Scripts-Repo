@@ -199,6 +199,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     }
 
     public bool TryAssignGovernorCommander(BattleSide side, int governorId, out string reason)
+        => TryAssignGovernorCommander(side, governorId, CommandRole.OverallCommander, out reason);
+
+    public bool TryAssignGovernorCommander(BattleSide side, int governorId, CommandRole role, out string reason)
     {
         reason = string.Empty;
         if (pendingPreview == null || IsBattleActive)
@@ -209,9 +212,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         var snapshots = side == BattleSide.Attacker ? pendingPreview.AttackerUnits : pendingPreview.DefenderUnits;
         var owner = side == BattleSide.Attacker ? pendingPreview.Attacker?.owner : pendingPreview.Defender?.owner;
-        if (snapshots.Count == 0 || owner == null)
+        if (snapshots.Count == 0 || owner == null || !owner.isPlayerControlled)
         {
-            reason = "formation has no eligible commander";
+            reason = "players may assign commanders only to their own formation";
             return false;
         }
 
@@ -228,7 +231,22 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return false;
         }
 
-        return MilitaryCommanderAssignmentService.GetOrCreate().TryAssignGovernor(owner, governor, snapshots[0].FormationId, CommandRole.OverallCommander, out reason);
+        return MilitaryCommanderAssignmentService.GetOrCreate().TryAssignGovernor(owner, governor, snapshots[0].FormationId, role, out reason);
+    }
+
+    public bool TryAssignAdmiralCommander(BattleSide side, int admiralId, CommandRole role, out string reason)
+    {
+        reason = string.Empty;
+        if (pendingPreview == null || IsBattleActive) { reason = "commander assignment is unavailable"; return false; }
+        var snapshots = side == BattleSide.Attacker ? pendingPreview.AttackerUnits : pendingPreview.DefenderUnits;
+        var owner = side == BattleSide.Attacker ? pendingPreview.Attacker?.owner : pendingPreview.Defender?.owner;
+        if (snapshots.Count == 0 || owner == null || !owner.isPlayerControlled)
+        { reason = "players may assign commanders only to their own formation"; return false; }
+        int ownerId = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetCivIndex(owner) : -1;
+        var admiral = AdmiralManager.Instance?.GetAdmiral(admiralId);
+        if (admiral == null || admiral.ownerCivilizationId != ownerId)
+        { reason = "admiral does not belong to this civilization"; return false; }
+        return MilitaryCommanderAssignmentService.GetOrCreate().TryAssignAdmiral(owner, admiral, snapshots[0].FormationId, role, out reason);
     }
 
     public BattleResult AutoResolve(EngagementPreview preview)
@@ -383,6 +401,44 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         return true;
     }
 
+    public IReadOnlyList<BattleUnitState> GetDeploymentReserves(BattleSide side)
+    {
+        var result = new List<BattleUnitState>();
+        if (ActiveBattle == null) return result;
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+        {
+            var unit = ActiveBattle.Units[i];
+            if (unit != null && unit.Side == side && unit.IsReserve && !unit.IsDead) result.Add(unit);
+        }
+        return result;
+    }
+
+    public bool TrySwapDeploymentReserve(int deployedUnitId, int reserveUnitId, out string reason)
+    {
+        reason = string.Empty;
+        if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
+        { reason = "battle is not in deployment"; return false; }
+        var deployed = FindUnit(deployedUnitId); var reserve = FindUnit(reserveUnitId);
+        if (deployed == null || reserve == null || deployed.Side != reserve.Side || deployed.IsReserve || !reserve.IsReserve
+            || deployed.IsEmbarked || reserve.IsEmbarked || !IsHumanControlledSide(deployed.Side))
+        { reason = "invalid reserve swap"; return false; }
+        int cell = deployed.CellIndex;
+        var destination = ActiveBattle.Map.GetCell(cell);
+        if (destination == null || !destination.Supports(reserve.Domain))
+        { reason = "reserve cannot deploy to this cell"; return false; }
+        ActiveBattleState.Occupancy.Remove(deployed);
+        deployed.IsReserve = true; deployed.HasEnteredBattle = false;
+        reserve.IsReserve = false; reserve.HasEnteredBattle = true;
+        if (!ActiveBattleState.Occupancy.TryMove(reserve, cell, ActiveBattle.Map))
+        {
+            reserve.IsReserve = true; reserve.HasEnteredBattle = false;
+            deployed.IsReserve = false; deployed.HasEnteredBattle = true;
+            ActiveBattleState.Occupancy.TryMove(deployed, cell, ActiveBattle.Map);
+            reason = "reserve deployment failed"; return false;
+        }
+        NotifyBattleStateChanged(); return true;
+    }
+
     public bool TryGetMovePath(int unitId, int destination, out List<int> path)
     {
         path = null;
@@ -472,6 +528,19 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         DestinationCell = destinationCell,
     }, out reason);
 
+    public bool TryDisembarkFirstCargo(int carrierUnitId, int destinationCell, out string reason)
+    {
+        var carrier = FindUnit(carrierUnitId);
+        if (carrier != null)
+            for (int i = 0; i < carrier.EmbarkedBattleUnitIds.Count; i++)
+            {
+                var cargo = FindUnit(carrier.EmbarkedBattleUnitIds[i]);
+                if (cargo != null && cargo.Domain != BattleDomain.Air && cargo.Domain != BattleDomain.Space)
+                    return TryDisembarkUnit(cargo.UnitId, destinationCell, out reason);
+            }
+        reason = "transport has no cargo ready to disembark"; return false;
+    }
+
     public bool TryLaunchAircraft(int carrierUnitId, int aircraftUnitId, int launchCell, out string reason) => TrySubmitPlayerCommand(new BattleLaunchAircraftCommand
     {
         UnitId = carrierUnitId,
@@ -479,6 +548,19 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         AircraftUnitId = aircraftUnitId,
         LaunchCell = launchCell,
     }, out reason);
+
+    public bool TryLaunchFirstAircraft(int carrierUnitId, int launchCell, out string reason)
+    {
+        var carrier = FindUnit(carrierUnitId);
+        if (carrier != null)
+            for (int i = 0; i < carrier.EmbarkedBattleUnitIds.Count; i++)
+            {
+                var cargo = FindUnit(carrier.EmbarkedBattleUnitIds[i]);
+                if (cargo != null && (cargo.Domain == BattleDomain.Air || cargo.Domain == BattleDomain.Space))
+                    return TryLaunchAircraft(carrierUnitId, cargo.UnitId, launchCell, out reason);
+            }
+        reason = "carrier has no launch-ready aircraft"; return false;
+    }
 
     public bool TryRecoverAircraft(int aircraftUnitId, int carrierUnitId, out string reason) => TrySubmitPlayerCommand(new BattleRecoverAircraftCommand
     {
@@ -493,6 +575,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         CommandType = BattleCommandType.ChangeDepth,
         Depth = depth,
     }, out reason);
+
+    public bool TryActiveDetection(int unitId, out string reason) => TrySubmitPlayerCommand(new BattleActiveDetectionCommand
+    { UnitId = unitId, CommandType = BattleCommandType.ActiveDetection }, out reason);
 
     public bool EndUnitActivation(int unitId, out string reason)
     {
@@ -643,8 +728,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             var commanderAssignment = MilitaryCommanderAssignmentService.GetOrCreate().GetAssignment(units[i].Snapshot.FormationId);
             if (commanderAssignment != null)
             {
-                units[i].CommanderAttackMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetAttackMultiplier(units[i].Snapshot.FormationId);
-                units[i].CommanderDefenseMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetDefenseMultiplier(units[i].Snapshot.FormationId);
+                units[i].CommanderAttackMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetAttackMultiplier(units[i].Snapshot.FormationId, units[i].Domain);
+                units[i].CommanderDefenseMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetDefenseMultiplier(units[i].Snapshot.FormationId, units[i].Domain);
             }
             var sourceUnit = units[i].Snapshot.SourceUnit;
             int transportRuntimeId = sourceUnit != null
@@ -833,6 +918,15 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             return;
 
         var awardedFormations = new HashSet<string>();
+        var destroyedByFormation = new Dictionary<string, bool>();
+        for (int i = 0; i < ActiveBattle.Units.Count; i++)
+        {
+            var candidate = ActiveBattle.Units[i];
+            string id = candidate?.Snapshot?.FormationId;
+            if (string.IsNullOrEmpty(id)) continue;
+            bool destroyed = candidate.IsDead || candidate.CurrentHealth <= 0;
+            destroyedByFormation[id] = destroyedByFormation.TryGetValue(id, out bool prior) ? prior && destroyed : destroyed;
+        }
         var commanderService = MilitaryCommanderAssignmentService.GetOrCreate();
         for (int i = 0; i < ActiveBattle.Units.Count; i++)
         {
@@ -845,6 +939,13 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (unit.IsDead)
                 experience = 4;
             commanderService.AwardBattleExperience(formationId, experience);
+            int enemyCivId = -1;
+            var enemy = unit.Side == BattleSide.Attacker ? pendingPreview?.Defender?.owner : pendingPreview?.Attacker?.owner;
+            if (enemy != null && CivilizationManager.Instance != null)
+                enemyCivId = CivilizationManager.Instance.GetCivIndex(enemy);
+            commanderService.ResolveBattleFate(formationId,
+                destroyedByFormation.TryGetValue(formationId, out bool destroyed) && destroyed,
+                enemyCivId, ActiveBattle.RandomSeed + ActiveBattle.BattleId);
         }
     }
 
@@ -871,7 +972,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 FinalHealth = Mathf.Max(0, u.CurrentHealth),
                 Died = u.IsDead || u.CurrentHealth <= 0,
                 Retreated = u.HasRetreated,
-                ExperienceGained = u.IsDead ? 0 : Mathf.Max(1, u.Snapshot.Level),
+                Participated = u.HasEnteredBattle,
+                WithdrawalCampaignTile = u.WithdrawalCampaignTile,
+                ExperienceGained = !u.HasEnteredBattle || u.IsDead ? 0 : Mathf.Max(1, u.Snapshot.Level),
                 IsEmbarked = u.IsEmbarked,
                 CarrierOrTransportCampaignRuntimeId = GetCarrierCampaignRuntimeId(session, u),
                 SuggestedCampaignTile = u.Snapshot.StartingCampaignTile,
@@ -929,12 +1032,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         {
             var group = preview.Reinforcements[groupIndex];
             group.EntryCellIndex = -1;
+            group.EntryCellIndices.Clear();
             int bestDistance = int.MaxValue;
             for (int cellIndex = 0; cellIndex < preview.Map.Cells.Count; cellIndex++)
             {
                 var cell = preview.Map.Cells[cellIndex];
                 if (!cell.IsReinforcementEntry || cell.DeploymentOwner != group.Side || !cell.Supports(group.Domain))
                     continue;
+                group.EntryCellIndices.Add(cellIndex);
 
                 int distance = tileSystem != null
                     ? tileSystem.GetWrappedHexDistance(group.OriginCampaignTile, cell.CampaignTileIndex)
@@ -945,6 +1050,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                     group.EntryCellIndex = cellIndex;
                 }
             }
+            group.EntryCellIndices.Sort((a, b) => a.CompareTo(b));
         }
     }
 
@@ -961,6 +1067,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (slot < 0)
             {
                 u.IsReserve = true;
+                u.HasEnteredBattle = false;
                 continue;
             }
 
@@ -973,6 +1080,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             var u = units[i];
             if (u.Side == side && u.CellIndex < 0 && !u.IsEmbarked)
                 u.IsReserve = true;
+                u.HasEnteredBattle = false;
+            }
         }
     }
 

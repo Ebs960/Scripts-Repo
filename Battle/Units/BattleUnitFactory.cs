@@ -28,6 +28,7 @@ public static class BattleUnitFactory
         {
             var state = Create(nextId++, groups[g].Units[i], groups[g].Side);
             state.IsReserve = true;
+            state.HasEnteredBattle = false;
             state.CellIndex = -1;
             state.ReinforcementGroupId = groups[g].ReinforcementGroupId;
             states.Add(state);
@@ -52,8 +53,10 @@ public static class BattleUnitFactory
             IsReserve = false,
             HasRetreated = false,
             IsDead = snap.StartingHealth <= 0,
+            HasEnteredBattle = true,
             DepthBand = snap.Domain == BattleDomain.Underwater ? BattleDepthBand.Shallow : BattleDepthBand.Surface,
             OccupancyBand = snap.Domain == BattleDomain.Underwater ? 1 : 0,
+            FuelOrEndurance = snap.TacticalProfile != null ? snap.TacticalProfile.tacticalFuelRounds : -1,
         };
         for (int i = 0; i < snap.Weapons.Count; i++)
         {

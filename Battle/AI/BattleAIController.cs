@@ -22,7 +22,8 @@ public sealed class BattleAIController
             for (int i = 0; i < session.Units.Count && commandsExecuted < maxCommands; i++)
             {
                 var unit = session.Units[i];
-                if (unit == null || !unit.CanAct(session.ActiveSide))
+                if (unit == null || (!unit.CanAct(session.ActiveSide)
+                    && !(unit.Side == session.ActiveSide && unit.IsEmbarked && !unit.IsDead && unit.CurrentActionPoints > 0)))
                     continue;
 
                 // Candidates are ordered by tactical value. If the preferred

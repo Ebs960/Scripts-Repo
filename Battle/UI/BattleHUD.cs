@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public sealed class BattleHUD : MonoBehaviour
 {
+    private enum CellActionMode { None, Retreat, Embark, Disembark, Launch, Recover }
     private BattleManager manager;
     private GameObject root;
     private TextMeshProUGUI status;
@@ -15,7 +16,9 @@ public sealed class BattleHUD : MonoBehaviour
     private int selectedUnitIndex;
     private int selectedTargetIndex;
     private int selectedWeaponIndex;
+    private int selectedReserveIndex;
     private BattlePresenter presenter;
+    private CellActionMode cellActionMode;
 
     public static BattleHUD GetOrCreate(BattleManager manager)
     {
@@ -86,6 +89,9 @@ public sealed class BattleHUD : MonoBehaviour
         CreateButton(panel.transform, "Prev Target", new Vector2(16f, -330f), PreviousTarget, 112f);
         CreateButton(panel.transform, "Next Target", new Vector2(142f, -330f), NextTarget, 112f);
         CreateButton(panel.transform, "Next Weapon", new Vector2(268f, -330f), NextWeapon, 96f);
+        CreateButton(panel.transform, "Layer", new Vector2(268f, -250f), CycleLayer, 96f);
+        CreateButton(panel.transform, "Zoom +", new Vector2(268f, -285f), ZoomIn, 46f);
+        CreateButton(panel.transform, "Zoom -", new Vector2(318f, -285f), ZoomOut, 46f);
         cellInput = CreateInput(panel.transform, "Cell", new Vector2(16f, -375f));
 
         CreateButton(panel.transform, "Move", new Vector2(16f, -425f), Move);
@@ -102,6 +108,9 @@ public sealed class BattleHUD : MonoBehaviour
         CreateButton(panel.transform, "Recover", new Vector2(16f, -625f), Recover);
         CreateButton(panel.transform, "Dive", new Vector2(142f, -625f), Dive);
         CreateButton(panel.transform, "Shallow", new Vector2(268f, -625f), Shallow);
+        CreateButton(panel.transform, "Active Scan", new Vector2(16f, -675f), ActiveScan, 112f);
+        CreateButton(panel.transform, "Next Reserve", new Vector2(142f, -675f), NextReserve, 112f);
+        CreateButton(panel.transform, "Deploy Reserve", new Vector2(268f, -675f), DeployReserve, 112f);
         root.SetActive(false);
     }
 
@@ -186,7 +195,28 @@ public sealed class BattleHUD : MonoBehaviour
     private void OnCellClicked(int cellIndex)
     {
         if (manager?.ActiveBattle == null) return;
-        var clickedUnit = manager.GetUnitAtCell(cellIndex);
+        var clickedUnit = presenter != null ? presenter.GetDisplayedUnitAtCell(cellIndex) : manager.GetUnitAtCell(cellIndex);
+        if (cellActionMode != CellActionMode.None)
+        {
+            bool success; string actionReason;
+            switch (cellActionMode)
+            {
+                case CellActionMode.Retreat: success = manager.TryRetreatUnit(selectedUnitId, cellIndex, out actionReason); break;
+                case CellActionMode.Embark:
+                    success = clickedUnit != null && manager.TryEmbarkUnit(selectedUnitId, clickedUnit.UnitId, out actionReason);
+                    if (clickedUnit == null) actionReason = "select a friendly transport";
+                    break;
+                case CellActionMode.Disembark: success = manager.TryDisembarkFirstCargo(selectedUnitId, cellIndex, out actionReason); break;
+                case CellActionMode.Launch: success = manager.TryLaunchFirstAircraft(selectedUnitId, cellIndex, out actionReason); break;
+                case CellActionMode.Recover:
+                    success = clickedUnit != null && manager.TryRecoverAircraft(selectedUnitId, clickedUnit.UnitId, out actionReason);
+                    if (clickedUnit == null) actionReason = "select a friendly carrier";
+                    break;
+                default: success = false; actionReason = "no tactical action selected"; break;
+            }
+            if (success) cellActionMode = CellActionMode.None;
+            Submit(success, actionReason); return;
+        }
         if (clickedUnit != null && clickedUnit.Side == manager.ActiveBattle.ActiveSide)
         {
             var active = manager.GetUnitsForActiveSide();
@@ -216,6 +246,10 @@ public sealed class BattleHUD : MonoBehaviour
         }
         Submit(manager.TryMoveUnit(selectedUnitId, cellIndex, out string moveReason), moveReason);
     }
+
+    private void CycleLayer() { presenter?.CycleLayer(); Notify($"Tactical layer: {presenter?.VisibleLayerName}"); }
+    private void ZoomIn() => presenter?.AdjustZoom(.1f);
+    private void ZoomOut() => presenter?.AdjustZoom(-.1f);
 
     private void RefreshBoardOverlays()
     {
@@ -287,31 +321,43 @@ public sealed class BattleHUD : MonoBehaviour
     private void EndUnit() { Submit(manager.EndUnitActivation(selectedUnitId, out string reason), reason); }
     private void Retreat()
     {
-        if (int.TryParse(cellInput.text, out int exit)) Submit(manager.TryRetreatUnit(selectedUnitId, exit, out string reason), reason);
-        else Notify("Enter a retreat exit cell index.");
+        cellActionMode = CellActionMode.Retreat; Notify("Select a highlighted friendly battlefield-edge exit.");
     }
     private void Embark()
     {
-        if (int.TryParse(cellInput.text, out int transportId)) Submit(manager.TryEmbarkUnit(selectedUnitId, transportId, out string reason), reason);
-        else Notify("Enter a transport unit ID.");
+        cellActionMode = CellActionMode.Embark; Notify("Select an adjacent friendly transport.");
     }
     private void Disembark()
     {
-        if (int.TryParse(cellInput.text, out int cell)) Submit(manager.TryDisembarkUnit(selectedUnitId, cell, out string reason), reason);
-        else Notify("Enter a destination cell index.");
+        cellActionMode = CellActionMode.Disembark; Notify("Select a beach, port, or valid adjacent destination.");
     }
     private void Launch()
     {
-        if (int.TryParse(cellInput.text, out int aircraftId)) Submit(manager.TryLaunchAircraft(selectedUnitId, aircraftId, FindSelectedUnit()?.CellIndex ?? -1, out string reason), reason);
-        else Notify("Enter an embarked aircraft unit ID.");
+        cellActionMode = CellActionMode.Launch; Notify("Select an adjacent aircraft launch cell.");
     }
     private void Recover()
     {
-        if (int.TryParse(cellInput.text, out int carrierId)) Submit(manager.TryRecoverAircraft(selectedUnitId, carrierId, out string reason), reason);
-        else Notify("Enter a carrier unit ID.");
+        cellActionMode = CellActionMode.Recover; Notify("Select an adjacent friendly carrier.");
     }
     private void Dive() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Deep, out string reason), reason); }
     private void Shallow() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Shallow, out string reason), reason); }
+    private void ActiveScan() { Submit(manager.TryActiveDetection(selectedUnitId, out string reason), reason); }
+    private void NextReserve()
+    {
+        if (manager?.ActiveBattle == null) return;
+        var reserves = manager.GetDeploymentReserves(manager.ActiveBattle.ActiveSide);
+        if (reserves.Count == 0) { Notify("No deployment reserves."); return; }
+        selectedReserveIndex = (selectedReserveIndex + 1) % reserves.Count;
+        Notify($"Reserve: {reserves[selectedReserveIndex].Snapshot?.SourceUnit?.UnitName ?? $"Unit {reserves[selectedReserveIndex].UnitId}"}");
+    }
+    private void DeployReserve()
+    {
+        if (manager?.ActiveBattle == null) return;
+        var reserves = manager.GetDeploymentReserves(manager.ActiveBattle.ActiveSide);
+        if (reserves.Count == 0) { Notify("No deployment reserves."); return; }
+        selectedReserveIndex = Mathf.Clamp(selectedReserveIndex, 0, reserves.Count - 1);
+        Submit(manager.TrySwapDeploymentReserve(selectedUnitId, reserves[selectedReserveIndex].UnitId, out string reason), reason);
+    }
     private void ConfirmDeployment() { Submit(manager.ConfirmDeployment(out string reason), reason); }
     private void EndSide() { manager?.EndPlayerSideTurn(); Refresh(); }
 

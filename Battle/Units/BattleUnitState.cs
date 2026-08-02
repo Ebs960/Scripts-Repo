@@ -22,6 +22,8 @@ public sealed class BattleUnitState
     public bool HasRetreated;
     public bool IsDead;
     public bool HasAttackedThisTurn;
+    public bool HasEnteredBattle;
+    public int WithdrawalCampaignTile = -1;
 
     public BattleDomain Domain => Snapshot != null ? Snapshot.Domain : BattleDomain.Land;
     public int OccupancyBand;

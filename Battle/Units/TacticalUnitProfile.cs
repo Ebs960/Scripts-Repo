@@ -39,11 +39,13 @@ public sealed class TacticalUnitProfile : ScriptableObject
     [Tooltip("Domains this unit's primary tactical weapon can target.")]
     public BattleDomainMask targetDomains = BattleDomainMask.Land;
     public int sensorRange;
+    [Min(0)] public int activeSensorRangeBonus = 2;
     public BattleDomainMask sensorDomains = BattleDomainMask.None;
     public int stealth;
     public bool isTransport;
     public bool isCarrier;
     public int transportCapacity;
+    [Tooltip("Rounds an aircraft can remain launched; -1 means unlimited.")] public int tacticalFuelRounds = -1;
     public TacticalWeaponProfile[] weapons;
 
     public float highGroundMultiplier = 1f;
