@@ -198,7 +198,8 @@ public sealed class BattleHUD : MonoBehaviour
         var clickedUnit = presenter != null ? presenter.GetDisplayedUnitAtCell(cellIndex) : manager.GetUnitAtCell(cellIndex);
         if (cellActionMode != CellActionMode.None)
         {
-            bool success; string actionReason;
+            bool success = false;
+            string actionReason = "tactical action failed";
             switch (cellActionMode)
             {
                 case CellActionMode.Retreat: success = manager.TryRetreatUnit(selectedUnitId, cellIndex, out actionReason); break;
