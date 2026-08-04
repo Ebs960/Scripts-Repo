@@ -32,7 +32,12 @@ public sealed class BattleCampaignPlacementService : IBattleCampaignPlacementSer
         if (BattleTheaterResolver.IsOnSpaceMap(unit) || request.SpaceTileIndex >= 0)
         {
             int target = request.SpaceTileIndex >= 0 ? request.SpaceTileIndex : unit.currentSpaceTileIndex;
-            if (SpaceOccupancyManager.Instance == null || !SpaceOccupancyManager.Instance.RegisterUnit(unit, target)) return false;
+            var space=SpaceOccupancyManager.Instance; int previous=unit.currentSpaceTileIndex;
+            if (space == null || !space.RegisterUnit(unit, target))
+            {
+                if(space!=null&&previous>=0) space.RegisterUnit(unit,previous);
+                return false;
+            }
             result = new BattleCampaignPlacementResult { SpaceTileIndex = target, Layer = unit.currentLayer }; return true;
         }
 
