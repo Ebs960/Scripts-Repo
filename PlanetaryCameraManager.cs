@@ -387,6 +387,8 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void LateUpdate()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+            return;
         HandleInput();
         ApplyWrap();
         UpdateCameraPosition();

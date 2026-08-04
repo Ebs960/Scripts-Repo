@@ -31,6 +31,7 @@ public class SpaceMapCameraController : MonoBehaviour
 
     private void Update()
     {
+        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign) return;
         if (targetCamera == null) return;
         HandleKeyboardPan();
         HandleMouseDrag();

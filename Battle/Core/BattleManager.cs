@@ -73,6 +73,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public EngagementPreview PendingPreview => pendingPreview;
     public BattleResult PendingResult => pendingResult;
     public BattleInputController TacticalInput => battleInput;
+    public Camera TacticalCamera => battleCamera?.TacticalCamera;
 
     public string SaveKey => "BattleManager";
 
@@ -228,12 +229,12 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             ? BattleSide.Attacker : BattleSide.Defender);
 
         GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattleDeployment);
+        battleCamera?.FocusBattle(ActiveBattle.Map);
         BattlePreviewClosed?.Invoke();
         RaiseBattlePreviewClosed();
         BattleStarted?.Invoke(ActiveBattle);
         RaiseBattleStarted(ActiveBattle);
 
-        battleCamera?.FocusBattle(ActiveBattle.Map);
         battleInput?.SetActive(true);
         battleInput?.SetMode(BattleInteractionMode.Deployment);
 
@@ -480,6 +481,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public int DeploymentUnitLimit => ruleset != null ? ruleset.maxInitialUnitsPerSide : 0;
 
     public BattleUnitState GetBattleUnit(int unitId) => FindUnit(unitId);
+    public BattleDetectionLevel GetDetectionLevel(BattleSide observingSide, BattleUnitState target)
+        => ActiveBattleState?.DetectionService?.GetLevel(observingSide,target)??BattleDetectionLevel.Undetected;
+    public void AdjustTacticalCameraZoom(float direction) => battleCamera?.NudgeZoom(direction);
 
     public bool IsLegalCellForMode(int unitId, int cellIndex, BattleInteractionMode mode)
     {

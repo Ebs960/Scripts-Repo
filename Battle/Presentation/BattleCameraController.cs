@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>Owns the world-space camera while a manual tactical battle is open.</summary>
 public sealed class BattleCameraController : MonoBehaviour
@@ -21,6 +22,14 @@ public sealed class BattleCameraController : MonoBehaviour
     private float campaignFieldOfView;
     private float campaignOrthographicSize;
     private bool campaignOrthographic;
+    private float campaignNear, campaignFar, campaignDepth;
+    private Rect campaignRect;
+    private CameraClearFlags campaignClearFlags;
+    private Color campaignBackground;
+    private int campaignCullingMask;
+    private bool campaignHdr, campaignMsaa;
+    private RenderTexture campaignTargetTexture;
+    private readonly List<AudioListener> suspendedListeners=new();
     private Bounds limits;
 
     public bool IsActive { get; private set; }
@@ -65,6 +74,8 @@ public sealed class BattleCameraController : MonoBehaviour
         t.position = p;
     }
 
+    public void NudgeZoom(float direction) => RouteInput(Vector2.zero, direction, 0f, .1f);
+
     public void RestoreCampaignCamera()
     {
         if (!IsActive) return;
@@ -78,13 +89,22 @@ public sealed class BattleCameraController : MonoBehaviour
             campaignCamera.orthographic = campaignOrthographic;
             campaignCamera.orthographicSize = campaignOrthographicSize;
             campaignCamera.enabled = campaignCameraEnabled;
+            campaignCamera.nearClipPlane=campaignNear; campaignCamera.farClipPlane=campaignFar; campaignCamera.depth=campaignDepth;
+            campaignCamera.rect=campaignRect; campaignCamera.clearFlags=campaignClearFlags; campaignCamera.backgroundColor=campaignBackground;
+            campaignCamera.cullingMask=campaignCullingMask; campaignCamera.allowHDR=campaignHdr; campaignCamera.allowMSAA=campaignMsaa;
+            campaignCamera.targetTexture=campaignTargetTexture;
         }
-        if (campaignListener != null) campaignListener.enabled = campaignListenerEnabled;
+        for(int i=0;i<suspendedListeners.Count;i++)if(suspendedListeners[i]!=null)suspendedListeners[i].enabled=true;
+        suspendedListeners.Clear();
         IsActive = false;
     }
 
     private void CaptureCampaignCamera()
     {
+        suspendedListeners.Clear();
+        var listeners=FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
+        for(int i=0;i<listeners.Length;i++)if(listeners[i]!=null&&listeners[i].enabled)
+        { suspendedListeners.Add(listeners[i]); listeners[i].enabled=false; }
         campaignCamera = Camera.main;
         if (campaignCamera == tacticalCamera) campaignCamera = null;
         if (campaignCamera == null) return;
@@ -93,11 +113,14 @@ public sealed class BattleCameraController : MonoBehaviour
         campaignFieldOfView = campaignCamera.fieldOfView;
         campaignOrthographic = campaignCamera.orthographic;
         campaignOrthographicSize = campaignCamera.orthographicSize;
+        campaignNear=campaignCamera.nearClipPlane; campaignFar=campaignCamera.farClipPlane; campaignDepth=campaignCamera.depth;
+        campaignRect=campaignCamera.rect; campaignClearFlags=campaignCamera.clearFlags; campaignBackground=campaignCamera.backgroundColor;
+        campaignCullingMask=campaignCamera.cullingMask; campaignHdr=campaignCamera.allowHDR; campaignMsaa=campaignCamera.allowMSAA;
+        campaignTargetTexture=campaignCamera.targetTexture;
         campaignCameraEnabled = campaignCamera.enabled;
         campaignListener = campaignCamera.GetComponent<AudioListener>();
         campaignListenerEnabled = campaignListener != null && campaignListener.enabled;
         campaignCamera.enabled = false;
-        if (campaignListener != null) campaignListener.enabled = false;
     }
 
     private void EnsureTacticalCamera()
