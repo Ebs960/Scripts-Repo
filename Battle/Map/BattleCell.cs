@@ -34,6 +34,7 @@ public sealed class BattleCell
     private readonly HashSet<int> cliffNeighbors = new();
 
     public bool IsCliffTowardNeighbor(int neighborIndex) => cliffNeighbors.Contains(neighborIndex);
+    public IEnumerable<int> CliffNeighbors => cliffNeighbors;
 
     public bool Supports(BattleDomain domain)
     {

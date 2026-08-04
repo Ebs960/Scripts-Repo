@@ -10,8 +10,25 @@ public sealed class BattleResult
 
     public int FinalRound;
     public bool WasAutoResolved;
+    public bool WasPlayerInvolved;
     public bool CampaignApplied;
     public readonly List<BattlePlacementFailure> PlacementFailures = new();
+    public readonly List<BattleCommanderOutcome> CommanderOutcomes = new();
+}
+
+public sealed class BattleCommanderOutcome
+{
+    public string AssignmentId;
+    public string FormationId;
+    public CommandRole Role;
+    public CommanderCharacterKind CharacterKind;
+    public int CharacterId;
+    public int ExperienceGained;
+    public bool Participated;
+    public bool FormationDestroyed;
+    public bool FormationRetreated;
+    public BattleCommanderStatus StatusBefore;
+    public BattleCommanderStatus StatusAfter;
 }
 
 public sealed class BattlePlacementFailure

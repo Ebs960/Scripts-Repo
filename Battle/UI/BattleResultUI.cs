@@ -55,7 +55,7 @@ public sealed class BattleResultUI : MonoBehaviour
         // Background AI-vs-AI engagements publish campaign events but must not
         // interrupt the player with a tactical result modal.
         var preview = manager != null ? manager.PendingPreview : null;
-        bool playerInvolved = preview != null
+        bool playerInvolved = result != null && result.WasPlayerInvolved || preview != null
             && ((preview.Attacker != null && preview.Attacker.owner != null && preview.Attacker.owner.isPlayerControlled)
                 || (preview.Defender != null && preview.Defender.owner != null && preview.Defender.owner.isPlayerControlled));
         if (!playerInvolved)
@@ -87,6 +87,8 @@ public sealed class BattleResultUI : MonoBehaviour
             $"Survivors: {survivors}\nAuto-resolved: {result.WasAutoResolved}";
         root.SetActive(true);
     }
+
+    public void PresentRestored(BattleResult result) => Show(result);
 
     private void Continue()
     {

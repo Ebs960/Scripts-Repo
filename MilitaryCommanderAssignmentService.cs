@@ -89,11 +89,45 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
 
     public bool RemoveAssignment(string formationId)
     {
-        var assignment = GetAssignment(formationId);
-        if (assignment == null) return false;
-        assignment.IsActive = false;
-        return true;
+        bool removed=false;
+        for (int i=0;i<assignments.Count;i++) if (assignments[i].IsActive && assignments[i].FormationId==formationId)
+        { assignments[i].IsActive=false; removed=true; SynchronizeCharacter(assignments[i]); }
+        return removed;
     }
+
+    public bool RemoveAssignment(string formationId, CommandRole role)
+    {
+        bool removed=false;
+        for (int i=0;i<assignments.Count;i++) if (assignments[i].IsActive && assignments[i].FormationId==formationId && assignments[i].Role==role)
+        { assignments[i].IsActive=false; removed=true; SynchronizeCharacter(assignments[i]); }
+        return removed;
+    }
+
+    public bool TryReassign(string assignmentId, string newFormationId, out string reason)
+    {
+        reason=string.Empty;
+        if (string.IsNullOrEmpty(newFormationId)) { reason="formation identity is required"; return false; }
+        var assignment=assignments.Find(a=>a.AssignmentId==assignmentId && a.IsActive);
+        if (assignment==null) { reason="active commander assignment not found"; return false; }
+        for (int i=0;i<assignments.Count;i++) if (assignments[i].IsActive && assignments[i]!=assignment
+            && assignments[i].FormationId==newFormationId && assignments[i].Role==assignment.Role)
+        { reason="command role is already filled on the destination formation"; return false; }
+        assignment.FormationId=newFormationId; assignment.AssignedTurn=GameManager.Instance!=null?GameManager.Instance.currentTurn:0; return true;
+    }
+
+    public bool ReleaseOrRescue(int characterId, CommanderCharacterKind kind)
+    {
+        bool changed=false;
+        for (int i=0;i<assignments.Count;i++)
+        {
+            var a=assignments[i]; if (a.CharacterId!=characterId || a.CharacterKind!=kind || a.Status!=BattleCommanderStatus.Captured) continue;
+            a.Status=BattleCommanderStatus.Active; a.CapturedByCivilizationId=-1; changed=true; SynchronizeCharacter(a);
+        }
+        return changed;
+    }
+
+    public void EndFormation(string formationId)
+    { for (int i=0;i<assignments.Count;i++) if (assignments[i].IsActive && assignments[i].FormationId==formationId) { assignments[i].IsActive=false; SynchronizeCharacter(assignments[i]); } }
 
     public MilitaryCommanderAssignment GetAssignment(string formationId)
     {
@@ -111,7 +145,9 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
         {
             var assignment = assignments[i];
             if (assignment.Status == BattleCommanderStatus.Wounded && assignment.WoundedUntilTurn <= turn)
-                assignment.Status = BattleCommanderStatus.Active;
+            { assignment.Status = BattleCommanderStatus.Active; SynchronizeCharacter(assignment); }
+            if (assignment.IsActive && !HasValidSourceCharacter(assignment))
+            { assignment.IsActive=false; SynchronizeCharacter(assignment); }
             if (assignment.IsActive && assignment.FormationId == formationId)
                 result.Add(assignment);
         }
@@ -198,8 +234,11 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
     }
 
     public void ResolveBattleFate(string formationId, bool formationDestroyed, int enemyCivilizationId, int deterministicRoll)
+        => ResolveBattleFate(formationId, formationDestroyed ? 1f : 0f, false, formationDestroyed, true, enemyCivilizationId, deterministicRoll);
+
+    public void ResolveBattleFate(string formationId, float casualtyRate, bool retreated, bool losingSide, bool participated, int enemyCivilizationId, int deterministicRoll)
     {
-        if (!formationDestroyed) return;
+        if (!participated) return;
         var active = GetAssignments(formationId);
         for (int i = 0; i < active.Count; i++)
         {
@@ -208,10 +247,11 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
             {
                 var admiral = AdmiralManager.Instance.GetAdmiral(assignment.CharacterId);
                 int roll = Mathf.Abs(deterministicRoll + assignment.CharacterId * 31) % 100;
+                int danger = Mathf.Clamp(Mathf.RoundToInt(casualtyRate*55f)+(losingSide?15:0)+(retreated?8:0),0,85);
                 if (admiral != null)
                 {
                     admiral.assignedFleetId = -1;
-                    admiral.status = roll < 45 ? AdmiralStatus.Active : roll < 70 ? AdmiralStatus.Wounded : roll < 88 ? AdmiralStatus.Captured : AdmiralStatus.Killed;
+                    admiral.status = roll >= danger ? AdmiralStatus.Active : roll < danger*20/100 ? AdmiralStatus.Killed : roll < danger*55/100 ? AdmiralStatus.Captured : AdmiralStatus.Wounded;
                     if (admiral.status == AdmiralStatus.Wounded) admiral.woundedTurnsRemaining = AdmiralManager.Instance.woundedTurns;
                     if (admiral.status == AdmiralStatus.Captured) admiral.capturedByCivilizationId = enemyCivilizationId;
                 }
@@ -226,13 +266,15 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
             else
             {
                 int roll = Mathf.Abs(deterministicRoll + assignment.CharacterId * 31) % 100;
-                assignment.Status = roll < 45 ? BattleCommanderStatus.Active : roll < 70 ? BattleCommanderStatus.Wounded : roll < 88 ? BattleCommanderStatus.Captured : BattleCommanderStatus.Killed;
+                int danger = Mathf.Clamp(Mathf.RoundToInt(casualtyRate*55f)+(losingSide?15:0)+(retreated?8:0),0,85);
+                assignment.Status = roll >= danger ? BattleCommanderStatus.Active : roll < danger*20/100 ? BattleCommanderStatus.Killed : roll < danger*55/100 ? BattleCommanderStatus.Captured : BattleCommanderStatus.Wounded;
                 if (assignment.Status == BattleCommanderStatus.Wounded)
                     assignment.WoundedUntilTurn = (GameManager.Instance != null ? GameManager.Instance.currentTurn : 0) + 3;
                 if (assignment.Status == BattleCommanderStatus.Captured)
                     assignment.CapturedByCivilizationId = enemyCivilizationId;
             }
             if (assignment.Status == BattleCommanderStatus.Killed) assignment.IsActive = false;
+            SynchronizeCharacter(assignment);
         }
     }
 
@@ -253,4 +295,31 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
                         return civ.governors[i];
         return null;
     }
+
+    private static bool HasValidSourceCharacter(MilitaryCommanderAssignment assignment)
+    {
+        if (assignment.CharacterKind==CommanderCharacterKind.Admiral)
+        {
+            var admiral=AdmiralManager.Instance?.GetAdmiral(assignment.CharacterId);
+            return admiral!=null && admiral.ownerCivilizationId==assignment.OwnerCivilizationId && admiral.status!=AdmiralStatus.Killed;
+        }
+        if (CivilizationManager.Instance==null) return false;
+        foreach (var civ in CivilizationManager.Instance.GetAllCivs())
+            if (civ!=null && CivilizationManager.Instance.GetCivIndex(civ)==assignment.OwnerCivilizationId && civ.governors!=null)
+                for(int i=0;i<civ.governors.Count;i++) if(civ.governors[i]?.Id==assignment.CharacterId) return true;
+        return false;
+    }
+
+    private static void SynchronizeCharacter(MilitaryCommanderAssignment assignment)
+    {
+        if (assignment.CharacterKind != CommanderCharacterKind.Admiral || AdmiralManager.Instance == null) return;
+        var admiral=AdmiralManager.Instance.GetAdmiral(assignment.CharacterId); if (admiral==null) { assignment.IsActive=false; return; }
+        admiral.assignedFleetId=assignment.IsActive?StableFormationNumber(assignment.FormationId):-1;
+        admiral.status=assignment.Status switch { BattleCommanderStatus.Wounded=>AdmiralStatus.Wounded,
+            BattleCommanderStatus.Captured=>AdmiralStatus.Captured, BattleCommanderStatus.Killed=>AdmiralStatus.Killed, _=>AdmiralStatus.Active };
+        admiral.capturedByCivilizationId=assignment.CapturedByCivilizationId;
+    }
+
+    private static int StableFormationNumber(string formationId)
+    { unchecked { int hash=17; if (formationId!=null) for(int i=0;i<formationId.Length;i++) hash=hash*31+formationId[i]; return hash; } }
 }
