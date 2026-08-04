@@ -6,8 +6,10 @@ public sealed class BattleResultApplier
     private readonly IBattleCampaignPlacementService placement = new BattleCampaignPlacementService();
     public void Apply(BattleResult result, EngagementPreview preview)
     {
-        if (result == null)
+        if (result == null || result.CampaignApplied)
             return;
+        if (preview == null)
+        { Debug.LogError("[BattleResultApplier] Result cannot be applied without its campaign engagement context."); return; }
 
         var byId = BuildUnitLookup(preview);
         var deferredCargo = new List<BattleUnitOutcome>();
@@ -57,6 +59,7 @@ public sealed class BattleResultApplier
 
             TryRepositionSurvivor(result, preview, cargo, outcome);
         }
+        result.CampaignApplied = true;
     }
 
     private static Dictionary<int, CombatUnit> BuildUnitLookup(EngagementPreview preview)
@@ -87,14 +90,19 @@ public sealed class BattleResultApplier
     {
         if (preview.Theater == BattleTheater.DeepSpace)
         {
-            int spaceTile = unit.currentSpaceTileIndex >= 0 ? unit.currentSpaceTileIndex : preview.AnchorTile;
-            placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
+            int attempted=-1;
+            foreach(int spaceTile in GetSpacePlacementCandidates(result,preview,unit,outcome))
             {
-                PlanetIndex = preview.PlanetIndex,
-                SpaceTileIndex = spaceTile,
-                Layer = unit.currentLayer,
-                PreferredStackSlot = outcome.SuggestedStackSlot,
-            }, out _);
+                attempted=spaceTile;
+                if(placement.TryPlaceAfterBattle(unit,new BattleCampaignPlacementRequest{PlanetIndex=preview.PlanetIndex,
+                    SpaceTileIndex=spaceTile,Layer=unit.currentLayer,PreferredStackSlot=outcome.SuggestedStackSlot},out _))
+                { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return; }
+            }
+            string reason = $"Living space unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+            result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+                Reason=reason, OriginalTile=unit.currentSpaceTileIndex, RequestedTile=attempted, IsDeepSpace=true });
+            Debug.LogError($"[BattleResultApplier] {reason}");
+            BattleRecoveryHoldingService.GetOrCreate().Hold(unit, reason, true);
             return;
         }
 
@@ -107,8 +115,13 @@ public sealed class BattleResultApplier
                 Layer = unit.currentLayer,
                 PreferredStackSlot = outcome.SuggestedStackSlot,
             }, out _))
-                return;
+            { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return; }
         }
+        string failure = $"Living unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+        result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+            Reason=failure, OriginalTile=unit.currentTileIndex, RequestedTile=outcome.WithdrawalCampaignTile, IsDeepSpace=false });
+        Debug.LogError($"[BattleResultApplier] {failure}");
+        BattleRecoveryHoldingService.GetOrCreate().Hold(unit, failure, false);
     }
 
     private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
@@ -138,17 +151,39 @@ public sealed class BattleResultApplier
         if (tileSystem == null || retreatOrigin < 0)
             yield break;
 
-        int[] neighbors = tileSystem.GetNeighbors(retreatOrigin);
-        System.Array.Sort(neighbors);
-        for (int i = 0; i < neighbors.Length; i++)
+        var seen=new HashSet<int>{retreatOrigin}; var queue=new Queue<(int tile,int depth)>(); queue.Enqueue((retreatOrigin,0));
+        while(queue.Count>0)
         {
-            int candidate = neighbors[i];
-            if (candidate == preview.AnchorTile || candidate == preferredTile)
-                continue;
+            var current=queue.Dequeue(); if(current.depth>=3)continue;
+            int[] neighbors=tileSystem.GetNeighbors(current.tile); System.Array.Sort(neighbors);
+            for(int i=0;i<neighbors.Length;i++)
+            {
+                int candidate=neighbors[i]; if(!seen.Add(candidate))continue;
+                var tile=tileSystem.GetTileData(candidate);
+                if(tile!=null&&UnitLayerRules.CanUnitUseTileOnLayer(unit,tile,unit.currentLayer)
+                    && (tile.owner==null||tile.owner==unit.owner)) yield return candidate;
+                queue.Enqueue((candidate,current.depth+1));
+            }
+        }
+    }
 
-            var tile = tileSystem.GetTileData(candidate);
-            if (UnitLayerRules.CanUnitUseTileOnLayer(unit, tile, unit.currentLayer))
-                yield return candidate;
+    private static IEnumerable<int> GetSpacePlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
+    {
+        var grid=SpaceWorldManager.Instance!=null?SpaceWorldManager.Instance.Grid:SpaceCombatManager.Instance?.spaceGrid;
+        if(grid==null)yield break;
+        var starts=new List<int>();
+        if(outcome.Retreated&&outcome.WithdrawalCampaignTile>=0)starts.Add(outcome.WithdrawalCampaignTile);
+        if(unit.currentSpaceTileIndex>=0)starts.Add(unit.currentSpaceTileIndex);
+        if(preview.AnchorTile>=0)starts.Add(preview.AnchorTile);
+        var seen=new HashSet<int>(); var candidates=new List<int>();
+        foreach(int start in starts) if(seen.Add(start))candidates.Add(start);
+        for(int cursor=0;cursor<candidates.Count&&cursor<64;cursor++)
+        {
+            int current=candidates[cursor]; var tile=grid.GetTile(current);
+            int ownerId=unit.owner!=null&&CivilizationManager.Instance!=null?CivilizationManager.Instance.GetCivIndex(unit.owner):-1;
+            if(tile!=null&&!tile.blocksMovement&&(tile.controllingCivilizationId<0||tile.controllingCivilizationId==ownerId))yield return current;
+            var neighbors=new List<int>(grid.GetNeighbors(current)); neighbors.Sort();
+            foreach(int next in neighbors)if(seen.Add(next))candidates.Add(next);
         }
     }
 }

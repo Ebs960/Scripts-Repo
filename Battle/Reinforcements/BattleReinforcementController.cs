@@ -8,8 +8,10 @@ public sealed class BattleReinforcementController
         for (int i = 0; i < session.Reinforcements.Count; i++)
         {
             var g = session.Reinforcements[i];
-            if (g == null || g.AvailableFromRound > round || g.Theater != session.Theater)
+            if (g == null || !g.IsEligible || g.AvailableFromRound > round || g.Theater != session.Theater)
                 continue;
+            g.LastEntryAttemptRound = round;
+            bool enteredAny = false;
             for (int u = 0; u < session.Units.Count; u++)
             {
                 var reserve = session.Units[u];
@@ -22,7 +24,9 @@ public sealed class BattleReinforcementController
                 reserve.CurrentActionPoints = reserve.Snapshot.TacticalActionPoints;
                 reserve.HasActed = reserve.Side != session.ActiveSide;
                 occupancy.TryMove(reserve, entry, session.Map);
+                enteredAny = true;
             }
+            g.LastEntryDelayReason = enteredAny ? string.Empty : "all compatible tactical entries are currently blocked; reinforcement remains queued";
         }
     }
 

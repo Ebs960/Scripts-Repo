@@ -8,6 +8,7 @@ using UnityEngine.UI;
 /// <summary>Runtime tactical board. Campaign objects are never moved by this view.</summary>
 public sealed class BattlePresenter : MonoBehaviour
 {
+    [Flags] public enum CellOverlay { None=0, Move=1, Attack=2, Invalid=4, Objective=8, Reinforcement=16, RetreatExit=32, RetreatPath=64, Suspected=128, Detected=256, Identified=512 }
     private BattleManager manager;
     private GameObject root;
     private TextMeshProUGUI summary;
@@ -15,10 +16,10 @@ public sealed class BattlePresenter : MonoBehaviour
     private readonly List<Button> cellButtons = new();
     private readonly HashSet<int> moveOverlay = new();
     private readonly HashSet<int> attackOverlay = new();
+    private readonly Dictionary<int,CellOverlay> richOverlays=new();
     private int selectedCell = -1;
     private int renderedCellCount = -1;
     private BattleDomain? visibleDomain;
-    private float zoom = 1f;
 
     public event Action<int> CellClicked;
     public string VisibleLayerName => visibleDomain?.ToString() ?? "All";
@@ -40,8 +41,7 @@ public sealed class BattlePresenter : MonoBehaviour
 
     public void AdjustZoom(float delta)
     {
-        zoom = Mathf.Clamp(zoom + delta, .65f, 1.6f);
-        if (board != null) board.localScale = Vector3.one * zoom;
+        manager?.AdjustTacticalCameraZoom(delta);
     }
 
     public BattleUnitState GetDisplayedUnitAtCell(int cell)
@@ -84,11 +84,15 @@ public sealed class BattlePresenter : MonoBehaviour
         RefreshCells();
     }
 
+    public void SetRichOverlays(Dictionary<int,CellOverlay> states)
+    { richOverlays.Clear(); if(states!=null)foreach(var pair in states)richOverlays[pair.Key]=pair.Value; RefreshCells(); }
+
     public void Present(BattleSession session)
     {
         Build();
         if (session == null) { Hide(); return; }
         EnsureBoard(session);
+        var canvas=root.GetComponent<Canvas>(); if(canvas!=null)canvas.worldCamera=manager.TacticalCamera;
         RefreshCells();
 
         int aliveA = 0, aliveD = 0;
@@ -140,12 +144,15 @@ public sealed class BattlePresenter : MonoBehaviour
         {
             var cell = session.Map.GetCell(i);
             var unit = manager.GetUnitAtCell(i);
+            BattleDetectionLevel detection=unit!=null?manager.GetDetectionLevel(session.ActiveSide,unit):BattleDetectionLevel.Undetected;
+            bool showUnit=unit!=null&&(unit.Side==session.ActiveSide||detection>=BattleDetectionLevel.Detected);
             var label = cellButtons[i].GetComponentInChildren<TextMeshProUGUI>();
             var text = new StringBuilder();
             text.Append('C').Append(i);
             if (cell.IsObjective) text.Append(" ★");
             if (cell.HasPort) text.Append(" ⚓"); else if (cell.HasBeach) text.Append(" ▱");
-            if (unit != null) text.Append('\n').Append(unit.Side == BattleSide.Attacker ? "A" : "D").Append('#').Append(unit.UnitId).Append(" ").Append(unit.CurrentHealth);
+            if(showUnit) text.Append('\n').Append(unit.Side == BattleSide.Attacker ? "A" : "D").Append('#').Append(unit.UnitId).Append(" ").Append(unit.CurrentHealth);
+            else if(unit!=null&&detection==BattleDetectionLevel.Suspected)text.Append("\n? CONTACT");
             label.text = text.ToString();
             label.color = Color.white;
             Color color = cell.IsWater ? new Color(.10f, .28f, .42f, .95f) : new Color(.20f, .30f, .17f, .95f);
@@ -153,6 +160,16 @@ public sealed class BattlePresenter : MonoBehaviour
             if (moveOverlay.Contains(i)) color = new Color(.12f, .65f, .75f, .98f);
             if (attackOverlay.Contains(i)) color = new Color(.82f, .18f, .12f, .98f);
             if (selectedCell == i) color = new Color(.95f, .78f, .16f, 1f);
+            richOverlays.TryGetValue(i,out var overlay);
+            if((overlay&CellOverlay.Invalid)!=0)color=new Color(.28f,.08f,.08f,.9f);
+            if((overlay&CellOverlay.Reinforcement)!=0)color=new Color(.42f,.2f,.62f,.96f);
+            if((overlay&CellOverlay.RetreatExit)!=0)color=new Color(.2f,.7f,.3f,.98f);
+            if((overlay&CellOverlay.RetreatPath)!=0)color=new Color(.15f,.8f,.55f,.98f);
+            if((overlay&CellOverlay.Suspected)!=0)color=new Color(.65f,.5f,.12f,.98f);
+            if((overlay&CellOverlay.Detected)!=0)color=new Color(.8f,.35f,.1f,.98f);
+            if((overlay&CellOverlay.Identified)!=0)color=new Color(.8f,.1f,.1f,.98f);
+            if((overlay&CellOverlay.Objective)!=0)text.Append(" OBJ");
+            label.text=text.ToString();
             cellButtons[i].GetComponent<Image>().color = color;
             cellButtons[i].interactable = true;
         }
@@ -164,8 +181,10 @@ public sealed class BattlePresenter : MonoBehaviour
     {
         if (root != null) return;
         root = new GameObject("Battle Tactical Board", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 505;
-        var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920f, 1080f);
+        var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.WorldSpace; canvas.sortingOrder = 505;
+        var rootRect=root.GetComponent<RectTransform>(); rootRect.sizeDelta=new Vector2(1000f,800f);
+        root.transform.SetPositionAndRotation(Vector3.zero,Quaternion.Euler(90f,0f,0f)); root.transform.localScale=Vector3.one*.012f;
+        var scaler = root.GetComponent<CanvasScaler>(); scaler.dynamicPixelsPerUnit=12f;
         var panel = new GameObject("Board Panel", typeof(RectTransform), typeof(Image)); panel.transform.SetParent(root.transform, false);
         var panelRect = panel.GetComponent<RectTransform>(); panelRect.anchorMin = new Vector2(.22f, .08f); panelRect.anchorMax = new Vector2(.98f, .92f); panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
         panel.GetComponent<Image>().color = new Color(.035f, .045f, .06f, .96f);

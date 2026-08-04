@@ -31,7 +31,6 @@ public sealed class BattleHUD : MonoBehaviour
         manager = battleManager;
         Build();
         presenter = BattlePresenter.GetOrCreate(battleManager);
-        presenter.CellClicked += OnCellClicked;
         manager.BattleStarted += OnBattleStarted;
         manager.BattleStateChanged += OnBattleStateChanged;
         manager.BattlePreviewClosed += Refresh;
@@ -46,8 +45,6 @@ public sealed class BattleHUD : MonoBehaviour
             manager.BattleStateChanged -= OnBattleStateChanged;
             manager.BattlePreviewClosed -= Refresh;
         }
-        if (presenter != null)
-            presenter.CellClicked -= OnCellClicked;
     }
 
     public void Bind(BattleSession session)
@@ -132,6 +129,7 @@ public sealed class BattleHUD : MonoBehaviour
             for (int i = 0; i < units.Count; i++)
                 if (units[i].UnitId == selectedUnitId) selectedUnitIndex = i;
             selectedUnitId = units[selectedUnitIndex].UnitId;
+            manager.TacticalInput?.SelectUnit(selectedUnitId);
             unitSelector.text = $"Unit: {units[selectedUnitIndex].UnitId} ({units[selectedUnitIndex].Domain}, HP {units[selectedUnitIndex].CurrentHealth})";
         }
         else { selectedUnitId = -1; unitSelector.text = "No active units"; }
@@ -147,6 +145,7 @@ public sealed class BattleHUD : MonoBehaviour
             return;
         selectedUnitIndex = (selectedUnitIndex - 1 + units.Count) % units.Count;
         selectedUnitId = units[selectedUnitIndex].UnitId;
+        manager.TacticalInput?.SelectUnit(selectedUnitId);
         RefreshTargets();
         ShowSelected();
         RefreshBoardOverlays();
@@ -158,6 +157,7 @@ public sealed class BattleHUD : MonoBehaviour
         if (units == null || units.Count == 0) return;
         selectedUnitIndex = (selectedUnitIndex + 1) % units.Count;
         selectedUnitId = units[selectedUnitIndex].UnitId;
+        manager.TacticalInput?.SelectUnit(selectedUnitId);
         RefreshTargets();
         ShowSelected();
         RefreshBoardOverlays();
@@ -322,22 +322,27 @@ public sealed class BattleHUD : MonoBehaviour
     private void EndUnit() { Submit(manager.EndUnitActivation(selectedUnitId, out string reason), reason); }
     private void Retreat()
     {
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Retreat);
         cellActionMode = CellActionMode.Retreat; Notify("Select a highlighted friendly battlefield-edge exit.");
     }
     private void Embark()
     {
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Embark);
         cellActionMode = CellActionMode.Embark; Notify("Select an adjacent friendly transport.");
     }
     private void Disembark()
     {
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Disembark);
         cellActionMode = CellActionMode.Disembark; Notify("Select a beach, port, or valid adjacent destination.");
     }
     private void Launch()
     {
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Launch);
         cellActionMode = CellActionMode.Launch; Notify("Select an adjacent aircraft launch cell.");
     }
     private void Recover()
     {
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Recovery);
         cellActionMode = CellActionMode.Recover; Notify("Select an adjacent friendly carrier.");
     }
     private void Dive() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Deep, out string reason), reason); }
