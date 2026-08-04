@@ -6,8 +6,10 @@ public sealed class BattleResultApplier
     private readonly IBattleCampaignPlacementService placement = new BattleCampaignPlacementService();
     public void Apply(BattleResult result, EngagementPreview preview)
     {
-        if (result == null)
+        if (result == null || result.CampaignApplied)
             return;
+        if (preview == null)
+        { Debug.LogError("[BattleResultApplier] Result cannot be applied without its campaign engagement context."); return; }
 
         var byId = BuildUnitLookup(preview);
         var deferredCargo = new List<BattleUnitOutcome>();
@@ -57,6 +59,7 @@ public sealed class BattleResultApplier
 
             TryRepositionSurvivor(result, preview, cargo, outcome);
         }
+        result.CampaignApplied = true;
     }
 
     private static Dictionary<int, CombatUnit> BuildUnitLookup(EngagementPreview preview)
@@ -88,13 +91,19 @@ public sealed class BattleResultApplier
         if (preview.Theater == BattleTheater.DeepSpace)
         {
             int spaceTile = unit.currentSpaceTileIndex >= 0 ? unit.currentSpaceTileIndex : preview.AnchorTile;
-            placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
+            if (!placement.TryPlaceAfterBattle(unit, new BattleCampaignPlacementRequest
             {
                 PlanetIndex = preview.PlanetIndex,
                 SpaceTileIndex = spaceTile,
                 Layer = unit.currentLayer,
                 PreferredStackSlot = outcome.SuggestedStackSlot,
-            }, out _);
+            }, out _))
+            {
+                string reason = $"Living space unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+                result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+                    Reason=reason, OriginalTile=unit.currentSpaceTileIndex, RequestedTile=spaceTile, IsDeepSpace=true });
+                Debug.LogError($"[BattleResultApplier] {reason}");
+            }
             return;
         }
 
@@ -109,6 +118,10 @@ public sealed class BattleResultApplier
             }, out _))
                 return;
         }
+        string failure = $"Living unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+        result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+            Reason=failure, OriginalTile=unit.currentTileIndex, RequestedTile=outcome.WithdrawalCampaignTile, IsDeepSpace=false });
+        Debug.LogError($"[BattleResultApplier] {failure}");
     }
 
     private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)

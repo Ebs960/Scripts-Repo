@@ -6,6 +6,20 @@ public sealed class BattleDetectionService
 {
     private readonly Dictionary<(BattleSide side, int unitId), BattleDetectionLevel> levels = new();
 
+    [System.Serializable] public sealed class DetectionRecord
+    { public BattleSide ObservingSide; public int TargetUnitId; public BattleDetectionLevel Level; }
+
+    public List<DetectionRecord> CaptureState()
+    {
+        var result = new List<DetectionRecord>();
+        foreach (var pair in levels) result.Add(new DetectionRecord { ObservingSide=pair.Key.side, TargetUnitId=pair.Key.unitId, Level=pair.Value });
+        result.Sort((a,b) => { int side=a.ObservingSide.CompareTo(b.ObservingSide); return side != 0 ? side : a.TargetUnitId.CompareTo(b.TargetUnitId); });
+        return result;
+    }
+
+    public void RestoreState(IEnumerable<DetectionRecord> records)
+    { levels.Clear(); if (records == null) return; foreach (var r in records) if (r != null) levels[(r.ObservingSide, r.TargetUnitId)] = r.Level; }
+
     public BattleDetectionLevel GetLevel(BattleSide side, BattleUnitState target)
     {
         if (target == null) return BattleDetectionLevel.Undetected;

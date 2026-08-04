@@ -14,6 +14,12 @@ public sealed class BattleReinforcementGroup
     public int OriginSpaceRegion = -1;
     public BattleDomain Domain;
     public BattleEntryMethod EntryMethod;
+    public bool IsEligible = true;
+    public int StrategicDistance;
+    public string EligibilityReason = "eligible";
+    public string DelayReason = string.Empty;
+    public int LastEntryAttemptRound;
+    public string LastEntryDelayReason = string.Empty;
 
     public readonly List<BattleUnitSnapshot> Units = new();
 }

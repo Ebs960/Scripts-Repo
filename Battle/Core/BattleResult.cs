@@ -10,6 +10,18 @@ public sealed class BattleResult
 
     public int FinalRound;
     public bool WasAutoResolved;
+    public bool CampaignApplied;
+    public readonly List<BattlePlacementFailure> PlacementFailures = new();
+}
+
+public sealed class BattlePlacementFailure
+{
+    public int CampaignRuntimeId;
+    public BattleSide Side;
+    public string Reason;
+    public int OriginalTile = -1;
+    public int RequestedTile = -1;
+    public bool IsDeepSpace;
 }
 
 public sealed class BattleUnitOutcome
@@ -22,6 +34,9 @@ public sealed class BattleUnitOutcome
     public bool Retreated;
     public bool Participated;
     public int WithdrawalCampaignTile = -1;
+    public int WithdrawalTacticalExit = -1;
+    public List<int> RetreatPath = new();
+    public string RetreatFailureReason;
 
     public int ExperienceGained;
 

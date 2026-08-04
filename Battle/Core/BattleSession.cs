@@ -25,6 +25,16 @@ public sealed class BattleSession
 
     private readonly List<BattleUnitState> units;
     private readonly List<BattleReinforcementGroup> reinforcements;
+    private readonly HashSet<BattleSide> deploymentConfirmed = new();
+
+    public bool IsDeploymentConfirmed(BattleSide side) => deploymentConfirmed.Contains(side);
+    public void SetDeploymentConfirmed(BattleSide side, bool confirmed)
+    { if (confirmed) deploymentConfirmed.Add(side); else deploymentConfirmed.Remove(side); }
+    public void SetDeploymentSide(BattleSide side)
+    { if (Phase == BattlePhase.Deployment) ActiveSide = side; }
+
+    public void RestoreProgress(BattlePhase phase, BattleSide activeSide, int round)
+    { Phase = phase; ActiveSide = activeSide; CurrentRound = System.Math.Max(1, System.Math.Min(MaximumRounds, round)); }
 
     // Preserve the original planetary-battle API for callers that do not need to
     // select a theater explicitly, including existing battle tests.

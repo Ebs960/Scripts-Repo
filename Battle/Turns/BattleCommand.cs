@@ -26,6 +26,7 @@ public sealed class BattleDefendCommand : BattleCommand
 public sealed class BattleRetreatCommand : BattleCommand
 {
     public int ExitCell;
+    public IReadOnlyList<int> Route;
 }
 
 public sealed class BattleWaitCommand : BattleCommand
