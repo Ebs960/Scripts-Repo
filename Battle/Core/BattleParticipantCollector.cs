@@ -177,22 +177,23 @@ public sealed class BattleParticipantCollector
                     int runtimeId = cu.gameObject != null ? cu.gameObject.GetRuntimeId() : 0;
                     if (runtimeId != 0 && !participants.Add(runtimeId))
                         continue;
+                    if (!CanReinforce(cu, out _)) continue;
 
                     if (cu.owner == attackerCiv)
                     {
                         if (!HasStrategicAccess(preview, cu, tile, ts)) continue;
                         var profile = BattleProfileInference.Resolve(cu.data);
                         var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
-                        GetOrCreateReserve(preview, BattleSide.Attacker, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
-                            .Units.Add(snapshot);
+                        var group = GetOrCreateReserve(preview, BattleSide.Attacker, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId);
+                        ConfigureArrival(group, depth, cu); group.Units.Add(snapshot);
                     }
                     else if (cu.owner == defenderCiv)
                     {
                         if (!HasStrategicAccess(preview, cu, tile, ts)) continue;
                         var profile = BattleProfileInference.Resolve(cu.data);
                         var snapshot = new BattleUnitSnapshot(cu, profile, profile != null ? profile.tacticalMovePoints : 3, profile != null ? profile.tacticalActionPoints : 1);
-                        GetOrCreateReserve(preview, BattleSide.Defender, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId)
-                            .Units.Add(snapshot);
+                        var group = GetOrCreateReserve(preview, BattleSide.Defender, tile, BattleDomainResolver.Resolve(cu), preview.Theater, snapshot.FormationId);
+                        ConfigureArrival(group, depth, cu); group.Units.Add(snapshot);
                     }
                 }
             }
@@ -289,6 +290,7 @@ public sealed class BattleParticipantCollector
                 continue;
             if (!BattleTheaterResolver.AllowsDomain(BattleTheater.DeepSpace, BattleDomainResolver.Resolve(unit)))
                 continue;
+            if (!CanReinforce(unit, out _)) continue;
 
             participants.Add(runtimeId);
             unit.EnsureMilitaryFormationIdentity();
@@ -297,6 +299,7 @@ public sealed class BattleParticipantCollector
             BattleSide side = unit.owner == attackerCiv ? BattleSide.Attacker : BattleSide.Defender;
             var group = GetOrCreateReserve(preview, side, unit.currentSpaceTileIndex, BattleDomain.Space, BattleTheater.DeepSpace, snapshot.FormationId);
             group.OriginSpaceRegion = unit.currentSpaceTileIndex;
+            ConfigureArrival(group, route.Count - 1, unit);
             group.Units.Add(snapshot);
         }
     }
@@ -320,6 +323,28 @@ public sealed class BattleParticipantCollector
             _ => BattleEntryMethod.LandEdge,
         },
     };
+
+    private void ConfigureArrival(BattleReinforcementGroup group, int distance, CombatUnit unit)
+    {
+        int speed = Mathf.Max(1, unit != null && unit.data != null ? unit.data.baseMovePoints : 1);
+        int travelRounds = Mathf.Max(1, Mathf.CeilToInt(distance / (float)speed));
+        group.StrategicDistance = Mathf.Max(group.StrategicDistance, distance);
+        group.AvailableFromRound = Mathf.Max(ruleset.reinforcementStartRound, 1 + travelRounds);
+        group.DelayReason = travelRounds > 1 ? $"strategic route requires {travelRounds} rounds at speed {speed}" : string.Empty;
+        group.IsEligible = true; group.EligibilityReason = "eligible strategic route";
+    }
+
+    private static bool CanReinforce(CombatUnit unit, out string reason)
+    {
+        if (unit == null || unit.currentHealth <= 0) { reason = "destroyed or unavailable"; return false; }
+        if (unit.hasActedThisTurn || unit.currentMovePoints <= 0 && unit.CurrentAttackPoints <= 0)
+        { reason = "no strategic action or movement remaining"; return false; }
+        if (unit.IsTransported && (unit.TransportingUnit == null || unit.TransportingUnit.currentHealth <= 0))
+        { reason = "transport relationship is invalid"; return false; }
+        if (string.IsNullOrEmpty(unit.EnsureMilitaryFormationIdentity()))
+        { reason = "formation identity is invalid"; return false; }
+        reason = string.Empty; return true;
+    }
 
     private static BattleDomain DomainForLayer(TileLayer layer) => layer switch
     {

@@ -24,6 +24,9 @@ public sealed class BattleUnitState
     public bool HasAttackedThisTurn;
     public bool HasEnteredBattle;
     public int WithdrawalCampaignTile = -1;
+    public int WithdrawalTacticalExit = -1;
+    public readonly List<int> RetreatPath = new();
+    public string RetreatFailureReason;
 
     public BattleDomain Domain => Snapshot != null ? Snapshot.Domain : BattleDomain.Land;
     public int OccupancyBand;

@@ -9,6 +9,9 @@ public sealed class BattleAIEvaluator
     }
 
     public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
+        => BuildCandidates(session, unit, occupancy, detection, null);
+
+    public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection, BattleTacticalPlan plan)
     {
         bool embarkedActivation = unit != null && unit.Side == session?.ActiveSide && unit.IsEmbarked
             && !unit.IsDead && unit.CurrentActionPoints > 0;
@@ -80,6 +83,7 @@ public sealed class BattleAIEvaluator
                         UnitId = unit.UnitId,
                         CommandType = BattleCommandType.Retreat,
                         ExitCell = exit.BattleIndex,
+                        Route = new[] { unit.CellIndex, exit.BattleIndex },
                     }, 40f));
                 }
         }
@@ -126,7 +130,8 @@ public sealed class BattleAIEvaluator
                     IsRanged = false,
                     WeaponIndex = weaponIndex,
                 };
-                float score = 20f + (enemy.CurrentHealth <= unit.Snapshot.MeleeAttack ? 10f : 0f);
+                float score = 20f + (enemy.CurrentHealth <= unit.Snapshot.MeleeAttack ? 10f : 0f)
+                    + (plan != null && enemy.UnitId == plan.FocusTargetUnitId ? 15f : 0f);
                 candidates.Add(new BattleAICandidate(attack, score));
                 continue;
             }
@@ -142,7 +147,7 @@ public sealed class BattleAIEvaluator
                     IsRanged = true,
                     WeaponIndex = weaponIndex,
                 };
-                float score = 15f;
+                float score = 15f + (plan != null && enemy.UnitId == plan.FocusTargetUnitId ? 15f : 0f);
                 candidates.Add(new BattleAICandidate(attack, score));
             }
         }
@@ -150,36 +155,11 @@ public sealed class BattleAIEvaluator
         // Move toward objective
         if (session.Objective.CellIndex >= 0 && unit.CurrentMovePoints > 0)
         {
-            var cell = session.Map.GetCell(unit.CellIndex);
-            if (cell?.NeighborIndices != null)
+            var path = FindObjectivePath(session, unit, occupancy);
+            if (path != null && path.Count > 1)
             {
-                int bestCell = -1;
-                int bestDist = int.MaxValue;
-                for (int i = 0; i < cell.NeighborIndices.Length; i++)
-                {
-                    int n = cell.NeighborIndices[i];
-                    if (!occupancy.CanEnter(unit, n, session.Map))
-                        continue;
-
-                    int d = session.MapDistance(n, session.Objective.CellIndex);
-                    if (d < bestDist)
-                    {
-                        bestDist = d;
-                        bestCell = n;
-                    }
-                }
-
-                if (bestCell >= 0)
-                {
-                    var move = new BattleMoveCommand
-                    {
-                        UnitId = unit.UnitId,
-                        CommandType = BattleCommandType.Move,
-                        Path = new[] { unit.CellIndex, bestCell },
-                    };
-                    float score = 8f;
-                    candidates.Add(new BattleAICandidate(move, score));
-                }
+                candidates.Add(new BattleAICandidate(new BattleMoveCommand
+                { UnitId = unit.UnitId, CommandType = BattleCommandType.Move, Path = path }, 8f + path.Count * .1f));
             }
         }
 
@@ -199,5 +179,32 @@ public sealed class BattleAIEvaluator
 
         candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
         return candidates;
+    }
+
+    private static List<int> FindObjectivePath(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy)
+    {
+        var queue = new Queue<int>(); var previous = new Dictionary<int, int>();
+        queue.Enqueue(unit.CellIndex); previous[unit.CellIndex] = -1;
+        int best = unit.CellIndex, bestDistance = session.MapDistance(best, session.Objective.CellIndex);
+        while (queue.Count > 0)
+        {
+            int current = queue.Dequeue();
+            var cell = session.Map.GetCell(current);
+            if (cell?.NeighborIndices == null) continue;
+            foreach (int next in cell.NeighborIndices)
+            {
+                if (previous.ContainsKey(next) || !occupancy.CanEnter(unit, next, session.Map)) continue;
+                previous[next] = current; queue.Enqueue(next);
+                int distance = session.MapDistance(next, session.Objective.CellIndex);
+                if (distance < bestDistance || distance == bestDistance && next < best)
+                { best = next; bestDistance = distance; }
+            }
+        }
+        if (best == unit.CellIndex) return null;
+        var reverse = new List<int>();
+        for (int at = best; at >= 0; at = previous[at]) reverse.Add(at);
+        reverse.Reverse();
+        if (reverse.Count > unit.CurrentMovePoints + 1) reverse.RemoveRange(unit.CurrentMovePoints + 1, reverse.Count - unit.CurrentMovePoints - 1);
+        return reverse;
     }
 }

@@ -2,6 +2,8 @@ public sealed class BattleAIController
 {
     private readonly BattleAIEvaluator evaluator = new();
     private readonly BattleDetectionService detection;
+    public BattleTacticalPlan CurrentPlan { get; private set; }
+    public void RestorePlan(BattleTacticalPlan plan) => CurrentPlan = plan;
 
     public BattleAIController(BattleDetectionService detection = null)
     {
@@ -15,13 +17,14 @@ public sealed class BattleAIController
             return false;
 
         bool any = false;
+        CurrentPlan = BattleTacticalPlan.Build(session, session.ActiveSide, detection);
         bool releasedDelayedUnits = false;
         while (commandsExecuted < maxCommands)
         {
             bool executedThisPass = false;
-            for (int i = 0; i < session.Units.Count && commandsExecuted < maxCommands; i++)
+            for (int i = 0; i < CurrentPlan.ActivationOrder.Count && commandsExecuted < maxCommands; i++)
             {
-                var unit = session.Units[i];
+                var unit = FindUnit(session, CurrentPlan.ActivationOrder[i]);
                 if (unit == null || (!unit.CanAct(session.ActiveSide)
                     && !(unit.Side == session.ActiveSide && unit.IsEmbarked && !unit.IsDead && unit.CurrentActionPoints > 0)))
                     continue;
@@ -29,7 +32,7 @@ public sealed class BattleAIController
                 // Candidates are ordered by tactical value. If the preferred
                 // action becomes illegal (LOS, occupancy, ammo, detection), try
                 // the next legal command instead of abandoning the activation.
-                var candidates = evaluator.BuildCandidates(session, unit, occupancy, detection);
+                var candidates = evaluator.BuildCandidates(session, unit, occupancy, detection, CurrentPlan);
                 for (int c = 0; c < candidates.Count; c++)
                 {
                     var command = candidates[c].Command;
@@ -57,6 +60,9 @@ public sealed class BattleAIController
 
         return any;
     }
+
+    private static BattleUnitState FindUnit(BattleSession session, int id)
+    { for (int i=0;i<session.Units.Count;i++) if (session.Units[i]?.UnitId == id) return session.Units[i]; return null; }
 
     private static bool ReleaseDelayedUnits(BattleSession session)
     {

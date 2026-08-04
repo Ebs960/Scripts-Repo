@@ -106,6 +106,8 @@ public sealed class BattlePreviewUI : MonoBehaviour
         root.SetActive(true);
     }
 
+    public void PresentRestored(EngagementPreview preview) => Show(preview);
+
     private void PopulateCommanderChoices(EngagementPreview preview)
     {
         commanderChoices.Clear();

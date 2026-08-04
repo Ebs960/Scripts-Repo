@@ -261,35 +261,33 @@ public sealed class BattleCommandExecutor
             return false;
         }
 
-        var fromCell = session.Map.GetCell(unit.CellIndex);
-        bool adjacent = false;
-        if (fromCell?.NeighborIndices != null)
+        if (retreat.Route == null || retreat.Route.Count < 2 || retreat.Route[0] != unit.CellIndex
+            || retreat.Route[retreat.Route.Count - 1] != retreat.ExitCell)
         {
-            for (int i = 0; i < fromCell.NeighborIndices.Length; i++)
-            {
-                if (fromCell.NeighborIndices[i] == retreat.ExitCell)
-                {
-                    adjacent = true;
-                    break;
-                }
-            }
-        }
-
-        if (!adjacent)
-        {
-            reason = "retreat exit not adjacent";
+            reason = "retreat route is missing or stale";
+            unit.RetreatFailureReason = reason;
             return false;
         }
-
-        if (!occupancy.CanEnter(unit, retreat.ExitCell, session.Map))
+        int reached = unit.CellIndex;
+        for (int i = retreat.Route.Count - 1; i > 0; i--)
         {
-            reason = "retreat exit blocked";
-            return false;
+            if (!movementService.TryMove(session, unit, retreat.Route[i], occupancy, out _)) continue;
+            reached = retreat.Route[i]; break;
+        }
+        unit.RetreatPath.Clear();
+        for (int i = 0; i < retreat.Route.Count; i++) unit.RetreatPath.Add(retreat.Route[i]);
+        if (reached != retreat.ExitCell)
+        {
+            unit.RetreatFailureReason = "retreat in progress";
+            reason = string.Empty;
+            return true;
         }
 
         occupancy.Remove(unit);
         unit.HasRetreated = true;
+        unit.WithdrawalTacticalExit = retreat.ExitCell;
         unit.WithdrawalCampaignTile = cell.CampaignTileIndex;
+        unit.RetreatFailureReason = string.Empty;
         unit.HasActed = true;
         unit.CurrentActionPoints = 0;
         unit.CurrentMovePoints = 0;

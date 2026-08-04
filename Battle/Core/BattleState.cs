@@ -7,6 +7,7 @@ public sealed class BattleState
     public BattleCommandExecutor CommandExecutor;
     public BattleAIController AiController;
     public BattleMovementService MovementService;
+    public BattleRetreatService RetreatService;
     public BattleCombatResolver CombatResolver;
     public BattleOccupancy Occupancy;
     public BattleDetectionService DetectionService;
