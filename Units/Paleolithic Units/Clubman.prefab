@@ -376,6 +376,9 @@ MonoBehaviour:
   range: 0
   useOverrideStats: 0
   <data>k__BackingField: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
+  militaryFormationId: 
+  militaryFormationType: 0
+  militaryFormationName: 
   OnUnitLoaded:
     m_PersistentCalls:
       m_Calls: []
