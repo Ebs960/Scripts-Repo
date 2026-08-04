@@ -552,6 +552,10 @@ public class ImprovementData : ScriptableObject
     [Tooltip("If true, enemy Zone of Control does not apply to this tile even if an enemy unit is adjacent (e.g., a fortified road or military road).")]
     public bool blocksZoneOfControl = false;
 
+    [Header("Labor")]
+    [Tooltip("If true, this improvement can be assigned a labor type (Unskilled, Skilled, Prisoners, Slaves, Serfs) in the upgrade panel. Improvements like forts should leave this false.")]
+    public bool usesLaborTypes = true;
+
     [Header("Upgrades")]
     [Tooltip("If set, this improvement replaces the listed older improvements once unlocked; those become obsolete in build menus.")]
     public ImprovementData[] replacesImprovements;

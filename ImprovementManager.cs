@@ -41,6 +41,64 @@ public class ImprovementManager : MonoBehaviour
     [Tooltip("Optional: world-space label prefab to show an icon above instantiated improvements")]
     public GameObject improvementLabelPrefab;
 
+    [Header("Labor Types")]
+    [Tooltip("All labor types available in the game. Any improvement with usesLaborTypes=true automatically allows switching between all of these (gated by required policy and gold cost).")]
+    public LaborTypeData[] allLaborTypes;
+
+    public LaborTypeData GetDefaultLaborType()
+    {
+        if (allLaborTypes == null) return null;
+        foreach (var labor in allLaborTypes)
+            if (labor != null && labor.isDefaultLabor) return labor;
+        return null;
+    }
+
+    public LaborTypeData ResolveLaborType(string id)
+    {
+        if (string.IsNullOrEmpty(id) || allLaborTypes == null) return GetDefaultLaborType();
+        foreach (var labor in allLaborTypes)
+            if (labor != null && labor.GetLaborKey() == id) return labor;
+        return GetDefaultLaborType();
+    }
+
+    /// <summary>
+    /// Attempts to assign a labor type to the improvement instance on the given tile, charging gold and
+    /// validating policy requirements via ImprovementLaborRules. Returns true on success.
+    /// </summary>
+    public bool TryAssignLaborType(int tileIndex, int planetIndex, Civilization actor, LaborTypeData laborType, out string reason)
+    {
+        reason = string.Empty;
+        var ts = (planetIndex >= 0) ? (TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
+        HexTileData tileData = (planetIndex >= 0) ? ts?.GetTileDataFromPlanet(tileIndex, planetIndex) : ts?.GetTileData(tileIndex);
+        if (tileData == null || tileData.improvement == null || tileData.improvementInstanceObject == null)
+        {
+            reason = "No improvement on this tile.";
+            return false;
+        }
+
+        var impInstance = tileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+        if (impInstance == null)
+        {
+            reason = "Improvement instance not found.";
+            return false;
+        }
+
+        var evaluation = ImprovementLaborRules.Evaluate(tileData.improvement, impInstance, laborType, actor);
+        if (evaluation.Availability != ImprovementUpgradeAvailability.Available)
+        {
+            reason = evaluation.Reason;
+            return false;
+        }
+
+        int cost = ImprovementLaborRules.GetSwitchCost(laborType);
+        if (cost > 0 && actor != null)
+            actor.gold -= cost;
+
+        impInstance.currentLaborType = laborType;
+        tileData.currentLaborTypeId = laborType.GetLaborKey();
+        return true;
+    }
+
     // All active build jobs on the map
     private readonly List<BuildJob> jobs = new();
     // Parallel pipeline for worker-built combat units
@@ -684,6 +742,9 @@ public class ImprovementManager : MonoBehaviour
 
                 var impInstance = td.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
                 ApplyImprovementResourceProductionToCiv(civ, td.improvement, impInstance);
+
+                int laborUpkeep = impInstance != null ? impInstance.GetLaborGoldUpkeepPerTurn() : 0;
+                if (laborUpkeep > 0) ty.Gold -= laborUpkeep;
 
                 if (ty.Food != 0) civ.AddFood(ty.Food);
                 if (ty.Gold != 0) civ.AddGold(ty.Gold);
@@ -1529,6 +1590,9 @@ public class ImprovementManager : MonoBehaviour
         impInstance.data = tileData.improvement;
         // Restore owner on runtime instance from persisted tile data
         impInstance.owner = tileData.improvementOwner;
+        // Restore labor type assignment from persisted tile data
+        if (tileData.improvement.usesLaborTypes)
+            impInstance.currentLaborType = ResolveLaborType(tileData.currentLaborTypeId);
 
         if (tileData.builtUpgrades == null || tileData.builtUpgrades.Count == 0) return;
 

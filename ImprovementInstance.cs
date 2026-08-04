@@ -21,6 +21,8 @@ public class ImprovementInstance : MonoBehaviour
     public Civilization owner;
     // Track applied upgrades by id/name
     public HashSet<string> appliedUpgrades = new HashSet<string>();
+    // Currently assigned labor type for this improvement (null/default = Unskilled)
+    public LaborTypeData currentLaborType;
     // Track instantiated child parts so we don't duplicate them
     public List<GameObject> attachedParts = new List<GameObject>();
 
@@ -235,6 +237,12 @@ public class ImprovementInstance : MonoBehaviour
             ResetFortAttacksForTurn();
     }
 
+    /// <summary>Output multiplier from the currently assigned labor type (1.0 if none assigned).</summary>
+    public float GetLaborOutputMultiplier() => currentLaborType != null ? currentLaborType.outputMultiplier : 1f;
+
+    /// <summary>Flat per-turn gold upkeep charged by the currently assigned labor type.</summary>
+    public int GetLaborGoldUpkeepPerTurn() => currentLaborType != null ? Mathf.Max(0, currentLaborType.goldUpkeepPerTurn) : 0;
+
     public IEnumerable<ImprovementUpgradeData> EnumerateAppliedUpgrades()
     {
         if (appliedUpgrades == null || data?.availableUpgrades == null)
@@ -374,6 +382,8 @@ public class ImprovementInstance : MonoBehaviour
         this.data = data;
         this.planetIndex = planetIndex;
         EnsureFortRuntimeInitialized();
+        if (currentLaborType == null && data != null && data.usesLaborTypes)
+            currentLaborType = ImprovementManager.Instance != null ? ImprovementManager.Instance.GetDefaultLaborType() : null;
         // Create a world-space label (icon) above the improvement if a prefab is configured
         try
         {

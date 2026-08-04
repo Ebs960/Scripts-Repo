@@ -2868,6 +2868,26 @@ Destroy(oldTuple.instance);
         return false;
     }
 
+    private int GetLaborTypeUnhappiness()
+    {
+        var ts = TileSys;
+        if (ts == null || !ts.IsReady())
+            return 0;
+
+        int total = 0;
+        int tileCount = ts.TileCount;
+        for (int i = 0; i < tileCount; i++)
+        {
+            var tileData = ts.GetTileData(i);
+            if (tileData == null || tileData.controllingCity != this) continue;
+            if (tileData.improvementInstanceObject == null) continue;
+            var instance = tileData.improvementInstanceObject.GetComponent<ImprovementInstance>();
+            if (instance != null && instance.currentLaborType != null)
+                total += instance.currentLaborType.unhappinessPerTurn;
+        }
+        return total;
+    }
+
     private static bool MatchesRequirement(BoolRequirement requirement, bool value)
     {
         return requirement switch
@@ -3286,6 +3306,7 @@ Destroy(oldTuple.instance);
         agg.orderAdd += unitAuraAgg.orderAdd;
         agg.orderPct += unitAuraAgg.orderPct;
         agg.happinessAdd += owner != null ? owner.GetResourceSurplusHappinessPerCity() : 0;
+        agg.happinessAdd -= GetLaborTypeUnhappiness();
         foreach (var (data, _, upkeepMultiplier) in EnumerateOperationalBuildings())
         {
             if (data == null) continue;

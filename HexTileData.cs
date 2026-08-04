@@ -103,6 +103,8 @@ public class HexTileData
     public GameObject improvementInstanceObject;
     [Tooltip("Upgrades built on this improvement")]
     public System.Collections.Generic.List<string> builtUpgrades = new System.Collections.Generic.List<string>();
+    [Tooltip("Currently assigned labor type key for this improvement's instance. Empty means the default (Unskilled) labor type.")]
+    public string currentLaborTypeId = "";
     [Tooltip("Resource on this tile, if any")]
     public ResourceData resource;
     [Tooltip("District built on this tile, if any")]
@@ -456,13 +458,18 @@ public class HexTileData
                 fa = Mathf.RoundToInt((fa + agg.faithAdd) * (1f + agg.faithPct));
             }
 
-            y.Food += f;
-            y.Production += p; 
-            y.Gold += g;
-            y.Science += s;
-            y.Culture += c;
-            y.Policy += pol;
-            y.Faith += fa;
+            float laborMultiplier = 1f;
+            var laborInstance = improvementInstanceObject != null ? improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+            if (laborInstance != null && laborInstance.currentLaborType != null)
+                laborMultiplier = laborInstance.currentLaborType.outputMultiplier;
+
+            y.Food += Mathf.RoundToInt(f * laborMultiplier);
+            y.Production += Mathf.RoundToInt(p * laborMultiplier);
+            y.Gold += Mathf.RoundToInt(g * laborMultiplier);
+            y.Science += Mathf.RoundToInt(s * laborMultiplier);
+            y.Culture += Mathf.RoundToInt(c * laborMultiplier);
+            y.Policy += Mathf.RoundToInt(pol * laborMultiplier);
+            y.Faith += Mathf.RoundToInt(fa * laborMultiplier);
         }
 
         // Add contributions from any built upgrades on this improvement (additional yields)

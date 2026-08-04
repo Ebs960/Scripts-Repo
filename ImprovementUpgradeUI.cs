@@ -147,6 +147,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         }
 
         PopulateUpgradeOptions();
+        PopulateLaborTypeOptions();
         RefreshDismantleUI();
         RefreshContextActions();
 
@@ -361,6 +362,86 @@ public class ImprovementUpgradeUI : MonoBehaviour
                 CreateUpgradeButton(upgrade, evaluation, optionParent);
             }
         }
+    }
+
+    private void PopulateLaborTypeOptions()
+    {
+        var mgr = ImprovementManager.Instance;
+        if (currentImprovement == null || !currentImprovement.usesLaborTypes || mgr == null || mgr.allLaborTypes == null || mgr.allLaborTypes.Length == 0)
+            return;
+
+        var tileData = GetCurrentTileData();
+        var instance = tileData?.improvementInstanceObject != null ? tileData.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+
+        Transform optionParent = upgradeButtonContainer;
+        if (upgradeSlotSectionPrefab != null)
+        {
+            var sectionObject = Instantiate(upgradeSlotSectionPrefab, upgradeButtonContainer);
+            upgradeSlotSections.Add(sectionObject);
+            var section = sectionObject.GetComponent<ImprovementUpgradeSlotSection>();
+            if (section != null)
+            {
+                int installed = instance != null && instance.currentLaborType != null ? 1 : 0;
+                section.Bind("Labor", installed, mgr.allLaborTypes.Length);
+                optionParent = section.OptionContainer;
+            }
+        }
+
+        foreach (var laborType in mgr.allLaborTypes)
+        {
+            if (laborType == null) continue;
+            var evaluation = ImprovementLaborRules.Evaluate(currentImprovement, instance, laborType, currentCiv);
+            CreateLaborTypeButton(laborType, evaluation, optionParent);
+        }
+    }
+
+    private void CreateLaborTypeButton(LaborTypeData laborType, ImprovementUpgradeEvaluation evaluation, Transform parent)
+    {
+        if (upgradeButtonPrefab == null || upgradeButtonContainer == null) return;
+
+        var buttonObj = Instantiate(upgradeButtonPrefab, parent);
+        upgradeButtons.Add(buttonObj);
+
+        var button = buttonObj.GetComponent<Button>();
+        var nameText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+        var icon = buttonObj.GetComponentInChildren<Image>();
+
+        if (nameText != null)
+        {
+            int cost = ImprovementLaborRules.GetSwitchCost(laborType);
+            string costText = cost > 0 ? $"Gold: {cost}" : "Free";
+            string status = string.IsNullOrEmpty(evaluation.Reason) ? string.Empty : $"\n{evaluation.Reason}";
+            nameText.text = $"Labor — {laborType.laborName}\n{costText}{status}";
+        }
+
+        if (icon != null && laborType.icon != null)
+            icon.sprite = laborType.icon;
+
+        if (button != null)
+        {
+            button.interactable = evaluation.IsInteractable;
+            button.onClick.AddListener(() => OnLaborTypeSelected(laborType));
+        }
+
+        var buttonImage = buttonObj.GetComponent<Image>();
+        if (buttonImage != null)
+            buttonImage.color = evaluation.IsInteractable ? Color.white : Color.gray;
+    }
+
+    private void OnLaborTypeSelected(LaborTypeData laborType)
+    {
+        if (laborType == null || currentCiv == null || currentTileIndex < 0) return;
+        if (ImprovementManager.Instance == null) return;
+
+        if (!ImprovementManager.Instance.TryAssignLaborType(currentTileIndex, currentPlanetIndex, currentCiv, laborType, out string reason))
+        {
+            if (!string.IsNullOrEmpty(reason) && UIManager.Instance != null)
+                UIManager.Instance.ShowNotification(reason);
+            return;
+        }
+
+        PopulateUpgradeOptions();
+        PopulateLaborTypeOptions();
     }
 
     private void RefreshDismantleUI()
