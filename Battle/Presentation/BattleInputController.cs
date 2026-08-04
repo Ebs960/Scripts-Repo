@@ -55,6 +55,8 @@ public sealed class BattleInputController : MonoBehaviour
     public void ActiveScan()
     { string reason = "battle manager unavailable"; Submit(manager != null && manager.TryActiveDetection(SelectedUnitId, out reason), reason); }
     public void SwitchDomain(BattleDomain domain) { DomainFilter = domain; SelectionChanged?.Invoke(); }
+    public void RestorePresentationState(BattleInteractionMode mode, int selectedUnitId, int selectedCellIndex, BattleDomain domain)
+    { Mode=mode; SelectedUnitId=selectedUnitId; SelectedCellIndex=selectedCellIndex; DomainFilter=domain; SelectionChanged?.Invoke(); }
     public void Cancel() { Mode = BattleInteractionMode.Selection; SelectedCellIndex = -1; SelectionChanged?.Invoke(); }
 
     private void Update()
