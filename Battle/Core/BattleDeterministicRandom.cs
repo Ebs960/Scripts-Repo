@@ -16,4 +16,7 @@ public sealed class BattleDeterministicRandom
         state ^= state << 5;
         return (state & 0x00FFFFFFu) / 16777216f;
     }
+
+    public uint CaptureState() => state;
+    public void RestoreState(uint value) => state = value == 0 ? 0x6D2B79F5u : value;
 }

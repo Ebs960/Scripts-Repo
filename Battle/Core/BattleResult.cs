@@ -10,6 +10,7 @@ public sealed class BattleResult
 
     public int FinalRound;
     public bool WasAutoResolved;
+    public bool CampaignApplied;
 }
 
 public sealed class BattleUnitOutcome
