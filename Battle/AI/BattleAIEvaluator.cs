@@ -9,6 +9,9 @@ public sealed class BattleAIEvaluator
     }
 
     public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection = null)
+        => BuildCandidates(session, unit, occupancy, detection, null);
+
+    public List<BattleAICandidate> BuildCandidates(BattleSession session, BattleUnitState unit, BattleOccupancy occupancy, BattleDetectionService detection, BattleTacticalPlan plan)
     {
         bool embarkedActivation = unit != null && unit.Side == session?.ActiveSide && unit.IsEmbarked
             && !unit.IsDead && unit.CurrentActionPoints > 0;
@@ -80,6 +83,7 @@ public sealed class BattleAIEvaluator
                         UnitId = unit.UnitId,
                         CommandType = BattleCommandType.Retreat,
                         ExitCell = exit.BattleIndex,
+                        Route = new[] { unit.CellIndex, exit.BattleIndex },
                     }, 40f));
                 }
         }
@@ -126,7 +130,8 @@ public sealed class BattleAIEvaluator
                     IsRanged = false,
                     WeaponIndex = weaponIndex,
                 };
-                float score = 20f + (enemy.CurrentHealth <= unit.Snapshot.MeleeAttack ? 10f : 0f);
+                float score = 20f + (enemy.CurrentHealth <= unit.Snapshot.MeleeAttack ? 10f : 0f)
+                    + (plan != null && enemy.UnitId == plan.FocusTargetUnitId ? 15f : 0f);
                 candidates.Add(new BattleAICandidate(attack, score));
                 continue;
             }
@@ -142,7 +147,7 @@ public sealed class BattleAIEvaluator
                     IsRanged = true,
                     WeaponIndex = weaponIndex,
                 };
-                float score = 15f;
+                float score = 15f + (plan != null && enemy.UnitId == plan.FocusTargetUnitId ? 15f : 0f);
                 candidates.Add(new BattleAICandidate(attack, score));
             }
         }

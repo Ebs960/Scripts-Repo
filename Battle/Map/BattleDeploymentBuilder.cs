@@ -88,11 +88,21 @@ public static class BattleDeploymentBuilder
 
     private static void AssignRetreatExits(BattleMap map)
     {
-        for (int i = 0; i < map.Cells.Count; i++)
+        foreach (BattleSide side in System.Enum.GetValues(typeof(BattleSide)))
         {
-            var cell = map.Cells[i];
-            if (cell.DeploymentOwner.HasValue)
-                cell.RetreatExitForSide = cell.DeploymentOwner;
+            var candidates = new List<BattleCell>();
+            int minimumDegree = int.MaxValue;
+            for (int i = 0; i < map.Cells.Count; i++)
+            {
+                var cell = map.Cells[i];
+                if (cell.DeploymentOwner != side) continue;
+                int degree = cell.NeighborIndices?.Length ?? 0;
+                if (degree < minimumDegree) { candidates.Clear(); minimumDegree = degree; }
+                if (degree == minimumDegree) candidates.Add(cell);
+            }
+            candidates.Sort((a, b) => a.BattleIndex.CompareTo(b.BattleIndex));
+            int exits = Mathf.Min(2, candidates.Count);
+            for (int i = 0; i < exits; i++) candidates[i].RetreatExitForSide = side;
         }
     }
 

@@ -35,6 +35,9 @@ public sealed class BattleOverlayRenderer : MonoBehaviour
             for (int i = 0; i < manager.ActiveBattle.Map.CellCount; i++)
                 if (manager.IsLegalCellForMode(selected.UnitId, i, input.Mode))
                     (input.Mode == BattleInteractionMode.Attack ? targets : moves).Add(i);
+            if (input.Mode == BattleInteractionMode.Retreat
+                && manager.TryGetRetreatPath(selected.UnitId, -1, out var route, out _))
+                for (int i = 0; i < route.Count; i++) if (!moves.Contains(route[i])) moves.Add(route[i]);
         }
         presenter.SetOverlays(selected?.CellIndex ?? input.SelectedCellIndex, moves, targets);
     }

@@ -98,7 +98,12 @@ public sealed class BattleResultApplier
                 Layer = unit.currentLayer,
                 PreferredStackSlot = outcome.SuggestedStackSlot,
             }, out _))
-                Debug.LogError($"[BattleResultApplier] Living space unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.");
+            {
+                string reason = $"Living space unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+                result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+                    Reason=reason, OriginalTile=unit.currentSpaceTileIndex, RequestedTile=spaceTile, IsDeepSpace=true });
+                Debug.LogError($"[BattleResultApplier] {reason}");
+            }
             return;
         }
 
@@ -113,7 +118,10 @@ public sealed class BattleResultApplier
             }, out _))
                 return;
         }
-        Debug.LogError($"[BattleResultApplier] Living unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.");
+        string failure = $"Living unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
+        result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
+            Reason=failure, OriginalTile=unit.currentTileIndex, RequestedTile=outcome.WithdrawalCampaignTile, IsDeepSpace=false });
+        Debug.LogError($"[BattleResultApplier] {failure}");
     }
 
     private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
