@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a9e6f3bb16032240b1771bb4aaed738, type: 3}
+  m_Name: Skilled Labor
+  m_EditorClassIdentifier: Assembly-CSharp::LaborTypeData
+  laborName: Skilled Labor
+  laborId: labor.skilled
+  icon: {fileID: 0}
+  description: Trained workers who produce noticeably more, at the cost of a flat
+    gold upkeep and a gold fee to switch to them.
+  isDefaultLabor: 0
+  requiredPolicy: {fileID: 0}
+  goldCostToSwitchTo: 150
+  outputMultiplier: 1.25
+  goldUpkeepPerTurn: 2
+  unhappinessPerTurn: 0

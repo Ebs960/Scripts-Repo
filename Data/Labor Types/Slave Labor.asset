@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a9e6f3bb16032240b1771bb4aaed738, type: 3}
+  m_Name: Slave Labor
+  m_EditorClassIdentifier: Assembly-CSharp::LaborTypeData
+  laborName: Slave Labor
+  laborId: labor.slaves
+  icon: {fileID: 0}
+  description: Free to maintain and boosts output, but requires a policy legalizing
+    slavery and causes significant unhappiness.
+  isDefaultLabor: 0
+  requiredPolicy: {fileID: 11400000, guid: 6a1b2c3d4e5f60718293a4b5c6d7e8f0, type: 2}
+  goldCostToSwitchTo: 0
+  outputMultiplier: 1.15
+  goldUpkeepPerTurn: 0
+  unhappinessPerTurn: 3
