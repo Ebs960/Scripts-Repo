@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
+  m_Name: Serfdom
+  m_EditorClassIdentifier: Assembly-CSharp::PolicyData
+  policyName: Serfdom
+  icon: {fileID: 0}
+  description: Binds peasants to the land under feudal obligation, unlocking Serf
+    Labor for improvements.
+  policyPointCost: 25
+  requiredTechs: []
+  requiredCultures: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
+  requiredCityCount: 0
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0.05
+  productionModifier: 0.05
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  unitYieldBonuses: []
+  unitBonuses: []
+  equipmentYieldBonuses: []
+  workerYieldBonuses: []
+  workerBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  governorOpinionEffects: []

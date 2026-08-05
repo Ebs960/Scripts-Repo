@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Bound tenant labor tied to the land. Modest output bonus and low
     upkeep, with mild unhappiness. Requires a policy permitting serfdom.
   isDefaultLabor: 0
-  requiredPolicy: {fileID: 0}
+  requiredPolicy: {fileID: 11400000, guid: 7b2c3d4e5f60718293a4b5c6d7e8f0a1, type: 2}
   goldCostToSwitchTo: 50
   outputMultiplier: 1.1
   goldUpkeepPerTurn: 1
