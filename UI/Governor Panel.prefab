@@ -1725,10 +1725,10 @@ MonoBehaviour:
   createGovernorButton: {fileID: 5560037983867290954}
   removeGovernorButton: {fileID: 9185755694304775648}
   existingGovernorsContainer: {fileID: 7489048593372045952}
-  governorEntryPrefab: {fileID: 5455478592113520035, guid: a66a64649470dfc40a643b447e39256b, type: 3}
+  governorEntryPrefab: {fileID: 1000000000000101, guid: 9a1b2c3d4e5f60718293a4b5c6d7e8f1, type: 3}
   traitPanel: {fileID: 4357195273525838348}
   traitListContainer: {fileID: 8533219244520654203}
-  traitEntryPrefab: {fileID: 5455478592113520035, guid: a66a64649470dfc40a643b447e39256b, type: 3}
+  traitEntryPrefab: {fileID: 1000000000000201, guid: 7b2c3d4e5f6071829a3b4c5d6e7f8091, type: 3}
 --- !u!1 &2257082147155205345
 GameObject:
   m_ObjectHideFlags: 0

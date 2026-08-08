@@ -26,6 +26,7 @@ public sealed class BattleUnitSnapshot
     public readonly TacticalUnitProfile TacticalProfile;
     public readonly BattleDomain Domain;
     public readonly List<TacticalWeaponProfile> Weapons = new();
+    public readonly BattleAttackProfile SpecialAttackProfile;
 
     public readonly int Experience;
     public readonly int Level;
@@ -58,6 +59,7 @@ public sealed class BattleUnitSnapshot
         TacticalProfile = tacticalProfile;
         Domain = BattleDomainResolver.Resolve(source);
         TacticalMovePoints = tacticalMovePoints;
+        SpecialAttackProfile = source?.data != null ? source.data.defaultSpecialAttackProfile : null;
         TacticalActionPoints = tacticalActionPoints;
 
         AddWeaponProfiles(source, tacticalProfile);

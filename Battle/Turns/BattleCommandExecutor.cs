@@ -163,16 +163,28 @@ public sealed class BattleCommandExecutor
         }
 
 
-        var targetCheck = targeting.CanTarget(session, attacker, defender, attack.IsRanged, attack.WeaponIndex);
+        var targetCheck = targeting.CanTarget(session, attacker, defender, attack.IsRanged, attack.WeaponIndex, attack.IsSpecialAttack ? attack.AttackProfile : null);
         if (!targetCheck.Allowed)
         {
             reason = !attack.IsRanged && targetCheck.Reason == "target out of range" ? "melee out of range" : targetCheck.Reason;
             return false;
         }
 
-        var selectedWeapon = BattleTargetingService.GetWeapon(attacker, attack.WeaponIndex);
-        if (!IsWeaponReady(attacker, attack.WeaponIndex, out reason))
-            return false;
+        TacticalWeaponProfile selectedWeapon = attack.IsSpecialAttack ? null : BattleTargetingService.GetWeapon(attacker, attack.WeaponIndex);
+        if (!attack.IsSpecialAttack)
+        {
+            if (!IsWeaponReady(attacker, attack.WeaponIndex, out reason))
+                return false;
+        }
+        else
+        {
+            if (attacker.SpecialAttackCooldownRemaining > 0)
+            { reason = "special attack is cooling down"; return false; }
+            if (attacker.SpecialAttackUsesRemaining == 0)
+            { reason = "special attack is out of uses"; return false; }
+            if (attack.AttackProfile == null)
+            { reason = "special attack profile missing"; return false; }
+        }
         if (attack.IsRanged && !(selectedWeapon?.usesIndirectFire ?? false))
         {
             if (!los.HasLineOfSight(session, attacker, defender, out var losReason))
@@ -186,7 +198,7 @@ public sealed class BattleCommandExecutor
         var defenderCell = session.Map.GetCell(defender.CellIndex);
         BattleCoverResolver.GetCover(defenderCell, out bool soft, out bool hard);
 
-        var context = new BattleCombatContext(
+        BattleCombatContext context = new BattleCombatContext(
             attacker,
             defender,
             !attack.IsRanged,
@@ -200,17 +212,29 @@ public sealed class BattleCommandExecutor
             HasExposed(defender),
             0,
             session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId,
-            selectedWeapon);
+            selectedWeapon,
+            attack.IsSpecialAttack ? attack.AttackProfile : null);
 
         var result = combatResolver.Resolve(context, session.Random);
         ApplyDamage(session, occupancy, defender, result.Damage);
+        if (attack.IsSpecialAttack && attack.AttackProfile != null && attack.AttackProfile.hasSplashDamage)
+            ApplySplashDamage(session, occupancy, attacker, defender, attack.AttackProfile, result.Damage);
 
         attacker.HasActed = true;
-    attacker.HasAttackedThisTurn = true;
+        attacker.HasAttackedThisTurn = true;
         attacker.CurrentActionPoints = 0;
         attacker.IsDefending = false;
         attacker.RevealedByAttack = true;
-        ConsumeWeapon(attacker, attack.WeaponIndex, selectedWeapon);
+        if (attack.IsSpecialAttack)
+        {
+            attacker.SpecialAttackCooldownRemaining = attack.AttackProfile != null ? Mathf.Max(0, attack.AttackProfile.cooldownRounds) : 0;
+            if (attacker.SpecialAttackUsesRemaining > 0)
+                attacker.SpecialAttackUsesRemaining--;
+        }
+        else
+        {
+            ConsumeWeapon(attacker, attack.WeaponIndex, selectedWeapon);
+        }
 
         int counterDistance = session.MapDistance(defender.CellIndex, attacker.CellIndex);
         int counterWeaponIndex = BattleTargetingService.FindWeaponIndex(defender, attacker, counterDistance);
@@ -562,6 +586,23 @@ public sealed class BattleCommandExecutor
         if (unit == null || index < 0 || index >= unit.WeaponAmmo.Count) return;
         if (unit.WeaponAmmo[index] > 0) unit.WeaponAmmo[index]--;
         unit.WeaponCooldowns[index] = weapon != null ? Mathf.Max(0, weapon.cooldownRounds) : 0;
+    }
+
+    private static void ApplySplashDamage(BattleSession session, BattleOccupancy occupancy, BattleUnitState attacker, BattleUnitState primaryTarget, BattleAttackProfile attackProfile, int primaryDamage)
+    {
+        if (attackProfile == null || !attackProfile.hasSplashDamage || attackProfile.splashRadius <= 0)
+            return;
+
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var candidate = session.Units[i];
+            if (candidate == null || candidate == attacker || candidate == primaryTarget || !candidate.IsAliveAndActive || candidate.Side == attacker.Side)
+                continue;
+            if (session.MapDistance(primaryTarget.CellIndex, candidate.CellIndex) > attackProfile.splashRadius)
+                continue;
+            int splashDamage = Mathf.Max(1, Mathf.RoundToInt(primaryDamage * attackProfile.splashDamageMultiplier));
+            ApplyDamage(session, occupancy, candidate, splashDamage);
+        }
     }
 
     private static bool CanUsePostAttackMove(BattleUnitState unit, BattleSide activeSide)

@@ -16,6 +16,7 @@ MonoBehaviour:
   description: The one true Jesus.
   icon: {fileID: 21300000, guid: cc36425dce374e746b1418291cb5e6e7, type: 3}
   requiredPantheon: {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 6d6df408b2b48484f2b0d4cf5d7fe1c1, type: 2}
   faithCost: 20
-  founderBelief: {fileID: 11400000, guid: c25a2d5b48058b54c8657693e699e31e, type: 2}
   enhancerBeliefs: []

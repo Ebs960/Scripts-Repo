@@ -55,6 +55,39 @@ public class Civilization : MonoBehaviour
     [Tooltip("Base HP damage applied to units each turn while the civilization is in famine (food <= 0).")]
     public int famineAttritionDamage = 1;
 
+    /// <summary>
+    /// Groups combatUnits by MilitaryFormationId into player-facing "armies", attaching any
+    /// active commander assignments from MilitaryCommanderAssignmentService. Used by the
+    /// Military Panel's Armies tab.
+    /// </summary>
+    public List<MilitaryFormationSummary> GetMilitaryFormations()
+    {
+        var result = new List<MilitaryFormationSummary>();
+        if (combatUnits == null) return result;
+
+        var groups = combatUnits
+            .Where(u => u != null && !string.IsNullOrEmpty(u.MilitaryFormationId))
+            .GroupBy(u => u.MilitaryFormationId);
+
+        var service = MilitaryCommanderAssignmentService.Instance;
+        foreach (var group in groups)
+        {
+            var first = group.First();
+            var summary = new MilitaryFormationSummary
+            {
+                FormationId = group.Key,
+                FormationName = string.IsNullOrEmpty(first.MilitaryFormationName) ? first.MilitaryFormationType.ToString() : first.MilitaryFormationName,
+                FormationType = first.MilitaryFormationType,
+                Members = group.ToList()
+            };
+            if (service != null)
+                summary.Commanders = new List<MilitaryCommanderAssignment>(service.GetAssignments(group.Key));
+            result.Add(summary);
+        }
+
+        return result;
+    }
+
     /// <summary>Register a newly trained combat unit and fire the OnUnitTrained event.</summary>
     public void RegisterTrainedCombatUnit(CombatUnit unit)
     {

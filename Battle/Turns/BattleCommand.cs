@@ -17,6 +17,8 @@ public sealed class BattleAttackCommand : BattleCommand
     public int AttackFromCell;
     public bool IsRanged;
     public int WeaponIndex;
+    public bool IsSpecialAttack;
+    public BattleAttackProfile AttackProfile;
 }
 
 public sealed class BattleDefendCommand : BattleCommand

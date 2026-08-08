@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CultureData
   cultureName: Salvation
   cultureAge: 5
-  description: 
+  description: A cultural tradition focused on spiritual salvation, moral discipline,
+    and faith-led social unity.
   cultureIcon: {fileID: 21300000, guid: 6bd82e1421b20f04c8ee97eaf11e6513, type: 3}
   positionHint: 0
   category: 3
@@ -27,8 +28,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: db993aed6282d834ca97499fa995369f, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlockedBuildings:
-  - {fileID: 11400000, guid: 54c0861fecb882becbfd706a28f5dee2, type: 2}
   unlockedGovernments: []
   unlockedReligions: []
   unlockedLeaders: []
@@ -44,6 +43,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -52,18 +52,23 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0
   unitBonuses: []
+  unitProductionModifiers: []
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
@@ -75,3 +80,4 @@ MonoBehaviour:
   unlocksBeliefs: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
+  citySlotModifiers: []

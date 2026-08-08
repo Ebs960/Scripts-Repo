@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 321b927a9552652469aa0739b14ff4f3, type: 3}
+  m_Name: Master Recruiter
+  m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
+  traitName: Master Recruiter
+  description: This governor has overseen the training of countless units and knows
+    how to get soldiers into fighting shape quickly.
+  icon: {fileID: 0}
+  triggerType: 2
+  requiredValue: 10
+  goldBonusModifier: 0
+  productionBonusModifier: 4
+  foodBonusModifier: 0
+  scienceBonusModifier: 0
+  cultureBonusModifier: 0
+  faithBonusModifier: 0
+  combatBonusModifier: 3
+  cityDefenseBonusModifier: 0
+  tileYieldBonuses: []
+  specialEffects: []

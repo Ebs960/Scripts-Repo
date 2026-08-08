@@ -298,6 +298,7 @@ public class LoadingPanelController : MonoBehaviour
                 UIManager.Instance.tradePanel,
                 UIManager.Instance.diplomacyPanel,
                 UIManager.Instance.equipmentPanel,
+                UIManager.Instance.militaryPanel,
                 UIManager.Instance.unitInfoPanel,
                 UIManager.Instance.pauseMenuPanel
             };

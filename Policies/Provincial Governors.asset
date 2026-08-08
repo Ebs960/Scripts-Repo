@@ -73,7 +73,8 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 1
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: 22334455aabb66cc77dd8899eeff0011, type: 2}
   governorOpinionEffects:
   - reason: Provincial Governors
     value: 10

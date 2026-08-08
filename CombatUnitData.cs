@@ -790,6 +790,8 @@ public class CombatUnitData : ScriptableObject
     [Header("Default Equipment")]
     [Tooltip("Default weapon equipped by this unit (optional)")]
     public EquipmentData defaultWeapon;
+    [Tooltip("Optional special attack profile for this unit. Can be used as a melee or ranged attack mode with splash damage.")]
+    public BattleAttackProfile defaultSpecialAttackProfile;
     [Tooltip("Default shield equipped by this unit (optional)")]
     public EquipmentData defaultShield;
     [Tooltip("Default armor equipped by this unit (optional)")]

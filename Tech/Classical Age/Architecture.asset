@@ -91,7 +91,8 @@ MonoBehaviour:
   enablesHerding: 0
   preventsMosquitoDamage: 0
   additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: 44dd55ee66ff77001122334455aabb66, type: 2}
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 1

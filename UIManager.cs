@@ -47,6 +47,7 @@ public class UIManager : MonoBehaviour
     public UnityEngine.UI.Button tradeButton; // Optional: main trade button on player UI
     public GameObject diplomacyPanel;
     public GameObject equipmentPanel;
+    public GameObject militaryPanel;
     public GameObject unitInfoPanel;
     public GameObject pauseMenuPanel;
     [FormerlySerializedAs("playerUI")]
@@ -121,6 +122,7 @@ public class UIManager : MonoBehaviour
         "TradePanel",
         "DiplomacyPanel",
         "EquipmentPanel",
+        "MilitaryPanel",
         "PoliticalAffairsPanel"
     };
 
@@ -158,6 +160,8 @@ public class UIManager : MonoBehaviour
             { "diplomacyPanel", diplomacyPanel },
             { "EquipmentPanel", equipmentPanel },
             { "equipmentPanel", equipmentPanel },
+            { "MilitaryPanel", militaryPanel },
+            { "militaryPanel", militaryPanel },
             { "UnitInfoPanel", unitInfoPanel },
             { "unitInfoPanel", unitInfoPanel },
             { "HerdPanel", herdPanel },
@@ -708,6 +712,28 @@ public class UIManager : MonoBehaviour
         if (equipmentPanel == null) return;
     equipmentPanel.SendMessage("Hide", SendMessageOptions.DontRequireReceiver);
         HidePanel("EquipmentPanel");
+    }
+
+    public void ShowMilitaryPanel(Civilization civ)
+    {
+        if (militaryPanel == null)
+        {
+            Debug.LogWarning("UIManager: militaryPanel is not assigned.");
+            return;
+        }
+        if (civ != null)
+            militaryPanel.SendMessage("Show", civ, SendMessageOptions.DontRequireReceiver);
+        else
+            militaryPanel.SendMessage("ShowDefault", SendMessageOptions.DontRequireReceiver);
+        ShowPanel("MilitaryPanel");
+        WireUIInteractions(militaryPanel);
+    }
+
+    public void HideMilitaryPanel()
+    {
+        if (militaryPanel == null) return;
+        militaryPanel.SendMessage("Hide", SendMessageOptions.DontRequireReceiver);
+        HidePanel("MilitaryPanel");
     }
 
     // --- UI Audio helpers ---

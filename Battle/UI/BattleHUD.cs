@@ -5,6 +5,7 @@ using UnityEngine.UI;
 public sealed class BattleHUD : MonoBehaviour
 {
     private enum CellActionMode { None, Retreat, Embark, Disembark, Launch, Recover }
+    private enum AttackMode { Melee, Ranged, Special }
     private BattleManager manager;
     private GameObject root;
     private TextMeshProUGUI status;
@@ -17,6 +18,10 @@ public sealed class BattleHUD : MonoBehaviour
     private int selectedTargetIndex;
     private int selectedWeaponIndex;
     private int selectedReserveIndex;
+    private AttackMode selectedAttackMode = AttackMode.Melee;
+    private Button meleeAttackButton;
+    private Button rangedAttackButton;
+    private Button specialAttackButton;
     private BattlePresenter presenter;
     private CellActionMode cellActionMode;
 
@@ -91,23 +96,28 @@ public sealed class BattleHUD : MonoBehaviour
         CreateButton(panel.transform, "Zoom -", new Vector2(318f, -285f), ZoomOut, 46f);
         cellInput = CreateInput(panel.transform, "Cell", new Vector2(16f, -375f));
 
-        CreateButton(panel.transform, "Move", new Vector2(16f, -425f), Move);
-        CreateButton(panel.transform, "Attack", new Vector2(142f, -425f), Attack);
-        CreateButton(panel.transform, "Defend", new Vector2(268f, -425f), Defend);
-        CreateButton(panel.transform, "Wait", new Vector2(16f, -475f), Wait);
-        CreateButton(panel.transform, "End Unit", new Vector2(142f, -475f), EndUnit);
-        CreateButton(panel.transform, "Retreat", new Vector2(268f, -475f), Retreat);
-        CreateButton(panel.transform, "Confirm Deployment", new Vector2(16f, -525f), ConfirmDeployment, 230f);
-        CreateButton(panel.transform, "End Side", new Vector2(252f, -525f), EndSide, 112f);
-        CreateButton(panel.transform, "Embark", new Vector2(16f, -575f), Embark);
-        CreateButton(panel.transform, "Disembark", new Vector2(142f, -575f), Disembark);
-        CreateButton(panel.transform, "Launch", new Vector2(268f, -575f), Launch);
-        CreateButton(panel.transform, "Recover", new Vector2(16f, -625f), Recover);
-        CreateButton(panel.transform, "Dive", new Vector2(142f, -625f), Dive);
-        CreateButton(panel.transform, "Shallow", new Vector2(268f, -625f), Shallow);
-        CreateButton(panel.transform, "Active Scan", new Vector2(16f, -675f), ActiveScan, 112f);
-        CreateButton(panel.transform, "Next Reserve", new Vector2(142f, -675f), NextReserve, 112f);
-        CreateButton(panel.transform, "Deploy Reserve", new Vector2(268f, -675f), DeployReserve, 112f);
+        meleeAttackButton = CreateButton(panel.transform, "Melee", new Vector2(16f, -420f), SetMeleeMode, 96f);
+        rangedAttackButton = CreateButton(panel.transform, "Ranged", new Vector2(122f, -420f), SetRangedMode, 96f);
+        specialAttackButton = CreateButton(panel.transform, "Special", new Vector2(228f, -420f), SetSpecialMode, 96f);
+        specialAttackButton.interactable = false;
+
+        CreateButton(panel.transform, "Move", new Vector2(16f, -470f), Move);
+        CreateButton(panel.transform, "Attack", new Vector2(142f, -470f), Attack);
+        CreateButton(panel.transform, "Defend", new Vector2(268f, -470f), Defend);
+        CreateButton(panel.transform, "Wait", new Vector2(16f, -520f), Wait);
+        CreateButton(panel.transform, "End Unit", new Vector2(142f, -520f), EndUnit);
+        CreateButton(panel.transform, "Retreat", new Vector2(268f, -520f), Retreat);
+        CreateButton(panel.transform, "Confirm Deployment", new Vector2(16f, -570f), ConfirmDeployment, 230f);
+        CreateButton(panel.transform, "End Side", new Vector2(252f, -570f), EndSide, 112f);
+        CreateButton(panel.transform, "Embark", new Vector2(16f, -620f), Embark);
+        CreateButton(panel.transform, "Disembark", new Vector2(142f, -620f), Disembark);
+        CreateButton(panel.transform, "Launch", new Vector2(268f, -620f), Launch);
+        CreateButton(panel.transform, "Recover", new Vector2(16f, -670f), Recover);
+        CreateButton(panel.transform, "Dive", new Vector2(142f, -670f), Dive);
+        CreateButton(panel.transform, "Shallow", new Vector2(268f, -670f), Shallow);
+        CreateButton(panel.transform, "Active Scan", new Vector2(16f, -720f), ActiveScan, 112f);
+        CreateButton(panel.transform, "Next Reserve", new Vector2(142f, -720f), NextReserve, 112f);
+        CreateButton(panel.transform, "Deploy Reserve", new Vector2(268f, -720f), DeployReserve, 112f);
         root.SetActive(false);
     }
 
@@ -190,6 +200,87 @@ public sealed class BattleHUD : MonoBehaviour
         selectedWeaponIndex = (selectedWeaponIndex + 1) % count;
         ShowSelected();
         RefreshBoardOverlays();
+    }
+
+    private void SetMeleeMode()
+    {
+        selectedAttackMode = AttackMode.Melee;
+        ApplyAttackModeSelection();
+    }
+
+    private void SetRangedMode()
+    {
+        selectedAttackMode = AttackMode.Ranged;
+        ApplyAttackModeSelection();
+    }
+
+    private void SetSpecialMode()
+    {
+        selectedAttackMode = AttackMode.Special;
+        ApplyAttackModeSelection();
+    }
+
+    private void ApplyAttackModeSelection()
+    {
+        var unit = FindSelectedUnit();
+        if (unit != null)
+            selectedWeaponIndex = ResolveWeaponIndexForMode(unit, selectedAttackMode);
+        UpdateAttackModeButtons();
+        ShowSelected();
+        RefreshBoardOverlays();
+    }
+
+    private void UpdateAttackModeButtons()
+    {
+        var unit = FindSelectedUnit();
+        bool canUseRanged = CanUseRangedAttack(unit);
+        bool canUseSpecial = CanUseSpecialAttack(unit);
+
+        if (meleeAttackButton != null)
+            meleeAttackButton.interactable = unit != null;
+        if (rangedAttackButton != null)
+            rangedAttackButton.interactable = canUseRanged;
+        if (specialAttackButton != null)
+            specialAttackButton.interactable = canUseSpecial;
+    }
+
+    private static bool CanUseRangedAttack(BattleUnitState unit)
+    {
+        if (unit?.Snapshot?.Weapons == null || unit.Snapshot.Weapons.Count == 0)
+            return false;
+        for (int i = 0; i < unit.Snapshot.Weapons.Count; i++)
+            if (unit.Snapshot.Weapons[i] != null && unit.Snapshot.Weapons[i].usesRangedAttack)
+                return true;
+        return unit.Snapshot.Range > 1f;
+    }
+
+    private static bool CanUseSpecialAttack(BattleUnitState unit)
+    {
+        return unit?.Snapshot?.SpecialAttackProfile != null;
+    }
+
+    private static int ResolveWeaponIndexForMode(BattleUnitState unit, AttackMode mode)
+    {
+        if (unit?.Snapshot?.Weapons == null || unit.Snapshot.Weapons.Count == 0)
+            return 0;
+
+        if (mode == AttackMode.Ranged)
+        {
+            for (int i = 0; i < unit.Snapshot.Weapons.Count; i++)
+                if (unit.Snapshot.Weapons[i] != null && unit.Snapshot.Weapons[i].usesRangedAttack)
+                    return i;
+            return 0;
+        }
+
+        if (mode == AttackMode.Melee)
+        {
+            for (int i = 0; i < unit.Snapshot.Weapons.Count; i++)
+                if (unit.Snapshot.Weapons[i] != null && !unit.Snapshot.Weapons[i].usesRangedAttack)
+                    return i;
+            return 0;
+        }
+
+        return 0;
     }
 
     private void OnCellClicked(int cellIndex)
@@ -286,13 +377,51 @@ public sealed class BattleHUD : MonoBehaviour
     private void ShowSelected()
     {
         var unit = FindSelectedUnit();
-        if (unit == null) { selected.text = "No unit selected"; return; }
+        if (unit == null)
+        {
+            selected.text = "No unit selected";
+            UpdateAttackModeButtons();
+            return;
+        }
+
         int weaponCount = unit.Snapshot?.Weapons?.Count ?? 0;
-        selectedWeaponIndex = weaponCount > 0 ? Mathf.Clamp(selectedWeaponIndex, 0, weaponCount - 1) : 0;
+        if (weaponCount > 0)
+            selectedWeaponIndex = Mathf.Clamp(selectedWeaponIndex, 0, weaponCount - 1);
+        else
+            selectedWeaponIndex = 0;
+
         var weapon = weaponCount > 0 ? unit.Snapshot.Weapons[selectedWeaponIndex] : null;
         string weaponName = weapon?.equipment != null ? weapon.equipment.equipmentName : weapon != null ? "Built-in weapon" : "Unarmed";
-        selected.text = $"Unit {unit.UnitId} | {unit.Domain}\nHP {unit.CurrentHealth}/{unit.Snapshot.MaximumHealth} | Move {unit.CurrentMovePoints} | AP {unit.CurrentActionPoints}\n" +
-            $"Cell {unit.CellIndex} | {weaponName} [{selectedWeaponIndex + 1}/{Mathf.Max(1, weaponCount)}]";
+        string modeName = selectedAttackMode == AttackMode.Ranged ? "Ranged" : selectedAttackMode == AttackMode.Special ? "Special" : "Melee";
+        if (selectedAttackMode == AttackMode.Special && unit.Snapshot?.SpecialAttackProfile != null)
+            weaponName = unit.Snapshot.SpecialAttackProfile.attackName;
+        string abilities = BuildAbilitySummary(unit);
+        selected.text = $"{unit.Snapshot?.SourceUnit?.data?.unitName ?? $"Unit {unit.UnitId}"}\n" +
+            $"HP {unit.CurrentHealth}/{unit.Snapshot?.MaximumHealth ?? 1} | Attack {unit.Snapshot?.MeleeAttack ?? 0}/{unit.Snapshot?.RangedAttack ?? 0} | Defense {unit.Snapshot?.Defense ?? 0}\n" +
+            $"Range {unit.Snapshot?.Range ?? 0:F0} | Move {unit.CurrentMovePoints} | AP {unit.CurrentActionPoints}\n" +
+            $"Cell {unit.CellIndex} | {weaponName} ({modeName}) [{selectedWeaponIndex + 1}/{Mathf.Max(1, weaponCount)}]\n" +
+            $"Abilities: {abilities}";
+
+        UpdateAttackModeButtons();
+    }
+
+    private static string BuildAbilitySummary(BattleUnitState unit)
+    {
+        if (unit?.Snapshot?.TacticalProfile == null)
+            return "No special abilities";
+
+        var profile = unit.Snapshot.TacticalProfile;
+        var abilities = new System.Collections.Generic.List<string>();
+        if (profile.canMoveAfterAttacking) abilities.Add("Move after attack");
+        if (profile.canAttackAfterMoving) abilities.Add("Attack after move");
+        if (profile.exertsZoneOfControl) abilities.Add("Zone of control");
+        if (profile.usesIndirectFire) abilities.Add("Indirect fire");
+        if (profile.isTransport) abilities.Add("Transport");
+        if (profile.isCarrier) abilities.Add("Carrier");
+        if (profile.canCrossCliffs) abilities.Add("Cliff crossing");
+        if (profile.ignoresRiverPenalty) abilities.Add("River ignore");
+        if (profile.ignoresForestMovementPenalty) abilities.Add("Forest ignore");
+        return abilities.Count > 0 ? string.Join(", ", abilities) : "No special abilities";
     }
 
     private BattleUnitState FindSelectedUnit()
@@ -314,7 +443,16 @@ public sealed class BattleHUD : MonoBehaviour
     {
         var targets = manager?.GetVisibleEnemyUnits(selectedUnitId);
         if (targets == null || selectedTargetIndex < 0 || selectedTargetIndex >= targets.Count) { Notify("Select a detected target."); return; }
-        Submit(manager.TryAttackUnitWithWeapon(selectedUnitId, targets[selectedTargetIndex].UnitId, selectedWeaponIndex, out string reason), reason);
+        var unit = FindSelectedUnit();
+        if (selectedAttackMode == AttackMode.Special && unit?.Snapshot?.SpecialAttackProfile != null)
+        {
+            var profile = unit.Snapshot.SpecialAttackProfile;
+            string attackReason;
+            Submit(manager.TryAttackUnitWithProfile(selectedUnitId, targets[selectedTargetIndex].UnitId, profile, out attackReason), attackReason);
+            return;
+        }
+        string weaponReason;
+        Submit(manager.TryAttackUnitWithWeapon(selectedUnitId, targets[selectedTargetIndex].UnitId, selectedWeaponIndex, out weaponReason), weaponReason);
     }
 
     private void Defend() { Submit(manager.TryDefendUnit(selectedUnitId, out string reason), reason); }
@@ -390,11 +528,12 @@ public sealed class BattleHUD : MonoBehaviour
         var input = go.GetComponent<TMP_InputField>(); input.textComponent = text; input.contentType = TMP_InputField.ContentType.IntegerNumber; input.placeholder = text; text.text = "Cell index"; return input;
     }
 
-    private static void CreateButton(Transform parent, string label, Vector2 position, UnityEngine.Events.UnityAction action, float width = 112f)
+    private static Button CreateButton(Transform parent, string label, Vector2 position, UnityEngine.Events.UnityAction action, float width = 112f)
     {
         var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button)); go.transform.SetParent(parent, false);
         var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f); rect.pivot = new Vector2(0f, 1f); rect.anchoredPosition = position; rect.sizeDelta = new Vector2(width, 36f);
         go.GetComponent<Image>().color = new Color(0.72f, 0.67f, 0.52f, 1f); go.GetComponent<Button>().onClick.AddListener(action);
         var text = CreateText(go.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(width - 8f, 30f), 13f); text.alignment = TextAlignmentOptions.Center; text.color = Color.black; text.text = label;
+        return go.GetComponent<Button>();
     }
 }

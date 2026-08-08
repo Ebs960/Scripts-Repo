@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 321b927a9552652469aa0739b14ff4f3, type: 3}
+  m_Name: Beloved Steward
+  m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
+  traitName: Beloved Steward
+  description: Long years of faithful service have won this governor the trust
+    and affection of the people they govern.
+  icon: {fileID: 0}
+  triggerType: 9
+  requiredValue: 10
+  goldBonusModifier: 4
+  productionBonusModifier: 0
+  foodBonusModifier: 4
+  scienceBonusModifier: 0
+  cultureBonusModifier: 0
+  faithBonusModifier: 0
+  combatBonusModifier: 0
+  cityDefenseBonusModifier: 0
+  tileYieldBonuses: []
+  specialEffects: []

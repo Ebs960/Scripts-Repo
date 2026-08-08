@@ -16,6 +16,7 @@ MonoBehaviour:
   description: Allahu Akbar
   icon: {fileID: 21300000, guid: 593debc2d5057904cbfc9d3c9df7cf5c, type: 3}
   requiredPantheon: {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: 6d6df408b2b48484f2b0d4cf5d7fe1c1, type: 2}
   faithCost: 15
-  founderBelief: {fileID: 11400000, guid: 1370f6d5fbc9a984c8920b3470df9ceb, type: 2}
   enhancerBeliefs: []

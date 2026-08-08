@@ -281,26 +281,77 @@ public class ReligionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get all religions that have not yet been founded
+    /// Get all religions that have not yet been founded and are currently available to the given civilization.
+    /// If no civilization is supplied, the method falls back to the default availability rules.
     /// </summary>
-    public List<ReligionData> GetAvailableReligions()
+    public List<ReligionData> GetAvailableReligions(Civilization civ = null)
     {
         List<ReligionData> result = new List<ReligionData>();
         var allReligions = ResourceCache.GetAllReligionData();
         
-        // Add all available religions
         if (allReligions != null)
         {
-            result.AddRange(allReligions);
-        }
-        
-        // Remove already founded religions
-        foreach (var (religion, _) in foundedReligions)
-        {
-            result.Remove(religion);
+            foreach (var religion in allReligions)
+            {
+                if (religion == null) continue;
+                if (IsReligionFounded(religion)) continue;
+                if (!IsReligionAvailableToCivilization(religion, civ)) continue;
+                result.Add(religion);
+            }
         }
         
         return result;
+    }
+
+    public bool IsReligionAvailableToCivilization(ReligionData religion, Civilization civ)
+    {
+        if (religion == null) return false;
+
+        if (civ == null)
+        {
+            return true;
+        }
+
+        if (religion.requiredCultures != null && religion.requiredCultures.Length > 0)
+        {
+            if (civ.researchedCultures == null)
+                return false;
+
+            foreach (var requiredCulture in religion.requiredCultures)
+            {
+                if (requiredCulture == null) continue;
+                if (!civ.researchedCultures.Contains(requiredCulture))
+                    return false;
+            }
+        }
+
+        if (civ.researchedCultures != null)
+        {
+            foreach (var adoptedCulture in civ.researchedCultures)
+            {
+                if (adoptedCulture == null || adoptedCulture.unlockedReligions == null)
+                    continue;
+
+                foreach (var unlockedReligion in adoptedCulture.unlockedReligions)
+                {
+                    if (unlockedReligion == religion)
+                        return true;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsReligionFounded(ReligionData religion)
+    {
+        foreach (var (existingReligion, _) in foundedReligions)
+        {
+            if (existingReligion == religion)
+                return true;
+        }
+
+        return false;
     }
     
     /// <summary>

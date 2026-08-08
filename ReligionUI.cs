@@ -898,7 +898,7 @@ public class ReligionUI : MonoBehaviour
                     _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
                 if (_cachedReligionManager != null)
                 {
-                    availableReligions = _cachedReligionManager.GetAvailableReligions();
+                    availableReligions = _cachedReligionManager.GetAvailableReligions(playerCiv);
                     availableReligions.RemoveAll(r => r == null
                         || (playerCiv.foundedPantheons == null || !playerCiv.foundedPantheons.Contains(r.requiredPantheon)));
                 }

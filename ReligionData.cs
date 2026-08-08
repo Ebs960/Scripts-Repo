@@ -11,6 +11,8 @@ public class ReligionData : ScriptableObject
     [Header("Foundation")]
     [Tooltip("Which Pantheon you must have first")]
     public PantheonData requiredPantheon;
+    [Tooltip("Cultures that must be adopted before this religion becomes available.")]
+    public CultureData[] requiredCultures;
     [Tooltip("Faith cost to found this Religion (in a Holy Site)")]
     public int faithCost;
 

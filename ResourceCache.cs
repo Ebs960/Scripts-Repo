@@ -665,8 +665,46 @@ public static class ResourceCache
             }
             else
             {
-                Debug.LogError("[ResourceCache] No ReligionDatabase assigned. Religion list will be empty. Assign a ReligionDatabase to ReligionManager or call ResourceCache.SetReligionDatabase().");
-                _allReligionData = new ReligionData[0];
+#if UNITY_EDITOR
+                string[] guids = AssetDatabase.FindAssets("t:ReligionDatabase");
+                if (guids != null && guids.Length > 0)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    var db = AssetDatabase.LoadAssetAtPath<ReligionDatabase>(path);
+                    if (db != null)
+                    {
+                        _religionDatabase = db;
+                        _allReligionData = db.religions ?? new ReligionData[0];
+                    }
+                }
+#endif
+
+                if (_allReligionData == null || _allReligionData.Length == 0)
+                {
+#if UNITY_EDITOR
+                    string[] religionGuids = AssetDatabase.FindAssets("t:ReligionData", new[] { "Assets/Scripts Repo/Religion/Different Religions", "Assets/Resources/Religion" });
+                    if (religionGuids != null && religionGuids.Length > 0)
+                    {
+                        _allReligionData = religionGuids
+                            .Select(AssetDatabase.GUIDToAssetPath)
+                            .Select(AssetDatabase.LoadAssetAtPath<ReligionData>)
+                            .Where(asset => asset != null)
+                            .OrderBy(asset => asset.name)
+                            .ToArray();
+                    }
+#endif
+
+                    if (_allReligionData == null || _allReligionData.Length == 0)
+                    {
+                        _allReligionData = Resources.LoadAll<ReligionData>("Religion");
+                    }
+                }
+
+                if (_allReligionData == null || _allReligionData.Length == 0)
+                {
+                    Debug.LogWarning("[ResourceCache] No religion data could be loaded. Assign a ReligionDatabase or place ReligionData assets under Assets/Resources/Religion.");
+                    _allReligionData = new ReligionData[0];
+                }
             }
 
             _religionDataLoaded = true;

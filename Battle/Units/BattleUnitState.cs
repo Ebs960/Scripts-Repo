@@ -23,6 +23,8 @@ public sealed class BattleUnitState
     public bool IsDead;
     public bool HasAttackedThisTurn;
     public bool HasEnteredBattle;
+    public int SpecialAttackCooldownRemaining;
+    public int SpecialAttackUsesRemaining = -1;
     public int WithdrawalCampaignTile = -1;
     public int WithdrawalTacticalExit = -1;
     public readonly List<int> RetreatPath = new();

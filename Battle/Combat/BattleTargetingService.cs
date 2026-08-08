@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public readonly struct TargetingResult
 {
     public readonly bool Allowed;
@@ -11,7 +13,7 @@ public sealed class BattleTargetingService
     private readonly BattleDetectionService detection;
     public BattleTargetingService(BattleDetectionService detection) { this.detection = detection; }
 
-    public TargetingResult CanTarget(BattleSession session, BattleUnitState attacker, BattleUnitState defender, bool ranged, int weaponIndex = 0)
+    public TargetingResult CanTarget(BattleSession session, BattleUnitState attacker, BattleUnitState defender, bool ranged, int weaponIndex = 0, BattleAttackProfile attackProfile = null)
     {
         if (attacker == null || defender == null || attacker.Side == defender.Side)
             return new TargetingResult(false, "invalid target");
@@ -26,19 +28,33 @@ public sealed class BattleTargetingService
             && !attacker.Snapshot.UnitData.canAttackUnderwater)
             return new TargetingResult(false, "unit lacks anti-underwater capability");
 
+        if (attackProfile != null)
+        {
+            int distanceToTarget = session.MapDistance(attacker.CellIndex, defender.CellIndex);
+            int minRange = attackProfile.minimumRange;
+            int maxRange = attackProfile.maximumRange;
+            if (attackProfile.isRanged)
+                maxRange = Mathf.Max(maxRange, Mathf.CeilToInt(attacker.Snapshot?.Range ?? 1f));
+            if (distanceToTarget < minRange || distanceToTarget > maxRange)
+                return new TargetingResult(false, "target out of range");
+            return new TargetingResult(true);
+        }
+
         TacticalWeaponProfile weapon = GetWeapon(attacker, weaponIndex);
         if (weapon == null)
             return new TargetingResult(false, "weapon not available");
         if (weapon.usesRangedAttack != ranged)
             return new TargetingResult(false, "weapon attack mode mismatch");
-        BattleDomainMask allowed = weapon.targetDomains;
-        if ((allowed & BattleDomainResolver.ToMask(defender.Domain)) == 0)
+        BattleDomainMask weaponTargetDomainMask = weapon.targetDomains;
+        if ((weaponTargetDomainMask & BattleDomainResolver.ToMask(defender.Domain)) == 0)
             return new TargetingResult(false, "weapon cannot target domain");
 
-        int distance = session.MapDistance(attacker.CellIndex, defender.CellIndex);
-        int minimum = weapon.minimumRange;
-        float maximum = weapon.maximumRange;
-        if (distance < minimum || distance > maximum)
+        int weaponDistance = session.MapDistance(attacker.CellIndex, defender.CellIndex);
+        int weaponMinRange = weapon.minimumRange;
+        float weaponMaxRange = weapon.maximumRange;
+        if (ranged)
+            weaponMaxRange = Mathf.Max(weaponMaxRange, attacker.Snapshot?.Range ?? 1f);
+        if (weaponDistance < weaponMinRange || weaponDistance > weaponMaxRange)
             return new TargetingResult(false, "target out of range");
         return new TargetingResult(true);
     }

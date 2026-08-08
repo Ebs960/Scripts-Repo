@@ -1257,7 +1257,7 @@ public class CivilizationManager : MonoBehaviour
         {
             if (ReligionManager.Instance != null)
             {
-                var availableReligions = ReligionManager.Instance.GetAvailableReligions();
+                var availableReligions = ReligionManager.Instance.GetAvailableReligions(civ);
                 if (availableReligions != null && availableReligions.Count > 0)
                 {
                     // Find best city with a Holy Site
@@ -1967,7 +1967,7 @@ break; // Only propose one alliance per turn
         {
             if (ReligionManager.Instance != null)
             {
-                var availableReligions = ReligionManager.Instance.GetAvailableReligions();
+                var availableReligions = ReligionManager.Instance.GetAvailableReligions(civ);
                 if (availableReligions != null && availableReligions.Count > 0)
                 {
                     // Find a city with a holy site

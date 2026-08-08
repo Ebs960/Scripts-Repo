@@ -674,6 +674,25 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }, out reason);
     }
 
+    public bool TryAttackUnitWithProfile(int unitId, int targetUnitId, BattleAttackProfile profile, out string reason)
+    {
+        var unit = FindUnit(unitId);
+        var target = FindUnit(targetUnitId);
+        if (unit == null || target == null || profile == null)
+        { reason = "special attack profile or target not found"; return false; }
+
+        return TrySubmitPlayerCommand(new BattleAttackCommand
+        {
+            UnitId = unitId,
+            CommandType = profile.isRanged ? BattleCommandType.RangedAttack : BattleCommandType.MeleeAttack,
+            TargetUnitId = targetUnitId,
+            AttackFromCell = unit.CellIndex,
+            IsRanged = profile.isRanged,
+            IsSpecialAttack = true,
+            AttackProfile = profile,
+        }, out reason);
+    }
+
     public bool TryDefendUnit(int unitId, out string reason) => TrySubmitPlayerCommand(new BattleDefendCommand
     {
         UnitId = unitId,

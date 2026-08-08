@@ -102,9 +102,15 @@ public sealed class BattleCameraController : MonoBehaviour
     private void CaptureCampaignCamera()
     {
         suspendedListeners.Clear();
-        var listeners=FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
-        for(int i=0;i<listeners.Length;i++)if(listeners[i]!=null&&listeners[i].enabled)
-        { suspendedListeners.Add(listeners[i]); listeners[i].enabled=false; }
+        var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Include);
+        for (int i = 0; i < listeners.Length; i++)
+        {
+            if (listeners[i] != null && listeners[i].enabled)
+            {
+                suspendedListeners.Add(listeners[i]);
+                listeners[i].enabled = false;
+            }
+        }
         campaignCamera = Camera.main;
         if (campaignCamera == tacticalCamera) campaignCamera = null;
         if (campaignCamera == null) return;
