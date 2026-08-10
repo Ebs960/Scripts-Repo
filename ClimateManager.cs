@@ -286,6 +286,12 @@ public class ClimateManager : MonoBehaviour
             if (!_freezeAnimActive.TryGetValue(pi, out bool active) || !active) continue;
 
             bool forward = _freezeAnimForward.TryGetValue(pi, out bool fwd) && fwd;
+            if (!IsPlanetVisible(pi))
+            {
+                CompleteFreezeTransitionImmediately(pi, forward);
+                continue;
+            }
+
             float current = _freezeProgress.TryGetValue(pi, out float cur) ? cur : 0f;
             float target  = forward ? 1f : 0f;
             float step    = Time.deltaTime / Mathf.Max(0.01f, freezeTransitionDuration);
@@ -1232,6 +1238,12 @@ public class ClimateManager : MonoBehaviour
         // Start animating progress from wherever it currently is (handles mid-thaw reversal)
         if (!_freezeProgress.ContainsKey(pi)) _freezeProgress[pi] = 0f;
         _freezeAnimForward[pi] = true;
+        if (!IsPlanetVisible(pi))
+        {
+            CompleteFreezeTransitionImmediately(pi, true);
+            return;
+        }
+
         _freezeAnimActive[pi]  = true;
 
         Debug.Log($"[ClimateManager] Freeze animation started for planet {pi}. Initial progress={_freezeProgress[pi]:F2}");
@@ -1252,7 +1264,36 @@ public class ClimateManager : MonoBehaviour
         }
 
         _freezeAnimForward[pi] = false;
+        if (!IsPlanetVisible(pi))
+        {
+            CompleteFreezeTransitionImmediately(pi, false);
+            return;
+        }
+
         _freezeAnimActive[pi]  = true;
+    }
+
+    private static bool IsPlanetVisible(int pi)
+    {
+        var view = WorldViewContext.Instance;
+        if (view != null)
+            return view.Current.Mode == WorldViewMode.Planet && view.Current.PlanetIndex == pi;
+
+        return GameManager.Instance != null && GameManager.Instance.currentPlanetIndex == pi;
+    }
+
+    private void CompleteFreezeTransitionImmediately(int pi, bool freeze)
+    {
+        float progress = freeze ? 1f : 0f;
+        _freezeProgress[pi] = progress;
+        _freezeAnimActive[pi] = false;
+
+        if (freeze)
+            WriteFreezeAmountsToPlanet(pi, progress);
+        else
+            ClearFreezeAmountsForPlanet(pi);
+
+        OnPlanetFreezeProgressChanged?.Invoke(pi, progress, freeze);
     }
 
     /// <summary>
