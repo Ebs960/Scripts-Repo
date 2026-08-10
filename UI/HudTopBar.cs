@@ -17,6 +17,7 @@ public class HudTopBar : MonoBehaviour
     [SerializeField] private TextMeshProUGUI civNameText;
     [SerializeField] private TextMeshProUGUI roundText;
     [SerializeField] private TextMeshProUGUI seasonText;
+    [SerializeField] private TextMeshProUGUI worldViewText;
 
     [Header("Yield Widgets")]
     [SerializeField] private HudYieldWidget foodYieldWidget;
@@ -54,6 +55,7 @@ public class HudTopBar : MonoBehaviour
     private UnityEngine.Events.UnityAction endTurnAction;
     private UnityEngine.Events.UnityAction<int> layerChangedAction;
     private bool isSubscribedToTurnChanges;
+    private bool isSubscribedToWorldView;
 
     /// <summary>
     /// Bind this widget to a civilization and populate displays.
@@ -76,18 +78,8 @@ public class HudTopBar : MonoBehaviour
             roundText.text = $"Turn {round}";
         }
 
-        if (seasonText != null)
-        {
-            if (ClimateManager.Instance != null)
-            {
-                var season = ClimateManager.Instance.GetSeasonForPlanet(0);
-                seasonText.text = season.ToString();
-            }
-            else
-            {
-                seasonText.text = "---";
-            }
-        }
+        RefreshSeasonDisplay();
+        RefreshWorldViewDisplay();
 
         if (foodYieldWidget != null)
         {
@@ -115,12 +107,16 @@ public class HudTopBar : MonoBehaviour
     private void OnEnable()
     {
         SubscribeTurnEvents();
+        SubscribeWorldViewEvents();
         UpdateTurnChangePanelForCurrentTurn();
+        RefreshSeasonDisplay();
+        RefreshWorldViewDisplay();
     }
 
     private void OnDisable()
     {
         UnsubscribeTurnEvents();
+        UnsubscribeWorldViewEvents();
         RefreshLayerDropdown();
         UpdateEndTurnButtonState();
     }
@@ -260,15 +256,95 @@ public class HudTopBar : MonoBehaviour
         isSubscribedToTurnChanges = false;
     }
 
+    private void SubscribeWorldViewEvents()
+    {
+        if (isSubscribedToWorldView)
+            return;
+
+        var context = WorldViewContext.GetOrCreate();
+        if (context == null)
+            return;
+
+        context.OnViewChanged += HandleWorldViewChanged;
+        isSubscribedToWorldView = true;
+    }
+
+    private void UnsubscribeWorldViewEvents()
+    {
+        if (!isSubscribedToWorldView)
+            return;
+
+        if (WorldViewContext.Instance != null)
+            WorldViewContext.Instance.OnViewChanged -= HandleWorldViewChanged;
+
+        isSubscribedToWorldView = false;
+    }
+
     private void HandleTurnChanged(Civilization civ, int round)
     {
         if (roundText != null)
             roundText.text = $"Turn {round}";
 
+        RefreshSeasonDisplay();
+
         bool isPlayersTurn = civ != null && civ.isPlayerControlled;
         UpdateTurnChangePanelText(civ, round, isPlayersTurn);
         SetTurnChangePanelVisible(!isPlayersTurn);
         UpdateEndTurnButtonState();
+    }
+
+    private void HandleWorldViewChanged(WorldViewState _)
+    {
+        RefreshSeasonDisplay();
+        RefreshWorldViewDisplay();
+        RefreshLayerDropdown();
+    }
+
+    private void RefreshWorldViewDisplay()
+    {
+        if (worldViewText == null)
+            return;
+
+        var worldView = WorldViewContext.GetOrCreate().Current;
+        string systemName = !string.IsNullOrWhiteSpace(worldView.StarSystemName)
+            ? worldView.StarSystemName
+            : $"System {worldView.StarSystemId}";
+
+        if (worldView.Mode == WorldViewMode.StarSystem)
+        {
+            worldViewText.text = $"System: {systemName}";
+            return;
+        }
+
+        if (worldView.PlanetIndex.HasValue)
+        {
+            worldViewText.text = $"Planet {worldView.PlanetIndex.Value} • {systemName}";
+            return;
+        }
+
+        worldViewText.text = systemName;
+    }
+
+    private void RefreshSeasonDisplay()
+    {
+        if (seasonText == null)
+            return;
+
+        if (ClimateManager.Instance == null)
+        {
+            seasonText.text = "---";
+            return;
+        }
+
+        var worldView = WorldViewContext.GetOrCreate().Current;
+        if (!worldView.PlanetIndex.HasValue)
+        {
+            seasonText.text = "---";
+            return;
+        }
+
+        var season = ClimateManager.Instance.GetSeasonForPlanet(worldView.PlanetIndex.Value);
+        seasonText.text = season.ToString();
     }
 
     private void UpdateTurnChangePanelForCurrentTurn()
@@ -380,5 +456,6 @@ public class HudTopBar : MonoBehaviour
     private void OnDestroy()
     {
         UnsubscribeTurnEvents();
+        UnsubscribeWorldViewEvents();
     }
 }

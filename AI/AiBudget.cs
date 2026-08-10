@@ -23,7 +23,15 @@ public class AiBudget
     public int CitySiteSearchRange  = 8;   // BFS range for settler city-site search
 
     // ──── Candidate limits ────
-    public int MaxCandidatesPerUnit = 64;  // cap on commands scored per unit (0 = unlimited)
+    // NOTE: MaxCandidatesPerUnit must always be a finite, positive cap. Even Expert
+    // difficulty needs a hard ceiling — otherwise late-game turns with hundreds of
+    // units become an unbounded CPU sink. Expert gets a bigger budget, not an infinite one.
+    public int MaxCandidatesPerUnit = 64;
+
+    // Time-boxed thinking: once this many milliseconds have been spent generating/scoring
+    // candidates for a unit, remaining low-priority scans (exploration, resource search)
+    // are skipped and the AI commits to whatever it has already found. 0 = no time cap.
+    public float MaxCandidateEvalMilliseconds = 0f;
 
     // ──── Coordination ────
     public bool EnableArmyGroups    = true;
@@ -55,6 +63,7 @@ public class AiBudget
                 CitySiteScanLimit = 100,
                 CitySiteSearchRange = 5,
                 MaxCandidatesPerUnit = 12,
+                MaxCandidateEvalMilliseconds = 2f,
                 EnableArmyGroups = false,
                 ArmyGroupRange = 4,
                 ScoreNoise = 4f,
@@ -70,6 +79,7 @@ public class AiBudget
                 CitySiteScanLimit = 200,
                 CitySiteSearchRange = 6,
                 MaxCandidatesPerUnit = 24,
+                MaxCandidateEvalMilliseconds = 3f,
                 EnableArmyGroups = true,
                 ArmyGroupRange = 5,
                 ScoreNoise = 1.5f,
@@ -85,6 +95,7 @@ public class AiBudget
                 CitySiteScanLimit = 400,
                 CitySiteSearchRange = 10,
                 MaxCandidatesPerUnit = 48,
+                MaxCandidateEvalMilliseconds = 5f,
                 EnableArmyGroups = true,
                 ArmyGroupRange = 8,
                 ScoreNoise = 0.5f,
@@ -99,7 +110,11 @@ public class AiBudget
                 ExploreSearchRange = 8,
                 CitySiteScanLimit = 500,
                 CitySiteSearchRange = 12,
-                MaxCandidatesPerUnit = 0, // unlimited
+                // Expert gets a much bigger budget than lower difficulties, but it is
+                // never unbounded — a hard candidate cap plus a time cap keep per-unit
+                // planning cost predictable even with hundreds of late-game units.
+                MaxCandidatesPerUnit = 96,
+                MaxCandidateEvalMilliseconds = 8f,
                 EnableArmyGroups = true,
                 ArmyGroupRange = 10,
                 ScoreNoise = 0f,
@@ -110,6 +125,68 @@ public class AiBudget
             _ => new AiBudget() // default = Hard
         };
     }
+
+    // ════════════════════════════════════════════════════════
+    //  Factory: scale a difficulty budget down by actor sophistication tier
+    // ════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Builds a budget for a given difficulty, then scales it down according to the actor's
+    /// sophistication tier. Major civilizations get the full difficulty budget. City-states
+    /// get a cheap regional budget (diplomatic + military + economy only, no HTN strategic
+    /// layer, no army-group coordination). Tribes get an even cheaper local-survival budget
+    /// (movement/raid/hunt/settle only). This keeps the ~13 minor actors from costing as much
+    /// CPU as a full civilization while still letting them act sensibly.
+    /// </summary>
+    public static AiBudget For(AIDifficulty difficulty, AIActorTier tier)
+    {
+        AiBudget b = ForDifficulty(difficulty);
+        switch (tier)
+        {
+            case AIActorTier.CityState:
+                b.ApproachSearchRange   = Mathf.Min(b.ApproachSearchRange, 5);
+                b.ForageSearchRange     = Mathf.Min(b.ForageSearchRange, 3);
+                b.ExploreSearchRange    = Mathf.Min(b.ExploreSearchRange, 4);
+                b.CitySiteScanLimit     = Mathf.Min(b.CitySiteScanLimit, 80);
+                b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
+                b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 16);
+                b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 3f);
+                b.EnableArmyGroups      = false;
+                b.EnableStrategicPlanning = false; // no EmpireAI/OperationalPlanner HTN layer
+                break;
+
+            case AIActorTier.Tribe:
+                b.ApproachSearchRange   = Mathf.Min(b.ApproachSearchRange, 3);
+                b.ForageSearchRange     = Mathf.Min(b.ForageSearchRange, 3);
+                b.ExploreSearchRange    = Mathf.Min(b.ExploreSearchRange, 3);
+                b.CitySiteScanLimit     = Mathf.Min(b.CitySiteScanLimit, 40);
+                b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
+                b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 8);
+                b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 1.5f);
+                b.EnableArmyGroups      = false;
+                b.EnableStrategicPlanning = false;
+                break;
+
+            case AIActorTier.Major:
+            default:
+                break; // full difficulty budget, unchanged
+        }
+        return b;
+    }
+
+    /// <summary>
+    /// Classifies a civilization's AI sophistication tier from its CivData flags.
+    /// Major civilizations: full strategic/operational/tactical AI.
+    /// City-states: regional diplomatic + military + economy only.
+    /// Tribes: local movement, survival, raid, hunt, settle only.
+    /// </summary>
+    public static AIActorTier ResolveTier(CivData data)
+    {
+        if (data == null) return AIActorTier.Major;
+        if (data.isTribe) return AIActorTier.Tribe;
+        if (data.isCityState) return AIActorTier.CityState;
+        return AIActorTier.Major;
+    }
 }
 
 public enum AIDifficulty
@@ -118,4 +195,15 @@ public enum AIDifficulty
     Normal,
     Hard,
     Expert
+}
+
+/// <summary>
+/// AI actor sophistication tier. Determines how much of the planning pipeline runs
+/// and how expensive its per-unit search budget is. See AiBudget.For / ResolveTier.
+/// </summary>
+public enum AIActorTier
+{
+    Major,
+    CityState,
+    Tribe
 }

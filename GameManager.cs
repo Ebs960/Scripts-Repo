@@ -169,6 +169,9 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"[GameManager] Deactivated planet {previousPlanetIndex} GameObject on switch to planet {planetIndex}");
             }
         }
+
+        if (WorldViewContext.Instance != null)
+            WorldViewContext.Instance.ForceRefresh();
     }
 
     /// <summary>
@@ -2214,6 +2217,9 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"[GameManager] Deactivated planet {previousPlanetIndex} GameObject on switch to planet {planetIndex}");
             }
         }
+
+        if (WorldViewContext.Instance != null)
+            WorldViewContext.Instance.ForceRefresh();
 
         UpdateSpaceTravelProgress(1.0f, "Complete!");
         // Brief pause so the player sees 100%

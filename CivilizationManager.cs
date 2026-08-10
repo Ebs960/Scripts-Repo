@@ -12,9 +12,14 @@ using System.Collections.Generic;
 public class CivilizationManager : MonoBehaviour
 {
     public static CivilizationManager Instance { get; private set; }
+    public event Action<int> OnCivilizationRegistryChanged;
 
     // The new command-based AI planner (plan-then-execute architecture)
     private readonly AIPlanner aiPlanner = new AIPlanner();
+
+    [Tooltip("Global AI difficulty. Scales the planning budget for major civilizations; " +
+             "city-states and tribes are always scaled down further regardless of this setting.")]
+    public AIDifficulty aiDifficulty = AIDifficulty.Hard;
 
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
@@ -67,7 +72,10 @@ public class CivilizationManager : MonoBehaviour
     public void RegisterCiv(Civilization civ)
     {
         if (!civs.Contains(civ))
+        {
             civs.Add(civ);
+            NotifyCivilizationRegistryChanged();
+        }
     }
 
     /// <summary>
@@ -101,10 +109,22 @@ public class CivilizationManager : MonoBehaviour
     public void UnregisterCiv(Civilization civ)
     {
         // prune null entries first
+        int beforePruneCount = civs.Count;
         civs.RemoveAll(x => x == null);
-        if (civ == null) return;
-        if (civs.Contains(civ)) civs.Remove(civ);
+        bool changed = civs.Count != beforePruneCount;
+        if (civ != null && civs.Contains(civ))
+        {
+            civs.Remove(civ);
+            changed = true;
+        }
         if (playerCiv == civ) playerCiv = null;
+        if (changed)
+            NotifyCivilizationRegistryChanged();
+    }
+
+    private void NotifyCivilizationRegistryChanged()
+    {
+        OnCivilizationRegistryChanged?.Invoke(civs.Count);
     }
 
     /// <summary>
@@ -157,19 +177,35 @@ public class CivilizationManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Classifies a civ's AI sophistication tier from its CivData flags (isTribe/isCityState).
+    /// Major civilizations get the full pipeline; city-states and tribes get progressively
+    /// cheaper, narrower pipelines (see AiBudget.For and the tier gating below).
+    /// </summary>
+    private static AIActorTier ResolveActorTier(Civilization civ) => AiBudget.ResolveTier(civ?.civData);
+
+    /// <summary>
     /// Coroutine for handling the completion of an AI turn with sophisticated decision making.
     /// Uses the command-based AIPlanner for tactical unit decisions (move, attack, forage, hunt,
-    /// retreat, settle, build, fortify) and retains the existing high-level strategic methods
-    /// (diplomacy, tech, culture, religion, improvement upgrades).
+    /// retreat, settle, build, fortify) and gates the high-level strategic methods
+    /// (diplomacy, tech, culture, religion, improvement upgrades, capital relocation) by the
+    /// civ's AI actor tier — major civilizations run the full pipeline; city-states run a
+    /// regional diplomatic/military/economic subset; tribes run local survival only.
     /// </summary>
+
     private IEnumerator CompleteAITurn(Civilization civ)
     {
         yield return null;
 
+        AIActorTier tier = ResolveActorTier(civ);
+
         // ───── Phase 1: Command-based tactical AI (plan-then-execute) ─────
         // The AIPlanner handles: danger maps, unstoring, army groups,
         // and per-unit decisions (attack, move, forage, hunt, build, settle, retreat, fortify).
+        // Budget is scaled per actor tier: major civs get the full difficulty budget,
+        // city-states/tribes get a much cheaper regional/local budget (smaller search
+        // ranges, fewer candidates, no army groups, no HTN strategic layer).
         // Split planning and execution across frames to avoid single-frame freeze.
+        aiPlanner.SetBudget(AiBudget.For(aiDifficulty, tier));
         aiPlanner.PlanTurn(civ);
         yield return null;
         aiPlanner.ExecuteCommands();
@@ -177,15 +213,27 @@ public class CivilizationManager : MonoBehaviour
 
         // ───── Phase 2: High-level strategic decisions (retained) ─────
         // These handle empire-wide choices that don't map to single-unit commands.
+        // Scope narrows with actor tier:
+        //   Tribe:     local survival + tech/culture only.
+        //   CityState: + regional diplomacy/military/economy.
+        //   Major:     + full empire strategy, capital relocation (only if capital lost), religion.
         PerformSeasonalDecisions(civ);
-        PerformImprovementUpgradeDecisions(civ);
-        yield return null;
-        PerformStrategicDecisions(civ);
-        EvaluateCapitalRelocation(civ);
-        PerformDiplomaticDecisions(civ);
-        yield return null;
         PerformTechnologicalDecisions(civ);
         PerformCulturalDecisions(civ);
+        if (tier == AIActorTier.Tribe)
+            yield break;
+
+        yield return null;
+        PerformImprovementUpgradeDecisions(civ);
+        PerformStrategicDecisions(civ);
+        PerformDiplomaticDecisions(civ);
+        if (tier == AIActorTier.CityState)
+            yield break;
+
+        // Re-evaluating every turn is wasted work; only pick a new capital once the old one is gone.
+        if (civ.CapitalCity == null)
+            EvaluateCapitalRelocation(civ);
+        yield return null;
         PerformReligiousDecisions(civ);
     }
     

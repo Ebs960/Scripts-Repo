@@ -28,6 +28,7 @@ public class TileSystem : MonoBehaviour
     [Tooltip("Local player civ for merged vision.")] public int localPlayerCivId = 0;
     [Tooltip("Allied civ ids (merged vision includes these)." )] public List<int> alliedCivs = new();
     [Tooltip("Max expected owners (defines palette size)." )] public int maxOwners = 16;
+    private bool subscribedToCivRegistry;
 
     [Header("State Arrays (public read-only accessors)")]
     [SerializeField] private HexTileData[] tiles;              // Canonical tile data array (single planet scope for now)
@@ -104,10 +105,13 @@ public class TileSystem : MonoBehaviour
             _byPlanetIndex[planetIndex] = this;
         }
         if (mainCamera == null) mainCamera = Camera.main;
+        ApplyDynamicCapacitiesFromRegistry(forceExactWhenNotReady: true);
+        TrySubscribeToCivilizationRegistry();
     }
 
     void OnDestroy()
     {
+        UnsubscribeFromCivilizationRegistry();
         if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing == this)
         {
             _byPlanetIndex.Remove(planetIndex);
@@ -170,6 +174,10 @@ public class TileSystem : MonoBehaviour
 
     void Update()
     {
+    // Late subscribe in case CivilizationManager was created after this TileSystem
+        if (!subscribedToCivRegistry)
+            TrySubscribeToCivilizationRegistry();
+
     // Input handling
         // Only the currently active planet's TileSystem should process input.
         if (GameManager.Instance != null && GameManager.Instance.currentPlanetIndex != planetIndex) return;
@@ -325,6 +333,7 @@ public class TileSystem : MonoBehaviour
         #pragma warning disable 612, 618
         occMgrObj.MigrateLegacyOccupants(tiles);
         #pragma warning restore 612, 618
+        ApplyDynamicCapacitiesFromRegistry(forceExactWhenNotReady: true);
         AllocateOwnerColors();
         AllocateFog(tileCount);
     AllocateReligion(tileCount);
@@ -334,18 +343,124 @@ public class TileSystem : MonoBehaviour
         
     }
 
+    private void TrySubscribeToCivilizationRegistry()
+    {
+        var civManager = CivilizationManager.Instance;
+        if (civManager == null || subscribedToCivRegistry)
+            return;
+
+        civManager.OnCivilizationRegistryChanged -= HandleCivilizationRegistryChanged;
+        civManager.OnCivilizationRegistryChanged += HandleCivilizationRegistryChanged;
+        subscribedToCivRegistry = true;
+    }
+
+    private void UnsubscribeFromCivilizationRegistry()
+    {
+        if (!subscribedToCivRegistry)
+            return;
+
+        if (CivilizationManager.Instance != null)
+            CivilizationManager.Instance.OnCivilizationRegistryChanged -= HandleCivilizationRegistryChanged;
+
+        subscribedToCivRegistry = false;
+    }
+
+    private void HandleCivilizationRegistryChanged(int registeredCivilizations)
+    {
+        ApplyDynamicCapacitiesFromRegistry(forceExactWhenNotReady: false, explicitRegisteredCount: registeredCivilizations);
+    }
+
+    private int ResolveRegisteredCivilizationCount(int explicitRegisteredCount = -1)
+    {
+        if (explicitRegisteredCount >= 0)
+            return explicitRegisteredCount;
+
+        return CivilizationManager.Instance != null ? CivilizationManager.Instance.GetAllCivs().Count : 0;
+    }
+
+    private void ApplyDynamicCapacitiesFromRegistry(bool forceExactWhenNotReady, int explicitRegisteredCount = -1)
+    {
+        int required = Mathf.Max(1, ResolveRegisteredCivilizationCount(explicitRegisteredCount));
+
+        if (!isReady || forceExactWhenNotReady)
+        {
+            civCapacity = required;
+            maxOwners = required;
+            return;
+        }
+
+        int oldCivCapacity = civCapacity;
+        int oldMaxOwners = maxOwners;
+
+        civCapacity = Mathf.Max(civCapacity, required);
+        maxOwners = Mathf.Max(maxOwners, required);
+
+        if (maxOwners > oldMaxOwners)
+            EnsureOwnerColorCapacity(maxOwners);
+
+        if (civCapacity > oldCivCapacity)
+            EnsureFogCapacity(civCapacity);
+    }
+
+    private void EnsureOwnerColorCapacity(int requiredCapacity)
+    {
+        if (requiredCapacity <= 0)
+            requiredCapacity = 1;
+
+        if (ownerColors != null && ownerColors.Length >= requiredCapacity)
+            return;
+
+        var arr = new Color[requiredCapacity];
+        if (ownerColors != null)
+            Array.Copy(ownerColors, arr, ownerColors.Length);
+
+        int start = ownerColors != null ? ownerColors.Length : 0;
+        for (int i = start; i < requiredCapacity; i++)
+        {
+            float h = (i * 0.61803398875f) % 1f;
+            arr[i] = Color.HSVToRGB(h, 0.65f, 0.95f);
+        }
+
+        ownerColors = arr;
+    }
+
+    private void EnsureFogCapacity(int requiredCapacity)
+    {
+        if (requiredCapacity <= 0)
+            requiredCapacity = 1;
+
+        if (ownerByTile == null)
+            return;
+
+        if (fogByCiv != null && fogByCiv.Length >= requiredCapacity)
+            return;
+
+        var nextFog = new byte[requiredCapacity][];
+        int tileCount = ownerByTile.Length;
+        int copyCount = fogByCiv != null ? Mathf.Min(fogByCiv.Length, requiredCapacity) : 0;
+
+        for (int c = 0; c < copyCount; c++)
+            nextFog[c] = fogByCiv[c];
+
+        for (int c = copyCount; c < requiredCapacity; c++)
+        {
+            var arr = new byte[tileCount];
+            if (!enableFogOfWar)
+            {
+                for (int i = 0; i < tileCount; i++)
+                    arr[i] = 2;
+            }
+            nextFog[c] = arr;
+        }
+
+        fogByCiv = nextFog;
+        RebuildMergedFog();
+        MarkAllTilesDirty();
+    }
+
     private void AllocateOwnerColors()
     {
-        if (ownerColors == null || ownerColors.Length < maxOwners)
-        {
-            var arr = new Color[maxOwners];
-            for (int i=0;i<maxOwners;i++)
-            {
-                float h = (i * 0.61803398875f) % 1f;
-                arr[i] = Color.HSVToRGB(h, 0.65f, 0.95f);
-            }
-            ownerColors = arr;
-        }
+        EnsureOwnerColorCapacity(maxOwners);
     }
 
     private void AllocateFog(int tileCount)

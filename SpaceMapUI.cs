@@ -70,6 +70,7 @@ public class SpaceMapUI : MonoBehaviour
     {
         gameObject.SetActive(true); if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(true); if (spaceMapPanel != null) spaceMapPanel.SetActive(true);
         EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false);
+        WorldViewContext.GetOrCreate().SetStarSystemViewActive(true);
         if (spaceMapWorldController != null)
             spaceMapWorldController.ShowMap(this);
         else
@@ -81,6 +82,7 @@ public class SpaceMapUI : MonoBehaviour
     {
         if (spaceMapWorldController != null) spaceMapWorldController.HideMap(); ExitSpaceMapMode();
         if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(false); else gameObject.SetActive(false);
+        WorldViewContext.GetOrCreate().SetStarSystemViewActive(false);
     }
 
     public void SelectPlanet(GameManager.PlanetData planet)

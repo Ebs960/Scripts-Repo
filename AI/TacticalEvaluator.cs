@@ -234,6 +234,14 @@ public static class TacticalEvaluator
         int exploreRange    = budget?.ExploreSearchRange   ?? DEFAULT_EXPLORE_BFS;
         int citySiteRange   = budget?.CitySiteSearchRange  ?? DEFAULT_CITY_SITE_SEARCH;
 
+        // Time-boxed thinking: "think until N ms have been consumed, then commit."
+        // Once the budget's ms allowance is spent, the priciest/least-essential scans
+        // (uncached BFS fallbacks, exploration) are skipped for this unit — survival-
+        // critical generators (retreat, attack, forage-on-tile, fortify) always run.
+        float timeBudgetMs = budget?.MaxCandidateEvalMilliseconds ?? 0f;
+        var evalClock = timeBudgetMs > 0f ? System.Diagnostics.Stopwatch.StartNew() : null;
+        bool TimeExceeded() => evalClock != null && evalClock.Elapsed.TotalMilliseconds > timeBudgetMs;
+
         bool needFood = civ.cities == null || civ.cities.Count == 0 || civ.food < 20;
         float hpRatio = (float)unit.currentHealth / Mathf.Max(1, unit.MaxHealth);
 
@@ -272,27 +280,31 @@ public static class TacticalEvaluator
 
             GenerateBuildCommands(wu, civ, dangerMap, commands);
 
-            // Use cached forage targets when available, fall back to BFS
+            // Use cached forage targets when available (cheap list scan). The uncached
+            // BFS fallback is comparatively expensive, so skip it once time is up.
             if (context != null)
                 GenerateMoveTowardForageCached(wu, civ, dangerMap, ts, commands, context);
-            else
+            else if (!TimeExceeded())
                 GenerateMoveTowardForage(wu, civ, dangerMap, ts, commands, forageRange);
 
-            // Use cached resource hotspots when available
+            // Use cached resource hotspots when available; uncached BFS fallback is time-boxed.
             if (context != null)
                 GenerateMoveTowardResourceCached(wu, civ, dangerMap, ts, commands, context);
-            else
+            else if (!TimeExceeded())
                 GenerateMoveTowardResource(wu, civ, dangerMap, ts, commands, forageRange);
 
             if (needFood)
                 GenerateMoveTowardAnimal(wu, dangerMap, ts, commands, approachRange);
         }
 
-        // ───── Exploration: use cached frontiers when available ─────
-        if (context != null)
-            GenerateExplorationCached(unit, civ, dangerMap, ts, commands, context, exploreRange);
-        else
-            GenerateExploration(unit, civ, dangerMap, ts, commands, exploreRange);
+        // ───── Exploration: lowest-priority scan, skipped once the thinking budget is spent ─────
+        if (!TimeExceeded())
+        {
+            if (context != null)
+                GenerateExplorationCached(unit, civ, dangerMap, ts, commands, context, exploreRange);
+            else
+                GenerateExploration(unit, civ, dangerMap, ts, commands, exploreRange);
+        }
 
         // ───── Fortify (always an option, lowest-priority fallback) ─────
         var fortify = new AIFortifyCommand { unit = unit, planetIndex = pIndex };

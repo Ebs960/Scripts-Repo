@@ -76,6 +76,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private GameManager _gameManager;
     private bool _minimapsPreGenerated = false;
     private TileLayer currentMinimapLayer = TileLayer.Surface;
+    private readonly List<TileLayer> layerDropdownMapping = new();
     private LoadingPanelController _loadingPanel;
     // Moons are separate planets now; no "onMoon" camera mode tracking.
     private PlanetaryCameraManager _cachedCameraManager; // Cached reference to avoid repeated FindAnyObjectByType calls
@@ -86,6 +87,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [SerializeField] private Camera uiCamera; // leave null for Screen Space - Overlay
     private bool _isHorizontallyMirrored;
     private bool _isVerticallyMirrored;
+    private bool isSubscribedToWorldView;
+    private bool suppressLayerDropdownCallback;
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
@@ -646,6 +649,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             _gameManager.OnPlanetReady -= HandlePlanetSwitched;
             _gameManager.OnPlanetReady += HandlePlanetSwitched;
         }
+
+        SubscribeWorldViewContext();
     }
 
     private void OnDisable()
@@ -655,6 +660,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             _gameManager.OnGameStarted -= HandleGameStarted;
             _gameManager.OnPlanetReady -= HandlePlanetSwitched;
         }
+
+        UnsubscribeWorldViewContext();
     }
 
     /// <summary>
@@ -674,7 +681,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (!_minimapsPreGenerated) return;
 
         // Ensure we show the CURRENT planet (the one the player is on)
-        ShowMinimapForPlanet(_gameManager.currentPlanetIndex);
+        ShowMinimapForPlanet(GetViewedPlanetIndex());
     }
 
     /// <summary>
@@ -689,7 +696,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_minimapsPreGenerated)
         {
             // Planet dropdown removed — minimap always tracks current planet
-            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
+            ShowMinimapForPlanet(GetViewedPlanetIndex());
+            SyncMinimapLayerFromWorldView();
+            BuildLayerDropdown();
             RefreshUIVisibility();
             return;
         }
@@ -770,7 +779,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // Other planets' minimaps are generated on-demand when the player switches to them.
         // Previously this loop ran for ALL planets (up to 13), consuming ~78MB+ of LUTs,
         // atlases, GPU buffers, and textures — causing out-of-memory on smaller systems.
-        int currentIdx = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
+        int currentIdx = GetViewedPlanetIndex();
         if (currentIdx < totalPlanets)
         {
             string planetName = GetPlanetName(currentIdx);
@@ -790,6 +799,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             LoadingPanelController.Instance.OnMinimapGenerationComplete();
         }
 
+        SyncMinimapLayerFromWorldView();
         BuildLayerDropdown();
         // Show the current planet's minimap
         ShowMinimapForPlanet(currentIdx);
@@ -1010,7 +1020,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         if (CanDisplayUIElements())
         {
-            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
+            ShowMinimapForPlanet(GetViewedPlanetIndex());
         }
     }
 
@@ -1054,14 +1064,27 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private void BuildLayerDropdown()
     {
         if (layerDropdown == null) return;
+        layerDropdownMapping.Clear();
         layerDropdown.ClearOptions();
         var opts = new System.Collections.Generic.List<TMP_Dropdown.OptionData>();
-        opts.Add(new TMP_Dropdown.OptionData("Surface"));
-        opts.Add(new TMP_Dropdown.OptionData("Underwater"));
-        opts.Add(new TMP_Dropdown.OptionData("Atmosphere"));
-        opts.Add(new TMP_Dropdown.OptionData("Orbit"));
+
+        var layerManager = GetActiveLayerManager();
+        AddLayerOption(layerManager, GameManager.PlanetLayerType.Surface, "Surface", TileLayer.Surface, opts);
+        AddLayerOption(layerManager, GameManager.PlanetLayerType.Underwater, "Underwater", TileLayer.Underwater, opts);
+        AddLayerOption(layerManager, GameManager.PlanetLayerType.Atmosphere, "Atmosphere", TileLayer.Atmosphere, opts);
+        AddLayerOption(layerManager, GameManager.PlanetLayerType.Orbit, "Orbit", TileLayer.Orbit, opts);
+
+        if (opts.Count == 0)
+        {
+            layerDropdownMapping.Add(TileLayer.Surface);
+            opts.Add(new TMP_Dropdown.OptionData("Surface"));
+        }
+
         layerDropdown.AddOptions(opts);
-        layerDropdown.value = 0;
+        int selectedIndex = Mathf.Max(0, layerDropdownMapping.IndexOf(currentMinimapLayer));
+        suppressLayerDropdownCallback = true;
+        layerDropdown.SetValueWithoutNotify(selectedIndex);
+        suppressLayerDropdownCallback = false;
         layerDropdown.onValueChanged.RemoveAllListeners();
         layerDropdown.onValueChanged.AddListener(OnLayerDropdownChanged);
         layerDropdown.RefreshShownValue();
@@ -1069,14 +1092,120 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void OnLayerDropdownChanged(int idx)
     {
-        currentMinimapLayer = (TileLayer)idx;
+        if (suppressLayerDropdownCallback)
+            return;
+
+        if (idx < 0 || idx >= layerDropdownMapping.Count)
+            return;
+
+        currentMinimapLayer = layerDropdownMapping[idx];
+
+        var layerManager = GetActiveLayerManager();
+        if (layerManager != null)
+            layerManager.SetOnlyLayerVisible(ToPlanetLayer(currentMinimapLayer));
+
         // Clear cached atlases and textures so the minimap regenerates for new layer
         _tileAtlasCache.Clear();
         _minimapTextures.Clear();
         _minimapsPreGenerated = false;
         // Show currently selected planet minimap (regenerates on demand)
-        int planetIndex = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
+        int planetIndex = GetViewedPlanetIndex();
         ShowMinimapForPlanet(planetIndex);
+    }
+
+    private void AddLayerOption(LayerManager layerManager, GameManager.PlanetLayerType planetLayer, string label, TileLayer tileLayer, List<TMP_Dropdown.OptionData> options)
+    {
+        if (layerManager != null && !layerManager.IsLayerSupported(planetLayer))
+            return;
+
+        layerDropdownMapping.Add(tileLayer);
+        options.Add(new TMP_Dropdown.OptionData(label));
+    }
+
+    private int GetViewedPlanetIndex()
+    {
+        var context = WorldViewContext.GetOrCreate().Current;
+        if (context.PlanetIndex.HasValue)
+            return context.PlanetIndex.Value;
+
+        return _gameManager != null ? _gameManager.currentPlanetIndex : 0;
+    }
+
+    private void SyncMinimapLayerFromWorldView()
+    {
+        var context = WorldViewContext.GetOrCreate().Current;
+        if (context.PlanetLayer.HasValue)
+            currentMinimapLayer = ToTileLayer(context.PlanetLayer.Value);
+    }
+
+    private void SubscribeWorldViewContext()
+    {
+        if (isSubscribedToWorldView)
+            return;
+
+        var context = WorldViewContext.GetOrCreate();
+        context.OnViewChanged += HandleWorldViewChanged;
+        isSubscribedToWorldView = true;
+    }
+
+    private void UnsubscribeWorldViewContext()
+    {
+        if (!isSubscribedToWorldView)
+            return;
+
+        if (WorldViewContext.Instance != null)
+            WorldViewContext.Instance.OnViewChanged -= HandleWorldViewChanged;
+
+        isSubscribedToWorldView = false;
+    }
+
+    private void HandleWorldViewChanged(WorldViewState state)
+    {
+        if (!gameObject.activeInHierarchy)
+            return;
+
+        if (state.PlanetLayer.HasValue)
+            currentMinimapLayer = ToTileLayer(state.PlanetLayer.Value);
+
+        BuildLayerDropdown();
+
+        if (state.Mode == WorldViewMode.Planet && state.PlanetIndex.HasValue)
+            ShowMinimapForPlanet(state.PlanetIndex.Value);
+    }
+
+    private static TileLayer ToTileLayer(GameManager.PlanetLayerType layer)
+    {
+        return layer switch
+        {
+            GameManager.PlanetLayerType.Underwater => TileLayer.Underwater,
+            GameManager.PlanetLayerType.Atmosphere => TileLayer.Atmosphere,
+            GameManager.PlanetLayerType.Orbit => TileLayer.Orbit,
+            _ => TileLayer.Surface,
+        };
+    }
+
+    private static GameManager.PlanetLayerType ToPlanetLayer(TileLayer layer)
+    {
+        return layer switch
+        {
+            TileLayer.Underwater => GameManager.PlanetLayerType.Underwater,
+            TileLayer.Atmosphere => GameManager.PlanetLayerType.Atmosphere,
+            TileLayer.Orbit => GameManager.PlanetLayerType.Orbit,
+            _ => GameManager.PlanetLayerType.Surface,
+        };
+    }
+
+    private LayerManager GetActiveLayerManager()
+    {
+        var generator = _gameManager != null
+            ? _gameManager.GetCurrentPlanetGenerator()
+            : FindAnyObjectByType<PlanetGenerator>();
+
+        if (generator == null)
+            return FindAnyObjectByType<LayerManager>();
+
+        var layerManager = generator.GetComponent<LayerManager>();
+        return layerManager != null ? layerManager : FindAnyObjectByType<LayerManager>();
     }
 
     private void ShowMinimapForPlanet(int planetIndex)

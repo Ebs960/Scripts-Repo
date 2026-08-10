@@ -171,6 +171,9 @@ public class LayerManager : MonoBehaviour
         ApplyVisualState(force: false);
 
         OnLayerVisibilityChanged?.Invoke(layer, visible);
+        if (visible && planetGenerator != null)
+            WorldViewContext.GetOrCreate().NotifyPlanetLayerChanged(planetGenerator.planetIndex, layer);
+
         if (logLayerChanges)
         {
             Debug.Log($"[LayerManager] Layer visibility changed planet='{GetPlanetNameForLogs()}' layer={layer} visible={visible}");

@@ -110,6 +110,9 @@ public class PlanetaryCameraManager : MonoBehaviour
     /// </summary>
     public void TransitionToUnderwater(Vector3 oceanWorldPoint, float maxMoveSpeed = -1f)
     {
+        if (GameManager.Instance != null)
+            WorldViewContext.GetOrCreate().NotifyPlanetLayerChanged(GameManager.Instance.currentPlanetIndex, GameManager.PlanetLayerType.Underwater);
+
         if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
         _savedSurfaceHeight = _cameraHeight;
         _savedSurfacePitchMin = minPitchAngle;
@@ -126,6 +129,9 @@ public class PlanetaryCameraManager : MonoBehaviour
     /// </summary>
     public void TransitionToSurface(float duration = 0.6f)
     {
+        if (GameManager.Instance != null)
+            WorldViewContext.GetOrCreate().NotifyPlanetLayerChanged(GameManager.Instance.currentPlanetIndex, GameManager.PlanetLayerType.Surface);
+
         if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
         _transitionCoroutine = StartCoroutine(SurfaceTransitionCoroutine(duration));
     }
@@ -135,6 +141,9 @@ public class PlanetaryCameraManager : MonoBehaviour
     /// </summary>
     public void TransitionToOrbit(Vector3 focusPoint, float orbitLayerHeight)
     {
+        if (GameManager.Instance != null)
+            WorldViewContext.GetOrCreate().NotifyPlanetLayerChanged(GameManager.Instance.currentPlanetIndex, GameManager.PlanetLayerType.Orbit);
+
         if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
 
         // Only save surface settings if we aren't already in a special mode
