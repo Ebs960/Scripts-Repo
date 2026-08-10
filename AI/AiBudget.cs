@@ -133,9 +133,9 @@ public class AiBudget
     /// <summary>
     /// Builds a budget for a given difficulty, then scales it down according to the actor's
     /// sophistication tier. Major civilizations get the full difficulty budget. City-states
-    /// get a cheap regional budget (diplomatic + military + economy only, no HTN strategic
-    /// layer, no army-group coordination). Tribes get an even cheaper local-survival budget
-    /// (movement/raid/hunt/settle only). This keeps the ~13 minor actors from costing as much
+    /// get a cheap regional budget with lightweight army coordination but no HTN strategic
+    /// layer. Tribes get an even cheaper local-survival budget with small raiding/defense groups.
+    /// This keeps the ~13 minor actors from costing as much
     /// CPU as a full civilization while still letting them act sensibly.
     /// </summary>
     public static AiBudget For(AIDifficulty difficulty, AIActorTier tier)
@@ -151,8 +151,9 @@ public class AiBudget
                 b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
                 b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 16);
                 b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 3f);
-                b.EnableArmyGroups      = false;
-                b.EnableStrategicPlanning = false; // no EmpireAI/OperationalPlanner HTN layer
+                b.EnableArmyGroups      = true;
+                b.ArmyGroupRange        = Mathf.Min(b.ArmyGroupRange, 4);
+                b.EnableStrategicPlanning = false;
                 break;
 
             case AIActorTier.Tribe:
@@ -163,7 +164,8 @@ public class AiBudget
                 b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
                 b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 8);
                 b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 1.5f);
-                b.EnableArmyGroups      = false;
+                b.EnableArmyGroups      = true;
+                b.ArmyGroupRange        = Mathf.Min(b.ArmyGroupRange, 3);
                 b.EnableStrategicPlanning = false;
                 break;
 
@@ -177,8 +179,8 @@ public class AiBudget
     /// <summary>
     /// Classifies a civilization's AI sophistication tier from its CivData flags.
     /// Major civilizations: full strategic/operational/tactical AI.
-    /// City-states: regional diplomatic + military + economy only.
-    /// Tribes: local movement, survival, raid, hunt, settle only.
+    /// City-states: regional diplomatic, military, economic, technological, and cultural AI.
+    /// Tribes: local movement, survival, raid, hunt, settle, technology, and culture AI.
     /// </summary>
     public static AIActorTier ResolveTier(CivData data)
     {
