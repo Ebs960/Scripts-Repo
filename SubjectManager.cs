@@ -208,7 +208,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
     /// <summary>
     /// Overlord replaces a local governor in the subject civ.
-    /// Angers both the replaced governor and the subject civ's lords.
+    /// Angers both the replaced governor and the subject civ's governors.
     /// </summary>
     public void InterfereReplaceGovernor(Civilization overlord, Civilization subject, Governor newGov, int currentTurn)
     {

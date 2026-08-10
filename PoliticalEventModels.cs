@@ -68,6 +68,10 @@ public class PoliticalEventRecord
     public string factionDemandType;
     public int issuedTurn;
     public int targetGovernorId = -1;
+    // Concrete faction-demand targets, persisted by asset name so the exact
+    // policy/government can be reconnected after save/load.
+    public string targetPolicyName;
+    public string targetGovernmentName;
 
     public List<PoliticalEventOption> options = new List<PoliticalEventOption>();
 }

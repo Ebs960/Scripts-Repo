@@ -2617,39 +2617,8 @@ public class GameManager : MonoBehaviour
                     {
                         var gov = civ.governors[g];
                         if (gov == null) continue;
-                        var gsd = new PauseMenuManager.GovernorSaveData
-                        {
-                            id = gov.Id,
-                            name = gov.Name,
-                            specialization = gov.specialization,
-                            level = gov.Level,
-                            experience = gov.Experience
-                        };
-                        if (gov.Cities != null && civ.cities != null)
-                        {
-                            foreach (var city in gov.Cities)
-                            {
-                                if (city == null) continue;
-                                int idx = civ.cities.IndexOf(city);
-                                if (idx >= 0) gsd.assignedCityIndices.Add(idx);
-                            }
-                        }
-                        if (gov.Herds != null)
-                        {
-                            foreach (var herd in gov.Herds)
-                            {
-                                if (herd == null) continue;
-                                gsd.assignedHerdRefs.Add(new PauseMenuManager.HerdRef { planetIndex = herd.planetIndex, tileIndex = herd.currentTileIndex });
-                            }
-                        }
-                        if (gov.Traits != null)
-                        {
-                            foreach (var t in gov.Traits)
-                            {
-                                if (t != null) gsd.traitNames.Add(t.traitName);
-                            }
-                        }
-                        civProgress.governors.Add(gsd);
+                        var gsd = GovernorSaveUtility.Capture(gov, civ);
+                        if (gsd != null) civProgress.governors.Add(gsd);
                     }
                 }
 
@@ -2663,7 +2632,8 @@ public class GameManager : MonoBehaviour
                             var hq = new PauseMenuManager.HerdQueueSaveData
                             {
                                 planetIndex = h.planetIndex,
-                                tileIndex = h.currentTileIndex
+                                tileIndex = h.currentTileIndex,
+                                herdLevel = h.level
                             };
                             if (h.productionQueue != null && h.productionQueue.Count > 0)
                             {
@@ -3281,6 +3251,8 @@ public class GameManager : MonoBehaviour
                         }
 
                         if (targetHerd == null) continue;
+                        // Restore herd level (old saves default to 0; clamp to minimum 1)
+                        targetHerd.level = Mathf.Max(1, hq.herdLevel);
                         // Clear existing queue and repopulate
                         try
                         {
@@ -3311,6 +3283,10 @@ public class GameManager : MonoBehaviour
             // Reconstruct governors from save data for this civilization
             try
             {
+                // Lookups keyed by asset name for stable identifier resolution
+                var religionAssetLookup = GovernorSaveUtility.BuildLookup(ResourceCache.GetAllReligionData(), r => r.name);
+                var cultureAssetLookup = GovernorSaveUtility.BuildLookup(ResourceCache.GetAllCultureData(), c => c.name);
+
                 // Clear any existing governors and recreate from saved entries
                 civ.governors = civ.governors ?? new System.Collections.Generic.List<Governor>();
                 civ.governors.Clear();
@@ -3322,27 +3298,10 @@ public class GameManager : MonoBehaviour
                         // Create governor (this will respect governorsEnabled and governorCount)
                         var newGov = civ.CreateGovernor(gsd.name ?? "Governor", gsd.specialization);
                         if (newGov == null) continue;
-                        // Restore level and experience via reflection (Level/Experience have private setters)
-                        var govType = typeof(Governor);
-                        var levelProp = govType.GetProperty("Level", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                        var expProp = govType.GetProperty("Experience", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                        try
-                        {
-                            if (levelProp != null) levelProp.SetValue(newGov, gsd.level);
-                            if (expProp != null) expProp.SetValue(newGov, gsd.experience);
-                        }
-                        catch { }
 
-                        // Restore traits
-                        if (gsd.traitNames != null && gsd.traitNames.Count > 0)
-                        {
-                            foreach (var tname in gsd.traitNames)
-                            {
-                                if (string.IsNullOrWhiteSpace(tname)) continue;
-                                if (governorTraitLookup.TryGetValue(tname, out var trait) && trait != null && !newGov.Traits.Contains(trait))
-                                    newGov.Traits.Add(trait);
-                            }
-                        }
+                        // Restore intrinsic character/political state (id, level/XP, personality,
+                        // opinion + modifiers, religion/culture, grievances, tick guard, traits)
+                        GovernorSaveUtility.RestoreIntrinsicState(newGov, gsd, governorTraitLookup, religionAssetLookup, cultureAssetLookup);
 
                         // Assign to cities by saved indices
                         if (gsd.assignedCityIndices != null && civ.cities != null && civ.cities.Count > 0)

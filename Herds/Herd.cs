@@ -46,6 +46,10 @@ public class Herd : MonoBehaviour
     [Tooltip("Governor assigned to this herd (can be null)")]
     public Governor governor;
 
+    [Header("Level")]
+    [Tooltip("Herd development level. Contributes 1 point per level to the assigned governor's PowerRank. Progression systems may raise this later.")]
+    [Min(1)] public int level = 1;
+
     [Header("Pack/Settle")]
     [Tooltip("When true the herd is packed and may move; when false the herd is settled (camp) and generates full yields.")]
     public bool isPacked = true;

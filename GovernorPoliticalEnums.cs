@@ -2,7 +2,7 @@ using System;
 
 /// <summary>
 /// Sources of tracked grievance stacks on a Governor.
-/// Each source accumulates independently so the player can see exactly why a lord is angry.
+/// Each source accumulates independently so the player can see exactly why a governor is angry.
 /// </summary>
 public enum GrievanceSource
 {
@@ -31,7 +31,9 @@ public enum VetoDomain
     Taxation        = 1 << 2,  // Council must approve tax increases
     Religion        = 1 << 3,  // Council must approve religious policy changes
     TitleRevocation = 1 << 4,  // Council must approve revoking governor titles
-    All             = WarDeclaration | Succession | Taxation | Religion | TitleRevocation,
+    GovernmentChange = 1 << 5, // Council must approve switching government type
+    PolicyChange    = 1 << 6,  // Council must approve adopting/revoking policies
+    All             = WarDeclaration | Succession | Taxation | Religion | TitleRevocation | GovernmentChange | PolicyChange,
 }
 
 /// <summary>
@@ -40,7 +42,7 @@ public enum VetoDomain
 /// </summary>
 public enum FactionAlignment
 {
-    Independent,   // Wants broader lord autonomy, resists centralization
+    Independent,   // Wants broader governor autonomy, resists centralization
     Reformist,     // Wants specific policy change (unlock or revoke)
     Conservative,  // Resists government type changes; wants status quo
     Religious,     // Wants religious policy to match their faith

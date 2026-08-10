@@ -46,9 +46,14 @@ public class SpaceMapWorldController : MonoBehaviour
     private bool isVisible;
     private Material fallbackHexMaterial;
     private Material routeMaterial;
-    private readonly MaterialPropertyBlock colorProperties = new MaterialPropertyBlock();
+    private MaterialPropertyBlock colorProperties;
 
-    private void Awake() { EnsureSceneObjects(); SetMapActive(false); }
+    private void Awake()
+    {
+        colorProperties = new MaterialPropertyBlock();
+        EnsureSceneObjects();
+        SetMapActive(false);
+    }
     private void Update() { if (isVisible) HandleSelectionInput(); }
 
     public void ShowMap(SpaceMapUI ui)

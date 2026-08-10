@@ -4,7 +4,7 @@ using UnityEngine;
 /// Defines a political opinion reaction pushed to governors when a policy or government
 /// is adopted/changed. Attach arrays of these to GovernmentData and PolicyData.
 /// The reaction engine in Civilization filters by personality and mismatch conditions,
-/// then calls Governor.AddOpinionModifier on each matching lord.
+/// then calls Governor.AddOpinionModifier on each matching governor.
 /// </summary>
 [System.Serializable]
 public class GovernorOpinionEffect

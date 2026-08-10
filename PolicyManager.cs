@@ -17,108 +17,192 @@ public class PolicyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Which policies can the civ adopt right now?
+    /// Structural prerequisites only (techs, cultures, government, city count, not already active).
+    /// Deliberately excludes policy-point affordability so faction demand generation
+    /// can target legal-but-unaffordable-right-now policies without duplicating requirement logic.
+    /// </summary>
+    public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
+    {
+        if (civ == null || p == null) return false;
+        if (civ.activePolicies != null && civ.activePolicies.Contains(p)) return false;
+        if (p.requiredTechs != null)
+            foreach (var req in p.requiredTechs)
+                if (req != null && !civ.researchedTechs.Contains(req)) return false;
+        if (p.requiredCultures != null)
+            foreach (var req in p.requiredCultures)
+                if (req != null && !civ.researchedCultures.Contains(req)) return false;
+        if (p.requiredGovernments != null)
+            foreach (var req in p.requiredGovernments)
+                if (req != null && civ.currentGovernment != req) return false;
+        if (civ.cities == null || civ.cities.Count < p.requiredCityCount) return false;
+        return true;
+    }
+
+    /// <summary>All policies whose structural prerequisites are met, regardless of current policy points.</summary>
+    public List<PolicyData> GetStructurallyAvailablePolicies(Civilization civ)
+    {
+        var avail = new List<PolicyData>();
+        if (civ == null) return avail;
+        foreach (var p in allPolicies)
+            if (p != null && MeetsPolicyPrerequisites(civ, p)) avail.Add(p);
+        return avail;
+    }
+
+    /// <summary>
+    /// Which policies can the civ adopt right now? (prerequisites + affordability)
     /// </summary>
     public List<PolicyData> GetAvailablePolicies(Civilization civ)
     {
         var avail = new List<PolicyData>();
         foreach (var p in allPolicies)
         {
-            if (civ.activePolicies.Contains(p))
-                continue;
-            if (civ.policyPoints < p.policyPointCost)
-                continue;
-            bool ok = true;
-            foreach (var req in p.requiredTechs)
-                if (!civ.researchedTechs.Contains(req)) { ok = false; break; }
-            foreach (var req in p.requiredCultures)
-                if (!civ.researchedCultures.Contains(req)) { ok = false; break; }
-            foreach (var req in p.requiredGovernments)
-                if (civ.currentGovernment != req) { ok = false; break; }
-            if (civ.cities.Count < p.requiredCityCount) ok = false;
-            if (ok) avail.Add(p);
+            if (p == null) continue;
+            if (civ.policyPoints < p.policyPointCost) continue;
+            if (MeetsPolicyPrerequisites(civ, p)) avail.Add(p);
         }
         return avail;
     }
 
     /// <summary>
-    /// Pay policy points and adopt a policy.
+    /// Pay policy points and adopt a policy. Runs a Royal Council vote when the
+    /// active government grants the council a vote on implicated domains.
     /// </summary>
     public bool AdoptPolicy(Civilization civ, PolicyData p)
     {
         if (!GetAvailablePolicies(civ).Contains(p)) return false;
 
-        // Council veto: religion-affecting policies require council approval
-        if (p.faithModifier != 0f && civ.HasCouncilVeto(VetoDomain.Religion))
+        var voteResult = RunPolicyCouncilVote(civ, p, revocation: false);
+        if (!voteResult.passed)
         {
-            Debug.Log($"[PolicyManager] Policy '{p.policyName}' blocked by council veto (Religion).");
+            Debug.Log($"[PolicyManager] Policy '{p.policyName}' rejected by council vote " +
+                      $"({voteResult.yesVotes}\u2013{voteResult.noVotes}).");
             return false;
         }
 
-        // Council veto: tax-increasing policies require council approval
-        if (p.goldModifier < 0f && civ.HasCouncilVeto(VetoDomain.Taxation))
-        {
-            Debug.Log($"[PolicyManager] Policy '{p.policyName}' blocked by council veto (Taxation).");
-            return false;
-        }
+        // Adopt first, then charge: Civilization.AdoptPolicy re-validates availability,
+        // so deducting points up-front could silently charge without adopting.
+        civ.AdoptPolicy(p);
+        if (civ.activePolicies == null || !civ.activePolicies.Contains(p)) return false;
 
         civ.policyPoints -= p.policyPointCost;
-        civ.AdoptPolicy(p);
         ApplyGovernorPoliticalReactions(civ, p.governorOpinionEffects);
         return true;
     }
 
     /// <summary>
-    /// Which governments can the civ switch to right now?
+    /// Revoke an active policy, reversing its effects. Runs a Royal Council vote
+    /// when the government grants the council a vote on policy changes.
+    /// </summary>
+    public bool RevokePolicy(Civilization civ, PolicyData p)
+    {
+        if (civ == null || p == null) return false;
+        if (civ.activePolicies == null || !civ.activePolicies.Contains(p)) return false;
+
+        var voteResult = RunPolicyCouncilVote(civ, p, revocation: true);
+        if (!voteResult.passed)
+        {
+            Debug.Log($"[PolicyManager] Revocation of '{p.policyName}' rejected by council vote " +
+                      $"({voteResult.yesVotes}\u2013{voteResult.noVotes}).");
+            return false;
+        }
+
+        return civ.RevokePolicy(p);
+    }
+
+    private static CouncilVoteResult RunPolicyCouncilVote(Civilization civ, PolicyData p, bool revocation)
+    {
+        // Domains implicated by this policy's mechanics.
+        var domains = VetoDomain.PolicyChange;
+        if (p.faithModifier != 0f) domains |= VetoDomain.Religion;
+        if (p.goldModifier < 0f) domains |= VetoDomain.Taxation;
+
+        var result = CouncilVoteService.Evaluate(civ, new CouncilProposalContext
+        {
+            domains = domains,
+            targetPolicy = p,
+            policyIsRevocation = revocation,
+            numericContext = -p.goldModifier,
+            description = revocation ? $"Repeal {p.policyName}" : $"Adopt {p.policyName}",
+        });
+        CouncilVoteService.NotifyPlayer(civ, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Structural prerequisites for a government (unlocked, techs, cultures, city count,
+    /// state religion, vassal count) excluding policy-point affordability.
+    /// </summary>
+    public bool MeetsGovernmentPrerequisites(Civilization civ, GovernmentData g)
+    {
+        if (civ == null || g == null) return false;
+        if (civ.unlockedGovernments == null || !civ.unlockedGovernments.Contains(g)) return false;
+        if (civ.currentGovernment == g) return false;
+        if (g.requiredTechs != null)
+            foreach (var req in g.requiredTechs)
+                if (req != null && !civ.researchedTechs.Contains(req)) return false;
+        if (g.requiredCultures != null)
+            foreach (var req in g.requiredCultures)
+                if (req != null && !civ.researchedCultures.Contains(req)) return false;
+        if (civ.cities == null || civ.cities.Count < g.requiredCityCount) return false;
+        if (g.requiresStateReligion && civ.foundedReligion == null) return false;
+        if (g.requiredVassalCount > 0 && civ.ActiveVassalCount < g.requiredVassalCount) return false;
+        return true;
+    }
+
+    /// <summary>All governments whose structural prerequisites are met, regardless of current policy points.</summary>
+    public List<GovernmentData> GetStructurallyAvailableGovernments(Civilization civ)
+    {
+        var avail = new List<GovernmentData>();
+        if (civ == null || civ.unlockedGovernments == null) return avail;
+        foreach (var g in civ.unlockedGovernments)
+            if (g != null && MeetsGovernmentPrerequisites(civ, g)) avail.Add(g);
+        return avail;
+    }
+
+    /// <summary>
+    /// Which governments can the civ switch to right now? (prerequisites + affordability)
     /// </summary>
     public List<GovernmentData> GetAvailableGovernments(Civilization civ)
     {
         var avail = new List<GovernmentData>();
-        // Available governments are those the civ has unlocked (via techs/cultures) but hasn't adopted yet.
         if (civ == null || civ.unlockedGovernments == null) return avail;
 
         foreach (var g in civ.unlockedGovernments)
         {
             if (g == null) continue;
-            if (civ.currentGovernment == g) continue;
             if (civ.policyPoints < g.policyPointCost) continue;
-            bool ok = true;
-            if (g.requiredTechs != null)
-            {
-                foreach (var req in g.requiredTechs)
-                    if (req != null && !civ.researchedTechs.Contains(req)) { ok = false; break; }
-            }
-            if (!ok) continue;
-            if (g.requiredCultures != null)
-            {
-                foreach (var req in g.requiredCultures)
-                    if (req != null && !civ.researchedCultures.Contains(req)) { ok = false; break; }
-            }
-            if (!ok) continue;
-            if (civ.cities == null || civ.cities.Count < g.requiredCityCount) ok = false;
-            if (g.requiresStateReligion && civ.foundedReligion == null) ok = false;
-            if (g.requiredVassalCount > 0 && civ.ActiveVassalCount < g.requiredVassalCount) ok = false;
-            if (ok) avail.Add(g);
+            if (MeetsGovernmentPrerequisites(civ, g)) avail.Add(g);
         }
         return avail;
     }
 
     /// <summary>
-    /// Switch government, unlocking new policies.
+    /// Switch government, unlocking new policies. Runs a Royal Council vote when
+    /// the current government's council may vote on succession/government change.
     /// </summary>
     public bool ChangeGovernment(Civilization civ, GovernmentData g)
     {
         if (!GetAvailableGovernments(civ).Contains(g)) return false;
 
-        // Council veto on succession/government change
-        if (civ.HasCouncilVeto(VetoDomain.Succession))
+        var voteResult = CouncilVoteService.Evaluate(civ, new CouncilProposalContext
         {
-            Debug.Log($"[PolicyManager] Government change to '{g.governmentName}' blocked by council veto (Succession).");
+            domains = VetoDomain.Succession | VetoDomain.GovernmentChange,
+            targetGovernment = g,
+            description = $"Adopt {g.governmentName}",
+        });
+        CouncilVoteService.NotifyPlayer(civ, voteResult);
+        if (!voteResult.passed)
+        {
+            Debug.Log($"[PolicyManager] Government change to '{g.governmentName}' rejected by council vote " +
+                      $"({voteResult.yesVotes}\u2013{voteResult.noVotes}).");
             return false;
         }
 
-        civ.policyPoints -= g.policyPointCost;
+        // Change first, then charge: Civilization.ChangeGovernment re-validates availability.
         civ.ChangeGovernment(g);
+        if (civ.currentGovernment != g) return false;
+
+        civ.policyPoints -= g.policyPointCost;
         ApplyGovernorPoliticalReactions(civ, g.governorOpinionEffects);
         return true;
     }

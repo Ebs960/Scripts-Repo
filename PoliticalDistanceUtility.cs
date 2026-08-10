@@ -21,7 +21,7 @@ public static class PoliticalDistanceUtility
     private static PoliticalDistanceConfig Config => _config ?? (_config = Resources.Load<PoliticalDistanceConfig>("PoliticalDistanceConfig"));
 
     /// <summary>
-    /// Permanent opinion penalty for governors/lords whose domain is far from the capital.
+    /// Permanent opinion penalty for governors whose domain is far from the capital.
     /// Uses the average distance of all governed cities/herds.
     /// </summary>
     public static float GetGovernorDistancePenalty(Governor governor)

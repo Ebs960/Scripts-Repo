@@ -169,6 +169,8 @@ public class PauseMenuManager : MonoBehaviour
     {
         public int planetIndex;
         public int tileIndex;
+        // Herd development level (feeds governor PowerRank). Old saves default to 0 and are clamped to 1 on load.
+        public int herdLevel = 1;
         public List<HerdProdEntrySaveData> queue = new List<HerdProdEntrySaveData>();
     }
 
@@ -194,6 +196,36 @@ public class PauseMenuManager : MonoBehaviour
         public List<HerdRef> assignedHerdRefs = new List<HerdRef>();
         // Trait names assigned to this governor
         public List<string> traitNames = new List<string>();
+
+        // ── Intrinsic political character state (CK-lite system) ──
+        public List<PersonalityTrait> personalityTraits = new List<PersonalityTrait>();
+        public float opinion = 50f;
+        public List<GovernorOpinionModifierSaveData> opinionModifiers = new List<GovernorOpinionModifierSaveData>();
+        // Stable asset names for personal religion/culture (null/empty = none)
+        public string personalReligionName;
+        public string personalCultureName;
+        public float loyaltyFloor = -100f;
+        public float loyaltyCeiling = 100f;
+        public List<GovernorGrievanceSaveData> grievances = new List<GovernorGrievanceSaveData>();
+        public bool isCouncilEligible;
+        public bool isInRebellion;
+        // Once-per-turn opinion tick guard, preserved so mid-turn saves cannot double-tick
+        public int lastOpinionTickRound = -1;
+    }
+
+    [Serializable]
+    public class GovernorOpinionModifierSaveData
+    {
+        public string reason;
+        public float value;
+        public int turnsRemaining;
+    }
+
+    [Serializable]
+    public class GovernorGrievanceSaveData
+    {
+        public GrievanceSource source;
+        public int stacks;
     }
 
     [Serializable]

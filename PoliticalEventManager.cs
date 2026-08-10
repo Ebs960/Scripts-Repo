@@ -99,13 +99,13 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             };
 
             string body = $"{governor.Name} petitions for recognition and relief. Their opinion is {Mathf.RoundToInt(governor.Opinion)} and grievances are mounting.";
-            if (!governor.IsOnCouncil && governor.IsCouncilEligible && civ.royalCouncil.Count < civ.MaxCouncilSeats)
+            if (!governor.IsOnCouncil && governor.IsCouncilEligible && civ.HasRoyalCouncil && civ.royalCouncil.Count < civ.MaxCouncilSeats)
             {
                 options.Insert(0, new PoliticalEventOption
                 {
                     optionId = "grant_council_seat",
                     label = "Grant Council Seat",
-                    summary = "Seat this lord on the royal council and clear council resentment.",
+                    summary = "Seat this governor on the royal council and clear council resentment.",
                     targetGovernorId = governor.Id,
                 });
                 body = $"{governor.Name} petitions for a place in government. Their influence is growing, and exclusion from the council is becoming dangerous.";
@@ -159,6 +159,8 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     factionDemandType = demand.type.ToString(),
                     issuedTurn = demand.issuedTurn,
                     targetGovernorId = demand.targetGovernor?.Id ?? -1,
+                    targetPolicyName = demand.targetPolicy != null ? demand.targetPolicy.name : null,
+                    targetGovernmentName = demand.targetGovernment != null ? demand.targetGovernment.name : null,
                     primaryActor = new PoliticalActorRef
                     {
                         actorType = PoliticalActorType.Faction,
@@ -178,9 +180,9 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
 
     private void ProcessCouncilSuccession(Civilization civ, int currentTurn)
     {
-        if (civ.MaxCouncilSeats <= 0) return;
+        if (!civ.HasRoyalCouncil || civ.MaxCouncilSeats <= 0) return;
 
-        var candidates = civ.GetUnseatedPowerfulLords()
+        var candidates = civ.GetUnseatedPowerfulGovernors()
             .Where(g => g != null)
             .OrderByDescending(g => g.PowerRank)
             .ThenByDescending(g => g.Opinion)
@@ -217,7 +219,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             sourceKey = sourceKey,
             targetCivName = civ.civData?.civName ?? civ.name,
             title = "Royal Council Vacancy",
-            body = "A council seat stands open. Choose which powerful lord will be admitted to the royal council.",
+            body = "A council seat stands open. Choose which powerful governor will be admitted to the royal council.",
             createdTurn = currentTurn,
             expiryTurn = currentTurn + 4,
             primaryActor = new PoliticalActorRef
@@ -320,10 +322,11 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         var option = record.options[optionIndex];
         int currentTurn = TurnManager.Instance?.round ?? record.createdTurn;
 
+        bool handled = true;
         switch (record.eventType)
         {
             case PoliticalEventType.FactionDemand:
-                ResolveFactionEvent(record, civ, option, currentTurn);
+                handled = ResolveFactionEvent(record, civ, option, currentTurn);
                 break;
             case PoliticalEventType.GovernorPetition:
                 ResolveGovernorPetition(record, civ, option, currentTurn);
@@ -336,24 +339,40 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 break;
         }
 
+        if (!handled)
+        {
+            // The demanded action failed (veto, cost, invalid target). Keep the
+            // event pending so the player can retry or refuse instead.
+            record.presentedToPlayer = false;
+            return;
+        }
+
         record.status = PoliticalEventStatus.Resolved;
         TryPresentPendingPlayerEvent(civ);
     }
 
-    private void ResolveFactionEvent(PoliticalEventRecord record, Civilization civ, PoliticalEventOption option, int currentTurn)
+    private bool ResolveFactionEvent(PoliticalEventRecord record, Civilization civ, PoliticalEventOption option, int currentTurn)
     {
-        if (civ == null) return;
+        if (civ == null) return true;
         var bloc = civ.nobleFactions.FirstOrDefault(f => f != null && f.FactionName == record.factionName);
-        if (bloc == null) return;
+        if (bloc == null) return true;
 
         if (!Enum.TryParse(record.factionDemandType, out FactionDemandType demandType))
-            return;
+            return true;
 
         var demand = bloc.ActiveDemands.FirstOrDefault(d => d != null && d.type == demandType && d.issuedTurn == record.issuedTurn);
-        if (demand == null) return;
+        if (demand == null) return true;
 
         bool accepted = option.optionId == "accept";
-        civ.ResolveFactionDemand(bloc, demand, accepted, currentTurn);
+        var resolution = civ.ResolveFactionDemandDetailed(bloc, demand, accepted, currentTurn);
+        if (accepted && !resolution.success)
+        {
+            UIManager.Instance?.ShowNotification(
+                $"The demand from {bloc.FactionName} could not be fulfilled: {resolution.failureReason}");
+            return false;
+        }
+
+        return true;
     }
 
     private void ResolveCouncilElection(PoliticalEventRecord record, Civilization civ, PoliticalEventOption option)
@@ -471,7 +490,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
 
     private void ResolveExpiredCouncilElection(Civilization civ)
     {
-        var fallback = civ.GetUnseatedPowerfulLords().OrderByDescending(g => g.PowerRank).FirstOrDefault();
+        var fallback = civ.GetUnseatedPowerfulGovernors().OrderByDescending(g => g.PowerRank).FirstOrDefault();
         if (fallback != null)
             civ.AddToCouncil(fallback);
     }
@@ -507,6 +526,22 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             .FirstOrDefault(c => (c.civData?.civName ?? c.name) == civName);
     }
 
+    private static PolicyData ResolvePolicyByName(string assetName)
+    {
+        if (string.IsNullOrEmpty(assetName)) return null;
+        var fromManager = PolicyManager.Instance?.allPolicies?.FirstOrDefault(p => p != null && p.name == assetName);
+        if (fromManager != null) return fromManager;
+        return Resources.LoadAll<PolicyData>("").FirstOrDefault(p => p != null && p.name == assetName);
+    }
+
+    private static GovernmentData ResolveGovernmentByName(string assetName)
+    {
+        if (string.IsNullOrEmpty(assetName)) return null;
+        var fromManager = PolicyManager.Instance?.allGovernments?.FirstOrDefault(g => g != null && g.name == assetName);
+        if (fromManager != null) return fromManager;
+        return Resources.LoadAll<GovernmentData>("").FirstOrDefault(g => g != null && g.name == assetName);
+    }
+
     [Serializable]
     private class PoliticalFactionDemandState
     {
@@ -515,6 +550,10 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         public int issuedTurn;
         public int expiryTurns;
         public int targetGovernorId;
+        // Exact demand targets by asset name so the same policy/government is
+        // reconnected after load (never regenerated).
+        public string targetPolicyName;
+        public string targetGovernmentName;
     }
 
     [Serializable]
@@ -588,6 +627,8 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                             issuedTurn = demand.issuedTurn,
                             expiryTurns = demand.expiryTurns,
                             targetGovernorId = demand.targetGovernor?.Id ?? -1,
+                            targetPolicyName = demand.targetPolicy != null ? demand.targetPolicy.name : null,
+                            targetGovernmentName = demand.targetGovernment != null ? demand.targetGovernment.name : null,
                         });
                     }
 
@@ -680,6 +721,8 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                         issuedTurn = demandState.issuedTurn,
                         expiryTurns = demandState.expiryTurns,
                         targetGovernor = targetGov,
+                        targetPolicy = ResolvePolicyByName(demandState.targetPolicyName),
+                        targetGovernment = ResolveGovernmentByName(demandState.targetGovernmentName),
                     });
                 }
 

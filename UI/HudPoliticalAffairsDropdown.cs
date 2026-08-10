@@ -75,7 +75,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
     private void BuildGovernorSection(Transform bodyRoot)
     {
-        AddSectionHeader("Governors / Lords", bodyRoot);
+        AddSectionHeader("Governors", bodyRoot);
 
         var governors = currentCiv?.governors;
         if (governors == null || governors.Count == 0)
@@ -158,12 +158,12 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
     private void BuildFactionSection(Transform bodyRoot)
     {
-        AddSectionHeader("Noble Factions", bodyRoot);
+        AddSectionHeader("Factions", bodyRoot);
 
         var factions = currentCiv?.nobleFactions;
         if (factions == null || factions.Count == 0)
         {
-            AddEmptyRow("No noble factions", bodyRoot);
+            AddEmptyRow("No factions", bodyRoot);
             return;
         }
 

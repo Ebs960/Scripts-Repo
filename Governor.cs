@@ -59,13 +59,31 @@ public class Governor
     /// <summary>Opinion can never rise above this ceiling.</summary>
     public float LoyaltyCeiling { get; set; } = 100f;
 
-    // --- Power Rank (based on governed domain size) ---
+    // --- Power Rank (based on governed population) ---
     /// <summary>
-    /// A rough measure of this lord's political weight.
-    /// Each governed city = 2 points, each governed herd = 1 point.
+    /// A rough measure of this governor's political weight.
+    /// PowerRank = 2 x (sum of governed city levels) + 1 x (sum of governed herd levels).
+    /// Null holdings are ignored and negative levels clamp to zero.
     /// Used for council eligibility and faction power calculation.
     /// </summary>
-    public int PowerRank => Cities.Count * 2 + Herds.Count;
+    public int PowerRank
+    {
+        get
+        {
+            int rank = 0;
+            if (Cities != null)
+            {
+                foreach (var city in Cities)
+                    if (city != null) rank += 2 * Mathf.Max(0, city.level);
+            }
+            if (Herds != null)
+            {
+                foreach (var herd in Herds)
+                    if (herd != null) rank += Mathf.Max(0, herd.level);
+            }
+            return rank;
+        }
+    }
 
     // --- Council State ---
     public bool IsCouncilEligible { get; set; }
@@ -81,6 +99,10 @@ public class Governor
 
     // --- Rebellion State ---
     public bool IsInRebellion { get; set; }
+
+    // --- Once-per-turn opinion tick guard ---
+    /// <summary>The last civilization round in which this governor's opinion was ticked. -1 = never.</summary>
+    public int LastOpinionTickRound { get; private set; } = -1;
 
     public Governor(int id, string name, Specialization spec)
     {
@@ -103,6 +125,7 @@ public class Governor
         IsOnCouncil = false;
         Faction = null;
         IsInRebellion = false;
+        LastOpinionTickRound = -1;
         
         // Initialize all stats to 0
         foreach (TraitTrigger trigger in System.Enum.GetValues(typeof(TraitTrigger)))
@@ -312,10 +335,24 @@ public class Governor
     }
 
     /// <summary>
-    /// Called once per turn. Decays temporary modifiers, recalculates opinion.
+    /// Round-aware opinion tick. Call once per civilization turn from
+    /// Civilization.TickGovernorPolitics. A repeated call in the same round is a
+    /// no-op, so temporary modifiers can never decay twice in one turn.
     /// Returns the computed opinion value (also stored in Opinion).
     /// </summary>
-    public float TickOpinion()
+    public float TickOpinionForTurn(int round)
+    {
+        if (round == LastOpinionTickRound)
+            return Opinion;
+        LastOpinionTickRound = round;
+        return TickOpinion();
+    }
+
+    /// <summary>
+    /// Unguarded opinion tick. Decays temporary modifiers, recalculates opinion.
+    /// Prefer TickOpinionForTurn(round) so the tick cannot run twice per round.
+    /// </summary>
+    private float TickOpinion()
     {
         // Decay temporary modifiers
         for (int i = OpinionModifiers.Count - 1; i >= 0; i--)
@@ -338,11 +375,12 @@ public class Governor
         foreach (var mod in OpinionModifiers)
             total += mod.value;
 
-        // Ambitious governors slowly drift negative if not appeased
+        // Ambitious governors carry a flat -1 opinion malus while unappeased
+        // (recomputed from baseline each tick, so it does not accumulate).
         if (HasPersonality(PersonalityTrait.Ambitious))
-            total -= 1f; // -1 per turn passive drift
+            total -= 1f;
 
-        // Far-flung lords are harder to keep loyal to the capital.
+        // Far-flung governors are harder to keep loyal to the capital.
         total -= PoliticalDistanceUtility.GetGovernorDistancePenalty(this);
 
         Opinion = Mathf.Clamp(total, LoyaltyFloor, LoyaltyCeiling);
@@ -428,11 +466,60 @@ public class Governor
     /// <summary>
     /// Re-evaluate whether this governor should be eligible for a council seat.
     /// Call this whenever city/herd assignments change or government changes.
-    /// Eligibility threshold: PowerRank >= 4 (governs 2+ cities or equivalent).
+    /// Eligibility threshold: PowerRank >= 4 (e.g. a level-2 city, two level-1 cities, or equivalent herds).
     /// </summary>
     public void RefreshCouncilEligibility()
     {
         IsCouncilEligible = PowerRank >= 4;
+    }
+
+    // ===================== Save/Load =====================
+
+    /// <summary>
+    /// Restore intrinsic governor character/political state from save data.
+    /// Overwrites the randomly rolled personality assigned at creation.
+    /// </summary>
+    public void RestorePoliticalState(
+        int id,
+        int level,
+        int experience,
+        List<PersonalityTrait> personalityTraits,
+        float opinion,
+        List<OpinionModifier> opinionModifiers,
+        ReligionData personalReligion,
+        CultureData personalCulture,
+        float loyaltyFloor,
+        float loyaltyCeiling,
+        Dictionary<GrievanceSource, int> grievances,
+        bool isCouncilEligible,
+        bool isInRebellion,
+        int lastOpinionTickRound)
+    {
+        Id = id;
+        Level = Mathf.Max(1, level);
+        Experience = Mathf.Max(0, experience);
+
+        PersonalityTraits = personalityTraits != null
+            ? new List<PersonalityTrait>(personalityTraits)
+            : new List<PersonalityTrait>();
+
+        OpinionModifiers = opinionModifiers != null
+            ? new List<OpinionModifier>(opinionModifiers)
+            : new List<OpinionModifier>();
+
+        PersonalReligion = personalReligion;
+        PersonalCulture = personalCulture;
+        LoyaltyFloor = loyaltyFloor;
+        LoyaltyCeiling = loyaltyCeiling;
+
+        Grievances = grievances != null
+            ? new Dictionary<GrievanceSource, int>(grievances)
+            : new Dictionary<GrievanceSource, int>();
+
+        IsCouncilEligible = isCouncilEligible;
+        IsInRebellion = isInRebellion;
+        LastOpinionTickRound = lastOpinionTickRound;
+        Opinion = Mathf.Clamp(opinion, LoyaltyFloor, LoyaltyCeiling);
     }
 }
 

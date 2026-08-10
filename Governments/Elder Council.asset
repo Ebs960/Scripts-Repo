@@ -70,6 +70,7 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
+  usesRoyalCouncil: 0
   councilSeatCount: 2
   councilVetoDomains: 1
   governorOpinionEffects:

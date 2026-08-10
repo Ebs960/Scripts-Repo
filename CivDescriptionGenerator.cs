@@ -147,7 +147,7 @@ public static class CivDescriptionGenerator
         { TechAge.IronAge, "They march through the Iron Age, their weapons sharp and ambitions sharper." },
         { TechAge.ClassicalAge, "They flourish in the Classical Age, a time of philosophy and conquest." },
         { TechAge.DarkAge, "They struggle through the Dark Age, where hope flickers but never dies." },
-        { TechAge.FeudalAge, "They are entrenched in the Feudal Age, ruled by lords and bound by oaths." },
+        { TechAge.FeudalAge, "They are entrenched in the Feudal Age, ruled by governors and bound by oaths." },
         { TechAge.CastleAge, "They fortify in the Castle Age, their walls tall and their resolve taller." },
         { TechAge.RenaissanceAge, "They awaken in the Renaissance Age, where art and science bloom." },
         { TechAge.ColonialAge, "They expand in the Colonial Age, their ships seeking distant shores." },

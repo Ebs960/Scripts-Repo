@@ -47,12 +47,13 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
         if (titleText != null)
             titleText.text = "Political Affairs";
         if (subtitleText != null)
-            subtitleText.text = $"Governors, lords, vassals, and ongoing events for {civ.civData?.civName ?? civ.name}.";
+            subtitleText.text = $"Governors, factions, vassals, and ongoing events for {civ.civData?.civName ?? civ.name}.";
 
         ClearEntries();
 
         BuildGovernorSection(civ);
         BuildCouncilSection(civ);
+        BuildFactionSection(civ);
         BuildVassalSection(civ);
         BuildCurrentEventsSection(civ);
     }
@@ -106,18 +107,27 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
     private void BuildCouncilSection(Civilization civ)
     {
         var lines = new List<string>();
+
+        if (!civ.HasRoyalCouncil)
+        {
+            lines.Add("The current government does not use a Royal Council.");
+            CreateEntry("Royal Council", string.Join("\n", lines), null);
+            return;
+        }
+
         int maxSeats = civ.MaxCouncilSeats;
         int occupied = civ.royalCouncil?.Count ?? 0;
         lines.Add($"Royal Council Seats: {occupied}/{Mathf.Max(0, maxSeats)}");
+        lines.Add($"Council Veto Domains: {FormatVetoDomains(civ.ActiveVetoDomains)}");
 
         if (occupied <= 0)
         {
-            lines.Add("No lords currently seated on the council.");
+            lines.Add("No governors currently seated on the council.");
         }
         else
         {
-            foreach (var lord in civ.royalCouncil.Where(g => g != null))
-                lines.Add($"• {lord.Name} ({lord.specialization}) | Opinion {Mathf.RoundToInt(lord.Opinion)}");
+            foreach (var councillor in civ.royalCouncil.Where(g => g != null))
+                lines.Add($"• {councillor.Name} ({councillor.specialization}) | Opinion {Mathf.RoundToInt(councillor.Opinion)}");
         }
 
         var eligible = civ.governors
@@ -125,12 +135,71 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
             .ToList();
         if (eligible != null && eligible.Count > 0)
         {
-            lines.Add("Eligible Lords Not Seated:");
-            foreach (var lord in eligible.Where(g => g != null))
-                lines.Add($"  - {lord.Name} | Power {lord.PowerRank} | Grievances {lord.TotalGrievances()}");
+            lines.Add("Eligible Governors Not Seated:");
+            foreach (var candidate in eligible.Where(g => g != null))
+                lines.Add($"  - {candidate.Name} | Power {candidate.PowerRank} | Grievances {candidate.TotalGrievances()}");
         }
 
-        CreateEntry("Lords & Royal Council", string.Join("\n", lines), null);
+        // Most recent council votes with per-governor breakdown.
+        var recentVotes = CouncilVoteService.GetRecentResults(civ);
+        if (recentVotes != null && recentVotes.Count > 0)
+        {
+            lines.Add("");
+            lines.Add("Recent Council Votes:");
+            for (int i = recentVotes.Count - 1; i >= 0; i--)
+            {
+                var vote = recentVotes[i];
+                if (vote == null || !vote.applicable) continue;
+                lines.Add($"• {vote.proposalDescription}: {vote.Summary}");
+                foreach (var individual in vote.individualVotes)
+                    lines.Add($"    {individual.governorName}: {(individual.approve ? "YES" : "NO")} — {individual.primaryReason}");
+            }
+        }
+
+        CreateEntry("Royal Council", string.Join("\n", lines), null);
+    }
+
+    private void BuildFactionSection(Civilization civ)
+    {
+        var lines = new List<string>();
+        var factions = civ.nobleFactions?.Where(f => f != null).ToList() ?? new List<FactionBloc>();
+
+        if (factions.Count == 0)
+        {
+            lines.Add("No political factions have formed.");
+            CreateEntry("Factions", string.Join("\n", lines), null);
+            return;
+        }
+
+        foreach (var faction in factions)
+        {
+            lines.Add($"• {faction.FactionName}");
+            lines.Add($"    Alignment: {faction.Alignment}{(faction.IsInRebellion ? " (IN REBELLION)" : "")}");
+            lines.Add($"    Power: {faction.ComputePower():F1}");
+            lines.Add($"    Leader: {faction.Leader?.Name ?? "—"}");
+            string members = string.Join(", ", faction.Members.Where(m => m != null).Select(m => m.Name));
+            lines.Add($"    Members: {(string.IsNullOrEmpty(members) ? "—" : members)}");
+
+            if (faction.ActiveDemands != null && faction.ActiveDemands.Count > 0)
+            {
+                foreach (var demand in faction.ActiveDemands.Where(d => d != null))
+                {
+                    lines.Add($"    Demand: {demand.description}");
+                    if (demand.targetPolicy != null)
+                        lines.Add($"      Target Policy: {demand.targetPolicy.policyName}");
+                    if (demand.targetGovernment != null)
+                        lines.Add($"      Target Government: {demand.targetGovernment.governmentName}");
+                    if (demand.targetGovernor != null)
+                        lines.Add($"      Target Governor: {demand.targetGovernor.Name}");
+                }
+            }
+            else
+            {
+                lines.Add("    Demand: none");
+            }
+        }
+
+        CreateEntry("Factions", string.Join("\n", lines), null);
     }
 
     private void BuildVassalSection(Civilization civ)
@@ -299,13 +368,25 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
         if (header.IndexOf("Governor", StringComparison.OrdinalIgnoreCase) >= 0)
             return governorContainer != null ? governorContainer : contentRoot;
 
-        if (header.IndexOf("Lord", StringComparison.OrdinalIgnoreCase) >= 0 || header.IndexOf("Royal Council", StringComparison.OrdinalIgnoreCase) >= 0)
+        if (header.IndexOf("Royal Council", StringComparison.OrdinalIgnoreCase) >= 0)
             return councilContainer != null ? councilContainer : contentRoot;
 
         if (header.IndexOf("Vassal", StringComparison.OrdinalIgnoreCase) >= 0 || header.IndexOf("Overlord", StringComparison.OrdinalIgnoreCase) >= 0)
             return vassalContainer != null ? vassalContainer : contentRoot;
 
         return contentRoot;
+    }
+
+    private static string FormatVetoDomains(VetoDomain domains)
+    {
+        if (domains == VetoDomain.None)
+            return "None";
+
+        var values = Enum.GetValues(typeof(VetoDomain)).Cast<VetoDomain>()
+            .Where(value => value != VetoDomain.None && value != VetoDomain.All && domains.HasFlag(value))
+            .Select(value => value.ToString());
+
+        return string.Join(", ", values);
     }
 
     private Button CreateButton(string label, TMP_FontAsset font, Action onClick, Transform parent = null)

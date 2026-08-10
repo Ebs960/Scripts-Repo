@@ -968,9 +968,9 @@ if (UIManager.Instance != null)
                 case Governor.Specialization.Industrial:  governorBonus = 7f;  break;
             }
 
-            // CK-lite: governor opinion drives loyalty contribution
-            // Tick opinion first (decays modifiers), then get loyalty effect
-            governor.TickOpinion();
+            // CK-lite: governor opinion drives loyalty contribution.
+            // Opinion itself is ticked once per turn by Civilization.TickGovernorPolitics;
+            // here we only READ the already-computed value.
             governorBonus += governor.GetLoyaltyContribution();
         }
 

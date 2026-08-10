@@ -29,7 +29,11 @@ public class HudFactionSummaryRow : MonoBehaviour
                 : faction.Alignment.ToString();
 
         if (detailText != null)
-            detailText.text = $"Leader: {faction.Leader?.Name ?? "—"} • Members: {faction.Members?.Count ?? 0} • Demands: {faction.ActiveDemands?.Count ?? 0}";
+        {
+            var demand = faction.ActiveDemands?.Find(d => d != null);
+            string demandText = demand != null ? $" • Demand: {demand.description}" : string.Empty;
+            detailText.text = $"Leader: {faction.Leader?.Name ?? "—"} • Members: {faction.Members?.Count ?? 0}{demandText}";
+        }
 
         if (iconImage != null)
             iconImage.enabled = false;

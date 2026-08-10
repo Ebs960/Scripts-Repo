@@ -259,12 +259,22 @@ public class DiplomacyManager : MonoBehaviour
     /// </summary>
     private bool ExecuteDeal(Civilization a, Civilization b, DealType deal)
     {
-        // Council veto: check whether 'a's council can block this deal type
-        if (deal == DealType.War && IsVetoed(a, VetoDomain.WarDeclaration))
+        // Council vote: war declarations must pass the proposing civ's Royal Council
+        if (deal == DealType.War)
         {
-            Debug.Log($"[DiplomacyManager] War declaration by {a.civData?.civName ?? a.name} " +
-                      $"VETOED by royal council.");
-            return false;
+            var voteResult = CouncilVoteService.Evaluate(a, new CouncilProposalContext
+            {
+                domains = VetoDomain.WarDeclaration,
+                targetCivilization = b,
+                description = $"Declare war on {b?.civData?.civName ?? b?.name}",
+            });
+            CouncilVoteService.NotifyPlayer(a, voteResult);
+            if (!voteResult.passed)
+            {
+                Debug.Log($"[DiplomacyManager] War declaration by {a.civData?.civName ?? a.name} " +
+                          $"rejected by council vote ({voteResult.yesVotes}\u2013{voteResult.noVotes}).");
+                return false;
+            }
         }
 
         var newState = (DiplomaticState)Enum.Parse(typeof(DiplomaticState), deal.ToString());
@@ -293,12 +303,6 @@ public class DiplomacyManager : MonoBehaviour
         OnDiplomacyChanged?.Invoke(b, a, newState);
         return true;
     }
-
-    /// <summary>
-    /// Returns true if the civ's royal council holds a veto over the specified domain.
-    /// </summary>
-    private static bool IsVetoed(Civilization civ, VetoDomain domain)
-        => civ != null && civ.HasCouncilVeto(domain);
 
     /// <summary>
     /// Enhanced AI logic with personality, memory, and situational awareness

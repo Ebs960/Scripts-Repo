@@ -69,6 +69,6 @@ public class PolicyData : ScriptableObject
 
     [Header("Governor Political Reactions")]
     [Tooltip("Opinion reactions pushed to governors when this policy is adopted. " +
-             "Use personality filters to target specific lord archetypes.")]
+             "Use personality filters to target specific governor archetypes.")]
     public GovernorOpinionEffect[] governorOpinionEffects;
 } 

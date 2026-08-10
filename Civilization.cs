@@ -941,28 +941,33 @@ public class Civilization : MonoBehaviour
 
     // ── Royal Council ─────────────────────────────────────────────────────────
 
-    /// <summary>Maximum council seats allowed by the current government type.</summary>
-    public int MaxCouncilSeats => currentGovernment != null ? currentGovernment.councilSeatCount : 0;
+    /// <summary>True when the current government uses a Royal Council of seated governors.</summary>
+    public bool HasRoyalCouncil => currentGovernment != null && currentGovernment.usesRoyalCouncil;
+
+    /// <summary>Maximum council seats allowed by the current government type. 0 when the government has no Royal Council.</summary>
+    public int MaxCouncilSeats => HasRoyalCouncil ? currentGovernment.councilSeatCount : 0;
 
     /// <summary>
-    /// Which domains can the council currently veto?
-    /// Returns None if there are no seated councillors.
+    /// Which domains the council can currently vote to veto.
+    /// Returns None when the government has no Royal Council or there are no seated councillors.
     /// </summary>
-    public VetoDomain ActiveVetoDomains => (royalCouncil.Count > 0 && currentGovernment != null)
+    public VetoDomain ActiveVetoDomains => (HasRoyalCouncil && royalCouncil.Count > 0)
         ? currentGovernment.councilVetoDomains : VetoDomain.None;
 
     /// <summary>
-    /// Returns true if the council currently holds a veto over the given domain.
+    /// Returns true if the council currently holds a vote over the given domain.
+    /// Prefer CouncilVoteService.Evaluate for actual approval decisions.
     /// </summary>
     public bool HasCouncilVeto(VetoDomain domain)
         => (ActiveVetoDomains & domain) != VetoDomain.None;
 
     /// <summary>
-    /// Seat a governor on the royal council, if a slot is available.
+    /// Seat a governor on the royal council, if the government uses one and a slot is available.
     /// Clears any CouncilSeatDenied grievance on success.
     /// </summary>
     public bool AddToCouncil(Governor gov)
     {
+        if (!HasRoyalCouncil) return false;
         if (gov == null || royalCouncil.Contains(gov)) return false;
         if (royalCouncil.Count >= MaxCouncilSeats) return false;
 
@@ -988,9 +993,9 @@ public class Civilization : MonoBehaviour
 
     /// <summary>
     /// Returns all governors who are eligible for a council seat but not currently seated.
-    /// Useful for generating "powerful lord not on council" unrest penalties.
+    /// Useful for generating "powerful governor not on council" unrest penalties.
     /// </summary>
-    public List<Governor> GetUnseatedPowerfulLords()
+    public List<Governor> GetUnseatedPowerfulGovernors()
     {
         var result = new List<Governor>();
         foreach (var gov in governors)
@@ -1003,34 +1008,71 @@ public class Civilization : MonoBehaviour
     }
 
     /// <summary>
-    /// Apply ongoing "powerful lord not on council" opinion penalties.
-    /// Call once per turn from BeginTurn. Unseated eligible lords drift negative faster.
+    /// Apply ongoing "powerful governor not on council" opinion penalties.
+    /// Call once per turn from BeginTurn. Does nothing when the government has no Royal Council.
     /// </summary>
     public void ProcessCouncilPressure()
     {
-        if (MaxCouncilSeats <= 0) return;
-        foreach (var gov in GetUnseatedPowerfulLords())
+        if (!HasRoyalCouncil || MaxCouncilSeats <= 0) return;
+        foreach (var gov in GetUnseatedPowerfulGovernors())
         {
-            // Powerful lords not on council add a CouncilSeatDenied grievance each time seat stays unfilled
-            // (only re-add every 10 turns to avoid spam)
+            // Powerful governors not on council hold a CouncilSeatDenied grievance while the seat stays unfilled
             if (!gov.Grievances.ContainsKey(GrievanceSource.CouncilSeatDenied))
                 gov.AddGrievance(GrievanceSource.CouncilSeatDenied);
         }
     }
 
+    /// <summary>
+    /// Reconcile council membership with the current government's political structure.
+    /// Called after a government change. Moving away from a Royal-Council government
+    /// dissolves the council WITHOUT grievances (the institution ceased to exist);
+    /// moving into one recalculates eligibility normally.
+    /// </summary>
+    public void ApplyGovernmentPoliticalStructure()
+    {
+        if (!HasRoyalCouncil)
+        {
+            if (royalCouncil.Count > 0)
+            {
+                foreach (var gov in royalCouncil)
+                {
+                    if (gov != null) gov.IsOnCouncil = false;
+                }
+                royalCouncil.Clear();
+            }
+            return;
+        }
+
+        foreach (var gov in governors)
+            gov?.RefreshCouncilEligibility();
+    }
+
+    /// <summary>
+    /// Centralized once-per-turn governor political tick. Decays every governor's
+    /// opinion modifiers exactly once for the given round (guarded by
+    /// Governor.LastOpinionTickRound). Must run before city loyalty, council
+    /// pressure, faction logic, and PoliticalEventManager.ProcessCivilization.
+    /// </summary>
+    public void TickGovernorPolitics(int round)
+    {
+        if (governors == null) return;
+        foreach (var gov in governors)
+            gov?.TickOpinionForTurn(round);
+    }
+
     // ── Noble Factions ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Per-turn faction logic: form new factions, invite angry lords, generate demands.
+    /// Per-turn faction logic: form new factions, invite angry governors, generate demands.
     /// Call from BeginTurn after governor opinion ticks have run.
     /// </summary>
     public void ProcessFactionTick(int currentTurn)
     {
-        // 1. Invite unaffiliated angry lords into existing or new factions
+        // 1. Invite unaffiliated angry governors into existing or new factions
         foreach (var gov in governors)
         {
             if (gov == null || gov.IsOnCouncil || gov.Faction != null) continue;
-            if (gov.Opinion > 10f) continue;  // Content lords don't join blocs
+            if (gov.Opinion > 10f) continue;  // Content governors don't join blocs
 
             // Try existing faction
             FactionBloc joined = null;
@@ -1039,7 +1081,7 @@ public class Civilization : MonoBehaviour
                 if (bloc.CanJoin(gov)) { bloc.AddMember(gov); joined = bloc; break; }
             }
 
-            // Found a new faction if no existing one fits and this lord is angry enough
+            // Found a new faction if no existing one fits and this governor is angry enough
             if (joined == null && gov.AmbitionScore > 50 && gov.Opinion < -10f)
             {
                 var alignment = DetermineAlignment(gov);
@@ -1061,29 +1103,61 @@ public class Civilization : MonoBehaviour
             }
         }
 
-        // 3. Factions with high power generate demands
+        // 3. Factions with high power generate demands (concrete targets chosen by the preference scorer)
         foreach (var bloc in nobleFactions)
         {
             if (bloc.ActiveDemands.Count == 0 && bloc.ComputePower() > 10f)
-                bloc.GenerateDemand(currentTurn);
+                bloc.GenerateDemand(this, currentTurn);
         }
+    }
+
+    /// <summary>Outcome of resolving a faction demand, so UI can report mechanical failures.</summary>
+    public struct FactionDemandResolution
+    {
+        public bool success;
+        public bool rebellionTriggered;
+        public string failureReason;
     }
 
     /// <summary>
     /// Accept or refuse a faction demand. Refusal may trigger multi-city rebellion.
+    /// Returns true if rebellion was triggered (legacy signature).
     /// </summary>
     public bool ResolveFactionDemand(FactionBloc bloc, FactionDemand demand, bool accepted, int currentTurn)
-    {
-        if (bloc == null || demand == null) return false;
+        => ResolveFactionDemandDetailed(bloc, demand, accepted, currentTurn).rebellionTriggered;
 
-        // Handle accepted demands mechanically
+    /// <summary>
+    /// Accept or refuse a faction demand. When accepting, the demanded mechanical
+    /// action is actually executed; if it fails (veto, cost, invalid target) the
+    /// demand stays active, no "Demand Accepted" rewards are given, and the
+    /// failure reason is returned for UI reporting.
+    /// </summary>
+    public FactionDemandResolution ResolveFactionDemandDetailed(FactionBloc bloc, FactionDemand demand, bool accepted, int currentTurn)
+    {
+        var result = new FactionDemandResolution { success = false, rebellionTriggered = false };
+        if (bloc == null || demand == null)
+        {
+            result.failureReason = "Invalid demand.";
+            return result;
+        }
+
+        // Handle accepted demands mechanically — the action must actually succeed.
         if (accepted)
         {
             switch (demand.type)
             {
                 case FactionDemandType.GrantCouncilSeat:
-                    if (bloc.Leader != null) AddToCouncil(bloc.Leader);
+                {
+                    var seatTarget = demand.targetGovernor ?? bloc.Leader;
+                    if (!AddToCouncil(seatTarget))
+                    {
+                        result.failureReason = !HasRoyalCouncil
+                            ? "This government has no Royal Council."
+                            : "No council seat could be granted.";
+                        return result;
+                    }
                     break;
+                }
                 case FactionDemandType.ReduceTaxation:
                     // Symbolic concession: give a temporary opinion boost
                     foreach (var m in bloc.Members)
@@ -1097,17 +1171,58 @@ public class Civilization : MonoBehaviour
                     }
                     break;
                 case FactionDemandType.AdoptPolicy:
-                    if (demand.targetPolicy != null && PolicyManager.Instance != null)
-                        PolicyManager.Instance.AdoptPolicy(this, demand.targetPolicy);
+                    if (demand.targetPolicy == null || PolicyManager.Instance == null
+                        || !PolicyManager.Instance.AdoptPolicy(this, demand.targetPolicy))
+                    {
+                        result.failureReason = demand.targetPolicy == null
+                            ? "The demand has no target policy."
+                            : $"Could not adopt {demand.targetPolicy.policyName} (cost, prerequisites, or council vote).";
+                        return result;
+                    }
+                    break;
+                case FactionDemandType.RevokePolicy:
+                    if (demand.targetPolicy == null || PolicyManager.Instance == null
+                        || !PolicyManager.Instance.RevokePolicy(this, demand.targetPolicy))
+                    {
+                        result.failureReason = demand.targetPolicy == null
+                            ? "The demand has no target policy."
+                            : $"Could not revoke {demand.targetPolicy.policyName}.";
+                        return result;
+                    }
                     break;
                 case FactionDemandType.ChangeGovernment:
-                    if (demand.targetGovernment != null && PolicyManager.Instance != null)
-                        PolicyManager.Instance.ChangeGovernment(this, demand.targetGovernment);
+                    if (demand.targetGovernment == null || PolicyManager.Instance == null
+                        || !PolicyManager.Instance.ChangeGovernment(this, demand.targetGovernment))
+                    {
+                        result.failureReason = demand.targetGovernment == null
+                            ? "The demand has no target government."
+                            : $"Could not enact {demand.targetGovernment.governmentName} (cost, prerequisites, or council vote).";
+                        return result;
+                    }
                     break;
+                case FactionDemandType.ReturnTerritory:
+                {
+                    var wronged = demand.targetGovernor ?? bloc.Leader;
+                    if (wronged != null)
+                    {
+                        wronged.ClearGrievance(GrievanceSource.CityReassigned);
+                        wronged.AddOpinionModifier("Territory Grievance Settled", 15f, 25);
+                    }
+                    break;
+                }
+                case FactionDemandType.DeclareIndependence:
+                    // Granting independence releases the faction's cities as a new realm.
+                    bloc.TriggerRebellion(this);
+                    result.success = true;
+                    result.rebellionTriggered = true;
+                    bloc.ResolveDemand(demand, true, this, currentTurn);
+                    return result;
             }
         }
 
-        return bloc.ResolveDemand(demand, accepted, this, currentTurn);
+        result.success = true;
+        result.rebellionTriggered = bloc.ResolveDemand(demand, accepted, this, currentTurn);
+        return result;
     }
 
     private static FactionAlignment DetermineAlignment(Governor gov)
@@ -2469,6 +2584,11 @@ public class Civilization : MonoBehaviour
             ApplyPerTurnResourceUpkeep();
             ApplyPerTurnGoldMaintenance();
 
+            // 1.5) Governor politics: tick every governor's opinion exactly once this round.
+            // Must run before cities read governor opinion for loyalty and before
+            // council/faction/political-event processing later in this turn.
+            TickGovernorPolitics(round);
+
             // 1) Reset units (iterate a snapshot to avoid collection-modified exceptions)
             if (combatUnits != null)
             {
@@ -3470,6 +3590,25 @@ public class Civilization : MonoBehaviour
         scienceModifier -= policy.scienceModifier;
         cultureModifier -= policy.cultureModifier;
         faithModifier -= policy.faithModifier;
+
+        // Reverse governor slot grant. Already-unlocked governor traits are kept:
+        // removing knowledge retroactively would break governors who hold them.
+        if (policy.additionalGovernorSlots > 0)
+            governorCount = Mathf.Max(0, governorCount - policy.additionalGovernorSlots);
+    }
+
+    /// <summary>
+    /// Remove an active policy and reverse its bonuses. Prefer
+    /// PolicyManager.RevokePolicy which also runs the council vote.
+    /// </summary>
+    public bool RevokePolicy(PolicyData p)
+    {
+        if (p == null || activePolicies == null || !activePolicies.Contains(p)) return false;
+
+        activePolicies.Remove(p);
+        RemovePolicyBonuses(p);
+        RecalculateCachedYieldRates();
+        return true;
     }
 
     public bool CanChangeGovernment(GovernmentData g)
@@ -3487,6 +3626,9 @@ public class Civilization : MonoBehaviour
         }
         currentGovernment = g;
         ApplyGovernmentBonuses(g); // Apply bonuses from new government
+
+        // Reconcile the Royal Council with the new government's political structure
+        ApplyGovernmentPoliticalStructure();
 
         // Notify cities to update their available buildings
         foreach (var city in cities)
