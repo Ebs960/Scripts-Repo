@@ -127,53 +127,17 @@ public class AiBudget
     }
 
     // ════════════════════════════════════════════════════════
-    //  Factory: scale a difficulty budget down by actor sophistication tier
+    //  Factory: actor type selects behaviour, never reasoning quality
     // ════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Builds a budget for a given difficulty, then scales it down according to the actor's
-    /// sophistication tier. Major civilizations get the full difficulty budget. City-states
-    /// get a cheap regional budget with lightweight army coordination but no HTN strategic
-    /// layer. Tribes get an even cheaper local-survival budget with small raiding/defense groups.
-    /// This keeps the ~13 minor actors from costing as much
-    /// CPU as a full civilization while still letting them act sensibly.
+    /// Returns the same intelligence/search budget for every actor at a given difficulty.
+    /// Actor classification belongs to behaviour profiles (goals and legal systems), not to
+    /// candidate caps, search radii, tactical quality, or thinking time.
     /// </summary>
     public static AiBudget For(AIDifficulty difficulty, AIActorTier tier)
     {
-        AiBudget b = ForDifficulty(difficulty);
-        switch (tier)
-        {
-            case AIActorTier.CityState:
-                b.ApproachSearchRange   = Mathf.Min(b.ApproachSearchRange, 5);
-                b.ForageSearchRange     = Mathf.Min(b.ForageSearchRange, 3);
-                b.ExploreSearchRange    = Mathf.Min(b.ExploreSearchRange, 4);
-                b.CitySiteScanLimit     = Mathf.Min(b.CitySiteScanLimit, 80);
-                b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
-                b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 16);
-                b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 3f);
-                b.EnableArmyGroups      = true;
-                b.ArmyGroupRange        = Mathf.Min(b.ArmyGroupRange, 4);
-                b.EnableStrategicPlanning = false;
-                break;
-
-            case AIActorTier.Tribe:
-                b.ApproachSearchRange   = Mathf.Min(b.ApproachSearchRange, 3);
-                b.ForageSearchRange     = Mathf.Min(b.ForageSearchRange, 3);
-                b.ExploreSearchRange    = Mathf.Min(b.ExploreSearchRange, 3);
-                b.CitySiteScanLimit     = Mathf.Min(b.CitySiteScanLimit, 40);
-                b.CitySiteSearchRange   = Mathf.Min(b.CitySiteSearchRange, 4);
-                b.MaxCandidatesPerUnit  = Mathf.Min(b.MaxCandidatesPerUnit, 8);
-                b.MaxCandidateEvalMilliseconds = Mathf.Min(b.MaxCandidateEvalMilliseconds > 0f ? b.MaxCandidateEvalMilliseconds : 4f, 1.5f);
-                b.EnableArmyGroups      = true;
-                b.ArmyGroupRange        = Mathf.Min(b.ArmyGroupRange, 3);
-                b.EnableStrategicPlanning = false;
-                break;
-
-            case AIActorTier.Major:
-            default:
-                break; // full difficulty budget, unchanged
-        }
-        return b;
+        return ForDifficulty(difficulty);
     }
 
     /// <summary>
@@ -200,8 +164,8 @@ public enum AIDifficulty
 }
 
 /// <summary>
-/// AI actor sophistication tier. Determines how much of the planning pipeline runs
-/// and how expensive its per-unit search budget is. See AiBudget.For / ResolveTier.
+/// Society/behaviour profile. It may select different goals and legal systems, but it
+/// never changes the intelligence budget. See AiBudget.For / ResolveTier.
 /// </summary>
 public enum AIActorTier
 {

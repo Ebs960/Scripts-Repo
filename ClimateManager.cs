@@ -234,6 +234,7 @@ public class ClimateManager : MonoBehaviour
     void Start()
     {
         GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGenerated;
+        if (WorldViewContext.Instance != null) WorldViewContext.Instance.OnViewChanged += HandleWorldViewChanged;
 
         if (isGlobalClimateManager)
         {
@@ -260,6 +261,7 @@ public class ClimateManager : MonoBehaviour
     void OnDestroy()
     {
         GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGenerated;
+        if (WorldViewContext.Instance != null) WorldViewContext.Instance.OnViewChanged -= HandleWorldViewChanged;
 
         if (isGlobalClimateManager)
         {
@@ -272,6 +274,18 @@ public class ClimateManager : MonoBehaviour
         {
             OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
         }
+    }
+
+    private void HandleWorldViewChanged(WorldViewState state)
+    {
+        if (state.Mode != WorldViewMode.Planet || !state.PlanetIndex.HasValue) return;
+        int planetIndex = state.PlanetIndex.Value;
+        // Promotion to Full synchronizes the renderer to authoritative logical state before
+        // subsequent animations resume.
+        OnPlanetSeasonChanged?.Invoke(planetIndex, GetSeasonForPlanet(planetIndex));
+        OnPlanetFreezeTargetsReady?.Invoke(planetIndex);
+        bool frozen = GetSeasonForPlanet(planetIndex) == Season.Winter;
+        OnPlanetFreezeProgressChanged?.Invoke(planetIndex, GetFreezeProgressForPlanet(planetIndex), frozen);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -292,7 +306,7 @@ public class ClimateManager : MonoBehaviour
             bool forward = _freezeAnimForward.TryGetValue(pi, out bool fwd) && fwd;
             if (!IsPlanetVisible(pi))
             {
-                CompleteFreezeTransitionImmediately(pi, forward);
+                CompleteFreezeTransitionImmediately(pi, forward, false);
                 continue;
             }
 
@@ -548,7 +562,8 @@ public class ClimateManager : MonoBehaviour
     {
         if (verboseLogs) Debug.Log($"[ClimateManager] Applying seasonal effects: {season} on planet {planetIndex}");
         OnSeasonChanged?.Invoke(season);
-        OnPlanetSeasonChanged?.Invoke(planetIndex, season);
+        if (PlanetSimulationManager.GetTier(planetIndex) == PlanetSimulationTier.Full)
+            OnPlanetSeasonChanged?.Invoke(planetIndex, season);
 
         if (seasonChangeDebug)
         {
@@ -1017,6 +1032,24 @@ public class ClimateManager : MonoBehaviour
             targets[idx] = (tgtTemp, tgtMoist);
         }
 
+        if (PlanetSimulationManager.GetTier(planetIndex) != PlanetSimulationTier.Full)
+        {
+            // Offscreen climate advances logically in one bounded step; it never performs
+            // per-frame interpolation, terrain repainting, or repeated renderer callbacks.
+            foreach (var kv in targets)
+            {
+                if (!data.TryGetValue(kv.Key, out var tile)) continue;
+                tile.temperature = kv.Value.tempTgt;
+                tile.moisture = kv.Value.moistTgt;
+            }
+            try { PrecomputeTileSeasonCacheForPlanet(gen); } catch { }
+            try { ComputeTileFreezeTargets(planetIndex, gen); } catch { }
+            if (GetSeasonForPlanet(planetIndex) == Season.Winter) CompleteFreezeTransitionImmediately(planetIndex, true, false);
+            else CompleteFreezeTransitionImmediately(planetIndex, false, false);
+            _activeClimateCoroutines.Remove(planetIndex);
+            yield break;
+        }
+
         float elapsed = 0f;
         float tickAccum = 0f;
         // Periodically update cached season responses and notify renderers to avoid per-frame heavy work
@@ -1233,6 +1266,12 @@ public class ClimateManager : MonoBehaviour
     {
         ComputeTileFreezeTargets(pi, gen);
 
+        if (!IsPlanetVisible(pi))
+        {
+            CompleteFreezeTransitionImmediately(pi, true, false);
+            return;
+        }
+
         int targetCount = _tileFreezeTargets.ContainsKey(pi) ? _tileFreezeTargets[pi].Count : 0;
         Debug.Log($"[ClimateManager] BeginFreezeTransition planet={pi}: {targetCount} tiles have freeze targets. OnPlanetFreezeTargetsReady subscribers={OnPlanetFreezeTargetsReady?.GetInvocationList()?.Length ?? 0}");
 
@@ -1242,12 +1281,6 @@ public class ClimateManager : MonoBehaviour
         // Start animating progress from wherever it currently is (handles mid-thaw reversal)
         if (!_freezeProgress.ContainsKey(pi)) _freezeProgress[pi] = 0f;
         _freezeAnimForward[pi] = true;
-        if (!IsPlanetVisible(pi))
-        {
-            CompleteFreezeTransitionImmediately(pi, true);
-            return;
-        }
-
         _freezeAnimActive[pi]  = true;
 
         Debug.Log($"[ClimateManager] Freeze animation started for planet {pi}. Initial progress={_freezeProgress[pi]:F2}");
@@ -1270,7 +1303,7 @@ public class ClimateManager : MonoBehaviour
         _freezeAnimForward[pi] = false;
         if (!IsPlanetVisible(pi))
         {
-            CompleteFreezeTransitionImmediately(pi, false);
+            CompleteFreezeTransitionImmediately(pi, false, false);
             return;
         }
 
@@ -1286,7 +1319,7 @@ public class ClimateManager : MonoBehaviour
         return GameManager.Instance != null && GameManager.Instance.currentPlanetIndex == pi;
     }
 
-    private void CompleteFreezeTransitionImmediately(int pi, bool freeze)
+    private void CompleteFreezeTransitionImmediately(int pi, bool freeze, bool notifyRenderer = true)
     {
         float progress = freeze ? 1f : 0f;
         _freezeProgress[pi] = progress;
@@ -1297,7 +1330,7 @@ public class ClimateManager : MonoBehaviour
         else
             ClearFreezeAmountsForPlanet(pi);
 
-        OnPlanetFreezeProgressChanged?.Invoke(pi, progress, freeze);
+        if (notifyRenderer) OnPlanetFreezeProgressChanged?.Invoke(pi, progress, freeze);
     }
 
     /// <summary>

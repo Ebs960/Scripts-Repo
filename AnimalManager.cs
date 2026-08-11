@@ -5,6 +5,23 @@ using UnityEngine;
 
 public class AnimalManager : MonoBehaviour
 {
+    [System.Serializable]
+    public sealed class EcologyPopulation
+    {
+        public string speciesKey;
+        public int population;
+    }
+
+    [System.Serializable]
+    public sealed class PlanetEcologyState
+    {
+        public int planetIndex;
+        public int lastSimulatedTurn;
+        public int deterministicSeed;
+        public bool aggregated;
+        public List<EcologyPopulation> populations = new List<EcologyPopulation>();
+    }
+
     public static AnimalManager Instance { get; private set; }
 
     [System.Serializable]
@@ -51,6 +68,26 @@ public class AnimalManager : MonoBehaviour
     // Animals now use the unified BaseUnit movement API (`currentMovePoints`, `RestoreMovePointsForNewTurn`, `DeductMovePoints`).
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
+    [SerializeField] private List<PlanetEcologyState> ecologyStates = new List<PlanetEcologyState>();
+    private readonly Dictionary<int, PlanetEcologyState> ecologyByPlanet = new Dictionary<int, PlanetEcologyState>();
+
+    public int AggregateEcologyStateCount => ecologyStates.Count(s => s != null && s.aggregated);
+    public List<PlanetEcologyState> ExportEcologyStates() => ecologyStates.Select(CloneEcologyState).ToList();
+    public void ImportEcologyStates(List<PlanetEcologyState> states)
+    {
+        ecologyStates = states != null ? states.Where(s => s != null).Select(CloneEcologyState).ToList() : new List<PlanetEcologyState>();
+        ecologyByPlanet.Clear();
+        foreach (var state in ecologyStates) ecologyByPlanet[state.planetIndex] = state;
+    }
+
+    private static PlanetEcologyState CloneEcologyState(PlanetEcologyState state) => new PlanetEcologyState
+    {
+        planetIndex = state.planetIndex, lastSimulatedTurn = state.lastSimulatedTurn,
+        deterministicSeed = state.deterministicSeed, aggregated = state.aggregated,
+        populations = state.populations != null
+            ? state.populations.Select(p => new EcologyPopulation { speciesKey = p.speciesKey, population = p.population }).ToList()
+            : new List<EcologyPopulation>()
+    };
 
     // Diagnostics: store spawn-time component dumps by instance id so OnDestroy can report what was attached.
     private readonly Dictionary<int, string> _spawnComponentDumpById = new Dictionary<int, string>(256);
@@ -480,15 +517,126 @@ public class AnimalManager : MonoBehaviour
 
     public void ProcessTurn()
     {
+        UpdateEcologyTiers();
         SpawnNewAnimals();
         MoveAllAnimals();
     }
 
     public IEnumerator ProcessTurnCoroutine()
     {
+        UpdateEcologyTiers();
         SpawnNewAnimals();
         yield return null;
         yield return StartCoroutine(MoveAllAnimalsCoroutine());
+    }
+
+    private void UpdateEcologyTiers()
+    {
+        int turn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+        var planets = GameManager.Instance?.GetPlanetData();
+        if (planets == null) return;
+        foreach (int planetIndex in planets.Keys)
+        {
+            var tier = PlanetSimulationManager.GetTier(planetIndex);
+            if (tier == PlanetSimulationTier.Cold)
+            {
+                var state = GetOrCreateEcologyState(planetIndex, turn);
+                if (!state.aggregated) AggregatePlanetWildlife(state);
+                if (turn - state.lastSimulatedTurn >= PlanetSimulationManager.ColdTierTurnInterval)
+                    SimulateAggregateEcology(state, turn);
+            }
+            else if (tier == PlanetSimulationTier.Full || tier == PlanetSimulationTier.Warm)
+            {
+                if (ecologyByPlanet.TryGetValue(planetIndex, out var state) && state.aggregated)
+                    MaterializeRepresentativeWildlife(state);
+            }
+        }
+    }
+
+    private PlanetEcologyState GetOrCreateEcologyState(int planetIndex, int turn)
+    {
+        if (ecologyByPlanet.TryGetValue(planetIndex, out var state)) return state;
+        state = new PlanetEcologyState { planetIndex = planetIndex, lastSimulatedTurn = turn, deterministicSeed = unchecked(planetIndex * 73856093 + 19349663) };
+        ecologyByPlanet[planetIndex] = state; ecologyStates.Add(state); return state;
+    }
+
+    private void AggregatePlanetWildlife(PlanetEcologyState state)
+    {
+        bool materializedRepresentatives = state.populations.Count > 0;
+        var counts = new Dictionary<string, int>();
+        foreach (var animal in activeAnimals.ToArray())
+        {
+            if (animal == null || animal.planetIndex != state.planetIndex || animal.data == null) continue;
+            string key = animal.data.name;
+            counts.TryGetValue(key, out int count); counts[key] = count + 1;
+            activeAnimals.Remove(animal);
+            recentlyAttackedAnimals.Remove(animal);
+            Destroy(animal.gameObject);
+        }
+        state.populations.Clear();
+        foreach (var kv in counts)
+        {
+            var rule = FindRule(kv.Key);
+            int population = materializedRepresentatives ? kv.Value * 10 : kv.Value;
+            state.populations.Add(new EcologyPopulation { speciesKey = kv.Key, population = Mathf.Min(rule != null ? Mathf.Max(1, rule.maxCount) : population, population) });
+        }
+        state.aggregated = true;
+    }
+
+    private void SimulateAggregateEcology(PlanetEcologyState state, int turn)
+    {
+        int elapsed = Mathf.Max(1, turn - state.lastSimulatedTurn);
+        int predatorPopulation = 0;
+        foreach (var population in state.populations)
+        {
+            var rule = FindRule(population.speciesKey);
+            if (rule?.unitData != null && rule.unitData.animalBehavior == AnimalBehaviorType.Predator)
+                predatorPopulation += population.population;
+        }
+        foreach (var population in state.populations)
+        {
+            var rule = FindRule(population.speciesKey);
+            if (rule == null) continue;
+            int capacity = Mathf.Max(1, rule.maxCount);
+            int births = Mathf.Max(0, (capacity - population.population) * elapsed / 100);
+            int pressure = rule.unitData != null && rule.unitData.animalBehavior == AnimalBehaviorType.Prey
+                ? predatorPopulation * elapsed / 50 : 0;
+            population.population = Mathf.Clamp(population.population + births - pressure, 0, capacity);
+        }
+        state.lastSimulatedTurn = turn;
+        state.deterministicSeed = unchecked(state.deterministicSeed * 1103515245 + 12345);
+    }
+
+    private void MaterializeRepresentativeWildlife(PlanetEcologyState state)
+    {
+        var random = new System.Random(state.deterministicSeed);
+        foreach (var population in state.populations)
+        {
+            var rule = FindRule(population.speciesKey);
+            if (rule == null || population.population <= 0) continue;
+            int representatives = Mathf.Clamp(Mathf.CeilToInt(population.population / 10f), 1, 12);
+            for (int i = 0; i < representatives; i++) TrySpawnOnPlanet(rule, state.planetIndex, random);
+        }
+        state.deterministicSeed = random.Next();
+        state.aggregated = false;
+    }
+
+    private AnimalSpawnRule FindRule(string key) => spawnRules?.FirstOrDefault(r => r != null && r.unitData != null && r.unitData.name == key);
+
+    private void TrySpawnOnPlanet(AnimalSpawnRule rule, int planetIndex, System.Random random)
+    {
+        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        int tileCount = planet?.Grid != null ? planet.Grid.TileCount : 0;
+        if (ts == null || tileCount <= 0) return;
+        for (int attempt = 0; attempt < Mathf.Min(200, tileCount); attempt++)
+        {
+            int tile = random.Next(tileCount);
+            var td = ts.GetTileData(tile);
+            if (td == null || IsTileOccupiedByUnitOrCity(planetIndex, tile)) continue;
+            if (rule.allowedBiomes != null && rule.allowedBiomes.Length > 0 && !System.Array.Exists(rule.allowedBiomes, b => b == td.biome)) continue;
+            SpawnAnimalAtTile(rule, planetIndex, tile); return;
+        }
     }
 
     void SpawnNewAnimals()

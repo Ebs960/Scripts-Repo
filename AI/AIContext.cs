@@ -43,6 +43,17 @@ public class AIContext
 
     // Budget (controls scan limits)
     private AiBudget _budget;
+    private bool _staticDomainsDirty = true;
+    private int _cachedExploredTiles;
+    private int _cachedFogTiles;
+    private readonly Dictionary<int, TileSystem> _subscribedTileSystems = new();
+    private readonly Dictionary<int, System.Action<int, List<int>>> _fogHandlers = new();
+    private readonly Dictionary<int, System.Action<int, int, int>> _ownerHandlers = new();
+    private readonly Dictionary<int, System.Action<int, ResourceData, ResourceData>> _resourceHandlers = new();
+    private Civilization _subscribedCiv;
+
+    /// <summary>Invalidates exploration, resource and settlement caches after a world mutation.</summary>
+    public void MarkStaticDomainsDirty() => _staticDomainsDirty = true;
 
     // ──────────────── Structs ────────────────
 
@@ -93,6 +104,7 @@ public class AIContext
     public void Build(Civilization civ, Dictionary<int, DangerMap> dangerMaps, AiBudget budget = null)
     {
         _budget = budget;
+        SubscribeToCivilization(civ);
         Civ = civ;
         TurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
 
@@ -113,10 +125,13 @@ public class AIContext
         var planets = CollectActivePlanets(civ);
 
         TotalEnemyStrength = 0f;
-        FrontierTiles.Clear();
-        ResourceHotspots.Clear();
-        ForageTargets.Clear();
-        CitySites.Clear();
+        if (_staticDomainsDirty)
+        {
+            FrontierTiles.Clear();
+            ResourceHotspots.Clear();
+            ForageTargets.Clear();
+            CitySites.Clear();
+        }
         ThreatByPlanet.Clear();
         NearestEnemyByPlanet.Clear();
         EnemyCombatUnitsByPlanet.Clear();
@@ -129,15 +144,62 @@ public class AIContext
 
         foreach (int pIndex in planets)
         {
+            SubscribeToFog(civ, pIndex);
             BuildThreatSummary(civ, pIndex, allCivs);
-            var (explored, total) = BuildFrontierAndExploration(civ, pIndex);
-            exploredTotal += explored;
-            fogTotal += total;
-            BuildResourceAndForageTargets(civ, pIndex);
-            BuildCitySites(civ, pIndex);
+            if (_staticDomainsDirty || !FrontierTiles.ContainsKey(pIndex))
+            {
+                var (explored, total) = BuildFrontierAndExploration(civ, pIndex);
+                exploredTotal += explored;
+                fogTotal += total;
+                BuildResourceAndForageTargets(civ, pIndex);
+                BuildCitySites(civ, pIndex);
+            }
             BuildNearestEnemy(civ, pIndex, allCivs);
         }
+        if (_staticDomainsDirty)
+        {
+            _cachedExploredTiles = exploredTotal;
+            _cachedFogTiles = fogTotal;
+        }
+        else
+        {
+            exploredTotal = _cachedExploredTiles;
+            fogTotal = _cachedFogTiles;
+        }
+        _staticDomainsDirty = false;
         ExplorationPercent = fogTotal > 0 ? (float)exploredTotal / fogTotal : 0f;
+    }
+
+    private void SubscribeToFog(Civilization civ, int planetIndex)
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null || _subscribedTileSystems.ContainsKey(planetIndex)) return;
+        int civIndex = UnitVisionManager.GetCivIndex(civ);
+        System.Action<int, List<int>> handler = (changedCiv, changedTiles) =>
+        {
+            if (changedCiv == civIndex && changedTiles != null && changedTiles.Count > 0)
+                MarkStaticDomainsDirty();
+        };
+        ts.OnFogChanged += handler;
+        _subscribedTileSystems[planetIndex] = ts;
+        _fogHandlers[planetIndex] = handler;
+        System.Action<int, int, int> ownerHandler = (tile, oldOwner, newOwner) => MarkStaticDomainsDirty();
+        System.Action<int, ResourceData, ResourceData> resourceHandler = (tile, oldResource, newResource) => MarkStaticDomainsDirty();
+        ts.OnTileOwnerChanged += ownerHandler;
+        ts.OnTileResourceChanged += resourceHandler;
+        _ownerHandlers[planetIndex] = ownerHandler;
+        _resourceHandlers[planetIndex] = resourceHandler;
+    }
+
+    private void SubscribeToCivilization(Civilization civ)
+    {
+        if (civ == null || _subscribedCiv == civ) return;
+        _subscribedCiv = civ;
+        civ.OnCityFounded += (owner, city) => MarkStaticDomainsDirty();
+        civ.OnTechResearched += tech => MarkStaticDomainsDirty();
+        civ.OnPolicyAdopted += (owner, policy) => MarkStaticDomainsDirty();
+        civ.OnGovernmentChanged += (owner, government) => MarkStaticDomainsDirty();
+        civ.OnUnlocksChanged += MarkStaticDomainsDirty;
     }
 
     // ──────────────── Collect planets ────────────────

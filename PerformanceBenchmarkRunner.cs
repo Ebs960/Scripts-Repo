@@ -19,7 +19,36 @@ using Unity.Profiling;
 /// </summary>
 public sealed class PerformanceBenchmarkRunner : MonoBehaviour
 {
+    public enum SolarSystemBenchmarkScenario { StandardEarly, StandardMidgame, LateGameStress, MultiPlanetTiers, TradeStableTopology }
+    [System.Serializable]
+    public struct ScenarioTarget
+    {
+        public SolarSystemBenchmarkScenario scenario;
+        public int cities, combatUnits, workers, animals, tradeRoutes;
+        public string description;
+    }
+
+    public static readonly ScenarioTarget[] ReproducibleScenarioTargets =
+    {
+        new ScenarioTarget { scenario=SolarSystemBenchmarkScenario.StandardEarly, cities=8, combatUnits=21, workers=8, animals=40, tradeRoutes=8, description="One Standard planet, early game (~21 actors)" },
+        new ScenarioTarget { scenario=SolarSystemBenchmarkScenario.StandardMidgame, cities=100, combatUnits=400, workers=150, animals=150, tradeRoutes=100, description="One Standard planet, midgame" },
+        new ScenarioTarget { scenario=SolarSystemBenchmarkScenario.LateGameStress, cities=200, combatUnits=800, workers=200, animals=200, tradeRoutes=300, description="One solar-system late-game stress" },
+        new ScenarioTarget { scenario=SolarSystemBenchmarkScenario.MultiPlanetTiers, description="One Full, multiple Warm/Cold, dormant worlds" },
+        new ScenarioTarget { scenario=SolarSystemBenchmarkScenario.TradeStableTopology, tradeRoutes=500, description="Many cached routes with no topology mutations" }
+    };
     public static PerformanceBenchmarkRunner Instance { get; private set; }
+    private int baselineFullRebuilds, baselineRevalidations, baselineReroutes;
+    private long baselineCandidatesGenerated;
+    private SolarSystemBenchmarkScenario activeScenario;
+
+    public void BeginScenario(SolarSystemBenchmarkScenario scenario)
+    {
+        activeScenario = scenario;
+        baselineFullRebuilds = TradeNetworkManager.FullRebuildCount;
+        baselineRevalidations = TradeNetworkManager.RouteRevalidationCount;
+        baselineReroutes = TradeNetworkManager.RouteRerouteCount;
+        baselineCandidatesGenerated = CandidateGenerationBudget.CandidatesGenerated;
+    }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     [Tooltip("If > 0, automatically logs a report every N seconds. 0 disables auto-logging.")]
@@ -102,6 +131,7 @@ public sealed class PerformanceBenchmarkRunner : MonoBehaviour
     {
         var sb = new StringBuilder(512);
         sb.AppendLine("=== Performance Benchmark Report ===");
+        sb.AppendLine($"Scenario: {activeScenario}");
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         double avgFrameMs = AverageFrameTimeMs();
@@ -132,7 +162,9 @@ public sealed class PerformanceBenchmarkRunner : MonoBehaviour
             }
         }
         int animals = AnimalManager.Instance != null ? AnimalManager.Instance.GetActiveAnimals().Count : 0;
-        sb.AppendLine($"World size: civs={civCount} combatUnits={combatUnits} workerUnits={workerUnits} cities={cities} animals={animals}");
+        int routes = TradeNetworkManager.Instance != null ? TradeNetworkManager.Instance.activeRoutes.Count : 0;
+        int aggregateEcologies = AnimalManager.Instance != null ? AnimalManager.Instance.AggregateEcologyStateCount : 0;
+        sb.AppendLine($"World size: civs={civCount} combatUnits={combatUnits} workerUnits={workerUnits} cities={cities} animals={animals} aggregateEcologies={aggregateEcologies} tradeRoutes={routes}");
 
         // AI phase timings (most recently processed civ's turn - AIPlanner is a single shared instance)
         var planner = CivilizationManager.Instance != null ? CivilizationManager.Instance.AiPlanner : null;
@@ -145,6 +177,14 @@ public sealed class PerformanceBenchmarkRunner : MonoBehaviour
                           $"fullRebuilds={DangerMap.FullRebuildCount} incrementalUpdates={DangerMap.IncrementalUpdateCount} " +
                           $"activeSubscriptions={DangerMap.ActiveSubscriptionCount}");
         }
+
+        sb.AppendLine($"Tactical generation: generated={CandidateGenerationBudget.CandidatesGenerated} accepted={CandidateGenerationBudget.CandidatesAccepted} " +
+                      $"capExits={CandidateGenerationBudget.CandidateCapEarlyExits} timeExits={CandidateGenerationBudget.CandidateTimeBudgetEarlyExits}");
+        sb.AppendLine($"Trade topology: fullRebuilds={TradeNetworkManager.FullRebuildCount} incrementalNodeUpdates={TradeNetworkManager.IncrementalNodeUpdateCount} " +
+                      $"revalidations={TradeNetworkManager.RouteRevalidationCount} reroutes={TradeNetworkManager.RouteRerouteCount} dirtyMarks={TradeNetworkManager.TradeTopologyDirtyCount}");
+        sb.AppendLine($"Scenario deltas: fullRebuilds={TradeNetworkManager.FullRebuildCount - baselineFullRebuilds} " +
+                      $"routeRevalidations={TradeNetworkManager.RouteRevalidationCount - baselineRevalidations} reroutes={TradeNetworkManager.RouteRerouteCount - baselineReroutes} " +
+                      $"candidatesGenerated={CandidateGenerationBudget.CandidatesGenerated - baselineCandidatesGenerated}");
 
         sb.AppendLine("=====================================");
         return sb.ToString();

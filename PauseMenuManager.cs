@@ -89,6 +89,7 @@ public class PauseMenuManager : MonoBehaviour
     public List<WorkerUnitSaveData> workerUnits;
     public List<CivilizationProgressSaveData> civilizationProgress;
     public List<CitySaveData> cities;
+    public List<AnimalManager.PlanetEcologyState> ecologyStates;
     // Mission/Legacy/Crisis system
     public List<CrisisManager.MissionStateSaveData> missionStates;
     public CrisisManager.CrisisSaveData crisisState;

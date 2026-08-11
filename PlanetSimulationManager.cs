@@ -35,6 +35,8 @@ public enum PlanetSimulationTier
 /// </summary>
 public static class PlanetSimulationManager
 {
+    private static readonly Dictionary<int, int> CivilizationCityCountByPlanet = new Dictionary<int, int>();
+    private static bool presenceInitialized;
     /// <summary>Warm-tier planets are re-simulated every N turns instead of every turn.</summary>
     public const int WarmTierTurnInterval = 3;
     /// <summary>Cold-tier planets are re-simulated every N turns instead of every turn.</summary>
@@ -53,7 +55,9 @@ public static class PlanetSimulationManager
         if (view == null && gm != null && gm.currentPlanetIndex == planetIndex)
             return PlanetSimulationTier.Full;
 
-        return HasActiveCivPresence(planetIndex) ? PlanetSimulationTier.Warm : PlanetSimulationTier.Cold;
+        EnsurePresenceCache();
+        return CivilizationCityCountByPlanet.TryGetValue(planetIndex, out int count) && count > 0
+            ? PlanetSimulationTier.Warm : PlanetSimulationTier.Cold;
     }
 
     /// <summary>Whether a tier-scaled system should run its update this turn given its tier.</summary>
@@ -72,21 +76,39 @@ public static class PlanetSimulationManager
         }
     }
 
-    private static bool HasActiveCivPresence(int planetIndex)
+    public static void NotifyCityAdded(int planetIndex)
     {
+        if (!presenceInitialized) { RebuildPresenceCache(); return; }
+        CivilizationCityCountByPlanet.TryGetValue(planetIndex, out int count);
+        CivilizationCityCountByPlanet[planetIndex] = count + 1;
+    }
+
+    public static void NotifyCityRemoved(int planetIndex)
+    {
+        if (!presenceInitialized) { RebuildPresenceCache(); return; }
+        CivilizationCityCountByPlanet.TryGetValue(planetIndex, out int count);
+        CivilizationCityCountByPlanet[planetIndex] = System.Math.Max(0, count - 1);
+    }
+
+    /// <summary>Reconstructs the derived O(1) presence cache after load/world regeneration.</summary>
+    public static void RebuildPresenceCache()
+    {
+        CivilizationCityCountByPlanet.Clear();
         var cm = CivilizationManager.Instance;
-        if (cm == null) return false;
+        if (cm == null) { presenceInitialized = true; return; }
         var civs = cm.GetAllCivs();
-        if (civs == null) return false;
+        if (civs == null) { presenceInitialized = true; return; }
         foreach (var civ in civs)
         {
             if (civ == null || civ.cities == null) continue;
-            for (int i = 0; i < civ.cities.Count; i++)
+            foreach (var city in civ.cities) if (city != null)
             {
-                var city = civ.cities[i];
-                if (city != null && city.planetIndex == planetIndex) return true;
+                CivilizationCityCountByPlanet.TryGetValue(city.planetIndex, out int count);
+                CivilizationCityCountByPlanet[city.planetIndex] = count + 1;
             }
         }
-        return false;
+        presenceInitialized = true;
     }
+
+    private static void EnsurePresenceCache() { if (!presenceInitialized) RebuildPresenceCache(); }
 }

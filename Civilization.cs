@@ -3545,6 +3545,7 @@ public class Civilization : MonoBehaviour
             ApplyPolicyBonuses(p); // Apply bonuses when adopted
             RecalculateCachedYieldRates();
             OnPolicyAdopted?.Invoke(this, p);
+            TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
             // TODO: UI update, notifications
         }
     }
@@ -3647,6 +3648,7 @@ public class Civilization : MonoBehaviour
 
         RecalculateCachedYieldRates();
         OnGovernmentChanged?.Invoke(this, g);
+        TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
         // TODO: UI update, notifications
     }
 
@@ -3786,6 +3788,8 @@ public class Civilization : MonoBehaviour
             if (city.owner != this)
                 city.owner = this;
             EnsureCapitalCity();
+            TradeNetworkManager.EnsureInstance().RegisterCityNode(city);
+            PlanetSimulationManager.NotifyCityAdded(city.planetIndex);
             OnCityFounded?.Invoke(this, city);
         }
         else
@@ -3799,6 +3803,8 @@ public class Civilization : MonoBehaviour
         if (city == null || cities == null) return;
         if (cities.Remove(city))
         {
+            TradeNetworkManager.Instance?.RemoveCityNode(city);
+            PlanetSimulationManager.NotifyCityRemoved(city.planetIndex);
             if (capitalCity == city)
                 capitalCity = null;
             city.isCapital = false;
@@ -4477,6 +4483,7 @@ return true;
 
         // Invoke the event after caches are refreshed so the HUD shows updated rates immediately.
         OnTechResearched?.Invoke(tech);
+        TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
 
         // Notify listeners that unlock-driven availability may have changed
         OnUnlocksChanged?.Invoke();

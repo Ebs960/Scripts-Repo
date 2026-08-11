@@ -40,7 +40,9 @@ public class AIPlanner
     private readonly Dictionary<int, EmpireAI> empireStates = new Dictionary<int, EmpireAI>();
     // Operational layer: persistent per-civ role assignments
     private readonly Dictionary<int, OperationalPlanner> opPlanners = new Dictionary<int, OperationalPlanner>();
-    // Per-turn context cache
+    // Persistent per-civilization contexts. Static domains are reused across turns;
+    // AIContext refreshes volatile threats conservatively.
+    private readonly Dictionary<int, AIContext> contextsByCiv = new Dictionary<int, AIContext>();
     private AIContext currentContext;
 
     // Difficulty-scaling intelligence budget
@@ -103,7 +105,12 @@ public class AIPlanner
 
         // ── Phase 2: Context Cache ──
         phaseSw.Restart();
-        currentContext = new AIContext();
+        int civId = civ.GetRuntimeId();
+        if (!contextsByCiv.TryGetValue(civId, out currentContext))
+        {
+            currentContext = new AIContext();
+            contextsByCiv[civId] = currentContext;
+        }
         currentContext.Build(civ, dangerMaps, budget);
         TimeContext = phaseSw.ElapsedMilliseconds;
 
