@@ -12,7 +12,19 @@ using System.Collections.Generic;
 public class CivilizationManager : MonoBehaviour
 {
     public static CivilizationManager Instance { get; private set; }
+
+    /// <summary>
+    /// Fired when the civ registry changes (registration or elimination). The int payload is the
+    /// required array capacity for stable-slot-indexed data (fog/ownership overlays) -
+    /// i.e. MapActorSlotCapacity, NOT civs.Count. This value only ever grows, even when civs are
+    /// eliminated, so listeners can safely grow-but-never-shrink their arrays.
+    /// </summary>
     public event Action<int> OnCivilizationRegistryChanged;
+
+    // Monotonic counter for stable per-session map actor slots (see Civilization.MapActorSlot).
+    // Never decremented/reused, even when a civ is unregistered, so eliminated civs' slots are
+    // never handed to a different civilization later in the same session.
+    private int nextMapActorSlot = 0;
 
     // The new command-based AI planner (plan-then-execute architecture)
     private readonly AIPlanner aiPlanner = new AIPlanner();
@@ -64,6 +76,35 @@ public class CivilizationManager : MonoBehaviour
         // Optionally find all Civilization components in scene
         var all = FindObjectsByType<Civilization>();
         foreach (var civ in all) RegisterCiv(civ);
+
+        GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGeneratedForDangerMaps;
+        if (DiplomacyManager.Instance != null)
+            DiplomacyManager.Instance.OnDiplomacyChanged += HandleDiplomacyChangedForDangerMaps;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGeneratedForDangerMaps;
+            if (DiplomacyManager.Instance != null)
+                DiplomacyManager.Instance.OnDiplomacyChanged -= HandleDiplomacyChangedForDangerMaps;
+            aiPlanner.DisposeAllDangerMaps();
+        }
+    }
+
+    // A planet fully regenerating invalidates any DangerMaps built against its old tile layout.
+    private void HandlePlanetFullyGeneratedForDangerMaps(PlanetGenerator generator)
+    {
+        if (generator == null) return;
+        aiPlanner.RemoveDangerMapsForPlanet(generator.planetIndex);
+    }
+
+    // Hostility classification can change independently of unit movement/death.
+    private void HandleDiplomacyChangedForDangerMaps(Civilization a, Civilization b, DiplomaticState newState)
+    {
+        aiPlanner.InvalidateDangerMapsForCivilization(a);
+        aiPlanner.InvalidateDangerMapsForCivilization(b);
     }
 
     /// <summary>
@@ -74,9 +115,17 @@ public class CivilizationManager : MonoBehaviour
         if (!civs.Contains(civ))
         {
             civs.Add(civ);
+            if (civ != null && civ.MapActorSlot < 0)
+                civ.MapActorSlot = nextMapActorSlot++;
             NotifyCivilizationRegistryChanged();
         }
     }
+
+    /// <summary>Returns civ's stable map actor slot (fog/ownership array index), or -1 if unset.</summary>
+    public int GetMapActorSlot(Civilization civ) => civ != null ? civ.MapActorSlot : -1;
+
+    /// <summary>Required array capacity to hold every map actor slot ever assigned this session (never shrinks).</summary>
+    public int MapActorSlotCapacity => nextMapActorSlot;
 
     /// <summary>
     /// Called by a Civilization when it completes a tech.
@@ -118,13 +167,16 @@ public class CivilizationManager : MonoBehaviour
             changed = true;
         }
         if (playerCiv == civ) playerCiv = null;
+        if (civ != null) aiPlanner.RemoveDangerMapsForCivilization(civ);
         if (changed)
             NotifyCivilizationRegistryChanged();
     }
 
     private void NotifyCivilizationRegistryChanged()
     {
-        OnCivilizationRegistryChanged?.Invoke(civs.Count);
+        // Payload is required slot capacity (monotonic), not the current civ count, so listeners
+        // sizing stable-slot-indexed arrays (fog/ownership) never shrink below a live slot.
+        OnCivilizationRegistryChanged?.Invoke(nextMapActorSlot);
     }
 
     /// <summary>
@@ -182,6 +234,12 @@ public class CivilizationManager : MonoBehaviour
     /// cheaper, narrower pipelines (see AiBudget.For and the tier gating below).
     /// </summary>
     private static AIActorTier ResolveActorTier(Civilization civ) => AiBudget.ResolveTier(civ?.civData);
+
+    /// <summary>Diagnostics: number of live DangerMap objects across all civs/planets (see PerformanceBenchmarkRunner).</summary>
+    public int ActiveDangerMapCount => aiPlanner.ActiveDangerMapCount;
+
+    /// <summary>Diagnostics accessor for PerformanceBenchmarkRunner (phase timings, danger map lifecycle).</summary>
+    public AIPlanner AiPlanner => aiPlanner;
 
     /// <summary>
     /// Coroutine for handling the completion of an AI turn with sophisticated decision making.

@@ -58,10 +58,11 @@ public sealed class WorldViewContext : MonoBehaviour
         ForceRefresh();
     }
 
-    private void Update()
-    {
-        RefreshContext(force: false);
-    }
+    // Event-driven, not polled: every view-changing action already calls one of ForceRefresh(),
+    // SetStarSystemViewActive(), ClearForcedStarSystemView(), or NotifyPlanetLayerChanged()
+    // (see GameManager planet switches, SpaceMapUI.Show/Hide, LayerManager, PlanetaryCameraManager).
+    // A per-frame Update() poll of BuildState() was previously run unconditionally, doing a
+    // FindAnyObjectByType/activeInHierarchy scan every frame even though nothing had changed.
 
     private void OnDestroy()
     {

@@ -102,7 +102,11 @@ public class HexTileData
     [System.NonSerialized]
     public GameObject improvementInstanceObject;
     [Tooltip("Upgrades built on this improvement")]
-    public System.Collections.Generic.List<string> builtUpgrades = new System.Collections.Generic.List<string>();
+    // Lazily allocated (null until the first upgrade is built) - every consumer already null-checks
+    // this, and ImprovementManager already creates it on first add / nulls it out on removal. Tens
+    // of thousands of tiles never get an improvement upgrade, so eagerly allocating an empty List
+    // per tile here was pure wasted memory/GC pressure at world-generation time.
+    public System.Collections.Generic.List<string> builtUpgrades;
     [Tooltip("Currently assigned labor type key for this improvement's instance. Empty means the default (Unskilled) labor type.")]
     public string currentLaborTypeId = "";
     [Tooltip("Resource on this tile, if any")]

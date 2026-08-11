@@ -355,7 +355,9 @@ public class MilitaryPanel : MonoBehaviour
             }
             else
             {
-                int civIndex = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetCivIndex(currentCiv) : -1;
+                // MapActorSlot (stable), not GetCivIndex (mutable list position) - matches
+                // MilitaryCommanderAssignmentService.OwnerCivilizationId's convention for admiral ownership.
+                int civIndex = currentCiv.MapActorSlot;
                 if (AdmiralManager.Instance != null)
                     characterOptionNames.AddRange(AdmiralManager.Instance.admirals
                         .Where(a => a.ownerCivilizationId == civIndex && a.status == AdmiralStatus.Active)
@@ -385,7 +387,7 @@ public class MilitaryPanel : MonoBehaviour
         }
         else
         {
-            int civIndex = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetCivIndex(currentCiv) : -1;
+            int civIndex = currentCiv.MapActorSlot;
             var eligibleAdmirals = AdmiralManager.Instance != null
                 ? AdmiralManager.Instance.admirals.Where(a => a.ownerCivilizationId == civIndex && a.status == AdmiralStatus.Active).ToList()
                 : new List<AdmiralInstance>();

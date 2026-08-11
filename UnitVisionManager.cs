@@ -43,13 +43,15 @@ public class UnitVisionManager : MonoBehaviour
     private List<int> neighborsBuffer = new List<int>();
 
     /// <summary>
-    /// Fog/ownership systems identify civilizations by their registration index in CivilizationManager.
-    /// This helper converts a Civilization reference into that index.
+    /// Fog/ownership systems identify civilizations by their stable per-session map actor slot
+    /// (Civilization.MapActorSlot), NOT by CivilizationManager's mutable registration-order index.
+    /// The name is kept for source compatibility with the many existing call sites that use it to
+    /// index fog/vision arrays; it no longer returns a value that shifts when another civ is eliminated.
     /// </summary>
     public static int GetCivIndex(Civilization civ)
     {
         if (civ == null || CivilizationManager.Instance == null) return -1;
-        return CivilizationManager.Instance.GetCivIndex(civ);
+        return civ.MapActorSlot;
     }
     
     void Awake()

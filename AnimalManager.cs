@@ -587,11 +587,32 @@ public class AnimalManager : MonoBehaviour
     private void MoveAllAnimalsSync()
     {
         CleanupOldAttackRecords();
+        int currentTurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+        var tierByPlanet = new Dictionary<int, bool>();
         foreach (var unit in activeAnimals.ToList())
         {
             if (unit == null) { activeAnimals.Remove(unit); continue; }
+            if (!ShouldSimulateAnimalThisTurn(unit, currentTurnNumber, tierByPlanet)) continue;
             ProcessSingleAnimalTurn(unit);
         }
+    }
+
+    /// <summary>
+    /// Wildlife LOD: planets the player isn't currently on (Warm/Cold tier per
+    /// PlanetSimulationManager) get their animals' per-turn AI/movement decisions
+    /// throttled to every few turns instead of every single turn. Animals still exist,
+    /// still count toward spawn caps, and still get a full decision on the turns they
+    /// ARE processed - this only reduces how OFTEN idle-planet wildlife re-evaluates,
+    /// it never affects any civilization's units, AI, or turn processing.
+    /// </summary>
+    private bool ShouldSimulateAnimalThisTurn(CombatUnit unit, int currentTurnNumber, Dictionary<int, bool> cache)
+    {
+        if (!cache.TryGetValue(unit.planetIndex, out bool shouldSimulate))
+        {
+            shouldSimulate = PlanetSimulationManager.ShouldSimulateThisTurn(unit.planetIndex, currentTurnNumber);
+            cache[unit.planetIndex] = shouldSimulate;
+        }
+        return shouldSimulate;
     }
 
     /// <summary>
@@ -602,9 +623,12 @@ public class AnimalManager : MonoBehaviour
         CleanupOldAttackRecords();
         const int BATCH_SIZE = 8; // Process this many animals per frame
         int processed = 0;
+        int currentTurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+        var tierByPlanet = new Dictionary<int, bool>();
         foreach (var unit in activeAnimals.ToList())
         {
             if (unit == null) { activeAnimals.Remove(unit); continue; }
+            if (!ShouldSimulateAnimalThisTurn(unit, currentTurnNumber, tierByPlanet)) continue;
             ProcessSingleAnimalTurn(unit);
             processed++;
             if (processed >= BATCH_SIZE)

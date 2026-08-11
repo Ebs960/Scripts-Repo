@@ -229,7 +229,10 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
         if (civ == null || !TryGetContinentForTile(tileIndex, out var continent))
             return false;
 
-        int civIndex = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetCivIndex(civ) : -1;
+        // Use the stable MapActorSlot (not CivilizationManager.GetCivIndex, a mutable list position)
+        // since discoveredByCivIndices persists for the entire game and is serialized to save data -
+        // a list-position index would silently misattribute/lose discovery credit once any civ is eliminated.
+        int civIndex = civ.MapActorSlot;
         if (continent.discoveredByCivIndices.Contains(civIndex))
             return false;
 

@@ -127,6 +127,8 @@ public class ClimateManager : MonoBehaviour
     private readonly Dictionary<int, float> _freezeProgress  = new Dictionary<int, float>();
     private readonly Dictionary<int, bool>  _freezeAnimActive  = new Dictionary<int, bool>();
     private readonly Dictionary<int, bool>  _freezeAnimForward = new Dictionary<int, bool>(); // true=freeze, false=thaw
+    // Reusable scratch buffer for Update()'s key snapshot - avoids a per-frame List<int> allocation.
+    private readonly List<int> _freezeAnimKeysBuffer = new List<int>();
 
     // Per-planet precomputed freeze targets: tileIndex -> target freeze amount (0..1).
     // Only tiles that CAN freeze (water, below temp threshold) are stored here.
@@ -279,9 +281,11 @@ public class ClimateManager : MonoBehaviour
     {
         if (_freezeAnimActive.Count == 0) return;
 
-        // Gather keys first to avoid modifying the dict while iterating
-        var keys = new List<int>(_freezeAnimActive.Keys);
-        foreach (int pi in keys)
+        // Gather keys first to avoid modifying the dict while iterating. Reuses a persistent
+        // buffer instead of allocating a new List<int> every frame an animation is active.
+        _freezeAnimKeysBuffer.Clear();
+        _freezeAnimKeysBuffer.AddRange(_freezeAnimActive.Keys);
+        foreach (int pi in _freezeAnimKeysBuffer)
         {
             if (!_freezeAnimActive.TryGetValue(pi, out bool active) || !active) continue;
 

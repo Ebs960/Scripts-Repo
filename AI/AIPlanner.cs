@@ -25,8 +25,15 @@ using Debug = UnityEngine.Debug;
 /// </summary>
 public class AIPlanner
 {
-    // Per-planet danger maps (regenerated each turn)
-    private readonly Dictionary<int, DangerMap> dangerMaps = new Dictionary<int, DangerMap>();
+    // Persistent danger maps: civ runtime id -> planet index -> DangerMap.
+    // Created once per (civ, planet) and reused/updated incrementally across turns
+    // instead of being rebuilt from scratch every AI turn (see EnsureDangerMaps).
+    private readonly Dictionary<int, Dictionary<int, DangerMap>> dangerMapsByCiv = new Dictionary<int, Dictionary<int, DangerMap>>();
+
+    // View over the current civ's planet->DangerMap dict for this turn (points into dangerMapsByCiv).
+    private Dictionary<int, DangerMap> dangerMaps = new Dictionary<int, DangerMap>();
+    private static readonly Dictionary<int, DangerMap> EmptyDangerMaps = new Dictionary<int, DangerMap>();
+
     private readonly ArmyGroupManager armyGroups = new ArmyGroupManager();
 
     // Empire layer: persistent per-civ strategic state
@@ -85,11 +92,13 @@ public class AIPlanner
         AIScorer.ApplyPersona(civ.leader);
 
         // ── Phase 1: Danger Maps ──
+        // Persistent per (civ, planet); reused and incrementally updated rather than
+        // rebuilt from scratch every turn. See EnsureDangerMaps / GetOrCreateDangerMap.
         phaseSw.Restart();
         if (budget.EnableDangerMap)
-            GenerateDangerMaps(civ);
+            EnsureDangerMaps(civ);
         else
-            dangerMaps.Clear();
+            dangerMaps = EmptyDangerMaps;
         TimeDangerMap = phaseSw.ElapsedMilliseconds;
 
         // ── Phase 2: Context Cache ──
@@ -244,25 +253,116 @@ public class AIPlanner
         return p;
     }
 
-    // ─────────────────────── Danger map generation ───────────────────────
+    // ─────────────────────── Danger map lifecycle ───────────────────────
+    //
+    // DangerMaps persist per (civ, planet) for the life of the game. The first time a civ
+    // needs a map for a planet it is fully generated and subscribed to unit move/kill events;
+    // after that, incremental updates from those events keep it current, and AI turns simply
+    // reuse the existing object. Full rebuilds only happen for the explicit invalidation cases
+    // below (diplomacy shifts, planet regeneration, elimination, save/load, etc.).
 
-    private void GenerateDangerMaps(Civilization civ)
+    private Dictionary<int, DangerMap> GetOrCreateCivDangerMaps(Civilization civ)
     {
-        dangerMaps.Clear();
-        var planets = new HashSet<int>();
+        int civId = civ.GetRuntimeId();
+        if (!dangerMapsByCiv.TryGetValue(civId, out var perPlanet))
+        {
+            perPlanet = new Dictionary<int, DangerMap>();
+            dangerMapsByCiv[civId] = perPlanet;
+        }
+        return perPlanet;
+    }
+
+    /// <summary>Returns the persistent DangerMap for (civ, planet), creating and fully generating it if needed.</summary>
+    public DangerMap GetOrCreateDangerMap(Civilization civ, int planetIndex)
+    {
+        if (civ == null) return null;
+        var perPlanet = GetOrCreateCivDangerMaps(civ);
+        if (!perPlanet.TryGetValue(planetIndex, out var dm))
+        {
+            dm = new DangerMap();
+            dm.Generate(civ, planetIndex);
+            perPlanet[planetIndex] = dm;
+        }
+        return dm;
+    }
+
+    /// <summary>Ensures danger maps exist for every planet the civ currently has units on. Reuses existing maps.</summary>
+    private void EnsureDangerMaps(Civilization civ)
+    {
+        var perPlanet = GetOrCreateCivDangerMaps(civ);
 
         if (civ.combatUnits != null)
             foreach (var u in civ.combatUnits)
-                if (u != null && u.planetIndex >= 0) planets.Add(u.planetIndex);
+                if (u != null && u.planetIndex >= 0 && !perPlanet.ContainsKey(u.planetIndex))
+                    GetOrCreateDangerMap(civ, u.planetIndex);
         if (civ.workerUnits != null)
             foreach (var w in civ.workerUnits)
-                if (w != null && w.planetIndex >= 0) planets.Add(w.planetIndex);
+                if (w != null && w.planetIndex >= 0 && !perPlanet.ContainsKey(w.planetIndex))
+                    GetOrCreateDangerMap(civ, w.planetIndex);
 
-        foreach (int pIndex in planets)
+        dangerMaps = perPlanet;
+    }
+
+    /// <summary>Forces a full rebuild of one civ's danger map for one planet, in place (keeps the same object/subscription).</summary>
+    public void InvalidateDangerMap(Civilization civ, int planetIndex)
+    {
+        if (civ == null) return;
+        var perPlanet = GetOrCreateCivDangerMaps(civ);
+        if (perPlanet.TryGetValue(planetIndex, out var dm))
+            dm.Generate(civ, planetIndex);
+    }
+
+    /// <summary>Forces a full rebuild of every danger map this civ currently has (e.g. hostility/rules change).</summary>
+    public void InvalidateDangerMapsForCivilization(Civilization civ)
+    {
+        if (civ == null) return;
+        if (!dangerMapsByCiv.TryGetValue(civ.GetRuntimeId(), out var perPlanet)) return;
+        foreach (var kv in perPlanet)
+            kv.Value.Generate(civ, kv.Key);
+    }
+
+    /// <summary>Unsubscribes and removes all danger maps for a civilization (permanent elimination).</summary>
+    public void RemoveDangerMapsForCivilization(Civilization civ)
+    {
+        if (civ == null) return;
+        int civId = civ.GetRuntimeId();
+        if (!dangerMapsByCiv.TryGetValue(civId, out var perPlanet)) return;
+        foreach (var dm in perPlanet.Values) dm.Unsubscribe();
+        dangerMapsByCiv.Remove(civId);
+        if (ReferenceEquals(dangerMaps, perPlanet)) dangerMaps = EmptyDangerMaps;
+    }
+
+    /// <summary>Unsubscribes and removes every civ's danger map for a planet (planet unloaded/regenerated).</summary>
+    public void RemoveDangerMapsForPlanet(int planetIndex)
+    {
+        foreach (var perPlanet in dangerMapsByCiv.Values)
         {
-            var dm = new DangerMap();
-            dm.Generate(civ, pIndex);
-            dangerMaps[pIndex] = dm;
+            if (perPlanet.TryGetValue(planetIndex, out var dm))
+            {
+                dm.Unsubscribe();
+                perPlanet.Remove(planetIndex);
+            }
+        }
+    }
+
+    /// <summary>Unsubscribes and clears every danger map (AI shutdown / session end).</summary>
+    public void DisposeAllDangerMaps()
+    {
+        foreach (var perPlanet in dangerMapsByCiv.Values)
+            foreach (var dm in perPlanet.Values)
+                dm.Unsubscribe();
+        dangerMapsByCiv.Clear();
+        dangerMaps = EmptyDangerMaps;
+    }
+
+    /// <summary>Diagnostics: total number of live DangerMap objects across all civs/planets.</summary>
+    public int ActiveDangerMapCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (var perPlanet in dangerMapsByCiv.Values) count += perPlanet.Count;
+            return count;
         }
     }
 

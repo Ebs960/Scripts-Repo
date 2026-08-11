@@ -22,6 +22,15 @@ public class Civilization : MonoBehaviour
     [Header("Static Data")]
     public CivData civData { get; private set; }
     public LeaderData leader { get; private set; } // Added to store the active leader
+
+    /// <summary>
+    /// Stable per-session map actor slot used to index fog-of-war and tile-ownership overlay
+    /// arrays. Assigned once by CivilizationManager.RegisterCiv and never reassigned or reused,
+    /// even after this civilization is eliminated (unlike CivilizationManager.GetCivIndex, which
+    /// is a mutable list position that shifts when other civs are removed). Do not use this for
+    /// anything except stable array indexing; use GetCivIndex for temporary ordering needs.
+    /// </summary>
+    public int MapActorSlot { get; internal set; } = -1;
     
     // Cache for unique unit and building replacements
     private Dictionary<CombatUnitData, CombatUnitData> uniqueUnitReplacements = new Dictionary<CombatUnitData, CombatUnitData>();

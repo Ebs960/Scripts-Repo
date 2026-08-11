@@ -255,8 +255,8 @@ public static class TacticalEvaluator
         // ───── CombatUnit-specific ─────
         if (unit is CombatUnit cu && !cu.hasActedThisTurn)
         {
-            GenerateAttacks(cu, civ, dangerMap, commands, needFood);
-            GenerateApproaches(cu, civ, dangerMap, ts, commands, needFood, approachRange);
+            GenerateAttacks(cu, civ, dangerMap, commands, needFood, context);
+            GenerateApproaches(cu, civ, dangerMap, ts, commands, needFood, approachRange, context);
         }
 
         // ───── WorkerUnit-specific ─────
@@ -441,37 +441,61 @@ public static class TacticalEvaluator
 
     // ─────────────────────── Attack generation ───────────────────────
 
-    private static void GenerateAttacks(CombatUnit cu, Civilization civ, DangerMap dangerMap, List<AICommand> commands, bool needFood)
+    private static void GenerateAttacks(CombatUnit cu, Civilization civ, DangerMap dangerMap, List<AICommand> commands, bool needFood, AIContext context = null)
     {
-        var allCivs = CivilizationManager.Instance?.GetAllCivs();
-        if (allCivs != null)
+        if (context != null)
         {
-            foreach (var otherCiv in allCivs)
+            // Cheap path: reuse the per-planet enemy lists AIContext already built once this turn
+            // instead of rescanning every other civ's units for every single one of our units.
+            foreach (var enemy in context.GetEnemyCombatUnits(cu.planetIndex))
             {
-                if (otherCiv == civ) continue;
-                if (otherCiv.combatUnits != null)
-                    foreach (var enemy in otherCiv.combatUnits)
-                    {
-                        if (enemy == null || !cu.CanAttack(enemy)) continue;
-                        var cmd = new AIAttackCommand { unit = cu, target = enemy, planetIndex = cu.planetIndex };
-                        cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
-                        commands.Add(cmd);
-                    }
-                if (otherCiv.workerUnits != null)
-                    foreach (var ew in otherCiv.workerUnits)
-                    {
-                        if (ew == null || !cu.CanAttack(ew)) continue;
-                        var cmd = new AIAttackCommand { unit = cu, target = ew, planetIndex = cu.planetIndex };
-                        cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
-                        commands.Add(cmd);
-                    }
+                if (enemy == null || !cu.CanAttack(enemy)) continue;
+                var cmd = new AIAttackCommand { unit = cu, target = enemy, planetIndex = cu.planetIndex };
+                cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
+                commands.Add(cmd);
+            }
+            foreach (var ew in context.GetEnemyWorkerUnits(cu.planetIndex))
+            {
+                if (ew == null || !cu.CanAttack(ew)) continue;
+                var cmd = new AIAttackCommand { unit = cu, target = ew, planetIndex = cu.planetIndex };
+                cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
+                commands.Add(cmd);
+            }
+        }
+        else
+        {
+            var allCivs = CivilizationManager.Instance?.GetAllCivs();
+            if (allCivs != null)
+            {
+                foreach (var otherCiv in allCivs)
+                {
+                    if (otherCiv == civ) continue;
+                    if (otherCiv.combatUnits != null)
+                        foreach (var enemy in otherCiv.combatUnits)
+                        {
+                            if (enemy == null || !cu.CanAttack(enemy)) continue;
+                            var cmd = new AIAttackCommand { unit = cu, target = enemy, planetIndex = cu.planetIndex };
+                            cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
+                            commands.Add(cmd);
+                        }
+                    if (otherCiv.workerUnits != null)
+                        foreach (var ew in otherCiv.workerUnits)
+                        {
+                            if (ew == null || !cu.CanAttack(ew)) continue;
+                            var cmd = new AIAttackCommand { unit = cu, target = ew, planetIndex = cu.planetIndex };
+                            cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
+                            commands.Add(cmd);
+                        }
+                }
             }
         }
 
         if (needFood && AnimalManager.Instance != null)
         {
             var ts = TileSystem.GetForPlanet(cu.planetIndex) ?? TileSystem.Instance;
-            foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+            var animals = context != null ? context.GetAnimals(cu.planetIndex) : null;
+            IEnumerable<BaseUnit> animalSource = animals ?? (IEnumerable<BaseUnit>)AnimalManager.Instance.GetActiveAnimals();
+            foreach (var animal in animalSource)
             {
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
                 if (animal.planetIndex != cu.planetIndex) continue;
@@ -499,29 +523,42 @@ public static class TacticalEvaluator
 
     // ─────────────────────── Approach generation ───────────────────────
 
-    private static void GenerateApproaches(CombatUnit cu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, bool needFood, int approachRange = 8)
+    private static void GenerateApproaches(CombatUnit cu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, bool needFood, int approachRange = 8, AIContext context = null)
     {
         BaseUnit bestTarget = null;
         int bestDist = int.MaxValue;
 
-        var allCivs = CivilizationManager.Instance?.GetAllCivs();
-        if (allCivs != null)
+        if (context != null)
         {
-            foreach (var otherCiv in allCivs)
+            foreach (var enemy in context.GetEnemyCombatUnits(cu.planetIndex))
             {
-                if (otherCiv == civ || otherCiv.combatUnits == null) continue;
-                foreach (var enemy in otherCiv.combatUnits)
+                if (enemy == null || enemy.currentTileIndex < 0) continue;
+                int d = ts.GetTileDistance(cu.currentTileIndex, enemy.currentTileIndex);
+                if (d > 1 && d < bestDist && d <= approachRange) { bestDist = d; bestTarget = enemy; }
+            }
+        }
+        else
+        {
+            var allCivs = CivilizationManager.Instance?.GetAllCivs();
+            if (allCivs != null)
+            {
+                foreach (var otherCiv in allCivs)
                 {
-                    if (enemy == null || enemy.planetIndex != cu.planetIndex || enemy.currentTileIndex < 0) continue;
-                    int d = ts.GetTileDistance(cu.currentTileIndex, enemy.currentTileIndex);
-                    if (d > 1 && d < bestDist && d <= approachRange) { bestDist = d; bestTarget = enemy; }
+                    if (otherCiv == civ || otherCiv.combatUnits == null) continue;
+                    foreach (var enemy in otherCiv.combatUnits)
+                    {
+                        if (enemy == null || enemy.planetIndex != cu.planetIndex || enemy.currentTileIndex < 0) continue;
+                        int d = ts.GetTileDistance(cu.currentTileIndex, enemy.currentTileIndex);
+                        if (d > 1 && d < bestDist && d <= approachRange) { bestDist = d; bestTarget = enemy; }
+                    }
                 }
             }
         }
 
         if (needFood && AnimalManager.Instance != null)
         {
-            foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+            var animalSource = context != null ? (IEnumerable<BaseUnit>)context.GetAnimals(cu.planetIndex) : AnimalManager.Instance.GetActiveAnimals();
+            foreach (var animal in animalSource)
             {
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
                 if (animal.planetIndex != cu.planetIndex || animal.currentTileIndex < 0) continue;

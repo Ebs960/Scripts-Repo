@@ -226,7 +226,7 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
             Role = role,
             CharacterKind = kind,
             CharacterId = characterId,
-            OwnerCivilizationId = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetCivIndex(owner) : -1,
+            OwnerCivilizationId = owner != null ? owner.MapActorSlot : -1,
             AssignedTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0,
         });
         reason = string.Empty;
@@ -305,7 +305,7 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
         }
         if (CivilizationManager.Instance==null) return false;
         foreach (var civ in CivilizationManager.Instance.GetAllCivs())
-            if (civ!=null && CivilizationManager.Instance.GetCivIndex(civ)==assignment.OwnerCivilizationId && civ.governors!=null)
+            if (civ!=null && civ.MapActorSlot==assignment.OwnerCivilizationId && civ.governors!=null)
                 for(int i=0;i<civ.governors.Count;i++) if(civ.governors[i]?.Id==assignment.CharacterId) return true;
         return false;
     }

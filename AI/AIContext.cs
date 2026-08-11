@@ -23,6 +23,14 @@ public class AIContext
     public readonly Dictionary<int, ThreatSummary> ThreatByPlanet = new();
     public readonly Dictionary<int, NearestEnemy> NearestEnemyByPlanet = new();
 
+    // Flat per-planet enemy/animal lists, built once per turn during BuildThreatSummary instead of
+    // being rescanned from all-civs x all-units for every single one of this civ's units (see
+    // TacticalEvaluator.GenerateAttacks/GenerateApproaches, which previously repeated that full scan
+    // per unit). Same underlying loop, just also captures references instead of only counts.
+    public readonly Dictionary<int, List<BaseUnit>> EnemyCombatUnitsByPlanet = new();
+    public readonly Dictionary<int, List<BaseUnit>> EnemyWorkerUnitsByPlanet = new();
+    public readonly Dictionary<int, List<BaseUnit>> AnimalsByPlanet = new();
+
     // ──────────────── Cross-planet aggregates ────────────────
 
     public float TotalMilitaryStrength;
@@ -111,6 +119,9 @@ public class AIContext
         CitySites.Clear();
         ThreatByPlanet.Clear();
         NearestEnemyByPlanet.Clear();
+        EnemyCombatUnitsByPlanet.Clear();
+        EnemyWorkerUnitsByPlanet.Clear();
+        AnimalsByPlanet.Clear();
         ExplorationPercent = 0f;
 
         int exploredTotal = 0, fogTotal = 0;
@@ -151,6 +162,8 @@ public class AIContext
     private void BuildThreatSummary(Civilization civ, int planetIndex, IReadOnlyList<Civilization> allCivs)
     {
         var summary = new ThreatSummary();
+        var enemyCombat = new List<BaseUnit>();
+        var enemyWorkers = new List<BaseUnit>();
         if (allCivs != null)
         {
             foreach (var other in allCivs)
@@ -162,23 +175,34 @@ public class AIContext
                         {
                             summary.EnemyCombatUnits++;
                             summary.TotalEnemyAttack += u.CurrentAttack;
+                            enemyCombat.Add(u);
                         }
                 if (other.workerUnits != null)
                     foreach (var w in other.workerUnits)
-                        if (w != null && w.planetIndex == planetIndex) summary.EnemyWorkers++;
+                        if (w != null && w.planetIndex == planetIndex)
+                        {
+                            summary.EnemyWorkers++;
+                            enemyWorkers.Add(w);
+                        }
                 if (other.cities != null)
                     foreach (var c in other.cities)
                         if (c != null && c.planetIndex == planetIndex) summary.EnemyCities++;
             }
         }
+        var animals = new List<BaseUnit>();
         if (AnimalManager.Instance != null)
             foreach (var a in AnimalManager.Instance.GetActiveAnimals())
-                if (a != null && a.data != null && a.planetIndex == planetIndex &&
-                    a.data.animalBehavior == AnimalBehaviorType.Predator)
-                    summary.PredatorAnimals++;
+                if (a != null && a.data != null && a.planetIndex == planetIndex)
+                {
+                    if (a.data.animalBehavior == AnimalBehaviorType.Predator) summary.PredatorAnimals++;
+                    animals.Add(a);
+                }
 
         TotalEnemyStrength += summary.TotalEnemyAttack;
         ThreatByPlanet[planetIndex] = summary;
+        EnemyCombatUnitsByPlanet[planetIndex] = enemyCombat;
+        EnemyWorkerUnitsByPlanet[planetIndex] = enemyWorkers;
+        AnimalsByPlanet[planetIndex] = animals;
     }
 
     // ──────────────── Frontier tiles + exploration % ────────────────
@@ -443,6 +467,26 @@ public class AIContext
     {
         ThreatByPlanet.TryGetValue(planetIndex, out var t);
         return t;
+    }
+
+    private static readonly List<BaseUnit> EmptyUnitList = new List<BaseUnit>();
+
+    /// <summary>Cached list of every other civ's combat units on this planet (built once per turn).</summary>
+    public List<BaseUnit> GetEnemyCombatUnits(int planetIndex)
+    {
+        return EnemyCombatUnitsByPlanet.TryGetValue(planetIndex, out var list) ? list : EmptyUnitList;
+    }
+
+    /// <summary>Cached list of every other civ's worker units on this planet (built once per turn).</summary>
+    public List<BaseUnit> GetEnemyWorkerUnits(int planetIndex)
+    {
+        return EnemyWorkerUnitsByPlanet.TryGetValue(planetIndex, out var list) ? list : EmptyUnitList;
+    }
+
+    /// <summary>Cached list of active animals on this planet (built once per turn).</summary>
+    public List<BaseUnit> GetAnimals(int planetIndex)
+    {
+        return AnimalsByPlanet.TryGetValue(planetIndex, out var list) ? list : EmptyUnitList;
     }
 
     public HashSet<int> GetFrontier(int planetIndex)

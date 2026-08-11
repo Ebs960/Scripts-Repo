@@ -14,6 +14,18 @@ using UnityEngine;
 /// </summary>
 public class DangerMap
 {
+    // Development diagnostics (see PerformanceBenchmarkRunner). Not per-instance: these track
+    // aggregate activity across every DangerMap in the process for profiling long sessions.
+    public static int FullRebuildCount { get; private set; }
+    public static int IncrementalUpdateCount { get; private set; }
+    public static int ActiveSubscriptionCount { get; private set; }
+
+    public static void ResetDiagnosticCounters()
+    {
+        FullRebuildCount = 0;
+        IncrementalUpdateCount = 0;
+    }
+
     private readonly Dictionary<int, float> dangerValues = new Dictionary<int, float>(512);
     public int PlanetIndex { get; private set; }
 
@@ -56,6 +68,7 @@ public class DangerMap
 
     public void Generate(Civilization perspective, int planetIndex)
     {
+        FullRebuildCount++;
         dangerValues.Clear();
         threatContributions.Clear();
         this.perspective = perspective;
@@ -152,6 +165,7 @@ public class DangerMap
         GameEventManager.Instance.OnUnitMoved += OnUnitMoved;
         GameEventManager.Instance.OnUnitKilled += OnUnitKilled;
         isSubscribed = true;
+        ActiveSubscriptionCount++;
     }
 
     public void Unsubscribe()
@@ -160,6 +174,7 @@ public class DangerMap
         GameEventManager.Instance.OnUnitMoved -= OnUnitMoved;
         GameEventManager.Instance.OnUnitKilled -= OnUnitKilled;
         isSubscribed = false;
+        ActiveSubscriptionCount--;
     }
 
     private void OnUnitMoved(GameEventManager.UnitMovementEventArgs args)
@@ -170,6 +185,7 @@ public class DangerMap
         var owner = GetOwner(unit);
         if (owner == perspective) return;
 
+        IncrementalUpdateCount++;
         int key = unit.GetRuntimeId();
         float weight = 1f;
         int range = 1;
@@ -189,6 +205,7 @@ public class DangerMap
         var defender = args.Defender as BaseUnit;
         if (defender == null || defender.planetIndex != PlanetIndex) return;
         if (!args.IsLethal) return;
+        IncrementalUpdateCount++;
         RemoveThreat(defender.GetRuntimeId());
     }
 

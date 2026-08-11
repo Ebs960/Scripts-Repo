@@ -13,9 +13,55 @@ public class TradeNetworkManager : MonoBehaviour
     private readonly Dictionary<int, TradeNodeRuntime> nodesById = new Dictionary<int, TradeNodeRuntime>();
     private bool isRebuildingRegistry;
     private bool registryDirty = true;
+    // Round-based safety net: even if nothing explicitly marks the registry dirty, it is refreshed
+    // at most once per round rather than once per civilization's turn. Previously ProcessCivilizationTradeTurn
+    // called RebuildRegistry() unconditionally, meaning the FindObjectsByType<ImprovementInstance> scene
+    // scan and a full re-validation of every active route ran once per civ per round (O(civCount) redundant work).
+    private int lastFullRebuildTurn = int.MinValue;
+
+    // Dev diagnostics (mirrors AIPlanner/DangerMap counters) for PerformanceBenchmarkRunner.
+    public static int FullRebuildCount { get; private set; }
+    public static int SkippedRebuildCount { get; private set; }
 
     private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; }
     public static TradeNetworkManager EnsureInstance() { if (Instance != null) return Instance; return new GameObject("TradeNetworkManager").AddComponent<TradeNetworkManager>(); }
+
+    private void OnEnable()
+    {
+        if (ImprovementManager.Instance != null)
+        {
+            ImprovementManager.Instance.OnImprovementBuilt += HandleImprovementChanged;
+            ImprovementManager.Instance.OnImprovementRemoved += HandleImprovementRemoved;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (ImprovementManager.Instance != null)
+        {
+            ImprovementManager.Instance.OnImprovementBuilt -= HandleImprovementChanged;
+            ImprovementManager.Instance.OnImprovementRemoved -= HandleImprovementRemoved;
+        }
+    }
+
+    private void HandleImprovementChanged(Civilization owner, ImprovementData data, int tileIndex, int planetIndex) => MarkDirty();
+    private void HandleImprovementRemoved(Civilization owner, ImprovementData data, int tileIndex, int planetIndex, ImprovementRemovalReason reason) => MarkDirty();
+
+    /// <summary>Forces the next registry access to perform a full topology rebuild (new/removed trade node, ownership change, etc.).</summary>
+    public void MarkDirty()
+    {
+        registryDirty = true;
+        lastFullRebuildTurn = int.MinValue;
+    }
+
+    /// <summary>Rebuilds at most once per round; a cheap no-op for every subsequent civ's turn that round unless marked dirty.</summary>
+    private void EnsureRegistryFreshForTurn()
+    {
+        int turn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+        if (turn == lastFullRebuildTurn && !registryDirty) { SkippedRebuildCount++; return; }
+        RebuildRegistry();
+        lastFullRebuildTurn = turn;
+    }
 
     public void RebuildRegistry()
     {
@@ -33,6 +79,7 @@ public class TradeNetworkManager : MonoBehaviour
             foreach (var imp in FindObjectsByType<ImprovementInstance>()) RegisterOrUpdateImprovementNode(imp);
             nextRouteId = Mathf.Max(nextRouteId, activeRoutes.Count > 0 ? activeRoutes.Max(r => r != null ? r.routeId : 0) + 1 : 1);
             registryDirty = false;
+            FullRebuildCount++;
         }
         finally
         {
@@ -407,7 +454,7 @@ public class TradeNetworkManager : MonoBehaviour
     public bool RollRaidForRoute(TradeRoute route) { if (route == null || route.suspended) return false; return UnityEngine.Random.value < Mathf.Clamp01(route.raidChance); }
     public void ProcessCivilizationTradeTurn(Civilization civ)
     {
-        RebuildRegistry();
+        EnsureRegistryFreshForTurn();
         if (civ == null) return;
 
         int civId = civ.GetRuntimeId();

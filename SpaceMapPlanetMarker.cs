@@ -14,6 +14,8 @@ public class SpaceMapPlanetMarker : MonoBehaviour
     [SerializeField] private Color selectedTint = Color.yellow;
     [SerializeField] private Color currentPlanetTint = Color.cyan;
 
+    private static MinimapUI cachedMinimapUI;
+
     private Material materialInstance;
     private Color baseColor = Color.white;
 
@@ -29,7 +31,10 @@ public class SpaceMapPlanetMarker : MonoBehaviour
         EnsureVisuals(template);
         transform.localScale = Vector3.one * Mathf.Max(0.05f, radius);
 
-        baseColor = GetPlanetColor(data);
+        Texture minimapTexture = TryGetMinimapTexture(data);
+        ApplyTexture(minimapTexture);
+        // White lets the wrapped minimap texture show through untinted; the flat type color is only a fallback.
+        baseColor = minimapTexture != null ? Color.white : GetPlanetColor(data);
         ApplyTint(baseColor);
 
         if (label != null)
@@ -81,6 +86,20 @@ public class SpaceMapPlanetMarker : MonoBehaviour
             label.fontSize = 2.5f;
             label.color = Color.white;
         }
+    }
+
+    private static Texture TryGetMinimapTexture(GameManager.PlanetData data)
+    {
+        if (data == null) return null;
+        if (cachedMinimapUI == null) cachedMinimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
+        return cachedMinimapUI != null ? cachedMinimapUI.GetPlanetMinimapTexture(data.planetIndex) : null;
+    }
+
+    private void ApplyTexture(Texture texture)
+    {
+        if (materialInstance == null || texture == null) return;
+        if (materialInstance.HasProperty("_BaseMap")) materialInstance.SetTexture("_BaseMap", texture);
+        if (materialInstance.HasProperty("_MainTex")) materialInstance.SetTexture("_MainTex", texture);
     }
 
     private void ApplyTint(Color color)

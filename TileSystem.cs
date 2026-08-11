@@ -365,9 +365,9 @@ public class TileSystem : MonoBehaviour
         subscribedToCivRegistry = false;
     }
 
-    private void HandleCivilizationRegistryChanged(int registeredCivilizations)
+    private void HandleCivilizationRegistryChanged(int requiredSlotCapacity)
     {
-        ApplyDynamicCapacitiesFromRegistry(forceExactWhenNotReady: false, explicitRegisteredCount: registeredCivilizations);
+        ApplyDynamicCapacitiesFromRegistry(forceExactWhenNotReady: false, explicitRegisteredCount: requiredSlotCapacity);
     }
 
     private int ResolveRegisteredCivilizationCount(int explicitRegisteredCount = -1)
@@ -375,7 +375,9 @@ public class TileSystem : MonoBehaviour
         if (explicitRegisteredCount >= 0)
             return explicitRegisteredCount;
 
-        return CivilizationManager.Instance != null ? CivilizationManager.Instance.GetAllCivs().Count : 0;
+        // Fall back to the monotonic slot capacity (never shrinks), not civs.Count (which shrinks
+        // on elimination) - required capacity must cover the highest stable actor slot ever assigned.
+        return CivilizationManager.Instance != null ? CivilizationManager.Instance.MapActorSlotCapacity : 0;
     }
 
     private void ApplyDynamicCapacitiesFromRegistry(bool forceExactWhenNotReady, int explicitRegisteredCount = -1)
@@ -581,10 +583,11 @@ public class TileSystem : MonoBehaviour
         if (updateOverlay)
         {
             int newOwnerId = -1;
-            if (newOwner != null && CivilizationManager.Instance != null)
+            if (newOwner != null)
             {
-                // Best-effort: map Civilization to an overlay owner index by its registration order.
-                int idx = CivilizationManager.Instance.GetCivIndex(newOwner);
+                // Stable per-session slot, not registration-order index: never shifts when
+                // another civilization is eliminated (see Civilization.MapActorSlot).
+                int idx = newOwner.MapActorSlot;
                 if (idx >= 0) newOwnerId = idx;
             }
 

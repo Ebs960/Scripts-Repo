@@ -2934,14 +2934,27 @@ public class GameManager : MonoBehaviour
         // Wait a frame so that managers/units created in FindCoreManagersInScene have Awake/Start called
         yield return null;
 
-        // If CivilizationManager needs to restore player civ index, attempt to do so
+        // If CivilizationManager needs to restore player civ index, attempt to do so.
+        // Prefer matching by saved civName (unambiguous, immune to any list-order differences
+        // between save and load) and only fall back to the raw list-position index for older
+        // saves that predate playerCivName / if the name can't be matched for any reason.
         try
         {
-            if (CivilizationManager.Instance != null && saveData.playerCivIndex >= 0)
+            if (CivilizationManager.Instance != null)
             {
                 var allCivs = CivilizationManager.Instance.GetAllCivs();
-                if (saveData.playerCivIndex < allCivs.Count)
+                Civilization matched = !string.IsNullOrEmpty(saveData.playerCivName) && allCivs != null
+                    ? allCivs.FirstOrDefault(c => c != null && c.civData != null && c.civData.civName == saveData.playerCivName)
+                    : null;
+
+                if (matched != null)
+                {
+                    CivilizationManager.Instance.playerCiv = matched;
+                }
+                else if (saveData.playerCivIndex >= 0 && allCivs != null && saveData.playerCivIndex < allCivs.Count)
+                {
                     CivilizationManager.Instance.playerCiv = allCivs[saveData.playerCivIndex];
+                }
             }
         }
         catch (System.Exception e)

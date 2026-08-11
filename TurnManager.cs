@@ -155,11 +155,13 @@ public class TurnManager : MonoBehaviour
             }
 
             long handlerMs = handlerSw.ElapsedMilliseconds;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (handlerMs > 10)
             {
                 string owner = handler.Method.DeclaringType != null ? handler.Method.DeclaringType.Name : "<unknown>";
                 Debug.Log($"[TurnProfile] {civType} '{civLabel}' OnTurnChanged handler {owner}.{handler.Method.Name}={handlerMs}ms");
             }
+#endif
 
             if (!isPlayer)
                 yield return null;
@@ -195,7 +197,9 @@ public class TurnManager : MonoBehaviour
                 if (AnimalManager.Instance != null)
                     yield return StartCoroutine(AnimalManager.Instance.ProcessTurnCoroutine());
                 long msNeutralTurn = roundSw.ElapsedMilliseconds;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[TurnProfile] ROUND-END round={round} | OnRoundEnded={msRoundEnded}ms OnNeutralTurn={msNeutralTurn - msRoundEnded}ms");
+#endif
 
                 round++;
 
@@ -286,7 +290,9 @@ public class TurnManager : MonoBehaviour
         // skip the rest of its turn — it will be pruned at end of round.
         if (civ == null || civ.markedForRemoval)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[TurnProfile] {civType} '{civLabel}' SKIPPED (marked for removal after BeginTurn)");
+#endif
             if (!isPlayer)
             {
                 yield return null;
@@ -312,7 +318,9 @@ public class TurnManager : MonoBehaviour
         yield return StartCoroutine(InvokeTurnChangedHandlers(civ, round, isPlayer, civType, civLabel));
         long msOnTurnChanged = sw.ElapsedMilliseconds;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[TurnProfile] {civType} '{civLabel}' round={round} | BeginTurn={msBeginTurn}ms Workers={msWorkerContrib - msBeginTurn}ms OnTurnChanged={msOnTurnChanged - msBeforeTurnChanged}ms total={msOnTurnChanged}ms | cities={civ.cities?.Count ?? 0} combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0}");
+#endif
 
         if (!isPlayer)
         {
@@ -320,7 +328,9 @@ public class TurnManager : MonoBehaviour
             if (CivilizationManager.Instance != null)
                 yield return CivilizationManager.Instance.PerformAITurnCoroutine(civ);
             long msAfterAI = sw.ElapsedMilliseconds;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[TurnProfile] {civType} '{civLabel}' AI={msAfterAI - msBeforeAI}ms");
+#endif
             yield return null;
             AdvanceTurn();
         }

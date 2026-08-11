@@ -1608,10 +1608,16 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         subscribedCivs.Clear();
     }
 
+    /// <summary>
+    /// Stable per-session key used for activeMissions/save-data lookups. Uses Civilization.MapActorSlot
+    /// (assigned once, monotonic, never reused/reassigned even after a civ is eliminated) rather than
+    /// CivilizationManager.GetCivIndex (mutable list position that shifts when civs are removed from the
+    /// roster - would silently corrupt/misattribute another civ's crisis mission progress after any
+    /// civilization is eliminated, since activeMissions/save data persist across many turns).
+    /// </summary>
     private int GetCivIndex(Civilization civ)
     {
-        if (civ == null || CivilizationManager.Instance == null) return -1;
-        return CivilizationManager.Instance.GetCivIndex(civ);
+        return civ != null ? civ.MapActorSlot : -1;
     }
 
     private void TrySubscribeToTurnManager()
@@ -1653,11 +1659,15 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         subscribedToImprovementManager = false;
     }
 
+    /// <summary>Reverse lookup for GetCivIndex - finds the civ whose stable MapActorSlot matches idx.</summary>
     private Civilization GetCivByIndex(int idx)
     {
-        if (CivilizationManager.Instance == null) return null;
+        if (idx < 0 || CivilizationManager.Instance == null) return null;
         var all = CivilizationManager.Instance.GetAllCivs();
-        return idx >= 0 && idx < all.Count ? all[idx] : null;
+        if (all == null) return null;
+        foreach (var civ in all)
+            if (civ != null && civ.MapActorSlot == idx) return civ;
+        return null;
     }
 
     // ═══════════════════════════════════════════════
