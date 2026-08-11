@@ -493,8 +493,9 @@ public static class TacticalEvaluator
         if (needFood && AnimalManager.Instance != null)
         {
             var ts = TileSystem.GetForPlanet(cu.planetIndex) ?? TileSystem.Instance;
-            var animals = context != null ? context.GetAnimals(cu.planetIndex) : null;
-            IEnumerable<BaseUnit> animalSource = animals ?? (IEnumerable<BaseUnit>)AnimalManager.Instance.GetActiveAnimals();
+            IEnumerable<CombatUnit> animalSource = context != null
+                ? context.GetAnimals(cu.planetIndex)
+                : AnimalManager.Instance.GetActiveAnimals();
             foreach (var animal in animalSource)
             {
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
@@ -557,7 +558,9 @@ public static class TacticalEvaluator
 
         if (needFood && AnimalManager.Instance != null)
         {
-            var animalSource = context != null ? (IEnumerable<BaseUnit>)context.GetAnimals(cu.planetIndex) : AnimalManager.Instance.GetActiveAnimals();
+            IEnumerable<CombatUnit> animalSource = context != null
+                ? context.GetAnimals(cu.planetIndex)
+                : AnimalManager.Instance.GetActiveAnimals();
             foreach (var animal in animalSource)
             {
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
