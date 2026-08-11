@@ -19,6 +19,8 @@ public class CouncilProposalContext
     public Governor targetGovernor;
     /// <summary>Foreign civilization involved (e.g. war target), when relevant.</summary>
     public Civilization targetCivilization;
+    public ReligionData targetReligion;
+    public ReligionProposalType religionProposalType;
     /// <summary>Optional numeric context (e.g. tax delta) where relevant.</summary>
     public float numericContext;
     /// <summary>Human-readable proposal description shown in vote summaries.</summary>
@@ -166,12 +168,14 @@ public static class CouncilVoteService
         if ((proposal.domains & VetoDomain.Religion) != VetoDomain.None
             && !voter.HasPersonality(PersonalityTrait.Cynical))
         {
-            bool mismatch = civ.foundedReligion != null
-                && voter.PersonalReligion != null
-                && voter.PersonalReligion != civ.foundedReligion;
             float zeal = voter.HasPersonality(PersonalityTrait.Zealous) ? 2f : 1f;
-            if (mismatch) Add("Follows a different faith", -20f * zeal);
-            else if (voter.HasPersonality(PersonalityTrait.Zealous)) Add("Zealous for the state faith", 15f);
+            if (voter.specialization == Governor.Specialization.Religious) zeal *= 1.35f;
+            if (proposal.religionProposalType == ReligionProposalType.AdoptStateReligion && proposal.targetReligion != null)
+                Add("Personal faith and proposed state faith", voter.PersonalReligion == proposal.targetReligion ? 22f * zeal : -18f * zeal);
+            else if (proposal.religionProposalType == ReligionProposalType.RelaxReligiousRestrictions)
+                Add("Religious treatment", voter.PersonalReligion != civ.StateReligion ? 22f * zeal : -5f * zeal);
+            else if (proposal.religionProposalType == ReligionProposalType.ForceConversion)
+                Add("Forced religious conformity", voter.PersonalReligion == civ.StateReligion ? 10f * zeal : -30f * zeal);
         }
 
         // Title revocation: direct personal stake dominates everything else.
@@ -210,6 +214,11 @@ public static class CouncilVoteService
                     Add("Faction demands repeal", proposal.policyIsRevocation ? 50f : -50f);
                 if (demand.type == FactionDemandType.ChangeGovernment && demand.targetGovernment == proposal.targetGovernment && proposal.targetGovernment != null)
                     Add("Faction demands this government", 50f);
+                if (demand.type == FactionDemandType.AdoptStateReligion && demand.targetReligion == proposal.targetReligion && proposal.targetReligion != null)
+                    Add("Faction demands this state faith", 50f);
+                if ((demand.type == FactionDemandType.GrantReligiousFreedom || demand.type == FactionDemandType.EndForcedConversion)
+                    && proposal.religionProposalType == ReligionProposalType.RelaxReligiousRestrictions)
+                    Add("Faction demands religious freedom", 50f);
             }
         }
 

@@ -45,6 +45,19 @@ public class Governor
     // --- Political Identity ---
     /// <summary>Governor's personal religion. May differ from civ's state religion.</summary>
     public ReligionData PersonalReligion { get; set; }
+
+    /// <summary>Explicit conversion path; never called as a random per-turn reroll.</summary>
+    public bool TryConvertReligion(ReligionData religion, bool forced, out string failureReason)
+    {
+        failureReason = null;
+        if (religion == null) { failureReason = "A target religion is required."; return false; }
+        if (religion == PersonalReligion) return true;
+        if (!forced && HasPersonality(PersonalityTrait.Zealous) && !HasPersonality(PersonalityTrait.Cynical))
+        { failureReason = "This zealous governor refuses voluntary conversion."; return false; }
+        PersonalReligion = religion;
+        if (forced) AddGrievance(GrievanceSource.ReligionForced);
+        return true;
+    }
     /// <summary>Governor's personal culture. May differ from the civ's dominant culture.</summary>
     public CultureData PersonalCulture { get; set; }
     /// <summary>
@@ -540,4 +553,4 @@ public class PromotionBonus
     public int additionalFaithBonus;
     public int additionalCombatBonus;
     public int additionalCityDefenseBonus;
-} 
+}

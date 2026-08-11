@@ -80,7 +80,7 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     private void HandleTurnChanged(Civilization civ, int turn)
     {
-        if (civ == null || !civ.hasFoundedReligion || civ.foundedReligion == null)
+        if (civ == null)
             return;
             
         // Process Holy Site pressure for this civ's religion
@@ -115,8 +115,19 @@ public class ReligionManager : MonoBehaviour
 
             foreach (int tileIndex in holySiteTiles)
             {
-                ts.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
-                SpreadPressure(ts, tileIndex, civ.foundedReligion);
+                // Holy sites carry their own faith: capture never silently converts them.
+                var sourceReligion = ts.GetHolySiteReligion(tileIndex);
+                if (sourceReligion == null) continue;
+                ts.AddReligionPressure(tileIndex, sourceReligion, holySitePressurePerTurn);
+                SpreadPressure(ts, tileIndex, sourceReligion);
+            }
+
+            // A stable city majority is a weaker bounded source, allowing adopted foreign faiths to spread.
+            var majority = GetCityMajorityReligion(city);
+            if (majority != null)
+            {
+                ts.AddReligionPressure(centerTileIndex, majority, holySitePressurePerTurn * .2f);
+                SpreadPressure(ts, centerTileIndex, majority, .2f);
             }
         }
     }
@@ -165,7 +176,7 @@ public class ReligionManager : MonoBehaviour
     /// <summary>
     /// Spreads religious pressure from a Holy Site to nearby tiles
     /// </summary>
-    private void SpreadPressure(TileSystem ts, int sourceTileIndex, ReligionData religion)
+    private void SpreadPressure(TileSystem ts, int sourceTileIndex, ReligionData religion, float strength = 1f)
     {
         if (ts == null || !ts.IsReady())
             return;
@@ -182,7 +193,7 @@ public class ReligionManager : MonoBehaviour
 
             if (currentDist > 0) // Don't apply pressure to the source tile itself
             {
-                float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
+                float pressure = (holySitePressurePerTurn - (currentDist * pressureDecayPerTile)) * strength;
                 if (pressure > 0)
                 {
                     ts.AddReligionPressure(currentIndex, religion, pressure);
@@ -399,4 +410,4 @@ public class ReligionManager : MonoBehaviour
         
         return majorityReligion;
     }
-} 
+}

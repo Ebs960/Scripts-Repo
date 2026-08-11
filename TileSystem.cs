@@ -47,6 +47,7 @@ public class TileSystem : MonoBehaviour
     private List<ReligionPressureEntry>[] religionPressures; // per-tile list
     private bool[] holySiteFlags;                                // per-tile holy site marker
     private DistrictData[] holySiteDistrict;                     // district placed at holy site (optional)
+    private ReligionData[] holySiteReligions;                    // identity survives capture/owner changes
 
     [Header("Planet References")]
     [SerializeField] private PlanetGenerator planetRef;          // primary planet (single-planet scope)
@@ -154,6 +155,7 @@ public class TileSystem : MonoBehaviour
                 religionPressures = null;
             }
             holySiteFlags = null;
+            holySiteReligions = null;
             holySiteDistrict = null;
             
             // Clear dirty tracking
@@ -482,6 +484,7 @@ public class TileSystem : MonoBehaviour
         religionPressures = new List<ReligionPressureEntry>[tileCount];
         holySiteFlags = new bool[tileCount];
         holySiteDistrict = new DistrictData[tileCount];
+        holySiteReligions = new ReligionData[tileCount];
     }
     #endregion
 
@@ -1028,7 +1031,14 @@ public class TileSystem : MonoBehaviour
         if (!isReady || tile < 0 || tile >= holySiteFlags.Length) return;
         holySiteFlags[tile] = isHolySite;
         holySiteDistrict[tile] = isHolySite ? district : null;
+        if (!isHolySite && holySiteReligions != null) holySiteReligions[tile] = null;
     }
+
+    public void SetHolySiteReligion(int tile, ReligionData religion)
+    { if (isReady && tile >= 0 && holySiteReligions != null && tile < holySiteReligions.Length && HasHolySite(tile)) holySiteReligions[tile] = religion; }
+
+    public ReligionData GetHolySiteReligion(int tile)
+    { return !isReady || tile < 0 || holySiteReligions == null || tile >= holySiteReligions.Length ? null : holySiteReligions[tile]; }
 
     public bool HasHolySite(int tile)
     { return isReady && tile >= 0 && holySiteFlags != null && tile < holySiteFlags.Length && holySiteFlags[tile]; }
@@ -1202,6 +1212,7 @@ public class TileSystem : MonoBehaviour
             }
         }
         holySiteFlags = null;
+        holySiteReligions = null;
         holySiteDistrict = null;
     }
 }

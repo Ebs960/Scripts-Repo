@@ -626,7 +626,7 @@ if (UIManager.Instance != null)
 
     public float GetNonStateReligionFollowerCount()
     {
-        if (owner == null || !owner.hasFoundedReligion || owner.foundedReligion == null)
+        if (owner == null || owner.StateReligion == null)
             return 0f;
 
         var ts = TileSys;
@@ -670,7 +670,7 @@ if (UIManager.Instance != null)
         foreach (var kvp in pressureByReligion)
         {
             totalPressure += kvp.Value;
-            if (kvp.Key != owner.foundedReligion)
+            if (kvp.Key != owner.StateReligion)
                 nonStatePressure += kvp.Value;
         }
 
@@ -682,7 +682,7 @@ if (UIManager.Instance != null)
 
     public int CalculateNonStateReligionUnhappinessPerTurn()
     {
-        if (owner == null || !owner.hasFoundedReligion || owner.foundedReligion == null)
+        if (owner == null || owner.StateReligion == null)
             return 0;
 
         float nonStateFollowers = GetNonStateReligionFollowerCount();
@@ -982,7 +982,8 @@ if (UIManager.Instance != null)
         float happinessLoyaltyModifier = (happinessRatio - 0.5f) * 20f;
         float orderLoyaltyModifier = (orderRatio - 0.5f) * 30f;
 
-        loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus + happinessLoyaltyModifier + orderLoyaltyModifier;
+        float religionLoyaltyModifier = ReligionPoliticsService.GetCityReligionLoyaltyModifier(this);
+        loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus + happinessLoyaltyModifier + orderLoyaltyModifier + religionLoyaltyModifier;
 
         // Clamp 0–100
         loyalty = Mathf.Clamp(loyalty, 0f, 100f);
@@ -1841,7 +1842,7 @@ if (UIManager.Instance != null)
             return false;
             
         // Check if we have a founded religion
-        if (!owner.hasFoundedReligion || owner.foundedReligion == null)
+        if (owner.StateReligion == null)
         {
             Debug.LogWarning("Cannot purchase religious unit - no founded religion!");
             return false;
@@ -2270,9 +2271,13 @@ Destroy(oldTuple.instance);
             if (district.isHolySite)
             {
                 ts.SetHolySite(tileIndex, true, district);
-                if (owner.hasFoundedReligion && owner.foundedReligion != null)
+                if (owner.StateReligion != null)
                 {
-                    ts.AddReligionPressure(tileIndex, owner.foundedReligion, 100f);
+                    ts.SetHolySiteReligion(tileIndex, owner.StateReligion);
+                }
+                if (owner.StateReligion != null)
+                {
+                    ts.AddReligionPressure(tileIndex, owner.StateReligion, 100f);
                 }
             }
             // Update the tile data (district placement)
@@ -3227,8 +3232,8 @@ Destroy(oldTuple.instance);
         foreach (var pantheonBonuses in owner?.EnumeratePantheonBonuses() ?? System.Linq.Enumerable.Empty<PantheonBonuses>())
             Scan(pantheonBonuses?.buildingYieldBonuses);
 
-        if (owner != null && owner.hasFoundedReligion)
-            Scan(owner.foundedReligion?.buildingYieldBonuses);
+        if (owner != null && owner.StateReligion != null)
+            Scan(owner.StateReligion?.buildingYieldBonuses);
 
         if (owner != null)
         {
@@ -3287,8 +3292,8 @@ Destroy(oldTuple.instance);
         foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
             Scan(pantheonBonuses?.cityYieldBonuses);
 
-        if (owner.hasFoundedReligion)
-            Scan(owner.foundedReligion?.cityBonuses);
+        if (owner.StateReligion != null)
+            Scan(owner.StateReligion?.cityBonuses);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
@@ -3386,8 +3391,8 @@ Destroy(oldTuple.instance);
         foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
             Scan(pantheonBonuses?.buildingYieldBonuses);
 
-        if (owner.hasFoundedReligion)
-            Scan(owner.foundedReligion?.buildingYieldBonuses);
+        if (owner.StateReligion != null)
+            Scan(owner.StateReligion?.buildingYieldBonuses);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
@@ -3419,9 +3424,9 @@ Destroy(oldTuple.instance);
                     AddTileBonus(ref agg, bonus, kind);
         }
 
-        if (owner.hasFoundedReligion && owner.foundedReligion?.tileYieldBonuses != null)
+        if (owner.StateReligion != null && owner.StateReligion?.tileYieldBonuses != null)
         {
-            foreach (var bonus in owner.foundedReligion.tileYieldBonuses)
+            foreach (var bonus in owner.StateReligion.tileYieldBonuses)
                 if (MatchesTileYieldBonus(tile, bonus))
                     AddTileBonus(ref agg, bonus, kind);
         }
@@ -3573,8 +3578,8 @@ Destroy(oldTuple.instance);
         foreach (var pantheonBonuses in owner.EnumeratePantheonBonuses())
             Scan(pantheonBonuses?.cityYieldBonuses);
 
-        if (owner.hasFoundedReligion)
-            Scan(owner.foundedReligion?.cityBonuses);
+        if (owner.StateReligion != null)
+            Scan(owner.StateReligion?.cityBonuses);
 
         foreach (var belief in owner.EnumerateActiveBeliefs())
         {
@@ -4224,8 +4229,8 @@ Destroy(oldTuple.instance);
                 if (tileData == null) continue;
                 var adjacentTiles = ts.GetNeighbors(tileIndex);
                 faith += Mathf.RoundToInt(adjacentTiles.Length * district.adjacencyBonusPerAdjacentTile);
-                ReligionData dominantReligion = owner.hasFoundedReligion && owner.foundedReligion != null
-                    ? owner.foundedReligion
+                ReligionData dominantReligion = owner.StateReligion != null
+                    ? owner.StateReligion
                     : ts.GetDominantReligion(tileIndex);
             }
         }

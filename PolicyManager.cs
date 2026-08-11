@@ -144,7 +144,7 @@ public class PolicyManager : MonoBehaviour
             foreach (var req in g.requiredCultures)
                 if (req != null && !civ.researchedCultures.Contains(req)) return false;
         if (civ.cities == null || civ.cities.Count < g.requiredCityCount) return false;
-        if (g.requiresStateReligion && civ.foundedReligion == null) return false;
+        if (g.requiresStateReligion && civ.StateReligion == null) return false;
         if (g.requiredVassalCount > 0 && civ.ActiveVassalCount < g.requiredVassalCount) return false;
         return true;
     }

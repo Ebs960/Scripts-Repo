@@ -1330,6 +1330,26 @@ public class CivilizationManager : MonoBehaviour
         var leader = civ.leader;
         float religionWeight = leader != null ? leader.religiousFocus : 1f;
 
+        // State-faith adoption weighs both popular and elite support, rather than raw pressure alone.
+        if (ReligionManager.Instance != null && civ.cities != null && civ.cities.Count > 0)
+        {
+            var citySupport = civ.cities.Where(c => c != null)
+                .Select(c => ReligionManager.Instance.GetCityMajorityReligion(c))
+                .Where(r => r != null).GroupBy(r => r)
+                .OrderByDescending(g => g.Count()).FirstOrDefault();
+            if (citySupport != null && citySupport.Key != civ.StateReligion
+                && citySupport.Count() * 3 >= civ.cities.Count * 2)
+            {
+                float totalPower = civ.governors?.Where(g => g != null).Sum(g => g.PowerRank) ?? 0f;
+                float supportingPower = civ.governors?.Where(g => g != null && g.PersonalReligion == citySupport.Key).Sum(g => g.PowerRank) ?? 0f;
+                bool entrenchedTheocracy = civ.currentGovernment != null && civ.currentGovernment.requiresStateReligion
+                    && civ.governors.Any(g => g != null && g.PersonalReligion == civ.StateReligion && g.HasPersonality(PersonalityTrait.Zealous));
+                if (!entrenchedTheocracy && (totalPower <= 0f || supportingPower >= totalPower * .5f))
+                    ReligionPoliticsService.TrySetStateReligion(civ, citySupport.Key,
+                        StateReligionChangeReason.AIDecision, true, out _);
+            }
+        }
+
         // ── 1. Found a Pantheon if we have none (or can found more) ──
         if (civ.CanFoundMorePantheons() && ReligionManager.Instance != null)
         {
@@ -1389,7 +1409,7 @@ public class CivilizationManager : MonoBehaviour
             AssignStrategicCustomBeliefs(civ);
 
         // ── 4. Purchase Missionaries / Apostles when faith is high enough ──
-        if (civ.hasFoundedReligion && civ.foundedReligion != null)
+        if (civ.StateReligion != null)
         {
             // Find available religious unit data from the combat unit pool
             var allCombatUnits = ResourceCache.GetAllCombatUnits();
@@ -1441,7 +1461,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // ── 5. Direct Missionaries toward unconverted cities ──
-        if (civ.combatUnits != null && civ.hasFoundedReligion && civ.foundedReligion != null)
+        if (civ.combatUnits != null && civ.StateReligion != null)
         {
             foreach (var unit in civ.combatUnits)
             {
@@ -1462,7 +1482,7 @@ public class CivilizationManager : MonoBehaviour
                     // Close enough: spread religion (add pressure to target city tiles)
                     if (ReligionManager.Instance != null)
                     {
-                        ts.AddReligionPressure(targetCity.centerTileIndex, civ.foundedReligion, relData.spreadPressureAmount);
+                        ts.AddReligionPressure(targetCity.centerTileIndex, civ.StateReligion, relData.spreadPressureAmount);
                     }
                     unit.ConsumeAction();
                 }
@@ -1716,7 +1736,7 @@ public class CivilizationManager : MonoBehaviour
                 if (city.planetIndex != missionary.planetIndex) continue;
 
                 var majorityReligion = ReligionManager.Instance.GetCityMajorityReligion(city);
-                if (majorityReligion == civ.foundedReligion) continue; // Already converted
+                if (majorityReligion == civ.StateReligion) continue; // Already converted
 
                 int dist = ts.GetTileDistance(missionary.currentTileIndex, city.centerTileIndex);
                 float score = 100f - dist * 2f; // Prefer closer cities

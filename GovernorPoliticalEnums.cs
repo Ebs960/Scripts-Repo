@@ -61,9 +61,39 @@ public enum FactionDemandType
     ChangeGovernment,      // Transition to a different government type
     ReduceTaxation,        // Lower civ-wide gold/yield drain on subjects
     GrantReligiousFreedom, // Remove forced-religion grievance effects
+    AdoptStateReligion,    // Adopt the demand's non-null targetReligion
+    EndForcedConversion,   // End coercion and retain the faction's faith
     RecognizeSuccessor,    // Acknowledge a succession claim
     ReturnTerritory,       // Re-assign a previously reassigned city back to the faction leader
     DeclareIndependence,   // Separatist ultimatum before rebellion
+}
+
+public enum ReligiousFactionGoal
+{
+    EstablishOurReligion,
+    DefendStateReligion,
+    DemandTolerance,
+    EndForcedConversion,
+}
+
+public enum ReligionProposalType
+{
+    None,
+    AdoptStateReligion,
+    RemoveStateReligion,
+    RelaxReligiousRestrictions,
+    ForceConversion,
+}
+
+public enum StateReligionChangeReason
+{
+    Founding,
+    VoluntaryAdoption,
+    PoliticalDemand,
+    Event,
+    ForcedSubjectConversion,
+    PlayerDecision,
+    AIDecision,
 }
 
 /// <summary>

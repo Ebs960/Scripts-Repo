@@ -203,9 +203,9 @@ public static class PoliticalPreferenceScorer
     {
         if (modifiers == null || modifiers.Length == 0 || governor == null || civ == null) return 0f;
 
-        bool mismatched = civ.foundedReligion != null
+        bool mismatched = civ.StateReligion != null
             && governor.PersonalReligion != null
-            && civ.foundedReligion != governor.PersonalReligion;
+            && civ.StateReligion != governor.PersonalReligion;
         if (!mismatched) return 0f;
 
         // Negative modifiers reduce the penalty on non-state believers = more tolerant.

@@ -340,7 +340,7 @@ public class DiplomacyUI : MonoBehaviour
         if (scienceProgressText != null)
             scienceProgressText.text = $"Tech Age: {selectedCiv.currentTech?.techAge.ToString().Replace("Age", " Age") ?? "None"}";
         if (faithStatusText != null)
-            faithStatusText.text = $"Religion: {(selectedCiv.hasFoundedReligion ? selectedCiv.foundedReligion.religionName : "None")}";
+            faithStatusText.text = $"State Religion: {(selectedCiv.StateReligion != null ? selectedCiv.StateReligion.religionName : "None")}";
         if (governmentText != null)
             governmentText.text = $"Government: {selectedCiv.currentGovernment?.governmentName ?? "None"}";
     }

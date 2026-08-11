@@ -428,10 +428,10 @@ public class UnitVisionManager : MonoBehaviour
             AddWorkerBonuses(belief?.workerBonuses);
         }
 
-        if (civ.foundedReligion != null)
+        if (civ.StateReligion != null)
         {
-            AddUnitBonuses(civ.foundedReligion.unitBonuses);
-            AddWorkerBonuses(civ.foundedReligion.workerBonuses);
+            AddUnitBonuses(civ.StateReligion.unitBonuses);
+            AddWorkerBonuses(civ.StateReligion.workerBonuses);
         }
 
         var cityContext = GetUnitCityContext(unit);
