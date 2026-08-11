@@ -45,7 +45,7 @@ public class TradeNetworkManager : MonoBehaviour
     }
 
     private void HandleImprovementChanged(Civilization owner, ImprovementData data, int tileIndex, int planetIndex) => MarkDirty();
-    private void HandleImprovementRemoved(Civilization owner, ImprovementData data, int tileIndex, int planetIndex, ImprovementRemovalReason reason) => MarkDirty();
+    private void HandleImprovementRemoved(Civilization owner, ImprovementData data, int tileIndex, int planetIndex, ImprovementManager.ImprovementRemovalReason reason) => MarkDirty();
 
     /// <summary>Forces the next registry access to perform a full topology rebuild (new/removed trade node, ownership change, etc.).</summary>
     public void MarkDirty()
