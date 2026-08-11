@@ -14,6 +14,8 @@ public class TradeNetworkManager : MonoBehaviour
     private readonly Dictionary<int, TradeRoute> routesById = new Dictionary<int, TradeRoute>();
     private readonly Dictionary<int, HashSet<int>> routeIdsByNodeId = new Dictionary<int, HashSet<int>>();
     private readonly Dictionary<int, HashSet<int>> routeIdsByPlanet = new Dictionary<int, HashSet<int>>();
+    private readonly Dictionary<int, HashSet<int>> nodeIdsByPlanet = new Dictionary<int, HashSet<int>>();
+    private readonly HashSet<int> gatewayNodeIds = new HashSet<int>();
     private bool isRebuildingRegistry;
     private bool registryDirty = true;
     // Dev diagnostics (mirrors AIPlanner/DangerMap counters) for PerformanceBenchmarkRunner.
@@ -74,6 +76,7 @@ public class TradeNetworkManager : MonoBehaviour
         {
             allTradeNodes.Clear();
             nodesById.Clear();
+            nodeIdsByPlanet.Clear(); gatewayNodeIds.Clear();
             IEnumerable<Civilization> civs = CivilizationManager.Instance != null
                 ? CivilizationManager.Instance.GetAllCivs()
                 : FindObjectsByType<Civilization>();
@@ -205,6 +208,8 @@ public class TradeNetworkManager : MonoBehaviour
         if (n == null || n.nodeId == 0) return;
         bool changed = !nodesById.TryGetValue(n.nodeId, out var old) || !NodeTopologyEquals(old, n);
         nodesById[n.nodeId] = n;
+        if (old != null) UnindexNode(old);
+        IndexNode(n);
         int i = allTradeNodes.FindIndex(x => x.nodeId == n.nodeId);
         if (i >= 0) allTradeNodes[i] = n; else allTradeNodes.Add(n);
         if (!isRebuildingRegistry && changed) { IncrementalNodeUpdateCount++; RevalidateRoutesAffectedByNode(n.nodeId, n.location.planetId); }
@@ -213,6 +218,7 @@ public class TradeNetworkManager : MonoBehaviour
     private bool RemoveNode(int nodeId)
     {
         if (!nodesById.TryGetValue(nodeId, out var node)) return false;
+        UnindexNode(node);
         nodesById.Remove(nodeId); allTradeNodes.RemoveAll(n => n != null && n.nodeId == nodeId);
         IncrementalNodeUpdateCount++; RevalidateRoutesAffectedByNode(nodeId, node.location.planetId); return true;
     }
@@ -223,6 +229,28 @@ public class TradeNetworkManager : MonoBehaviour
         a.maritimeTradeRange == b.maritimeTradeRange && a.airTradeRange == b.airTradeRange && a.orbitTradeRange == b.orbitTradeRange &&
         a.solarSpaceTradeRange == b.solarSpaceTradeRange && a.canOriginateRoutes == b.canOriginateRoutes &&
         a.canReceiveRoutes == b.canReceiveRoutes && a.canRelayRoutes == b.canRelayRoutes;
+
+    private void IndexNode(TradeNodeRuntime node)
+    {
+        if (!nodeIdsByPlanet.TryGetValue(node.location.planetId, out var ids)) nodeIdsByPlanet[node.location.planetId] = ids = new HashSet<int>();
+        ids.Add(node.nodeId);
+        if (node.isPlanetaryGateway || node.isOrbitalGateway) gatewayNodeIds.Add(node.nodeId);
+    }
+
+    private void UnindexNode(TradeNodeRuntime node)
+    {
+        if (nodeIdsByPlanet.TryGetValue(node.location.planetId, out var ids)) ids.Remove(node.nodeId);
+        gatewayNodeIds.Remove(node.nodeId);
+    }
+
+    private IEnumerable<TradeNodeRuntime> EnumerateConnectionCandidates(TradeNodeRuntime node)
+    {
+        var emitted = new HashSet<int>();
+        if (nodeIdsByPlanet.TryGetValue(node.location.planetId, out var local))
+            foreach (int id in local) if (emitted.Add(id) && nodesById.TryGetValue(id, out var candidate)) yield return candidate;
+        if (node.isPlanetaryGateway || node.isOrbitalGateway)
+            foreach (int id in gatewayNodeIds) if (emitted.Add(id) && nodesById.TryGetValue(id, out var candidate)) yield return candidate;
+    }
     public int GetCityNodeId(City c) => c != null ? StableTradeNodeId(TradeNodeType.City, 0, c.planetIndex, c.centerTileIndex, -1, c.cityName) : 0;
     public int GetImprovementNodeId(ImprovementInstance i) => i != null ? StableTradeNodeId(i.data != null ? i.data.tradeNodeCapability.nodeType : TradeNodeType.TradePost, 0, i.PlanetIndex, i.tileIndex, i.spaceTileIndex, i.data != null ? i.data.name : null) : 0;
 
@@ -286,7 +314,7 @@ public class TradeNetworkManager : MonoBehaviour
         nodesById.TryGetValue(sourceId, out var source); nodesById.TryGetValue(destId, out var dest); if (source == null || dest == null) return null;
         var parent = new Dictionary<int,int>(); var segs = new Dictionary<int,TradeRouteSegment>(); var q = new Queue<int>(); q.Enqueue(sourceId); parent[sourceId] = 0;
         while (q.Count > 0 && !parent.ContainsKey(destId))
-        { int cur = q.Dequeue(); if (!nodesById.TryGetValue(cur, out var curNode)) continue; foreach (var next in allTradeNodes) if (!parent.ContainsKey(next.nodeId) && TryBuildSegment(curNode, next, enforceCapacity, out var seg)) { if (next.nodeId != destId && !next.canRelayRoutes) continue; parent[next.nodeId]=cur; segs[next.nodeId]=seg; q.Enqueue(next.nodeId); } }
+        { int cur = q.Dequeue(); if (!nodesById.TryGetValue(cur, out var curNode)) continue; foreach (var next in EnumerateConnectionCandidates(curNode)) if (!parent.ContainsKey(next.nodeId) && TryBuildSegment(curNode, next, enforceCapacity, out var seg)) { if (next.nodeId != destId && !next.canRelayRoutes) continue; parent[next.nodeId]=cur; segs[next.nodeId]=seg; q.Enqueue(next.nodeId); } }
         var route = new TradeRoute { routeId = preview ? 0 : nextRouteId, ownerCivilizationId = owner != null ? owner.GetRuntimeId() : source.ownerCivilizationId, sourceNodeId = sourceId, destinationNodeId = destId, sourceCity = source.city, destinationCity = dest.city, tradingCivilization = owner, originPlanetIndex = source.location.planetId, destinationPlanetIndex = dest.location.planetId, isInterplanetaryRoute = source.location.planetId != dest.location.planetId };
         if (!parent.ContainsKey(destId)) { route.suspended = true; route.suspensionReason = TradeSuspensionReason.InvalidPath; return route; }
         var chain = new List<int>(); for (int n = destId; n != 0 && n != sourceId; n = parent[n]) chain.Add(n); chain.Reverse();
@@ -376,6 +404,12 @@ public class TradeNetworkManager : MonoBehaviour
         int aid = a.GetRuntimeId(), bid = b.GetRuntimeId();
         foreach (var route in activeRoutes.Where(r => r != null && (r.ownerCivilizationId == aid || r.ownerCivilizationId == bid)).ToArray())
             RevalidateAndReroute(route);
+    }
+
+    public void NotifyCivilizationTradeModifiersChanged(Civilization civilization)
+    {
+        if (civilization?.cities == null) return;
+        foreach (var city in civilization.cities) if (city != null) UpdateCityNode(city);
     }
 
     private int GetRangeForDomain(TradeNodeRuntime node, TradeMapDomain domain)

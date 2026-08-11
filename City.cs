@@ -2071,6 +2071,8 @@ if (UIManager.Instance != null)
             case BuildingData b:
                 AddBuilding(b);
                 OnBuildingCompleted?.Invoke(this, b);
+                if (b != null && (b.providesHarbor || b.providesAirport || b.providesSpaceport || (b.tradeNodeCapability != null && b.tradeNodeCapability.providesTradeNode)))
+                    TradeNetworkManager.Instance?.UpdateCityNode(this);
                 
                 // Award governor experience for building construction
                 if (governor != null)
@@ -2149,6 +2151,7 @@ Destroy(oldTuple.instance);
             // Remove from list
             builtBuildings.RemoveAll(tuple => tuple.data == b.replacesBuilding || tuple.data?.replacesBuilding == b.replacesBuilding);
             OnBuildingRemoved?.Invoke(this, b.replacesBuilding, BuildingRemovalReason.Replaced);
+            TradeNetworkManager.Instance?.UpdateCityNode(this);
         }
 
         if (!CanFitBuildingInAnyAllowedSlot(b))
@@ -2231,6 +2234,7 @@ Destroy(oldTuple.instance);
         built.data.RefundDismantleCosts(owner);
         try { LimitManager.Instance?.RemoveBuilding(owner, built.data); } catch { }
         OnBuildingRemoved?.Invoke(this, built.data, BuildingRemovalReason.Dismantled);
+        TradeNetworkManager.Instance?.UpdateCityNode(this);
         return true;
     }
     

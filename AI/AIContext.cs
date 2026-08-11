@@ -48,6 +48,9 @@ public class AIContext
     private int _cachedFogTiles;
     private readonly Dictionary<int, TileSystem> _subscribedTileSystems = new();
     private readonly Dictionary<int, System.Action<int, List<int>>> _fogHandlers = new();
+    private readonly Dictionary<int, System.Action<int, int, int>> _ownerHandlers = new();
+    private readonly Dictionary<int, System.Action<int, ResourceData, ResourceData>> _resourceHandlers = new();
+    private Civilization _subscribedCiv;
 
     /// <summary>Invalidates exploration, resource and settlement caches after a world mutation.</summary>
     public void MarkStaticDomainsDirty() => _staticDomainsDirty = true;
@@ -101,6 +104,7 @@ public class AIContext
     public void Build(Civilization civ, Dictionary<int, DangerMap> dangerMaps, AiBudget budget = null)
     {
         _budget = budget;
+        SubscribeToCivilization(civ);
         Civ = civ;
         TurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
 
@@ -179,6 +183,23 @@ public class AIContext
         ts.OnFogChanged += handler;
         _subscribedTileSystems[planetIndex] = ts;
         _fogHandlers[planetIndex] = handler;
+        System.Action<int, int, int> ownerHandler = (tile, oldOwner, newOwner) => MarkStaticDomainsDirty();
+        System.Action<int, ResourceData, ResourceData> resourceHandler = (tile, oldResource, newResource) => MarkStaticDomainsDirty();
+        ts.OnTileOwnerChanged += ownerHandler;
+        ts.OnTileResourceChanged += resourceHandler;
+        _ownerHandlers[planetIndex] = ownerHandler;
+        _resourceHandlers[planetIndex] = resourceHandler;
+    }
+
+    private void SubscribeToCivilization(Civilization civ)
+    {
+        if (civ == null || _subscribedCiv == civ) return;
+        _subscribedCiv = civ;
+        civ.OnCityFounded += (owner, city) => MarkStaticDomainsDirty();
+        civ.OnTechResearched += tech => MarkStaticDomainsDirty();
+        civ.OnPolicyAdopted += (owner, policy) => MarkStaticDomainsDirty();
+        civ.OnGovernmentChanged += (owner, government) => MarkStaticDomainsDirty();
+        civ.OnUnlocksChanged += MarkStaticDomainsDirty;
     }
 
     // ──────────────── Collect planets ────────────────

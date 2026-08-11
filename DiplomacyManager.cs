@@ -483,6 +483,7 @@ public class DiplomacyManager : MonoBehaviour
 
         OnDiplomacyChanged?.Invoke(a, b, state);
         OnDiplomacyChanged?.Invoke(b, a, state);
+        if (oldState != state) TradeNetworkManager.Instance?.NotifyDiplomaticAccessChanged(a, b);
     }
 
     /// <summary>

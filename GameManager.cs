@@ -2525,6 +2525,7 @@ public class GameManager : MonoBehaviour
             workerUnits = new List<PauseMenuManager.WorkerUnitSaveData>(),
             civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>(),
             cities = new List<PauseMenuManager.CitySaveData>(),
+            ecologyStates = AnimalManager.Instance != null ? AnimalManager.Instance.ExportEcologyStates() : new List<AnimalManager.PlanetEcologyState>(),
             participantStates = new List<PauseMenuManager.SaveParticipantStateData>()
         };
 
@@ -2933,6 +2934,7 @@ public class GameManager : MonoBehaviour
 
         // Wait a frame so that managers/units created in FindCoreManagersInScene have Awake/Start called
         yield return null;
+        AnimalManager.Instance?.ImportEcologyStates(saveData.ecologyStates);
 
         // If CivilizationManager needs to restore player civ index, attempt to do so.
         // Prefer matching by saved civName (unambiguous, immune to any list-order differences
@@ -2979,6 +2981,10 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogWarning($"Failed to restore civilization progression: {e.Message}\n{e.StackTrace}");
         }
+
+        // Derived topology/presence indexes are rebuilt only after authoritative cities exist.
+        PlanetSimulationManager.RebuildPresenceCache();
+        TradeNetworkManager.Instance?.RebuildRegistry();
 
         // Import improvement manager assignments AFTER units are present and registered
         if (worldSnapshot.jobAssignments != null && worldSnapshot.jobAssignments.Count > 0)
