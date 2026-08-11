@@ -25,6 +25,7 @@ public static class ReligionPoliticsService
         }
         var old = civ.StateReligion;
         civ.SetStateReligionFromAuthority(religion);
+        PolicyManager.Instance?.RevalidateActivePolicies(civ);
         OnStateReligionChanged?.Invoke(civ, old, religion, reason);
         return true;
     }

@@ -2448,6 +2448,7 @@ public class Civilization : MonoBehaviour
             AddFaith(-faithCost);
 
         UpdateFaithYieldModifier();
+        PolicyManager.Instance?.RevalidateActivePolicies(this);
         RefreshVisionFromChangedSightBonuses();
         return true;
     }
@@ -2472,6 +2473,7 @@ public class Civilization : MonoBehaviour
                 if (updateModifiers)
                 {
                     UpdateFaithYieldModifier();
+                    PolicyManager.Instance?.RevalidateActivePolicies(this);
                     RefreshVisionFromChangedSightBonuses();
                 }
                 return true;
@@ -3642,6 +3644,7 @@ public class Civilization : MonoBehaviour
         activePolicies.Remove(p);
         RemovePolicyBonuses(p);
         RecalculateCachedYieldRates();
+        TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
         return true;
     }
 
@@ -3671,6 +3674,7 @@ public class Civilization : MonoBehaviour
         }
 
         RecalculateCachedYieldRates();
+        PolicyManager.Instance?.RevalidateActivePolicies(this);
         OnGovernmentChanged?.Invoke(this, g);
         TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
         // TODO: UI update, notifications
@@ -4065,6 +4069,7 @@ return false;
 
         // Recompute belief/faith modifiers and notify
         UpdateFaithYieldModifier();
+        PolicyManager.Instance?.RevalidateActivePolicies(this);
         OnPantheonFounded?.Invoke(this, pantheon);
         RefreshVisionFromChangedSightBonuses();
         return true;
@@ -4147,6 +4152,7 @@ return true;
 
         // Recompute belief-based modifiers
         UpdateFaithYieldModifier();
+        PolicyManager.Instance?.RevalidateActivePolicies(this);
         RefreshVisionFromChangedSightBonuses();
         OnPantheonFounded?.Invoke(this, god);
         return true;

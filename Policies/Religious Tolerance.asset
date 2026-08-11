@@ -24,6 +24,16 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredCityCount: 0
+  religiousRequirementGroups:
+  - requiresStateReligion: 1
+    anyStateReligions: []
+    anyPantheons: []
+    allowPantheonUpgradeDescendants: 1
+    useMinimumPantheonTier: 0
+    minimumPantheonTier: 0
+    anyBeliefs: []
+    anyBeliefCategories: []
+  additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -70,7 +80,9 @@ MonoBehaviour:
     defensePct: 0
     happinessPct: 0
 
-  nonStateReligionUnhappinessModifiers: []
+  nonStateReligionUnhappinessModifiers:
+  - unhappinessPerFollowerAdd: -0.25
+    unhappinessPct: -0.25
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 0
