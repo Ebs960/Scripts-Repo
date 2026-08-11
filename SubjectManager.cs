@@ -394,18 +394,19 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         var subject = contract?.subject;
         var overlord = contract?.overlord;
         if (subject == null || overlord == null) return;
-        if (!overlord.hasFoundedReligion || overlord.foundedReligion == null) return;
+        if (overlord.StateReligion == null) return;
 
-        bool changedReligion = subject.foundedReligion != overlord.foundedReligion || !subject.hasFoundedReligion;
-        subject.hasFoundedReligion = true;
-        subject.foundedReligion = overlord.foundedReligion;
+        bool changedReligion = subject.StateReligion != overlord.StateReligion;
+        ReligionPoliticsService.TrySetStateReligion(subject, overlord.StateReligion,
+            StateReligionChangeReason.ForcedSubjectConversion, false, out _);
 
         if (subject.governors != null)
         {
             foreach (var gov in subject.governors)
             {
                 if (gov == null) continue;
-                gov.PersonalReligion = overlord.foundedReligion;
+                if (gov.PersonalReligion != overlord.StateReligion)
+                    gov.AddGrievance(GrievanceSource.ReligionForced);
             }
         }
 
@@ -502,6 +503,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
         rebelCiv.hasFoundedReligion = subject.hasFoundedReligion;
         rebelCiv.foundedReligion = subject.foundedReligion;
+        ReligionPoliticsService.TrySetStateReligion(rebelCiv, subject.StateReligion, StateReligionChangeReason.Event, false, out _);
         rebelCiv.gold += subject.gold;
         rebelCiv.science += subject.science;
         rebelCiv.food += subject.food;

@@ -505,6 +505,9 @@ public class ReligionUI : MonoBehaviour
 
         var summary = new StringBuilder();
 
+        summary.AppendLine($"Founded Religion: {(playerCiv.foundedReligion != null ? playerCiv.foundedReligion.religionName : "None")}");
+        summary.AppendLine($"State Religion: {(playerCiv.StateReligion != null ? playerCiv.StateReligion.religionName : "None")}");
+
         if (playerCiv.hasFoundedReligion && playerCiv.foundedReligion != null && !string.IsNullOrWhiteSpace(playerCiv.foundedReligion.description))
             summary.AppendLine(playerCiv.foundedReligion.description.Trim());
 

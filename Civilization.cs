@@ -608,7 +608,12 @@ public class Civilization : MonoBehaviour
     public List<PantheonData> foundedPantheons = new List<PantheonData>();
     public ReligionData foundedReligion;
     public bool hasFoundedReligion;
-    [Tooltip("Base per-turn morale loss per citizen following a religion other than this civilization's founded state religion.")]
+    [SerializeField] private ReligionData stateReligion;
+    /// <summary>The currently sponsored faith; unlike foundedReligion this may be foreign or null.</summary>
+    public ReligionData StateReligion => stateReligion;
+    [Tooltip("Current domestic treatment of religions other than StateReligion.")]
+    public ReligionToleranceRule religiousTolerance = ReligionToleranceRule.FullTolerance;
+    [Tooltip("Base per-turn morale loss per citizen following a religion other than this civilization's current state religion.")]
     public float baseNonStateReligionUnhappinessPerFollower = 1f;
     // Pantheons/beliefs unlocked by adopted cultures (in addition to global available list)
     public List<PantheonData> cultureUnlockedPantheons = new List<PantheonData>();
@@ -879,6 +884,8 @@ public class Civilization : MonoBehaviour
         city.governor = governor;
         if (!governor.Cities.Contains(city))
             governor.Cities.Add(city);
+        if (governor.PersonalReligion == null)
+            governor.PersonalReligion = ReligionManager.Instance?.GetCityMajorityReligion(city) ?? StateReligion;
 
         // Refresh eligibility now that domain size changed
         governor.RefreshCouncilEligibility();
@@ -1066,7 +1073,17 @@ public class Civilization : MonoBehaviour
     {
         if (governors == null) return;
         foreach (var gov in governors)
-            gov?.TickOpinionForTurn(round);
+        {
+            if (gov == null) continue;
+            gov.TickOpinionForTurn(round);
+            float religionEffect = ReligionPoliticsService.GetGovernorReligionOpinionModifier(gov, this);
+            if (!Mathf.Approximately(religionEffect, 0f))
+                gov.AddOpinionModifier("State Religion", religionEffect, 1);
+            if (religiousTolerance == ReligionToleranceRule.ForcedConversion && StateReligion != null
+                && gov.PersonalReligion != null && gov.PersonalReligion != StateReligion
+                && !gov.Grievances.ContainsKey(GrievanceSource.ReligionForced))
+                gov.AddGrievance(GrievanceSource.ReligionForced);
+        }
     }
 
     // ── Noble Factions ────────────────────────────────────────────────────────
@@ -1173,11 +1190,18 @@ public class Civilization : MonoBehaviour
                         m.AddOpinionModifier("Tax Concession Granted", 10f, 15);
                     break;
                 case FactionDemandType.GrantReligiousFreedom:
+                case FactionDemandType.EndForcedConversion:
+                    religiousTolerance = ReligionToleranceRule.FullTolerance;
                     foreach (var m in bloc.Members)
                     {
                         m.ClearGrievance(GrievanceSource.ReligionForced);
                         m.AddOpinionModifier("Religious Freedom Granted", 15f, 25);
                     }
+                    break;
+                case FactionDemandType.AdoptStateReligion:
+                    if (demand.targetReligion == null || !ReligionPoliticsService.TrySetStateReligion(
+                            this, demand.targetReligion, StateReligionChangeReason.PoliticalDemand, true, out result.failureReason))
+                        return result;
                     break;
                 case FactionDemandType.AdoptPolicy:
                     if (demand.targetPolicy == null || PolicyManager.Instance == null
@@ -2189,8 +2213,8 @@ public class Civilization : MonoBehaviour
         foreach (var pantheonBonuses in EnumeratePantheonBonuses())
             Accumulate(pantheonBonuses?.nonStateReligionUnhappinessModifiers);
 
-        if (hasFoundedReligion)
-            Accumulate(foundedReligion?.nonStateReligionUnhappinessModifiers);
+        if (StateReligion != null)
+            Accumulate(StateReligion.nonStateReligionUnhappinessModifiers);
 
         foreach (var belief in EnumerateActiveBeliefs())
             if (belief != null && IsBeliefSeasonActive(belief, planetIndex))
@@ -4086,6 +4110,9 @@ return false;
         faith -= religion.faithCost;
         foundedReligion = religion;
         hasFoundedReligion = true;
+        // Founding and state sponsorship are distinct; founding initially adopts through the authority.
+        ReligionPoliticsService.TrySetStateReligion(this, religion, StateReligionChangeReason.Founding, false, out _);
+        tsHS?.SetHolySiteReligion(holySiteCity.centerTileIndex, religion);
         
         // Apply any additional faith yield modifiers
         UpdateFaithYieldModifier();
@@ -4097,6 +4124,15 @@ return false;
         }
         RefreshVisionFromChangedSightBonuses();
 return true;
+    }
+
+    internal void SetStateReligionFromAuthority(ReligionData religion) => stateReligion = religion;
+
+    /// <summary>Legacy-save migration: call after religion assets have been restored.</summary>
+    public void RestoreLegacyStateReligionIfMissing()
+    {
+        if (stateReligion == null && hasFoundedReligion && foundedReligion != null)
+            ReligionPoliticsService.TrySetStateReligion(this, foundedReligion, StateReligionChangeReason.Event, false, out _);
     }
 
     /// <summary>
@@ -4138,7 +4174,7 @@ return true;
     /// </summary>
     public bool PurchaseMissionary(ReligionUnitData missionaryData, City city)
     {
-        if (!hasFoundedReligion || foundedReligion == null)
+        if (StateReligion == null)
         {
 return false;
         }

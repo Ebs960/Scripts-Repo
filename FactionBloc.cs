@@ -18,6 +18,8 @@ public class FactionDemand
     public GovernmentData targetGovernment;
     /// <summary>Governor whose city should be returned, when relevant.</summary>
     public Governor targetGovernor;
+    /// <summary>Concrete faith targeted by religious demands; never null for adoption.</summary>
+    public ReligionData targetReligion;
     /// <summary>Turn on which this demand was issued (for expiry/escalation).</summary>
     public int issuedTurn;
     /// <summary>After this many turns of no response the faction escalates.</summary>
@@ -34,6 +36,8 @@ public class FactionBloc
     // ── Identity ──────────────────────────────────────────────────────────────
     public string FactionName { get; private set; }
     public FactionAlignment Alignment { get; private set; }
+    public ReligionData ReligiousIdentity { get; private set; }
+    public ReligiousFactionGoal ReligiousGoal { get; private set; }
 
     // ── Membership ────────────────────────────────────────────────────────────
     public Governor Leader { get; private set; }
@@ -45,10 +49,13 @@ public class FactionBloc
 
     // ─────────────────────────────────────────────────────────────────────────
 
-    public FactionBloc(string name, FactionAlignment alignment, Governor founder)
+    public FactionBloc(string name, FactionAlignment alignment, Governor founder,
+        ReligionData religiousIdentity = null, ReligiousFactionGoal religiousGoal = ReligiousFactionGoal.DemandTolerance)
     {
         FactionName = name;
         Alignment = alignment;
+        ReligiousIdentity = alignment == FactionAlignment.Religious ? (religiousIdentity ?? founder?.PersonalReligion) : null;
+        ReligiousGoal = religiousGoal;
         Leader = founder;
         Members.Add(founder);
         founder.Faction = this;
@@ -68,7 +75,9 @@ public class FactionBloc
         // Alignment compatibility
         return Alignment switch
         {
-            FactionAlignment.Religious  => gov.HasPersonality(PersonalityTrait.Zealous),
+            FactionAlignment.Religious  => gov.PersonalReligion != null && gov.PersonalReligion == ReligiousIdentity
+                && !gov.HasPersonality(PersonalityTrait.Cynical)
+                && (gov.HasPersonality(PersonalityTrait.Zealous) || gov.Grievances.ContainsKey(GrievanceSource.ReligionForced)),
             FactionAlignment.Separatist => gov.Opinion < -30f && gov.AmbitionScore > 50,
             FactionAlignment.Mercantile => gov.specialization == Governor.Specialization.Economic,
             _                           => gov.AmbitionScore > 30,
@@ -189,6 +198,11 @@ public class FactionBloc
 
             case FactionAlignment.Religious:
             {
+                if (ReligiousIdentity != null && ReligiousGoal == ReligiousFactionGoal.EstablishOurReligion
+                    && civ.StateReligion != ReligiousIdentity)
+                    return new FactionDemand { type = FactionDemandType.AdoptStateReligion,
+                        targetReligion = ReligiousIdentity, issuedTurn = currentTurn, expiryTurns = 5,
+                        description = $"The {FactionName} demands that {ReligiousIdentity.religionName} become the state religion." };
                 // Prefer a concrete faith-aligned policy or government.
                 var best = FindBestAdoptablePolicy(civ, out float bestScore, p => p.faithModifier > 0f || HasReligiousOpinionEffects(p));
                 if (best != null && bestScore >= MinPolicyDemandScore)
@@ -209,6 +223,7 @@ public class FactionBloc
                         issuedTurn = currentTurn,
                         expiryTurns = 5,
                         targetGovernor = Leader,
+                        targetReligion = ReligiousIdentity,
                     };
                 }
 
@@ -419,7 +434,7 @@ public class FactionBloc
            && policy.governorOpinionEffects.Any(e => e != null && e.onlyIfReligionMismatch);
 
     private static bool HasReligionMismatch(Governor gov, Civilization civ)
-        => civ.foundedReligion != null && gov.PersonalReligion != null && gov.PersonalReligion != civ.foundedReligion;
+        => civ.StateReligion != null && gov.PersonalReligion != null && gov.PersonalReligion != civ.StateReligion;
 
     /// <summary>
     /// Resolve a pending demand. If refused, adds grievances and may trigger rebellion.

@@ -50,8 +50,8 @@ public class GovernorOpinionEffect
         // Religion mismatch filter
         if (onlyIfReligionMismatch)
         {
-            bool mismatched = (civ.foundedReligion != null && gov.PersonalReligion != null &&
-                               civ.foundedReligion != gov.PersonalReligion);
+            bool mismatched = (civ.StateReligion != null && gov.PersonalReligion != null &&
+                               civ.StateReligion != gov.PersonalReligion);
             if (!mismatched) return false;
         }
 
