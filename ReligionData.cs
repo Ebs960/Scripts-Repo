@@ -1,4 +1,7 @@
 using UnityEngine;
+using UnityEngine.Serialization;
+
+public enum PantheonRequirementMode { None, Any, MinimumTier, Specific }
 
 [CreateAssetMenu(menuName="CivGame/Religion/Religion")]
 public class ReligionData : ScriptableObject
@@ -9,12 +12,20 @@ public class ReligionData : ScriptableObject
     public Sprite icon;
 
     [Header("Foundation")]
-    [Tooltip("Which Pantheon you must have first")]
-    public PantheonData requiredPantheon;
+    public PantheonRequirementMode pantheonRequirementMode;
+    public PantheonTier minimumPantheonTier = PantheonTier.God;
+    public PantheonData[] compatiblePantheons;
+    [FormerlySerializedAs("requiredPantheon")]
+    [SerializeField, HideInInspector] private PantheonData legacyRequiredPantheon;
     [Tooltip("Cultures that must be adopted before this religion becomes available.")]
     public CultureData[] requiredCultures;
     [Tooltip("Faith cost to found this Religion (in a Holy Site)")]
     public int faithCost;
+    public bool useMinimumAge;
+    public TechAge minimumAge;
+
+    public bool HasLegacyPantheon => legacyRequiredPantheon != null;
+    public void ClearLegacyPantheon() => legacyRequiredPantheon = null;
 
     [Header("Beliefs")]
     // Optional additional beliefs that can be added later
@@ -38,4 +49,4 @@ public class ReligionData : ScriptableObject
     // REMOVED: Unlocked Content arrays
     // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
     // Religious units should have ReligionData in their requiredTechs or requiredCultures
-} 
+}

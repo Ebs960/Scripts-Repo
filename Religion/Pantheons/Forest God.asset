@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Forest God
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Forest God
-  description: The god of the woods grants us all we need.
+  description: The sacred forest becomes both sanctuary and source of abundance.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 24
   possibleFounderBeliefs: []
   tier: 1
   legacyIsSpirit: 0

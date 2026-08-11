@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Moon Spirit
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Moon Spirit
-  description: The white ball in the sky blesses us
+  description: The moon marks the passing seasons and watches over the long night.
   icon: {fileID: 21300000, guid: 9c8b0aa1dc2aa20449ba6b9e78d3f2da, type: 3}
-  faithCost: 10
+  faithCost: 12
   possibleFounderBeliefs: []
   tier: 0
   canUpgradeToGod: 1

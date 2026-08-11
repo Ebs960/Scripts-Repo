@@ -31,7 +31,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  category: 0
+  category: 3
   exclusiveToPantheons:
   - {fileID: 11400000, guid: 646758db0e9301c4f89f721adb5747f1, type: 2}
   - {fileID: 11400000, guid: 596d9e32f08af9e43af44b23325c3d81, type: 2}

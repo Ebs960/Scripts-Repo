@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Cleansing Waters
   description: -10% chance of disease and +1 food from river and lake tiles.
   icon: {fileID: 21300000, guid: c9fb26ac38e21984d81fdeca486024d1, type: 3}
+  faithCost: 16
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

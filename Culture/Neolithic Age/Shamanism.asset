@@ -69,8 +69,8 @@ MonoBehaviour:
   cityCapIncrease: 0
   pantheonCapIncrease: 0
   unlocksPantheons:
-  - {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
-  - {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
+  - {fileID: 11400000, guid: db6f3fb99e2eb5b41a48f5f600eb5d67, type: 2}
+  - {fileID: 11400000, guid: 82795ae18808b8a449fc0d0129028aed, type: 2}
   unlocksBeliefs: []
   unitLimitModifiers: []
   buildingLimitModifiers: []

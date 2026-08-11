@@ -275,7 +275,8 @@ public class ReligionManager : MonoBehaviour
         // Add all available pantheons
         if (allPantheons != null)
         {
-            result.AddRange(allPantheons);
+            foreach (var pantheon in allPantheons)
+                if (pantheon != null && pantheon.IsSpirit) result.Add(pantheon);
         }
         
         // Remove pantheons that have already been chosen by any civilization
@@ -304,9 +305,7 @@ public class ReligionManager : MonoBehaviour
         {
             foreach (var religion in allReligions)
             {
-                if (religion == null) continue;
-                if (IsReligionFounded(religion)) continue;
-                if (!IsReligionAvailableToCivilization(religion, civ)) continue;
+                if (!CanFoundReligion(civ, religion, null, false).CanFound) continue;
                 result.Add(religion);
             }
         }
@@ -316,42 +315,46 @@ public class ReligionManager : MonoBehaviour
 
     public bool IsReligionAvailableToCivilization(ReligionData religion, Civilization civ)
     {
-        if (religion == null) return false;
+        return CanFoundReligion(civ, religion, null, false).CanFound;
+    }
 
-        if (civ == null)
-        {
-            return true;
-        }
+    public ReligionAvailabilityResult CanFoundReligion(Civilization civ, ReligionData religion, City holySiteCity = null, bool requireHolySite = false)
+    {
+        if (religion == null) return ReligionAvailabilityResult.Fail("Religion is null.");
+        if (IsReligionFounded(religion)) return ReligionAvailabilityResult.Fail("Religion is already founded.");
+        if (foundedReligions.Count >= maxReligionsPerGame) return ReligionAvailabilityResult.Fail("The global religion limit has been reached.");
+        if (civ == null) return ReligionAvailabilityResult.Success;
+        if (civ.hasFoundedReligion || civ.foundedReligion != null) return ReligionAvailabilityResult.Fail("Civilization already founded a religion.");
 
         if (religion.requiredCultures != null && religion.requiredCultures.Length > 0)
         {
             if (civ.researchedCultures == null)
-                return false;
+                return ReligionAvailabilityResult.Fail("Required cultures are missing.");
 
             foreach (var requiredCulture in religion.requiredCultures)
             {
                 if (requiredCulture == null) continue;
                 if (!civ.researchedCultures.Contains(requiredCulture))
-                    return false;
+                    return ReligionAvailabilityResult.Fail($"Missing culture: {requiredCulture.name}.");
             }
         }
-
-        if (civ.researchedCultures != null)
+        if (religion.useMinimumAge && civ.GetCurrentAge() < religion.minimumAge)
+            return ReligionAvailabilityResult.Fail($"Requires {religion.minimumAge}.");
+        var pantheons = civ.foundedPantheons;
+        bool pantheonMet = religion.pantheonRequirementMode == PantheonRequirementMode.None
+            || (pantheons != null && religion.pantheonRequirementMode == PantheonRequirementMode.Any && pantheons.Count > 0)
+            || (pantheons != null && religion.pantheonRequirementMode == PantheonRequirementMode.MinimumTier && pantheons.Exists(p => p != null && p.tier >= religion.minimumPantheonTier))
+            || (pantheons != null && religion.pantheonRequirementMode == PantheonRequirementMode.Specific && religion.compatiblePantheons != null && pantheons.Exists(p => System.Array.IndexOf(religion.compatiblePantheons, p) >= 0));
+        if (!pantheonMet) return ReligionAvailabilityResult.Fail("Pantheon requirement is not met.");
+        if (civ.faith < religion.faithCost) return ReligionAvailabilityResult.Fail("Insufficient Faith.");
+        if (requireHolySite)
         {
-            foreach (var adoptedCulture in civ.researchedCultures)
-            {
-                if (adoptedCulture == null || adoptedCulture.unlockedReligions == null)
-                    continue;
-
-                foreach (var unlockedReligion in adoptedCulture.unlockedReligions)
-                {
-                    if (unlockedReligion == religion)
-                        return true;
-                }
-            }
+            if (holySiteCity == null) return ReligionAvailabilityResult.Fail("A Holy Site city is required.");
+            var ts = TileSystem.GetForPlanet(holySiteCity.planetIndex) ?? TileSystem.Instance;
+            if (ts?.GetTileData(holySiteCity.centerTileIndex)?.HasHolySite != true)
+                return ReligionAvailabilityResult.Fail("The selected city has no Holy Site.");
         }
-
-        return true;
+        return ReligionAvailabilityResult.Success;
     }
 
     private bool IsReligionFounded(ReligionData religion)
@@ -410,4 +413,13 @@ public class ReligionManager : MonoBehaviour
         
         return majorityReligion;
     }
+}
+
+public readonly struct ReligionAvailabilityResult
+{
+    public bool CanFound { get; }
+    public string FailureReason { get; }
+    private ReligionAvailabilityResult(bool canFound, string reason) { CanFound = canFound; FailureReason = reason; }
+    public static ReligionAvailabilityResult Success => new ReligionAvailabilityResult(true, null);
+    public static ReligionAvailabilityResult Fail(string reason) => new ReligionAvailabilityResult(false, reason);
 }

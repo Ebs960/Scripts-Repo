@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0fbb7d0b8564754ba0d7903dc7b0956, type: 3}
   m_Name: Forest Fairies
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
-  beliefName: Forest Fairies
+  beliefName: Woodland Spirits
   description: +1 Food to tile with a Forest or Jungle
   icon: {fileID: 21300000, guid: 195ed71dc3272cb42b09664a19d8e7ed, type: 3}
   faithCost: 10

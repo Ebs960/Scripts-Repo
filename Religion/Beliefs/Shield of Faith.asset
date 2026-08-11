@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Shield of Faith
   description: +3 Defense for Units in owned territory
   icon: {fileID: 21300000, guid: 610e922ee7648614b9525f97bc9bd0aa, type: 3}
+  faithCost: 14
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Veil of the Wild
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
   beliefName: Veil of the Wild
-  description: Units gain +2 defense in Forests and Jungles
+  description: Combat units gain +2 Defense in Forest or Jungle.
   icon: {fileID: 21300000, guid: 429e33aa9fed6414fb25f845a71534e9, type: 3}
+  faithCost: 12
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

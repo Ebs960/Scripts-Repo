@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Sky Spirit
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Sky Spirit
-  description: The sky spirit watches us and whispers secrets in our ears
+  description: The open sky invites observation, travel, and discovery.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 12
   possibleFounderBeliefs: []
   tier: 0
   canUpgradeToGod: 1

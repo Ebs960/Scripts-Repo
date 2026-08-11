@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Ancestral Protection
   description: Units heal 15% faster in owned territory
   icon: {fileID: 21300000, guid: f11f45c537256454d89fd71094eb2471, type: 3}
+  faithCost: 12
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

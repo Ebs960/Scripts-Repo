@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Earth God
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Earth God
-  description: The earth rises up to defend the people
+  description: Stone, mountain, and soil stand as sacred foundations of the realm.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 24
   possibleFounderBeliefs: []
   tier: 1
   legacyIsSpirit: 0

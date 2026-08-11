@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Stone Idols
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
   beliefName: Stone Idols
-  description: +1 Science for Hill tiles and Mountain tiles
+  description: Hill and Mountain tiles provide +1 Science and +1 Culture.
   icon: {fileID: 21300000, guid: 51478a46f76cc1941b5897b77cd5af49, type: 3}
-  faithCost: 0
+  faithCost: 12
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

@@ -31,7 +31,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  category: 4
+  category: 0
   exclusiveToPantheons: []
   useSeasonFilter: 0
   seasons: 

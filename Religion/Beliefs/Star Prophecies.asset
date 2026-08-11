@@ -15,7 +15,7 @@ MonoBehaviour:
   beliefName: Star Prophecies
   description: +2 Culture and +15% Science in the Capital City
   icon: {fileID: 21300000, guid: e52d919dd47ea3645821fc350f3016d0, type: 3}
-  faithCost: 40
+  faithCost: 28
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

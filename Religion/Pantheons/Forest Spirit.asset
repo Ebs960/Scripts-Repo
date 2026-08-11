@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Forest Spirit
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Forest Spirit
-  description: Tell us your secrets oh spirit of the woods.
+  description: Spirits dwell beneath the canopy and sustain those who respect the wild.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 12
   possibleFounderBeliefs: []
   tier: 0
   legacyIsSpirit: 1

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Earth Spirit
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Earth Spirit
-  description: The earth itself protects us from harm.
+  description: The living earth shelters those who honor it.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 12
   possibleFounderBeliefs: []
   tier: 0
   legacyIsSpirit: 1

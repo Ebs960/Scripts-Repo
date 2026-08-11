@@ -15,7 +15,7 @@ MonoBehaviour:
   beliefName: Rain Dance
   description: +3 Food to Cities during Spring
   icon: {fileID: 21300000, guid: ede6ba24748721c4e9430ca036a639df, type: 3}
-  faithCost: 1000
+  faithCost: 14
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

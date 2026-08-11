@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Oath of Blood
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
   beliefName: Oath of Blood
-  description: Combat Units have +1 Experience Level and +3 Attack but also lose
+  description: Units begin at +1 level and gain +2 Attack, but suffer -3 Defense.
     -3 Defense
   icon: {fileID: 21300000, guid: 40f67a3ff0677e34490cfabb18673125, type: 3}
+  faithCost: 18
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
