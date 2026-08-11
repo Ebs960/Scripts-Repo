@@ -2,6 +2,40 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>Hard work/deadline guard shared by tactical candidate generators.</summary>
+public sealed class CandidateGenerationBudget
+{
+    private readonly int maximum;
+    private readonly double deadlineMs;
+    private readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+    public static long CandidatesGenerated, CandidatesAccepted, CandidateCapEarlyExits, CandidateTimeBudgetEarlyExits;
+    public CandidateGenerationBudget(int max, float milliseconds) { maximum = Mathf.Max(4, max); deadlineMs = milliseconds > 0 ? milliseconds : double.PositiveInfinity; }
+    public bool CanContinue(int currentCount)
+    {
+        if (currentCount >= maximum) { CandidateCapEarlyExits++; return false; }
+        if (clock.Elapsed.TotalMilliseconds >= deadlineMs) { CandidateTimeBudgetEarlyExits++; return false; }
+        return true;
+    }
+    public bool TryAdd(List<AICommand> commands, AICommand command)
+    {
+        CandidatesGenerated++;
+        if (command == null || !CanContinue(commands.Count)) return false;
+        commands.Add(command); CandidatesAccepted++; return true;
+    }
+    public void AddCritical(List<AICommand> commands, AICommand command)
+    {
+        if (command == null) return;
+        CandidatesGenerated++;
+        if (commands.Count >= maximum)
+        {
+            int replace = commands.FindIndex(c => !(c is AIRetreatCommand) && !(c is AIAttackCommand) && !(c is AIUnstoreCommand));
+            if (replace >= 0) commands[replace] = command;
+            return;
+        }
+        commands.Add(command); CandidatesAccepted++;
+    }
+}
+
 /// <summary>
 /// Decides the best action for a single unit by generating all legal commands,
 /// scoring them with AIScorer, applying operational role bonuses and empire intent bonuses,
@@ -233,6 +267,7 @@ public static class TacticalEvaluator
         int forageRange     = budget?.ForageSearchRange    ?? DEFAULT_FORAGE_SEARCH;
         int exploreRange    = budget?.ExploreSearchRange   ?? DEFAULT_EXPLORE_BFS;
         int citySiteRange   = budget?.CitySiteSearchRange  ?? DEFAULT_CITY_SITE_SEARCH;
+        var generationBudget = new CandidateGenerationBudget(budget?.MaxCandidatesPerUnit ?? 64, budget?.MaxCandidateEvalMilliseconds ?? 0f);
 
         // Time-boxed thinking: "think until N ms have been consumed, then commit."
         // Once the budget's ms allowance is spent, the priciest/least-essential scans
@@ -249,14 +284,14 @@ public static class TacticalEvaluator
         if (hpRatio < RETREAT_HP_THRESHOLD && dangerMap.IsDangerous(unit.currentTileIndex, unit.BaseAttack * 0.5f))
         {
             var retreatCmd = GenerateRetreat(unit, ts, dangerMap);
-            if (retreatCmd != null) commands.Add(retreatCmd);
+            generationBudget.AddCritical(commands, retreatCmd);
         }
 
         // ───── CombatUnit-specific ─────
         if (unit is CombatUnit cu && !cu.hasActedThisTurn)
         {
-            GenerateAttacks(cu, civ, dangerMap, commands, needFood, context);
-            GenerateApproaches(cu, civ, dangerMap, ts, commands, needFood, approachRange, context);
+            GenerateAttacks(cu, civ, dangerMap, commands, needFood, context, generationBudget);
+            if (generationBudget.CanContinue(commands.Count)) GenerateApproaches(cu, civ, dangerMap, ts, commands, needFood, approachRange, context);
         }
 
         // ───── WorkerUnit-specific ─────
@@ -309,7 +344,7 @@ public static class TacticalEvaluator
         // ───── Fortify (always an option, lowest-priority fallback) ─────
         var fortify = new AIFortifyCommand { unit = unit, planetIndex = pIndex };
         fortify.score = AIScorer.ScoreFortify(unit, dangerMap);
-        commands.Add(fortify);
+        generationBudget.AddCritical(commands, fortify);
 
         // ───── Group coordination: boost approach toward group target ─────
         if (groups != null && unit is CombatUnit groupCu)
@@ -441,7 +476,7 @@ public static class TacticalEvaluator
 
     // ─────────────────────── Attack generation ───────────────────────
 
-    private static void GenerateAttacks(CombatUnit cu, Civilization civ, DangerMap dangerMap, List<AICommand> commands, bool needFood, AIContext context = null)
+    private static void GenerateAttacks(CombatUnit cu, Civilization civ, DangerMap dangerMap, List<AICommand> commands, bool needFood, AIContext context, CandidateGenerationBudget budget)
     {
         if (context != null)
         {
@@ -449,17 +484,19 @@ public static class TacticalEvaluator
             // instead of rescanning every other civ's units for every single one of our units.
             foreach (var enemy in context.GetEnemyCombatUnits(cu.planetIndex))
             {
+                if (!budget.CanContinue(commands.Count)) return;
                 if (enemy == null || !cu.CanAttack(enemy)) continue;
                 var cmd = new AIAttackCommand { unit = cu, target = enemy, planetIndex = cu.planetIndex };
                 cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
-                commands.Add(cmd);
+                budget.TryAdd(commands, cmd);
             }
             foreach (var ew in context.GetEnemyWorkerUnits(cu.planetIndex))
             {
+                if (!budget.CanContinue(commands.Count)) return;
                 if (ew == null || !cu.CanAttack(ew)) continue;
                 var cmd = new AIAttackCommand { unit = cu, target = ew, planetIndex = cu.planetIndex };
                 cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
-                commands.Add(cmd);
+                budget.TryAdd(commands, cmd);
             }
         }
         else
@@ -473,18 +510,20 @@ public static class TacticalEvaluator
                     if (otherCiv.combatUnits != null)
                         foreach (var enemy in otherCiv.combatUnits)
                         {
+                            if (!budget.CanContinue(commands.Count)) return;
                             if (enemy == null || !cu.CanAttack(enemy)) continue;
                             var cmd = new AIAttackCommand { unit = cu, target = enemy, planetIndex = cu.planetIndex };
                             cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
-                            commands.Add(cmd);
+                            budget.TryAdd(commands, cmd);
                         }
                     if (otherCiv.workerUnits != null)
                         foreach (var ew in otherCiv.workerUnits)
                         {
+                            if (!budget.CanContinue(commands.Count)) return;
                             if (ew == null || !cu.CanAttack(ew)) continue;
                             var cmd = new AIAttackCommand { unit = cu, target = ew, planetIndex = cu.planetIndex };
                             cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
-                            commands.Add(cmd);
+                            budget.TryAdd(commands, cmd);
                         }
                 }
             }
@@ -498,6 +537,7 @@ public static class TacticalEvaluator
                 : AnimalManager.Instance.GetActiveAnimals();
             foreach (var animal in animalSource)
             {
+                if (!budget.CanContinue(commands.Count)) return;
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
                 if (animal.planetIndex != cu.planetIndex) continue;
                 if (!cu.CanAttack(animal)) continue;
@@ -510,13 +550,13 @@ public static class TacticalEvaluator
                 {
                     var cap = new AICaptureCommand { unit = cu, target = animal, planetIndex = cu.planetIndex };
                     cap.score = AIScorer.ScoreAttack(cu, animal, dangerMap) + 8f; // bias toward capture when available
-                    commands.Add(cap);
+                    budget.TryAdd(commands, cap);
                 }
                 else
                 {
                     var cmd = new AIAttackCommand { unit = cu, target = animal, planetIndex = cu.planetIndex };
                     cmd.score = AIScorer.ScoreAttack(cu, animal, dangerMap);
-                    commands.Add(cmd);
+                    budget.TryAdd(commands, cmd);
                 }
             }
         }

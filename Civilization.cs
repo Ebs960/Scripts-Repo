@@ -3786,6 +3786,8 @@ public class Civilization : MonoBehaviour
             if (city.owner != this)
                 city.owner = this;
             EnsureCapitalCity();
+            TradeNetworkManager.EnsureInstance().RegisterCityNode(city);
+            PlanetSimulationManager.NotifyCityAdded(city.planetIndex);
             OnCityFounded?.Invoke(this, city);
         }
         else
@@ -3799,6 +3801,8 @@ public class Civilization : MonoBehaviour
         if (city == null || cities == null) return;
         if (cities.Remove(city))
         {
+            TradeNetworkManager.Instance?.RemoveCityNode(city);
+            PlanetSimulationManager.NotifyCityRemoved(city.planetIndex);
             if (capitalCity == city)
                 capitalCity = null;
             city.isCapital = false;

@@ -710,9 +710,11 @@ public class DiplomacyManager : MonoBehaviour
             case DealItemType.City:
                 if (item.city != null && giver.cities.Contains(item.city))
                 {
+                    TradeNetworkManager.Instance?.RemoveCityNode(item.city);
                     giver.cities.Remove(item.city);
                     receiver.cities.Add(item.city);
                     item.city.owner = receiver;
+                    TradeNetworkManager.EnsureInstance().RegisterCityNode(item.city);
                 }
                 break;
 

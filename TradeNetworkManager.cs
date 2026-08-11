@@ -11,17 +11,18 @@ public class TradeNetworkManager : MonoBehaviour
     public List<TradeTurnBreakdownEntry> lastProcessedBreakdown = new List<TradeTurnBreakdownEntry>();
     private int nextRouteId = 1;
     private readonly Dictionary<int, TradeNodeRuntime> nodesById = new Dictionary<int, TradeNodeRuntime>();
+    private readonly Dictionary<int, TradeRoute> routesById = new Dictionary<int, TradeRoute>();
+    private readonly Dictionary<int, HashSet<int>> routeIdsByNodeId = new Dictionary<int, HashSet<int>>();
+    private readonly Dictionary<int, HashSet<int>> routeIdsByPlanet = new Dictionary<int, HashSet<int>>();
     private bool isRebuildingRegistry;
     private bool registryDirty = true;
-    // Round-based safety net: even if nothing explicitly marks the registry dirty, it is refreshed
-    // at most once per round rather than once per civilization's turn. Previously ProcessCivilizationTradeTurn
-    // called RebuildRegistry() unconditionally, meaning the FindObjectsByType<ImprovementInstance> scene
-    // scan and a full re-validation of every active route ran once per civ per round (O(civCount) redundant work).
-    private int lastFullRebuildTurn = int.MinValue;
-
     // Dev diagnostics (mirrors AIPlanner/DangerMap counters) for PerformanceBenchmarkRunner.
     public static int FullRebuildCount { get; private set; }
     public static int SkippedRebuildCount { get; private set; }
+    public static int IncrementalNodeUpdateCount { get; private set; }
+    public static int RouteRevalidationCount { get; private set; }
+    public static int RouteRerouteCount { get; private set; }
+    public static int TradeTopologyDirtyCount { get; private set; }
 
     private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; }
     public static TradeNetworkManager EnsureInstance() { if (Instance != null) return Instance; return new GameObject("TradeNetworkManager").AddComponent<TradeNetworkManager>(); }
@@ -44,23 +45,25 @@ public class TradeNetworkManager : MonoBehaviour
         }
     }
 
-    private void HandleImprovementChanged(Civilization owner, ImprovementData data, int tileIndex, int planetIndex) => MarkDirty();
-    private void HandleImprovementRemoved(Civilization owner, ImprovementData data, int tileIndex, int planetIndex, ImprovementManager.ImprovementRemovalReason reason) => MarkDirty();
+    private void HandleImprovementChanged(Civilization owner, ImprovementData data, int tileIndex, int planetIndex)
+    {
+        if (data == null || data.tradeNodeCapability == null || !data.tradeNodeCapability.providesTradeNode) return;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var go = ts?.GetTileData(tileIndex)?.improvementInstanceObject;
+        var instance = go != null ? go.GetComponent<ImprovementInstance>() : null;
+        if (instance != null) RegisterImprovementNode(instance);
+    }
+    private void HandleImprovementRemoved(Civilization owner, ImprovementData data, int tileIndex, int planetIndex, ImprovementManager.ImprovementRemovalReason reason)
+    {
+        if (data == null || data.tradeNodeCapability == null || !data.tradeNodeCapability.providesTradeNode) return;
+        RemoveImprovementNode(data, tileIndex, planetIndex, -1);
+    }
 
     /// <summary>Forces the next registry access to perform a full topology rebuild (new/removed trade node, ownership change, etc.).</summary>
     public void MarkDirty()
     {
         registryDirty = true;
-        lastFullRebuildTurn = int.MinValue;
-    }
-
-    /// <summary>Rebuilds at most once per round; a cheap no-op for every subsequent civ's turn that round unless marked dirty.</summary>
-    private void EnsureRegistryFreshForTurn()
-    {
-        int turn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
-        if (turn == lastFullRebuildTurn && !registryDirty) { SkippedRebuildCount++; return; }
-        RebuildRegistry();
-        lastFullRebuildTurn = turn;
+        TradeTopologyDirtyCount++;
     }
 
     public void RebuildRegistry()
@@ -78,6 +81,7 @@ public class TradeNetworkManager : MonoBehaviour
                 if (civ != null && civ.cities != null) foreach (var city in civ.cities) RegisterOrUpdateCityNode(city);
             foreach (var imp in FindObjectsByType<ImprovementInstance>()) RegisterOrUpdateImprovementNode(imp);
             nextRouteId = Mathf.Max(nextRouteId, activeRoutes.Count > 0 ? activeRoutes.Max(r => r != null ? r.routeId : 0) + 1 : 1);
+            RebuildRouteIndexes();
             registryDirty = false;
             FullRebuildCount++;
         }
@@ -98,6 +102,18 @@ public class TradeNetworkManager : MonoBehaviour
     {
         if (city == null) return null;
         var node = BuildCityNode(city); UpsertNode(node); return node;
+    }
+
+    public TradeNodeRuntime RegisterCityNode(City city) => RegisterOrUpdateCityNode(city);
+    public TradeNodeRuntime UpdateCityNode(City city) => RegisterOrUpdateCityNode(city);
+    public bool RemoveCityNode(City city) => city != null && RemoveNode(GetCityNodeId(city));
+    public TradeNodeRuntime RegisterImprovementNode(ImprovementInstance improvement) => RegisterOrUpdateImprovementNode(improvement);
+    public TradeNodeRuntime UpdateImprovementNode(ImprovementInstance improvement) => RegisterOrUpdateImprovementNode(improvement);
+    public bool RemoveImprovementNode(ImprovementInstance improvement) => improvement != null && RemoveNode(GetImprovementNodeId(improvement));
+    public bool RemoveImprovementNode(ImprovementData data, int tileIndex, int planetIndex, int spaceTileIndex)
+    {
+        if (data == null) return false;
+        return RemoveNode(StableTradeNodeId(data.tradeNodeCapability != null ? data.tradeNodeCapability.nodeType : TradeNodeType.TradePost, 0, planetIndex, tileIndex, spaceTileIndex, data.name));
     }
 
     public TradeNodeRuntime RegisterOrUpdateImprovementNode(ImprovementInstance improvement)
@@ -184,7 +200,29 @@ public class TradeNetworkManager : MonoBehaviour
     }
 
     private static TradeNodeCapability Clone(TradeNodeCapability c) => c == null ? new TradeNodeCapability() : new TradeNodeCapability { providesTradeNode = c.providesTradeNode, nodeType = c.nodeType, supportedDomains = c.supportedDomains, tradeRange = c.tradeRange, surfaceTradeRange = c.surfaceTradeRange, maritimeTradeRange = c.maritimeTradeRange, airTradeRange = c.airTradeRange, orbitTradeRange = c.orbitTradeRange, solarSpaceTradeRange = c.solarSpaceTradeRange, interstellarTradeRange = c.interstellarTradeRange, civilizationRouteCapacityBonus = c.civilizationRouteCapacityBonus, nodeThroughputCapacity = c.nodeThroughputCapacity, canOriginateRoutes = c.canOriginateRoutes, canReceiveRoutes = c.canReceiveRoutes, canRelayRoutes = c.canRelayRoutes, routeGoldModifier = c.routeGoldModifier, raidChanceReduction = c.raidChanceReduction, isPlanetaryGateway = c.isPlanetaryGateway, isOrbitalGateway = c.isOrbitalGateway };
-    private void UpsertNode(TradeNodeRuntime n) { if (n == null || n.nodeId == 0) return; nodesById[n.nodeId] = n; int i = allTradeNodes.FindIndex(x => x.nodeId == n.nodeId); if (i >= 0) allTradeNodes[i] = n; else allTradeNodes.Add(n); }
+    private void UpsertNode(TradeNodeRuntime n)
+    {
+        if (n == null || n.nodeId == 0) return;
+        bool changed = !nodesById.TryGetValue(n.nodeId, out var old) || !NodeTopologyEquals(old, n);
+        nodesById[n.nodeId] = n;
+        int i = allTradeNodes.FindIndex(x => x.nodeId == n.nodeId);
+        if (i >= 0) allTradeNodes[i] = n; else allTradeNodes.Add(n);
+        if (!isRebuildingRegistry && changed) { IncrementalNodeUpdateCount++; RevalidateRoutesAffectedByNode(n.nodeId, n.location.planetId); }
+    }
+
+    private bool RemoveNode(int nodeId)
+    {
+        if (!nodesById.TryGetValue(nodeId, out var node)) return false;
+        nodesById.Remove(nodeId); allTradeNodes.RemoveAll(n => n != null && n.nodeId == nodeId);
+        IncrementalNodeUpdateCount++; RevalidateRoutesAffectedByNode(nodeId, node.location.planetId); return true;
+    }
+
+    private static bool NodeTopologyEquals(TradeNodeRuntime a, TradeNodeRuntime b) =>
+        a != null && b != null && a.ownerCivilizationId == b.ownerCivilizationId && a.isOperational == b.isOperational &&
+        a.supportedDomains == b.supportedDomains && a.tradeRange == b.tradeRange && a.surfaceTradeRange == b.surfaceTradeRange &&
+        a.maritimeTradeRange == b.maritimeTradeRange && a.airTradeRange == b.airTradeRange && a.orbitTradeRange == b.orbitTradeRange &&
+        a.solarSpaceTradeRange == b.solarSpaceTradeRange && a.canOriginateRoutes == b.canOriginateRoutes &&
+        a.canReceiveRoutes == b.canReceiveRoutes && a.canRelayRoutes == b.canRelayRoutes;
     public int GetCityNodeId(City c) => c != null ? StableTradeNodeId(TradeNodeType.City, 0, c.planetIndex, c.centerTileIndex, -1, c.cityName) : 0;
     public int GetImprovementNodeId(ImprovementInstance i) => i != null ? StableTradeNodeId(i.data != null ? i.data.tradeNodeCapability.nodeType : TradeNodeType.TradePost, 0, i.PlanetIndex, i.tileIndex, i.spaceTileIndex, i.data != null ? i.data.name : null) : 0;
 
@@ -225,6 +263,7 @@ public class TradeNetworkManager : MonoBehaviour
         if (route == null || route.suspended) return false;
         route.routeId = nextRouteId++;
         activeRoutes.Add(route);
+        IndexRoute(route);
         return true;
     }
     public TradeRoute PreviewRoute(City s, City d) { EnsureRegistry(); return PreviewRoute(GetCityNodeId(s), GetCityNodeId(d), s != null ? s.owner : null) ?? new TradeRoute(s, d); }
@@ -258,6 +297,9 @@ public class TradeNetworkManager : MonoBehaviour
     private void RevalidateAndReroute(TradeRoute route)
     {
         if (route == null) return;
+        RouteRevalidationCount++;
+        UnindexRoute(route);
+        string oldPath = RoutePathKey(route);
         var rebuilt = BuildRoute(route.sourceNodeId, route.destinationNodeId, route.tradingCivilization, true, false);
         if (rebuilt == null || rebuilt.suspended)
         {
@@ -268,6 +310,8 @@ public class TradeNetworkManager : MonoBehaviour
             if (route.yields == null) route.yields = new TradeYield();
             route.yields.goldPerTurn = 0;
             route.SyncLegacyYieldFields();
+            if (oldPath.Length > 0) RouteRerouteCount++;
+            IndexRoute(route);
             return;
         }
 
@@ -278,6 +322,60 @@ public class TradeNetworkManager : MonoBehaviour
         route.raidChance = rebuilt.raidChance;
         route.yields = rebuilt.yields;
         route.SyncLegacyYieldFields();
+        if (oldPath != RoutePathKey(route)) RouteRerouteCount++;
+        IndexRoute(route);
+    }
+
+    private static string RoutePathKey(TradeRoute route) => route?.segments == null
+        ? string.Empty : string.Join(";", route.segments.Select(s => $"{s.fromNodeId}:{s.toNodeId}"));
+
+    private void RebuildRouteIndexes()
+    {
+        routesById.Clear(); routeIdsByNodeId.Clear(); routeIdsByPlanet.Clear();
+        foreach (var route in activeRoutes) IndexRoute(route);
+    }
+
+    private void IndexRoute(TradeRoute route)
+    {
+        if (route == null || route.routeId <= 0) return;
+        routesById[route.routeId] = route;
+        Index(routeIdsByNodeId, route.sourceNodeId, route.routeId);
+        Index(routeIdsByNodeId, route.destinationNodeId, route.routeId);
+        if (route.relayNodeIds != null) foreach (int id in route.relayNodeIds) Index(routeIdsByNodeId, id, route.routeId);
+        Index(routeIdsByPlanet, route.originPlanetIndex, route.routeId);
+        Index(routeIdsByPlanet, route.destinationPlanetIndex, route.routeId);
+    }
+
+    private static void Index(Dictionary<int, HashSet<int>> index, int key, int routeId)
+    {
+        if (!index.TryGetValue(key, out var ids)) index[key] = ids = new HashSet<int>();
+        ids.Add(routeId);
+    }
+
+    private void UnindexRoute(TradeRoute route)
+    {
+        if (route == null) return;
+        routesById.Remove(route.routeId);
+        foreach (var ids in routeIdsByNodeId.Values) ids.Remove(route.routeId);
+        foreach (var ids in routeIdsByPlanet.Values) ids.Remove(route.routeId);
+    }
+
+    private void RevalidateRoutesAffectedByNode(int nodeId, int planetId)
+    {
+        var affected = new HashSet<int>();
+        if (routeIdsByNodeId.TryGetValue(nodeId, out var dependent)) affected.UnionWith(dependent);
+        // A new relay/range capability can alter paths which did not previously contain the node.
+        // Planet scoping catches those without touching unrelated worlds.
+        if (routeIdsByPlanet.TryGetValue(planetId, out var local)) affected.UnionWith(local);
+        foreach (int id in affected.ToArray()) if (routesById.TryGetValue(id, out var route)) RevalidateAndReroute(route);
+    }
+
+    public void NotifyDiplomaticAccessChanged(Civilization a, Civilization b)
+    {
+        if (a == null || b == null) return;
+        int aid = a.GetRuntimeId(), bid = b.GetRuntimeId();
+        foreach (var route in activeRoutes.Where(r => r != null && (r.ownerCivilizationId == aid || r.ownerCivilizationId == bid)).ToArray())
+            RevalidateAndReroute(route);
     }
 
     private int GetRangeForDomain(TradeNodeRuntime node, TradeMapDomain domain)
@@ -454,7 +552,10 @@ public class TradeNetworkManager : MonoBehaviour
     public bool RollRaidForRoute(TradeRoute route) { if (route == null || route.suspended) return false; return UnityEngine.Random.value < Mathf.Clamp01(route.raidChance); }
     public void ProcessCivilizationTradeTurn(Civilization civ)
     {
-        EnsureRegistryFreshForTurn();
+        // Steady-state turns consume cached topology. Full reconstruction is reserved for
+        // initialization/load/debug recovery and is never round-driven.
+        EnsureRegistry();
+        SkippedRebuildCount++;
         if (civ == null) return;
 
         int civId = civ.GetRuntimeId();
@@ -515,7 +616,11 @@ public class TradeNetworkManager : MonoBehaviour
     [System.Obsolete("Trade route capacity is civilization-wide. Use HasCivilizationRouteCapacity instead.")]
     public bool NodeHasCapacity(int nodeId) => true;
     public bool IsGatewayBlockaded(TradeNodeRuntime n) { if (n == null || (!n.isPlanetaryGateway && !n.isOrbitalGateway)) return false; var bm = FindAnyObjectByType<PlanetBlockadeManager>(); var st = bm != null ? bm.blockadeStates.Find(s => s.planetId == n.location.planetId) : null; return st != null && st.isBlockaded; }
-    public void NotifyPlanetBlockadeChanged(int planetId) { foreach (var r in activeRoutes) RecalculateRoute(r); }
+    public void NotifyPlanetBlockadeChanged(int planetId)
+    {
+        if (!routeIdsByPlanet.TryGetValue(planetId, out var ids)) return;
+        foreach (int id in ids.ToArray()) if (routesById.TryGetValue(id, out var route)) RevalidateAndReroute(route);
+    }
     public string GetRouteDisplayName(TradeRoute r) { var ids = new List<int>(); ids.Add(r.sourceNodeId); ids.AddRange(r.relayNodeIds); ids.Add(r.destinationNodeId); return string.Join(" → ", ids.Select(id => GetNode(id)?.displayName ?? $"Node {id}")); }
     private static TradeMapDomain MaskToPrimaryDomain(TradeDomainMask m) => m.HasFlag(TradeDomainMask.SolarSystemSpace) ? TradeMapDomain.SolarSystemSpace : (m.HasFlag(TradeDomainMask.PlanetOrbit) ? TradeMapDomain.PlanetOrbit : (m.HasFlag(TradeDomainMask.PlanetAir) ? TradeMapDomain.PlanetAir : TradeMapDomain.PlanetSurface));
 }
