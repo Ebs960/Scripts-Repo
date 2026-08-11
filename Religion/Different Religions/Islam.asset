@@ -11,12 +11,24 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 592d75d32b0f84a49a4e836ab8bcd9ba, type: 3}
   m_Name: Islam
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::ReligionData
   religionName: Islam
-  description: Allahu Akbar
+  description: A monotheistic religion centered on submission to God, the Quran, the teachings and example of Muhammad, communal worship, charity, fasting, and pilgrimage.
   icon: {fileID: 21300000, guid: 593debc2d5057904cbfc9d3c9df7cf5c, type: 3}
-  requiredPantheon: {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
+  pantheonRequirementMode: 2
+  minimumPantheonTier: 1
+  compatiblePantheons: []
+  legacyRequiredPantheon: {fileID: 0}
   requiredCultures:
-  - {fileID: 11400000, guid: 6d6df408b2b48484f2b0d4cf5d7fe1c1, type: 2}
-  faithCost: 15
+  - {fileID: 11400000, guid: 93146b6dc91970646a73990920d427f1, type: 2}
+  - {fileID: 11400000, guid: b13ae3e3b7d16bd4aa7e33b77d1278fe, type: 2}
+  faithCost: 40
+  useMinimumAge: 1
+  minimumAge: 6
   enhancerBeliefs: []
+  tileYieldBonuses: []
+  buildingYieldBonuses: []
+  unitBonuses: []
+  workerBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

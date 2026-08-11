@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Warmth of Dawn
   description: +1 Food to temperate tiles in the Spring and Summer
   icon: {fileID: 21300000, guid: 2ba6c69f840748a47b556cd401e9beb3, type: 3}
+  faithCost: 10
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0
@@ -30,7 +31,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  category: 0
+  category: 1
   exclusiveToPantheons:
   - {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
   - {fileID: 11400000, guid: 82795ae18808b8a449fc0d0129028aed, type: 2}

@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Sacred Purity
   description: +2 Happiness and -10% disease chance
   icon: {fileID: 21300000, guid: 6f8e09c955b2e384ebfe728671c1a30c, type: 3}
+  faithCost: 16
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

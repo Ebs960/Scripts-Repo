@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Sun Spirit
   m_EditorClassIdentifier: 
   pantheonName: Sun Spirit
-  description: Bright sun and good weather
+  description: Sunlight nourishes the land and guides the rhythm of the harvest.
   icon: {fileID: 21300000, guid: 2d64d79ac71166e48b67910d1b7757c6, type: 3}
-  faithCost: 8
+  faithCost: 12
   possibleFounderBeliefs:
   - {fileID: 11400000, guid: c25a2d5b48058b54c8657693e699e31e, type: 2}
   tier: 0

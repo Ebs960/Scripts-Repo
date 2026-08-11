@@ -902,8 +902,7 @@ public class ReligionUI : MonoBehaviour
                 if (_cachedReligionManager != null)
                 {
                     availableReligions = _cachedReligionManager.GetAvailableReligions(playerCiv);
-                    availableReligions.RemoveAll(r => r == null
-                        || (playerCiv.foundedPantheons == null || !playerCiv.foundedPantheons.Contains(r.requiredPantheon)));
+                    availableReligions.RemoveAll(r => r == null);
                 }
                 
                 // Update religion dropdown
@@ -1148,4 +1147,4 @@ public class ReligionUI : MonoBehaviour
             UpdateUIState();
         }
     }
-} 
+}

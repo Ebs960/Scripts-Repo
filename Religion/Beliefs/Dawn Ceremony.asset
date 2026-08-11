@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dawn Ceremony
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
   beliefName: Dawn Ceremony
-  description: +15% Faith and +10% Culture
+  description: The capital gains +10% Faith and +5% Culture.
   icon: {fileID: 21300000, guid: 64ec5a2c9f48d8541b47318bb5c0ddd1, type: 3}
   faithCost: 10
   extraFaithInHolySite: 0

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Sun God
   m_EditorClassIdentifier: 
   pantheonName: Sun God
-  description: The lord of the sun shines down on us all
+  description: The sacred sun sustains harvest, ritual, and public life.
   icon: {fileID: 21300000, guid: 2d64d79ac71166e48b67910d1b7757c6, type: 3}
-  faithCost: 22
+  faithCost: 24
   possibleFounderBeliefs:
   - {fileID: 11400000, guid: c25a2d5b48058b54c8657693e699e31e, type: 2}
   tier: 1

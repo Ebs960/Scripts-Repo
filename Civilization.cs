@@ -4013,6 +4013,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool FoundPantheon(PantheonData pantheon)
     {
+        if (pantheon == null || !pantheon.IsSpirit) return false;
         // Check if the civilization meets a pantheon founding prereq:
         // either a tech that unlocks religion or an adopted culture that unlocks pantheons.
         bool hasPantheonPrereq = false;
@@ -4074,21 +4075,8 @@ return false;
     /// </summary>
     public bool FoundReligion(ReligionData religion, City holySiteCity)
     {
-        // Check prerequisites: civ must have founded the required pantheon
-        if (foundedPantheons == null || !foundedPantheons.Contains(religion.requiredPantheon))
-        {
-return false;
-        }
-        
-        if (hasFoundedReligion || foundedReligion != null)
-        {
-return false;
-        }
-        
-        if (faith < religion.faithCost)
-        {
-return false;
-        }
+        var manager = ReligionManager.Instance;
+        if (manager == null || !manager.CanFoundReligion(this, religion, holySiteCity, true).CanFound) return false;
         
         // Check if the city has a Holy Site
         bool hasHolySite = false;
@@ -4110,6 +4098,7 @@ return false;
         faith -= religion.faithCost;
         foundedReligion = religion;
         hasFoundedReligion = true;
+        manager.RegisterFoundedReligion(religion, this);
         // Founding and state sponsorship are distinct; founding initially adopts through the authority.
         ReligionPoliticsService.TrySetStateReligion(this, religion, StateReligionChangeReason.Founding, false, out _);
         tsHS?.SetHolySiteReligion(holySiteCity.centerTileIndex, religion);
@@ -4145,16 +4134,21 @@ return true;
         if (!spiritPantheon.IsSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null) return false;
 
         var god = spiritPantheon.upgradedPantheon;
+        if (!god.IsGod || faith < god.faithCost) return false;
 
         // Replace in the list, preserving order (replace first occurrence)
         int idx = foundedPantheons.IndexOf(spiritPantheon);
         if (idx < 0) return false;
 
+        faith -= god.faithCost;
         foundedPantheons[idx] = god;
+        for (int i = foundedPantheons.Count - 1; i >= 0; i--)
+            if (i != idx && (foundedPantheons[i] == spiritPantheon || foundedPantheons[i] == god)) foundedPantheons.RemoveAt(i);
 
         // Recompute belief-based modifiers
         UpdateFaithYieldModifier();
         RefreshVisionFromChangedSightBonuses();
+        OnPantheonFounded?.Invoke(this, god);
         return true;
     }
     

@@ -16,7 +16,7 @@ MonoBehaviour:
   description: +1 Culture and +1 Faith to Small Shrines and Mystic's Huts, and Shaman's
     Huts.
   icon: {fileID: 21300000, guid: 03b0cba19a96a0e4d84d0c5543440745, type: 3}
-  faithCost: 0
+  faithCost: 10
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

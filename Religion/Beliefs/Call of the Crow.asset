@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Call of the Crow
   description: Units heal 20% every turn in owned territory in the winter.
   icon: {fileID: 21300000, guid: ea8746671788647419be48d66a88eb53, type: 3}
+  faithCost: 14
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

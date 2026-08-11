@@ -15,6 +15,7 @@ MonoBehaviour:
   beliefName: Wrath of the Spirits
   description: Units gain +1 Attack and +1 Defense
   icon: {fileID: 21300000, guid: 6163a9700fa8d9a4eb3661b9f40276bd, type: 3}
+  faithCost: 20
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

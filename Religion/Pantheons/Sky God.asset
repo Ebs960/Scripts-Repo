@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Sky God
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Sky God
-  description: The sky god tells us everything we need to know. He reveals his secrets.
+  description: The heavens reveal patterns to those who study their signs.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 24
   possibleFounderBeliefs: []
   tier: 1
   canUpgradeToGod: 0

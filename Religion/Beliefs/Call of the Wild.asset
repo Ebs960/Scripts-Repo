@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Call of the Wild
   m_EditorClassIdentifier: Assembly-CSharp::BeliefData
   beliefName: Call of the Wild
-  description: +4 Attack againt Animals
+  description: Combat units gain +4 Attack against Animals.
   icon: {fileID: 21300000, guid: 7bfa078192409134ea39e983c23f6f1c, type: 3}
+  faithCost: 10
   extraFaithInHolySite: 0
   extraFoodInHolySite: 0
   extraProductionInHolySite: 0

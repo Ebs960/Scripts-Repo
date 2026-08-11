@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Moon God
   m_EditorClassIdentifier: 
   pantheonName: Moon God
-  description: The moon guides us through the night
+  description: The moon governs sacred cycles, memory, and survival through darkness.
   icon: {fileID: 21300000, guid: 538e4d32eb0d94b45bc928f6ce1562e0, type: 3}
-  faithCost: 20
+  faithCost: 24
   possibleFounderBeliefs:
   - {fileID: 11400000, guid: 021f447e529af814fa33ac5557021517, type: 2}
   tier: 1

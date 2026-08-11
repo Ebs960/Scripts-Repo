@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Water God
   m_EditorClassIdentifier: Assembly-CSharp::PantheonData
   pantheonName: Water God
-  description: The rain must fall upon us all
+  description: Sacred waters sustain settlement, health, and exchange.
   icon: {fileID: 0}
-  faithCost: 20
+  faithCost: 24
   possibleFounderBeliefs: []
   tier: 1
   legacyIsSpirit: 0

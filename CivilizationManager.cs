@@ -1659,7 +1659,7 @@ public class CivilizationManager : MonoBehaviour
         {
             if (religion == null) continue;
             if (civ.faith < religion.faithCost) continue;
-            if (religion.requiredPantheon != null && (civ.foundedPantheons == null || !civ.foundedPantheons.Contains(religion.requiredPantheon))) continue;
+            if (ReligionManager.Instance != null && !ReligionManager.Instance.CanFoundReligion(civ, religion).CanFound) continue;
 
             float score = 0f;
             score -= religion.faithCost * 0.05f;
