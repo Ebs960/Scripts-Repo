@@ -17,14 +17,13 @@ public class PolicyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Structural prerequisites only (techs, cultures, government, city count, not already active).
+    /// Structural prerequisites only (techs, cultures, government, city count, and religion).
     /// Deliberately excludes policy-point affordability so faction demand generation
     /// can target legal-but-unaffordable-right-now policies without duplicating requirement logic.
     /// </summary>
-    public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
+    public bool SatisfiesPolicyStructuralRequirements(Civilization civ, PolicyData p)
     {
         if (civ == null || p == null) return false;
-        if (civ.activePolicies != null && civ.activePolicies.Contains(p)) return false;
         if (p.requiredTechs != null)
             foreach (var req in p.requiredTechs)
                 if (req != null && !civ.researchedTechs.Contains(req)) return false;
@@ -32,10 +31,97 @@ public class PolicyManager : MonoBehaviour
             foreach (var req in p.requiredCultures)
                 if (req != null && !civ.researchedCultures.Contains(req)) return false;
         if (p.requiredGovernments != null)
+        {
+            bool hasRequirement = false, matched = false;
             foreach (var req in p.requiredGovernments)
-                if (req != null && civ.currentGovernment != req) return false;
+            {
+                if (req == null) continue;
+                hasRequirement = true;
+                if (civ.currentGovernment == req) matched = true;
+            }
+            if (hasRequirement && !matched) return false;
+        }
         if (civ.cities == null || civ.cities.Count < p.requiredCityCount) return false;
+        if (!SatisfiesReligiousRequirements(civ, p.religiousRequirementGroups)) return false;
         return true;
+    }
+
+    public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
+        => SatisfiesPolicyStructuralRequirements(civ, p)
+           && (civ.activePolicies == null || !civ.activePolicies.Contains(p));
+
+    private static bool SatisfiesReligiousRequirements(Civilization civ, PolicyReligiousRequirementGroup[] groups)
+    {
+        if (groups == null || groups.Length == 0) return true;
+        foreach (var group in groups)
+            if (group != null && SatisfiesReligiousGroup(civ, group)) return true;
+        return false;
+    }
+
+    private static bool SatisfiesReligiousGroup(Civilization civ, PolicyReligiousRequirementGroup group)
+    {
+        if (group.requiresStateReligion && civ.StateReligion == null) return false;
+        if (HasNonNull(group.anyStateReligions) && !Contains(group.anyStateReligions, civ.StateReligion)) return false;
+        if (HasNonNull(group.anyPantheons))
+        {
+            bool matched = false;
+            if (civ.foundedPantheons != null)
+                foreach (var owned in civ.foundedPantheons)
+                    foreach (var required in group.anyPantheons)
+                        if (required != null && PantheonMatches(required, owned, group.allowPantheonUpgradeDescendants)) matched = true;
+            if (!matched) return false;
+        }
+        if (group.useMinimumPantheonTier)
+        {
+            bool matched = civ.foundedPantheons != null && civ.foundedPantheons.Exists(
+                pantheon => pantheon != null && pantheon.tier >= group.minimumPantheonTier);
+            if (!matched) return false;
+        }
+        if (HasNonNull(group.anyBeliefs) || (group.anyBeliefCategories != null && group.anyBeliefCategories.Length > 0))
+        {
+            bool specificMatched = !HasNonNull(group.anyBeliefs);
+            bool categoryMatched = group.anyBeliefCategories == null || group.anyBeliefCategories.Length == 0;
+            foreach (var belief in civ.EnumerateActiveBeliefs())
+            {
+                if (Contains(group.anyBeliefs, belief)) specificMatched = true;
+                if (belief != null && group.anyBeliefCategories != null
+                    && System.Array.IndexOf(group.anyBeliefCategories, belief.category) >= 0) categoryMatched = true;
+            }
+            if (!specificMatched || !categoryMatched) return false;
+        }
+        return true;
+    }
+
+    private static bool PantheonMatches(PantheonData required, PantheonData owned, bool descendants)
+    {
+        if (required == null || owned == null) return false;
+        // The content model currently has two tiers. The guard also makes malformed
+        // cyclic upgrade data harmless instead of hanging prerequisite evaluation.
+        int remainingUpgradeLinks = 32;
+        for (var current = required; current != null && remainingUpgradeLinks-- > 0;
+             current = descendants ? current.upgradedPantheon : null)
+        {
+            if (current == owned) return true;
+            if (!descendants) break;
+        }
+        return false;
+    }
+
+    private static bool HasNonNull<T>(T[] values) where T : Object
+    { if (values == null) return false; foreach (var value in values) if (value != null) return true; return false; }
+    private static bool Contains<T>(T[] values, T target) where T : Object
+    { if (target == null || values == null) return false; foreach (var value in values) if (value == target) return true; return false; }
+
+    public void RevalidateActivePolicies(Civilization civ)
+    {
+        if (civ?.activePolicies == null) return;
+        for (int i = civ.activePolicies.Count - 1; i >= 0; i--)
+        {
+            var policy = civ.activePolicies[i];
+            if (SatisfiesPolicyStructuralRequirements(civ, policy)) continue;
+            Debug.Log($"[PolicyManager] Automatically revoking '{policy?.policyName ?? "<missing policy>"}': structural prerequisites are no longer met.");
+            civ.RevokePolicy(policy);
+        }
     }
 
     /// <summary>All policies whose structural prerequisites are met, regardless of current policy points.</summary>
@@ -112,9 +198,7 @@ public class PolicyManager : MonoBehaviour
     private static CouncilVoteResult RunPolicyCouncilVote(Civilization civ, PolicyData p, bool revocation)
     {
         // Domains implicated by this policy's mechanics.
-        var domains = VetoDomain.PolicyChange;
-        if (p.faithModifier != 0f) domains |= VetoDomain.Religion;
-        if (p.goldModifier < 0f) domains |= VetoDomain.Taxation;
+        var domains = VetoDomain.PolicyChange | p.additionalVetoDomains;
 
         var result = CouncilVoteService.Evaluate(civ, new CouncilProposalContext
         {

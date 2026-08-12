@@ -22,6 +22,24 @@ MonoBehaviour:
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   requiredCityCount: 0
+  religiousRequirementGroups:
+  - requiresStateReligion: 0
+    anyStateReligions: []
+    anyPantheons: []
+    allowPantheonUpgradeDescendants: 1
+    useMinimumPantheonTier: 1
+    minimumPantheonTier: 1
+    anyBeliefs: []
+    anyBeliefCategories: []
+  - requiresStateReligion: 1
+    anyStateReligions: []
+    anyPantheons: []
+    allowPantheonUpgradeDescendants: 1
+    useMinimumPantheonTier: 0
+    minimumPantheonTier: 0
+    anyBeliefs: []
+    anyBeliefCategories: []
+  additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0

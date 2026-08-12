@@ -1,5 +1,19 @@
 using UnityEngine;
 
+[System.Serializable]
+public class PolicyReligiousRequirementGroup
+{
+    public bool requiresStateReligion;
+    public ReligionData[] anyStateReligions;
+    public PantheonData[] anyPantheons;
+    [Tooltip("Allow a required pantheon to match a pantheon reached by following its upgrade chain.")]
+    public bool allowPantheonUpgradeDescendants = true;
+    public bool useMinimumPantheonTier;
+    public PantheonTier minimumPantheonTier;
+    public BeliefData[] anyBeliefs;
+    public BeliefCategory[] anyBeliefCategories;
+}
+
 [CreateAssetMenu(fileName = "NewPolicyData", menuName = "Data/Policy Data")]
 public class PolicyData : ScriptableObject
 {
@@ -15,6 +29,12 @@ public class PolicyData : ScriptableObject
     public CultureData[] requiredCultures;
     public GovernmentData[] requiredGovernments;
     public int requiredCityCount;
+    [Tooltip("Alternative religious routes. Groups are OR; populated clauses within a group are AND.")]
+    public PolicyReligiousRequirementGroup[] religiousRequirementGroups;
+
+    [Header("Council")]
+    [Tooltip("Council veto domains implicated in addition to Policy Change.")]
+    public VetoDomain additionalVetoDomains;
 
     [Header("Bonuses")]
     public float attackBonus;
@@ -71,4 +91,4 @@ public class PolicyData : ScriptableObject
     [Tooltip("Opinion reactions pushed to governors when this policy is adopted. " +
              "Use personality filters to target specific governor archetypes.")]
     public GovernorOpinionEffect[] governorOpinionEffects;
-} 
+}

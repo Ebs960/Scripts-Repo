@@ -21,6 +21,7 @@ MonoBehaviour:
   requiredGovernments:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   requiredCityCount: 0
+  additionalVetoDomains: 4
   attackBonus: 0
   meleeAttackBonus: -1
   rangedAttackBonus: 0
