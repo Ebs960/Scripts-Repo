@@ -5,6 +5,8 @@ public class GovernmentData : ScriptableObject
 {
     [Header("Identity")]
     public string governmentName;
+    [Tooltip("Icon shown for this government in menus and HUD elements.")]
+    public Sprite icon;
     public string leaderTitleSuffix;    // e.g. "Emperor", "Chieftain"
     [TextArea] public string description;
 

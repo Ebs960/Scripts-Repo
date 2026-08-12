@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Republic
+  icon: {fileID: 21300000, guid: 2c8073ba056694d49b5afac84cf340c3, type: 3}
   leaderTitleSuffix: Consul
   description: A representative civic order that balances productive institutions with public culture.
   policyPointCost: 55

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Communism
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Communism
+  icon: {fileID: 21300000, guid: 52f0a581e11a77a44b63d1599e922c1e, type: 3}
   leaderTitleSuffix: General Secretary
   description: A planned socialist state that emphasizes public industry, mass mobilization, and equalized development.
   policyPointCost: 95

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Confederate Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Confederate Republic
+  icon: {fileID: 21300000, guid: 6f0868efec7bf0844a66d98c94942d5b, type: 3}
   leaderTitleSuffix: President
   description: A confederate system that increases state sovereignty to the max,
     with high loyalty from sister nations but veto ability coming from all directions.

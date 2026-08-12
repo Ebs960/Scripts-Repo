@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Eugenicism
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Eugenicism
+  icon: {fileID: 21300000, guid: 7cbe96c2d5252ca4bb540ac3dc31f05e, type: 3}
   leaderTitleSuffix: Solar Marshal
   description: An interstellar successor to fascism that projects militarized hierarchy
     across orbital colonies and star systems.

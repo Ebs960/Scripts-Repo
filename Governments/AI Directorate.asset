@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: AI Directorate
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: AI Directorate
+  icon: {fileID: 21300000, guid: 81e221f3e7c521c4393eabb4f437ce38, type: 3}
   leaderTitleSuffix: Director
   description: An automated state where machine policy engines optimize production,
     research, logistics, and security.

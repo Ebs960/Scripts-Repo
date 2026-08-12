@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Empire
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Empire
+  icon: {fileID: 21300000, guid: f6d9ac807c50f064781327e447981e09, type: 3}
   leaderTitleSuffix: Emperor
   description: A large imperial administration built for broad expansion, science, and production, but resented by local lords.
   policyPointCost: 60

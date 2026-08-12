@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Technocracy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Technocracy
+  icon: {fileID: 21300000, guid: c4ea8236c7406724ba51b285fb659082, type: 3}
   leaderTitleSuffix: Chief Technocrat
   description: A government run by engineers, scientists, and systems planners, prioritizing research and efficient administration.
   policyPointCost: 120

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Federal Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Federal Republic
+  icon: {fileID: 21300000, guid: a0c1929b7e3b5f74faa7912f37fd6263, type: 3}
   leaderTitleSuffix: President
   description: A federal system that increases city capacity, gold, and local loyalty
     while preserving modest production gains.

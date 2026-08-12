@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Empathic Union
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Empathic Union
+  icon: {fileID: 21300000, guid: cdaea756f58be4444b1cc25619c9c8e6, type: 3}
   leaderTitleSuffix: First Mediator
   description: A psionic and diplomatic union that governs through shared feeling,
     mutual aid, and interstellar trust.

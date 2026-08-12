@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Chiefdom
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Chiefdom
+  icon: {fileID: 21300000, guid: 04df2ff271dfe2e48b19e78c5764d419, type: 3}
   leaderTitleSuffix: Chief
   description: A kinship-based chiefdom that concentrates early surplus in the capital.
   policyPointCost: 0

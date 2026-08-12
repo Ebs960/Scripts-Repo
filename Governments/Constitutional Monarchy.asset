@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Constitutional Monarchy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Constitutional Monarchy
+  icon: {fileID: 21300000, guid: 02cdd5e88ffb6964ba5e2db4ff284904, type: 3}
   leaderTitleSuffix: Constitutional Monarch
   description: A limited monarchy balancing crown authority with institutional consent and loyal lords.
   policyPointCost: 120

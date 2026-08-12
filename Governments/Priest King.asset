@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Priest King
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Priest King
+  icon: {fileID: 21300000, guid: 6398a0f7a58d0b7469600b665b6c064e, type: 3}
   leaderTitleSuffix: Priest-King
   description: A sacred rulership where temple authority and royal authority are fused.
   policyPointCost: 30
