@@ -786,10 +786,13 @@ public class HexMapChunkManager : MonoBehaviour
             applied = true;
         }
 
-        if (applied && (terrainRenderPath == TerrainRenderPath.CustomBiomeShader
-            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph))
+        if (applied)
         {
-            ApplyActiveBiomeTerrainMaterialSettings();
+            if (terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
+                ApplyBiomeMaterialSettings();
+            else if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph
+                && hdrpLitBiomeTerrainMaterial != null)
+                ApplyHdrpLitBiomeMaterialSettings();
         }
     }
     
@@ -2576,7 +2579,6 @@ public class HexMapChunkManager : MonoBehaviour
         Material mat = hdrpLitBiomeTerrainMaterial;
         if (mat == null)
         {
-            Debug.LogError("[HexMapChunkManager] Cannot apply HdrpLitBiomeShaderGraph settings because the runtime material is null.");
             return;
         }
 
@@ -2628,6 +2630,10 @@ public class HexMapChunkManager : MonoBehaviour
         BindFloat("_CliffSlopeBlend", cliffSlopeBlend);
         BindFloat("_CliffStepThreshold", cliffStepThreshold);
         BindFloat("_CliffStepBlend", cliffStepBlend);
+        float cliffSliceCount = cliffAlbedoArray != null
+            ? Mathf.Max(1, cliffAlbedoArray.depth)
+            : 1f;
+        BindFloat("_CliffSliceCount", cliffSliceCount, false);
         BindFloat("_GlobalSnowAmount", globalSnowAmount);
     }
 
