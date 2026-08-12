@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Merchant Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Merchant Republic
+  icon: {fileID: 21300000, guid: f2497772e32eb704393a7521a8d013eb, type: 3}
   leaderTitleSuffix: Doge
   description: A commercial republic that sacrifices civic happiness and lordly loyalty for explosive mercantile income.
   policyPointCost: 100

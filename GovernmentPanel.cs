@@ -325,6 +325,17 @@ public class GovernmentPanel : MonoBehaviour
                 layout.childForceExpandWidth = false;
                 layout.childForceExpandHeight = false;
 
+                var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+                iconGO.transform.SetParent(rowGO.transform, false);
+                var iconImage = iconGO.GetComponent<Image>();
+                iconImage.sprite = g.icon;
+                iconImage.preserveAspect = true;
+                iconImage.enabled = g.icon != null;
+                var iconLayout = iconGO.GetComponent<LayoutElement>();
+                iconLayout.preferredWidth = 56f;
+                iconLayout.preferredHeight = 56f;
+                iconLayout.flexibleWidth = 0f;
+
                 var textGO = new GameObject("Text");
                 textGO.transform.SetParent(rowGO.transform, false);
                 var txt = textGO.AddComponent<TextMeshProUGUI>();
@@ -526,7 +537,7 @@ public class GovernmentPanel : MonoBehaviour
         // If an icon is available and dialog contains an image placeholder, set it
         if (confirmIconImage != null)
         {
-            Sprite icon = pol != null ? pol.icon : null;
+            Sprite icon = pol != null ? pol.icon : gov != null ? gov.icon : null;
             confirmIconImage.gameObject.SetActive(icon != null);
             if (icon != null) confirmIconImage.sprite = icon;
         }

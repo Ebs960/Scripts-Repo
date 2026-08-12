@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Oligarchy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Oligarchy
+  icon: {fileID: 21300000, guid: 2e92c3f382840dd43b49c420578f6338, type: 3}
   leaderTitleSuffix: Magistrate
   description: A state dominated by elite families and military patrons, emphasizing production and hardened troops.
   policyPointCost: 55

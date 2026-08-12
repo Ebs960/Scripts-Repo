@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Fascism
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Fascism
+  icon: {fileID: 21300000, guid: 1adb58bc3cd252041aa806bbb3bf0891, type: 3}
   leaderTitleSuffix: Duce
   description: A militarized nationalist state built for rapid mobilization, internal control, and aggressive conquest.
   policyPointCost: 110

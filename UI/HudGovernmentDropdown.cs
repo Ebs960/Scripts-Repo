@@ -46,6 +46,7 @@ public class HudGovernmentDropdown : MonoBehaviour
 
         string govName = ResolveGovernmentName();
         dropdownButton.SetLabel(govName);
+        dropdownButton.SetIcon(currentCiv?.currentGovernment?.icon);
 
         if (governmentNameText != null)
             governmentNameText.text = govName;

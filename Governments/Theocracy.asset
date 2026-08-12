@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Theocracy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
   governmentName: Theocracy
+  icon: {fileID: 21300000, guid: 9b1810e8970a5e64483261debeaf5a39, type: 3}
   leaderTitleSuffix: Hierarch
   description: A state directed by religious authority, highly loyal when unified by faith.
   policyPointCost: 80
