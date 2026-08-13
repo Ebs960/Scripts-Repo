@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Secular Government
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Secular Government
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c821c3f2989ceb8468abddb642f58964, type: 3}
   description: Establishes secular government as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 55
   requiredTechs: []

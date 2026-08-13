@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Planetary Autonomy
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Planetary Autonomy
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 32050fefea5afef4eb595352546ed695, type: 3}
   description: Establishes planetary autonomy as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 94
   requiredTechs: []

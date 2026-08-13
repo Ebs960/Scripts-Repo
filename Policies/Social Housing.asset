@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Social Housing
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Social Housing
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: be50fbab4379b48489e8087fd309caa1, type: 3}
   description: Establishes social housing as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 68
   requiredTechs: []

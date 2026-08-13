@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sacred Kingship
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Sacred Kingship
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c5c52a3fed3654045a7193fafa1e98df, type: 3}
   description: Establishes sacred kingship as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 28
   requiredTechs: []

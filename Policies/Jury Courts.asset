@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Jury Courts
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Jury Courts
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 031388d84eb20ef4bad120d97e373b73, type: 3}
   description: Establishes jury courts as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 34
   requiredTechs: []

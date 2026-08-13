@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: National Railways
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: National Railways
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d99a57f86d2078f4e860c870f0a5bd2d, type: 3}
   description: Establishes national railways as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 62
   requiredTechs:

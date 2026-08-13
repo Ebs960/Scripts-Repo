@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Elder Deliberation
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Elder Deliberation
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 53c5693084a58794ba732130295e891c, type: 3}
   description: Establishes elder deliberation as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 14
   requiredTechs: []

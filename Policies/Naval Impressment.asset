@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Naval Impressment
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Naval Impressment
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 458eb1dfb75c7d34c98eaf0bd50a9bce, type: 3}
   description: Establishes naval impressment as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 40
   requiredTechs: []

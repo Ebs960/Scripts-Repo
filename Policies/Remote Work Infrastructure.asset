@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Remote Work Infrastructure
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Remote Work Infrastructure
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: dc8fe73d05f51b44faaf056fd5766050, type: 3}
   description: Establishes remote work infrastructure as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 72
   requiredTechs: []

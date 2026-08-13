@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Equality Before Law
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Equality Before Law
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d10c674d5fae0b6479f6920e6691fe85, type: 3}
   description: Establishes equality before law as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 54
   requiredTechs: []

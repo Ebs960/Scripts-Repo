@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Imperial Roads
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Imperial Roads
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 84d7f89160edc354a8bda76c4733d9ae, type: 3}
   description: Establishes imperial roads as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 34
   requiredTechs: []

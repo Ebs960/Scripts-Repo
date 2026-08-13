@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Conscription
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Conscription
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 803b7407bc068254ea93c116e651f1f0, type: 3}
   description: Establishes conscription as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 60
   requiredTechs: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Factory Acts
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Factory Acts
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 60ce6bdd855f98a4081a4d4aef744d74, type: 3}
   description: Establishes factory acts as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 52
   requiredTechs: []

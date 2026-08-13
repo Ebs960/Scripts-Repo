@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Royal Granaries
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Royal Granaries
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 79eb22647f944894db0f0ad5708b47d5, type: 3}
   description: Establishes royal granaries as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 24
   requiredTechs: []

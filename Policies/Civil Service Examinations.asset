@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Civil Service Examinations
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Service Examinations
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 804651375d1af204b83fc7cd9608c86a, type: 3}
   description: Establishes civil service examinations as a durable institution; its
     benefits and stated tradeoffs apply while active.
   policyPointCost: 50

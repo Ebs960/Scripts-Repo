@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Agricultural Reform
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Agricultural Reform
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d9f14ab26b72d574595ab8d234c9b63c, type: 3}
   description: Establishes agricultural reform as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 50
   requiredTechs: []

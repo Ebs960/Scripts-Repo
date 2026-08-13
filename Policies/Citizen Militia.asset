@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Citizen Militia
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Militia
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d6f216137a69d2b488fb5bb0f58fbcb7, type: 3}
   description: Establishes citizen militia as a durable institution; its benefits
     and stated tradeoffs apply while active.
   policyPointCost: 40

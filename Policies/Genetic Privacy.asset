@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Genetic Privacy
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Genetic Privacy
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: cd0c8651abe972747abf7f03b8521dc8, type: 3}
   description: Establishes genetic privacy as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 90
   requiredTechs: []

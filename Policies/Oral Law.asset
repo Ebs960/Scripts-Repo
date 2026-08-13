@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Oral Law
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Oral Law
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 55c01a9a617e6de489b28421d2cd630e, type: 3}
   description: Establishes oral law as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 20
   requiredTechs: []

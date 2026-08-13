@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Census Officials
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Census Officials
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1fe8d448255b5994ba403050c972507d, type: 3}
   description: Establishes census officials as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 28
   requiredTechs: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Solar Free Trade
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Solar Free Trade
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2ab89c6e864a0aa48bbd4cc9b4a5ac3a, type: 3}
   description: Trade between worlds is encouraged with few regulations on either
     travel or commerce between planets.
   policyPointCost: 100

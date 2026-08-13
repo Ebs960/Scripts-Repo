@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Universal Legal Personhood
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Legal Personhood
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 7f17b82d57aee904d98ff3d60c4879c5, type: 3}
   description: Establishes universal legal personhood as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 58
   requiredTechs: []

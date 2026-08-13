@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Civil Rights Protections
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Rights Protections
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 585be3f60dbda81419515d891c67866f, type: 3}
   description: Establishes civil rights protections as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 68
   requiredTechs: []
