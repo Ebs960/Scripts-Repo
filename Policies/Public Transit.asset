@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Transit
   icon: {fileID: 0}
-  description: Establishes public transit as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Publicly funded mass transit improves the movement of workers and goods, increasing production by 8% and gold by 5%.
   policyPointCost: 58
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 62a2458baf16ea040bcdbdb678929ea3, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
