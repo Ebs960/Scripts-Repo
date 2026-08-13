@@ -32,6 +32,8 @@ public class PolicyData : ScriptableObject
     [Header("Cost & Requirements")]
     [Tooltip("Policy points required to adopt this policy")]
     public int policyPointCost;
+    [Tooltip("Explicitly marks a policy that is intentionally structurally available without a technology, culture, government, city-count, religion, or required-policy gate. Use only for true starting-era institutions.")]
+    public bool availableFromStart;
     public TechData[] requiredTechs;
     public CultureData[] requiredCultures;
     public GovernmentData[] requiredGovernments;
