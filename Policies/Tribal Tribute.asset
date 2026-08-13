@@ -14,13 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Tribal Tribute
   icon: {fileID: 0}
-  description: Concentrates tribute and labor in the chief's capital.
-  policyPointCost: 15
+  description: Establishes tribal tribute as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 14
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: 7d301448e05c4af5bdc3060584963e7e, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 3
   additionalVetoDomains: 4
   attackBonus: 0
   meleeAttackBonus: 0
@@ -34,6 +39,28 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

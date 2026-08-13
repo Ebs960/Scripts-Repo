@@ -33,6 +33,17 @@ public class PolicyPrerequisiteTests
     [Test] public void CultureRequirementsRemainAllOf()
     { var a=Data<CultureData>(); var b=Data<CultureData>(); var p=Policy(); p.requiredCultures=new[]{a,b}; civ.researchedCultures.Add(a); Assert.False(Structural(p)); civ.researchedCultures.Add(b); Assert.True(Structural(p)); }
 
+    [Test] public void RequiredPoliciesAreAllOf()
+    { var a=Policy(); var b=Policy(); var p=Policy(); p.requiredPolicies=new[]{a,b}; civ.activePolicies.Add(a); Assert.False(Structural(p)); civ.activePolicies.Add(b); Assert.True(Structural(p)); }
+    [Test] public void LosingRequiredPolicyRevalidatesDependentChainWithoutRefund()
+    { var a=Policy(); var b=Policy(); var c=Policy(); b.requiredPolicies=new[]{a}; c.requiredPolicies=new[]{b}; civ.activePolicies.AddRange(new[]{c,b,a}); civ.policyPoints=31; civ.RevokePolicy(a); manager.RevalidateActivePolicies(civ); Assert.IsEmpty(civ.activePolicies); Assert.AreEqual(31,civ.policyPoints); }
+    [Test] public void IncompatibilityIsSymmetricAtRuntime()
+    { var a=Policy(); var b=Policy(); a.incompatiblePolicies=new[]{b}; civ.activePolicies.Add(a); Assert.False(manager.MeetsPolicyPrerequisites(civ,b)); civ.activePolicies.Clear(); civ.activePolicies.Add(b); Assert.False(manager.MeetsPolicyPrerequisites(civ,a)); }
+    [Test] public void SupersessionRevokesWithoutRefundAndAdoptsOnce()
+    { var old=Policy(); var replacement=Policy(); replacement.policyPointCost=12; replacement.supersedesPolicies=new[]{old}; manager.allPolicies.Add(replacement); civ.activePolicies.Add(old); civ.policyPoints=20; Assert.True(manager.AdoptPolicy(civ,replacement)); Assert.False(civ.activePolicies.Contains(old)); Assert.True(civ.activePolicies.Contains(replacement)); Assert.AreEqual(8,civ.policyPoints); }
+    [Test] public void CircularRequirementsAndSelfRequirementAreDetected()
+    { var a=Policy(); var b=Policy(); a.requiredPolicies=new[]{b}; b.requiredPolicies=new[]{a}; Assert.True(PolicyDataValidator.HasRequiredPolicyCycle(a)); a.requiredPolicies=new[]{a}; Assert.True(PolicyDataValidator.HasRequiredPolicyCycle(a)); }
+
     [Test] public void SpiritMatchesExactSpiritAndUpgradedGodButNotUnrelatedGod()
     { var spirit=Data<PantheonData>(); var god=Data<PantheonData>(); god.tier=PantheonTier.God; spirit.upgradedPantheon=god; var other=Data<PantheonData>(); other.tier=PantheonTier.God; var p=Religious(Pantheons(spirit)); civ.foundedPantheons.Add(spirit); Assert.True(Structural(p)); civ.foundedPantheons[0]=god; Assert.True(Structural(p)); civ.foundedPantheons[0]=other; Assert.False(Structural(p)); }
     [Test] public void GodRequirementDoesNotMatchLowerSpirit()

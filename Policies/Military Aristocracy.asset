@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Military Aristocracy
   icon: {fileID: 0}
-  description: Places military command in noble hands.
-  policyPointCost: 30
+  description: Establishes military aristocracy as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 32
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -23,6 +23,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 9
   attackBonus: 0
   meleeAttackBonus: 1
   rangedAttackBonus: 0
@@ -35,6 +40,28 @@ MonoBehaviour:
   scienceModifier: -0.1
   cultureModifier: 0
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0.1
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

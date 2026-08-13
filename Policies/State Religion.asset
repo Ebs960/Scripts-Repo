@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: State Religion
   icon: {fileID: 0}
-  description: Unifies the state behind an official faith.
-  policyPointCost: 30
+  description: Establishes state religion as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 35
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -32,6 +32,12 @@ MonoBehaviour:
     minimumPantheonTier: 0
     anyBeliefs: []
     anyBeliefCategories: []
+  requiredPolicies: []
+  incompatiblePolicies:
+  - {fileID: 11400000, guid: 3e02740d8a79465fa3239bf61a9b283a, type: 2}
+  supersedesPolicies: []
+  policyTags:
+  - 10
   additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
@@ -44,7 +50,29 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0.2
+  faithModifier: 0.1
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

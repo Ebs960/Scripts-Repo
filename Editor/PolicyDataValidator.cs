@@ -10,11 +10,16 @@ public static class PolicyDataValidator
     {
         int errors = 0, warnings = 0;
         var names = new Dictionary<string, string>();
+        var policies = new List<PolicyData>();
         foreach (string guid in AssetDatabase.FindAssets("t:PolicyData"))
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             var policy = AssetDatabase.LoadAssetAtPath<PolicyData>(path);
             if (policy == null) { Error(path, "Asset could not be loaded.", ref errors); continue; }
+            policies.Add(policy);
+            if (string.IsNullOrWhiteSpace(policy.description)) Error(path, "description is empty.", ref errors, policy);
+            if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
+            if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
             string identity = string.IsNullOrWhiteSpace(policy.policyName) ? policy.name : policy.policyName;
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
@@ -23,6 +28,17 @@ public static class PolicyDataValidator
             ValidateReferences(policy.requiredTechs, "requiredTechs", path, policy, ref errors);
             ValidateReferences(policy.requiredCultures, "requiredCultures", path, policy, ref errors);
             ValidateReferences(policy.requiredGovernments, "requiredGovernments", path, policy, ref errors);
+            ValidatePolicyReferences(policy.requiredPolicies, "requiredPolicies", path, policy, ref errors);
+            ValidatePolicyReferences(policy.incompatiblePolicies, "incompatiblePolicies", path, policy, ref errors);
+            ValidatePolicyReferences(policy.supersedesPolicies, "supersedesPolicies", path, policy, ref errors);
+            ValidateDuplicates(policy.policyTags, "policyTags", path, policy, ref errors);
+            if (Contains(policy.requiredPolicies, policy)) Error(path, "a policy cannot require itself.", ref errors, policy);
+            if (Contains(policy.incompatiblePolicies, policy)) Error(path, "a policy cannot conflict with itself.", ref errors, policy);
+            if (Contains(policy.supersedesPolicies, policy)) Error(path, "a policy cannot supersede itself.", ref errors, policy);
+            if (policy.requiredPolicies != null)
+                foreach (var required in policy.requiredPolicies)
+                    if (required != null && Contains(policy.incompatiblePolicies, required))
+                        Error(path, $"'{required.name}' is both required and incompatible.", ref errors, policy);
             ValidateReferences(policy.unlockedGovernorTraits, "unlockedGovernorTraits", path, policy, ref errors);
             if (policy.religiousRequirementGroups == null) continue;
             for (int i = 0; i < policy.religiousRequirementGroups.Length; i++)
@@ -43,8 +59,37 @@ public static class PolicyDataValidator
                 ValidateDuplicates(group.anyBeliefCategories, $"religious group {i} belief categories", path, policy, ref errors);
             }
         }
+        foreach (var policy in policies)
+        {
+            string path = AssetDatabase.GetAssetPath(policy);
+            if (policy.incompatiblePolicies != null)
+                foreach (var other in policy.incompatiblePolicies)
+                    if (other != null && !Contains(other.incompatiblePolicies, policy))
+                    { Debug.LogWarning($"[Policy Validation] {path}: incompatibility with '{other.name}' is asymmetric (runtime still enforces it symmetrically).", policy); warnings++; }
+            var visiting = new HashSet<PolicyData>();
+            if (HasRequiredCycle(policy, policy, visiting))
+                Error(path, "circular required-policy chain detected.", ref errors, policy);
+        }
         Debug.Log($"[Policy Validation] Complete: {errors} error(s), {warnings} warning(s).");
     }
+
+    public static bool HasRequiredPolicyCycle(PolicyData policy)
+        => policy != null && HasRequiredCycle(policy, policy, new HashSet<PolicyData>());
+
+    private static bool HasRequiredCycle(PolicyData root, PolicyData current, HashSet<PolicyData> visiting)
+    {
+        if (current == null || current.requiredPolicies == null || !visiting.Add(current)) return false;
+        foreach (var next in current.requiredPolicies)
+            if (next == root || (next != null && HasRequiredCycle(root, next, visiting))) return true;
+        visiting.Remove(current);
+        return false;
+    }
+
+    private static bool Contains(PolicyData[] values, PolicyData target)
+    { if (values == null) return false; foreach (var value in values) if (value == target) return true; return false; }
+
+    private static void ValidatePolicyReferences(PolicyData[] values, string field, string path, Object context, ref int errors)
+        => ValidateReferences(values, field, path, context, ref errors);
 
     private static bool HasItems<T>(T[] values) => values != null && values.Length > 0;
     private static void ValidateReferences<T>(T[] values, string field, string path, Object context, ref int errors) where T : Object

@@ -14,13 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Oral Law
   icon: {fileID: 0}
-  description: Preserves custom and precedent through oral legal tradition.
+  description: Establishes oral law as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 20
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: 000df63a560245af86ddde61cf98942c, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 8
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -33,6 +38,28 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0.1
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

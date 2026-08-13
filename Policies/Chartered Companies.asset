@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Chartered Companies
   icon: {fileID: 0}
-  description: Creates state-backed commercial companies.
-  policyPointCost: 40
+  description: Establishes chartered companies as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 42
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -23,6 +23,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 13
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -35,6 +40,28 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: -0.05
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0.2
+  tradeRouteCapacityBonus: 1
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

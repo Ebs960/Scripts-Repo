@@ -1,5 +1,12 @@
 using UnityEngine;
 
+public enum PolicyTag
+{
+    Administration, Agriculture, Colonial, Economy, Education, Environment,
+    Infrastructure, Labor, Law, Military, Religion, Rights, Security, Trade,
+    Welfare, Digital, Synthetic, Genetics, Space
+}
+
 [System.Serializable]
 public class PolicyReligiousRequirementGroup
 {
@@ -32,6 +39,17 @@ public class PolicyData : ScriptableObject
     [Tooltip("Alternative religious routes. Groups are OR; populated clauses within a group are AND.")]
     public PolicyReligiousRequirementGroup[] religiousRequirementGroups;
 
+    [Header("Policy Relationships")]
+    [Tooltip("All referenced policies must currently be active.")]
+    public PolicyData[] requiredPolicies;
+    [Tooltip("Policies that cannot coexist. Runtime checks are symmetric.")]
+    public PolicyData[] incompatiblePolicies;
+    [Tooltip("Active policies automatically repealed after a successful adoption vote.")]
+    public PolicyData[] supersedesPolicies;
+
+    [Header("Classification")]
+    public PolicyTag[] policyTags;
+
     [Header("Council")]
     [Tooltip("Council veto domains implicated in addition to Policy Change.")]
     public VetoDomain additionalVetoDomains;
@@ -49,6 +67,42 @@ public class PolicyData : ScriptableObject
     public float scienceModifier;       // New
     public float cultureModifier;       // New
     public float faithModifier;         // New
+
+    [Header("Society")]
+    public float populationGrowthModifier;
+    public float migrationAttractionModifier;
+    public float warWearinessModifier;
+    public float corruptionModifier;
+    public float unrestModifier;
+
+    [Header("Administration")]
+    public float administrativeEfficiencyModifier;
+    public float distanceLoyaltyPenaltyModifier;
+    public float policyPointGenerationModifier;
+
+    [Header("Trade")]
+    public float domesticTradeModifier;
+    public float foreignTradeModifier;
+    public int tradeRouteCapacityBonus;
+
+    [Header("Labor")]
+    public float laborProductivityModifier;
+    public float unemploymentUnhappinessModifier;
+
+    [Header("Strategic")]
+    public float reinforcementSpeedModifier;
+    public float militaryUpkeepModifier;
+
+    [Header("Digital")]
+    public float cyberDefenseModifier;
+    public float cyberOffenseModifier;
+    public float espionageDefenseModifier;
+
+    [Header("Space")]
+    public float orbitalProductionModifier;
+    public float interplanetaryTradeModifier;
+    public float planetaryLoyaltyModifier;
+    public float planetaryDefenseModifier;
 
     [Header("Tile Yield Bonuses")]
     [Tooltip("Per-tile yield bonuses granted by this policy. Filters can target terrain, resources, improvements, and more.")]

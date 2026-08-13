@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civic Education
   icon: {fileID: 0}
-  description: Educates citizens for public debate and service.
-  policyPointCost: 35
+  description: Establishes civic education as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 32
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -24,6 +24,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 4
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -33,9 +38,31 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: -0.05
   goldModifier: 0
-  scienceModifier: 0.1
-  cultureModifier: 0.1
+  scienceModifier: 0.05
+  cultureModifier: 0.08
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0.1
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

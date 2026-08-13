@@ -17,7 +17,7 @@ public class PolicyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Structural prerequisites only (techs, cultures, government, city count, and religion).
+    /// Structural prerequisites only (techs, cultures, government, city count, religion, and active policies).
     /// Deliberately excludes policy-point affordability so faction demand generation
     /// can target legal-but-unaffordable-right-now policies without duplicating requirement logic.
     /// </summary>
@@ -43,12 +43,25 @@ public class PolicyManager : MonoBehaviour
         }
         if (civ.cities == null || civ.cities.Count < p.requiredCityCount) return false;
         if (!SatisfiesReligiousRequirements(civ, p.religiousRequirementGroups)) return false;
+        if (p.requiredPolicies != null)
+            foreach (var required in p.requiredPolicies)
+                if (required != null && (civ.activePolicies == null || !civ.activePolicies.Contains(required))) return false;
         return true;
     }
 
     public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
         => SatisfiesPolicyStructuralRequirements(civ, p)
-           && (civ.activePolicies == null || !civ.activePolicies.Contains(p));
+           && (civ.activePolicies == null || !civ.activePolicies.Contains(p))
+           && !HasActiveConflict(civ, p);
+
+    public bool HasActiveConflict(Civilization civ, PolicyData candidate)
+    {
+        if (civ?.activePolicies == null || candidate == null) return false;
+        foreach (var active in civ.activePolicies)
+            if (active != null && (Contains(candidate.incompatiblePolicies, active)
+                || Contains(active.incompatiblePolicies, candidate))) return true;
+        return false;
+    }
 
     private static bool SatisfiesReligiousRequirements(Civilization civ, PolicyReligiousRequirementGroup[] groups)
     {
@@ -115,13 +128,21 @@ public class PolicyManager : MonoBehaviour
     public void RevalidateActivePolicies(Civilization civ)
     {
         if (civ?.activePolicies == null) return;
-        for (int i = civ.activePolicies.Count - 1; i >= 0; i--)
+        // Repeat because removing one prerequisite can invalidate a policy that was
+        // visited earlier in the list. This is event-driven, never a per-frame search.
+        bool removed;
+        do
         {
-            var policy = civ.activePolicies[i];
-            if (SatisfiesPolicyStructuralRequirements(civ, policy)) continue;
-            Debug.Log($"[PolicyManager] Automatically revoking '{policy?.policyName ?? "<missing policy>"}': structural prerequisites are no longer met.");
-            civ.RevokePolicy(policy);
-        }
+            removed = false;
+            for (int i = civ.activePolicies.Count - 1; i >= 0; i--)
+            {
+                var policy = civ.activePolicies[i];
+                if (SatisfiesPolicyStructuralRequirements(civ, policy)) continue;
+                Debug.Log($"[PolicyManager] Automatically revoking '{policy?.policyName ?? "<missing policy>"}': structural prerequisites are no longer met.");
+                civ.RevokePolicy(policy); // Structural revocation deliberately bypasses council and refunds.
+                removed = true;
+            }
+        } while (removed);
     }
 
     /// <summary>All policies whose structural prerequisites are met, regardless of current policy points.</summary>
@@ -164,6 +185,12 @@ public class PolicyManager : MonoBehaviour
                       $"({voteResult.yesVotes}\u2013{voteResult.noVotes}).");
             return false;
         }
+
+        // Supersession occurs only after approval, without another vote or refund.
+        if (p.supersedesPolicies != null)
+            foreach (var superseded in p.supersedesPolicies)
+                if (superseded != null && civ.activePolicies != null && civ.activePolicies.Contains(superseded))
+                    civ.RevokePolicy(superseded);
 
         // Adopt first, then charge: Civilization.AdoptPolicy re-validates availability,
         // so deducting points up-front could silently charge without adopting.

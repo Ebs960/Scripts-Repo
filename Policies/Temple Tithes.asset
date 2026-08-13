@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Temple Tithes
   icon: {fileID: 0}
-  description: Channels religious tribute into state revenues.
-  policyPointCost: 25
+  description: Establishes temple tithes as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 26
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -40,6 +40,11 @@ MonoBehaviour:
     minimumPantheonTier: 0
     anyBeliefs: []
     anyBeliefCategories: []
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 10
   additionalVetoDomains: 12
   attackBonus: 0
   meleeAttackBonus: 0
@@ -53,6 +58,28 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0.1
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

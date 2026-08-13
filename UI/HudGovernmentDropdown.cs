@@ -174,6 +174,17 @@ public class HudGovernmentDropdown : MonoBehaviour
 
         var effects = new List<string>();
 
+        effects.Add($"Cost: {policy.policyPointCost} PP");
+        AddNamedRequirements<TechData>(effects, "Technology", policy.requiredTechs, x => x.name, " AND ");
+        AddNamedRequirements<CultureData>(effects, "Culture", policy.requiredCultures, x => x.name, " AND ");
+        AddNamedRequirements<GovernmentData>(effects, "Government", policy.requiredGovernments,
+            x => !string.IsNullOrWhiteSpace(x.governmentName) ? x.governmentName : x.name, " OR ");
+        AddNamedRequirements<PolicyData>(effects, "Required policies", policy.requiredPolicies, GetPolicyName, " AND ");
+        AddNamedRequirements<PolicyData>(effects, "Conflicts with", policy.incompatiblePolicies, GetPolicyName, ", ");
+        AddNamedRequirements<PolicyData>(effects, "Supersedes", policy.supersedesPolicies, GetPolicyName, ", ");
+        if (policy.religiousRequirementGroups != null && policy.religiousRequirementGroups.Length > 0)
+            effects.Add($"Religion: {policy.religiousRequirementGroups.Length} alternative route(s) (OR; clauses within each route are AND)");
+
         AddFloatPercent(effects, "Attack", policy.attackBonus);
         AddFloatPercent(effects, "Defense", policy.defenseBonus);
         AddFloatPercent(effects, "Movement", policy.movementBonus);
@@ -225,7 +236,16 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (Mathf.Approximately(value, 0f))
             return;
 
-        effects.Add($"{label} {(value > 0f ? "+" : string.Empty)}{value:0.##}%");
+        effects.Add($"{label} {(value > 0f ? "+" : string.Empty)}{value * 100f:0.##}%");
+    }
+
+    private static void AddNamedRequirements<T>(List<string> effects, string label, T[] values,
+        System.Func<T, string> getName, string separator) where T : Object
+    {
+        if (values == null) return;
+        var names = new List<string>();
+        foreach (var value in values) if (value != null) names.Add(getName(value));
+        if (names.Count > 0) effects.Add($"{label}: {string.Join(separator, names)}");
     }
 
     private static string GetPolicyName(PolicyData policy)

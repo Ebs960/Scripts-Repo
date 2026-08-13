@@ -14,26 +14,53 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Imperial Roads
   icon: {fileID: 0}
-  description: Maintains a realm-wide road and courier network.
-  policyPointCost: 30
+  description: Establishes imperial roads as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 34
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
   - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 6
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
-  movementBonus: 1
+  movementBonus: 0.2
   foodModifier: 0
   productionModifier: 0.05
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0.1
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0.15
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []
