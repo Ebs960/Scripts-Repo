@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Colonial Administration
   icon: {fileID: 0}
-  description: Establishes colonial administration as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Establishes colonial administration as a durable institution; its
+    benefits and stated tradeoffs apply while active.
   policyPointCost: 46
   requiredTechs: []
   requiredCultures: []
@@ -24,9 +25,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 0
-  - 2
+  policyTags: 0000000002000000
   additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0
@@ -71,7 +70,30 @@ MonoBehaviour:
   workerBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
-  cityBonuses: []
+  cityBonuses:
+  - scope: 0
+    useLayerFilter: 0
+    layers: 
+    useSeasonFilter: 0
+    seasons: 
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    defenseAdd: 10
+    happinessAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+    defensePct: 0
+    happinessPct: 0
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []

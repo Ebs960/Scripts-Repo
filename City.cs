@@ -3094,7 +3094,32 @@ Destroy(oldTuple.instance);
             if (!layerMatched) return false;
         }
 
+        if (bonus.useNewWorldFilter)
+        {
+            if (bonus.newWorldRegions == null || bonus.newWorldRegions.Length == 0) return false;
+            var region = ResolveContinentRegionCategory();
+            bool regionMatched = false;
+            foreach (var candidateRegion in bonus.newWorldRegions)
+            {
+                if (candidateRegion == region)
+                {
+                    regionMatched = true;
+                    break;
+                }
+            }
+            if (!regionMatched) return false;
+        }
+
         return true;
+    }
+
+    private ContinentManager.ContinentRegionCategory ResolveContinentRegionCategory()
+    {
+        var gen = planetGenerator ?? ResolvePlanetGenerator();
+        if (gen == null) return ContinentManager.ContinentRegionCategory.OldWorld;
+        if (gen.IsTileInSecondaryNewWorld(centerTileIndex)) return ContinentManager.ContinentRegionCategory.NewWorldSecondary;
+        if (gen.IsTileInNewWorld(centerTileIndex)) return ContinentManager.ContinentRegionCategory.NewWorld;
+        return ContinentManager.ContinentRegionCategory.OldWorld;
     }
 
 

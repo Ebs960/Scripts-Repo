@@ -692,6 +692,12 @@ public class CityYieldBonus
     public bool useSeasonFilter = false;
     public Season[] seasons;
 
+    [Header("New World Filter")]
+    [Tooltip("If enabled, this city bonus only applies to cities located in the selected world regions (Old World, New World, New World 2).")]
+    public bool useNewWorldFilter = false;
+    [Tooltip("World regions this city bonus applies to when Use New World Filter is enabled.")]
+    public ContinentManager.ContinentRegionCategory[] newWorldRegions;
+
     [Header("Yield Add (flat per city per turn)")]
     public int foodAdd;
     public int productionAdd;

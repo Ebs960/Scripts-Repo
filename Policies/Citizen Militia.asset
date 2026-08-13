@@ -14,20 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Militia
   icon: {fileID: 0}
-  description: Establishes citizen militia as a durable institution; its benefits and stated tradeoffs apply while active.
-  policyPointCost: 26
+  description: Establishes citizen militia as a durable institution; its benefits
+    and stated tradeoffs apply while active.
+  policyPointCost: 40
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 3f8076e80bfeeef4ea74a192c1642a88, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
   - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   requiredCityCount: 0
+  religiousRequirementGroups: []
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 9
+  policyTags: 09000000
+  additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -42,7 +45,7 @@ MonoBehaviour:
   faithModifier: 0
   populationGrowthModifier: 0
   migrationAttractionModifier: 0
-  warWearinessModifier: 0
+  warWearinessModifier: 0.07
   corruptionModifier: 0
   unrestModifier: 0
   administrativeEfficiencyModifier: 0
@@ -74,9 +77,9 @@ MonoBehaviour:
   cityBonuses:
   - scope: 0
     useLayerFilter: 0
-    layers: []
+    layers: 
     useSeasonFilter: 0
-    seasons: []
+    seasons: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -95,7 +98,6 @@ MonoBehaviour:
     policyPointsPct: 0
     defensePct: 0
     happinessPct: 0
-
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
