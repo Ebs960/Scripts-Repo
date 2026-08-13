@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Unemployment Insurance
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Unemployment Insurance
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9fce2358f8a87374aa51511575046cf4, type: 3}
   description: Establishes unemployment insurance as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 65
   requiredTechs: []

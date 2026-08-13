@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Universal Healthcare
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Healthcare
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 86d0fde0470844447b26370496105b85, type: 3}
   description: Establishes universal healthcare as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 70
   requiredTechs:

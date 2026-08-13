@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Algorithim Regulation
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Algorithm Regulation
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ce1a226b560e46440945187c1461917b, type: 3}
   description: Establishes algorithmic regulation as a durable institution; its benefits
     and stated tradeoffs apply while active.
   policyPointCost: 80

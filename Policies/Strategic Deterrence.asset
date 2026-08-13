@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Strategic Deterrence
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Strategic Deterrence
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: bd33229c7d43098409fccf5c0fd04fe1, type: 3}
   description: Establishes strategic deterrence as a durable institution; its benefits
     and stated tradeoffs apply while active.
   policyPointCost: 105

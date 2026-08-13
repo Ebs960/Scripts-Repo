@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Universal Internet Access
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Internet Access
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6ddbdd743f3e4d548a2571913a0b6e39, type: 3}
   description: Establishes universal internet access as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 72
   requiredTechs:

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Synthetic Citizenship
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Synthetic Citizenship
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 4a276f63a019285468ed002b1a653d2d, type: 3}
   description: Establishes synthetic citizenship as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 94
   requiredTechs: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Central Treasury
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Central Treasury
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 8b8c34f7fbc91c145beec283ae2d6802, type: 3}
   description: Establishes central treasury as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 45
   requiredTechs: []

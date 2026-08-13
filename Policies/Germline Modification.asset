@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Germline Modification
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Germline Modification
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: dc299c52c92b1f24ebc4ec8d2f35572a, type: 3}
   description: Establishes germline modification as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 98
   requiredTechs:

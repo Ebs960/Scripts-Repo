@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Representative Institutions
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Representative Institutions
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d6a710beb14d12142a4d4141ecc8ad3e, type: 3}
   description: Establishes representative institutions as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 52
   requiredTechs: []

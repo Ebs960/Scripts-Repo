@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Synthetic Military Service
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Synthetic Military Service
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 317fc828f3724dd49b8de3b46fe0ea29, type: 3}
   description: Establishes synthetic military service as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 92
   requiredTechs: []

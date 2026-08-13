@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Data Localization
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Data Localization
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ab1b8f4fdaa421f41b27b7af39867316, type: 3}
   description: Establishes data localization as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 74
   requiredTechs: []

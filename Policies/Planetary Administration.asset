@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Planetary Administration
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Planetary Administration
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: f0ea9be9bda3bb34aaa786f2ceaf8315, type: 3}
   description: Establishes planetary administration as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 88
   requiredTechs: []

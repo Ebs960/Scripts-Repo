@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ritual Calendar
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Ritual Calendar
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a508a7dc5efd30a4a8eeb79f4529fe02, type: 3}
   description: Establishes ritual calendar as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 18
   requiredTechs: []

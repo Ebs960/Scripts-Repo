@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Temple Tithes
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Temple Tithes
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 73163c05a31f49b4885c9c915d396cce, type: 3}
   description: Establishes temple tithes as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 26
   requiredTechs: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mercantilism
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Mercantilism
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2077e2b1e306bf343973af9de3e6d97a, type: 3}
   description: Establishes mercantilism as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 42
   requiredTechs: []

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: State Bureaucracy
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: State Bureaucracy
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 52b4b4facd3adb74ea5d7899861838a7, type: 3}
   description: Establishes state bureaucracy as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 47
   requiredTechs: []

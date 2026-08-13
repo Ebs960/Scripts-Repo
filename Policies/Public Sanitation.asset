@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Public Sanitation
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Sanitation
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e270acfae26ae644db56ac9971bea4b1, type: 3}
   description: Establishes public sanitation as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 52
   requiredTechs: []

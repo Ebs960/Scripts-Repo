@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Serfdom
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Serfdom
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9e945e76271483c4594f78e65a192cad, type: 3}
   description: Establishes serfdom as a durable institution; its benefits and stated tradeoffs apply while active.
     Labor for improvements.
   policyPointCost: 30
