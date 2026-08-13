@@ -71,10 +71,34 @@ def is_boilerplate(text: str) -> bool:
     return not desc or any(marker in desc for marker in repair.BOILERPLATE_MARKERS)
 
 
+def safe_make_description(name: str, tag: int, text: str) -> str:
+    # Avoid ':' in an unquoted Unity YAML scalar. The em dash is visually cleaner too.
+    lead = repair.DOMAIN_LEADS.get(tag, repair.DOMAIN_LEADS[0])
+    return f"{name} {lead}. Gameplay impact — {repair.gameplay_summary(text)}."
+
+
+def safe_repair_policy(path, research):
+    # A primitive policy is only a true start policy if it does not already carry a
+    # structural gate. This prevents contradictory availableFromStart + prerequisite data.
+    text = path.read_text(encoding="utf-8")
+    name = repair.scalar(text, "policyName") or path.stem
+    temporarily_remove = name in repair.START_POLICIES and repair.has_gate(text)
+    if temporarily_remove:
+        repair.START_POLICIES.remove(name)
+    try:
+        return original_repair_policy(path, research)
+    finally:
+        if temporarily_remove:
+            repair.START_POLICIES.add(name)
+
+
 original_set_scalar = repair.set_scalar
+original_repair_policy = repair.repair_policy
 repair.primary_tag = primary_tag
 repair.set_scalar = safe_set_scalar
 repair.is_boilerplate = is_boilerplate
+repair.make_description = safe_make_description
+repair.repair_policy = safe_repair_policy
 
 # The currently misspelled asset has policyName "Algorithm Regulation" and is a true
 # no-op. Give it an explicit digital-regulation tradeoff instead of a generic fallback.
@@ -83,6 +107,7 @@ repair.NO_OP_OVERRIDES["Algorithm Regulation"] = {
     "corruptionModifier": -0.05,
     "productionModifier": -0.03,
 }
+repair.GATE_HINTS["Algorithm Regulation"] = ["algorithm", "artificial intelligence", "ai"]
 
 if __name__ == "__main__":
     raise SystemExit(repair.main())
