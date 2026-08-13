@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Service Examinations
   icon: {fileID: 0}
-  description: Establishes civil service examinations as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Establishes civil service examinations as a durable institution; its
+    benefits and stated tradeoffs apply while active.
   policyPointCost: 50
   requiredTechs: []
   requiredCultures: []
@@ -26,8 +27,7 @@ MonoBehaviour:
   incompatiblePolicies:
   - {fileID: 11400000, guid: f4da89a30bc240fa94de6cc5014e7ac6, type: 2}
   supersedesPolicies: []
-  policyTags:
-  - 3
+  policyTags: 03000000
   additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0
@@ -48,7 +48,7 @@ MonoBehaviour:
   unrestModifier: 0
   administrativeEfficiencyModifier: 0.1
   distanceLoyaltyPenaltyModifier: 0
-  policyPointGenerationModifier: 0
+  policyPointGenerationModifier: 0.1
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0

@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Strategic Deterrence
   icon: {fileID: 0}
-  description: Establishes strategic deterrence as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Establishes strategic deterrence as a durable institution; its benefits
+    and stated tradeoffs apply while active.
   policyPointCost: 105
   requiredTechs: []
   requiredCultures: []
@@ -24,14 +25,11 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 9
-  - 12
-  - 18
+  policyTags: 090000000c00000012000000
   additionalVetoDomains: 128
   attackBonus: 0
   meleeAttackBonus: 0
-  rangedAttackBonus: 0
+  rangedAttackBonus: 9
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
@@ -62,7 +60,7 @@ MonoBehaviour:
   orbitalProductionModifier: 0
   interplanetaryTradeModifier: 0
   planetaryLoyaltyModifier: 0
-  planetaryDefenseModifier: 0
+  planetaryDefenseModifier: 0.25
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []
