@@ -14,14 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Royal Intendants
   icon: {fileID: 0}
-  description: Sends crown officials to oversee taxation and production.
-  policyPointCost: 40
+  description: Establishes royal intendants as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 30
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 0
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -30,10 +35,32 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0.15
-  goldModifier: 0
+  goldModifier: 0.1
   scienceModifier: 0.1
   cultureModifier: 0
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: -0.05
+  unrestModifier: 0
+  administrativeEfficiencyModifier: 0.1
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

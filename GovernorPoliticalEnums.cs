@@ -33,7 +33,8 @@ public enum VetoDomain
     TitleRevocation = 1 << 4,  // Council must approve revoking governor titles
     GovernmentChange = 1 << 5, // Council must approve switching government type
     PolicyChange    = 1 << 6,  // Council must approve adopting/revoking policies
-    All             = WarDeclaration | Succession | Taxation | Religion | TitleRevocation | GovernmentChange | PolicyChange,
+    Military        = 1 << 7,  // Council must approve military institutions and doctrine
+    All             = WarDeclaration | Succession | Taxation | Religion | TitleRevocation | GovernmentChange | PolicyChange | Military,
 }
 
 /// <summary>

@@ -478,6 +478,16 @@ public class Civilization : MonoBehaviour
     public List<GovernmentData>  unlockedGovernments    = new List<GovernmentData>();
     public GovernmentData        currentGovernment;
 
+    [Header("Policy Institutional Modifiers")]
+    public float populationGrowthModifier, migrationAttractionModifier, policyWarWearinessModifier;
+    public float corruptionModifier, unrestModifier, administrativeEfficiencyModifier;
+    public float distanceLoyaltyPenaltyModifier, policyPointGenerationModifier;
+    public float domesticTradeModifier, foreignTradeModifier, laborProductivityModifier;
+    public float unemploymentUnhappinessModifier, reinforcementSpeedModifier, militaryUpkeepModifier;
+    public float cyberDefenseModifier, cyberOffenseModifier, espionageDefenseModifier;
+    public float orbitalProductionModifier, interplanetaryTradeModifier, planetaryLoyaltyModifier, planetaryDefenseModifier;
+    public int tradeRouteCapacityBonus;
+
     [Header("Legacies")]
     [Tooltip("All legacies this civilization has ever earned from missions")]
     public List<LegacyData> earnedLegacies = new List<LegacyData>();
@@ -3592,6 +3602,7 @@ public class Civilization : MonoBehaviour
         scienceModifier += policy.scienceModifier;
         cultureModifier += policy.cultureModifier;
         faithModifier += policy.faithModifier;
+        ApplyInstitutionalPolicyModifiers(policy, 1f);
 
         // Governor slot and trait unlocks
         if (policy.additionalGovernorSlots > 0)
@@ -3626,11 +3637,38 @@ public class Civilization : MonoBehaviour
         scienceModifier -= policy.scienceModifier;
         cultureModifier -= policy.cultureModifier;
         faithModifier -= policy.faithModifier;
+        ApplyInstitutionalPolicyModifiers(policy, -1f);
 
         // Reverse governor slot grant. Already-unlocked governor traits are kept:
         // removing knowledge retroactively would break governors who hold them.
         if (policy.additionalGovernorSlots > 0)
             governorCount = Mathf.Max(0, governorCount - policy.additionalGovernorSlots);
+    }
+
+    private void ApplyInstitutionalPolicyModifiers(PolicyData p, float direction)
+    {
+        populationGrowthModifier += p.populationGrowthModifier * direction;
+        migrationAttractionModifier += p.migrationAttractionModifier * direction;
+        policyWarWearinessModifier += p.warWearinessModifier * direction;
+        corruptionModifier += p.corruptionModifier * direction;
+        unrestModifier += p.unrestModifier * direction;
+        administrativeEfficiencyModifier += p.administrativeEfficiencyModifier * direction;
+        distanceLoyaltyPenaltyModifier += p.distanceLoyaltyPenaltyModifier * direction;
+        policyPointGenerationModifier += p.policyPointGenerationModifier * direction;
+        domesticTradeModifier += p.domesticTradeModifier * direction;
+        foreignTradeModifier += p.foreignTradeModifier * direction;
+        tradeRouteCapacityBonus += Mathf.RoundToInt(p.tradeRouteCapacityBonus * direction);
+        laborProductivityModifier += p.laborProductivityModifier * direction;
+        unemploymentUnhappinessModifier += p.unemploymentUnhappinessModifier * direction;
+        reinforcementSpeedModifier += p.reinforcementSpeedModifier * direction;
+        militaryUpkeepModifier += p.militaryUpkeepModifier * direction;
+        cyberDefenseModifier += p.cyberDefenseModifier * direction;
+        cyberOffenseModifier += p.cyberOffenseModifier * direction;
+        espionageDefenseModifier += p.espionageDefenseModifier * direction;
+        orbitalProductionModifier += p.orbitalProductionModifier * direction;
+        interplanetaryTradeModifier += p.interplanetaryTradeModifier * direction;
+        planetaryLoyaltyModifier += p.planetaryLoyaltyModifier * direction;
+        planetaryDefenseModifier += p.planetaryDefenseModifier * direction;
     }
 
     /// <summary>

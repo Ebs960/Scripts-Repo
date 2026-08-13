@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Elder Deliberation
   icon: {fileID: 0}
-  description: Empowers elders to guide settlement decisions.
-  policyPointCost: 20
+  description: Establishes elder deliberation as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 14
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -43,6 +43,11 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 4b9d9fecbf57778468941506e5046fd9, type: 2}
     - {fileID: 11400000, guid: ec2f29a8d0ca4534ea809b6336fea447, type: 2}
     anyBeliefCategories: []
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 3
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -53,8 +58,30 @@ MonoBehaviour:
   productionModifier: -0.05
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.08
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: -0.1
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

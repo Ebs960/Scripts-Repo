@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Holy Law
   icon: {fileID: 0}
-  description: Bases courts and civil order on sacred law.
-  policyPointCost: 35
+  description: Establishes holy law as a durable institution; its benefits and stated tradeoffs apply while active.
+  policyPointCost: 30
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:
@@ -30,6 +30,13 @@ MonoBehaviour:
     minimumPantheonTier: 0
     anyBeliefs: []
     anyBeliefCategories: []
+  requiredPolicies: []
+  incompatiblePolicies:
+  - {fileID: 11400000, guid: 3e02740d8a79465fa3239bf61a9b283a, type: 2}
+  supersedesPolicies: []
+  policyTags:
+  - 8
+  - 10
   additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
@@ -42,7 +49,29 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0.15
+  faithModifier: 0.1
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: -0.15
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []

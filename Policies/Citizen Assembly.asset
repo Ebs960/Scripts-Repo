@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Assembly
   icon: {fileID: 0}
-  description: Gives citizens a formal role in public decisions.
+  description: Establishes citizen assembly as a durable institution; its benefits and stated tradeoffs apply while active.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []
@@ -23,6 +23,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredCityCount: 0
+  requiredPolicies: []
+  incompatiblePolicies: []
+  supersedesPolicies: []
+  policyTags:
+  - 3
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
@@ -33,8 +38,30 @@ MonoBehaviour:
   productionModifier: -0.05
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.15
+  cultureModifier: 0.08
   faithModifier: 0
+  populationGrowthModifier: 0
+  migrationAttractionModifier: 0
+  warWearinessModifier: 0
+  corruptionModifier: 0
+  unrestModifier: -0.1
+  administrativeEfficiencyModifier: 0
+  distanceLoyaltyPenaltyModifier: 0
+  policyPointGenerationModifier: 0
+  domesticTradeModifier: 0
+  foreignTradeModifier: 0
+  tradeRouteCapacityBonus: 0
+  laborProductivityModifier: 0
+  unemploymentUnhappinessModifier: 0
+  reinforcementSpeedModifier: 0
+  militaryUpkeepModifier: 0
+  cyberDefenseModifier: 0
+  cyberOffenseModifier: 0
+  espionageDefenseModifier: 0
+  orbitalProductionModifier: 0
+  interplanetaryTradeModifier: 0
+  planetaryLoyaltyModifier: 0
+  planetaryDefenseModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   unitYieldBonuses: []
