@@ -18,9 +18,22 @@ public static class PolicyDataValidator
             if (policy == null) { Error(path, "Asset could not be loaded.", ref errors); continue; }
             policies.Add(policy);
             if (string.IsNullOrWhiteSpace(policy.description)) Error(path, "description is empty.", ref errors, policy);
+            if (HasBoilerplateDescription(policy.description))
+            {
+                Debug.LogWarning($"[Policy Validation] {path}: description uses generic active-policy boilerplate instead of explaining the policy's gameplay impact.", policy);
+                warnings++;
+            }
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
+            if (!HasGameplayEffect(policy))
+                Error(path, "policy has no gameplay effects configured.", ref errors, policy);
+            if (!HasProgressionRequirement(policy))
+            {
+                Debug.LogWarning($"[Policy Validation] {path}: policy has no technology, culture, government, city-count, religion, or required-policy gate and is structurally available from the start.", policy);
+                warnings++;
+            }
+
             string identity = string.IsNullOrWhiteSpace(policy.policyName) ? policy.name : policy.policyName;
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
             else names[identity] = path;
@@ -75,6 +88,51 @@ public static class PolicyDataValidator
 
     public static bool HasRequiredPolicyCycle(PolicyData policy)
         => policy != null && HasRequiredCycle(policy, policy, new HashSet<PolicyData>());
+
+    public static bool HasGameplayEffect(PolicyData p)
+    {
+        if (p == null) return false;
+        return NonZero(p.attackBonus) || NonZero(p.meleeAttackBonus) || NonZero(p.rangedAttackBonus)
+            || NonZero(p.cityAttackBonus) || NonZero(p.defenseBonus) || NonZero(p.movementBonus)
+            || NonZero(p.foodModifier) || NonZero(p.productionModifier) || NonZero(p.goldModifier)
+            || NonZero(p.scienceModifier) || NonZero(p.cultureModifier) || NonZero(p.faithModifier)
+            || NonZero(p.populationGrowthModifier) || NonZero(p.migrationAttractionModifier)
+            || NonZero(p.warWearinessModifier) || NonZero(p.corruptionModifier) || NonZero(p.unrestModifier)
+            || NonZero(p.administrativeEfficiencyModifier) || NonZero(p.distanceLoyaltyPenaltyModifier)
+            || NonZero(p.policyPointGenerationModifier) || NonZero(p.domesticTradeModifier)
+            || NonZero(p.foreignTradeModifier) || p.tradeRouteCapacityBonus != 0
+            || NonZero(p.laborProductivityModifier) || NonZero(p.unemploymentUnhappinessModifier)
+            || NonZero(p.reinforcementSpeedModifier) || NonZero(p.militaryUpkeepModifier)
+            || NonZero(p.cyberDefenseModifier) || NonZero(p.cyberOffenseModifier)
+            || NonZero(p.espionageDefenseModifier) || NonZero(p.orbitalProductionModifier)
+            || NonZero(p.interplanetaryTradeModifier) || NonZero(p.planetaryLoyaltyModifier)
+            || NonZero(p.planetaryDefenseModifier) || HasItems(p.tileYieldBonuses)
+            || HasItems(p.buildingBonuses) || HasItems(p.unitYieldBonuses) || HasItems(p.unitBonuses)
+            || HasItems(p.equipmentYieldBonuses) || HasItems(p.workerYieldBonuses) || HasItems(p.workerBonuses)
+            || HasItems(p.diseaseBonuses) || HasItems(p.attritionBonuses) || HasItems(p.cityBonuses)
+            || HasItems(p.nonStateReligionUnhappinessModifiers) || NonZero(p.herdStarvationPercentReduction)
+            || HasItems(p.herdYieldBonuses) || p.additionalGovernorSlots != 0
+            || HasItems(p.unlockedGovernorTraits) || HasItems(p.governorOpinionEffects);
+    }
+
+    public static bool HasProgressionRequirement(PolicyData p)
+    {
+        if (p == null) return false;
+        return HasItems(p.requiredTechs) || HasItems(p.requiredCultures) || HasItems(p.requiredGovernments)
+            || p.requiredCityCount > 0 || HasItems(p.religiousRequirementGroups) || HasItems(p.requiredPolicies);
+    }
+
+    private static bool HasBoilerplateDescription(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description)) return false;
+        string lower = description.ToLowerInvariant();
+        return lower.Contains("apply while active")
+            || lower.Contains("while the policy is active")
+            || lower.Contains("durable institution; its benefits")
+            || lower.Contains("durable institution; its tradeoffs");
+    }
+
+    private static bool NonZero(float value) => !Mathf.Approximately(value, 0f);
 
     private static bool HasRequiredCycle(PolicyData root, PolicyData current, HashSet<PolicyData> visiting)
     {
