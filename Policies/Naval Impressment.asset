@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Naval Impressment
   icon: {fileID: 0}
-  description: Establishes naval impressment as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Naval Impressment changes how armed forces are raised, organized, and sustained. Gameplay impact — +5% Ranged Attack; +5% Unrest; -5% Military Upkeep.
   policyPointCost: 40
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 4c18a6d43fcd0ff45ae3562945a26b4a, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -29,7 +31,7 @@ MonoBehaviour:
   additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0
-  rangedAttackBonus: 0
+  rangedAttackBonus: 0.05
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
@@ -43,7 +45,7 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: 0.05
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
@@ -53,7 +55,7 @@ MonoBehaviour:
   laborProductivityModifier: 0
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
-  militaryUpkeepModifier: 0
+  militaryUpkeepModifier: -0.05
   cyberDefenseModifier: 0
   cyberOffenseModifier: 0
   espionageDefenseModifier: 0

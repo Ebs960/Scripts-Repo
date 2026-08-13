@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Imperial Roads
   icon: {fileID: 0}
-  description: Establishes imperial roads as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Imperial Roads changes how the state builds and operates shared infrastructure. Gameplay impact — +20% Movement; +5% Production; +10% Domestic Trade; +15% Reinforcement Speed.
   policyPointCost: 34
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

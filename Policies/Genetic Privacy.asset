@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Genetic Privacy
   icon: {fileID: 0}
-  description: Establishes genetic privacy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Genetic Privacy changes the rights, protections, and political standing recognized by the state. Gameplay impact — -3% Science.
   policyPointCost: 90
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 3a5cce3704c0b024c890aec33b724203, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

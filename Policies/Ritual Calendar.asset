@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Ritual Calendar
   icon: {fileID: 0}
-  description: Establishes ritual calendar as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Ritual Calendar changes the formal relationship between religion and public authority. Gameplay impact — -5% Science; +5% Faith; 1 city effect.
   policyPointCost: 18
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

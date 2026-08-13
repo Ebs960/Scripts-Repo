@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Feudal Levy
   icon: {fileID: 0}
-  description: Establishes feudal levy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Feudal Levy changes how armed forces are raised, organized, and sustained. Gameplay impact — +100% Defense; +10% Production; -5% Science; +10% Reinforcement Speed; -15% Military Upkeep; 1 city effect.
   policyPointCost: 30
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Merchant Privileges
   icon: {fileID: 0}
-  description: Establishes merchant privileges as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Merchant Privileges changes the rules governing merchants, trade routes, and commercial exchange. Gameplay impact — +20% Gold; 1 city effect; 1 governor opinion effect.
   policyPointCost: 30
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

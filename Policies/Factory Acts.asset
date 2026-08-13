@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Factory Acts
   icon: {fileID: 0}
-  description: Establishes factory acts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Factory Acts changes the state's role in markets, finance, and production. Gameplay impact — +3% Population Growth; -6% Unrest; -2% Labor Productivity.
   policyPointCost: 52
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -39,18 +41,18 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  populationGrowthModifier: 0
+  populationGrowthModifier: 0.03
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.06
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: -0.02
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

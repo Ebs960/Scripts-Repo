@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Mercenary Contracts
   icon: {fileID: 0}
-  description: Establishes mercenary contracts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Mercenary Contracts changes the state's role in markets, finance, and production. Gameplay impact — +100% Attack; +10% Gold; 1 city effect.
   policyPointCost: 30
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

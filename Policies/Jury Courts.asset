@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Jury Courts
   icon: {fileID: 0}
-  description: Establishes jury courts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Jury Courts changes the institutions used to make, enforce, and interpret law. Gameplay impact — -5% Gold; +5% Culture; -10% Corruption; 1 city effect.
   policyPointCost: 34
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

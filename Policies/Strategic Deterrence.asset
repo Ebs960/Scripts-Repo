@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Strategic Deterrence
   icon: {fileID: 0}
-  description: Establishes strategic deterrence as a durable institution; its benefits
-    and stated tradeoffs apply while active.
+  description: Strategic Deterrence changes how armed forces are raised, organized, and sustained. Gameplay impact — +900% Ranged Attack; +25% Planetary Defense.
   policyPointCost: 105
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: dd6c4a0dac33f9c499e5025c0ff70717, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

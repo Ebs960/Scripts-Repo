@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Noble Retinues
   icon: {fileID: 0}
-  description: Establishes noble retinues as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Noble Retinues changes how armed forces are raised, organized, and sustained. Gameplay impact — +100% Melee Attack; +100% Defense; -5% Gold; +12% Military Upkeep.
   policyPointCost: 35
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

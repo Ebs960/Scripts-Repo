@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Minimum Wage
   icon: {fileID: 0}
-  description: Establishes minimum wage as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Minimum Wage changes the legal and economic relationship between workers, employers, and the state. Gameplay impact — -3% Production; -3% Gold; +5% Migration Attraction.
   policyPointCost: 63
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

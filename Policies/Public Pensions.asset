@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Pensions
   icon: {fileID: 0}
-  description: Establishes public pensions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Public Pensions expands or restructures public social provision. Gameplay impact — -7% Gold.
   policyPointCost: 66
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: ed1fc70f911bdad44a038cea284cdc27, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

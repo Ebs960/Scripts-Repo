@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Free Trade
   icon: {fileID: 0}
-  description: Establishes free trade as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Free Trade changes the rules governing merchants, trade routes, and commercial exchange. Gameplay impact — -5% Production; +20% Foreign Trade.
   policyPointCost: 52
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

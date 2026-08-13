@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Unemployment Insurance
   icon: {fileID: 0}
-  description: Establishes unemployment insurance as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Unemployment Insurance changes the legal and economic relationship between workers, employers, and the state. Gameplay impact — -6% Gold; -50% Unemployment Unhappiness.
   policyPointCost: 65
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: ed1fc70f911bdad44a038cea284cdc27, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Freedom of Religion
   icon: {fileID: 0}
-  description: Establishes freedom of religion as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Freedom of Religion changes the formal relationship between religion and public authority. Gameplay impact — +10% Migration Attraction.
   policyPointCost: 48
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: 33303c513de0d994c9bf958b197a0ad9, type: 2}

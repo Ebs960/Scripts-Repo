@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Slavery
   icon: {fileID: 0}
-  description: Establishes slavery as a durable institution; its benefits and stated tradeoffs apply while active.
-    at the cost of growing unrest.
+  description: Slavery changes the state's role in markets, finance, and production. Gameplay impact — +10% Production; +5% Gold; -10% Migration Attraction; 1 city effect.
   policyPointCost: 22
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

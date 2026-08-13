@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Manorial Dues
   icon: {fileID: 0}
-  description: Establishes manorial dues as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Manorial Dues changes how the state organizes farming, food supply, and rural production. Gameplay impact — +10% Food; +10% Gold; -5% Science; -15% Migration Attraction; 1 city effect.
   policyPointCost: 28
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

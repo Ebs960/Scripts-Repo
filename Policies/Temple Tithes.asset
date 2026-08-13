@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Temple Tithes
   icon: {fileID: 0}
-  description: Establishes temple tithes as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Temple Tithes changes the formal relationship between religion and public authority. Gameplay impact — +5% Gold; +10% Faith.
   policyPointCost: 26
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

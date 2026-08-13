@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Orbital Industrialization
   icon: {fileID: 0}
-  description: Establishes orbital industrialization as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Orbital Industrialization changes how off-world settlements, industry, and interplanetary institutions are governed. Gameplay impact — +20% Orbital Production.
   policyPointCost: 94
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: 172a326c5a7196e48bb628458111906f, type: 2}
   requiredCultures: []

@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Planetary Administration
   icon: {fileID: 0}
-  description: Establishes planetary administration as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Planetary Administration reorganizes state administration and the institutions that carry out public policy. Gameplay impact — +15% Administrative Efficiency; +25% Planetary Loyalty.
   policyPointCost: 88
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: cf57b67d18912b944a5548255ce913b8, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

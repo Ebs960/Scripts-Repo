@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Human Genetic Preservation
   icon: {fileID: 0}
-  description: Establishes human genetic preservation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Human Genetic Preservation changes how genetic technologies are regulated and used. Gameplay impact — +5% Science; +5% Population Growth.
   policyPointCost: 92
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: 9fa680ce3f175d643aa42de49fec9bf7, type: 2}
   requiredCultures: []
@@ -38,10 +39,10 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0
+  scienceModifier: 0.05
   cultureModifier: 0
   faithModifier: 0
-  populationGrowthModifier: 0
+  populationGrowthModifier: 0.05
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0

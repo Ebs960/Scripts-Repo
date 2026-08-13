@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Monastic Schools
   icon: {fileID: 0}
-  description: Establishes monastic schools as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Monastic Schools changes how education and public knowledge are organized. Gameplay impact — -5% Gold; +5% Science; +5% Culture; +5% Faith.
   policyPointCost: 34
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

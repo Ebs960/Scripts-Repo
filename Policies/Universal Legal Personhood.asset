@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Legal Personhood
   icon: {fileID: 0}
-  description: Establishes universal legal personhood as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Universal Legal Personhood changes the rights, protections, and political standing recognized by the state. Gameplay impact — +10% Migration Attraction; -10% Unrest.
   policyPointCost: 58
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: State Bureaucracy
   icon: {fileID: 0}
-  description: Establishes state bureaucracy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: State Bureaucracy reorganizes state administration and the institutions that carry out public policy. Gameplay impact — +20% Administrative Efficiency; +10% Policy Point Generation.
   policyPointCost: 47
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 693a48909f61c9b408fc02b47c554add, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

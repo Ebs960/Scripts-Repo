@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Representative Institutions
   icon: {fileID: 0}
-  description: Establishes representative institutions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Representative Institutions changes the state's role in markets, finance, and production. Gameplay impact — +5% Culture; -10% Unrest.
   policyPointCost: 52
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

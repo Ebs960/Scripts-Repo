@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Constitutional Rights
   icon: {fileID: 0}
-  description: Establishes constitutional rights as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Constitutional Rights changes the institutions used to make, enforce, and interpret law. Gameplay impact — -5% Production; +10% Culture; -10% Unrest; 1 city effect; 1 governor opinion effect.
   policyPointCost: 45
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

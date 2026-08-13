@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Synthetic Citizenship
   icon: {fileID: 0}
-  description: Establishes synthetic citizenship as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Synthetic Citizenship changes the rights, protections, and political standing recognized by the state. Gameplay impact — +5% Science; -10% Unrest.
   policyPointCost: 94
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

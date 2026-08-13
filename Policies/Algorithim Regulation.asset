@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Algorithm Regulation
   icon: {fileID: 0}
-  description: Establishes algorithmic regulation as a durable institution; its benefits
-    and stated tradeoffs apply while active.
+  description: Algorithm Regulation changes how digital systems, data, and networked institutions are governed. Gameplay impact — -3% Production; -5% Corruption; +12% Cyber Defense.
   policyPointCost: 80
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -34,7 +35,7 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: -0.03
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
@@ -42,7 +43,7 @@ MonoBehaviour:
   populationGrowthModifier: 0
   migrationAttractionModifier: 0
   warWearinessModifier: 0
-  corruptionModifier: 0
+  corruptionModifier: -0.05
   unrestModifier: 0
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
@@ -54,7 +55,7 @@ MonoBehaviour:
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0
-  cyberDefenseModifier: 0
+  cyberDefenseModifier: 0.12
   cyberOffenseModifier: 0
   espionageDefenseModifier: 0
   orbitalProductionModifier: 0

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Sacred Kingship
   icon: {fileID: 0}
-  description: Establishes sacred kingship as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Sacred Kingship changes the formal relationship between religion and public authority. Gameplay impact — +5% Culture; +10% Faith; 1 city effect.
   policyPointCost: 28
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

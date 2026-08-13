@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Professional Officer Corps
   icon: {fileID: 0}
-  description: Establishes professional officer corps as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Professional Officer Corps changes the state's role in markets, finance, and production. Gameplay impact — +10% Reinforcement Speed.
   policyPointCost: 46
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Sanitation
   icon: {fileID: 0}
-  description: Establishes public sanitation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Public Sanitation changes how development is balanced against environmental and resource pressures. Gameplay impact — +5% Population Growth.
   policyPointCost: 52
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: a8c1e7e999286294e91b0f925f3cb2c6, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

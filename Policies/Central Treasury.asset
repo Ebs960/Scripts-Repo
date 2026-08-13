@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Central Treasury
   icon: {fileID: 0}
-  description: Establishes central treasury as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Central Treasury changes the state's role in markets, finance, and production. Gameplay impact — +12% Gold; -8% Corruption.
   policyPointCost: 45
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: dffb5f36d27f7a74a99352cfb7e564db, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Private Rail Concessions
   icon: {fileID: 0}
-  description: Establishes private rail concessions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Private Rail Concessions changes how the state builds and operates shared infrastructure. Gameplay impact — +5% Gold; +10% Domestic Trade.
   policyPointCost: 58
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: c0affabca4e086c42bcf9ba1f60d7311, type: 2}
   requiredCultures: []

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Chartered Companies
   icon: {fileID: 0}
-  description: Establishes chartered companies as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Chartered Companies changes the rules governing merchants, trade routes, and commercial exchange. Gameplay impact — +15% Gold; -5% Culture; +20% Foreign Trade; +1 Trade Route Capacity.
   policyPointCost: 42
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

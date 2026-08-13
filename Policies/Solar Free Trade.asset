@@ -17,6 +17,7 @@ MonoBehaviour:
   description: Trade between worlds is encouraged with few regulations on either
     travel or commerce between planets.
   policyPointCost: 100
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: cf57b67d18912b944a5548255ce913b8, type: 2}

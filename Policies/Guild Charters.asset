@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Guild Charters
   icon: {fileID: 0}
-  description: Establishes guild charters as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Guild Charters changes the state's role in markets, finance, and production. Gameplay impact — +10% Production; +10% Gold; 1 governor opinion effect.
   policyPointCost: 32
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: 77b3d9e1f95cb09478d6566d6fe563de, type: 2}

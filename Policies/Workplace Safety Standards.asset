@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Workplace Safety Standards
   icon: {fileID: 0}
-  description: Establishes workplace safety standards as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Workplace Safety Standards changes the legal and economic relationship between workers, employers, and the state. Gameplay impact — -3% Gold; -4% Unrest; +6% Labor Productivity.
   policyPointCost: 54
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 05704e1f73ea3274b811c8f43ae1e84a, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -35,7 +37,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: -0.03
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
@@ -43,14 +45,14 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.04
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.06
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Freedom of the Press
   icon: {fileID: 0}
-  description: Establishes freedom of the press as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Freedom of the Press changes the rights, protections, and political standing recognized by the state. Gameplay impact — +5% Science; +12% Culture; -10% Corruption; +5% Unrest.
   policyPointCost: 48
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: f9150b193940d3d4aabb48a6e96c086d, type: 2}
   requiredCultures: []

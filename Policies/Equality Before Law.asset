@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Equality Before Law
   icon: {fileID: 0}
-  description: Establishes equality before law as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Equality Before Law changes the institutions used to make, enforce, and interpret law. Gameplay impact — -12% Corruption.
   policyPointCost: 54
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

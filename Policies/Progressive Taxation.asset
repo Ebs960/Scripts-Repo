@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Progressive Taxation
   icon: {fileID: 0}
-  description: Establishes progressive taxation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Progressive Taxation changes the state's role in markets, finance, and production. Gameplay impact — +12% Gold.
   policyPointCost: 62
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 740ffab96f1b28e43b763edd6a8e76e0, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

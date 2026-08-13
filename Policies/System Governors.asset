@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: System Governors
   icon: {fileID: 0}
-  description: Establishes system governors as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: System Governors reorganizes state administration and the institutions that carry out public policy. Gameplay impact — +10% Orbital Production; +10% Interplanetary Trade.
   policyPointCost: 102
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

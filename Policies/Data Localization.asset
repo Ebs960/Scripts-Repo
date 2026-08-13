@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Data Localization
   icon: {fileID: 0}
-  description: Establishes data localization as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Data Localization changes how digital systems, data, and networked institutions are governed. Gameplay impact — -10% Foreign Trade; +10% Cyber Defense.
   policyPointCost: 74
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: f00764adc6805f94d9896d0c99fbe036, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

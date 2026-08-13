@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Germline Modification
   icon: {fileID: 0}
-  description: Establishes germline modification as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Germline Modification changes the state's role in markets, finance, and production. Gameplay impact — +3% Production; +8% Gold; +3% Unrest.
   policyPointCost: 98
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: 0f56b5c583f87164a9f83b1ca376ed59, type: 2}
   requiredCultures: []
@@ -36,8 +37,8 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
-  goldModifier: 0
+  productionModifier: 0.03
+  goldModifier: 0.08
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
@@ -45,7 +46,7 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: 0.03
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0

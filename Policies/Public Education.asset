@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Education
   icon: {fileID: 0}
-  description: Establishes public education as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Public Education changes how education and public knowledge are organized. Gameplay impact — -5% Gold; +12% Science; +5% Culture.
   policyPointCost: 50
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0d33b685a92c9c144a03f7c68776b048, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Automated Bureaucracy
   icon: {fileID: 0}
-  description: Establishes automated bureaucracy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Automated Bureaucracy reorganizes state administration and the institutions that carry out public policy. Gameplay impact — +20% Administrative Efficiency; -10% Distance Loyalty Penalty; +15% Policy Point Generation.
   policyPointCost: 90
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

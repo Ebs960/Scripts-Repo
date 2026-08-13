@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Holy Law
   icon: {fileID: 0}
-  description: Establishes holy law as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Holy Law changes the institutions used to make, enforce, and interpret law. Gameplay impact — +10% Faith; -15% Unrest; 1 city effect.
   policyPointCost: 30
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

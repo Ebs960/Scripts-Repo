@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Asteroid Mining Rights
   icon: {fileID: 0}
-  description: Establishes asteroid mining rights as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Asteroid Mining Rights changes the rights, protections, and political standing recognized by the state. Gameplay impact — +25% Orbital Production.
   policyPointCost: 92
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 289ea63f2df62b24c91eac19a2478a85, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

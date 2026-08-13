@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Gene Therapy
   icon: {fileID: 0}
-  description: Establishes universal gene therapy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Universal Gene Therapy changes how genetic technologies are regulated and used. Gameplay impact — +5% Labor Productivity.
   policyPointCost: 88
+  availableFromStart: 0
   requiredTechs:
   - {fileID: 11400000, guid: 9fa680ce3f175d643aa42de49fec9bf7, type: 2}
   requiredCultures: []

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: War Chief's Retinue
   icon: {fileID: 0}
-  description: Establishes war chief's retinue as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: War Chief's Retinue changes how armed forces are raised, organized, and sustained. Gameplay impact — +100% Melee Attack; +100% Defense; -5% Gold; +8% Military Upkeep; 1 city effect.
   policyPointCost: 16
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Mercantilism
   icon: {fileID: 0}
-  description: Establishes mercantilism as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Mercantilism changes the rules governing merchants, trade routes, and commercial exchange. Gameplay impact — +10% Production; +15% Domestic Trade; -15% Foreign Trade.
   policyPointCost: 42
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 5c61dcae18f091c4cad1295ef492c4f1, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

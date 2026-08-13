@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Militia
   icon: {fileID: 0}
-  description: Establishes citizen militia as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Citizen Militia changes how armed forces are raised, organized, and sustained. Gameplay impact — +200% Defense; -5% Gold; 1 city effect.
   policyPointCost: 26
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments:

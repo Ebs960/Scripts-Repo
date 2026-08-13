@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Natural Rights
   icon: {fileID: 0}
-  description: Establishes natural rights as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Natural Rights changes the rights, protections, and political standing recognized by the state. Gameplay impact — +10% Migration Attraction; -10% Unrest.
   policyPointCost: 50
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: 33303c513de0d994c9bf958b197a0ad9, type: 2}

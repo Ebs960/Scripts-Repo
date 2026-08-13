@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Trade Unions
   icon: {fileID: 0}
-  description: Establishes trade unions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Trade Unions changes the legal and economic relationship between workers, employers, and the state. Gameplay impact — -3% Gold; -6% Unrest; +4% Labor Productivity.
   policyPointCost: 56
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -36,7 +38,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: -0.03
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
@@ -44,14 +46,14 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.06
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.04
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

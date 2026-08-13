@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Conscription
   icon: {fileID: 0}
-  description: Establishes conscription as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Conscription changes how armed forces are raised, organized, and sustained. Gameplay impact — +20% War Weariness.
   policyPointCost: 60
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 8e4668586e4943143baa322932e65c73, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

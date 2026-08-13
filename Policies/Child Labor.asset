@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Child Labor
   icon: {fileID: 0}
-  description: Establishes child labor as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Child Labor changes the legal and economic relationship between workers, employers, and the state. Gameplay impact — +12% Production; -8% Science.
   policyPointCost: 48
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: dfc17cf7505494b4eb57b551af845e10, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

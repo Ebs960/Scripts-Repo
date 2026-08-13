@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Suffrage
   icon: {fileID: 0}
-  description: Establishes universal suffrage as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Universal Suffrage changes the rights, protections, and political standing recognized by the state. Gameplay impact — -2% Gold; +5% Migration Attraction; -5% Unrest.
   policyPointCost: 64
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 2c411006e720fba41906e0522e676362, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -35,15 +37,15 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: -0.02
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   populationGrowthModifier: 0
-  migrationAttractionModifier: 0
+  migrationAttractionModifier: 0.05
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.05
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0

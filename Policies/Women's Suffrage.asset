@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Women's Suffrage
   icon: {fileID: 0}
-  description: Establishes women's suffrage as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Women's Suffrage changes the rights, protections, and political standing recognized by the state. Gameplay impact — +5% Culture; +3% Migration Attraction; -4% Unrest.
   policyPointCost: 62
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: dfc17cf7505494b4eb57b551af845e10, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -37,13 +39,13 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.05
   faithModifier: 0
   populationGrowthModifier: 0
-  migrationAttractionModifier: 0
+  migrationAttractionModifier: 0.03
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.04
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0

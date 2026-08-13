@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Chartered Colonies
   icon: {fileID: 0}
-  description: Establishes chartered colonies as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Chartered Colonies changes how overseas territories and distant possessions are governed. Gameplay impact — +15% Foreign Trade.
   policyPointCost: 44
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 693a48909f61c9b408fc02b47c554add, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

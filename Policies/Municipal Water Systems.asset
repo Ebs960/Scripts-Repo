@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Municipal Water Systems
   icon: {fileID: 0}
-  description: Establishes municipal water systems as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Municipal Water Systems changes how development is balanced against environmental and resource pressures. Gameplay impact — +5% Food.
   policyPointCost: 55
-  requiredTechs: []
+  availableFromStart: 0
+  requiredTechs:
+  - {fileID: 11400000, guid: 0c36251bb372eb0459043c7bc4811de7, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Protectionism
   icon: {fileID: 0}
-  description: Establishes protectionism as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Protectionism changes the state's role in markets, finance, and production. Gameplay impact — +12% Production; -15% Foreign Trade.
   policyPointCost: 56
+  availableFromStart: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

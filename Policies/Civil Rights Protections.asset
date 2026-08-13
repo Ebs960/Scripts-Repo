@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Rights Protections
   icon: {fileID: 0}
-  description: Establishes civil rights protections as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Civil Rights Protections changes the rights, protections, and political standing recognized by the state. Gameplay impact — -2% Gold; +5% Migration Attraction; -5% Unrest.
   policyPointCost: 68
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
@@ -36,15 +37,15 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: -0.02
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
   populationGrowthModifier: 0
-  migrationAttractionModifier: 0
+  migrationAttractionModifier: 0.05
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.05
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Secular Government
   icon: {fileID: 0}
-  description: Establishes secular government as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Secular Government changes the formal relationship between religion and public authority. Gameplay impact — +10% Science; -10% Faith; -5% Corruption.
   policyPointCost: 55
+  availableFromStart: 0
   requiredTechs: []
   requiredCultures:
   - {fileID: 11400000, guid: 33303c513de0d994c9bf958b197a0ad9, type: 2}
