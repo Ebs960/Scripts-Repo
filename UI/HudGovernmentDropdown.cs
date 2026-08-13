@@ -79,7 +79,8 @@ public class HudGovernmentDropdown : MonoBehaviour
             if (policy == null)
                 continue;
 
-            string line = $"{GetPolicyName(policy)}\n{BuildPolicyEffectSummary(policy)}";
+            string summary = BuildPolicyEffectSummary(policy);
+            string line = $"{GetPolicyName(policy)}\n{summary}";
 
             if (policyRowPrefab != null)
             {
@@ -87,7 +88,7 @@ public class HudGovernmentDropdown : MonoBehaviour
                 var rowComponent = row.GetComponent<HudGovernmentPolicyRow>();
                 if (rowComponent != null)
                 {
-                    rowComponent.Populate(policy, BuildPolicyEffectSummary(policy));
+                    rowComponent.Populate(policy, summary);
                 }
                 else
                 {
@@ -175,17 +176,24 @@ public class HudGovernmentDropdown : MonoBehaviour
         var effects = new List<string>();
 
         effects.Add($"Cost: {policy.policyPointCost} PP");
-        AddNamedRequirements<TechData>(effects, "Technology", policy.requiredTechs, x => x.name, " AND ");
-        AddNamedRequirements<CultureData>(effects, "Culture", policy.requiredCultures, x => x.name, " AND ");
+        AddNamedRequirements<TechData>(effects, "Technology", policy.requiredTechs,
+            x => !string.IsNullOrWhiteSpace(x.techName) ? x.techName : x.name, " AND ");
+        AddNamedRequirements<CultureData>(effects, "Culture", policy.requiredCultures,
+            x => !string.IsNullOrWhiteSpace(x.cultureName) ? x.cultureName : x.name, " AND ");
         AddNamedRequirements<GovernmentData>(effects, "Government", policy.requiredGovernments,
             x => !string.IsNullOrWhiteSpace(x.governmentName) ? x.governmentName : x.name, " OR ");
         AddNamedRequirements<PolicyData>(effects, "Required policies", policy.requiredPolicies, GetPolicyName, " AND ");
         AddNamedRequirements<PolicyData>(effects, "Conflicts with", policy.incompatiblePolicies, GetPolicyName, ", ");
         AddNamedRequirements<PolicyData>(effects, "Supersedes", policy.supersedesPolicies, GetPolicyName, ", ");
+        if (policy.requiredCityCount > 0)
+            effects.Add($"Cities Required: {policy.requiredCityCount}");
         if (policy.religiousRequirementGroups != null && policy.religiousRequirementGroups.Length > 0)
-            effects.Add($"Religion: {policy.religiousRequirementGroups.Length} alternative route(s) (OR; clauses within each route are AND)");
+            effects.Add($"Religion: {policy.religiousRequirementGroups.Length} alternative route(s)");
 
         AddFloatPercent(effects, "Attack", policy.attackBonus);
+        AddFloatPercent(effects, "Melee Attack", policy.meleeAttackBonus);
+        AddFloatPercent(effects, "Ranged Attack", policy.rangedAttackBonus);
+        AddFloatPercent(effects, "City Attack", policy.cityAttackBonus);
         AddFloatPercent(effects, "Defense", policy.defenseBonus);
         AddFloatPercent(effects, "Movement", policy.movementBonus);
         AddFloatPercent(effects, "Food", policy.foodModifier);
@@ -194,6 +202,50 @@ public class HudGovernmentDropdown : MonoBehaviour
         AddFloatPercent(effects, "Science", policy.scienceModifier);
         AddFloatPercent(effects, "Culture", policy.cultureModifier);
         AddFloatPercent(effects, "Faith", policy.faithModifier);
+
+        AddFloatPercent(effects, "Population Growth", policy.populationGrowthModifier);
+        AddFloatPercent(effects, "Migration Attraction", policy.migrationAttractionModifier);
+        AddFloatPercent(effects, "War Weariness", policy.warWearinessModifier);
+        AddFloatPercent(effects, "Corruption", policy.corruptionModifier);
+        AddFloatPercent(effects, "Unrest", policy.unrestModifier);
+
+        AddFloatPercent(effects, "Administrative Efficiency", policy.administrativeEfficiencyModifier);
+        AddFloatPercent(effects, "Distance Loyalty Penalty", policy.distanceLoyaltyPenaltyModifier);
+        AddFloatPercent(effects, "Policy Point Generation", policy.policyPointGenerationModifier);
+
+        AddFloatPercent(effects, "Domestic Trade", policy.domesticTradeModifier);
+        AddFloatPercent(effects, "Foreign Trade", policy.foreignTradeModifier);
+        AddIntEffect(effects, "Trade Route Capacity", policy.tradeRouteCapacityBonus);
+
+        AddFloatPercent(effects, "Labor Productivity", policy.laborProductivityModifier);
+        AddFloatPercent(effects, "Unemployment Unhappiness", policy.unemploymentUnhappinessModifier);
+
+        AddFloatPercent(effects, "Reinforcement Speed", policy.reinforcementSpeedModifier);
+        AddFloatPercent(effects, "Military Upkeep", policy.militaryUpkeepModifier);
+
+        AddFloatPercent(effects, "Cyber Defense", policy.cyberDefenseModifier);
+        AddFloatPercent(effects, "Cyber Offense", policy.cyberOffenseModifier);
+        AddFloatPercent(effects, "Espionage Defense", policy.espionageDefenseModifier);
+
+        AddFloatPercent(effects, "Orbital Production", policy.orbitalProductionModifier);
+        AddFloatPercent(effects, "Interplanetary Trade", policy.interplanetaryTradeModifier);
+        AddFloatPercent(effects, "Planetary Loyalty", policy.planetaryLoyaltyModifier);
+        AddFloatPercent(effects, "Planetary Defense", policy.planetaryDefenseModifier);
+
+        AddEffectCount(effects, "Tile Yield Effects", policy.tileYieldBonuses);
+        AddEffectCount(effects, "Building Effects", policy.buildingBonuses);
+        AddEffectCount(effects, "Unit Yield Effects", policy.unitYieldBonuses);
+        AddEffectCount(effects, "Unit Stat Effects", policy.unitBonuses);
+        AddEffectCount(effects, "Equipment Yield Effects", policy.equipmentYieldBonuses);
+        AddEffectCount(effects, "Worker Yield Effects", policy.workerYieldBonuses);
+        AddEffectCount(effects, "Worker Stat Effects", policy.workerBonuses);
+        AddEffectCount(effects, "Disease Effects", policy.diseaseBonuses);
+        AddEffectCount(effects, "Attrition Effects", policy.attritionBonuses);
+        AddEffectCount(effects, "City Effects", policy.cityBonuses);
+        AddEffectCount(effects, "Non-State Religion Effects", policy.nonStateReligionUnhappinessModifiers);
+
+        AddFloatPercent(effects, "Herd Starvation Reduction", policy.herdStarvationPercentReduction);
+        AddEffectCount(effects, "Herd Yield Effects", policy.herdYieldBonuses);
 
         if (policy.additionalGovernorSlots != 0)
             effects.Add($"Governor Slots {(policy.additionalGovernorSlots > 0 ? "+" : string.Empty)}{policy.additionalGovernorSlots}");
@@ -216,19 +268,7 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (policy.governorOpinionEffects != null && policy.governorOpinionEffects.Length > 0)
             effects.Add($"Governor Opinion Effects: {policy.governorOpinionEffects.Length}");
 
-        if (effects.Count == 0)
-            return "No major modifiers";
-
-        var sb = new StringBuilder();
-        for (int i = 0; i < effects.Count; i++)
-        {
-            if (i > 0)
-                sb.Append(" • ");
-
-            sb.Append(effects[i]);
-        }
-
-        return sb.ToString();
+        return string.Join(" • ", effects);
     }
 
     private static void AddFloatPercent(List<string> effects, string label, float value)
@@ -237,6 +277,20 @@ public class HudGovernmentDropdown : MonoBehaviour
             return;
 
         effects.Add($"{label} {(value > 0f ? "+" : string.Empty)}{value * 100f:0.##}%");
+    }
+
+    private static void AddIntEffect(List<string> effects, string label, int value)
+    {
+        if (value == 0)
+            return;
+
+        effects.Add($"{label} {(value > 0 ? "+" : string.Empty)}{value}");
+    }
+
+    private static void AddEffectCount<T>(List<string> effects, string label, T[] values)
+    {
+        if (values != null && values.Length > 0)
+            effects.Add($"{label}: {values.Length}");
     }
 
     private static void AddNamedRequirements<T>(List<string> effects, string label, T[] values,
