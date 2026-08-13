@@ -10,11 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ad6a5cbb37eeea74a806f47ed3499bb3, type: 3}
-  m_Name: Algorithmic Regulation
+  m_Name: Algorithim Regulation
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
-  policyName: Algorithmic Regulation
+  policyName: Algorithm Regulation
   icon: {fileID: 0}
-  description: Establishes algorithmic regulation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Establishes algorithmic regulation as a durable institution; its benefits
+    and stated tradeoffs apply while active.
   policyPointCost: 80
   requiredTechs: []
   requiredCultures: []
@@ -24,8 +25,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 15
+  policyTags: 0f000000
   additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0
