@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Laissez-Faire
   icon: {fileID: 21300000, guid: 7b38326ce1a79b7438bc9d4591c451aa, type: 3}
-  description: Establishes laissez-faire as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Leaves investment and prices largely to private markets. Commercial power shifts between the treasury, established interests, and traders seeking new markets. Benefits include more production and more revenue; however, it brings lower administrative efficiency.
   policyPointCost: 55
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 92fbbf2e0c4347c49c8d448f7e193863, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

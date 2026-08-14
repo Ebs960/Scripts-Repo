@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Human Genetic Preservation
   icon: {fileID: 21300000, guid: 26662e8a0ec6b2644a225489eaae970d, type: 3}
-  description: Establishes human genetic preservation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Restricts inheritable alteration of the human genome. The law must distinguish healing from redesign as inherited traits become subject to deliberate choice. Benefits include less unrest; however, it brings less research and slower population growth.
   policyPointCost: 92
   requiredTechs:
   - {fileID: 11400000, guid: 9fa680ce3f175d643aa42de49fec9bf7, type: 2}
@@ -22,7 +22,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a443da5dfc1f4bc59f2527dab8325e4b, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: d31d97fde3b7476bb67998ec83ef9def, type: 2}
   supersedesPolicies: []
@@ -38,14 +39,14 @@ MonoBehaviour:
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0
+  scienceModifier: -0.05
   cultureModifier: 0
   faithModifier: 0
-  populationGrowthModifier: 0
+  populationGrowthModifier: -0.03
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.08
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0

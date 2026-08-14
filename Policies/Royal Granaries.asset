@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Royal Granaries
   icon: {fileID: 21300000, guid: 79eb22647f944894db0f0ad5708b47d5, type: 3}
-  description: Establishes royal granaries as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Stores harvests against famine and price shocks. The reform makes settlement safer and more productive by treating essential services as a collective responsibility. Its chief benefits are more food.
   policyPointCost: 24
   requiredTechs: []
   requiredCultures: []

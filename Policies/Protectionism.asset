@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Protectionism
   icon: {fileID: 21300000, guid: a50e8cd47a72bec439a0d57bee5dba82, type: 3}
-  description: Establishes protectionism as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Shields domestic producers behind trade barriers. The measure changes which exchanges enrich the state and which are left to private initiative. Benefits include more production; however, it brings less foreign trade.
   policyPointCost: 56
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 53a85ea2b8c943b89d12a0932725e7a2, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: ab0a09d0d1c1450b83a01b8bdfc52a35, type: 2}
   supersedesPolicies: []

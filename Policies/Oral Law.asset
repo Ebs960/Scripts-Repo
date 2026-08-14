@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Oral Law
   icon: {fileID: 21300000, guid: 55c01a9a617e6de489b28421d2cd630e, type: 3}
-  description: Establishes oral law as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Preserves custom through public memory and precedent. Administration becomes predictable enough for citizens to plan around it, though new offices demand resources. Its chief benefits are more culture.
   policyPointCost: 20
   requiredTechs: []
   requiredCultures: []

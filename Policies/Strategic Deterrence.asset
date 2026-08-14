@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Strategic Deterrence
   icon: {fileID: 21300000, guid: bd33229c7d43098409fccf5c0fd04fe1, type: 3}
-  description: Establishes strategic deterrence as a durable institution; its benefits
-    and stated tradeoffs apply while active.
+  description: Prevents attack through overwhelming retaliatory capability. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are stronger ranged attacks and stronger planetary defense.
   policyPointCost: 105
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a9aa480d6aae4768aee8623fe3dc6339, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags: 090000000c00000012000000

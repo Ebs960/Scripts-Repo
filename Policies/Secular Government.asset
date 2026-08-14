@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Secular Government
   icon: {fileID: 21300000, guid: c821c3f2989ceb8468abddb642f58964, type: 3}
-  description: Establishes secular government as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Separates public administration from religious authority. Its adoption changes not only formal law but also the expectations by which people organize their lives. Benefits include more research and less corruption; however, it brings less faith.
   policyPointCost: 55
   requiredTechs: []
   requiredCultures:
@@ -24,8 +24,8 @@ MonoBehaviour:
   religiousRequirementGroups: []
   requiredPolicies: []
   incompatiblePolicies:
-  - {fileID: 11400000, guid: dfa20f951bf04233b338350365a57bee, type: 2}
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: b8f90e6a49d64e22b85aed921b891693, type: 2}
   policyTags:
   - 10
   additionalVetoDomains: 8

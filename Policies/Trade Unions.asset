@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Trade Unions
   icon: {fileID: 21300000, guid: d142d11c134849e4f9013b2beba8fd9e, type: 3}
-  description: Establishes trade unions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Allows workers to bargain collectively. The measure changes which exchanges enrich the state and which are left to private initiative. Benefits include greater labor productivity and less unemployment unhappiness; however, it brings less production.
   policyPointCost: 56
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: adb0cc5b2909445d8ab18fc0d8024c73, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:
@@ -35,7 +36,7 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: -0.03
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
@@ -51,8 +52,8 @@ MonoBehaviour:
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
-  unemploymentUnhappinessModifier: 0
+  laborProductivityModifier: 0.08
+  unemploymentUnhappinessModifier: -0.25
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0
   cyberDefenseModifier: 0

@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Interplanetary Citizenship
   icon: {fileID: 21300000, guid: 7bf4773bc11494d4a92c650e96cbe993, type: 3}
-  description: Establishes interplanetary citizenship as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Extends citizenship and mobility across inhabited worlds. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are greater migration attraction and greater labor productivity.
   policyPointCost: 96
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 73d2221248b84f0dababb88e87355d59, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

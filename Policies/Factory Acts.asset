@@ -14,16 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Factory Acts
   icon: {fileID: 21300000, guid: 60ce6bdd855f98a4081a4d4aef744d74, type: 3}
-  description: Establishes factory acts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Sets the first enforceable standards for industrial labor. Households feel the reform through wages, security, and the amount of labor the economy can demand. Benefits include less unrest and greater labor productivity; however, it brings less production.
   policyPointCost: 52
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: b81bfec51d1a441bbb7f5c52080441cf, type: 2}
   incompatiblePolicies: []
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: b81bfec51d1a441bbb7f5c52080441cf, type: 2}
   policyTags:
   - 3
   additionalVetoDomains: 0
@@ -34,7 +36,7 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: -0.04
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
@@ -43,14 +45,14 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.08
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.06
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

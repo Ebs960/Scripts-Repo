@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Printing Licenses
   icon: {fileID: 21300000, guid: 8b5055bf0f4fdc44ea007761973617e2, type: 3}
-  description: Establishes printing licenses as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Requires official permission to publish. Teachers, printers, and civic institutions shape a shared body of knowledge across the realm. Benefits include less unrest; however, it brings less research and less culture.
   policyPointCost: 40
   requiredTechs:
   - {fileID: 11400000, guid: f9150b193940d3d4aabb48a6e96c086d, type: 2}

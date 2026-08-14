@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Professional Officer Corps
   icon: {fileID: 21300000, guid: 8bd5f71b2446ccd4ca3a7fda8b85b02b, type: 3}
-  description: Establishes professional officer corps as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Trains a permanent merit-based officer corps. The reform changes who fights, who commands, and who pays for the realm’s security. Its chief benefits are faster reinforcement.
   policyPointCost: 46
   requiredTechs: []
   requiredCultures: []

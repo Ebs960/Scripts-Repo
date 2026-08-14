@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Conscription
   icon: {fileID: 21300000, guid: 803b7407bc068254ea93c116e651f1f0, type: 3}
-  description: Establishes conscription as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Drafts citizens into national military service. Commanders can plan around a clearer source of manpower and authority when war arrives. Its chief tradeoff is more war weariness.
   policyPointCost: 60
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b3852b788abed3044add13b88c411232, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

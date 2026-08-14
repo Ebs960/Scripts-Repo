@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Mercenary Contracts
   icon: {fileID: 21300000, guid: 6f8ee24719cca394bb3d8ce702188508, type: 3}
-  description: Establishes mercenary contracts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Hires professional soldiers instead of raising levies. Military service becomes a lasting part of the political order rather than an improvised answer to invasion. Its chief benefits are stronger general attacks and more revenue.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

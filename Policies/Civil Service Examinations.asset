@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Service Examinations
   icon: {fileID: 21300000, guid: 804651375d1af204b83fc7cd9608c86a, type: 3}
-  description: Establishes civil service examinations as a durable institution; its
-    benefits and stated tradeoffs apply while active.
+  description: Selects officials by examination rather than patronage. Old privileges and local customs must adjust as the reform becomes part of ordinary government. Its chief benefits are more research, greater administrative efficiency and faster policy-point generation.
   policyPointCost: 50
   requiredTechs: []
   requiredCultures: []
@@ -26,7 +25,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4178ed489d154fccbf08d1b600df5b12, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: f4da89a30bc240fa94de6cc5014e7ac6, type: 2}
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: 8dfca4f1c2264477bad6282b475c8798, type: 2}
   policyTags: 03000000
   additionalVetoDomains: 0
   attackBonus: 0

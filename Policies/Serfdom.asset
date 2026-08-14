@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Serfdom
   icon: {fileID: 21300000, guid: 9e945e76271483c4594f78e65a192cad, type: 3}
-  description: Establishes serfdom as a durable institution; its benefits and stated tradeoffs apply while active.
-    Labor for improvements.
+  description: Binds rural workers to estates in return for subsistence. Industry must adjust its practices as labor becomes a matter of enforceable public concern. Benefits include more food and more production; however, it brings lower migration attraction.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

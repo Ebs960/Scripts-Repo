@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Civil Rights Protections
   icon: {fileID: 21300000, guid: 585be3f60dbda81419515d891c67866f, type: 3}
-  description: Establishes civil rights protections as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Protects minorities from discrimination and state abuse. Commercial power shifts between the treasury, established interests, and traders seeking new markets. Benefits include greater migration attraction and less unrest; however, it brings lower administrative efficiency.
   policyPointCost: 68
   requiredTechs: []
   requiredCultures: []
@@ -41,11 +41,11 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   populationGrowthModifier: 0
-  migrationAttractionModifier: 0
+  migrationAttractionModifier: 0.12
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
-  administrativeEfficiencyModifier: 0
+  unrestModifier: -0.12
+  administrativeEfficiencyModifier: -0.03
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0

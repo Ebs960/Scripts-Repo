@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Noble Retinues
   icon: {fileID: 21300000, guid: 1bab36f63b38edc469098ff28e1a7da9, type: 3}
-  description: Establishes noble retinues as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Maintains household troops for the landed elite. The reform changes who fights, who commands, and who pays for the realm’s security. Benefits include stronger melee attacks and stronger defense; however, it brings less revenue and higher military upkeep.
   policyPointCost: 35
   requiredTechs: []
   requiredCultures: []

@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Women's Suffrage
   icon: {fileID: 21300000, guid: 236d39c6a2a834a47a41c477c7d84517, type: 3}
-  description: Establishes women's suffrage as a durable institution; its benefits and stated tradeoffs apply while active.
-  policyPointCost: 62
+  description: Gives women equal political voting rights. Courts and officials must apply the principle in ordinary disputes, not merely proclaim it in constitutional language. Its chief benefits are more culture, faster policy-point generation and greater labor productivity.
+  policyPointCost: 68
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a8439e6dc6024ad7898899613e330bcb, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:
@@ -37,7 +38,7 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.1
   faithModifier: 0
   populationGrowthModifier: 0
   migrationAttractionModifier: 0
@@ -46,11 +47,11 @@ MonoBehaviour:
   unrestModifier: 0
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
-  policyPointGenerationModifier: 0
+  policyPointGenerationModifier: 0.08
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.08
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Workplace Safety Standards
   icon: {fileID: 21300000, guid: e52693d68d22c1143aa6391d269891b1, type: 3}
-  description: Establishes workplace safety standards as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Requires employers to control industrial hazards. The settlement changes bargaining power on the shop floor and reshapes the obligations joining workers, owners, and government. Benefits include less unrest and greater labor productivity; however, it brings less production.
   policyPointCost: 54
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: adb0cc5b2909445d8ab18fc0d8024c73, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:
@@ -34,7 +35,7 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: -0.03
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
@@ -43,14 +44,14 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: -0.06
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.08
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0

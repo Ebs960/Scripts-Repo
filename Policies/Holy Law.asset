@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Holy Law
   icon: {fileID: 21300000, guid: e14f43ef3c063154d8c2f6b5621ed16a, type: 3}
-  description: Establishes holy law as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Bases civil authority on religious law. The settlement seeks social peace by deciding how spiritual authority should influence temporal rule. Its chief benefits are more faith and less unrest.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

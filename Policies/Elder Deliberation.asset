@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Elder Deliberation
   icon: {fileID: 21300000, guid: 53c5693084a58794ba732130295e891c, type: 3}
-  description: Establishes elder deliberation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Entrusts major decisions to councils of experienced elders. Its adoption changes not only formal law but also the expectations by which people organize their lives. Benefits include more culture and less unrest; however, it brings less production.
   policyPointCost: 14
   requiredTechs: []
   requiredCultures: []

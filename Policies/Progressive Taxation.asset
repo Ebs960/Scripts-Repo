@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Progressive Taxation
   icon: {fileID: 21300000, guid: 74c3d0e6bd972e844a2961a1600be327, type: 3}
-  description: Establishes progressive taxation as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Raises tax rates with the ability to pay. Markets respond quickly, but the gains are distributed according to the institutions that control commerce. Its chief benefits are more revenue.
   policyPointCost: 62
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a9bd33ffcb9a4f2eb2c7448e8182ecf4, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

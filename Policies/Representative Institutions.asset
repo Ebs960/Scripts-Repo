@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Representative Institutions
   icon: {fileID: 21300000, guid: d6a710beb14d12142a4d4141ecc8ad3e, type: 3}
-  description: Establishes representative institutions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Elects delegates to make national law. Public authority becomes more accountable as additional people gain standing within the law and the political system. Its chief benefits are more culture and less unrest.
   policyPointCost: 52
   requiredTechs: []
   requiredCultures: []

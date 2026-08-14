@@ -17,11 +17,17 @@ public static class PolicyDataValidator
             var policy = AssetDatabase.LoadAssetAtPath<PolicyData>(path);
             if (policy == null) { Error(path, "Asset could not be loaded.", ref errors); continue; }
             policies.Add(policy);
+            string identity = string.IsNullOrWhiteSpace(policy.policyName) ? policy.name : policy.policyName;
             if (string.IsNullOrWhiteSpace(policy.description)) Error(path, "description is empty.", ref errors, policy);
+            else if (ContainsBoilerplate(policy.description))
+                Error(path, "description contains deprecated boilerplate ('durable institution' or 'while active').", ref errors, policy);
+            if (!HasGameplayEffect(policy))
+                Error(path, "policy has no gameplay effect.", ref errors, policy);
+            if (LooksAdvanced(identity) && !HasProgressionGate(policy))
+            { Debug.LogWarning($"[Policy Validation] {path}: advanced policy has no progression gate.", policy); warnings++; }
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
-            string identity = string.IsNullOrWhiteSpace(policy.policyName) ? policy.name : policy.policyName;
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
             else names[identity] = path;
 
@@ -83,6 +89,54 @@ public static class PolicyDataValidator
             if (next == root || (next != null && HasRequiredCycle(root, next, visiting))) return true;
         visiting.Remove(current);
         return false;
+    }
+
+    private static bool ContainsBoilerplate(string description)
+    {
+        string text = description.ToLowerInvariant();
+        return text.Contains("durable institution") || text.Contains("while active");
+    }
+
+    private static bool HasProgressionGate(PolicyData policy)
+        => HasItems(policy.requiredTechs) || HasItems(policy.requiredCultures)
+        || HasItems(policy.requiredGovernments) || HasItems(policy.requiredPolicies)
+        || HasItems(policy.religiousRequirementGroups) || policy.requiredCityCount > 0;
+
+    private static bool LooksAdvanced(string identity)
+    {
+        string name = identity.ToLowerInvariant();
+        string[] markers = { "digital", "cyber", "internet", "data", "platform", "algorithm",
+            "automation", "automated", "algorithim", "ai ", "synthetic", "genetic", "gene ", "orbital",
+            "planetary", "interplanetary", "solar", "asteroid" };
+        foreach (string marker in markers) if (name.Contains(marker)) return true;
+        return false;
+    }
+
+    private static bool HasGameplayEffect(PolicyData p)
+    {
+        if (p.attackBonus != 0 || p.meleeAttackBonus != 0 || p.rangedAttackBonus != 0
+            || p.cityAttackBonus != 0 || p.defenseBonus != 0 || p.movementBonus != 0
+            || p.foodModifier != 0 || p.productionModifier != 0 || p.goldModifier != 0
+            || p.scienceModifier != 0 || p.cultureModifier != 0 || p.faithModifier != 0
+            || p.populationGrowthModifier != 0 || p.migrationAttractionModifier != 0
+            || p.warWearinessModifier != 0 || p.corruptionModifier != 0 || p.unrestModifier != 0
+            || p.administrativeEfficiencyModifier != 0 || p.distanceLoyaltyPenaltyModifier != 0
+            || p.policyPointGenerationModifier != 0 || p.domesticTradeModifier != 0
+            || p.foreignTradeModifier != 0 || p.tradeRouteCapacityBonus != 0
+            || p.laborProductivityModifier != 0 || p.unemploymentUnhappinessModifier != 0
+            || p.reinforcementSpeedModifier != 0 || p.militaryUpkeepModifier != 0
+            || p.cyberDefenseModifier != 0 || p.cyberOffenseModifier != 0
+            || p.espionageDefenseModifier != 0 || p.orbitalProductionModifier != 0
+            || p.interplanetaryTradeModifier != 0 || p.planetaryLoyaltyModifier != 0
+            || p.planetaryDefenseModifier != 0 || p.herdStarvationPercentReduction != 0
+            || p.additionalGovernorSlots != 0) return true;
+        return HasItems(p.tileYieldBonuses) || HasItems(p.buildingBonuses)
+            || HasItems(p.unitYieldBonuses) || HasItems(p.unitBonuses)
+            || HasItems(p.equipmentYieldBonuses) || HasItems(p.workerYieldBonuses)
+            || HasItems(p.workerBonuses) || HasItems(p.diseaseBonuses)
+            || HasItems(p.attritionBonuses) || HasItems(p.cityBonuses)
+            || HasItems(p.nonStateReligionUnhappinessModifiers) || HasItems(p.herdYieldBonuses)
+            || HasItems(p.unlockedGovernorTraits) || HasItems(p.governorOpinionEffects);
     }
 
     private static bool Contains(PolicyData[] values, PolicyData target)

@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Unemployment Insurance
   icon: {fileID: 21300000, guid: 9fce2358f8a87374aa51511575046cf4, type: 3}
-  description: Establishes unemployment insurance as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Supports workers displaced from employment. Industry must adjust its practices as labor becomes a matter of enforceable public concern. Benefits include less unemployment unhappiness; however, it brings less revenue.
   policyPointCost: 65
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 6bc622afa91143bf889b8c41848cb56b, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

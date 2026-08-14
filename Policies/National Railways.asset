@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: National Railways
   icon: {fileID: 21300000, guid: d99a57f86d2078f4e860c870f0a5bd2d, type: 3}
-  description: Establishes national railways as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Integrates rail lines into a national strategic network. Investment in shared infrastructure turns scattered local improvements into a dependable national system. Its chief benefits are more domestic trade and faster reinforcement.
   policyPointCost: 62
   requiredTechs:
   - {fileID: 11400000, guid: c0affabca4e086c42bcf9ba1f60d7311, type: 2}
@@ -22,10 +22,12 @@ MonoBehaviour:
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: b4d7bf84ff304e538c60e6036247ae50, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: b6aa8ead4fd8432b85f5994750e795d4, type: 2}
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: b6aa8ead4fd8432b85f5994750e795d4, type: 2}
   policyTags:
   - 6
   additionalVetoDomains: 0

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Slavery
   icon: {fileID: 21300000, guid: b2d18264a89b89541a8e1ecffddcfa7f, type: 3}
-  description: Establishes slavery as a durable institution; its benefits and stated tradeoffs apply while active.
-    at the cost of growing unrest.
+  description: Treats captive laborers as property. Households feel the reform through wages, security, and the amount of labor the economy can demand. Benefits include more production and more revenue; however, it brings lower migration attraction.
   policyPointCost: 22
   requiredTechs: []
   requiredCultures: []
@@ -43,7 +42,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}
   requiredCityCount: 0
   requiredPolicies: []
-  incompatiblePolicies: []
+  incompatiblePolicies:
+  - {fileID: 11400000, guid: 461db753444e462681546666295c2d9d, type: 2}
   supersedesPolicies: []
   policyTags:
   - 3

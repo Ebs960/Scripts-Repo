@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Automated Bureaucracy
   icon: {fileID: 21300000, guid: 30ecf9f4bf9a2e940a5d1788e4e044f7, type: 3}
-  description: Establishes automated bureaucracy as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Delegates routine state work to automated systems. The reform turns intelligent machines from private tools into actors with public duties and consequences. Its chief benefits are greater administrative efficiency, smaller distance loyalty penalties and faster policy-point generation.
   policyPointCost: 90
   requiredTechs: []
   requiredCultures: []

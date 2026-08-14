@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Navigation Acts
   icon: {fileID: 21300000, guid: a4cb8a3bc5b062e499b1687b8f49670f, type: 3}
-  description: Establishes navigation acts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Reserves strategic shipping for national merchants. Merchants reorganize their routes and investments around the new balance between privilege, revenue, and risk. Its chief benefits are more domestic trade and more foreign trade.
   policyPointCost: 44
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 5d9385bb42f802d4191503e9f7d07423, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

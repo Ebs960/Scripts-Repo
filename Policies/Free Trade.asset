@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Free Trade
   icon: {fileID: 21300000, guid: efe3c1d497f2b004ebccc58639134458, type: 3}
-  description: Establishes free trade as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Removes barriers to commerce with foreign markets. The measure changes which exchanges enrich the state and which are left to private initiative. Benefits include more foreign trade; however, it brings less production.
   policyPointCost: 52
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 92fbbf2e0c4347c49c8d448f7e193863, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: c188e07565e649f6a67148fabc714230, type: 2}
   supersedesPolicies: []

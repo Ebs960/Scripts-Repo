@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: War Chief's Retinue
   icon: {fileID: 21300000, guid: d2eac88152af2904bb3e1e422436ead0, type: 3}
-  description: Establishes war chief's retinue as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Supports a war chief with a loyal personal retinue. The reform changes who fights, who commands, and who pays for the realm’s security. Benefits include stronger melee attacks and stronger defense; however, it brings less revenue and higher military upkeep.
   policyPointCost: 16
   requiredTechs: []
   requiredCultures: []

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Solar Free Trade
   icon: {fileID: 21300000, guid: 2ab89c6e864a0aa48bbd4cc9b4a5ac3a, type: 3}
-  description: Trade between worlds is encouraged with few regulations on either
-    travel or commerce between planets.
+  description: Creates a common market across the solar economy. Settlements far from Earth need institutions that can survive distance, delay, and competing local interests. Its chief benefits are more revenue, more culture and faster population growth.
   policyPointCost: 100
   requiredTechs: []
   requiredCultures:
@@ -23,7 +22,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 08606bc141ab487fb8fb61f09cb8d043, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags: 
