@@ -34,6 +34,7 @@ public static class PolicyDataValidator
             ValidateReferences(policy.requiredTechs, "requiredTechs", path, policy, ref errors);
             ValidateReferences(policy.requiredCultures, "requiredCultures", path, policy, ref errors);
             ValidateReferences(policy.requiredGovernments, "requiredGovernments", path, policy, ref errors);
+            ValidateGovernorOpinionEffects(policy.governorOpinionEffects, path, policy, ref errors);
             ValidatePolicyReferences(policy.requiredPolicies, "requiredPolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.incompatiblePolicies, "incompatiblePolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.supersedesPolicies, "supersedesPolicies", path, policy, ref errors);
@@ -149,6 +150,32 @@ public static class PolicyDataValidator
         if (values == null) return;
         var seen = new HashSet<T>();
         foreach (var value in values) if (!seen.Add(value)) Error(path, $"{field} contains duplicate '{value}'.", ref errors, context);
+    }
+    private static void ValidateGovernorOpinionEffects(GovernorOpinionEffect[] effects, string path, Object context, ref int errors)
+    {
+        if (!HasItems(effects))
+        {
+            Error(path, "governorOpinionEffects is empty.", ref errors, context);
+            return;
+        }
+
+        for (int i = 0; i < effects.Length; i++)
+        {
+            var effect = effects[i];
+            if (effect == null)
+            {
+                Error(path, $"governorOpinionEffects[{i}] is null.", ref errors, context);
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(effect.reason))
+                Error(path, $"governorOpinionEffects[{i}].reason is empty.", ref errors, context);
+            if (effect.value == 0)
+                Error(path, $"governorOpinionEffects[{i}].value must be non-zero.", ref errors, context);
+            if (effect.durationTurns == 0 || effect.durationTurns < -1)
+                Error(path, $"governorOpinionEffects[{i}].durationTurns must be positive or -1.", ref errors, context);
+            ValidateDuplicates(effect.requiresAnyPersonality,
+                $"governorOpinionEffects[{i}].requiresAnyPersonality", path, context, ref errors);
+        }
     }
     private static void Error(string path, string message, ref int errors, Object context = null)
     { Debug.LogError($"[Policy Validation] {path}: {message}", context); errors++; }

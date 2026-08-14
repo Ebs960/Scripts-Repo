@@ -81,4 +81,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Automated Bureaucracy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Automated Bureaucracy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 10
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

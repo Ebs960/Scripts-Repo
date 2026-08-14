@@ -102,4 +102,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Jury Courts
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Jury Courts
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

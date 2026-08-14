@@ -96,4 +96,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Temple Tithes
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 8
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Temple Tithes
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 9
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

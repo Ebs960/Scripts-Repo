@@ -78,4 +78,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Noble Retinues
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 4
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Noble Retinues
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 5
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

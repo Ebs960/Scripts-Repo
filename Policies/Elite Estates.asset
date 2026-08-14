@@ -101,4 +101,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Elite Estates
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Elite Estates
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

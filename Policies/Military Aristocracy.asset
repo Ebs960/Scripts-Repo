@@ -79,4 +79,20 @@ MonoBehaviour:
   additionalGovernorSlots: 0
   unlockedGovernorTraits:
   - {fileID: 11400000, guid: 001122334455aabb66cc77dd8899eeff, type: 2}
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Military Aristocracy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Military Aristocracy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

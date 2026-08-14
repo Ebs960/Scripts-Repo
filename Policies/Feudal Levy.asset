@@ -100,4 +100,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Feudal Levy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 4
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Feudal Levy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 5
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
