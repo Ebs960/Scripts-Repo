@@ -14,15 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Religious Tolerance
   icon: {fileID: 21300000, guid: faf66897ee8124147ba03f3d5eb98854, type: 3}
-  description: Permits minority faiths without abandoning an established religion. Sacred custom becomes entwined with civic duty, strengthening unity while sharpening disputes over belief. Benefits include more research; however, it brings less faith.
+  description: Permits minority faiths without abandoning an established religion.
+    Sacred custom becomes entwined with civic duty, strengthening unity while sharpening
+    disputes over belief. Benefits include more research; however, it brings less
+    faith.
   policyPointCost: 35
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: bdfbda1411ea8ad47bdc7cb7d5761c1f, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
+  - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}
+  - {fileID: 11400000, guid: 4e024e9252a82664ea0d4345a1b82925, type: 2}
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
+  - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
+  - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: 7d301448e05c4af5bdc3060584963e7e, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups:
   - requiresStateReligion: 1
@@ -32,12 +48,11 @@ MonoBehaviour:
     useMinimumPantheonTier: 0
     minimumPantheonTier: 0
     anyBeliefs: []
-    anyBeliefCategories: []
+    anyBeliefCategories: 
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 3
+  policyTags: 03000000
   additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
@@ -85,9 +100,11 @@ MonoBehaviour:
   cityBonuses:
   - scope: 0
     useLayerFilter: 0
-    layers: []
+    layers: 
     useSeasonFilter: 0
-    seasons: []
+    seasons: 
+    useNewWorldFilter: 0
+    newWorldRegions: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 0
@@ -106,10 +123,7 @@ MonoBehaviour:
     policyPointsPct: 0
     defensePct: 0
     happinessPct: 0
-
-  nonStateReligionUnhappinessModifiers:
-  - unhappinessPerFollowerAdd: -0.25
-    unhappinessPct: -0.25
+  nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 0
