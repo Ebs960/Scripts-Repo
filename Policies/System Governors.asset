@@ -16,9 +16,13 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 99c7d01b6ab10c44596c05d6d3acb65f, type: 3}
   description: Appoints governors to coordinate entire star systems. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are more orbital production and more interplanetary trade.
   policyPointCost: 102
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: ee944e7812cc8004ca954837ab1a689e, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

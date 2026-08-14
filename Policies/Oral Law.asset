@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Preserves custom through public memory and precedent. Administration becomes predictable enough for citizens to plan around it, though new offices demand resources. Its chief benefits are more culture.
   policyPointCost: 20
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f86da6138de743f4bbb67c4c59e4dd81, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 000df63a560245af86ddde61cf98942c, type: 2}
   requiredCityCount: 0

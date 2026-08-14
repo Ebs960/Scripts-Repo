@@ -20,7 +20,8 @@ MonoBehaviour:
     less revenue.
   policyPointCost: 68
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: eeaca3e7b29798144aae9d6b2c8c7e4b, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

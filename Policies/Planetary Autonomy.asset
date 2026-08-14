@@ -16,9 +16,14 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 32050fefea5afef4eb595352546ed695, type: 3}
   description: Allows planetary governments broad self-rule. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are more orbital production and greater planetary loyalty.
   policyPointCost: 100
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 552b8c68ef24beb4692df6d40e7cf5d7, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: 4e024e9252a82664ea0d4345a1b82925, type: 2}
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

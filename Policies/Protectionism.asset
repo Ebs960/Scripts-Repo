@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Shields domestic producers behind trade barriers. The measure changes which exchanges enrich the state and which are left to private initiative. Benefits include more production; however, it brings less foreign trade.
   policyPointCost: 56
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: b3852b788abed3044add13b88c411232, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

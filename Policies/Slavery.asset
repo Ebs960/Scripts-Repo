@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Treats captive laborers as property. Households feel the reform through wages, security, and the amount of labor the economy can demand. Benefits include more production and more revenue; however, it brings lower migration attraction.
   policyPointCost: 22
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 5d80f1a1f61e6fc49a9bfc226c4f5771, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}

@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: d18ff05b3e04a4c40b3a7bfa2e5b1457, type: 3}
   description: Establishes platform antitrust in public law. Digital systems gain clearer public rules, though compliance changes who can collect, move, and exploit information. Benefits include more research and stronger cyber defense; however, it brings less revenue.
   policyPointCost: 78
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f00764adc6805f94d9896d0c99fbe036, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Lets citizens deliberate directly on public decisions. Courts and officials must apply the principle in ordinary disputes, not merely proclaim it in constitutional language. Benefits include more culture and less unrest; however, it brings less production.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: e9afb65641f1fdc449c44df0d0e558e8, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}

@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Ties political rank to an hereditary warrior class. Commanders can plan around a clearer source of manpower and authority when war arrives. Benefits include stronger melee attacks and stronger defense; however, it brings less research and higher military upkeep.
   policyPointCost: 32
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 3f65a3c964494cc4cb49dc0f22f32245, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}

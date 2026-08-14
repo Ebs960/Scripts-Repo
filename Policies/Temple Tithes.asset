@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Funds temples through mandatory shares of income. Merchants reorganize their routes and investments around the new balance between privilege, revenue, and risk. Its chief benefits are more revenue and more faith.
   policyPointCost: 26
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6318491335753b949bdc2c879a65dd68, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
   - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}

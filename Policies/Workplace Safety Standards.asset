@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: e52693d68d22c1143aa6391d269891b1, type: 3}
   description: Requires employers to control industrial hazards. The settlement changes bargaining power on the shop floor and reshapes the obligations joining workers, owners, and government. Benefits include less unrest and greater labor productivity; however, it brings less production.
   policyPointCost: 54
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 41fc12c0783860946bb766519f649041, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

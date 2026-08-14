@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Allows workers to bargain collectively. The measure changes which exchanges enrich the state and which are left to private initiative. Benefits include greater labor productivity and less unemployment unhappiness; however, it brings less production.
   policyPointCost: 56
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

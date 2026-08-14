@@ -19,7 +19,11 @@ MonoBehaviour:
   requiredTechs:
   - {fileID: 11400000, guid: f9150b193940d3d4aabb48a6e96c086d, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}
+  - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies: []

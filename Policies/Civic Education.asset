@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Teaches citizens how to participate in government. Teachers, printers, and civic institutions shape a shared body of knowledge across the realm. Benefits include more research, more culture and faster policy-point generation; however, it brings less production.
   policyPointCost: 32
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0d33b685a92c9c144a03f7c68776b048, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}

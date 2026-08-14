@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 9620bad545667f84793bd113042eb3df, type: 3}
   description: Opens off-world mineral claims to regulated exploitation. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are more orbital production.
   policyPointCost: 98
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 62cfbf8398a9c29499b9b9fa1348ea73, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

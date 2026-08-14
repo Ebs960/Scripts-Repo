@@ -17,8 +17,11 @@ MonoBehaviour:
   description: Places machine intelligence under public rules. Citizens and officials must adapt as synthetic minds take on roles once reserved for people. Benefits include less corruption, greater administrative efficiency and faster policy-point generation; however, it brings weaker cyber defense.
   policyPointCost: 96
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 2646a30fb016ac247a5dc5c52c48b1c4, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

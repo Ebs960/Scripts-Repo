@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Trains a permanent merit-based officer corps. The reform changes who fights, who commands, and who pays for the realm’s security. Its chief benefits are faster reinforcement.
   policyPointCost: 46
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: cdaaf37d987eb994cb5623d432e9c3c6, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: f54af6adb3b21714b89041f41dae0e43, type: 3}
   description: Uses public funds to accelerate strategic industry. The measure gives rulers a new instrument, while society must absorb its wider consequences. Benefits include more production; however, it brings less revenue.
   policyPointCost: 60
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 7fac73a8cab290d4da9dc084ea21310c, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

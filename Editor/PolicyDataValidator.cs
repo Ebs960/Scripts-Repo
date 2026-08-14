@@ -23,8 +23,8 @@ public static class PolicyDataValidator
                 Error(path, "description contains deprecated boilerplate ('durable institution' or 'while active').", ref errors, policy);
             if (!HasGameplayEffect(policy))
                 Error(path, "policy has no gameplay effect.", ref errors, policy);
-            if (LooksAdvanced(identity) && !HasProgressionGate(policy))
-            { Debug.LogWarning($"[Policy Validation] {path}: advanced policy has no progression gate.", policy); warnings++; }
+            if (!HasResearchGate(policy))
+                Error(path, "policy must require at least one technology or culture.", ref errors, policy);
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
@@ -97,20 +97,8 @@ public static class PolicyDataValidator
         return text.Contains("durable institution") || text.Contains("while active");
     }
 
-    private static bool HasProgressionGate(PolicyData policy)
-        => HasItems(policy.requiredTechs) || HasItems(policy.requiredCultures)
-        || HasItems(policy.requiredGovernments) || HasItems(policy.requiredPolicies)
-        || HasItems(policy.religiousRequirementGroups) || policy.requiredCityCount > 0;
-
-    private static bool LooksAdvanced(string identity)
-    {
-        string name = identity.ToLowerInvariant();
-        string[] markers = { "digital", "cyber", "internet", "data", "platform", "algorithm",
-            "automation", "automated", "algorithim", "ai ", "synthetic", "genetic", "gene ", "orbital",
-            "planetary", "interplanetary", "solar", "asteroid" };
-        foreach (string marker in markers) if (name.Contains(marker)) return true;
-        return false;
-    }
+    private static bool HasResearchGate(PolicyData policy)
+        => HasItems(policy.requiredTechs) || HasItems(policy.requiredCultures);
 
     private static bool HasGameplayEffect(PolicyData p)
     {

@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Makes religious houses centers of literacy and learning. A more informed population can contribute more fully, but it also expects reasons from those who govern. Benefits include more research, more culture and more faith; however, it brings less revenue.
   policyPointCost: 34
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6e961f95d80802a4e8f3f56a0f4dce69, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: d56c5a63faf3469a97f0a3922a8c41a7, type: 2}
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}

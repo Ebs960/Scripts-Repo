@@ -16,9 +16,14 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 7bf4773bc11494d4a92c650e96cbe993, type: 3}
   description: Extends citizenship and mobility across inhabited worlds. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are greater migration attraction and greater labor productivity.
   policyPointCost: 96
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 4ed2ba5d20cc9ea4cb8947100aac05db, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: b1dce6179b6e4750b01a2e70f93ebb00, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

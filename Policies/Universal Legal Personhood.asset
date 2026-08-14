@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Extends legal personhood to every recognized sentient being. The reform broadens political legitimacy while challenging institutions built around inherited privilege. Its chief benefits are greater migration attraction and less unrest.
   policyPointCost: 72
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8f891cf7769e5524aa22b7b8412fb936, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

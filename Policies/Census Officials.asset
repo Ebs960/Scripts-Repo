@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 1fe8d448255b5994ba403050c972507d, type: 3}
   description: Counts people, property, and production for the state. Officials gain clearer procedures and responsibilities, allowing authority to reach communities more consistently. Its chief benefits are more revenue, more research and greater administrative efficiency.
   policyPointCost: 28
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 360fc4062730d6d48a13e3bd2885df2b, type: 2}
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}

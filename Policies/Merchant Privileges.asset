@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Gives favored merchants protected rights and markets. Merchants reorganize their routes and investments around the new balance between privilege, revenue, and risk. Its chief benefits are more revenue.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 6b1c763e812cc63459cfeea0a881bd4c, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}
   - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}

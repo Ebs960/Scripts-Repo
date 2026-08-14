@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Entrusts major decisions to councils of experienced elders. Its adoption changes not only formal law but also the expectations by which people organize their lives. Benefits include more culture and less unrest; however, it brings less production.
   policyPointCost: 14
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 67660ba94bee6334a8f730c697a89d5d, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 000df63a560245af86ddde61cf98942c, type: 2}
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}

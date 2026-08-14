@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Accepts cash payments in place of feudal military service. Markets respond quickly, but the gains are distributed according to the institutions that control commerce. Benefits include more revenue; however, it brings weaker melee attacks.
   policyPointCost: 28
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8da248423bce8534f9ef43ab254b977c, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   requiredCityCount: 0

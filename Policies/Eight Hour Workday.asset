@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Limits the standard working day. Households feel the reform through wages, security, and the amount of labor the economy can demand. Its chief tradeoff is less production.
   policyPointCost: 60
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: f621f76bcd94e8b4d93e81f93253e7bd, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

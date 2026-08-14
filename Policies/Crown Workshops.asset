@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 1b3d0d1d871a0c64b94f20acd244361d, type: 3}
   description: Organizes skilled production in royal workshops. The measure gives rulers a new instrument, while society must absorb its wider consequences. Its chief benefits are more production.
   policyPointCost: 34
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 279a5c815bcd87d449efe8b89637bf6a, type: 2}
   requiredCultures: []
   requiredGovernments:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}

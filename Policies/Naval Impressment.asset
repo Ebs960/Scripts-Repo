@@ -16,9 +16,13 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 458eb1dfb75c7d34c98eaf0bd50a9bce, type: 3}
   description: Forcibly recruits sailors for the fleet. Military service becomes a lasting part of the political order rather than an improvised answer to invasion. Benefits include faster movement and faster reinforcement; however, it brings more unrest.
   policyPointCost: 40
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: d82370d1be2c4104f9690a878d9ef6ca, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
+  - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

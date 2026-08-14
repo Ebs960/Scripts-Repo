@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: d9f14ab26b72d574595ab8d234c9b63c, type: 3}
   description: Modernizes landholding and farm practice. Communities can grow beyond older limits once movement, shelter, food, and sanitation are planned at scale. Its chief benefits are greater migration attraction.
   policyPointCost: 50
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 687fe5e7043f7f241a5d18a70dc825d2, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0

@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Requires accountable automated decision-making. Citizens and officials must adapt as synthetic minds take on roles once reserved for people. Benefits include stronger cyber defense and stronger espionage defense; however, it brings lower administrative efficiency.
   policyPointCost: 80
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8f891cf7769e5524aa22b7b8412fb936, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []

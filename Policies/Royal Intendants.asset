@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Sends crown officials to supervise local administration. The measure strengthens state capacity by making local conditions visible to central decision-makers. Its chief benefits are more production, more revenue and more research.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: c98a2a603aaa32b458dc084d2e044c63, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
   - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}

@@ -16,9 +16,14 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 5feb9536c9379a94ab28e12fbf88aa38, type: 3}
   description: Creates a permanent service to govern distant colonies. Officials gain clearer procedures and responsibilities, allowing authority to reach communities more consistently. Benefits include smaller distance loyalty penalties; however, it brings more unrest.
   policyPointCost: 46
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: e98fc1c660ca367409b5ffe863ea1883, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
+  - {fileID: 11400000, guid: c04ae987b8e34c6a8d5ade0f3362a3ff, type: 2}
+  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

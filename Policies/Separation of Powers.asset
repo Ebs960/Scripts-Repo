@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Divides state power among independent institutions. The reform broadens political legitimacy while challenging institutions built around inherited privilege. Its chief benefits are less corruption.
   policyPointCost: 56
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0a7a4c86c3778be458f4f9ffcf64e784, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:

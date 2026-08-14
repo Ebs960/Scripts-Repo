@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Hires professional soldiers instead of raising levies. Military service becomes a lasting part of the political order rather than an improvised answer to invasion. Its chief benefits are stronger general attacks and more revenue.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a8ce4713cccdf444dbaef19249b8e2be, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
   - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}

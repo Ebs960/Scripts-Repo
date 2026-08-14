@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Supports a war chief with a loyal personal retinue. The reform changes who fights, who commands, and who pays for the realm’s security. Benefits include stronger melee attacks and stronger defense; however, it brings less revenue and higher military upkeep.
   policyPointCost: 16
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 3f65a3c964494cc4cb49dc0f22f32245, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 7d301448e05c4af5bdc3060584963e7e, type: 2}
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}

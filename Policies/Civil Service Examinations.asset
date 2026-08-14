@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Selects officials by examination rather than patronage. Old privileges and local customs must adjust as the reform becomes part of ordinary government. Its chief benefits are more research, greater administrative efficiency and faster policy-point generation.
   policyPointCost: 50
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: cedd8f32fa04c304d9ac8bf978d20593, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
