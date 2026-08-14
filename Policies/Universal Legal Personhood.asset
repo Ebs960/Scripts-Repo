@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Legal Personhood
   icon: {fileID: 21300000, guid: 7f17b82d57aee904d98ff3d60c4879c5, type: 3}
-  description: Establishes universal legal personhood as a durable institution; its benefits and stated tradeoffs apply while active.
-  policyPointCost: 58
+  description: Extends legal personhood to every recognized sentient being. The reform broadens political legitimacy while challenging institutions built around inherited privilege. Its chief benefits are greater migration attraction and less unrest.
+  policyPointCost: 72
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []

@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Education
   icon: {fileID: 21300000, guid: ae9ed01316d1c074fb2297283c12c008, type: 3}
-  description: Establishes public education as a durable institution; its benefits and stated tradeoffs apply while active.
-  policyPointCost: 50
+  description: Funds a common system of schools. Knowledge spreads beyond traditional elites, creating a public better equipped to innovate and question authority. Benefits include more research and more culture; however, it brings less revenue.
+  policyPointCost: 60
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: de079dd8565c4ad694b674184725a3fb, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

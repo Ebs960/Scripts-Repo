@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Planetary Defense Doctrine
   icon: {fileID: 21300000, guid: 85f827abc7a70d34fad785cd531b641f, type: 3}
-  description: Establishes planetary defense doctrine as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Prepares colonies and orbital assets for attack. Settlements far from Earth need institutions that can survive distance, delay, and competing local interests. Its chief benefits are faster reinforcement and stronger planetary defense.
   policyPointCost: 100
   requiredTechs:
   - {fileID: 11400000, guid: adabc2bf348a3c04fa4210ea580a64cc, type: 2}
@@ -22,7 +22,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 73d2221248b84f0dababb88e87355d59, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

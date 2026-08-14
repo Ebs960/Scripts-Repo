@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Manorial Dues
   icon: {fileID: 21300000, guid: 65a54ad2f2b742e49b67cec157d3fad9, type: 3}
-  description: Establishes manorial dues as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Binds peasant production to estates and customary rents. The arrangement reshapes everyday obligations between communities, elites, and the state. Benefits include more food and more revenue; however, it brings less research and lower migration attraction.
   policyPointCost: 28
   requiredTechs: []
   requiredCultures: []

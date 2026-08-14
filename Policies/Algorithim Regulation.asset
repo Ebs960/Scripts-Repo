@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Algorithm Regulation
   icon: {fileID: 21300000, guid: ce1a226b560e46440945187c1461917b, type: 3}
-  description: Establishes algorithmic regulation as a durable institution; its benefits
-    and stated tradeoffs apply while active.
+  description: Requires accountable automated decision-making. Citizens and officials must adapt as synthetic minds take on roles once reserved for people. Benefits include stronger cyber defense and stronger espionage defense; however, it brings lower administrative efficiency.
   policyPointCost: 80
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 25a56d1c57c94707b5fe697020396aa1, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags: 0f000000
@@ -44,7 +44,7 @@ MonoBehaviour:
   warWearinessModifier: 0
   corruptionModifier: 0
   unrestModifier: 0
-  administrativeEfficiencyModifier: 0
+  administrativeEfficiencyModifier: -0.05
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
@@ -54,9 +54,9 @@ MonoBehaviour:
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0
-  cyberDefenseModifier: 0
+  cyberDefenseModifier: 0.15
   cyberOffenseModifier: 0
-  espionageDefenseModifier: 0
+  espionageDefenseModifier: 0.1
   orbitalProductionModifier: 0
   interplanetaryTradeModifier: 0
   planetaryLoyaltyModifier: 0

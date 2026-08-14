@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Independent Judiciary
   icon: {fileID: 21300000, guid: 2dd8048d85acdef46a7a6a0331f8c45e, type: 3}
-  description: Establishes independent judiciary as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Insulates judges from political patronage. The reform broadens political legitimacy while challenging institutions built around inherited privilege. Its chief benefits are less corruption.
   policyPointCost: 54
   requiredTechs: []
   requiredCultures: []
@@ -22,7 +22,6 @@ MonoBehaviour:
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
-  - {fileID: 11400000, guid: 0fb5cf85b18f4a6db2465ec9504e1a16, type: 2}
   - {fileID: 11400000, guid: d858784e4b4448529a4247895591f6b2, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []

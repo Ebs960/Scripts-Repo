@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Merchant Privileges
   icon: {fileID: 21300000, guid: f6e7e110d11768d48888f60ed4d31806, type: 3}
-  description: Establishes merchant privileges as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Gives favored merchants protected rights and markets. Merchants reorganize their routes and investments around the new balance between privilege, revenue, and risk. Its chief benefits are more revenue.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

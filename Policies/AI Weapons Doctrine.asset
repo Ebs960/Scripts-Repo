@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: AI Weapons Doctrine
   icon: {fileID: 21300000, guid: 2e1f2ecd9c7f3b442a99f425e2550da9, type: 3}
-  description: Establishes autonomous weapons doctrine as a durable institution;
-    its benefits and stated tradeoffs apply while active.
-  policyPointCost: 96
+  description: Places machine intelligence under public rules. The reform turns intelligent machines from private tools into actors with public duties and consequences. Its chief benefits are more production and faster reinforcement.
+  policyPointCost: 100
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 3c84627ebe1c49d984974e97d47139d6, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags: 09000000

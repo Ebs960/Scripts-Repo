@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Standing Army
   icon: {fileID: 21300000, guid: 1dff4613239853e44a72352ca65f8770, type: 3}
-  description: Establishes standing army as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Maintains permanent trained forces in peacetime. Commanders can plan around a clearer source of manpower and authority when war arrives. Benefits include faster reinforcement; however, it brings higher military upkeep.
   policyPointCost: 42
   requiredTechs:
   - {fileID: 11400000, guid: b0391261c9f77cb46932448e5003712d, type: 2}

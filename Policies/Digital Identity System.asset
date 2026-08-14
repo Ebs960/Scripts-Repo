@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Digital Identity System
   icon: {fileID: 21300000, guid: 5b308300dd2ed1141be65e60d0aeb4a5, type: 3}
-  description: Establishes digital identity system as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Gives each citizen a secure state-recognized digital identity. Daily life moves deeper online, so failures of trust can spread as quickly as useful information. Benefits include greater administrative efficiency; however, it brings weaker cyber defense.
   policyPointCost: 76
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 4178ed489d154fccbf08d1b600df5b12, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

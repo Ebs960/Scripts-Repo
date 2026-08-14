@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Elite Estates
   icon: {fileID: 21300000, guid: ed3de40554d6d8247ada1087ad2d3eb1, type: 3}
-  description: Establishes elite estates as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Reserves political influence for landed and wealthy estates. Its adoption changes not only formal law but also the expectations by which people organize their lives. Its chief benefits are more production.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

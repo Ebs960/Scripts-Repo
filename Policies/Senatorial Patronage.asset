@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Senatorial Patronage
   icon: {fileID: 21300000, guid: 2a87bf4381a91dc468dc8da6fedf9f8c, type: 3}
-  description: Establishes senatorial patronage as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Governs through elite networks of favors and clients. The arrangement reshapes everyday obligations between communities, elites, and the state. Its chief benefits are more culture.
   policyPointCost: 32
   requiredTechs: []
   requiredCultures: []

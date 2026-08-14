@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Militia
   icon: {fileID: 21300000, guid: d6f216137a69d2b488fb5bb0f58fbcb7, type: 3}
-  description: Establishes citizen militia as a durable institution; its benefits
-    and stated tradeoffs apply while active.
+  description: Arms local citizens for territorial defense. Military service becomes a lasting part of the political order rather than an improvised answer to invasion. Benefits include stronger defense; however, it brings less revenue and more war weariness.
   policyPointCost: 40
   requiredTechs: []
   requiredCultures:

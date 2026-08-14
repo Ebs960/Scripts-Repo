@@ -14,16 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Universal Suffrage
   icon: {fileID: 21300000, guid: db97334eded03654cbd2eef9ce89a40b, type: 3}
-  description: Establishes universal suffrage as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Gives every adult citizen an equal vote. The reform broadens political legitimacy while challenging institutions built around inherited privilege. Benefits include more culture and faster policy-point generation; however, it brings lower administrative efficiency.
   policyPointCost: 64
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 7459222debcd425eb7f2b021fb1f917f, type: 2}
   incompatiblePolicies: []
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: 9b3a95bd616e45ab9ea12f42719efbfb, type: 2}
   policyTags:
   - 11
   additionalVetoDomains: 0
@@ -37,16 +39,16 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.12
   faithModifier: 0
   populationGrowthModifier: 0
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
   unrestModifier: 0
-  administrativeEfficiencyModifier: 0
+  administrativeEfficiencyModifier: -0.04
   distanceLoyaltyPenaltyModifier: 0
-  policyPointGenerationModifier: 0
+  policyPointGenerationModifier: 0.12
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0

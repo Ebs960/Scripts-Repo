@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Agricultural Reform
   icon: {fileID: 21300000, guid: d9f14ab26b72d574595ab8d234c9b63c, type: 3}
-  description: Establishes agricultural reform as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Modernizes landholding and farm practice. Communities can grow beyond older limits once movement, shelter, food, and sanitation are planned at scale. Its chief benefits are greater migration attraction.
   policyPointCost: 50
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 5c00b91f1abd461485e51530fbd348a7, type: 2}
   incompatiblePolicies: []
   supersedesPolicies:
   - {fileID: 11400000, guid: 7b2c3d4e5f60718293a4b5c6d7e8f0a1, type: 2}

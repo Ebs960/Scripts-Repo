@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Citizen Assembly
   icon: {fileID: 21300000, guid: cbacb6db1f63237448ac62ed85520c10, type: 3}
-  description: Establishes citizen assembly as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Lets citizens deliberate directly on public decisions. Courts and officials must apply the principle in ordinary disputes, not merely proclaim it in constitutional language. Benefits include more culture and less unrest; however, it brings less production.
   policyPointCost: 30
   requiredTechs: []
   requiredCultures: []

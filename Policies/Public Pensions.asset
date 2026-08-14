@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Public Pensions
   icon: {fileID: 21300000, guid: 9c3b14d88c6b5bc4db0fed95277a0157, type: 3}
-  description: Establishes public pensions as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Provides income to citizens after working life. The policy decides how much human hardship the state will accept in pursuit of economic output. Its chief tradeoff is less revenue.
   policyPointCost: 66
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 3624fa0ff6c14622ab39295e38e6646d, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

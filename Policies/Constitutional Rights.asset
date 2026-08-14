@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Constitutional Rights
   icon: {fileID: 21300000, guid: d3ad5a9b70d95cd4d8223fea6adbe246, type: 3}
-  description: Establishes constitutional rights as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Guarantees liberties in a binding constitutional order. Courts and officials must apply the principle in ordinary disputes, not merely proclaim it in constitutional language. Benefits include more culture and less unrest; however, it brings less production.
   policyPointCost: 45
   requiredTechs: []
   requiredCultures: []

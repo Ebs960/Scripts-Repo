@@ -14,14 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Platform Antitrust
   icon: {fileID: 21300000, guid: d18ff05b3e04a4c40b3a7bfa2e5b1457, type: 3}
-  description: Establishes platform antitrust as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Establishes platform antitrust in public law. Digital systems gain clearer public rules, though compliance changes who can collect, move, and exploit information. Benefits include more research and stronger cyber defense; however, it brings less revenue.
   policyPointCost: 78
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 8c17caa7f6d24f05a53c73086e09aaff, type: 2}
+  - {fileID: 11400000, guid: 1236c11044d24998b138dad1ade8b77d, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:
@@ -35,8 +37,8 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
-  scienceModifier: 0
+  goldModifier: -0.04
+  scienceModifier: 0.08
   cultureModifier: 0
   faithModifier: 0
   populationGrowthModifier: 0
@@ -54,7 +56,7 @@ MonoBehaviour:
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0
-  cyberDefenseModifier: 0
+  cyberDefenseModifier: 0.1
   cyberOffenseModifier: 0
   espionageDefenseModifier: 0
   orbitalProductionModifier: 0

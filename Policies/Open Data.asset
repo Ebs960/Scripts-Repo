@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Open Data
   icon: {fileID: 21300000, guid: bf4de4fbe2547ff459467ead3864a0c6, type: 3}
-  description: Establishes open data as a durable institution; its benefits and stated tradeoffs apply while active.
-  policyPointCost: 74
+  description: Publishes government information for research and scrutiny. Information becomes easier to preserve and circulate, weakening old monopolies over learning. Benefits include more research; however, it brings weaker cyber defense.
+  policyPointCost: 80
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: 7ade0fc9ae9c4d12a7009acef2c0aa02, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:

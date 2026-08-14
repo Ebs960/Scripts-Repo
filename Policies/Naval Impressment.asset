@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Naval Impressment
   icon: {fileID: 21300000, guid: 458eb1dfb75c7d34c98eaf0bd50a9bce, type: 3}
-  description: Establishes naval impressment as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Forcibly recruits sailors for the fleet. Military service becomes a lasting part of the political order rather than an improvised answer to invasion. Benefits include faster movement and faster reinforcement; however, it brings more unrest.
   policyPointCost: 40
   requiredTechs: []
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a572ef3d9ccc4e9995d836b805b0bc96, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
   policyTags:
@@ -32,7 +33,7 @@ MonoBehaviour:
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
-  movementBonus: 0
+  movementBonus: 0.1
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0
@@ -43,7 +44,7 @@ MonoBehaviour:
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: 0.08
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
@@ -52,7 +53,7 @@ MonoBehaviour:
   tradeRouteCapacityBonus: 0
   laborProductivityModifier: 0
   unemploymentUnhappinessModifier: 0
-  reinforcementSpeedModifier: 0
+  reinforcementSpeedModifier: 0.15
   militaryUpkeepModifier: 0
   cyberDefenseModifier: 0
   cyberOffenseModifier: 0

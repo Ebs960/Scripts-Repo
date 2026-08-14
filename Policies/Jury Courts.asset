@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Jury Courts
   icon: {fileID: 21300000, guid: 031388d84eb20ef4bad120d97e373b73, type: 3}
-  description: Establishes jury courts as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Has citizens judge evidence in open courts. Citizens gain stronger means to contest power, making government fairer but often slower to act. Benefits include more culture and less corruption; however, it brings less revenue.
   policyPointCost: 34
   requiredTechs: []
   requiredCultures: []

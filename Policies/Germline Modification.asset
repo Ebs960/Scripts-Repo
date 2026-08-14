@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Germline Modification
   icon: {fileID: 21300000, guid: dc299c52c92b1f24ebc4ec8d2f35572a, type: 3}
-  description: Establishes germline modification as a durable institution; its benefits and stated tradeoffs apply while active.
+  description: Permits inheritable genetic engineering. Families gain unprecedented control over biology, while society inherits the consequences for generations. Benefits include faster population growth and greater labor productivity; however, it brings more unrest.
   policyPointCost: 98
   requiredTechs:
   - {fileID: 11400000, guid: 0f56b5c583f87164a9f83b1ca376ed59, type: 2}
@@ -22,7 +22,8 @@ MonoBehaviour:
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
-  requiredPolicies: []
+  requiredPolicies:
+  - {fileID: 11400000, guid: a443da5dfc1f4bc59f2527dab8325e4b, type: 2}
   incompatiblePolicies:
   - {fileID: 11400000, guid: a4b2197b53864a3e8fb4f7df52340b99, type: 2}
   supersedesPolicies: []
@@ -41,18 +42,18 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
-  populationGrowthModifier: 0
+  populationGrowthModifier: 0.12
   migrationAttractionModifier: 0
   warWearinessModifier: 0
   corruptionModifier: 0
-  unrestModifier: 0
+  unrestModifier: 0.08
   administrativeEfficiencyModifier: 0
   distanceLoyaltyPenaltyModifier: 0
   policyPointGenerationModifier: 0
   domesticTradeModifier: 0
   foreignTradeModifier: 0
   tradeRouteCapacityBonus: 0
-  laborProductivityModifier: 0
+  laborProductivityModifier: 0.1
   unemploymentUnhappinessModifier: 0
   reinforcementSpeedModifier: 0
   militaryUpkeepModifier: 0
