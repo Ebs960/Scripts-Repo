@@ -690,6 +690,8 @@ public class WorkerUnit : BaseUnit
             return false;
         if (civ == null && bonus.useSeasonFilter)
             return false;
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
+            return false;
 
         return true;
     }

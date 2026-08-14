@@ -1718,6 +1718,11 @@ public class Civilization : MonoBehaviour
         return true;
     }
 
+    private bool MatchesPlanetFilterForBonus(CityPlanetEarthScope earthWorldScope, bool usePlanetFilter, global::PlanetType[] planets, GameManager.PlanetType[] planetTypes, int planetIndex)
+    {
+        return PlanetBonusFilterUtility.MatchesPlanetFilter(earthWorldScope, usePlanetFilter, planets, planetTypes, planetIndex);
+    }
+
     /// <summary>
     /// Sum per-unit healing speed bonuses (as fractional percent, e.g. 0.10 = +10%) for the given combat unit.
     /// Includes bonuses from civ identity, researched techs/cultures, current government, active policies, pantheons, beliefs, and city buildings when provided.
@@ -1731,58 +1736,58 @@ public class Civilization : MonoBehaviour
         // Civ identity
         if (civData?.unitBonuses != null)
             foreach (var b in civData.unitBonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
         if (civData?.effects?.unitBonuses != null)
             foreach (var b in civData.effects.unitBonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Leader
         if (leader?.unitBonuses != null)
             foreach (var b in leader.unitBonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Techs
         if (researchedTechs != null)
             foreach (var t in researchedTechs)
                 if (t?.unitBonuses != null)
-                    foreach (var b in t.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in t.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Cultures
         if (researchedCultures != null)
             foreach (var c in researchedCultures)
                 if (c?.unitBonuses != null)
-                    foreach (var b in c.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in c.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Government
         if (currentGovernment != null && currentGovernment.unitBonuses != null)
-            foreach (var b in currentGovernment.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            foreach (var b in currentGovernment.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Policies
         if (activePolicies != null)
             foreach (var p in activePolicies)
                 if (p?.unitBonuses != null)
-                    foreach (var b in p.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in p.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Pantheons
         foreach (var pb in EnumeratePantheonBonuses())
             if (pb?.unitBonuses != null)
-                foreach (var b in pb.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in pb.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Active beliefs
         foreach (var belief in EnumerateActiveBeliefs())
             if (belief?.unitBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
-                foreach (var b in belief.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in belief.unitBonuses) if (b != null && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         // Building bonuses can be scoped either to all civ units or to the local city context.
         foreach (var bonus in EnumerateBuildingUnitBonuses(BuildingUnitBonusScope.AllCivilizationUnits))
-            if (bonus != null && MatchesCombatUnitBonusTarget(unit.data, bonus.unit, bonus.useUnitCategoryFilter, bonus.unitCategory) && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
+            if (bonus != null && MatchesCombatUnitBonusTarget(unit.data, bonus.unit, bonus.useUnitCategoryFilter, bonus.unitCategory) && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesPlanetFilterForBonus(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
 
         if (cityContext != null)
         {
             foreach (var (bd, _, _) in cityContext.EnumerateOperationalBuildings())
             {
                 if (bd == null || bd.unitBonuses == null) continue;
-                foreach (var b in bd.unitBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in bd.unitBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && MatchesCombatUnitBonusTarget(unit.data, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(unit, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
@@ -1800,42 +1805,42 @@ public class Civilization : MonoBehaviour
 
         if (civData?.workerBonuses != null)
             foreach (var b in civData.workerBonuses)
-                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
         if (civData?.effects?.workerBonuses != null)
             foreach (var b in civData.effects.workerBonuses)
-                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
         if (leader?.workerBonuses != null)
             foreach (var b in leader.workerBonuses)
-                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (researchedTechs != null)
             foreach (var t in researchedTechs)
                 if (t?.workerBonuses != null)
-                    foreach (var b in t.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in t.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (researchedCultures != null)
             foreach (var c in researchedCultures)
                 if (c?.workerBonuses != null)
-                    foreach (var b in c.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in c.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (currentGovernment != null && currentGovernment.workerBonuses != null)
-            foreach (var b in currentGovernment.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+            foreach (var b in currentGovernment.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         if (activePolicies != null)
             foreach (var p in activePolicies)
                 if (p?.workerBonuses != null)
-                    foreach (var b in p.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in p.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         foreach (var pb in EnumeratePantheonBonuses())
             if (pb?.workerBonuses != null)
-                foreach (var b in pb.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in pb.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         foreach (var belief in EnumerateActiveBeliefs())
             if (belief?.workerBonuses != null && IsBeliefSeasonActive(belief, planetIndex))
-                foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                foreach (var b in belief.workerBonuses) if (b != null && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
 
         foreach (var bonus in EnumerateBuildingWorkerBonuses(BuildingUnitBonusScope.AllCivilizationUnits))
-            if (bonus != null && bonus.worker == worker.data && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
+            if (bonus != null && bonus.worker == worker.data && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex) && MatchesPlanetFilterForBonus(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement)) total += bonus.healingRatePct;
 
         if (cityContext != null)
         {
@@ -1843,7 +1848,7 @@ public class Civilization : MonoBehaviour
             {
                 if (bd == null) continue;
                 if (bd.workerBonuses != null)
-                    foreach (var b in bd.workerBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
+                    foreach (var b in bd.workerBonuses) if (b != null && b.buildingScope == BuildingUnitBonusScope.SameCity && b.worker == worker.data && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex) && MatchesUnitStatBonusLocation(worker, b.cityRequirement, b.useBiomeFilter, b.biome, b.hillRequirement, b.mountainRequirement, b.useResourceFilter, b.resource, b.territoryRequirement)) total += b.healingRatePct;
             }
         }
 
@@ -1876,6 +1881,8 @@ public class Civilization : MonoBehaviour
                 if (!MatchesCombatUnitBonusTarget(unit.data, bonus.unit, bonus.useUnitCategoryFilter, bonus.unitCategory))
                     continue;
                 if (!MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+                    continue;
+                if (!MatchesPlanetFilterForBonus(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
                     continue;
                 if (!MatchesUnitStatBonusLocation(unit, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement))
                     continue;
@@ -1941,6 +1948,8 @@ public class Civilization : MonoBehaviour
                 if (bonus == null || bonus.worker != worker.data)
                     continue;
                 if (!MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+                    continue;
+                if (!MatchesPlanetFilterForBonus(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
                     continue;
                 if (!MatchesUnitStatBonusLocation(worker, bonus.cityRequirement, bonus.useBiomeFilter, bonus.biome, bonus.hillRequirement, bonus.mountainRequirement, bonus.useResourceFilter, bonus.resource, bonus.territoryRequirement))
                     continue;
@@ -2072,7 +2081,9 @@ public class Civilization : MonoBehaviour
 
             foreach (var bonus in bonuses)
             {
-                if (MatchesDiseaseModifier(bonus, disease) && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex))
+                if (MatchesDiseaseModifier(bonus, disease)
+                    && MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, planetIndex)
+                    && MatchesPlanetFilterForBonus(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
                     AccumulateDiseaseModifier(ref totals, bonus);
             }
         }
@@ -5559,7 +5570,7 @@ return true;
         {
             if (bonuses == null) return;
             foreach (var b in bonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
         }
         ScanCivUnitYields(civData?.unitYieldBonuses);
@@ -5573,7 +5584,7 @@ return true;
                 if (tech == null || tech.unitYieldBonuses == null) continue;
                 foreach (var b in tech.unitYieldBonuses)
                 {
-                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -5586,7 +5597,7 @@ return true;
                 if (culture == null || culture.unitYieldBonuses == null) continue;
                 foreach (var b in culture.unitYieldBonuses)
                 {
-                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -5599,7 +5610,7 @@ return true;
                 if (policy == null || policy.unitYieldBonuses == null) continue;
                 foreach (var b in policy.unitYieldBonuses)
                 {
-                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddUnitYieldBonus(ref agg, b);
                 }
             }
@@ -5609,7 +5620,7 @@ return true;
         {
             foreach (var b in currentGovernment.unitYieldBonuses)
             {
-                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
             }
         }
@@ -5618,7 +5629,7 @@ return true;
         {
             if (pantheonBonuses?.unitYieldBonuses == null) continue;
             foreach (var b in pantheonBonuses.unitYieldBonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
         }
 
@@ -5626,14 +5637,14 @@ return true;
         {
             if (belief?.unitYieldBonuses == null || !IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var b in belief.unitYieldBonuses)
-                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && MatchesCombatUnitBonusTarget(unit, b.unit, b.useUnitCategoryFilter, b.unitCategory) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddUnitYieldBonus(ref agg, b);
         }
 
         return agg;
     }
 
-    private YieldBonusAgg AggregateEquipmentYieldBonuses(EquipmentData equip)
+    private YieldBonusAgg AggregateEquipmentYieldBonuses(EquipmentData equip, int planetIndex = -1)
     {
         YieldBonusAgg agg = new YieldBonusAgg();
         if (equip == null) return agg;
@@ -5643,7 +5654,7 @@ return true;
         {
             if (bonuses == null) return;
             foreach (var b in bonuses)
-                if (b != null && b.equipment == equip)
+                if (b != null && b.equipment == equip && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                 {
                     agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
                     agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
@@ -5662,7 +5673,7 @@ return true;
                 if (tech == null || tech.equipmentYieldBonuses == null) continue;
                 foreach (var b in tech.equipmentYieldBonuses)
                 {
-                    if (b != null && b.equipment == equip)
+                    if (b != null && b.equipment == equip && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     {
                         agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
                         agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
@@ -5680,7 +5691,7 @@ return true;
                 if (culture == null || culture.equipmentYieldBonuses == null) continue;
                 foreach (var b in culture.equipmentYieldBonuses)
                 {
-                    if (b != null && b.equipment == equip)
+                    if (b != null && b.equipment == equip && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     {
                         agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
                         agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
@@ -5698,7 +5709,7 @@ return true;
                 if (policy == null || policy.equipmentYieldBonuses == null) continue;
                 foreach (var b in policy.equipmentYieldBonuses)
                 {
-                    if (b != null && b.equipment == equip)
+                    if (b != null && b.equipment == equip && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     {
                         agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
                         agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
@@ -5713,7 +5724,7 @@ return true;
         {
             foreach (var b in currentGovernment.equipmentYieldBonuses)
             {
-                if (b != null && b.equipment == equip)
+                if (b != null && b.equipment == equip && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                 {
                     agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
                     agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
@@ -5763,7 +5774,7 @@ return true;
         {
             foreach (var eq in equippedItems)
             {
-                var e = AggregateEquipmentYieldBonuses(eq);
+                var e = AggregateEquipmentYieldBonuses(eq, planetIndex);
                 eAgg.foodAdd += e.foodAdd; eAgg.goldAdd += e.goldAdd; eAgg.scienceAdd += e.scienceAdd; eAgg.cultureAdd += e.cultureAdd; eAgg.faithAdd += e.faithAdd; eAgg.policyPointsAdd += e.policyPointsAdd;
                 eAgg.foodPct += e.foodPct; eAgg.goldPct += e.goldPct; eAgg.sciencePct += e.sciencePct; eAgg.culturePct += e.culturePct; eAgg.faithPct += e.faithPct; eAgg.policyPointsPct += e.policyPointsPct;
             }
@@ -5788,7 +5799,7 @@ return true;
         {
             if (bonuses == null) return;
             foreach (var b in bonuses)
-                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
         }
         ScanCivWorkerYields(civData?.workerYieldBonuses);
@@ -5801,7 +5812,7 @@ return true;
                 if (tech == null || tech.workerYieldBonuses == null) continue;
                 foreach (var b in tech.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -5813,7 +5824,7 @@ return true;
                 if (culture == null || culture.workerYieldBonuses == null) continue;
                 foreach (var b in culture.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -5825,7 +5836,7 @@ return true;
                 if (policy == null || policy.workerYieldBonuses == null) continue;
                 foreach (var b in policy.workerYieldBonuses)
                 {
-                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                    if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                         AddWorkerYieldBonus(ref agg, b);
                 }
             }
@@ -5834,7 +5845,7 @@ return true;
         {
             foreach (var b in currentGovernment.workerYieldBonuses)
             {
-                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
             }
         }
@@ -5843,7 +5854,7 @@ return true;
         {
             if (pantheonBonuses?.workerYieldBonuses == null) continue;
             foreach (var b in pantheonBonuses.workerYieldBonuses)
-                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
         }
 
@@ -5851,7 +5862,7 @@ return true;
         {
             if (belief?.workerYieldBonuses == null || !IsBeliefSeasonActive(belief, planetIndex)) continue;
             foreach (var b in belief.workerYieldBonuses)
-                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && b.worker == worker && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddWorkerYieldBonus(ref agg, b);
         }
 
@@ -5912,7 +5923,7 @@ return true;
         {
             if (bonuses == null) return;
             foreach (var b in bonuses)
-                if (b != null && MatchesHerdSpeciesFilter(b, herd) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex))
+                if (b != null && MatchesHerdSpeciesFilter(b, herd) && MatchesSeasonFilterForPlanet(b.useSeasonFilter, b.seasons, planetIndex) && MatchesPlanetFilterForBonus(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     AddHerdYieldBonus(ref agg, b);
         }
 

@@ -111,7 +111,7 @@ public class HerdManager : MonoBehaviour
 
         TileYield yields;
         if (herd != null && herd.owner != null)
-            yields = HexTileData.GetTotalYieldWithReligion(herd.owner, td);
+            yields = HexTileData.GetTotalYieldWithReligion(herd.owner, td, planetIndex);
         else
             yields = td.GetTotalYield();
 

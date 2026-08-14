@@ -372,6 +372,8 @@ public class UnitVisionManager : MonoBehaviour
                     continue;
                 if (Civilization.HasCombatBonusOpponentFilter(bonus.targetUnit, bonus.targetWorker, bonus.useTargetUnitCategoryFilter))
                     continue;
+                if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, unit.planetIndex))
+                    continue;
 
                 agg.add += bonus.sightRangeAdd;
                 agg.pct += bonus.sightRangePct;
@@ -553,6 +555,7 @@ public class UnitVisionManager : MonoBehaviour
         if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
         if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement)) return false;
         if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, unit.planetIndex)) return false;
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, unit.planetIndex)) return false;
 
         return true;
     }
@@ -574,6 +577,7 @@ public class UnitVisionManager : MonoBehaviour
         if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
         if (!MatchesTerritoryRequirement(tile, civ, bonus.territoryRequirement)) return false;
         if (civ != null && !civ.MatchesSeasonFilterForPlanet(bonus.useSeasonFilter, bonus.seasons, unit.planetIndex)) return false;
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, unit.planetIndex)) return false;
 
         return true;
     }

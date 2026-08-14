@@ -1146,6 +1146,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (!MatchesRequirement(bonus.underwaterRequirement, isUnderwater)) return false;
         if (!MatchesRequirement(bonus.orbitRequirement, isOrbit)) return false;
         if (bonus.useResourceFilter && (tile == null || tile.resource != bonus.resource)) return false;
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex)) return false;
         return true;
     }
 

@@ -14,20 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PolicyData
   policyName: Freedom of Religion
   icon: {fileID: 21300000, guid: ffcd09310c3a1554187eda9c7dc18500, type: 3}
-  description: Allows citizens to worship outside the official faith. Public authority becomes more accountable as additional people gain standing within the law and the political system. Its chief benefits are greater migration attraction.
+  description: Allows citizens to worship outside the official faith. Public authority
+    becomes more accountable as additional people gain standing within the law and
+    the political system. Its chief benefits are greater migration attraction.
   policyPointCost: 48
   requiredTechs: []
   requiredCultures:
-  - {fileID: 11400000, guid: 33303c513de0d994c9bf958b197a0ad9, type: 2}
+  - {fileID: 11400000, guid: bdfbda1411ea8ad47bdc7cb7d5761c1f, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
-  policyTags:
-  - 10
-  - 11
+  policyTags: 0a0000000b000000
   additionalVetoDomains: 8
   attackBonus: 0
   meleeAttackBonus: 0
@@ -39,8 +39,8 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
-  faithModifier: 0
+  cultureModifier: 0.1
+  faithModifier: -0.15
   populationGrowthModifier: 0
   migrationAttractionModifier: 0.1
   warWearinessModifier: 0
@@ -76,22 +76,27 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  additionalGovernorSlots: 0
+  additionalGovernorSlots: 1
   unlockedGovernorTraits: []
   governorOpinionEffects:
   - reason: Supports Freedom of Religion
     value: 8
-    durationTurns: 30
-    requiresAnyPersonality:
-    - 8
+    durationTurns: -1
+    requiresAnyPersonality: 020000000a000000
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
   - reason: Opposes Freedom of Religion
-    value: -6
-    durationTurns: 30
-    requiresAnyPersonality:
-    - 9
+    value: -10
+    durationTurns: -1
+    requiresAnyPersonality: 09000000
     onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Enjoys tolerance towards their religion
+    value: 18
+    durationTurns: -1
+    requiresAnyPersonality: 
+    onlyIfReligionMismatch: 1
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0

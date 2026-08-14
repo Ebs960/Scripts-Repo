@@ -2939,6 +2939,8 @@ Destroy(oldTuple.instance);
             foreach (var season in bonus.seasons) { if (season == tile.season) { matched = true; break; } }
             if (!matched) return false;
         }
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
+            return false;
         return true;
     }
 
@@ -3039,7 +3041,10 @@ Destroy(oldTuple.instance);
         Season currentSeason = ClimateManager.Instance != null
             ? ClimateManager.Instance.GetSeasonForPlanet(planetIndex)
             : Season.Spring;
-        return Civilization.MatchesSeasonFilter(currentSeason, bonus.useSeasonFilter, bonus.seasons);
+        if (!Civilization.MatchesSeasonFilter(currentSeason, bonus.useSeasonFilter, bonus.seasons))
+            return false;
+
+        return PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex);
     }
 
     private static bool MatchesBuildingCategory(BuildingData data, BuildingCategory category)
@@ -3110,7 +3115,15 @@ Destroy(oldTuple.instance);
             if (!regionMatched) return false;
         }
 
+        if (!MatchesCityPlanetFilter(bonus))
+            return false;
+
         return true;
+    }
+
+    private bool MatchesCityPlanetFilter(CityYieldBonus bonus)
+    {
+        return PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex);
     }
 
     private ContinentManager.ContinentRegionCategory ResolveContinentRegionCategory()

@@ -16,6 +16,132 @@ public enum CityYieldScope
     CapitalOnly,
 }
 
+public enum CityPlanetEarthScope
+{
+    Any,
+    EarthOnly,
+    NonEarthOnly,
+}
+
+public static class PlanetBonusFilterUtility
+{
+    public static bool MatchesPlanetFilter(CityPlanetEarthScope earthWorldScope, bool usePlanetFilter, global::PlanetType[] planets, GameManager.PlanetType[] planetTypes, int planetIndex)
+    {
+        bool isEarthWorld = IsEarthWorld(planetIndex);
+        switch (earthWorldScope)
+        {
+            case CityPlanetEarthScope.EarthOnly:
+                if (!isEarthWorld) return false;
+                break;
+            case CityPlanetEarthScope.NonEarthOnly:
+                if (isEarthWorld) return false;
+                break;
+        }
+
+        if (!usePlanetFilter)
+            return true;
+
+        bool hasPlanetBodyFilter = planets != null && planets.Length > 0;
+        bool hasPlanetTypeFilter = planetTypes != null && planetTypes.Length > 0;
+        if (!hasPlanetBodyFilter && !hasPlanetTypeFilter)
+            return false;
+
+        if (hasPlanetBodyFilter)
+        {
+            if (!TryResolvePlanetBody(planetIndex, out var planetBody))
+                return false;
+
+            bool matchedPlanetBody = false;
+            foreach (var candidatePlanet in planets)
+            {
+                if (candidatePlanet == planetBody)
+                {
+                    matchedPlanetBody = true;
+                    break;
+                }
+            }
+            if (!matchedPlanetBody) return false;
+        }
+
+        if (hasPlanetTypeFilter)
+        {
+            if (!TryResolvePlanetGameplayType(planetIndex, out var planetType))
+                return false;
+
+            bool matchedPlanetType = false;
+            foreach (var candidateType in planetTypes)
+            {
+                if (candidateType == planetType)
+                {
+                    matchedPlanetType = true;
+                    break;
+                }
+            }
+            if (!matchedPlanetType) return false;
+        }
+
+        return true;
+    }
+
+    public static bool IsEarthWorld(int planetIndex)
+    {
+        if (TryResolvePlanetBody(planetIndex, out var planetBody))
+            return planetBody == global::PlanetType.Earth;
+
+        if (TryGetPlanetData(planetIndex, out var planetData))
+            return string.Equals(planetData.planetName, "Earth", System.StringComparison.OrdinalIgnoreCase);
+
+        return planetIndex == 0;
+    }
+
+    public static bool TryResolvePlanetBody(int planetIndex, out global::PlanetType planetBody)
+    {
+        var gameManager = GameManager.Instance;
+        var gen = gameManager != null ? gameManager.GetPlanetGenerator(planetIndex) : null;
+        if (gen != null)
+        {
+            planetBody = gen.planetType;
+            return true;
+        }
+
+        if (TryGetPlanetData(planetIndex, out var planetData)
+            && System.Enum.TryParse(planetData.planetName, true, out global::PlanetType parsedPlanetBody))
+        {
+            planetBody = parsedPlanetBody;
+            return true;
+        }
+
+        planetBody = default;
+        return false;
+    }
+
+    public static bool TryResolvePlanetGameplayType(int planetIndex, out GameManager.PlanetType planetType)
+    {
+        if (TryGetPlanetData(planetIndex, out var planetData))
+        {
+            planetType = planetData.planetType;
+            return true;
+        }
+
+        planetType = default;
+        return false;
+    }
+
+    private static bool TryGetPlanetData(int planetIndex, out GameManager.PlanetData planetData)
+    {
+        var gameManager = GameManager.Instance;
+        if (gameManager != null)
+        {
+            var allPlanetData = gameManager.GetPlanetData();
+            if (allPlanetData != null && allPlanetData.TryGetValue(planetIndex, out planetData) && planetData != null)
+                return true;
+        }
+
+        planetData = null;
+        return false;
+    }
+}
+
 public enum CityBuildingRequirementScope
 {
     SameCity,
@@ -199,6 +325,13 @@ public class UnitStatBonus
     public bool useSeasonFilter = false;
     public Season[] seasons;
 
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to units on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
+
     [Header("Additive (flat)")]
     public int attackAdd;
     public int meleeAttackAdd;
@@ -257,6 +390,13 @@ public class UnitYieldBonus
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
     public bool useSeasonFilter = false;
     public Season[] seasons;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to units on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Yield Add (flat per unit per turn)")]
     public int foodAdd;
@@ -320,6 +460,13 @@ public class WorkerUnitStatBonus
     public bool useSeasonFilter = false;
     public Season[] seasons;
 
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to workers on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
+
     [Header("Additive (flat)")]
     public int attackAdd;
     public int meleeAttackAdd;
@@ -374,6 +521,13 @@ public class WorkerUnitYieldBonus
     public bool useSeasonFilter = false;
     public Season[] seasons;
 
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to workers on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
+
     [Header("Yield Add (flat per unit per turn)")]
     public int foodAdd;
     public int goldAdd;
@@ -417,6 +571,13 @@ public class EquipmentStatBonus
     public BoolRequirement orbitRequirement;
     public bool useResourceFilter;
     public ResourceData resource;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies while the equipment is used on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Additive (flat)")]
     public int attackAdd;
@@ -530,6 +691,13 @@ public class EquipmentYieldBonus
     [Tooltip("Target equipment whose per-unit yields are modified while equipped")]
     public EquipmentData equipment;
 
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies while the equipment is used on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
+
     [Header("Yield Add (flat per unit per turn)")]
     public int foodAdd;
     public int goldAdd;
@@ -552,6 +720,13 @@ public class EquipmentYieldBonus
 public class ImprovementYieldBonus
 {
     public ImprovementData improvement;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to matching improvements on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Yield Add (flat per turn)")]
     public int foodAdd;
@@ -593,6 +768,13 @@ public class BuildingYieldBonus
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
     public bool useSeasonFilter = false;
     public Season[] seasons;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to matching buildings on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Yield Add (flat per turn)")]
     public int foodAdd;
@@ -656,6 +838,13 @@ public class TileYieldBonus
     public bool useResourceFilter;
     public ResourceData resource;
 
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to matching tiles on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
+
     [Header("Yield Add (flat per turn)")]
     public int foodAdd;
     public int productionAdd;
@@ -697,6 +886,16 @@ public class CityYieldBonus
     public bool useNewWorldFilter = false;
     [Tooltip("World regions this city bonus applies to when Use New World Filter is enabled.")]
     public ContinentManager.ContinentRegionCategory[] newWorldRegions;
+
+    [Header("Planet Filter")]
+    [Tooltip("Whether this city bonus applies to any world, Earth only, or non-Earth worlds only.")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this city bonus only applies to cities on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    [Tooltip("Specific celestial bodies this city bonus applies to (e.g. Earth, Mars, Venus).")]
+    public global::PlanetType[] planets;
+    [Tooltip("Planet archetypes this city bonus applies to (e.g. Terran, Desert, Ice).")]
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Yield Add (flat per city per turn)")]
     public int foodAdd;
@@ -742,6 +941,13 @@ public class DiseaseModifierBonus
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
     public bool useSeasonFilter = false;
     public Season[] seasons;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this modifier only applies on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Immunity")]
     [Tooltip("If true, the owning civilization/city/herd is immune to the matching disease.")]
@@ -908,6 +1114,13 @@ public class HerdYieldBonus
     [Tooltip("If enabled, this bonus applies only during the selected seasons.")]
     public bool useSeasonFilter = false;
     public Season[] seasons;
+
+    [Header("Planet Filter")]
+    public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
+    [Tooltip("If enabled, this bonus only applies to herds on the selected specific planets and/or planet archetypes.")]
+    public bool usePlanetFilter = false;
+    public global::PlanetType[] planets;
+    public GameManager.PlanetType[] planetTypes;
 
     [Header("Yield Add (flat per herd per turn)")]
     public int foodAdd;

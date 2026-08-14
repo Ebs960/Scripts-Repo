@@ -235,7 +235,7 @@ public class HexTileData
         };
     }
 
-    private static bool MatchesTileYieldBonus(HexTileData tile, TileYieldBonus bonus)
+    private static bool MatchesTileYieldBonus(HexTileData tile, TileYieldBonus bonus, int planetIndex = -1)
     {
         if (tile == null || bonus == null) return false;
         if (bonus.useBiomeFilter && tile.biome != bonus.biome) return false;
@@ -267,10 +267,12 @@ public class HexTileData
             foreach (var s in bonus.seasons) { if (s == tile.season) { matched = true; break; } }
             if (!matched) return false;
         }
+        if (!PlanetBonusFilterUtility.MatchesPlanetFilter(bonus.earthWorldScope, bonus.usePlanetFilter, bonus.planets, bonus.planetTypes, planetIndex))
+            return false;
         return true;
     }
 
-    private static YieldAgg AggregateReligionTileBonusesLocal(Civilization civ, HexTileData tile)
+    private static YieldAgg AggregateReligionTileBonusesLocal(Civilization civ, HexTileData tile, int planetIndex = -1)
     {
         YieldAgg a = new YieldAgg();
         if (civ == null || tile == null) return a;
@@ -280,7 +282,7 @@ public class HexTileData
             if (pantheonBonuses?.tileYieldBonuses == null) continue;
             foreach (var b in pantheonBonuses.tileYieldBonuses)
             {
-                if (!MatchesTileYieldBonus(tile, b)) continue;
+                if (!MatchesTileYieldBonus(tile, b, planetIndex)) continue;
                 a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                 a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
                 a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
@@ -293,7 +295,7 @@ public class HexTileData
             if (belief?.tileYieldBonuses == null || !Civilization.IsBeliefSeasonActive(belief, tile.season)) continue;
             foreach (var b in belief.tileYieldBonuses)
             {
-                if (!MatchesTileYieldBonus(tile, b)) continue;
+                if (!MatchesTileYieldBonus(tile, b, planetIndex)) continue;
                 a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                 a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
                 a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
@@ -307,11 +309,11 @@ public class HexTileData
     /// <summary>
     /// Returns the effective tile yields after applying pantheon/belief tile bonuses for the given civilization.
     /// </summary>
-    public static TileYield GetTotalYieldWithReligion(Civilization civ, HexTileData tile)
+    public static TileYield GetTotalYieldWithReligion(Civilization civ, HexTileData tile, int planetIndex = -1)
     {
         if (tile == null) return default;
         var baseYield = tile.GetTotalYield();
-        var agg = AggregateReligionTileBonusesLocal(civ, tile);
+        var agg = AggregateReligionTileBonusesLocal(civ, tile, planetIndex);
         TileYield y = new TileYield();
         y.Food = Mathf.RoundToInt((baseYield.Food + agg.foodAdd) * (1f + agg.foodPct));
         y.Production = Mathf.RoundToInt((baseYield.Production + agg.productionAdd) * (1f + agg.productionPct));
@@ -323,7 +325,25 @@ public class HexTileData
         return y;
     }
 
-    private static YieldAgg AggregateImprovementBonusesLocal(Civilization civ, ImprovementData imp)
+    private static int ResolveTilePlanetIndex(HexTileData tile)
+    {
+        if (tile == null)
+            return -1;
+
+        if (tile.controllingCity != null)
+            return tile.controllingCity.planetIndex;
+
+        if (tile.improvementInstanceObject != null)
+        {
+            var instance = tile.improvementInstanceObject.GetComponent<ImprovementInstance>();
+            if (instance != null)
+                return instance.PlanetIndex;
+        }
+
+        return -1;
+    }
+
+    private static YieldAgg AggregateImprovementBonusesLocal(Civilization civ, ImprovementData imp, int planetIndex = -1)
     {
         YieldAgg a = new YieldAgg(); if (civ == null || imp == null) return a;
         if (civ.researchedTechs != null)
@@ -331,7 +351,7 @@ public class HexTileData
             {
                 if (t?.improvementBonuses == null) continue;
                 foreach (var b in t.improvementBonuses)
-                    if (b != null && b.improvement == imp)
+                    if (b != null && b.improvement == imp && PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     {
                         a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                         a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
@@ -344,7 +364,7 @@ public class HexTileData
             {
                 if (c?.improvementBonuses == null) continue;
                 foreach (var b in c.improvementBonuses)
-                    if (b != null && b.improvement == imp)
+                    if (b != null && b.improvement == imp && PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                     {
                         a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                         a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
@@ -356,7 +376,7 @@ public class HexTileData
         {
             if (pantheonBonuses?.improvementBonuses == null) continue;
             foreach (var b in pantheonBonuses.improvementBonuses)
-                if (b != null && b.improvement == imp)
+                if (b != null && b.improvement == imp && PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                 {
                     a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                     a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
@@ -368,7 +388,7 @@ public class HexTileData
         {
             if (belief?.improvementBonuses == null) continue;
             foreach (var b in belief.improvementBonuses)
-                if (b != null && b.improvement == imp)
+                if (b != null && b.improvement == imp && PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope, b.usePlanetFilter, b.planets, b.planetTypes, planetIndex))
                 {
                     a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
                     a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
@@ -430,7 +450,8 @@ public class HexTileData
 
         if (HasOwner)
         {
-            var tileAgg = AggregateReligionTileBonusesLocal(owner, this);
+            int planetIndex = ResolveTilePlanetIndex(this);
+            var tileAgg = AggregateReligionTileBonusesLocal(owner, this, planetIndex);
             y.Food = Mathf.RoundToInt((y.Food + tileAgg.foodAdd) * (1f + tileAgg.foodPct));
             y.Production = Mathf.RoundToInt((y.Production + tileAgg.productionAdd) * (1f + tileAgg.productionPct));
             y.Gold = Mathf.RoundToInt((y.Gold + tileAgg.goldAdd) * (1f + tileAgg.goldPct));
@@ -452,7 +473,8 @@ public class HexTileData
 
             if (HasOwner)
             {
-                var agg = AggregateImprovementBonusesLocal(owner, improvement);
+                int planetIndex = ResolveTilePlanetIndex(this);
+                var agg = AggregateImprovementBonusesLocal(owner, improvement, planetIndex);
                 f = Mathf.RoundToInt((f + agg.foodAdd) * (1f + agg.foodPct));
                 p = Mathf.RoundToInt((p + agg.productionAdd) * (1f + agg.productionPct));
                 g = Mathf.RoundToInt((g + agg.goldAdd) * (1f + agg.goldPct));
