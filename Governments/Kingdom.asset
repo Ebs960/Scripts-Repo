@@ -83,3 +83,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Council
+  institutions:
+    administrativeEfficiencyModifier: 0.08
+    distanceLoyaltyPenaltyModifier: 0.1
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: The royal domain concentrates construction in the capital.
+  majorTradeoff: Distant lords resent central authority.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

@@ -477,6 +477,8 @@ public class Civilization : MonoBehaviour
     public List<PolicyData>      activePolicies         = new List<PolicyData>();
     public List<GovernmentData>  unlockedGovernments    = new List<GovernmentData>();
     public GovernmentData        currentGovernment;
+    [Tooltip("Persisted national election, approval, legitimacy, and elected-office state.")]
+    public ElectionState electionState = new ElectionState();
 
     [Header("Policy Institutional Modifiers")]
     public float populationGrowthModifier, migrationAttractionModifier, policyWarWearinessModifier;
@@ -1081,6 +1083,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void TickGovernorPolitics(int round)
     {
+        if (currentGovernment != null && currentGovernment.suppressConventionalPolitics) return;
         if (governors == null) return;
         foreach (var gov in governors)
         {
@@ -1104,6 +1107,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void ProcessFactionTick(int currentTurn)
     {
+        if (currentGovernment != null && currentGovernment.suppressConventionalPolitics) return;
         // 1. Invite unaffiliated angry governors into existing or new factions
         foreach (var gov in governors)
         {
@@ -2644,6 +2648,7 @@ public class Civilization : MonoBehaviour
             // Must run before cities read governor opinion for loyalty and before
             // council/faction/political-event processing later in this turn.
             TickGovernorPolitics(round);
+            ElectionManager.ProcessTurn(this, round);
 
             // 1) Reset units (iterate a snapshot to avoid collection-modified exceptions)
             if (combatUnits != null)
@@ -2708,7 +2713,7 @@ public class Civilization : MonoBehaviour
                 {
                     int cityGold = Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
                     int cityFood = Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
-                    int cityPolicy = Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier));
+                    int cityPolicy = Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier));
                     int cityFaith = Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
                     gold         += cityGold;
                     food         += cityFood;
@@ -2794,7 +2799,7 @@ public class Civilization : MonoBehaviour
             totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
-            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
             policyPoints += modifiedPolicy;
             totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
             totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
@@ -2823,7 +2828,7 @@ public class Civilization : MonoBehaviour
             totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
-            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
+            int modifiedPolicy = Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
             policyPoints += modifiedPolicy;
             totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Gold)));
             totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Food)));
@@ -2867,7 +2872,7 @@ public class Civilization : MonoBehaviour
                     int herdSci = Mathf.RoundToInt((ay.Science + hb.scienceAdd) * (1 + scienceModifier + hb.sciencePct));
                     int herdCul = Mathf.RoundToInt((ay.Culture + hb.cultureAdd) * (1 + cultureModifier + hb.culturePct));
                     int herdProd = Mathf.RoundToInt((ay.Production + hb.productionAdd) * (1 + hb.productionPct));
-                    int herdPol = Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + hb.policyPointsPct));
+                    int herdPol = Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + hb.policyPointsPct));
                     gold += herdGold;
                     food += herdFood;
                     totalScienceThisTurn += herdSci;
@@ -3706,6 +3711,7 @@ public class Civilization : MonoBehaviour
         if (g == null || !CanChangeGovernment(g) || currentGovernment == g) return;
 
         // Remove bonuses from old government if one was active
+        GovernmentData oldGovernment = currentGovernment;
         if (currentGovernment != null)
         {
             RemoveGovernmentBonuses(currentGovernment);
@@ -3715,6 +3721,7 @@ public class Civilization : MonoBehaviour
 
         // Reconcile the Royal Council with the new government's political structure
         ApplyGovernmentPoliticalStructure();
+        ElectionManager.OnGovernmentChanged(this, oldGovernment, g, turnCount);
 
         // Notify cities to update their available buildings
         foreach (var city in cities)
@@ -3746,6 +3753,7 @@ public class Civilization : MonoBehaviour
         cultureModifier += gov.cultureModifier;
         faithModifier += gov.faithModifier;
         cityCapFromBonuses += gov.cityCapModifier;
+        ApplyGovernmentInstitutionModifiers(gov, 1f);
     }
 
     // New method to remove bonuses from a government
@@ -3765,6 +3773,29 @@ public class Civilization : MonoBehaviour
         cultureModifier -= gov.cultureModifier;
         faithModifier -= gov.faithModifier;
         cityCapFromBonuses -= gov.cityCapModifier;
+        ApplyGovernmentInstitutionModifiers(gov, -1f);
+    }
+
+    private void ApplyGovernmentInstitutionModifiers(GovernmentData gov, float direction)
+    {
+        var m = gov?.institutions;
+        if (m == null) return; // Backward-compatible with assets created before systemic modifiers.
+        administrativeEfficiencyModifier += m.administrativeEfficiencyModifier * direction;
+        distanceLoyaltyPenaltyModifier += m.distanceLoyaltyPenaltyModifier * direction;
+        policyPointGenerationModifier += m.policyPointGenerationModifier * direction;
+        domesticTradeModifier += m.domesticTradeModifier * direction;
+        foreignTradeModifier += m.foreignTradeModifier * direction;
+        tradeRouteCapacityBonus += Mathf.RoundToInt(m.tradeRouteCapacityBonus * direction);
+        laborProductivityModifier += m.laborProductivityModifier * direction;
+        unemploymentUnhappinessModifier += m.unemploymentUnhappinessModifier * direction;
+        reinforcementSpeedModifier += m.reinforcementSpeedModifier * direction;
+        militaryUpkeepModifier += m.militaryUpkeepModifier * direction;
+        policyWarWearinessModifier += m.warWearinessModifier * direction;
+        corruptionModifier += m.corruptionModifier * direction;
+        unrestModifier += m.unrestModifier * direction;
+        migrationAttractionModifier += m.migrationAttractionModifier * direction;
+        planetaryLoyaltyModifier += m.planetaryLoyaltyModifier * direction;
+        cyberDefenseModifier += m.cyberDefenseModifier * direction;
     }
 
     // --- Diplomacy ---
@@ -4389,7 +4420,7 @@ return true;
                 totalFoodThisTurn += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
                 totalScienceThisTurn += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
                 totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
-                totalPolicyThisTurn += Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier));
+                totalPolicyThisTurn += Mathf.RoundToInt(city.GetPolicyPointPerTurn() * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier));
                 totalFaithThisTurn += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
             }
         }
@@ -4430,7 +4461,7 @@ return true;
             totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
             totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
             totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
-            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
         }
 
         if (workerUnits != null)
@@ -4453,7 +4484,7 @@ return true;
             totalScienceThisTurn += Mathf.RoundToInt(addSci * (1 + scienceModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Science)));
             totalCultureThisTurn += Mathf.RoundToInt(addCul * (1 + cultureModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Culture)));
             totalFaithThisTurn += Mathf.RoundToInt(addFai * (1 + faithModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.Faith)));
-            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
+            totalPolicyThisTurn += Mathf.RoundToInt(addPol * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + GetEmpireBuildingYieldModifier(EmpireYieldType.PolicyPoints)));
         }
 
         if (herds != null)
@@ -4468,7 +4499,7 @@ return true;
                 totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
                 totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
                 totalFaithThisTurn += Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
-                totalPolicyThisTurn += Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + hb.policyPointsPct));
+                totalPolicyThisTurn += Mathf.RoundToInt((ay.Policy + hb.policyPointsAdd) * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier + hb.policyPointsPct));
             }
         }
 

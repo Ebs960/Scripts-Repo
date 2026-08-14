@@ -94,9 +94,9 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  usesRoyalCouncil: 0
+  usesRoyalCouncil: 1
   councilSeatCount: 3
-  councilVetoDomains: 1
+  councilVetoDomains: 69
   governorOpinionEffects:
   - reason: Oligarchy Government
     value: -5
@@ -105,3 +105,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Oligarchic Council
+  institutions:
+    administrativeEfficiencyModifier: 0
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0.08
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0.1
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: An Oligarchic Council empowers wealthy and military elites.
+  majorTradeoff: Concentrated privilege increases unrest.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

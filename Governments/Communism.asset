@@ -49,6 +49,39 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   usesRoyalCouncil: 0
-  councilSeatCount: 3
+  councilSeatCount: 0
   councilVetoDomains: 0
   governorOpinionEffects: []
+  institutionDisplayName: Council
+  institutions:
+    administrativeEfficiencyModifier: 0
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: -0.2
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0.2
+    unemploymentUnhappinessModifier: -0.3
+    reinforcementSpeedModifier: 0.15
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: Planned industry coordinates workers and mass mobilization.
+  majorTradeoff: Foreign commerce and local autonomy suffer.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

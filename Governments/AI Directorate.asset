@@ -51,6 +51,39 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   usesRoyalCouncil: 0
-  councilSeatCount: 1
+  councilSeatCount: 0
   councilVetoDomains: 0
   governorOpinionEffects: []
+  institutionDisplayName: Council
+  institutions:
+    administrativeEfficiencyModifier: 0.3
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: -0.25
+    unrestModifier: 0
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0.2
+  suppressConventionalPolitics: 0
+  signatureMechanic: Automated administration suppresses corruption and optimizes policy execution.
+  majorTradeoff: Machine rule alienates cultural and religious constituencies.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

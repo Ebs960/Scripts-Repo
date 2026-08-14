@@ -30,7 +30,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.55
+  goldModifier: 0.2
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
@@ -71,9 +71,9 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  usesRoyalCouncil: 0
+  usesRoyalCouncil: 1
   councilSeatCount: 3
-  councilVetoDomains: 3
+  councilVetoDomains: 69
   governorOpinionEffects:
   - reason: Merchant Republic Government
     value: -20
@@ -82,3 +82,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Merchant Council
+  institutions:
+    administrativeEfficiencyModifier: 0
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0.25
+    tradeRouteCapacityBonus: 2
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0.12
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0.08
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: Commercial oligarchs expand routes and foreign trade.
+  majorTradeoff: Dependence on commerce raises inequality and military costs.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

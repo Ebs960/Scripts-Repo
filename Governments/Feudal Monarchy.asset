@@ -30,7 +30,7 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.5
+  goldModifier: 0.12
   scienceModifier: 0
   cultureModifier: 0.5
   faithModifier: 0
@@ -59,3 +59,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Council
+  institutions:
+    administrativeEfficiencyModifier: -0.12
+    distanceLoyaltyPenaltyModifier: -0.2
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: -0.12
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: A Great Council of landed lords supplies levies and vassal authority.
+  majorTradeoff: Lordly vetoes constrain central taxation and policy.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3
