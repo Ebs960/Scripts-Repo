@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Binds peasant production to estates and customary rents. The arrangement reshapes everyday obligations between communities, elites, and the state. Benefits include more food and more revenue; however, it brings less research and lower migration attraction.
   policyPointCost: 28
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8da248423bce8534f9ef43ab254b977c, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
@@ -101,4 +102,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Manorial Dues
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Manorial Dues
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

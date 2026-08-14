@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Binds rural workers to estates in return for subsistence. Industry must adjust its practices as labor becomes a matter of enforceable public concern. Benefits include more food and more production; however, it brings lower migration attraction.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8da248423bce8534f9ef43ab254b977c, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   requiredCityCount: 0
@@ -75,4 +76,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Serfdom
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Serfdom
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

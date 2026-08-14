@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: a967a32408a36d8438ecf7a16313cfd0, type: 3}
   description: Requires every child to attend school. Information becomes easier to preserve and circulate, weakening old monopolies over learning. Benefits include more research and more culture; however, it brings less production.
   policyPointCost: 56
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f9150b193940d3d4aabb48a6e96c086d, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -78,4 +79,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Compulsory Schooling
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Compulsory Schooling
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 3
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Governs through elite networks of favors and clients. The arrangement reshapes everyday obligations between communities, elites, and the state. Its chief benefits are more culture.
   policyPointCost: 32
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a8ce4713cccdf444dbaef19249b8e2be, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
@@ -101,4 +102,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Senatorial Patronage
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 0
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Senatorial Patronage
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

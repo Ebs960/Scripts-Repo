@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Recognizes synthetic persons as full civic participants. The reform turns intelligent machines from private tools into actors with public duties and consequences. Its chief benefits are more research and less unrest.
   policyPointCost: 100
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 7ad5b7b2744877743804c68688b22b18, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -78,4 +79,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Synthetic Citizenship
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Synthetic Citizenship
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

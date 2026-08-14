@@ -16,9 +16,13 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 317fc828f3724dd49b8de3b46fe0ea29, type: 3}
   description: Permits synthetic soldiers to fill military ranks. Citizens and officials must adapt as synthetic minds take on roles once reserved for people. Benefits include faster reinforcement and lower military upkeep; however, it brings more unrest.
   policyPointCost: 100
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 3cc7e2f647c2d854fbf56dd469ee9704, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
+  - {fileID: 11400000, guid: 40932b4c77c14003b3c9a22afc347526, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -78,4 +82,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Synthetic Military Service
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 4
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Synthetic Military Service
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 5
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

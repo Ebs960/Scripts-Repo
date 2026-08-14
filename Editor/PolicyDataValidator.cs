@@ -23,8 +23,8 @@ public static class PolicyDataValidator
                 Error(path, "description contains deprecated boilerplate ('durable institution' or 'while active').", ref errors, policy);
             if (!HasGameplayEffect(policy))
                 Error(path, "policy has no gameplay effect.", ref errors, policy);
-            if (LooksAdvanced(identity) && !HasProgressionGate(policy))
-            { Debug.LogWarning($"[Policy Validation] {path}: advanced policy has no progression gate.", policy); warnings++; }
+            if (!HasResearchGate(policy))
+                Error(path, "policy must require at least one technology or culture.", ref errors, policy);
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
@@ -34,6 +34,7 @@ public static class PolicyDataValidator
             ValidateReferences(policy.requiredTechs, "requiredTechs", path, policy, ref errors);
             ValidateReferences(policy.requiredCultures, "requiredCultures", path, policy, ref errors);
             ValidateReferences(policy.requiredGovernments, "requiredGovernments", path, policy, ref errors);
+            ValidateGovernorOpinionEffects(policy.governorOpinionEffects, path, policy, ref errors);
             ValidatePolicyReferences(policy.requiredPolicies, "requiredPolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.incompatiblePolicies, "incompatiblePolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.supersedesPolicies, "supersedesPolicies", path, policy, ref errors);
@@ -97,20 +98,8 @@ public static class PolicyDataValidator
         return text.Contains("durable institution") || text.Contains("while active");
     }
 
-    private static bool HasProgressionGate(PolicyData policy)
-        => HasItems(policy.requiredTechs) || HasItems(policy.requiredCultures)
-        || HasItems(policy.requiredGovernments) || HasItems(policy.requiredPolicies)
-        || HasItems(policy.religiousRequirementGroups) || policy.requiredCityCount > 0;
-
-    private static bool LooksAdvanced(string identity)
-    {
-        string name = identity.ToLowerInvariant();
-        string[] markers = { "digital", "cyber", "internet", "data", "platform", "algorithm",
-            "automation", "automated", "algorithim", "ai ", "synthetic", "genetic", "gene ", "orbital",
-            "planetary", "interplanetary", "solar", "asteroid" };
-        foreach (string marker in markers) if (name.Contains(marker)) return true;
-        return false;
-    }
+    private static bool HasResearchGate(PolicyData policy)
+        => HasItems(policy.requiredTechs) || HasItems(policy.requiredCultures);
 
     private static bool HasGameplayEffect(PolicyData p)
     {
@@ -161,6 +150,32 @@ public static class PolicyDataValidator
         if (values == null) return;
         var seen = new HashSet<T>();
         foreach (var value in values) if (!seen.Add(value)) Error(path, $"{field} contains duplicate '{value}'.", ref errors, context);
+    }
+    private static void ValidateGovernorOpinionEffects(GovernorOpinionEffect[] effects, string path, Object context, ref int errors)
+    {
+        if (!HasItems(effects))
+        {
+            Error(path, "governorOpinionEffects is empty.", ref errors, context);
+            return;
+        }
+
+        for (int i = 0; i < effects.Length; i++)
+        {
+            var effect = effects[i];
+            if (effect == null)
+            {
+                Error(path, $"governorOpinionEffects[{i}] is null.", ref errors, context);
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(effect.reason))
+                Error(path, $"governorOpinionEffects[{i}].reason is empty.", ref errors, context);
+            if (effect.value == 0)
+                Error(path, $"governorOpinionEffects[{i}].value must be non-zero.", ref errors, context);
+            if (effect.durationTurns == 0 || effect.durationTurns < -1)
+                Error(path, $"governorOpinionEffects[{i}].durationTurns must be positive or -1.", ref errors, context);
+            ValidateDuplicates(effect.requiresAnyPersonality,
+                $"governorOpinionEffects[{i}].requiresAnyPersonality", path, context, ref errors);
+        }
     }
     private static void Error(string path, string message, ref int errors, Object context = null)
     { Debug.LogError($"[Policy Validation] {path}: {message}", context); errors++; }

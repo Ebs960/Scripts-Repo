@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Stores harvests against famine and price shocks. The reform makes settlement safer and more productive by treating essential services as a collective responsibility. Its chief benefits are more food.
   policyPointCost: 24
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 21c867f9d21637248853c1f72467a9db, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
@@ -102,4 +103,20 @@ MonoBehaviour:
   additionalGovernorSlots: 0
   unlockedGovernorTraits:
   - {fileID: 11400000, guid: 334455aabb66cc77dd8899eeff001122, type: 2}
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Royal Granaries
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 0
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Royal Granaries
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

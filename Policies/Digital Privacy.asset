@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Limits surveillance and misuse of personal information. The measure redraws the boundary between public access, private information, and state security. Its chief benefits are stronger cyber defense and stronger espionage defense.
   policyPointCost: 80
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8f891cf7769e5524aa22b7b8412fb936, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -79,4 +80,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Digital Privacy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Digital Privacy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

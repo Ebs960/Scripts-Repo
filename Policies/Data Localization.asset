@@ -16,9 +16,14 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: ab1b8f4fdaa421f41b27b7af39867316, type: 3}
   description: Requires sensitive data to remain under domestic jurisdiction. Networks become civic infrastructure, making control of information a question of sovereignty as well as convenience. Benefits include stronger cyber defense; however, it brings less foreign trade.
   policyPointCost: 80
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -77,4 +82,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Data Localization
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Data Localization
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 10
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

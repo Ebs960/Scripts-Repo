@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Elects delegates to make national law. Public authority becomes more accountable as additional people gain standing within the law and the political system. Its chief benefits are more culture and less unrest.
   policyPointCost: 52
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a5200ff47ae13d84dba0d703392cc629, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: eeab09ff063a44c6a2bb9440e76c523a, type: 2}
+  - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -77,4 +82,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Representative Institutions
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 0
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Representative Institutions
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

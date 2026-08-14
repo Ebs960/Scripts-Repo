@@ -16,9 +16,15 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: bd33229c7d43098409fccf5c0fd04fe1, type: 3}
   description: Prevents attack through overwhelming retaliatory capability. Space ceases to be merely an expedition and becomes a permanent economic and political frontier. Its chief benefits are stronger ranged attacks and stronger planetary defense.
   policyPointCost: 105
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: fbba5d699f6ebbd4b9f39824dffaca9b, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+  - {fileID: 11400000, guid: 0969516d2ef74758b06b31e5060e44dd, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -76,4 +82,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Strategic Deterrence
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 4
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Strategic Deterrence
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 5
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

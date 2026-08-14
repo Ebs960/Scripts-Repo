@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Maintains household troops for the landed elite. The reform changes who fights, who commands, and who pays for the realm’s security. Benefits include stronger melee attacks and stronger defense; however, it brings less revenue and higher military upkeep.
   policyPointCost: 35
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: cf3433bf8f4b9144da062eef130cf2dd, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
@@ -77,4 +78,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Noble Retinues
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 4
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Noble Retinues
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 5
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

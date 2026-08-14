@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 2551b6111d05eeb46a810f2301a2223a, type: 3}
   description: Helps industry replace repetitive labor with machines. The reform turns intelligent machines from private tools into actors with public duties and consequences. Benefits include more production; however, it brings more unemployment unhappiness.
   policyPointCost: 82
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 41fc12c0783860946bb766519f649041, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -78,4 +79,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Automation Subsidies
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 3
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Automation Subsidies
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

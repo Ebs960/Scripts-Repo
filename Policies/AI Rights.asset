@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Places machine intelligence under public rules. The reform turns intelligent machines from private tools into actors with public duties and consequences. Benefits include less unrest; however, it brings less production.
   policyPointCost: 100
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 5dfdd015fa264694bb5b57cee59ef31f, type: 2}
   requiredGovernments: []
   requiredCityCount: 0
   religiousRequirementGroups: []
@@ -78,4 +79,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports AI Rights
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes AI Rights
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

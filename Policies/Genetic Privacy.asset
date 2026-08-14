@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: cd0c8651abe972747abf7f03b8521dc8, type: 3}
   description: Keeps hereditary data from employers and the state. The law must distinguish healing from redesign as inherited traits become subject to deliberate choice. Its chief tradeoff is less research.
   policyPointCost: 90
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 9fa680ce3f175d643aa42de49fec9bf7, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -79,4 +80,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Genetic Privacy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Genetic Privacy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

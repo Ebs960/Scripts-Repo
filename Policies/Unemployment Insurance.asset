@@ -17,8 +17,13 @@ MonoBehaviour:
   description: Supports workers displaced from employment. Industry must adjust its practices as labor becomes a matter of enforceable public concern. Benefits include less unemployment unhappiness; however, it brings less revenue.
   policyPointCost: 65
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: eeaca3e7b29798144aae9d6b2c8c7e4b, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
+  - {fileID: 11400000, guid: 038b0deaa20f4cef8b3a75e5fdf72c2a, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
+  - {fileID: 11400000, guid: 2ffe354122644fe8bb45dd00bc5b7c87, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -78,4 +83,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Unemployment Insurance
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Unemployment Insurance
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 3
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

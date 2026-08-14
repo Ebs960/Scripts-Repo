@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Presents royal authority as divinely sanctioned. Faith takes a defined place in public life, shaping legitimacy and the relationship between believers and the state. Its chief benefits are more culture and more faith.
   policyPointCost: 28
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: af193a46545fa9b4daf1e1d8479debcb, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: dc6ef15beee2476dbd273e5f6729f91a, type: 2}
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}
@@ -118,4 +119,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Sacred Kingship
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 8
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Sacred Kingship
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 9
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

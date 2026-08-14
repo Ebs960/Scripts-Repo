@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Reserves political influence for landed and wealthy estates. Its adoption changes not only formal law but also the expectations by which people organize their lives. Its chief benefits are more production.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 67660ba94bee6334a8f730c697a89d5d, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: 24b0b98f5fdd4b9d923121a96c5012e8, type: 2}
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
@@ -100,4 +101,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Elite Estates
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Elite Estates
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

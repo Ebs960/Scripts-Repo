@@ -17,8 +17,12 @@ MonoBehaviour:
   description: Leaves investment and prices largely to private markets. Commercial power shifts between the treasury, established interests, and traders seeking new markets. Benefits include more production and more revenue; however, it brings lower administrative efficiency.
   policyPointCost: 55
   requiredTechs: []
-  requiredCultures: []
-  requiredGovernments: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0e4fd87574b6c214d9f3cc0ffa4df786, type: 2}
+  requiredGovernments:
+  - {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}
+  - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
+  - {fileID: 11400000, guid: 6f545a3b34cc48f093c7e0824104ada0, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -77,4 +81,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Laissez-Faire
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 3
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Laissez-Faire
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 2
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

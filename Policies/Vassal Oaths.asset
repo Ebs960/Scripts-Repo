@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Binds lesser lords to a sovereign through reciprocal obligations. The measure gives rulers a new instrument, while society must absorb its wider consequences. Its chief benefits are more revenue and more culture.
   policyPointCost: 30
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 8da248423bce8534f9ef43ab254b977c, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: d58c6dfc78f645b286a47846c20514f6, type: 2}
   - {fileID: 11400000, guid: 655c43db73eb411a94ff42a535f851ed, type: 2}

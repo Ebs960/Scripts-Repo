@@ -17,7 +17,8 @@ MonoBehaviour:
   description: Has citizens judge evidence in open courts. Citizens gain stronger means to contest power, making government fairer but often slower to act. Benefits include more culture and less corruption; however, it brings less revenue.
   policyPointCost: 34
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 48d289f45b1e54d4fae8ddfb3b4981b4, type: 2}
   requiredGovernments:
   - {fileID: 11400000, guid: bfdbe121b972441a98339626faf083a4, type: 2}
   - {fileID: 11400000, guid: 39bc18aaf9ce4e2894fda7c4d6d83225, type: 2}
@@ -101,4 +102,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Jury Courts
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 6
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Jury Courts
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 11
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

@@ -16,9 +16,12 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 30ecf9f4bf9a2e940a5d1788e4e044f7, type: 3}
   description: Delegates routine state work to automated systems. The reform turns intelligent machines from private tools into actors with public duties and consequences. Its chief benefits are greater administrative efficiency, smaller distance loyalty penalties and faster policy-point generation.
   policyPointCost: 90
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: f06ddfe98e9003043bb2808995024368, type: 2}
   requiredCultures: []
-  requiredGovernments: []
+  requiredGovernments:
+  - {fileID: 11400000, guid: 352a96d513ec4f7badfd63f6f3876501, type: 2}
+  - {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
   requiredCityCount: 0
   religiousRequirementGroups: []
   requiredPolicies:
@@ -78,4 +81,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Automated Bureaucracy
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Automated Bureaucracy
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 10
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

@@ -128,4 +128,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Religious Tolerance
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 8
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Religious Tolerance
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 9
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0

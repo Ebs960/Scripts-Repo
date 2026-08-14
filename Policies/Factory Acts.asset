@@ -16,7 +16,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 60ce6bdd855f98a4081a4d4aef744d74, type: 3}
   description: Sets the first enforceable standards for industrial labor. Households feel the reform through wages, security, and the amount of labor the economy can demand. Benefits include less unrest and greater labor productivity; however, it brings less production.
   policyPointCost: 52
-  requiredTechs: []
+  requiredTechs:
+  - {fileID: 11400000, guid: 41fc12c0783860946bb766519f649041, type: 2}
   requiredCultures: []
   requiredGovernments: []
   requiredCityCount: 0
@@ -78,4 +79,20 @@ MonoBehaviour:
   herdYieldBonuses: []
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
-  governorOpinionEffects: []
+  governorOpinionEffects:
+  - reason: Supports Factory Acts
+    value: 8
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 0
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
+  - reason: Opposes Factory Acts
+    value: -6
+    durationTurns: 30
+    requiresAnyPersonality:
+    - 1
+    onlyIfReligionMismatch: 0
+    onlyIfCultureMismatch: 0
+    onlyIfNotOnCouncil: 0
