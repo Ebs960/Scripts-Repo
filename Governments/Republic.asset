@@ -48,9 +48,9 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  usesRoyalCouncil: 0
-  councilSeatCount: 3
-  councilVetoDomains: 1
+  usesRoyalCouncil: 1
+  councilSeatCount: 5
+  councilVetoDomains: 97
   governorOpinionEffects:
   - reason: Republic Government
     value: 5
@@ -59,3 +59,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Senate
+  institutions:
+    administrativeEfficiencyModifier: 0
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0.1
+    domesticTradeModifier: 0.1
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: 0
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: Elite national elections and Senate bargaining determine the Consul.
+  majorTradeoff: Senatorial vetoes obstruct unilateral policy.
+  electionRules:
+    enabled: 1
+    termLengthTurns: 24
+    electorateModel: 0
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.04
+    executiveTitle: Consul
+    councilEndorsementsMatter: 1
+    publicOpinionWeight: 0.3
+    governorEliteWeight: 0.6
+    campaignLeadTurns: 3

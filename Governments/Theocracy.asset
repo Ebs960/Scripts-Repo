@@ -33,7 +33,7 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0.1
-  faithModifier: 0.5
+  faithModifier: 0.25
   cityCapModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
@@ -48,9 +48,9 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  usesRoyalCouncil: 0
+  usesRoyalCouncil: 1
   councilSeatCount: 4
-  councilVetoDomains: 10
+  councilVetoDomains: 74
   governorOpinionEffects:
   - reason: Theocracy Government
     value: 20
@@ -59,3 +59,36 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
+  institutionDisplayName: Clerical Council
+  institutions:
+    administrativeEfficiencyModifier: 0.08
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: 0
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: -0.05
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: A Clerical Council administers a unified state faith.
+  majorTradeoff: Religious pluralism and secular priorities create friction.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

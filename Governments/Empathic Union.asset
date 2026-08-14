@@ -34,7 +34,7 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0.1
   scienceModifier: 0.1
-  cultureModifier: 1
+  cultureModifier: 0.2
   faithModifier: 0
   cityCapModifier: 0
   tileYieldBonuses: []
@@ -51,6 +51,39 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   usesRoyalCouncil: 0
-  councilSeatCount: 5
+  councilSeatCount: 0
   councilVetoDomains: 0
   governorOpinionEffects: []
+  institutionDisplayName: Council
+  institutions:
+    administrativeEfficiencyModifier: 0
+    distanceLoyaltyPenaltyModifier: 0
+    policyPointGenerationModifier: 0
+    domesticTradeModifier: 0
+    foreignTradeModifier: 0
+    tradeRouteCapacityBonus: 0
+    laborProductivityModifier: 0
+    unemploymentUnhappinessModifier: 0
+    reinforcementSpeedModifier: -0.1
+    militaryUpkeepModifier: 0
+    warWearinessModifier: 0
+    corruptionModifier: 0
+    unrestModifier: -0.3
+    migrationAttractionModifier: 0
+    planetaryLoyaltyModifier: 0.25
+    cyberDefenseModifier: 0
+  suppressConventionalPolitics: 0
+  signatureMechanic: Psionic consensus creates exceptional cohesion and governor loyalty.
+  majorTradeoff: Consensus limits offensive war and rapid unilateral action.
+  electionRules:
+    enabled: 0
+    termLengthTurns: 16
+    electorateModel: 1
+    incumbentEligible: 1
+    candidateCount: 3
+    volatility: 0.1
+    executiveTitle: Archon
+    councilEndorsementsMatter: 0
+    publicOpinionWeight: 0.65
+    governorEliteWeight: 0.2
+    campaignLeadTurns: 3

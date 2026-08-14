@@ -84,4 +84,40 @@ public class GovernmentData : ScriptableObject
     [Tooltip("Opinion reactions pushed to governors when this government is adopted. " +
              "Use negative values to anger ambitious/discontented governors.")]
     public GovernorOpinionEffect[] governorOpinionEffects;
+
+    [Header("Institution Identity")]
+    [Tooltip("Player-facing name for the council/legislature. The existing council voting service is reused underneath.")]
+    public string institutionDisplayName = "Council";
+
+    [Header("Systemic Government Modifiers")]
+    [Tooltip("The same reusable institutional modifiers exposed by policies. Values are applied and removed on government changes.")]
+    public GovernmentInstitutionModifiers institutions = new GovernmentInstitutionModifiers();
+    [Tooltip("When true, ordinary governor/faction politics remain allocated safely but do not tick or generate demands.")]
+    public bool suppressConventionalPolitics;
+    [TextArea] public string signatureMechanic;
+    [TextArea] public string majorTradeoff;
+
+    [Header("National Elections")]
+    public ElectionRules electionRules = new ElectionRules();
+}
+
+[System.Serializable]
+public class GovernmentInstitutionModifiers
+{
+    public float administrativeEfficiencyModifier;
+    public float distanceLoyaltyPenaltyModifier;
+    public float policyPointGenerationModifier;
+    public float domesticTradeModifier;
+    public float foreignTradeModifier;
+    public int tradeRouteCapacityBonus;
+    public float laborProductivityModifier;
+    public float unemploymentUnhappinessModifier;
+    public float reinforcementSpeedModifier;
+    public float militaryUpkeepModifier;
+    public float warWearinessModifier;
+    public float corruptionModifier;
+    public float unrestModifier;
+    public float migrationAttractionModifier;
+    public float planetaryLoyaltyModifier;
+    public float cyberDefenseModifier;
 }

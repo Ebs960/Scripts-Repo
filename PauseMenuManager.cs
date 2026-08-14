@@ -163,6 +163,7 @@ public class PauseMenuManager : MonoBehaviour
         // Legacy state
         public List<string> earnedLegacyNames = new List<string>();
         public List<string> activeLegacyNames = new List<string>();
+        public ElectionState electionState = new ElectionState();
     }
 
     [Serializable]
