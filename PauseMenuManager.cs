@@ -189,6 +189,8 @@ public class PauseMenuManager : MonoBehaviour
     {
         public int id;
         public string name;
+        // Stable GovernorPortraitLibrary ID. Empty identifies a legacy save.
+        public string portraitId;
         public Governor.Specialization specialization;
         public int level;
         public int experience;

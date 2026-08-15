@@ -865,6 +865,7 @@ public class Civilization : MonoBehaviour
         int newId = governors.Count > 0 ? governors[governors.Count - 1].Id + 1 : 1;
         var gov = new Governor(newId, name, specialization);
         gov.AssignRandomPersonality();
+        GovernorPortraitService.AssignPortrait(this, gov);
         governors.Add(gov);
         return gov;
     }
