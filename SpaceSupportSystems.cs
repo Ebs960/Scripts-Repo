@@ -64,6 +64,7 @@ public class SpaceFeatureGenerator
             var instance = new SpaceFeatureInstance { instanceId = state.nextFeatureId++, featureDataId = data.featureId, remainingResourceQuantity = data.resourceDeposit != null ? data.resourceDeposit.quantity : 0 };
             foreach (var tile in BuildCluster(state.grid, start, clusterSize)) { instance.occupiedTileIndices.Add(tile); state.grid.GetTile(tile)?.featureInstanceIds.Add(instance.instanceId); }
             state.features.Add(instance);
+            SpaceWorldManager.Instance?.Entities.Register(instance);
         }
     }
     private IEnumerable<int> BuildCluster(SpaceHexGrid grid, int start, int count)
@@ -79,4 +80,4 @@ public class SpaceFeatureGenerator
 }
 
 public class SpaceResourceGenerator { public void Generate(SpaceWorldState state, int seed) { } }
-public class SpaceImprovementSpawner { public SpaceImprovementInstance Spawn(SpaceWorldState state, SpaceImprovementData data, int ownerCivilizationId, int tileIndex) { if (state == null || data == null) return null; SpaceImprovementRegistry.Register(data); var inst = new SpaceImprovementInstance { instanceId = state.nextImprovementId++, improvementDataId = data.improvementId, ownerCivilizationId = ownerCivilizationId, spaceTileIndex = tileIndex, currentHealth = data.maximumHealth, operational = true }; state.improvements.Add(inst); state.grid.GetTile(tileIndex)?.improvementInstanceIds.Add(inst.instanceId); return inst; } }
+public class SpaceImprovementSpawner { public SpaceImprovementInstance Spawn(SpaceWorldState state, SpaceImprovementData data, int ownerCivilizationId, int tileIndex) { if (state == null || data == null) return null; SpaceImprovementRegistry.Register(data); var inst = new SpaceImprovementInstance { instanceId = state.nextImprovementId++, improvementDataId = data.improvementId, ownerCivilizationId = ownerCivilizationId, spaceTileIndex = tileIndex, currentHealth = data.maximumHealth, operational = true }; state.improvements.Add(inst); SpaceWorldManager.Instance?.Entities.Register(inst); state.grid.GetTile(tileIndex)?.improvementInstanceIds.Add(inst.instanceId); return inst; } }

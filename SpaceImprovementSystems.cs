@@ -92,6 +92,8 @@ public class SpaceConstructionManager : MonoBehaviour
     {
         var state = SpaceWorldManager.Instance.CurrentSystem; var data = SpaceImprovementRegistry.GetData(order.improvementDataId); order.completed = true;
         var inst = new SpaceImprovementInstance { instanceId = state.nextImprovementId++, improvementDataId = order.improvementDataId, ownerCivilizationId = order.ownerCivilizationId, spaceTileIndex = order.targetTileIndex, currentHealth = data != null ? data.maximumHealth : 1, operational = true };
-        state.improvements.Add(inst); SpaceWorldManager.Instance.Grid.GetTile(order.targetTileIndex)?.improvementInstanceIds.Add(inst.instanceId);
+        state.improvements.Add(inst);
+        SpaceWorldManager.Instance.Entities.Register(inst);
+        SpaceWorldManager.Instance.Grid.GetTile(order.targetTileIndex)?.improvementInstanceIds.Add(inst.instanceId);
     }
 }

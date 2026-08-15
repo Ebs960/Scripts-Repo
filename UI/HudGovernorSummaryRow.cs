@@ -41,7 +41,10 @@ public class HudGovernorSummaryRow : MonoBehaviour
             traitsText.text = BuildTraitSummary(governor);
 
         if (iconImage != null)
-            iconImage.enabled = false;
+        {
+            iconImage.sprite = GovernorPortraitService.GetSprite(governor.PortraitId);
+            iconImage.enabled = iconImage.sprite != null;
+        }
     }
 
     private static string BuildCitySummary(Governor governor, Civilization civ)

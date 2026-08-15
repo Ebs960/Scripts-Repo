@@ -17,6 +17,7 @@ public class GovernorPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI governorExperienceText;
     [SerializeField] private TextMeshProUGUI governorTraitsText;
     [SerializeField] private TextMeshProUGUI governorBonusesText;
+    [SerializeField] private Image governorPortraitImage;
 
 
     [Header("Assignment UI")]
@@ -96,6 +97,8 @@ public class GovernorPanel : MonoBehaviour
             return;
         }
 
+        SetPortrait(currentCity.governor);
+
         // If this civilization hasn't unlocked governors, show locked state and disable UI
         if (!civ.governorsEnabled)
         {
@@ -155,6 +158,13 @@ public class GovernorPanel : MonoBehaviour
         }
         // Hide trait panel when viewing governor summary
         if (traitPanel != null) traitPanel.SetActive(false);
+    }
+
+    private void SetPortrait(Governor governor)
+    {
+        if (governorPortraitImage == null) return;
+        governorPortraitImage.sprite = GovernorPortraitService.GetSprite(governor?.PortraitId);
+        governorPortraitImage.enabled = governorPortraitImage.sprite != null;
     }
 
     public void ShowTraitPanelForCurrentGovernor()

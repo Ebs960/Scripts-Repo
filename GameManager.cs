@@ -81,6 +81,8 @@ public class GameManager : MonoBehaviour
     public CivilizationManager civilizationManager;
     public ClimateManager climateManager;
     public DiplomacyManager diplomacyManager;
+    [Tooltip("Governor portrait pools and fallback sprite used by the centralized portrait service")]
+    [SerializeField] private GovernorPortraitLibrary governorPortraitLibrary;
 
     [Tooltip("Maximum number of planets to generate")]
     public int maxPlanets = 8;
@@ -516,6 +518,9 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (governorPortraitLibrary != null)
+            GovernorPortraitService.Configure(governorPortraitLibrary);
+
         // Initialize ResourceCache early (before any Resources.LoadAll calls)
         ResourceCache.Initialize();
 
@@ -649,6 +654,8 @@ public class GameManager : MonoBehaviour
         public UnitMovementController unitMovementController;
         public PolicyManager policyManager;
         public DiplomacyManager diplomacyManager;
+    [Tooltip("Governor portrait pools and fallback sprite used by the centralized portrait service")]
+    [SerializeField] private GovernorPortraitLibrary governorPortraitLibrary;
         public ResourceManager resourceManager;
         public ReligionManager religionManager;
         public AnimalManager animalManager;

@@ -18,16 +18,7 @@ public class TransportUnitButton : MonoBehaviour
     {
         representedUnit = unit;
         
-        // Set name and icon
-        if (unitNameText != null)
-        {
-            unitNameText.text = unit.data.unitName;
-        }
-        
-        if (unitIconImage != null && unit.data.GetIcon(unit.owner) != null)
-        {
-            unitIconImage.sprite = unit.data.GetIcon(unit.owner);
-        }
+        UnitUIPresenter.Bind(unit, unitNameText, unitIconImage);
         
         // Set up button click handler
         if (buttonComponent != null)

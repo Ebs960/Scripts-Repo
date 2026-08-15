@@ -46,39 +46,24 @@ public class SpaceMissionManager : MonoBehaviour
 
     public SpaceMissionResult LaunchMission(CombatUnit spacecraft, SpaceMissionKind missionKind, int targetTileIndex)
     {
-        if (!CanLaunchMission(spacecraft, missionKind, targetTileIndex, out string reason))
-        {
-            Debug.LogWarning($"[SpaceMissionManager] Mission rejected: {reason}");
-            return SpaceMissionResult.Invalid;
-        }
+        int planetIndex = spacecraft != null ? spacecraft.planetIndex : -1;
+        StrategicMissionResult outcome = StrategicMissionResolver.Execute(
+            spacecraft,
+            missionKind,
+            targetTileIndex,
+            CanLaunchMission,
+            () => OnSpaceMissionLaunched?.Invoke(spacecraft, missionKind, targetTileIndex, planetIndex),
+            () => FindBestInterceptor(spacecraft.owner, planetIndex, spacecraft.currentTileIndex, targetTileIndex),
+            interceptor => ResolveInterception(interceptor, spacecraft, targetTileIndex),
+            () => FindBestAntiSpaceDefender(spacecraft.owner, planetIndex, targetTileIndex),
+            defender => ResolveAntiSpace(defender, spacecraft, targetTileIndex),
+            () => ResolveMissionEffect(spacecraft, missionKind, targetTileIndex),
+            nameof(SpaceMissionManager));
 
-        int planetIndex = spacecraft.planetIndex;
-        OnSpaceMissionLaunched?.Invoke(spacecraft, missionKind, targetTileIndex, planetIndex);
-
-        CombatUnit interceptor = FindBestInterceptor(spacecraft.owner, planetIndex, spacecraft.currentTileIndex, targetTileIndex);
-        if (ResolveInterception(interceptor, spacecraft, targetTileIndex))
-        {
-            OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, SpaceMissionResult.Intercepted);
-            return SpaceMissionResult.Intercepted;
-        }
-
-        CombatUnit antiSpace = FindBestAntiSpaceDefender(spacecraft.owner, planetIndex, targetTileIndex);
-        if (ResolveAntiSpace(antiSpace, spacecraft, targetTileIndex))
-        {
-            OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, SpaceMissionResult.Aborted);
-            return SpaceMissionResult.Aborted;
-        }
-
-        if (spacecraft.currentHealth <= 0)
-        {
-            OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, SpaceMissionResult.Aborted);
-            return SpaceMissionResult.Aborted;
-        }
-
-        spacecraft.TryConsumeAttackPoint();
-        ResolveMissionEffect(spacecraft, missionKind, targetTileIndex);
-        OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, SpaceMissionResult.Completed);
-        return SpaceMissionResult.Completed;
+        SpaceMissionResult result = (SpaceMissionResult)(int)outcome;
+        if (result != SpaceMissionResult.Invalid)
+            OnSpaceMissionResolved?.Invoke(spacecraft, missionKind, targetTileIndex, result);
+        return result;
     }
 
     public bool CanLaunchMission(CombatUnit spacecraft, SpaceMissionKind missionKind, int targetTileIndex, out string reason)
@@ -233,16 +218,10 @@ public class SpaceMissionManager : MonoBehaviour
         }
     }
 
-    private static bool RollDefensiveFire(CombatUnit defender, CombatUnit spacecraft, float baseChance)
+    private static bool RollDefensiveFire(CombatUnit defender, CombatUnit target, float baseChance)
     {
-        float attack = Mathf.Max(1f, defender.CurrentSpaceAttack);
-        float defense = Mathf.Max(1f, spacecraft.CurrentDefense);
-        float statFactor = attack / (attack + defense);
-        float hitChance = Mathf.Clamp01(baseChance + (statFactor - 0.5f));
-        if (UnityEngine.Random.value > hitChance) return false;
-
-        float evasionChance = spacecraft?.data != null ? Mathf.Clamp01(spacecraft.data.spaceInterceptionEvasion) : 0f;
-        return evasionChance <= 0f || UnityEngine.Random.value > evasionChance;
+        float evasion = target?.data != null ? target.data.spaceInterceptionEvasion : 0f;
+        return StrategicMissionResolver.RollDefensiveFire(defender.CurrentSpaceAttack, target.CurrentDefense, baseChance, evasion);
     }
 
     private static void ResolveMissionEffect(CombatUnit spacecraft, SpaceMissionKind missionKind, int targetTile)
@@ -307,12 +286,12 @@ public class SpaceMissionManager : MonoBehaviour
 
     private static int CalculateStrikeDamage(int attack, int defense)
     {
-        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+        return StrategicMissionResolver.CalculateDamage(attack, defense);
     }
 
     private static int CalculateSpaceCombatDamage(int attack, int defense)
     {
-        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+        return StrategicMissionResolver.CalculateDamage(attack, defense);
     }
 
     private static void NotifySpaceEvent(CombatUnit defender, CombatUnit spacecraft, string verb, int damage)

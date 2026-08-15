@@ -20,6 +20,8 @@ public class Governor
 
     public int Id { get; private set; } // Unique identifier
     public string Name { get; private set; }
+    /// <summary>Stable library identity; the portrait is deliberately not serialized as a Sprite.</summary>
+    public string PortraitId { get; private set; }
     public Specialization specialization { get; private set; }
     public int Level { get; private set; } = 1;
     public int Experience { get; private set; } = 0;
@@ -145,6 +147,20 @@ public class Governor
         {
             stats[trigger] = 0;
         }
+    }
+
+    /// <summary>Assigns the permanent portrait once. Returns false when identity is already set.</summary>
+    public bool AssignPortrait(string portraitId)
+    {
+        if (!string.IsNullOrEmpty(PortraitId) || string.IsNullOrWhiteSpace(portraitId)) return false;
+        PortraitId = portraitId;
+        return true;
+    }
+
+    /// <summary>Save-system restore path. A non-empty saved identity replaces creation-time selection.</summary>
+    internal void RestorePortrait(string portraitId)
+    {
+        if (!string.IsNullOrWhiteSpace(portraitId)) PortraitId = portraitId;
     }
 
     // Record a stat increase for trait unlocking and gain XP
