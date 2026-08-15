@@ -18,6 +18,7 @@ public static class GovernorSaveUtility
         {
             id = gov.Id,
             name = gov.Name,
+            portraitId = gov.PortraitId,
             specialization = gov.specialization,
             level = gov.Level,
             experience = gov.Experience,
@@ -96,6 +97,9 @@ public static class GovernorSaveUtility
         IReadOnlyDictionary<string, CultureData> cultureLookup)
     {
         if (gov == null || data == null) return;
+
+        // Empty in legacy saves: retain the one-time portrait selected by CreateGovernor.
+        gov.RestorePortrait(data.portraitId);
 
         var opinionModifiers = new List<OpinionModifier>();
         if (data.opinionModifiers != null)

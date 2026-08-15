@@ -3,22 +3,14 @@ using System.Collections.Generic;
 
 public enum CultureGroup
 {
-    Western,
-    Germanic,
-    Eastern,
-    WestAfrican,
-    EastAfrican,
-    PacificIslanders,
-    SouthEastAsian,
-    Latino,
-    Indigenous,
-    Mesoamerican,
-    NorthAmerican,
-    CentralAsian,
-    MiddleEastern,
-    SouthAsian,
-
-    // add others as needed
+    Western = 0,
+    EastAsian = 2,
+    WestAfrican = 3,
+    EastAfrican = 4,
+    NativeAmerican = 8,
+    NativeNorthAmerican = 10,
+    MiddleEastern = 12,
+    SouthAsian = 13
 }
 
 /// <summary>
