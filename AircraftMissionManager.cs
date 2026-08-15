@@ -2,6 +2,64 @@
 using System;
 using UnityEngine;
 
+public enum StrategicMissionResult
+{
+    Invalid = 0,
+    Launched = 1,
+    Intercepted = 2,
+    Aborted = 3,
+    Completed = 4
+}
+
+public delegate bool StrategicMissionValidator<TMission>(CombatUnit unit, TMission mission, int targetTile, out string reason);
+
+/// <summary>Domain-neutral launch pipeline and combat math shared by aircraft and space missions.</summary>
+public static class StrategicMissionResolver
+{
+    public static StrategicMissionResult Execute<TMission>(
+        CombatUnit unit,
+        TMission mission,
+        int targetTile,
+        StrategicMissionValidator<TMission> validate,
+        Action launched,
+        Func<CombatUnit> findInterceptor,
+        Func<CombatUnit, bool> resolveInterception,
+        Func<CombatUnit> findLocalDefender,
+        Func<CombatUnit, bool> resolveLocalDefense,
+        Action resolveEffect,
+        string logPrefix)
+    {
+        if (!validate(unit, mission, targetTile, out string reason))
+        {
+            Debug.LogWarning($"[{logPrefix}] Mission rejected: {reason}");
+            return StrategicMissionResult.Invalid;
+        }
+
+        launched?.Invoke();
+        if (resolveInterception(findInterceptor?.Invoke())) return StrategicMissionResult.Intercepted;
+        if (resolveLocalDefense(findLocalDefender?.Invoke())) return StrategicMissionResult.Aborted;
+        if (unit == null || unit.currentHealth <= 0) return StrategicMissionResult.Aborted;
+
+        unit.TryConsumeAttackPoint();
+        resolveEffect?.Invoke();
+        return StrategicMissionResult.Completed;
+    }
+
+    public static bool RollDefensiveFire(int attack, int defense, float baseChance, float evasionChance)
+    {
+        float safeAttack = Mathf.Max(1f, attack);
+        float safeDefense = Mathf.Max(1f, defense);
+        float hitChance = Mathf.Clamp01(baseChance + (safeAttack / (safeAttack + safeDefense) - 0.5f));
+        if (UnityEngine.Random.value > hitChance) return false;
+        return evasionChance <= 0f || UnityEngine.Random.value > Mathf.Clamp01(evasionChance);
+    }
+
+    public static int CalculateDamage(int attack, int defense)
+    {
+        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+    }
+}
+
 public enum AircraftMissionKind
 {
     AirStrike,
@@ -46,39 +104,24 @@ public class AircraftMissionManager : MonoBehaviour
 
     public AircraftMissionResult LaunchMission(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTileIndex)
     {
-        if (!CanLaunchMission(aircraft, missionKind, targetTileIndex, out string reason))
-        {
-            Debug.LogWarning($"[AircraftMissionManager] Mission rejected: {reason}");
-            return AircraftMissionResult.Invalid;
-        }
+        int planetIndex = aircraft != null ? aircraft.planetIndex : -1;
+        StrategicMissionResult outcome = StrategicMissionResolver.Execute(
+            aircraft,
+            missionKind,
+            targetTileIndex,
+            CanLaunchMission,
+            () => OnAircraftMissionLaunched?.Invoke(aircraft, missionKind, targetTileIndex, planetIndex),
+            () => FindBestInterceptor(aircraft.owner, planetIndex, aircraft.currentTileIndex, targetTileIndex),
+            interceptor => ResolveInterception(interceptor, aircraft, targetTileIndex),
+            () => FindBestAntiAirDefender(aircraft.owner, planetIndex, targetTileIndex),
+            defender => ResolveAntiAir(defender, aircraft, targetTileIndex),
+            () => ResolveMissionEffect(aircraft, missionKind, targetTileIndex),
+            nameof(AircraftMissionManager));
 
-        int planetIndex = aircraft.planetIndex;
-        OnAircraftMissionLaunched?.Invoke(aircraft, missionKind, targetTileIndex, planetIndex);
-
-        CombatUnit interceptor = FindBestInterceptor(aircraft.owner, planetIndex, aircraft.currentTileIndex, targetTileIndex);
-        if (ResolveInterception(interceptor, aircraft, targetTileIndex))
-        {
-            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Intercepted);
-            return AircraftMissionResult.Intercepted;
-        }
-
-        CombatUnit antiAir = FindBestAntiAirDefender(aircraft.owner, planetIndex, targetTileIndex);
-        if (ResolveAntiAir(antiAir, aircraft, targetTileIndex))
-        {
-            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Aborted);
-            return AircraftMissionResult.Aborted;
-        }
-
-        if (aircraft.currentHealth <= 0)
-        {
-            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Aborted);
-            return AircraftMissionResult.Aborted;
-        }
-
-        aircraft.TryConsumeAttackPoint();
-        ResolveMissionEffect(aircraft, missionKind, targetTileIndex);
-        OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, AircraftMissionResult.Completed);
-        return AircraftMissionResult.Completed;
+        AircraftMissionResult result = (AircraftMissionResult)(int)outcome;
+        if (result != AircraftMissionResult.Invalid)
+            OnAircraftMissionResolved?.Invoke(aircraft, missionKind, targetTileIndex, result);
+        return result;
     }
 
     public bool CanLaunchMission(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTileIndex, out string reason)
@@ -242,16 +285,10 @@ public class AircraftMissionManager : MonoBehaviour
         }
     }
 
-    private static bool RollDefensiveFire(CombatUnit defender, CombatUnit aircraft, float baseChance)
+    private static bool RollDefensiveFire(CombatUnit defender, CombatUnit target, float baseChance)
     {
-        float attack = Mathf.Max(1f, defender.CurrentAirAttack);
-        float defense = Mathf.Max(1f, aircraft.CurrentDefense);
-        float statFactor = attack / (attack + defense);
-        float hitChance = Mathf.Clamp01(baseChance + (statFactor - 0.5f));
-        if (UnityEngine.Random.value > hitChance) return false;
-
-        float evasionChance = aircraft?.data != null ? Mathf.Clamp01(aircraft.data.interceptionEvasion) : 0f;
-        return evasionChance <= 0f || UnityEngine.Random.value > evasionChance;
+        float evasion = target?.data != null ? target.data.interceptionEvasion : 0f;
+        return StrategicMissionResolver.RollDefensiveFire(defender.CurrentAirAttack, target.CurrentDefense, baseChance, evasion);
     }
 
     private static void ResolveMissionEffect(CombatUnit aircraft, AircraftMissionKind missionKind, int targetTile)
@@ -316,12 +353,12 @@ public class AircraftMissionManager : MonoBehaviour
 
     private static int CalculateStrikeDamage(int attack, int defense)
     {
-        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+        return StrategicMissionResolver.CalculateDamage(attack, defense);
     }
 
     private static int CalculateAirCombatDamage(int attack, int defense)
     {
-        return Mathf.Max(0, attack - Mathf.Max(0, defense));
+        return StrategicMissionResolver.CalculateDamage(attack, defense);
     }
 
     private static void NotifyAirEvent(CombatUnit defender, CombatUnit aircraft, string verb, int damage)

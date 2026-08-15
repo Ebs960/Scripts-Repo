@@ -20,26 +20,7 @@ public class StoredUnitButton : MonoBehaviour
         representedUnit = unit;
         ownerInstance = instance;
 
-        if (unitNameText != null)
-        {
-            string name = "Unit";
-            var cu = unit as CombatUnit;
-            var wu = unit as WorkerUnit;
-            if (cu != null && cu.data != null) name = cu.data.unitName;
-            else if (wu != null && wu.data != null) name = wu.data.unitName;
-            unitNameText.text = name;
-        }
-
-        if (unitIconImage != null)
-        {
-            Sprite s = null;
-            var cu = unit as CombatUnit;
-            var wu = unit as WorkerUnit;
-            if (cu != null && cu.data != null) s = cu.data.GetIcon(cu.owner);
-            else if (wu != null && wu.data != null) s = wu.data.GetIcon(wu.owner);
-            unitIconImage.sprite = s;
-            unitIconImage.gameObject.SetActive(s != null);
-        }
+        UnitUIPresenter.Bind(unit, unitNameText, unitIconImage);
 
         if (buttonComponent != null)
         {
@@ -63,6 +44,33 @@ public class StoredUnitButton : MonoBehaviour
                     }
                 }
             });
+        }
+    }
+}
+
+/// <summary>Shared name and icon binding for UI controls that represent a unit.</summary>
+public static class UnitUIPresenter
+{
+    public static void Bind(BaseUnit unit, TextMeshProUGUI nameText, Image iconImage)
+    {
+        string displayName = "Unit";
+        Sprite icon = null;
+        if (unit is CombatUnit combat && combat.data != null)
+        {
+            displayName = combat.data.unitName;
+            icon = combat.data.GetIcon(combat.owner);
+        }
+        else if (unit is WorkerUnit worker && worker.data != null)
+        {
+            displayName = worker.data.unitName;
+            icon = worker.data.GetIcon(worker.owner);
+        }
+
+        if (nameText != null) nameText.text = displayName;
+        if (iconImage != null)
+        {
+            iconImage.sprite = icon;
+            iconImage.gameObject.SetActive(icon != null);
         }
     }
 }

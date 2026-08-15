@@ -44,11 +44,38 @@ public class SpaceFleetManager : MonoBehaviour
     {
         var fleet = new SpaceFleet { fleetId = nextFleetId++, ownerCivilizationId = ownerCivilizationId, fleetName = fleetName, admiralId = admiralId };
         foreach (var unit in members) if (unit != null) { fleet.memberUnitIds.Add(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = fleet.fleetId; fleet.currentSpaceTileIndex = unit.currentSpaceTileIndex; fleet.location = unit.spaceLocation; }
-        fleets.Add(fleet); return fleet;
+        fleets.Add(fleet);
+        var worldFleets = SpaceWorldManager.Instance?.CurrentSystem?.fleets;
+        if (worldFleets != null && !worldFleets.Contains(fleet)) worldFleets.Add(fleet);
+        SpaceWorldManager.Instance?.Entities.Register(fleet);
+        return fleet;
     }
-    public SpaceFleet GetFleet(int fleetId) => fleets.Find(f => f.fleetId == fleetId);
+    public SpaceFleet GetFleet(int fleetId)
+    {
+        if (SpaceWorldManager.Instance != null && SpaceWorldManager.Instance.Entities.TryGetFleet(fleetId, out var indexed)) return indexed;
+        return fleets.Find(f => f.fleetId == fleetId);
+    }
     public bool CanPack(SpaceFleet fleet, out string reason) { reason = null; if (fleet == null) { reason = "missing fleet"; return false; } if (fleet.admiralId < 0) { reason = "fleet requires an admiral before packing"; return false; } var admiral = AdmiralManager.Instance != null ? AdmiralManager.Instance.GetAdmiral(fleet.admiralId) : null; if (admiral != null && (admiral.status == AdmiralStatus.Captured || admiral.status == AdmiralStatus.Killed)) { reason = "fleet admiral is unavailable"; return false; } return true; }
     public AdmiralFleetLossOutcome ResolveFleetDestroyed(SpaceFleet fleet, int enemyCivilizationId = -1) { if (fleet == null || fleet.admiralId < 0 || AdmiralManager.Instance == null) return AdmiralFleetLossOutcome.Killed; var outcome = AdmiralManager.Instance.ResolveFleetDestroyed(fleet.admiralId, enemyCivilizationId); fleet.admiralId = -1; fleet.isPacked = false; fleet.isDeployed = false; return outcome; }
+
+    public void RemoveUnit(BaseUnit unit)
+    {
+        var fleet = unit != null ? GetFleet(unit.spaceFleetId) : null;
+        if (fleet == null) return;
+        fleet.memberUnitIds.Remove(unit.gameObject.GetRuntimeId());
+        unit.spaceFleetId = -1;
+    }
+
+    public bool MergeFleets(int targetFleetId, int sourceFleetId)
+    {
+        var target = GetFleet(targetFleetId); var source = GetFleet(sourceFleetId);
+        if (target == null || source == null || target == source) return false;
+        foreach (int id in source.memberUnitIds) if (!target.memberUnitIds.Contains(id)) target.memberUnitIds.Add(id);
+        fleets.Remove(source);
+        SpaceWorldManager.Instance?.CurrentSystem?.fleets?.Remove(source);
+        SpaceWorldManager.Instance?.Entities.RemoveFleet(source.fleetId);
+        return true;
+    }
 }
 
 public class FleetDeploymentManager : MonoBehaviour

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SpaceShipMovementController : MonoBehaviour
+public class SpaceShipMovementController : MonoBehaviour, IUnitMovementDomain
 {
     public static SpaceShipMovementController Instance { get; private set; }
     public SpaceHexGrid Grid { get; private set; } = new SpaceHexGrid(12, 5f);
@@ -17,6 +17,7 @@ public class SpaceShipMovementController : MonoBehaviour
         RemoveFromCurrentSpaceTile(unit);
         unit.spaceLocation = SpaceLocation.InSpace(tileIndex); unit.currentSpaceTileIndex = tileIndex; unit.planetIndex = -1; unit.currentTileIndex = -1;
         if (!tile.spacecraftIds.Contains(unit.gameObject.GetRuntimeId())) tile.spacecraftIds.Add(unit.gameObject.GetRuntimeId());
+        SpaceWorldManager.Instance?.Entities.Register(unit);
         unit.transform.position = Grid.GetWorldPosition(tileIndex) + Vector3.up * 1.2f;
         return true;
     }
@@ -24,7 +25,9 @@ public class SpaceShipMovementController : MonoBehaviour
     public bool EnterPlanetOrbit(BaseUnit unit, int planetIndex)
     {
         if (unit == null) return false; RemoveFromCurrentSpaceTile(unit);
-        unit.spaceLocation = SpaceLocation.InOrbit(planetIndex); unit.planetIndex = planetIndex; unit.currentLayer = TileLayer.Orbit; return true;
+        unit.spaceLocation = SpaceLocation.InOrbit(planetIndex); unit.planetIndex = planetIndex; unit.currentLayer = TileLayer.Orbit;
+        SpaceWorldManager.Instance?.Entities.Register(unit);
+        return true;
     }
     public bool LeavePlanetOrbitForSpace(BaseUnit unit, int tileIndex) => PlaceOnSpaceTile(unit, tileIndex);
     public bool EnterPlanetOrbitFromSpace(BaseUnit unit, int planetIndex) => EnterPlanetOrbit(unit, planetIndex);
@@ -63,14 +66,26 @@ public class SpaceShipMovementController : MonoBehaviour
         return Mathf.Max(1, Mathf.CeilToInt(cost * Mathf.Max(0.25f, 1f - efficiency)));
     }
 
-    public SpaceFleet CreateFleet(IEnumerable<BaseUnit> units, string fleetName = "Fleet")
+    IReadOnlyList<int> IUnitMovementDomain.FindPath(BaseUnit unit, int destination)
     {
-        if (SpaceFleetManager.Instance == null) new GameObject("SpaceFleetManager").AddComponent<SpaceFleetManager>();
-        var members = new List<CombatUnit>();
-        foreach (var u in units) { var c = u as CombatUnit; if (c != null && c.currentSpaceTileIndex >= 0) members.Add(c); }
-        return SpaceFleetManager.Instance.CreateFleet(-1, fleetName, -1, members);
+        return unit == null || Pathfinder == null ? null : Pathfinder.FindPath(unit.currentSpaceTileIndex, destination);
     }
-    public void RemoveFromFleet(BaseUnit unit) { var f = SpaceFleetManager.Instance != null && unit != null ? SpaceFleetManager.Instance.GetFleet(unit.spaceFleetId) : null; if (unit == null || f == null) return; f.memberUnitIds.Remove(unit.gameObject.GetRuntimeId()); unit.spaceFleetId = -1; }
-    public void MergeFleets(int targetFleetId, int sourceFleetId) { var mgr = SpaceFleetManager.Instance; var t = mgr != null ? mgr.GetFleet(targetFleetId) : null; var s = mgr != null ? mgr.GetFleet(sourceFleetId) : null; if (t == null || s == null) return; foreach (int id in s.memberUnitIds) if (!t.memberUnitIds.Contains(id)) t.memberUnitIds.Add(id); mgr.fleets.Remove(s); }
-    private void RemoveFromCurrentSpaceTile(BaseUnit unit) { if (unit.currentSpaceTileIndex < 0) return; Grid.GetTile(unit.currentSpaceTileIndex)?.spacecraftIds.Remove(unit.gameObject.GetRuntimeId()); }
+
+    bool IUnitMovementDomain.CanEnter(BaseUnit unit, int location)
+    {
+        var tile = Grid?.GetTile(location);
+        return unit != null && tile != null && !tile.blocksMovement;
+    }
+
+    int IUnitMovementDomain.GetMovementCost(BaseUnit unit, int location)
+    {
+        var tile = Grid?.GetTile(location);
+        return tile != null ? GetAbilityModifiedMovementCost(unit, tile) : int.MaxValue;
+    }
+    private void RemoveFromCurrentSpaceTile(BaseUnit unit)
+    {
+        if (unit.currentSpaceTileIndex < 0) return;
+        Grid.GetTile(unit.currentSpaceTileIndex)?.spacecraftIds.Remove(unit.gameObject.GetRuntimeId());
+        SpaceWorldManager.Instance?.Entities.RemoveShip(unit.gameObject.GetRuntimeId());
+    }
 }

@@ -3,7 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-public class UnitMovementController : MonoBehaviour
+/// <summary>Common path/cost/passability contract for surface and space movement domains.</summary>
+public interface IUnitMovementDomain
+{
+    IReadOnlyList<int> FindPath(BaseUnit unit, int destination);
+    bool CanEnter(BaseUnit unit, int location);
+    int GetMovementCost(BaseUnit unit, int location);
+}
+
+public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
 {
     public static UnitMovementController Instance { get; private set; }
     private HexGrid grid;
@@ -330,6 +338,27 @@ public class UnitMovementController : MonoBehaviour
         PathExpansions += expanded;
         CacheResult(cacheKey, null, currentTurn);
         return null;
+    }
+
+    IReadOnlyList<int> IUnitMovementDomain.FindPath(BaseUnit unit, int destination)
+    {
+        return unit == null ? null : FindPath(unit.currentTileIndex, destination, unit);
+    }
+
+    bool IUnitMovementDomain.CanEnter(BaseUnit unit, int location)
+    {
+        int planetIndex = unit != null ? unit.planetIndex : 0;
+        var tiles = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = tiles != null ? tiles.GetTileData(location) : null;
+        return tile != null && tile.isPassable;
+    }
+
+    int IUnitMovementDomain.GetMovementCost(BaseUnit unit, int location)
+    {
+        int planetIndex = unit != null ? unit.planetIndex : 0;
+        var tiles = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = tiles != null ? tiles.GetTileData(location) : null;
+        return tile != null ? Mathf.Max(1, BiomeHelper.GetMovementCost(tile, unit)) : int.MaxValue;
     }
 
     private void CacheResult((int, int, int) key, List<int> path, int turn)
