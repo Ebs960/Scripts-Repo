@@ -654,8 +654,6 @@ public class GameManager : MonoBehaviour
         public UnitMovementController unitMovementController;
         public PolicyManager policyManager;
         public DiplomacyManager diplomacyManager;
-    [Tooltip("Governor portrait pools and fallback sprite used by the centralized portrait service")]
-    [SerializeField] private GovernorPortraitLibrary governorPortraitLibrary;
         public ResourceManager resourceManager;
         public ReligionManager religionManager;
         public AnimalManager animalManager;
