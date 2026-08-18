@@ -4,6 +4,9 @@ using UnityEngine;
 
 public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 {
+    [Header("Tactical Environment")]
+    [SerializeField] private BiomeVisualDatabase campaignBiomeVisuals;
+    [SerializeField] private BattleBiomeVisualDatabase tacticalBiomeVisuals;
     [Serializable]
     private sealed class BattleSaveMarker
     {
@@ -73,8 +76,16 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public EngagementPreview PendingPreview => pendingPreview;
     public BattleResult PendingResult => pendingResult;
     public BattleInputController TacticalInput => battleInput;
+    public BiomeVisualDatabase CampaignBiomeVisuals=>campaignBiomeVisuals;
+    public BattleBiomeVisualDatabase TacticalBiomeVisuals=>tacticalBiomeVisuals;
     public void FrameTacticalBattlefield(Bounds bounds) => battleCamera?.FocusBounds(bounds);
     public Camera TacticalCamera => battleCamera?.TacticalCamera;
+    public BiomeVisualDatabase ResolveCampaignBiomeVisuals()
+    {
+        if(campaignBiomeVisuals!=null)return campaignBiomeVisuals;
+        var chunks=FindAnyObjectByType<HexMapChunkManager>();
+        return chunks!=null?chunks.BiomeVisuals:null;
+    }
 
     public string SaveKey => "BattleManager";
 
@@ -111,6 +122,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         if (ruleset == null)
             ruleset = ScriptableObject.CreateInstance<BattleRuleset>();
+        if(tacticalBiomeVisuals==null)
+            tacticalBiomeVisuals=Resources.Load<BattleBiomeVisualDatabase>("Battle Biome Visual Database");
 
         participantCollector = new BattleParticipantCollector(ruleset);
         mapBuilder = new BattleMapBuilder(ruleset);

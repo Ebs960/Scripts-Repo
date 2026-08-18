@@ -175,6 +175,7 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
     private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
+    public BiomeVisualDatabase BiomeVisuals=>biomeVisualDatabase;
     [SerializeField]
     [Tooltip("Ice surface texture database (albedos, normals, tints, tiling) for lake and river freeze visuals. " +
              "Must match the IceSurfaceDatabase assigned to ClimateManager.")]

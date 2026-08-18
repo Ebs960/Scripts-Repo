@@ -11,7 +11,7 @@ public sealed class BattleCellView : MonoBehaviour
     public int CellIndex { get; private set; }
     public event Action<int> Clicked;
 
-    public void Initialize(BattleCell cell, Vector3 center, Material groundMaterial, Material overlayMaterial)
+    public void Initialize(BattleCell cell, Vector3 center, Material groundMaterial, Material overlayMaterial,BattleGroundSurface surface)
     {
         CellIndex = cell.BattleIndex; transform.localPosition = center;
         float height = Mathf.Max(.12f, center.y + .12f);
@@ -23,7 +23,7 @@ public sealed class BattleCellView : MonoBehaviour
         var overlayObject = new GameObject("Overlay", typeof(MeshFilter), typeof(MeshRenderer)); overlayObject.transform.SetParent(transform, false);
         overlayObject.transform.localPosition = new Vector3(0f, .025f, 0f); overlayObject.transform.localScale = new Vector3(.94f,.02f,.94f);
         overlayObject.GetComponent<MeshFilter>().sharedMesh = GetHexMesh(); overlay = overlayObject.GetComponent<MeshRenderer>(); overlay.sharedMaterial = overlayMaterial;
-        properties = new MaterialPropertyBlock(); SetGroundColor(TerrainColor(cell)); SetOverlay(BattlePresenter.CellOverlay.None, false);
+        properties = new MaterialPropertyBlock(); SetGroundSurface(cell,surface); SetOverlay(BattlePresenter.CellOverlay.None, false);
         AddTerrainCues(cell);
     }
 
@@ -34,9 +34,19 @@ public sealed class BattleCellView : MonoBehaviour
         properties.Clear(); properties.SetColor("_BaseColor", color); properties.SetColor("_Color", color); overlay.SetPropertyBlock(properties);
         overlay.enabled = selected || state != BattlePresenter.CellOverlay.None;
     }
-    private void SetGroundColor(Color color) { properties.Clear(); properties.SetColor("_BaseColor",color); properties.SetColor("_Color",color); ground.SetPropertyBlock(properties); }
+    private void SetGroundSurface(BattleCell cell,BattleGroundSurface surface)
+    {
+        properties.Clear();Color tint=surface.Visual!=null?surface.Visual.tint:FallbackColor(cell);if(surface.Family!=null)tint*=surface.Family.defaultTint;
+        if(surface.Visual!=null&&ClimateManager.Instance!=null){BiomeSeasonVisualResponse season=ClimateManager.Instance.currentSeason switch{Season.Spring=>surface.Visual.springResponse,Season.Summer=>surface.Visual.summerResponse,Season.Autumn=>surface.Visual.autumnResponse,Season.Winter=>surface.Visual.winterResponse,_=>default};if(season.tint.a>0f)tint*=season.tint;tint=Color.Lerp(tint,new Color(.9f,.93f,.96f,tint.a),season.snow*.7f);}
+        properties.SetColor("_BaseColor",tint);properties.SetColor("_Color",tint);properties.SetFloat("_Slice",surface.Variant);
+        properties.SetFloat("_Tiling",Mathf.Max(.01f,(surface.Visual?.tiling??1f)*(surface.Family?.defaultTiling??1f)));
+        properties.SetFloat("_NormalStrength",surface.Family?.normalStrength??1f);properties.SetFloat("_HasSurface",surface.Albedo!=null?1f:0f);
+        if(surface.Albedo!=null)properties.SetTexture("_AlbedoArray",surface.Albedo);if(surface.Normal!=null)properties.SetTexture("_NormalArray",surface.Normal);
+        if(surface.Mask!=null)properties.SetTexture("_MaskArray",surface.Mask);if(surface.Height!=null)properties.SetTexture("_HeightArray",surface.Height);if(surface.Emissive!=null)properties.SetTexture("_EmissiveArray",surface.Emissive);
+        properties.SetFloat("_HasNormal",surface.Normal!=null?1f:0f);properties.SetFloat("_HasMask",surface.Mask!=null?1f:0f);properties.SetFloat("_HasHeight",surface.Height!=null?1f:0f);properties.SetFloat("_HasEmissive",surface.Emissive!=null?1f:0f);ground.SetPropertyBlock(properties);
+    }
 
-    private static Color TerrainColor(BattleCell c)
+    private static Color FallbackColor(BattleCell c)
     {
         if (c.IsWater) return c.WaterDepthLevel > 1 ? new Color(.035f,.15f,.29f) : new Color(.08f,.36f,.5f);
         if (c.HasBeach) return new Color(.65f,.57f,.35f);
@@ -55,18 +65,17 @@ public sealed class BattleCellView : MonoBehaviour
     }
     private void AddTerrainCues(BattleCell c)
     {
-        if (!(c.IsForest || c.HasHardCover || c.HasSoftCover || c.HasPort || c.HasRiver || c.IsObjective)) return;
-        var cue = GameObject.CreatePrimitive(c.HasHardCover || c.HasPort ? PrimitiveType.Cube : PrimitiveType.Cylinder);
-        cue.name = c.IsObjective ? "Objective" : c.HasPort ? "Port" : c.HasHardCover ? "Hard Cover" : c.IsForest ? "Forest" : "Terrain Feature";
-        cue.transform.SetParent(transform, false); cue.transform.localPosition = new Vector3(.45f,.18f,-.25f); cue.transform.localScale = c.IsObjective ? new Vector3(.12f,.7f,.12f) : new Vector3(.22f,.35f,.22f);
+        if (!c.IsObjective) return;
+        var cue = GameObject.CreatePrimitive(PrimitiveType.Cylinder);cue.name="Objective";
+        cue.transform.SetParent(transform, false); cue.transform.localPosition = new Vector3(.45f,.18f,-.25f); cue.transform.localScale = new Vector3(.12f,.7f,.12f);
         var collider = cue.GetComponent<Collider>(); if (collider != null) Destroy(collider);
     }
     private static Mesh GetHexMesh()
     {
         if (sharedHex != null) return sharedHex;
-        var vertices = new Vector3[14]; var triangles = new int[72];
-        for (int i=0;i<7;i++) { float a=Mathf.Deg2Rad*(60*i+30); vertices[i]=new Vector3(Mathf.Cos(a)*BattleBoardLayout.HexRadius,.5f,Mathf.Sin(a)*BattleBoardLayout.HexRadius); vertices[i+7]=new Vector3(vertices[i].x,-.5f,vertices[i].z); }
-        int t=0; for(int i=0;i<6;i++){ triangles[t++]=6;triangles[t++]=i;triangles[t++]=i+1; triangles[t++]=13;triangles[t++]=i+8;triangles[t++]=i+7; triangles[t++]=i;triangles[t++]=i+7;triangles[t++]=i+8;triangles[t++]=i;triangles[t++]=i+8;triangles[t++]=i+1; }
-        sharedHex = new Mesh { name="Tactical Hex" }; sharedHex.vertices=vertices; sharedHex.triangles=triangles; sharedHex.RecalculateNormals(); sharedHex.RecalculateBounds(); return sharedHex;
+        var vertices = new Vector3[14];var uv=new Vector2[14];var triangles = new int[72];
+        for (int i=0;i<6;i++){float a=Mathf.Deg2Rad*(60*i+30);vertices[i]=new Vector3(Mathf.Cos(a)*BattleBoardLayout.HexRadius,.5f,Mathf.Sin(a)*BattleBoardLayout.HexRadius);vertices[i+7]=new Vector3(vertices[i].x,-.5f,vertices[i].z);uv[i]=uv[i+7]=new Vector2(vertices[i].x/BattleBoardLayout.HexRadius*.5f+.5f,vertices[i].z/BattleBoardLayout.HexRadius*.5f+.5f);}vertices[6]=new Vector3(0,.5f,0);vertices[13]=new Vector3(0,-.5f,0);uv[6]=uv[13]=new Vector2(.5f,.5f);
+        int t=0;for(int i=0;i<6;i++){int next=(i+1)%6;triangles[t++]=6;triangles[t++]=i;triangles[t++]=next;triangles[t++]=13;triangles[t++]=next+7;triangles[t++]=i+7;triangles[t++]=i;triangles[t++]=i+7;triangles[t++]=next+7;triangles[t++]=i;triangles[t++]=next+7;triangles[t++]=next;}
+        sharedHex = new Mesh { name="Tactical Hex" }; sharedHex.vertices=vertices;sharedHex.uv=uv;sharedHex.triangles=triangles; sharedHex.RecalculateNormals(); sharedHex.RecalculateBounds(); return sharedHex;
     }
 }

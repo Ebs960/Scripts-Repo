@@ -32,7 +32,7 @@ public sealed class BattlePresenter : MonoBehaviour
     public void Present(BattleSession session)
     {
         Build();if(session==null){Hide();return;}root.SetActive(true);
-        if(battleId!=session.BattleId){ClearUnits();board.Build(session);battleId=session.BattleId;manager?.FrameTacticalBattlefield(board.Layout.Bounds);}
+        if(battleId!=session.BattleId){ClearUnits();board.Build(session,manager?.ResolveCampaignBiomeVisuals(),manager?.TacticalBiomeVisuals);battleId=session.BattleId;manager?.FrameTacticalBattlefield(board.Layout.Bounds);}
         Refresh();
     }
     private void Refresh(){var session=manager?.ActiveBattle;if(session==null||Layout==null)return;RefreshOverlays();var live=new HashSet<int>();
