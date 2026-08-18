@@ -13,6 +13,8 @@ public sealed class BattleInputController : MonoBehaviour
     public int SelectedCellIndex { get; private set; } = -1;
     public BattleInteractionMode Mode { get; private set; }
     public BattleDomain DomainFilter { get; private set; } = BattleDomain.Land;
+    public int SelectedWeaponIndex { get; private set; }
+    public bool UseSpecialAttack { get; private set; }
     public event Action SelectionChanged;
     public event Action<string> RequestRejected;
 
@@ -23,6 +25,7 @@ public sealed class BattleInputController : MonoBehaviour
     { IsActive = active; if (!active) Cancel(); }
 
     public void SetMode(BattleInteractionMode mode) { Mode = mode; SelectionChanged?.Invoke(); }
+    public void SetAttackSelection(int weaponIndex,bool special){SelectedWeaponIndex=Mathf.Max(0,weaponIndex);UseSpecialAttack=special;SelectionChanged?.Invoke();}
     public void SelectUnit(int unitId) { SelectedUnitId = unitId; SelectionChanged?.Invoke(); }
 
     public void SelectCell(int cellIndex)
@@ -30,11 +33,22 @@ public sealed class BattleInputController : MonoBehaviour
         if (!IsActive || manager?.ActiveBattle == null) return;
         SelectedCellIndex = cellIndex;
         var clicked = manager.GetUnitAtCell(cellIndex);
+        if (clicked != null && clicked.Side == manager.ActiveBattle.ActiveSide)
+        {
+            SelectedUnitId = clicked.UnitId;
+            SelectionChanged?.Invoke();
+            return;
+        }
         bool ok = true; string reason = string.Empty;
         switch (Mode)
         {
             case BattleInteractionMode.Movement: ok = manager.TryMoveUnit(SelectedUnitId, cellIndex, out reason); break;
-            case BattleInteractionMode.Attack: ok = clicked != null && manager.TryAttackUnit(SelectedUnitId, clicked.UnitId, true, out reason); break;
+            case BattleInteractionMode.Attack:
+                var attacker=manager.GetBattleUnit(SelectedUnitId);
+                ok=clicked!=null&&(UseSpecialAttack&&attacker?.Snapshot?.SpecialAttackProfile!=null
+                    ? manager.TryAttackUnitWithProfile(SelectedUnitId,clicked.UnitId,attacker.Snapshot.SpecialAttackProfile,out reason)
+                    : manager.TryAttackUnitWithWeapon(SelectedUnitId,clicked.UnitId,SelectedWeaponIndex,out reason));
+                break;
             case BattleInteractionMode.Deployment: ok = manager.TryDeployUnit(SelectedUnitId, cellIndex, out reason); break;
             case BattleInteractionMode.Retreat: ok = manager.TryRetreatUnit(SelectedUnitId, cellIndex, out reason); break;
             case BattleInteractionMode.Embark: ok = clicked != null && manager.TryEmbarkUnit(SelectedUnitId, clicked.UnitId, out reason); break;

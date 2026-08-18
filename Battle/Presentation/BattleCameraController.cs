@@ -58,6 +58,19 @@ public sealed class BattleCameraController : MonoBehaviour
         IsActive = true;
     }
 
+    /// <summary>Frames generated world geometry rather than estimating a rectangular board.</summary>
+    public void FocusBounds(Bounds battlefieldBounds)
+    {
+        if (!IsActive) CaptureCampaignCamera();
+        EnsureTacticalCamera();
+        limits = battlefieldBounds;
+        limits.Expand(new Vector3(padding.x * 2f, 4f, padding.y * 2f));
+        float span = Mathf.Max(limits.size.x, limits.size.z);
+        float height = Mathf.Clamp(span * .85f, minimumHeight, maximumHeight);
+        tacticalCamera.transform.SetPositionAndRotation(limits.center + new Vector3(0f,height,-height*.55f),Quaternion.Euler(58f,0f,0f));
+        tacticalCamera.enabled=true; var listener=tacticalCamera.GetComponent<AudioListener>();if(listener!=null)listener.enabled=true;IsActive=true;
+    }
+
     public void RouteInput(Vector2 pan, float zoom, float rotation, float unscaledDeltaTime)
     {
         if (!IsActive || tacticalCamera == null) return;
