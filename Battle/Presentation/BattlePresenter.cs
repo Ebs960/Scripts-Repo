@@ -1,288 +1,49 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
-/// <summary>Runtime tactical board. Campaign objects are never moved by this view.</summary>
+/// <summary>World-space tactical presentation. It observes authority and never mutates it.</summary>
 public sealed class BattlePresenter : MonoBehaviour
 {
     [Flags] public enum CellOverlay { None=0, Move=1, Attack=2, Invalid=4, Objective=8, Reinforcement=16, RetreatExit=32, RetreatPath=64, Suspected=128, Detected=256, Identified=512 }
     private BattleManager manager;
     private GameObject root;
-    private TextMeshProUGUI summary;
-    private RectTransform board;
-    private Transform unitVisualRoot;
-    private readonly List<Button> cellButtons = new();
-    private readonly Dictionary<int, BattleUnitView> unitViews = new();
-    private readonly HashSet<int> moveOverlay = new();
-    private readonly HashSet<int> attackOverlay = new();
-    private readonly Dictionary<int,CellOverlay> richOverlays=new();
-    private int selectedCell = -1;
-    private int renderedCellCount = -1;
+    private BattleBoardView board;
+    private Transform unitsRoot;
+    private readonly Dictionary<int,BattleUnitView> unitViews=new();
+    private readonly HashSet<int> moves=new(), attacks=new();
+    private readonly Dictionary<int,CellOverlay> overlays=new();
+    private int selected=-1, battleId=-1;
     private BattleDomain? visibleDomain;
-
     public event Action<int> CellClicked;
-    public string VisibleLayerName => visibleDomain?.ToString() ?? "All";
+    public string VisibleLayerName=>visibleDomain?.ToString()??"All";
+    public BattleBoardLayout Layout=>board!=null?board.Layout:null;
 
-    public void CycleLayer()
-    {
-        visibleDomain = visibleDomain switch
-        {
-            null => BattleDomain.Land,
-            BattleDomain.Land => BattleDomain.NavalSurface,
-            BattleDomain.NavalSurface => BattleDomain.Underwater,
-            BattleDomain.Underwater => BattleDomain.Air,
-            BattleDomain.Air => BattleDomain.Orbit,
-            BattleDomain.Orbit => BattleDomain.Space,
-            _ => null,
-        };
-        RefreshCells();
-    }
-
-    public void AdjustZoom(float delta)
-    {
-        manager?.AdjustTacticalCameraZoom(delta);
-    }
-
-    public BattleUnitState GetDisplayedUnitAtCell(int cell)
-    {
-        var unit = manager != null ? manager.GetUnitAtCell(cell) : null;
-        return unit != null && (!visibleDomain.HasValue || unit.Domain == visibleDomain.Value) ? unit : null;
-    }
-
-    public static BattlePresenter GetOrCreate(BattleManager manager)
-    {
-        var existing = manager.GetComponent<BattlePresenter>();
-        return existing != null ? existing : manager.gameObject.AddComponent<BattlePresenter>();
-    }
-
-    public void Bind(BattleManager battleManager)
-    {
-        if (manager == battleManager) return;
-        manager = battleManager;
-        manager.BattleStarted += Present;
-        manager.BattleStateChanged += Present;
-        manager.BattlePreviewClosed += Hide;
-        Build();
-    }
-
-    private void OnDestroy()
-    {
-        ClearUnitViews();
-        if (manager == null) return;
-        manager.BattleStarted -= Present;
-        manager.BattleStateChanged -= Present;
-        manager.BattlePreviewClosed -= Hide;
-    }
-
-    public void SetOverlays(int selected, IEnumerable<int> moves, IEnumerable<int> attacks)
-    {
-        selectedCell = selected;
-        moveOverlay.Clear();
-        attackOverlay.Clear();
-        if (moves != null) foreach (int cell in moves) moveOverlay.Add(cell);
-        if (attacks != null) foreach (int cell in attacks) attackOverlay.Add(cell);
-        RefreshCells();
-    }
-
-    public void SetRichOverlays(Dictionary<int,CellOverlay> states)
-    { richOverlays.Clear(); if(states!=null)foreach(var pair in states)richOverlays[pair.Key]=pair.Value; RefreshCells(); }
+    public static BattlePresenter GetOrCreate(BattleManager manager){var p=manager.GetComponent<BattlePresenter>();return p!=null?p:manager.gameObject.AddComponent<BattlePresenter>();}
+    public void Bind(BattleManager battleManager){if(manager==battleManager)return;manager=battleManager;manager.BattleStarted+=Present;manager.BattleStateChanged+=Present;manager.BattlePreviewClosed+=Hide;manager.BattleActionPresented+=PresentAction;Build();}
+    private void OnDestroy(){ClearUnits();if(manager!=null){manager.BattleStarted-=Present;manager.BattleStateChanged-=Present;manager.BattlePreviewClosed-=Hide;manager.BattleActionPresented-=PresentAction;}}
+    public void CycleLayer(){visibleDomain=visibleDomain switch{null=>BattleDomain.Land,BattleDomain.Land=>BattleDomain.NavalSurface,BattleDomain.NavalSurface=>BattleDomain.Underwater,BattleDomain.Underwater=>BattleDomain.Air,BattleDomain.Air=>BattleDomain.Orbit,BattleDomain.Orbit=>BattleDomain.Space,_=>null};Refresh();}
+    public void AdjustZoom(float delta)=>manager?.AdjustTacticalCameraZoom(delta);
+    public BattleUnitState GetDisplayedUnitAtCell(int cell){var u=manager?.GetUnitAtCell(cell);return u!=null&&(!visibleDomain.HasValue||u.Domain==visibleDomain)?u:null;}
+    public Vector3 GetBattleCellWorldPosition(int cellIndex,BattleDomain domain,BattleDepthBand depth=BattleDepthBand.Surface){if(Layout==null)return Vector3.zero;var dummy=manager?.GetUnitAtCell(cellIndex);if(dummy!=null)return Layout.GetUnitPosition(manager.ActiveBattle,dummy);Vector3 p=Layout.GetCellCenter(cellIndex);p.y+=domain switch{BattleDomain.Underwater=>depth==BattleDepthBand.Deep?-.8f:-.35f,BattleDomain.Air=>2.2f,BattleDomain.Orbit=>4.2f,BattleDomain.Space=>.45f,_=>.12f};return p;}
+    public void SetOverlays(int selectedCell,IEnumerable<int> moveCells,IEnumerable<int> attackCells){selected=selectedCell;moves.Clear();attacks.Clear();if(moveCells!=null)foreach(int i in moveCells)moves.Add(i);if(attackCells!=null)foreach(int i in attackCells)attacks.Add(i);RefreshOverlays();}
+    public void SetRichOverlays(Dictionary<int,CellOverlay> states){overlays.Clear();if(states!=null)foreach(var p in states)overlays[p.Key]=p.Value;RefreshOverlays();}
 
     public void Present(BattleSession session)
     {
-        Build();
-        if (session == null) { Hide(); return; }
-        root.SetActive(true);
-        if (unitVisualRoot != null) unitVisualRoot.gameObject.SetActive(true);
-        EnsureBoard(session);
-        var canvas=root.GetComponent<Canvas>(); if(canvas!=null)canvas.worldCamera=manager.TacticalCamera;
-        Canvas.ForceUpdateCanvases();
-        RefreshCells();
-
-        int aliveA = 0, aliveD = 0;
-        for (int i = 0; i < session.Units.Count; i++)
-        {
-            var unit = session.Units[i];
-            if (unit == null || !unit.IsAliveAndActive) continue;
-            if (unit.Side == BattleSide.Attacker) aliveA++; else aliveD++;
-        }
-        summary.text = $"{session.Theater}  Round {session.CurrentRound}  {session.ActiveSide}\n" +
-            $"Attackers {aliveA}  Defenders {aliveD}  Objective C{session.Objective.CellIndex}";
+        Build();if(session==null){Hide();return;}root.SetActive(true);
+        if(battleId!=session.BattleId){ClearUnits();board.Build(session,manager?.ResolveCampaignBiomeVisuals(),manager?.TacticalBiomeVisuals);battleId=session.BattleId;manager?.FrameTacticalBattlefield(board.Layout.Bounds);}
+        Refresh();
     }
-
-    private void EnsureBoard(BattleSession session)
-    {
-        if (renderedCellCount == session.Map.CellCount) return;
-        for (int i = board.childCount - 1; i >= 0; i--) Destroy(board.GetChild(i).gameObject);
-        cellButtons.Clear();
-        renderedCellCount = session.Map.CellCount;
-        var grid = board.GetComponent<GridLayoutGroup>();
-        int columns = Mathf.Clamp(Mathf.CeilToInt(Mathf.Sqrt(renderedCellCount)), 4, 12);
-        float width = board.rect.width > 0 ? board.rect.width : 900f;
-        grid.cellSize = new Vector2(Mathf.Clamp((width - columns * 5f) / columns, 54f, 92f), 58f);
-        grid.constraintCount = columns;
-
-        for (int i = 0; i < renderedCellCount; i++)
-        {
-            int cellIndex = i;
-            var go = new GameObject($"Cell {i}", typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(board, false);
-            var button = go.GetComponent<Button>();
-            button.onClick.AddListener(() => CellClicked?.Invoke(cellIndex));
-            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            labelGo.transform.SetParent(go.transform, false);
-            var rect = labelGo.GetComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
-            var label = labelGo.GetComponent<TextMeshProUGUI>();
-            label.font = TMP_Settings.defaultFontAsset; label.fontSize = 11f; label.alignment = TextAlignmentOptions.Center;
-            cellButtons.Add(button);
-        }
-    }
-
-    private void RefreshCells()
-    {
-        var session = manager != null ? manager.ActiveBattle : null;
-        if (session == null || cellButtons.Count != session.Map.CellCount) return;
-        for (int i = 0; i < cellButtons.Count; i++)
-        {
-            var cell = session.Map.GetCell(i);
-            var unit = manager.GetUnitAtCell(i);
-            BattleDetectionLevel detection=unit!=null?manager.GetDetectionLevel(session.ActiveSide,unit):BattleDetectionLevel.Undetected;
-            bool showUnit=unit!=null&&(unit.Side==session.ActiveSide||detection>=BattleDetectionLevel.Detected);
-            var label = cellButtons[i].GetComponentInChildren<TextMeshProUGUI>();
-            var text = new StringBuilder();
-            text.Append('C').Append(i);
-            if (cell.IsObjective) text.Append(" ★");
-            if (cell.HasPort) text.Append(" ⚓"); else if (cell.HasBeach) text.Append(" ▱");
-            if(showUnit)
-            {
-                string unitName = unit.Snapshot?.UnitData?.unitName ?? $"Unit {unit.UnitId}";
-                int figures = unit.Snapshot != null ? Mathf.Max(1, unit.Snapshot.TacticalFigureCount) : 1;
-                text.Append('\n').Append(unit.Side == BattleSide.Attacker ? "A" : "D").Append('#').Append(unit.UnitId)
-                    .Append(' ').Append(unitName).Append(" x").Append(figures).Append(" HP ").Append(unit.CurrentHealth);
-            }
-            else if(unit!=null&&detection==BattleDetectionLevel.Suspected)text.Append("\n? CONTACT");
-            label.text = text.ToString();
-            label.color = Color.white;
-            Color color = cell.IsWater ? new Color(.10f, .28f, .42f, .95f) : new Color(.20f, .30f, .17f, .95f);
-            if (cell.DeploymentOwner.HasValue) color = cell.DeploymentOwner == BattleSide.Attacker ? new Color(.18f, .30f, .55f, .95f) : new Color(.50f, .22f, .18f, .95f);
-            if (moveOverlay.Contains(i)) color = new Color(.12f, .65f, .75f, .98f);
-            if (attackOverlay.Contains(i)) color = new Color(.82f, .18f, .12f, .98f);
-            if (selectedCell == i) color = new Color(.95f, .78f, .16f, 1f);
-            richOverlays.TryGetValue(i,out var overlay);
-            if((overlay&CellOverlay.Invalid)!=0)color=new Color(.28f,.08f,.08f,.9f);
-            if((overlay&CellOverlay.Reinforcement)!=0)color=new Color(.42f,.2f,.62f,.96f);
-            if((overlay&CellOverlay.RetreatExit)!=0)color=new Color(.2f,.7f,.3f,.98f);
-            if((overlay&CellOverlay.RetreatPath)!=0)color=new Color(.15f,.8f,.55f,.98f);
-            if((overlay&CellOverlay.Suspected)!=0)color=new Color(.65f,.5f,.12f,.98f);
-            if((overlay&CellOverlay.Detected)!=0)color=new Color(.8f,.35f,.1f,.98f);
-            if((overlay&CellOverlay.Identified)!=0)color=new Color(.8f,.1f,.1f,.98f);
-            if((overlay&CellOverlay.Objective)!=0)text.Append(" OBJ");
-            label.text=text.ToString();
-            cellButtons[i].GetComponent<Image>().color = color;
-            cellButtons[i].interactable = true;
-        }
-        SyncUnitViews(session);
-    }
-
-    private void SyncUnitViews(BattleSession session)
-    {
-        if (session == null || unitVisualRoot == null || cellButtons.Count != session.Map.CellCount)
-            return;
-
-        var liveIds = new HashSet<int>();
-        for (int i = 0; i < session.Units.Count; i++)
-        {
-            var unit = session.Units[i];
-            if (unit == null)
-                continue;
-
-            liveIds.Add(unit.UnitId);
-            if (!unitViews.TryGetValue(unit.UnitId, out var view) || view == null)
-            {
-                var viewObject = new GameObject($"Tactical Unit {unit.UnitId}");
-                viewObject.transform.SetParent(unitVisualRoot, false);
-                view = viewObject.AddComponent<BattleUnitView>();
-                view.Initialize(unit);
-                unitViews[unit.UnitId] = view;
-            }
-
-            bool hasCell = unit.CellIndex >= 0 && unit.CellIndex < cellButtons.Count;
-            BattleDetectionLevel detection = hasCell
-                ? manager.GetDetectionLevel(session.ActiveSide, unit)
-                : BattleDetectionLevel.Undetected;
-            bool detected = unit.Side == session.ActiveSide || detection >= BattleDetectionLevel.Detected;
-            bool layerVisible = !visibleDomain.HasValue || unit.Domain == visibleDomain.Value;
-            bool visible = hasCell && unit.IsAliveAndActive && detected && layerVisible;
-            Vector3 position = hasCell ? GetCellWorldPosition(unit.CellIndex, unit.Domain) : Vector3.zero;
-            view.Sync(unit, position, visible, selectedCell == unit.CellIndex);
-        }
-
-        var staleIds = new List<int>();
-        foreach (var pair in unitViews)
-            if (!liveIds.Contains(pair.Key))
-                staleIds.Add(pair.Key);
-        for (int i = 0; i < staleIds.Count; i++)
-        {
-            int id = staleIds[i];
-            if (unitViews.TryGetValue(id, out var staleView) && staleView != null)
-                Destroy(staleView.gameObject);
-            unitViews.Remove(id);
-        }
-    }
-
-    private Vector3 GetCellWorldPosition(int cellIndex, BattleDomain domain)
-    {
-        var rect = cellButtons[cellIndex].transform as RectTransform;
-        Vector3 position = rect != null ? rect.TransformPoint(rect.rect.center) : cellButtons[cellIndex].transform.position;
-        float height = domain switch
-        {
-            BattleDomain.Underwater => 0.08f,
-            BattleDomain.Air => 0.65f,
-            BattleDomain.Orbit => 0.95f,
-            BattleDomain.Space => 0.45f,
-            _ => 0.14f,
-        };
-        return position + Vector3.up * height;
-    }
-
-    private void ClearUnitViews()
-    {
-        foreach (var pair in unitViews)
-            if (pair.Value != null)
-                Destroy(pair.Value.gameObject);
-        unitViews.Clear();
-    }
-
-    private void Hide()
-    {
-        ClearUnitViews();
-        if (unitVisualRoot != null) unitVisualRoot.gameObject.SetActive(false);
-        if (root != null) root.SetActive(false);
-    }
-
-    private void Build()
-    {
-        if (root != null) return;
-        root = new GameObject("Battle Tactical Board", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.WorldSpace; canvas.sortingOrder = 505;
-        var rootRect=root.GetComponent<RectTransform>(); rootRect.sizeDelta=new Vector2(1000f,800f);
-        root.transform.SetPositionAndRotation(Vector3.zero,Quaternion.Euler(90f,0f,0f)); root.transform.localScale=Vector3.one*.012f;
-        var scaler = root.GetComponent<CanvasScaler>(); scaler.dynamicPixelsPerUnit=12f;
-        var panel = new GameObject("Board Panel", typeof(RectTransform), typeof(Image)); panel.transform.SetParent(root.transform, false);
-        var panelRect = panel.GetComponent<RectTransform>(); panelRect.anchorMin = new Vector2(.22f, .08f); panelRect.anchorMax = new Vector2(.98f, .92f); panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
-        panel.GetComponent<Image>().color = new Color(.035f, .045f, .06f, .96f);
-        var summaryGo = new GameObject("Summary", typeof(RectTransform), typeof(TextMeshProUGUI)); summaryGo.transform.SetParent(panel.transform, false);
-        var summaryRect = summaryGo.GetComponent<RectTransform>(); summaryRect.anchorMin = new Vector2(0, 1); summaryRect.anchorMax = Vector2.one; summaryRect.pivot = new Vector2(.5f, 1); summaryRect.sizeDelta = new Vector2(0, 52); summaryRect.anchoredPosition = Vector2.zero;
-        summary = summaryGo.GetComponent<TextMeshProUGUI>(); summary.font = TMP_Settings.defaultFontAsset; summary.fontSize = 16; summary.color = Color.white; summary.alignment = TextAlignmentOptions.Center;
-        var boardGo = new GameObject("Cells", typeof(RectTransform), typeof(GridLayoutGroup)); boardGo.transform.SetParent(panel.transform, false);
-        board = boardGo.GetComponent<RectTransform>(); board.anchorMin = Vector2.zero; board.anchorMax = Vector2.one; board.offsetMin = new Vector2(18, 18); board.offsetMax = new Vector2(-18, -58);
-        var grid = boardGo.GetComponent<GridLayoutGroup>(); grid.spacing = new Vector2(5, 5); grid.childAlignment = TextAnchor.MiddleCenter; grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 8;
-        unitVisualRoot = new GameObject("Tactical Unit Visuals").transform;
-        unitVisualRoot.SetParent(transform, false);
-        unitVisualRoot.gameObject.SetActive(false);
-        root.SetActive(false);
-    }
+    private void Refresh(){var session=manager?.ActiveBattle;if(session==null||Layout==null)return;RefreshOverlays();var live=new HashSet<int>();
+        foreach(var unit in session.Units){if(unit==null)continue;live.Add(unit.UnitId);if(!unitViews.TryGetValue(unit.UnitId,out var view)||view==null){var go=new GameObject($"Tactical Unit {unit.UnitId}");go.transform.SetParent(unitsRoot,false);view=go.AddComponent<BattleUnitView>();view.Initialize(unit);unitViews[unit.UnitId]=view;}
+            bool inCell=unit.CellIndex>=0&&unit.CellIndex<session.Map.CellCount;var detection=inCell?manager.GetDetectionLevel(session.ActiveSide,unit):BattleDetectionLevel.Undetected;bool visible=inCell&&unit.IsAliveAndActive&&(unit.Side==session.ActiveSide||detection>=BattleDetectionLevel.Detected)&&(!visibleDomain.HasValue||unit.Domain==visibleDomain);view.Sync(unit,inCell?Layout.GetUnitPosition(session,unit):Vector3.zero,visible,selected==unit.CellIndex);}
+        var stale=new List<int>();foreach(var p in unitViews)if(!live.Contains(p.Key))stale.Add(p.Key);foreach(int id in stale){if(unitViews[id]!=null)Destroy(unitViews[id].gameObject);unitViews.Remove(id);}}
+    private void RefreshOverlays(){var session=manager?.ActiveBattle;if(session==null||board==null)return;for(int i=0;i<session.Map.CellCount;i++){overlays.TryGetValue(i,out var state);if(moves.Contains(i))state|=CellOverlay.Move;if(attacks.Contains(i))state|=CellOverlay.Attack;board.SetOverlay(i,state,i==selected);}}
+    private void PresentAction(BattlePresentationEvent action){if(action==null||Layout==null)return;if(action.Type==BattlePresentationEventType.Move||action.Type==BattlePresentationEventType.Retreat){if(unitViews.TryGetValue(action.UnitId,out var moving)){var points=new List<Vector3>();var state=manager.GetBattleUnit(action.UnitId);foreach(int cell in action.Path)points.Add(GetBattleCellWorldPosition(cell,state?.Domain??BattleDomain.Land,state?.DepthBand??BattleDepthBand.Surface));StartCoroutine(moving.Traverse(points,6f));}}else if(action.Type==BattlePresentationEventType.Attack)StartCoroutine(PlayAttack(action));else if(action.Type==BattlePresentationEventType.Defend&&unitViews.TryGetValue(action.UnitId,out var defending))defending.SetFortified(true);}
+    private System.Collections.IEnumerator PlayAttack(BattlePresentationEvent action){if(!unitViews.TryGetValue(action.UnitId,out var attacker))yield break;unitViews.TryGetValue(action.TargetUnitId,out var defender);Vector3 target=Layout.GetCellCenter(action.TargetCell);attacker.Face(target);attacker.PlayAttack();yield return new WaitForSecondsRealtime(.28f);if(action.IsRanged)yield return StartCoroutine(PlayTracer(attacker.transform.position+Vector3.up*.35f,target+Vector3.up*.3f));if(defender!=null){if(action.Died)defender.PlayDeath();else defender.PlayHit();}yield return new WaitForSecondsRealtime(action.Died ? .8f : .3f);}
+    private System.Collections.IEnumerator PlayTracer(Vector3 from,Vector3 to){var tracer=GameObject.CreatePrimitive(PrimitiveType.Sphere);tracer.name="Presentation-only projectile";tracer.transform.localScale=Vector3.one*.12f;var c=tracer.GetComponent<Collider>();if(c!=null)Destroy(c);float t=0f;while(t<1f){t+=Time.unscaledDeltaTime*5f;Vector3 p=Vector3.Lerp(from,to,t);p.y+=Mathf.Sin(Mathf.Clamp01(t)*Mathf.PI)*.8f;tracer.transform.position=p;yield return null;}Destroy(tracer);}
+    private void Build(){if(root!=null)return;root=new GameObject("Tactical Battlefield");root.transform.SetParent(transform,false);board=new GameObject("Hex Board").AddComponent<BattleBoardView>();board.transform.SetParent(root.transform,false);board.CellClicked+=i=>CellClicked?.Invoke(i);unitsRoot=new GameObject("Tactical Unit Visuals").transform;unitsRoot.SetParent(root.transform,false);root.SetActive(false);}
+    private void ClearUnits(){foreach(var p in unitViews)if(p.Value!=null)Destroy(p.Value.gameObject);unitViews.Clear();}
+    private void Hide(){ClearUnits();if(board!=null)board.Clear();battleId=-1;if(root!=null)root.SetActive(false);}
 }

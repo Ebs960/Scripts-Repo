@@ -11,7 +11,6 @@ public sealed class BattleHUD : MonoBehaviour
     private TextMeshProUGUI status;
     private TextMeshProUGUI selected;
     private TextMeshProUGUI unitSelector;
-    private TMP_InputField cellInput;
     private TextMeshProUGUI targetSelector;
     private int selectedUnitId = -1;
     private int selectedUnitIndex;
@@ -94,7 +93,7 @@ public sealed class BattleHUD : MonoBehaviour
         CreateButton(panel.transform, "Layer", new Vector2(268f, -250f), CycleLayer, 96f);
         CreateButton(panel.transform, "Zoom +", new Vector2(268f, -285f), ZoomIn, 46f);
         CreateButton(panel.transform, "Zoom -", new Vector2(318f, -285f), ZoomOut, 46f);
-        cellInput = CreateInput(panel.transform, "Cell", new Vector2(16f, -375f));
+        // Direct cell entry was a development aid. Battlefield actions are mouse-driven.
 
         meleeAttackButton = CreateButton(panel.transform, "Melee", new Vector2(16f, -420f), SetMeleeMode, 96f);
         rangedAttackButton = CreateButton(panel.transform, "Ranged", new Vector2(122f, -420f), SetRangedMode, 96f);
@@ -198,6 +197,7 @@ public sealed class BattleHUD : MonoBehaviour
         int count = unit?.Snapshot?.Weapons?.Count ?? 0;
         if (count == 0) return;
         selectedWeaponIndex = (selectedWeaponIndex + 1) % count;
+        manager?.TacticalInput?.SetAttackSelection(selectedWeaponIndex,selectedAttackMode==AttackMode.Special);
         ShowSelected();
         RefreshBoardOverlays();
     }
@@ -223,6 +223,7 @@ public sealed class BattleHUD : MonoBehaviour
     private void ApplyAttackModeSelection()
     {
         var unit = FindSelectedUnit();
+        manager?.TacticalInput?.SetAttackSelection(selectedWeaponIndex,selectedAttackMode==AttackMode.Special);
         if (unit != null)
             selectedWeaponIndex = ResolveWeaponIndexForMode(unit, selectedAttackMode);
         UpdateAttackModeButtons();
@@ -434,25 +435,14 @@ public sealed class BattleHUD : MonoBehaviour
 
     private void Move()
     {
-        if (int.TryParse(cellInput.text, out int cell))
-            Submit(manager.TryMoveUnit(selectedUnitId, cell, out string reason), reason);
-        else Notify("Enter a destination cell index.");
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Movement);
+        Notify("Select a highlighted destination hex.");
     }
 
     private void Attack()
     {
-        var targets = manager?.GetVisibleEnemyUnits(selectedUnitId);
-        if (targets == null || selectedTargetIndex < 0 || selectedTargetIndex >= targets.Count) { Notify("Select a detected target."); return; }
-        var unit = FindSelectedUnit();
-        if (selectedAttackMode == AttackMode.Special && unit?.Snapshot?.SpecialAttackProfile != null)
-        {
-            var profile = unit.Snapshot.SpecialAttackProfile;
-            string attackReason;
-            Submit(manager.TryAttackUnitWithProfile(selectedUnitId, targets[selectedTargetIndex].UnitId, profile, out attackReason), attackReason);
-            return;
-        }
-        string weaponReason;
-        Submit(manager.TryAttackUnitWithWeapon(selectedUnitId, targets[selectedTargetIndex].UnitId, selectedWeaponIndex, out weaponReason), weaponReason);
+        manager?.TacticalInput?.SetMode(BattleInteractionMode.Attack);
+        Notify("Select a highlighted detected target.");
     }
 
     private void Defend() { Submit(manager.TryDefendUnit(selectedUnitId, out string reason), reason); }

@@ -4,6 +4,9 @@ using UnityEngine;
 
 public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 {
+    [Header("Tactical Environment")]
+    [SerializeField] private BiomeVisualDatabase campaignBiomeVisuals;
+    [SerializeField] private BattleBiomeVisualDatabase tacticalBiomeVisuals;
     [Serializable]
     private sealed class BattleSaveMarker
     {
@@ -73,7 +76,16 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public EngagementPreview PendingPreview => pendingPreview;
     public BattleResult PendingResult => pendingResult;
     public BattleInputController TacticalInput => battleInput;
+    public BiomeVisualDatabase CampaignBiomeVisuals=>campaignBiomeVisuals;
+    public BattleBiomeVisualDatabase TacticalBiomeVisuals=>tacticalBiomeVisuals;
+    public void FrameTacticalBattlefield(Bounds bounds) => battleCamera?.FocusBounds(bounds);
     public Camera TacticalCamera => battleCamera?.TacticalCamera;
+    public BiomeVisualDatabase ResolveCampaignBiomeVisuals()
+    {
+        if(campaignBiomeVisuals!=null)return campaignBiomeVisuals;
+        var chunks=FindAnyObjectByType<HexMapChunkManager>();
+        return chunks!=null?chunks.BiomeVisuals:null;
+    }
 
     public string SaveKey => "BattleManager";
 
@@ -95,6 +107,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public event Action<BattleSession> BattleStarted;
     public event Action<BattleSession> BattleStateChanged;
     public event Action<BattleResult> BattleResolved;
+    public event Action<BattlePresentationEvent> BattleActionPresented;
 
     private void Awake()
     {
@@ -109,6 +122,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         if (ruleset == null)
             ruleset = ScriptableObject.CreateInstance<BattleRuleset>();
+        if(tacticalBiomeVisuals==null)
+            tacticalBiomeVisuals=Resources.Load<BattleBiomeVisualDatabase>("Battle Biome Visual Database");
 
         participantCollector = new BattleParticipantCollector(ruleset);
         mapBuilder = new BattleMapBuilder(ruleset);
@@ -814,14 +829,33 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         var commandedUnit = command != null ? FindUnit(command.UnitId) : null;
         if (commandedUnit == null || commandedUnit.Side != ActiveBattle.ActiveSide)
         { reason = "unit is not controlled by the active side"; return false; }
+        var presentation = CapturePresentationBefore(command);
         bool ok = ActiveBattleState.CommandExecutor.Execute(ActiveBattle, ActiveBattleState.Occupancy, command, out reason);
         if (ok)
         {
             ActiveBattleState.ActionLog.Add(BattleCommandLog.Format(ActiveBattle, command));
             ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command));
+            CompletePresentation(presentation, command);
+            BattleActionPresented?.Invoke(presentation);
             NotifyBattleStateChanged();
         }
         return ok;
+    }
+
+    private BattlePresentationEvent CapturePresentationBefore(BattleCommand command)
+    {
+        var unit=FindUnit(command.UnitId);var e=new BattlePresentationEvent{UnitId=command.UnitId,SourceCell=unit?.CellIndex??-1,HealthBefore=unit?.CurrentHealth??0};
+        if(command is BattleMoveCommand move){e.Type=BattlePresentationEventType.Move;if(move.Path!=null)e.Path.AddRange(move.Path);}
+        else if(command is BattleRetreatCommand retreat){e.Type=BattlePresentationEventType.Retreat;if(retreat.Route!=null)e.Path.AddRange(retreat.Route);e.TargetCell=retreat.ExitCell;}
+        else if(command is BattleAttackCommand attack){var target=FindUnit(attack.TargetUnitId);e.Type=BattlePresentationEventType.Attack;e.TargetUnitId=attack.TargetUnitId;e.TargetCell=target?.CellIndex??-1;e.HealthBefore=target?.CurrentHealth??0;e.WeaponIndex=attack.WeaponIndex;e.IsRanged=attack.IsRanged;e.IsSpecial=attack.IsSpecialAttack;}
+        else if(command is BattleDefendCommand)e.Type=BattlePresentationEventType.Defend;else if(command is BattleEmbarkCommand)e.Type=BattlePresentationEventType.Embark;else if(command is BattleDisembarkCommand)e.Type=BattlePresentationEventType.Disembark;else if(command is BattleLaunchAircraftCommand)e.Type=BattlePresentationEventType.Launch;else if(command is BattleRecoverAircraftCommand)e.Type=BattlePresentationEventType.Recover;else if(command is BattleChangeDepthCommand)e.Type=BattlePresentationEventType.DepthChange;else if(command is BattleActiveDetectionCommand)e.Type=BattlePresentationEventType.DetectionChange;
+        return e;
+    }
+    private void CompletePresentation(BattlePresentationEvent e,BattleCommand command)
+    {
+        var unit=FindUnit(e.UnitId);if(e.Path.Count>0)e.TargetCell=e.Path[e.Path.Count-1];
+        if(command is BattleAttackCommand){var target=FindUnit(e.TargetUnitId);e.HealthAfter=target?.CurrentHealth??0;e.Damage=Mathf.Max(0,e.HealthBefore-e.HealthAfter);e.Died=target==null||target.IsDead;}
+        else e.HealthAfter=unit?.CurrentHealth??0;
     }
 
     public void EndPlayerSideTurn()
@@ -837,7 +871,13 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     {
         if (ActiveBattleState == null) return;
         ActiveBattleState.AiController.ExecuteSide(ActiveBattle, ActiveBattleState.CommandExecutor, ActiveBattleState.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out _,
-            command => ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command)));
+            command =>
+            {
+                ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command));
+                var presentation=CapturePresentationBefore(command);
+                CompletePresentation(presentation,command);
+                BattleActionPresented?.Invoke(presentation);
+            });
         NotifyBattleStateChanged();
     }
 
