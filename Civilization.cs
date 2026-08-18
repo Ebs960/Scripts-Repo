@@ -102,6 +102,8 @@ public class Civilization : MonoBehaviour
     {
         if (unit == null) return;
         combatUnits.Add(unit);
+        CampaignArmyService.EnsureArmyIdentity(unit);
+        CampaignArmyService.RefreshPresentation(unit);
         OnUnitTrained?.Invoke(this, unit.data);
     }
 
@@ -834,13 +836,13 @@ public class Civilization : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the maximum number of units that can share a single tile for this civ.
-    /// Default is 1 (no stacking). Techs with unlocksUnitStacking raise this to 2 or 3.
+    /// Returns the maximum number of units that can belong to one campaign army.
+    /// Technologies can raise the default Humankind-style army capacity.
     /// </summary>
-    public int GetMaxStackSize()
+    public int GetMaxArmySize()
     {
-        if (researchedTechs == null || researchedTechs.Count == 0) return 1;
-        int max = 1;
+        int max = CampaignArmyService.DefaultArmySize;
+        if (researchedTechs == null || researchedTechs.Count == 0) return max;
         foreach (var tech in researchedTechs)
         {
             if (tech != null && tech.unlocksUnitStacking)
@@ -848,6 +850,9 @@ public class Civilization : MonoBehaviour
         }
         return max;
     }
+
+    [System.Obsolete("Campaign unit stacking was replaced by army capacity. Use GetMaxArmySize().")]
+    public int GetMaxStackSize() => 1;
     
 
     // Increase the number of governors this civ can create

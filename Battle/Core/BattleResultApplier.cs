@@ -59,6 +59,10 @@ public sealed class BattleResultApplier
 
             TryRepositionSurvivor(result, preview, cargo, outcome);
         }
+
+        foreach (var unit in byId.Values)
+            if (unit != null && unit.currentHealth > 0)
+                CampaignArmyService.RefreshPresentation(unit);
         result.CampaignApplied = true;
     }
 

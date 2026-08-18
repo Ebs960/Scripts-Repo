@@ -185,10 +185,22 @@ public class MilitaryPanel : MonoBehaviour
         if (nameText != null) nameText.text = formation.FormationName;
 
         var typeText = entry.transform.Find("Type")?.GetComponent<TMP_Text>();
-        if (typeText != null) typeText.text = formation.FormationType.ToString();
+        var representative = formation.Members != null && formation.Members.Count > 0
+            ? CampaignArmyService.GetRepresentative(formation.Members[0])
+            : null;
+        if (typeText != null)
+        {
+            typeText.text = representative != null
+                ? $"{formation.FormationType}  |  Tile {representative.currentTileIndex}"
+                : formation.FormationType.ToString();
+        }
 
         var unitCountText = entry.transform.Find("UnitCount")?.GetComponent<TMP_Text>();
-        if (unitCountText != null) unitCountText.text = $"{formation.Members.Count} unit(s)";
+        if (unitCountText != null)
+        {
+            int capacity = currentCiv != null ? currentCiv.GetMaxArmySize() : formation.Members.Count;
+            unitCountText.text = $"{formation.Members.Count}/{capacity} units";
+        }
 
         var commandersText = entry.transform.Find("Commanders")?.GetComponent<TMP_Text>();
         if (commandersText != null) commandersText.text = BuildCommandersSummary(formation.Commanders);

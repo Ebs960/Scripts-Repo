@@ -257,6 +257,10 @@ public class PauseMenuManager : MonoBehaviour
         public List<int> queuedSpacePath = new List<int>();
         public int queuedSpacePathCursor;
         public int spaceFleetId;
+        public string militaryFormationId;
+        public int militaryFormationType;
+        public string militaryFormationName;
+        public int armyOrder;
         public float posX, posY, posZ;
         public List<string> storedMissileNames = new List<string>(); // missile inventory
     }

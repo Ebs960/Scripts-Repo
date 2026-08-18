@@ -50,6 +50,8 @@ public sealed class BattleCampaignPlacementService : IBattleCampaignPlacementSer
         if (!UnitLayerRules.CanUnitUseTileOnLayer(unit, tile, request.Layer))
             return false;
 
+        bool isRepresentative = CampaignArmyService.IsRepresentative(unit);
+
         var previousOccupancy = TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance;
         int previousPlanet = unit.planetIndex;
         int previousTile = unit.currentTileIndex;
@@ -60,12 +62,13 @@ public sealed class BattleCampaignPlacementService : IBattleCampaignPlacementSer
         if (occupancy != previousOccupancy || request.CampaignTileIndex != previousTile)
             ClearUnitFromAllLayers(occupancy, request.CampaignTileIndex, runtimeId);
 
-        int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
-        int stackSlot = occupancy.TryAddToStack(request.CampaignTileIndex, request.Layer, unit.gameObject, maxStack);
-        if (stackSlot < 0)
+        int stackSlot = isRepresentative
+            ? occupancy.TryAddToStack(request.CampaignTileIndex, request.Layer, unit.gameObject, 1)
+            : unit.stackSlot;
+        if (isRepresentative && stackSlot < 0)
         {
             if (previousOccupancy != null && previousTile >= 0)
-                previousOccupancy.TryAddToStack(previousTile, previousLayer, unit.gameObject, maxStack);
+                previousOccupancy.TryAddToStack(previousTile, previousLayer, unit.gameObject, 1);
             return false;
         }
 
@@ -75,6 +78,7 @@ public sealed class BattleCampaignPlacementService : IBattleCampaignPlacementSer
         unit.currentLayer = request.Layer;
         unit.stackSlot = stackSlot;
         PositionUnitForLayer(unit, ts, request.CampaignTileIndex, request.Layer);
+        CampaignArmyService.RefreshPresentation(unit);
 
         result = new BattleCampaignPlacementResult
         {

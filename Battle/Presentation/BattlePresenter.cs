@@ -13,7 +13,9 @@ public sealed class BattlePresenter : MonoBehaviour
     private GameObject root;
     private TextMeshProUGUI summary;
     private RectTransform board;
+    private Transform unitVisualRoot;
     private readonly List<Button> cellButtons = new();
+    private readonly Dictionary<int, BattleUnitView> unitViews = new();
     private readonly HashSet<int> moveOverlay = new();
     private readonly HashSet<int> attackOverlay = new();
     private readonly Dictionary<int,CellOverlay> richOverlays=new();
@@ -68,6 +70,7 @@ public sealed class BattlePresenter : MonoBehaviour
 
     private void OnDestroy()
     {
+        ClearUnitViews();
         if (manager == null) return;
         manager.BattleStarted -= Present;
         manager.BattleStateChanged -= Present;
@@ -91,8 +94,11 @@ public sealed class BattlePresenter : MonoBehaviour
     {
         Build();
         if (session == null) { Hide(); return; }
+        root.SetActive(true);
+        if (unitVisualRoot != null) unitVisualRoot.gameObject.SetActive(true);
         EnsureBoard(session);
         var canvas=root.GetComponent<Canvas>(); if(canvas!=null)canvas.worldCamera=manager.TacticalCamera;
+        Canvas.ForceUpdateCanvases();
         RefreshCells();
 
         int aliveA = 0, aliveD = 0;
@@ -104,7 +110,6 @@ public sealed class BattlePresenter : MonoBehaviour
         }
         summary.text = $"{session.Theater}  Round {session.CurrentRound}  {session.ActiveSide}\n" +
             $"Attackers {aliveA}  Defenders {aliveD}  Objective C{session.Objective.CellIndex}";
-        root.SetActive(true);
     }
 
     private void EnsureBoard(BattleSession session)
@@ -151,7 +156,13 @@ public sealed class BattlePresenter : MonoBehaviour
             text.Append('C').Append(i);
             if (cell.IsObjective) text.Append(" ★");
             if (cell.HasPort) text.Append(" ⚓"); else if (cell.HasBeach) text.Append(" ▱");
-            if(showUnit) text.Append('\n').Append(unit.Side == BattleSide.Attacker ? "A" : "D").Append('#').Append(unit.UnitId).Append(" ").Append(unit.CurrentHealth);
+            if(showUnit)
+            {
+                string unitName = unit.Snapshot?.UnitData?.unitName ?? $"Unit {unit.UnitId}";
+                int figures = unit.Snapshot != null ? Mathf.Max(1, unit.Snapshot.TacticalFigureCount) : 1;
+                text.Append('\n').Append(unit.Side == BattleSide.Attacker ? "A" : "D").Append('#').Append(unit.UnitId)
+                    .Append(' ').Append(unitName).Append(" x").Append(figures).Append(" HP ").Append(unit.CurrentHealth);
+            }
             else if(unit!=null&&detection==BattleDetectionLevel.Suspected)text.Append("\n? CONTACT");
             label.text = text.ToString();
             label.color = Color.white;
@@ -173,9 +184,84 @@ public sealed class BattlePresenter : MonoBehaviour
             cellButtons[i].GetComponent<Image>().color = color;
             cellButtons[i].interactable = true;
         }
+        SyncUnitViews(session);
     }
 
-    private void Hide() { if (root != null) root.SetActive(false); }
+    private void SyncUnitViews(BattleSession session)
+    {
+        if (session == null || unitVisualRoot == null || cellButtons.Count != session.Map.CellCount)
+            return;
+
+        var liveIds = new HashSet<int>();
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var unit = session.Units[i];
+            if (unit == null)
+                continue;
+
+            liveIds.Add(unit.UnitId);
+            if (!unitViews.TryGetValue(unit.UnitId, out var view) || view == null)
+            {
+                var viewObject = new GameObject($"Tactical Unit {unit.UnitId}");
+                viewObject.transform.SetParent(unitVisualRoot, false);
+                view = viewObject.AddComponent<BattleUnitView>();
+                view.Initialize(unit);
+                unitViews[unit.UnitId] = view;
+            }
+
+            bool hasCell = unit.CellIndex >= 0 && unit.CellIndex < cellButtons.Count;
+            BattleDetectionLevel detection = hasCell
+                ? manager.GetDetectionLevel(session.ActiveSide, unit)
+                : BattleDetectionLevel.Undetected;
+            bool detected = unit.Side == session.ActiveSide || detection >= BattleDetectionLevel.Detected;
+            bool layerVisible = !visibleDomain.HasValue || unit.Domain == visibleDomain.Value;
+            bool visible = hasCell && unit.IsAliveAndActive && detected && layerVisible;
+            Vector3 position = hasCell ? GetCellWorldPosition(unit.CellIndex, unit.Domain) : Vector3.zero;
+            view.Sync(unit, position, visible, selectedCell == unit.CellIndex);
+        }
+
+        var staleIds = new List<int>();
+        foreach (var pair in unitViews)
+            if (!liveIds.Contains(pair.Key))
+                staleIds.Add(pair.Key);
+        for (int i = 0; i < staleIds.Count; i++)
+        {
+            int id = staleIds[i];
+            if (unitViews.TryGetValue(id, out var staleView) && staleView != null)
+                Destroy(staleView.gameObject);
+            unitViews.Remove(id);
+        }
+    }
+
+    private Vector3 GetCellWorldPosition(int cellIndex, BattleDomain domain)
+    {
+        var rect = cellButtons[cellIndex].transform as RectTransform;
+        Vector3 position = rect != null ? rect.TransformPoint(rect.rect.center) : cellButtons[cellIndex].transform.position;
+        float height = domain switch
+        {
+            BattleDomain.Underwater => 0.08f,
+            BattleDomain.Air => 0.65f,
+            BattleDomain.Orbit => 0.95f,
+            BattleDomain.Space => 0.45f,
+            _ => 0.14f,
+        };
+        return position + Vector3.up * height;
+    }
+
+    private void ClearUnitViews()
+    {
+        foreach (var pair in unitViews)
+            if (pair.Value != null)
+                Destroy(pair.Value.gameObject);
+        unitViews.Clear();
+    }
+
+    private void Hide()
+    {
+        ClearUnitViews();
+        if (unitVisualRoot != null) unitVisualRoot.gameObject.SetActive(false);
+        if (root != null) root.SetActive(false);
+    }
 
     private void Build()
     {
@@ -194,6 +280,9 @@ public sealed class BattlePresenter : MonoBehaviour
         var boardGo = new GameObject("Cells", typeof(RectTransform), typeof(GridLayoutGroup)); boardGo.transform.SetParent(panel.transform, false);
         board = boardGo.GetComponent<RectTransform>(); board.anchorMin = Vector2.zero; board.anchorMax = Vector2.one; board.offsetMin = new Vector2(18, 18); board.offsetMax = new Vector2(-18, -58);
         var grid = boardGo.GetComponent<GridLayoutGroup>(); grid.spacing = new Vector2(5, 5); grid.childAlignment = TextAnchor.MiddleCenter; grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 8;
+        unitVisualRoot = new GameObject("Tactical Unit Visuals").transform;
+        unitVisualRoot.SetParent(transform, false);
+        unitVisualRoot.gameObject.SetActive(false);
         root.SetActive(false);
     }
 }

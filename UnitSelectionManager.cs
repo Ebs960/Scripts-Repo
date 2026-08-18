@@ -58,6 +58,7 @@ public class UnitSelectionManager : MonoBehaviour
     private bool isPreviewing = false;
     private int previewTargetTile = -1;
     private GameObject previewParent;
+    private TextMeshPro mergePreviewLabel;
     [Header("Debug & Safety")]
     [Tooltip("Enable verbose preview/debug logs for selection and path preview (dev only)")]
     [SerializeField] private bool previewDebug = true;
@@ -228,7 +229,7 @@ public class UnitSelectionManager : MonoBehaviour
                 SelectUnit(clickedUnit);
                 return true; // consumed
             }
-            // Same unit already selected — cycle stack if more than one unit here
+            // Same army already selected: cycle through its member units.
             var companions = selectedUnit.GetStackedUnits();
             if (companions.Count > 0)
             {
@@ -491,6 +492,18 @@ public class UnitSelectionManager : MonoBehaviour
             previewParent.transform.SetParent(transform);
             previewParent.transform.localPosition = Vector3.zero;
         }
+        if (mergePreviewLabel == null)
+        {
+            var labelObject = new GameObject("Army Merge Preview", typeof(TextMeshPro));
+            labelObject.transform.SetParent(previewParent.transform, false);
+            mergePreviewLabel = labelObject.GetComponent<TextMeshPro>();
+            mergePreviewLabel.font = TMP_Settings.defaultFontAsset;
+            mergePreviewLabel.fontSize = 2.4f;
+            mergePreviewLabel.fontStyle = FontStyles.Bold;
+            mergePreviewLabel.alignment = TextAlignmentOptions.Center;
+            mergePreviewLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            mergePreviewLabel.gameObject.SetActive(false);
+        }
     }
 
     private void UpdatePreviewVisuals()
@@ -523,6 +536,7 @@ public class UnitSelectionManager : MonoBehaviour
         {
             return;
         }
+        UpdateMergePreview(previewTargetTile, ts);
 
         System.Collections.Generic.List<int> previewPath = null;
         System.Collections.Generic.List<System.Collections.Generic.List<int>> segments = null;
@@ -861,7 +875,59 @@ public class UnitSelectionManager : MonoBehaviour
         foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
         foreach (var m in previewMarkers) if (m != null) m.SetActive(false);
         foreach (var lbl in previewMarkerLabels) if (lbl != null) lbl.gameObject.SetActive(false);
+        if (mergePreviewLabel != null) mergePreviewLabel.gameObject.SetActive(false);
         previewTargetTile = -1;
+    }
+
+    private void UpdateMergePreview(int tileIndex, TileSystem tileSystem)
+    {
+        if (mergePreviewLabel == null || selectedUnit is not CombatUnit selectedCombat
+            || !TryGetFriendlyArmyAtTile(tileIndex, selectedCombat, out var targetArmy))
+        {
+            if (mergePreviewLabel != null) mergePreviewLabel.gameObject.SetActive(false);
+            return;
+        }
+
+        int movingCount = CampaignArmyService.GetMembers(selectedCombat).Count;
+        int targetCount = CampaignArmyService.GetMembers(targetArmy).Count;
+        int capacity = selectedCombat.owner != null ? selectedCombat.owner.GetMaxArmySize() : targetCount;
+        bool valid = CampaignArmyService.CanMergeMemberCounts(targetCount, movingCount, capacity);
+        mergePreviewLabel.text = valid
+            ? $"MERGE  {targetCount} + {movingCount}  >  {targetCount + movingCount}/{capacity}"
+            : $"ARMY FULL  {targetCount + movingCount}/{capacity}";
+        mergePreviewLabel.color = valid
+            ? new Color(0.2f, 0.95f, 0.65f, 1f)
+            : new Color(1f, 0.32f, 0.18f, 1f);
+        mergePreviewLabel.transform.position = tileSystem.GetTileSurfacePosition(tileIndex) + Vector3.up * 2.2f;
+        var camera = mainCamera != null ? mainCamera : Camera.main;
+        if (camera != null) mergePreviewLabel.transform.rotation = camera.transform.rotation;
+        mergePreviewLabel.gameObject.SetActive(true);
+    }
+
+    private bool TryGetFriendlyArmyAtTile(int tileIndex, CombatUnit selectedCombat, out CombatUnit targetArmy)
+    {
+        targetArmy = null;
+        if (selectedCombat == null || tileIndex < 0)
+            return false;
+
+        var occupancy = TileOccupancyManager.GetForPlanet(selectedCombat.planetIndex) ?? TileOccupancyManager.Instance;
+        var objects = occupancy != null
+            ? occupancy.GetAllOccupantObjects(tileIndex, selectedCombat.currentLayer)
+            : null;
+        if (objects == null)
+            return false;
+
+        for (int i = 0; i < objects.Count; i++)
+        {
+            var candidate = objects[i] != null ? objects[i].GetComponent<CombatUnit>() : null;
+            if (candidate != null && candidate.owner == selectedCombat.owner
+                && candidate.MilitaryFormationId != selectedCombat.MilitaryFormationId)
+            {
+                targetArmy = CampaignArmyService.GetRepresentative(candidate);
+                return targetArmy != null;
+            }
+        }
+        return false;
     }
 
     /// <summary>
@@ -1389,6 +1455,20 @@ public class UnitSelectionManager : MonoBehaviour
         if (selectedUnit == null)
             return;
 
+        if (selectedUnit is CombatUnit selectedCombat
+            && TryGetFriendlyArmyAtTile(targetTileIndex, selectedCombat, out var friendlyArmy))
+        {
+            int movingCount = CampaignArmyService.GetMembers(selectedCombat).Count;
+            int targetCount = CampaignArmyService.GetMembers(friendlyArmy).Count;
+            int capacity = selectedCombat.owner != null ? selectedCombat.owner.GetMaxArmySize() : targetCount;
+            if (!CampaignArmyService.CanMergeMemberCounts(targetCount, movingCount, capacity))
+            {
+                UIManager.Instance?.ShowNotification(
+                    $"Cannot merge armies: {targetCount} + {movingCount} exceeds capacity {capacity}.");
+                return;
+            }
+        }
+
         // Check if there is an enemy unit on the target tile
         BaseUnit targetUnit = GetUnitOnTile(targetTileIndex);
         bool isEnemy = targetUnit != null && targetUnit.owner != selectedUnit.owner;
@@ -1644,7 +1724,7 @@ public class UnitSelectionManager : MonoBehaviour
         var nextUnit = allStacked[nextIdx];
 
         SelectUnit(nextUnit);
-        Debug.Log($"[USM] CycleStackedUnit: switched from {selectedUnit?.name} to {nextUnit.name} (slot {nextUnit.stackSlot})");
+        Debug.Log($"[USM] CycleArmyMember: switched from {selectedUnit?.name} to {nextUnit.name} (army order {nextUnit.stackSlot})");
     }
 
     /// <summary>

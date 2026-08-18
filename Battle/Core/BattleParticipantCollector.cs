@@ -57,11 +57,8 @@ public sealed class BattleParticipantCollector
         preview.AnchorTile = decision.Theater == BattleTheater.DeepSpace ? defender.currentSpaceTileIndex : defender.currentTileIndex;
         preview.RandomSeed = BattleSeedBuilder.Build(attacker, defender, decision, GameManager.Instance != null ? GameManager.Instance.currentTurn : 0);
 
-        var attackerUnits = CollectStackCombatUnits(attacker);
-        var defenderUnits = CollectStackCombatUnits(defender);
-
-        AssignFormationIdentity(attacker, attackerUnits);
-        AssignFormationIdentity(defender, defenderUnits);
+        var attackerUnits = CollectArmyCombatUnits(attacker);
+        var defenderUnits = CollectArmyCombatUnits(defender);
 
         AddSnapshots(attackerUnits, preview.AttackerUnits, preview.Theater);
         AddSnapshots(defenderUnits, preview.DefenderUnits, preview.Theater);
@@ -72,7 +69,7 @@ public sealed class BattleParticipantCollector
             return false;
         }
 
-        // Reinforcement support: find adjacent allied stacks and queue as reserve groups.
+        // Reinforcement support: find nearby allied armies and queue them as reserve groups.
         BuildReinforcements(preview, attacker.owner, defender.owner);
 
         preview.IsValid = true;
@@ -100,17 +97,13 @@ public sealed class BattleParticipantCollector
         }
     }
 
-    private static List<CombatUnit> CollectStackCombatUnits(CombatUnit root)
+    private static List<CombatUnit> CollectArmyCombatUnits(CombatUnit root)
     {
         var list = new List<CombatUnit>();
         var seen = new HashSet<CombatUnit>();
-        AddUnitAndCargo(root, list, seen);
-        var stacked = root.GetStackedUnits();
-        for (int i = 0; i < stacked.Count; i++)
-        {
-            if (stacked[i] is CombatUnit cu)
-                AddUnitAndCargo(cu, list, seen);
-        }
+        var members = CampaignArmyService.GetMembers(root);
+        for (int i = 0; i < members.Count; i++)
+            AddUnitAndCargo(members[i], list, seen);
 
         return list;
     }
@@ -367,30 +360,6 @@ public sealed class BattleParticipantCollector
             return hash;
         }
     }
-
-    private static void AssignFormationIdentity(CombatUnit root, List<CombatUnit> members)
-    {
-        if (root == null || members == null)
-            return;
-
-        string formationId = root.EnsureMilitaryFormationIdentity();
-        MilitaryFormationType formationType = ResolveFormationType(root);
-        for (int i = 0; i < members.Count; i++)
-        {
-            if (members[i] != null)
-                members[i].AssignMilitaryFormation(formationId, formationType, root.MilitaryFormationName);
-        }
-    }
-
-    private static MilitaryFormationType ResolveFormationType(CombatUnit unit) => BattleDomainResolver.Resolve(unit) switch
-    {
-        BattleDomain.NavalSurface => MilitaryFormationType.SurfaceFleet,
-        BattleDomain.Underwater => MilitaryFormationType.UnderwaterGroup,
-        BattleDomain.Air => MilitaryFormationType.AirWing,
-        BattleDomain.Orbit => MilitaryFormationType.OrbitalForce,
-        BattleDomain.Space => MilitaryFormationType.SpaceFleet,
-        _ => MilitaryFormationType.Army,
-    };
 
     private static void AddRuntimeIds(List<BattleUnitSnapshot> snapshots, HashSet<int> ids)
     {

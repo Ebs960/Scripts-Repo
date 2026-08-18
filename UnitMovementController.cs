@@ -468,6 +468,12 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
     public void IssueMove(BaseUnit unit, int targetTileIndex)
     {
         if (unit == null) return;
+        if (unit is CombatUnit selectedCombat)
+        {
+            var representative = CampaignArmyService.GetRepresentative(selectedCombat);
+            if (representative != null)
+                unit = representative;
+        }
 
         var fullPath = FindPath(unit.currentTileIndex, targetTileIndex, unit);
         if (fullPath == null || fullPath.Count == 0)
@@ -498,7 +504,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         unit.moveOrderPath = new List<int>(fullPath);
         unit.moveOrderNextStep = 0;
 
-        // Locked stack movement: share the same path with all stacked companions
+        // Army movement: share one path with every member.
         var stackCompanions = unit.GetStackedUnits();
         foreach (var comp in stackCompanions)
         {
@@ -541,7 +547,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         CombatUnit combatUnit = unit as CombatUnit;
         WorkerUnit workerUnit = unit as WorkerUnit;
 
-        // Gather stacked companions for locked movement
+        // Gather army members for locked movement.
         var stackCompanions = unit.GetStackedUnits();
         foreach (var comp in stackCompanions)
             StopMoveForUnit(comp);
@@ -593,26 +599,57 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                 break;
             }
 
-            // Stack-aware occupancy check
+            bool memberBlockedByTerrain = false;
+            foreach (var companion in stackCompanions)
+            {
+                if (!companion.CanReachTile(targetTile))
+                {
+                    memberBlockedByTerrain = true;
+                    break;
+                }
+            }
+            if (memberBlockedByTerrain)
+            {
+                orderCancelled = true;
+                breakReason = $"an army member cannot enter tile {targetTile} at step {stepIndex}";
+                break;
+            }
+
+            // Army-token occupancy check. Friendly armies can be entered only at the final
+            // destination and only when their combined rosters fit army capacity.
+            CombatUnit mergeTarget = null;
             if (occ != null)
             {
-                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
                 var allIds = occ.GetAllOccupantIds(targetTile, unit.currentLayer);
                 int selfId = unit.gameObject.GetRuntimeId();
                 bool blocked = false;
-                int othersCount = 0;
                 foreach (int occId in allIds)
                 {
                     if (occId == selfId) continue;
-                    othersCount++;
                     var obj = UnitRegistry.GetObject(occId);
                     if (obj == null) continue;
                     var other = obj.GetComponent<BaseUnit>();
                     if (other == null || other.owner != unit.owner) { blocked = true; break; }
+
+                    if (combatUnit != null && other is CombatUnit otherCombat
+                        && stepIndex == path.Count - 1
+                        && combatUnit.MilitaryFormationId != otherCombat.MilitaryFormationId)
+                    {
+                        int combined = CampaignArmyService.GetMembers(combatUnit).Count
+                            + CampaignArmyService.GetMembers(otherCombat).Count;
+                        if (combined <= combatUnit.owner.GetMaxArmySize())
+                        {
+                            mergeTarget = CampaignArmyService.GetRepresentative(otherCombat);
+                            continue;
+                        }
+                    }
+
+                    blocked = true;
+                    break;
                 }
-                if (blocked || othersCount >= maxStack)
+                if (blocked)
                 {
-                    breakReason = $"tile {targetTile} stack full or enemy present at step {stepIndex}";
+                    breakReason = $"tile {targetTile} occupied by another army or enemy at step {stepIndex}";
                     break;
                 }
             }
@@ -638,30 +675,13 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                 }
             }
 
-            // Stack-aware occupancy claim for lead unit
+            // Only the army representative claims campaign occupancy. When joining another
+            // army, its existing representative already owns the destination tile.
             int claimedSlot = -1;
-            if (occ != null)
-            {
-                int stackTotal = 1 + stackCompanions.Count;
-                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
-                maxStack = Mathf.Max(maxStack, stackTotal); // must accommodate the full stack
-                claimedSlot = occ.TryAddToStack(targetTile, unit.currentLayer, unit.gameObject, maxStack);
-            }
-            bool claimed = occ == null || claimedSlot >= 0;
+            if (occ != null && mergeTarget == null)
+                claimedSlot = occ.TryAddToStack(targetTile, unit.currentLayer, unit.gameObject, 1);
+            bool claimed = occ == null || mergeTarget != null || claimedSlot >= 0;
             if (claimed && claimedSlot >= 0) unit.stackSlot = claimedSlot;
-
-            // Claim slots for companions
-            if (claimed && occ != null)
-            {
-                int stackTotal = 1 + stackCompanions.Count;
-                int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
-                maxStack = Mathf.Max(maxStack, stackTotal);
-                foreach (var comp in stackCompanions)
-                {
-                    int compSlot = occ.TryAddToStack(targetTile, comp.currentLayer, comp.gameObject, maxStack);
-                    if (compSlot >= 0) comp.stackSlot = compSlot;
-                }
-            }
             if (!claimed)
             {
                 breakReason = $"TrySetOccupant failed at step {stepIndex} tile={targetTile}";
@@ -672,10 +692,6 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
             if (previousTile >= 0 && previousTile != targetTile)
             {
                 try { occ?.ClearOccupantById(previousTile, unit.currentLayer, unit.gameObject.GetRuntimeId()); } catch { }
-                foreach (var comp in stackCompanions)
-                {
-                    try { occ?.ClearOccupantById(previousTile, comp.currentLayer, comp.gameObject.GetRuntimeId()); } catch { }
-                }
             }
 
             unit.DeductMovePoints(movementCost);
@@ -685,6 +701,22 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
             {
                 comp.DeductMovePoints(movementCost);
                 comp.currentTileIndex = targetTile;
+            }
+
+            if (mergeTarget != null && combatUnit != null)
+            {
+                if (!CampaignArmyService.TryMerge(mergeTarget, combatUnit, out string mergeReason))
+                {
+                    breakReason = $"army merge failed: {mergeReason}";
+                    break;
+                }
+                if (combatUnit.owner == CivilizationManager.Instance?.playerCiv)
+                {
+                    int mergedCount = CampaignArmyService.GetMembers(mergeTarget).Count;
+                    int capacity = combatUnit.owner.GetMaxArmySize();
+                    UIManager.Instance?.ShowNotification($"Armies merged: {mergedCount}/{capacity} units.");
+                    UnitSelectionManager.Instance?.SelectUnit(mergeTarget);
+                }
             }
             previousTile = targetTile;
             stepIndex++;
@@ -747,8 +779,6 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         if (committedTiles.Count == 0) return;
 
         SyncUnitWrapRegistration(unit, committedTiles[committedTiles.Count - 1]);
-        foreach (var comp in stackCompanions)
-            SyncUnitWrapRegistration(comp, committedTiles[committedTiles.Count - 1]);
 
         // Raise per-step UnitMoved events
         for (int i = 0; i < committedTiles.Count; i++)
@@ -762,13 +792,6 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         var c = StartCoroutine(AnimateAlongPath(unit, committedTiles));
         try { _activeMoveCoroutines[unit.GetRuntimeId()] = c; } catch { }
 
-        // Animate stacked companions alongside lead unit
-        foreach (var comp in stackCompanions)
-        {
-            comp.UpdateWalkingState(true);
-            var cc = StartCoroutine(AnimateAlongPath(comp, committedTiles));
-            try { _activeMoveCoroutines[comp.GetRuntimeId()] = cc; } catch { }
-        }
     }
 
     /// <summary>

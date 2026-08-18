@@ -25,6 +25,10 @@ public sealed class BattleUnitSnapshot
 
     public readonly TacticalUnitProfile TacticalProfile;
     public readonly BattleDomain Domain;
+    public readonly int TacticalFigureCount;
+    public readonly FormationType TacticalFormationType;
+    public readonly float TacticalFormationSpacing;
+    public readonly SoldierVariant[] TacticalSoldierVariants;
     public readonly List<TacticalWeaponProfile> Weapons = new();
     public readonly BattleAttackProfile SpecialAttackProfile;
 
@@ -58,6 +62,10 @@ public sealed class BattleUnitSnapshot
 
         TacticalProfile = tacticalProfile;
         Domain = BattleDomainResolver.Resolve(source);
+        TacticalFigureCount = UnitData != null ? UnitData.GetSoldierCount(Owner) : 1;
+        TacticalFormationType = UnitData != null ? UnitData.GetFormationType(Owner) : FormationType.Square;
+        TacticalFormationSpacing = UnitData != null ? UnitData.GetFormationSpacing(Owner) : 0.5f;
+        TacticalSoldierVariants = UnitData != null ? UnitData.GetSoldierVariants(Owner) : null;
         TacticalMovePoints = tacticalMovePoints;
         SpecialAttackProfile = source?.data != null ? source.data.defaultSpecialAttackProfile : null;
         TacticalActionPoints = tacticalActionPoints;

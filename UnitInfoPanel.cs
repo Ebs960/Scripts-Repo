@@ -46,12 +46,13 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private TMP_Dropdown unitBuildDropdown; // separate dropdown specifically for unit builds
     
     [Header("Stack Controls")]
-    [SerializeField] private Button unstackButton; // Unstack this unit from its group (costs full turn)
-    [SerializeField] private TextMeshProUGUI stackInfoText; // Shows "Stack: 1/3 [Tab to cycle]"
+    [SerializeField] private Button unstackButton; // Split this member into a new army (costs full turn)
+    [SerializeField] private TextMeshProUGUI stackInfoText; // Shows army roster position and capacity
     [SerializeField] private StackOrderPanel stackOrderPanel; // Icon list for reordering the stack
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
+    private CampaignArmyPanel campaignArmyPanel;
     // Dropdown option data
     private struct BuildOption
     {
@@ -73,6 +74,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void Awake()
     {
+        campaignArmyPanel = CampaignArmyPanel.GetOrCreate(this);
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
 
@@ -131,13 +133,13 @@ public class UnitInfoPanel : MonoBehaviour
         }
         // Legacy unit-build button removed; unit builds go through startBuildButton
 
-        // Unstack button
+        // Split-army button (legacy serialized field name retained for prefab compatibility)
         if (unstackButton != null)
         {
             unstackButton.onClick.RemoveAllListeners();
             unstackButton.onClick.AddListener(OnUnstackClicked);
             unstackButton.gameObject.SetActive(false);
-            AddTooltipToButton(unstackButton, "Unstack", "Separate this unit from the stack to an adjacent tile. Costs the full turn.");
+            AddTooltipToButton(unstackButton, "Split Army", "Move this member into a new army on an adjacent tile. Costs the full turn.");
         }
 
         // Validate serialized fields at startup so missing inspector wiring is obvious in Console
@@ -263,10 +265,12 @@ public class UnitInfoPanel : MonoBehaviour
             currentWorkerUnit = null; // Ensure worker unit is cleared
             unitNameForLog = currentCombatUnit.data.unitName;
 PopulateForCombatUnit(currentCombatUnit);
+            campaignArmyPanel?.Show(currentCombatUnit);
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
         }
         else if (unitObject is WorkerUnit workerUnit)
         {
+            campaignArmyPanel?.Hide();
             currentWorkerUnit = workerUnit;
             currentCombatUnit = null; // Ensure combat unit is cleared
             unitNameForLog = currentWorkerUnit.data.unitName;
@@ -389,6 +393,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (unstackButton != null) unstackButton.gameObject.SetActive(false);
         if (stackInfoText != null) stackInfoText.gameObject.SetActive(false);
         stackOrderPanel?.Refresh(null);
+        campaignArmyPanel?.Hide();
 
         // Clear unit references
         currentCombatUnit = null;
@@ -601,6 +606,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         UpdateUpgradeActionState(currentCombatUnit);
         UpdateFortifyActionState(currentCombatUnit);
         UpdateStackInfo(currentCombatUnit);
+        campaignArmyPanel?.Show(currentCombatUnit);
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -727,7 +733,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         if (unit.Unstack())
         {
-            // Refresh panel after unstack
+            // Refresh panel after splitting the selected member into a new army.
             if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
             else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
             UpdateStackInfo(unit);
@@ -738,12 +744,12 @@ PopulateForWorkerUnit(currentWorkerUnit);
         else
         {
             if (UIManager.Instance != null)
-                UIManager.Instance.ShowNotification("Cannot unstack: no adjacent empty tile.");
+                UIManager.Instance.ShowNotification("Cannot split army: select a non-representative member and ensure an adjacent tile is free.");
         }
     }
 
     /// <summary>
-    /// Update the stack position indicator and unstack button visibility.
+    /// Update the army roster indicator and split button visibility.
     /// </summary>
     private void UpdateStackInfo(BaseUnit unit)
     {
@@ -754,7 +760,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
             return;
         }
 
-        // Stack info
+        // Army roster info
         var companions = unit.GetStackedUnits();
         int totalInStack = companions.Count + 1;
 
@@ -768,13 +774,17 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (stackInfoText != null)
         {
             stackInfoText.gameObject.SetActive(true);
-            stackInfoText.text = $"Stack: {unit.stackSlot + 1}/{totalInStack}  [Tab to cycle]";
+            int capacity = unit is CombatUnit combat && combat.owner != null
+                ? combat.owner.GetMaxArmySize()
+                : totalInStack;
+            stackInfoText.text = $"Army: {totalInStack}/{capacity}  Member {unit.stackSlot + 1}  [Tab to cycle]";
         }
 
         if (unstackButton != null)
         {
             unstackButton.gameObject.SetActive(true);
-            // Can only unstack if not in front slot AND has move/action points
+            var buttonLabel = unstackButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonLabel != null) buttonLabel.text = "Split";
             unstackButton.interactable = unit.stackSlot > 0 && unit.currentMovePoints > 0;
         }
 

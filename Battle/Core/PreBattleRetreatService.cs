@@ -57,7 +57,7 @@ public sealed class PreBattleRetreatService
 
     private static bool CanPlaceAll(IReadOnlyList<BattleUnitSnapshot> units, int tileIndex, TileSystem tileSystem, TileOccupancyManager occupancy)
     {
-        var planned = new Dictionary<TileLayer, int>();
+        CombatUnit representative = null;
         for (int i = 0; i < units.Count; i++)
         {
             var unit = units[i]?.SourceUnit;
@@ -65,12 +65,11 @@ public sealed class PreBattleRetreatService
             if (unit == null || unit.IsTransported || !UnitLayerRules.CanUnitUseTileOnLayer(unit, tile, unit.currentLayer))
                 return false;
 
-            int maxStack = unit.owner != null ? unit.owner.GetMaxStackSize() : 1;
-            planned.TryGetValue(unit.currentLayer, out int count);
-            if (occupancy.GetOccupantCount(tileIndex, unit.currentLayer) + count >= maxStack)
-                return false;
-            planned[unit.currentLayer] = count + 1;
+            if (representative == null || CampaignArmyService.IsRepresentative(unit))
+                representative = unit;
         }
-        return true;
+
+        return representative != null
+            && occupancy.GetOccupantCount(tileIndex, representative.currentLayer) == 0;
     }
 }

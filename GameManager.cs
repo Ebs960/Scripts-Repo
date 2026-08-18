@@ -2753,6 +2753,10 @@ public class GameManager : MonoBehaviour
                             queuedSpacePath = unit.queuedSpacePath != null ? new List<int>(unit.queuedSpacePath) : new List<int>(),
                             queuedSpacePathCursor = unit.queuedSpacePathCursor,
                             spaceFleetId = unit.spaceFleetId,
+                            militaryFormationId = unit.EnsureMilitaryFormationIdentity(),
+                            militaryFormationType = (int)unit.MilitaryFormationType,
+                            militaryFormationName = unit.MilitaryFormationName,
+                            armyOrder = unit.stackSlot,
                             posX = unit.transform.position.x,
                             posY = unit.transform.position.y,
                             posZ = unit.transform.position.z,
@@ -3515,6 +3519,10 @@ public class GameManager : MonoBehaviour
                 unit.queuedSpacePath = usd.queuedSpacePath != null ? new List<int>(usd.queuedSpacePath) : new List<int>();
                 unit.queuedSpacePathCursor = usd.queuedSpacePathCursor;
                 unit.spaceFleetId = usd.spaceFleetId;
+                if (!string.IsNullOrEmpty(usd.militaryFormationId))
+                    unit.AssignMilitaryFormation(usd.militaryFormationId,
+                        (MilitaryFormationType)usd.militaryFormationType, usd.militaryFormationName);
+                unit.stackSlot = Mathf.Max(0, usd.armyOrder);
                 unit.RestoreState(usd.currentHealth, usd.experience, usd.level,
                                   usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
 
@@ -3530,7 +3538,14 @@ public class GameManager : MonoBehaviour
                 if (!civ.combatUnits.Contains(unit))
                     civ.combatUnits.Add(unit);
                 try { unit.RegisterToRegistry(); } catch { }
-                try { (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(unit.currentTileIndex, unit.gameObject, (TileLayer)usd.currentLayer); } catch { }
+                try
+                {
+                    if (CampaignArmyService.IsRepresentative(unit))
+                        (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)
+                            ?.SetOccupant(unit.currentTileIndex, unit.gameObject, (TileLayer)usd.currentLayer);
+                    CampaignArmyService.RefreshPresentation(unit);
+                }
+                catch { }
             }
         }
 

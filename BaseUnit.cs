@@ -336,8 +336,8 @@ public abstract class BaseUnit : MonoBehaviour
     public int planetIndex = -1;
 
     /// <summary>
-    /// Which slot this unit occupies when stacked on a tile (0=front, 1=middle, 2=rear).
-    /// -1 means not assigned to a stack slot (legacy single-unit behavior).
+    /// Combat units use this as their army roster order (0 is the campaign representative).
+    /// Non-combat units retain the legacy tile-slot meaning.
     /// </summary>
     [System.NonSerialized] public int stackSlot = -1;
 
@@ -386,8 +386,7 @@ public abstract class BaseUnit : MonoBehaviour
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) return false;
 
-        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-        int slot = occ.TryAddToStack(tileIndex, layer, gameObject, maxStack);
+        int slot = occ.TryAddToStack(tileIndex, layer, gameObject, 1);
         if (slot < 0) return false;
 
         stackSlot = slot;
@@ -407,11 +406,21 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Get all other units stacked on the same tile as this unit.
+    /// Get all other members of this unit's campaign group. Combat units resolve through
+    /// their army identity; non-combat units retain legacy occupancy lookup behavior.
     /// </summary>
     public List<BaseUnit> GetStackedUnits()
     {
         var result = new List<BaseUnit>();
+        if (this is CombatUnit combatUnit)
+        {
+            var members = CampaignArmyService.GetMembers(combatUnit);
+            for (int i = 0; i < members.Count; i++)
+                if (members[i] != null && members[i] != combatUnit)
+                    result.Add(members[i]);
+            return result;
+        }
+
         if (currentTileIndex < 0) return result;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) return result;
@@ -433,6 +442,9 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public BaseUnit GetFrontUnit()
     {
+        if (this is CombatUnit combatUnit)
+            return CampaignArmyService.GetRepresentative(combatUnit);
+
         if (currentTileIndex < 0) return this;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) return this;
@@ -447,13 +459,23 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Unstack this unit from the current tile, placing it on an adjacent empty tile.
-    /// Costs the unit's full turn (all move points and attack points consumed).
-    /// Returns true if the unstack succeeded.
+    /// Split this member from its army onto an adjacent empty tile.
+    /// Costs the unit's full turn. The legacy method name is retained for prefab bindings.
     /// </summary>
     public bool Unstack()
     {
-        if (stackSlot <= 0) return false; // Already front or not in a stack
+        CombatUnit combatUnit = this as CombatUnit;
+        CombatUnit formerRepresentative = null;
+        if (combatUnit != null)
+        {
+            if (CampaignArmyService.GetMembers(combatUnit).Count <= 1 || combatUnit.stackSlot <= 0)
+                return false;
+            formerRepresentative = CampaignArmyService.GetRepresentative(combatUnit);
+        }
+        else if (stackSlot <= 0)
+        {
+            return false;
+        }
         if (currentTileIndex < 0) return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
@@ -480,8 +502,10 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
-        // Unregister from current stack
+        // Detach combat units into a new singleton army before claiming their own tile.
         UnregisterFromTileStack();
+        if (combatUnit != null)
+            CampaignArmyService.CreateSingletonArmy(combatUnit);
 
         // Register on the new tile
         var occNew = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
@@ -498,7 +522,10 @@ public abstract class BaseUnit : MonoBehaviour
         currentMovePoints = 0;
         currentAttackPoints = 0;
 
-        Debug.Log($"[BaseUnit] {name} unstacked to tile {destTile}");
+        if (formerRepresentative != null)
+            CampaignArmyService.RefreshPresentation(formerRepresentative);
+
+        Debug.Log($"[BaseUnit] {name} split into a new army on tile {destTile}");
         return true;
     }
     public float moveSpeed = 2f;
@@ -2639,6 +2666,15 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual void MoveTo(int targetTileIndex)
     {
         if (UnitMovementController.Instance == null) return;
+        if (this is CombatUnit combatUnit)
+        {
+            var representative = CampaignArmyService.GetRepresentative(combatUnit);
+            if (representative != null && representative != combatUnit)
+            {
+                representative.MoveTo(targetTileIndex);
+                return;
+            }
+        }
         ClearFortify();
         UnitMovementController.Instance.IssueMove(this, targetTileIndex);
     }
@@ -2799,7 +2835,8 @@ public abstract class BaseUnit : MonoBehaviour
             return false;
         }
 
-        // Layer-aware occupancy check (supports unit stacking)
+        // Campaign occupancy is army-token based. A friendly army is a legal destination
+        // only when both armies can merge within the receiving army's capacity.
         try
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
@@ -2809,23 +2846,34 @@ public abstract class BaseUnit : MonoBehaviour
                 if (allIds.Count > 0)
                 {
                     int selfId = gameObject.GetRuntimeId();
-                    bool selfPresent = false;
                     bool hasCity = false;
                     bool hasEnemyOrNonUnit = false;
                     Civilization myOwner = this.owner;
-                    int maxStack = myOwner != null ? myOwner.GetMaxStackSize() : 1;
 
                     foreach (int id in allIds)
                     {
-                        if (id == selfId) { selfPresent = true; continue; }
+                        if (id == selfId) continue;
                         var obj = UnitRegistry.GetObject(id);
                         if (obj == null) continue;
                         if (obj.GetComponent<City>() != null) { hasCity = true; break; }
                         var otherUnit = obj.GetComponent<BaseUnit>();
                         if (otherUnit != null)
                         {
-                            // Stacking only allowed with own units
                             if (otherUnit.owner != myOwner) { hasEnemyOrNonUnit = true; break; }
+                            if (cu == null || otherUnit is not CombatUnit otherCombat)
+                            {
+                                hasEnemyOrNonUnit = true;
+                                break;
+                            }
+
+                            int combined = CampaignArmyService.GetMembers(cu).Count
+                                + CampaignArmyService.GetMembers(otherCombat).Count;
+                            if (cu.MilitaryFormationId == otherCombat.MilitaryFormationId
+                                || combined <= myOwner.GetMaxArmySize())
+                                continue;
+
+                            hasEnemyOrNonUnit = true;
+                            break;
                         }
                         else
                         {
@@ -2844,13 +2892,6 @@ public abstract class BaseUnit : MonoBehaviour
                         return false;
                     }
 
-                    // Check stack capacity (exclude self if already present)
-                    int othersCount = selfPresent ? allIds.Count - 1 : allIds.Count;
-                    if (othersCount >= maxStack)
-                    {
-                        if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: stack full ({othersCount}/{maxStack}) unit={name} tile={tileIndex}");
-                        return false;
-                    }
                 }
             }
         }
@@ -2945,6 +2986,8 @@ public abstract class BaseUnit : MonoBehaviour
     protected void RegisterOccupancy(int tileIndex)
     {
         if (tileIndex < 0) return;
+        if (this is CombatUnit combatUnit && !CampaignArmyService.IsRepresentative(combatUnit))
+            return;
         try
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
@@ -2955,8 +2998,7 @@ public abstract class BaseUnit : MonoBehaviour
                 {
                     occ.ClearOccupantById(currentTileIndex, currentLayer, gameObject.GetRuntimeId());
                 }
-                int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-                int slot = occ.TryAddToStack(tileIndex, currentLayer, gameObject, maxStack);
+                int slot = occ.TryAddToStack(tileIndex, currentLayer, gameObject, 1);
                 if (slot < 0)
                 {
                     // Fallback to slot 0 for backward compat (non-stacking units)
@@ -2997,8 +3039,7 @@ public abstract class BaseUnit : MonoBehaviour
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null)
         {
-            int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-            if (!occ.CanJoinStack(currentTileIndex, targetLayer, maxStack))
+            if (!occ.CanJoinStack(currentTileIndex, targetLayer, 1))
             {
                 reason = $"no available {targetLayer} stack slot";
                 return false;
@@ -3023,8 +3064,7 @@ public abstract class BaseUnit : MonoBehaviour
         int newSlot = -1;
         if (occ != null)
         {
-            int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-            newSlot = occ.TryAddToStack(currentTileIndex, targetLayer, gameObject, maxStack);
+            newSlot = occ.TryAddToStack(currentTileIndex, targetLayer, gameObject, 1);
             if (newSlot < 0) return false;
             try { occ.ClearOccupantById(currentTileIndex, oldLayer, gameObject.GetRuntimeId()); } catch { }
         }

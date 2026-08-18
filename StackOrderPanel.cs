@@ -4,7 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Displays the units currently stacked on a tile as a vertical list of icon rows.
+/// Displays the members of a campaign army as a vertical list of icon rows.
 /// Each row shows the unit's icon and name. Up/Down buttons reorder the stack,
 /// changing who acts as the front-row unit in combat.
 ///
@@ -41,7 +41,7 @@ public class StackOrderPanel : MonoBehaviour
     [Tooltip("Background color for unselected rows.")]
     [SerializeField] private Color normalTint = new Color(0f, 0f, 0f, 0.25f);
 
-    // Tracks the units in slot order (slot 0 = index 0 = front)
+    // Tracks army members in order (slot 0 is the campaign representative)
     private readonly List<BaseUnit> _orderedUnits = new List<BaseUnit>();
     private readonly List<GameObject> _rows = new List<GameObject>();
 
@@ -65,7 +65,7 @@ public class StackOrderPanel : MonoBehaviour
             return;
         }
 
-        // Collect all units on the same tile in slot order
+        // Collect all members of the selected unit's army.
         BuildOrderedList(selectedUnit);
 
         if (_orderedUnits.Count <= 1)
@@ -87,25 +87,9 @@ public class StackOrderPanel : MonoBehaviour
     {
         _orderedUnits.Clear();
 
-        var occ = TileOccupancyManager.GetForPlanet(anyUnitOnTile.planetIndex)
-                  ?? TileOccupancyManager.Instance;
-        if (occ == null) return;
-
-        var allObjects = occ.GetAllOccupantObjects(anyUnitOnTile.currentTileIndex, anyUnitOnTile.currentLayer);
-
-        // Sort by stackSlot so index 0 is always the front unit
-        var withSlots = new List<(int slot, BaseUnit unit)>();
-        foreach (var obj in allObjects)
-        {
-            if (obj == null) continue;
-            var u = obj.GetComponent<BaseUnit>();
-            if (u == null) continue;
-            withSlots.Add((u.stackSlot, u));
-        }
-        withSlots.Sort((a, b) => a.slot.CompareTo(b.slot));
-
-        foreach (var (_, u) in withSlots)
-            _orderedUnits.Add(u);
+        _orderedUnits.Add(anyUnitOnTile);
+        _orderedUnits.AddRange(anyUnitOnTile.GetStackedUnits());
+        _orderedUnits.Sort((left, right) => left.stackSlot.CompareTo(right.stackSlot));
     }
 
     private void ClearRows()
@@ -147,9 +131,8 @@ public class StackOrderPanel : MonoBehaviour
         if (nameText != null)
         {
             string label = unit.UnitName;
-            // Annotate front/rear
-            if (isFirst) label += " [Front]";
-            else if (isLast) label += " [Rear]";
+            if (isFirst) label += " [Representative]";
+            else if (isLast) label += " [Reserve]";
             nameText.text = label;
         }
 
@@ -218,23 +201,16 @@ public class StackOrderPanel : MonoBehaviour
         var unitB = _orderedUnits[indexB];
         if (unitA == null || unitB == null) return;
 
-        var occ = TileOccupancyManager.GetForPlanet(unitA.planetIndex)
-                  ?? TileOccupancyManager.Instance;
-        if (occ == null) return;
-
         int slotA = unitA.stackSlot;
         int slotB = unitB.stackSlot;
 
-        bool swapped = occ.SwapStackSlots(unitA.currentTileIndex, unitA.currentLayer, slotA, slotB);
-        if (!swapped) return;
-
-        // Update each unit's cached slot field
         unitA.stackSlot = slotB;
         unitB.stackSlot = slotA;
 
-        // Snap world positions to reflect new slot offsets
-        unitA.SnapToSlotPosition();
-        unitB.SnapToSlotPosition();
+        if (slotA == 0 && unitB is CombatUnit newRepresentative)
+            CampaignArmyService.SetRepresentative(newRepresentative);
+        else if (slotB == 0 && unitA is CombatUnit restoredRepresentative)
+            CampaignArmyService.SetRepresentative(restoredRepresentative);
 
         // If the front unit changed, notify selection so the info panel refreshes
         // (selecting the previously-selected unit so the panel updates cleanly)

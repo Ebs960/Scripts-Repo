@@ -201,6 +201,7 @@ public class CombatUnit : BaseUnit
         reason = null;
         if (data == null) { reason = "missing unit data"; return false; }
         if (!data.canAirJump) { reason = $"{UnitName} cannot air jump"; return false; }
+        if (CampaignArmyService.GetMembers(this).Count > 1) { reason = "split this unit from its army before air jumping"; return false; }
         if (targetTileIndex < 0) { reason = "invalid target tile"; return false; }
         if (targetTileIndex == currentTileIndex) { reason = "target tile is the current tile"; return false; }
         if (IsTransported || isStored) { reason = $"{UnitName} is currently loaded or stored"; return false; }
@@ -219,8 +220,7 @@ public class CombatUnit : BaseUnit
 
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ == null) { reason = "no occupancy manager"; return false; }
-        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-        if (!occ.CanJoinStack(targetTileIndex, TileLayer.Surface, maxStack))
+        if (!occ.CanJoinStack(targetTileIndex, TileLayer.Surface, 1))
         {
             reason = "target tile has no available surface stack slot";
             return false;
@@ -274,8 +274,7 @@ public class CombatUnit : BaseUnit
             yield return null;
         }
 
-        int maxStack = owner != null ? owner.GetMaxStackSize() : 1;
-        int newSlot = occ.TryAddToStack(targetTileIndex, TileLayer.Surface, gameObject, maxStack);
+        int newSlot = occ.TryAddToStack(targetTileIndex, TileLayer.Surface, gameObject, 1);
         if (newSlot < 0)
         {
             Debug.LogWarning($"[CombatUnit] Air jump landing failed: tile {targetTileIndex} became occupied.");
@@ -434,6 +433,7 @@ public class CombatUnit : BaseUnit
     {
         data = unitData;
         owner = unitOwner;
+        CampaignArmyService.EnsureArmyIdentity(this);
         level = 1;
         experience = 0;
 
@@ -537,13 +537,8 @@ public class CombatUnit : BaseUnit
         // Subscribe to health change for label update
         OnHealthChanged += UpdateUnitLabelHealth;
 
-        // Initialize multi-soldier group if configured
-        if (data != null)
-        {
-            int visualCount = data.GetSoldierCount(owner);
-            if (visualCount > 1)
-                InitializeSoldierGroup(visualCount, data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
-        }
+        // Campaign armies use one representative figure. The authored soldier count remains
+        // available on CombatUnitData for tactical battle presentation.
     }
 
     private System.Collections.IEnumerator DeferredSubscribeToGameEventManager()
@@ -2304,7 +2299,6 @@ public class CombatUnit : BaseUnit
         currentHealth = Mathf.Min(previousHealth, MaxHealth);
 
         UpdateEquipmentVisuals();
-        InitializeSoldierGroup(data.GetSoldierCount(owner), data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
         UpdateUnitLabel();
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
         try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }

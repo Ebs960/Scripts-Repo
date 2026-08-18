@@ -380,6 +380,18 @@ public class TileOccupancyManager : MonoBehaviour
             var existingObj = UnitRegistry.GetObject(existingId);
             string existingName = existingObj != null ? existingObj.name : $"id={existingId}";
 
+            var existingUnit = existingObj != null ? existingObj.GetComponent<CombatUnit>() : null;
+            var joiningUnit = occupant.GetComponent<CombatUnit>();
+            if (existingUnit != null && joiningUnit != null
+                && existingUnit.owner != null && existingUnit.owner == joiningUnit.owner
+                && existingUnit.planetIndex == joiningUnit.planetIndex
+                && existingUnit.currentTileIndex == tile && joiningUnit.currentTileIndex == tile
+                && existingUnit.currentLayer == layer && joiningUnit.currentLayer == layer
+                && CampaignArmyService.TryMerge(existingUnit, joiningUnit, out _))
+            {
+                return true;
+            }
+
             if (!allowOverwrite)
             {
                 Debug.LogWarning($"[TileOccupancyManager] TrySetOccupant rejected tile={tile} layer={layer}: existing occupant '{existingName}' blocks '{occupant.name}'.");
