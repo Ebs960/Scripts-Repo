@@ -4,7 +4,6 @@ using UnityEngine.UI;
 
 public sealed class BattleHUD : MonoBehaviour
 {
-    private enum CellActionMode { None, Retreat, Embark, Disembark, Launch, Recover }
     private enum AttackMode { Melee, Ranged, Special }
     private BattleManager manager;
     private GameObject root;
@@ -22,7 +21,6 @@ public sealed class BattleHUD : MonoBehaviour
     private Button rangedAttackButton;
     private Button specialAttackButton;
     private BattlePresenter presenter;
-    private CellActionMode cellActionMode;
 
     public static BattleHUD GetOrCreate(BattleManager manager)
     {
@@ -223,9 +221,9 @@ public sealed class BattleHUD : MonoBehaviour
     private void ApplyAttackModeSelection()
     {
         var unit = FindSelectedUnit();
-        manager?.TacticalInput?.SetAttackSelection(selectedWeaponIndex,selectedAttackMode==AttackMode.Special);
         if (unit != null)
             selectedWeaponIndex = ResolveWeaponIndexForMode(unit, selectedAttackMode);
+        manager?.TacticalInput?.SetAttackSelection(selectedWeaponIndex,selectedAttackMode==AttackMode.Special);
         UpdateAttackModeButtons();
         ShowSelected();
         RefreshBoardOverlays();
@@ -282,62 +280,6 @@ public sealed class BattleHUD : MonoBehaviour
         }
 
         return 0;
-    }
-
-    private void OnCellClicked(int cellIndex)
-    {
-        if (manager?.ActiveBattle == null) return;
-        var clickedUnit = presenter != null ? presenter.GetDisplayedUnitAtCell(cellIndex) : manager.GetUnitAtCell(cellIndex);
-        if (cellActionMode != CellActionMode.None)
-        {
-            bool success = false;
-            string actionReason = "tactical action failed";
-            switch (cellActionMode)
-            {
-                case CellActionMode.Retreat: success = manager.TryRetreatUnit(selectedUnitId, cellIndex, out actionReason); break;
-                case CellActionMode.Embark:
-                    success = clickedUnit != null && manager.TryEmbarkUnit(selectedUnitId, clickedUnit.UnitId, out actionReason);
-                    if (clickedUnit == null) actionReason = "select a friendly transport";
-                    break;
-                case CellActionMode.Disembark: success = manager.TryDisembarkFirstCargo(selectedUnitId, cellIndex, out actionReason); break;
-                case CellActionMode.Launch: success = manager.TryLaunchFirstAircraft(selectedUnitId, cellIndex, out actionReason); break;
-                case CellActionMode.Recover:
-                    success = clickedUnit != null && manager.TryRecoverAircraft(selectedUnitId, clickedUnit.UnitId, out actionReason);
-                    if (clickedUnit == null) actionReason = "select a friendly carrier";
-                    break;
-                default: success = false; actionReason = "no tactical action selected"; break;
-            }
-            if (success) cellActionMode = CellActionMode.None;
-            Submit(success, actionReason); return;
-        }
-        if (clickedUnit != null && clickedUnit.Side == manager.ActiveBattle.ActiveSide)
-        {
-            var active = manager.GetUnitsForActiveSide();
-            for (int i = 0; i < active.Count; i++)
-                if (active[i].UnitId == clickedUnit.UnitId) { selectedUnitIndex = i; break; }
-            selectedUnitId = clickedUnit.UnitId;
-            RefreshTargets(); ShowSelected(); RefreshBoardOverlays();
-            return;
-        }
-
-        if (selectedUnitId < 0) return;
-        if (manager.ActiveBattle.Phase == BattlePhase.Deployment)
-        {
-            Submit(manager.TryDeployUnit(selectedUnitId, cellIndex, out string deployReason), deployReason);
-            return;
-        }
-        if (clickedUnit != null)
-        {
-            var targets = manager.GetVisibleEnemyUnits(selectedUnitId);
-            for (int i = 0; i < targets.Count; i++)
-                if (targets[i].UnitId == clickedUnit.UnitId)
-                {
-                    selectedTargetIndex = i;
-                    Submit(manager.TryAttackUnitWithWeapon(selectedUnitId, clickedUnit.UnitId, selectedWeaponIndex, out string attackReason), attackReason);
-                    return;
-                }
-        }
-        Submit(manager.TryMoveUnit(selectedUnitId, cellIndex, out string moveReason), moveReason);
     }
 
     private void CycleLayer() { presenter?.CycleLayer(); Notify($"Tactical layer: {presenter?.VisibleLayerName}"); }
@@ -451,27 +393,27 @@ public sealed class BattleHUD : MonoBehaviour
     private void Retreat()
     {
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Retreat);
-        cellActionMode = CellActionMode.Retreat; Notify("Select a highlighted friendly battlefield-edge exit.");
+        Notify("Select a highlighted friendly battlefield-edge exit.");
     }
     private void Embark()
     {
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Embark);
-        cellActionMode = CellActionMode.Embark; Notify("Select an adjacent friendly transport.");
+        Notify("Select an adjacent friendly transport.");
     }
     private void Disembark()
     {
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Disembark);
-        cellActionMode = CellActionMode.Disembark; Notify("Select a beach, port, or valid adjacent destination.");
+        Notify("Select a beach, port, or valid adjacent destination.");
     }
     private void Launch()
     {
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Launch);
-        cellActionMode = CellActionMode.Launch; Notify("Select an adjacent aircraft launch cell.");
+        Notify("Select an adjacent aircraft launch cell.");
     }
     private void Recover()
     {
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Recovery);
-        cellActionMode = CellActionMode.Recover; Notify("Select an adjacent friendly carrier.");
+        Notify("Select an adjacent friendly carrier.");
     }
     private void Dive() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Deep, out string reason), reason); }
     private void Shallow() { Submit(manager.TryChangeDepth(selectedUnitId, BattleDepthBand.Shallow, out string reason), reason); }

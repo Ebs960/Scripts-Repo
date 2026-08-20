@@ -101,6 +101,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     private BattleCameraController battleCamera;
     private BattleInputController battleInput;
     private BattleOverlayRenderer battleOverlays;
+    private Coroutine observedAiRoutine;
 
     public event Action<EngagementPreview> BattlePreviewOpened;
     public event Action BattlePreviewClosed;
@@ -822,6 +823,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public bool TrySubmitPlayerCommand(BattleCommand command, out string reason)
     {
+        if(battleInput!=null&&battleInput.IsCommandInputLocked){reason="wait for the current action presentation";return false;}
         if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
         { reason = "battle is not accepting commands"; return false; }
         if (!IsHumanControlledSide(ActiveBattle.ActiveSide))
@@ -847,20 +849,20 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         var unit=FindUnit(command.UnitId);var e=new BattlePresentationEvent{UnitId=command.UnitId,SourceCell=unit?.CellIndex??-1,HealthBefore=unit?.CurrentHealth??0};
         if(command is BattleMoveCommand move){e.Type=BattlePresentationEventType.Move;if(move.Path!=null)e.Path.AddRange(move.Path);}
         else if(command is BattleRetreatCommand retreat){e.Type=BattlePresentationEventType.Retreat;if(retreat.Route!=null)e.Path.AddRange(retreat.Route);e.TargetCell=retreat.ExitCell;}
-        else if(command is BattleAttackCommand attack){var target=FindUnit(attack.TargetUnitId);e.Type=BattlePresentationEventType.Attack;e.TargetUnitId=attack.TargetUnitId;e.TargetCell=target?.CellIndex??-1;e.HealthBefore=target?.CurrentHealth??0;e.WeaponIndex=attack.WeaponIndex;e.IsRanged=attack.IsRanged;e.IsSpecial=attack.IsSpecialAttack;}
-        else if(command is BattleDefendCommand)e.Type=BattlePresentationEventType.Defend;else if(command is BattleEmbarkCommand)e.Type=BattlePresentationEventType.Embark;else if(command is BattleDisembarkCommand)e.Type=BattlePresentationEventType.Disembark;else if(command is BattleLaunchAircraftCommand)e.Type=BattlePresentationEventType.Launch;else if(command is BattleRecoverAircraftCommand)e.Type=BattlePresentationEventType.Recover;else if(command is BattleChangeDepthCommand)e.Type=BattlePresentationEventType.DepthChange;else if(command is BattleActiveDetectionCommand)e.Type=BattlePresentationEventType.DetectionChange;
+        else if(command is BattleAttackCommand attack){var target=FindUnit(attack.TargetUnitId);e.Type=BattlePresentationEventType.Attack;e.TargetUnitId=attack.TargetUnitId;e.TargetCell=target?.CellIndex??-1;e.HealthBefore=target?.CurrentHealth??0;e.WeaponIndex=attack.WeaponIndex;e.IsRanged=attack.IsRanged;e.IsSpecial=attack.IsSpecialAttack;e.CounterAttackedBefore=target?.CounterAttackedThisActivation??false;foreach(var candidate in ActiveBattle.Units)if(candidate!=null)e.HealthBeforeByUnit[candidate.UnitId]=candidate.CurrentHealth;e.PrimaryAttack=new BattleAttackPresentation{AttackerUnitId=attack.UnitId,TargetUnitId=attack.TargetUnitId,WeaponIndex=attack.WeaponIndex,IsRanged=attack.IsRanged,IsSpecial=attack.IsSpecialAttack};}
+        else if(command is BattleDefendCommand)e.Type=BattlePresentationEventType.Defend;else if(command is BattleEmbarkCommand embark){e.Type=BattlePresentationEventType.Embark;e.TargetUnitId=embark.TransportUnitId;}else if(command is BattleDisembarkCommand disembark){e.Type=BattlePresentationEventType.Disembark;e.TargetCell=disembark.DestinationCell;}else if(command is BattleLaunchAircraftCommand launch){e.Type=BattlePresentationEventType.Launch;e.TargetCell=launch.LaunchCell;}else if(command is BattleRecoverAircraftCommand recover){e.Type=BattlePresentationEventType.Recover;e.TargetUnitId=recover.CarrierUnitId;}else if(command is BattleChangeDepthCommand)e.Type=BattlePresentationEventType.DepthChange;else if(command is BattleActiveDetectionCommand)e.Type=BattlePresentationEventType.DetectionChange;
         return e;
     }
     private void CompletePresentation(BattlePresentationEvent e,BattleCommand command)
     {
         var unit=FindUnit(e.UnitId);if(e.Path.Count>0)e.TargetCell=e.Path[e.Path.Count-1];
-        if(command is BattleAttackCommand){var target=FindUnit(e.TargetUnitId);e.HealthAfter=target?.CurrentHealth??0;e.Damage=Mathf.Max(0,e.HealthBefore-e.HealthAfter);e.Died=target==null||target.IsDead;}
+        if(command is BattleAttackCommand){var target=FindUnit(e.TargetUnitId);e.HealthAfter=target?.CurrentHealth??0;e.Damage=Mathf.Max(0,e.HealthBefore-e.HealthAfter);e.Died=target==null||target.IsDead;e.PrimaryAttack.Damage=new BattleDamagePresentation{TargetUnitId=e.TargetUnitId,HealthBefore=e.HealthBefore,HealthAfter=e.HealthAfter,Damage=e.Damage,Died=e.Died};foreach(var candidate in ActiveBattle.Units){if(candidate==null||candidate.UnitId==e.TargetUnitId||candidate.UnitId==e.UnitId)continue;if(e.HealthBeforeByUnit.TryGetValue(candidate.UnitId,out int before)&&candidate.CurrentHealth<before)e.SplashDamage.Add(new BattleDamagePresentation{TargetUnitId=candidate.UnitId,HealthBefore=before,HealthAfter=candidate.CurrentHealth,Damage=before-candidate.CurrentHealth,Died=candidate.IsDead});}var attacker=FindUnit(e.UnitId);if(target!=null&&!e.CounterAttackedBefore&&target.CounterAttackedThisActivation&&attacker!=null&&e.HealthBeforeByUnit.TryGetValue(attacker.UnitId,out int attackerBefore)){int counterWeapon=BattleTargetingService.FindWeaponIndex(target,attacker,ActiveBattle.MapDistance(e.TargetCell,e.SourceCell));var weapon=BattleTargetingService.GetWeapon(target,counterWeapon);e.CounterDamage=Mathf.Max(0,attackerBefore-attacker.CurrentHealth);e.CounterAttack=new BattleAttackPresentation{AttackerUnitId=target.UnitId,TargetUnitId=attacker.UnitId,WeaponIndex=counterWeapon,IsRanged=weapon?.usesRangedAttack??false,Damage=new BattleDamagePresentation{TargetUnitId=attacker.UnitId,HealthBefore=attackerBefore,HealthAfter=attacker.CurrentHealth,Damage=e.CounterDamage,Died=attacker.IsDead}};}}
         else e.HealthAfter=unit?.CurrentHealth??0;
     }
 
     public void EndPlayerSideTurn()
     {
-        if (ActiveBattleState == null || !IsHumanControlledSide(ActiveBattle.ActiveSide))
+        if (ActiveBattleState == null || (battleInput!=null&&battleInput.IsCommandInputLocked) || !IsHumanControlledSide(ActiveBattle.ActiveSide))
             return;
 
         ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
@@ -870,14 +872,40 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public void RunAISideTurn()
     {
         if (ActiveBattleState == null) return;
+        BattlePresentationEvent pendingPresentation = null;
         ActiveBattleState.AiController.ExecuteSide(ActiveBattle, ActiveBattleState.CommandExecutor, ActiveBattleState.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out _,
             command =>
             {
                 ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle, command));
-                var presentation=CapturePresentationBefore(command);
-                CompletePresentation(presentation,command);
-                BattleActionPresented?.Invoke(presentation);
-            });
+                CompletePresentation(pendingPresentation,command);
+                BattleActionPresented?.Invoke(pendingPresentation);
+                pendingPresentation=null;
+            }, command => pendingPresentation=CapturePresentationBefore(command));
+        NotifyBattleStateChanged();
+    }
+
+    private System.Collections.IEnumerator RunObservedAISideTurn()
+    {
+        while(ActiveBattleState!=null&&!IsHumanControlledSide(ActiveBattle.ActiveSide))
+        {
+            RunAISideTurnOneCommand(out int executed);
+            if(executed==0)break;
+            var presenter=GetComponent<BattlePresenter>();
+            while(presenter!=null&&presenter.IsPresenting)yield return null;
+        }
+        observedAiRoutine=null;
+        if(ActiveBattleState==null)yield break;
+        ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
+        NotifyBattleStateChanged();
+        AdvanceManualFlow();
+    }
+
+    private void RunAISideTurnOneCommand(out int executed)
+    {
+        BattlePresentationEvent pending=null;
+        ActiveBattleState.AiController.ExecuteSide(ActiveBattle,ActiveBattleState.CommandExecutor,ActiveBattleState.Occupancy,1,out executed,
+            command=>{ActiveBattleState.ReplayLog.Commands.Add(BattleCommandRecord.From(ActiveBattle,command));CompletePresentation(pending,command);BattleActionPresented?.Invoke(pending);pending=null;},
+            command=>pending=CapturePresentationBefore(command));
         NotifyBattleStateChanged();
     }
 
@@ -910,8 +938,12 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             if (IsHumanControlledSide(ActiveBattle.ActiveSide))
                 return;
 
-            RunAISideTurn();
-            ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
+            if(!resolvingAiOnlyBattle)
+            {
+                if(observedAiRoutine==null)observedAiRoutine=StartCoroutine(RunObservedAISideTurn());
+                return;
+            }
+            RunAISideTurn();ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
         }
     }
 
@@ -1413,6 +1445,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public void RestoreStateJson(string json)
     {
+        if(observedAiRoutine!=null){StopCoroutine(observedAiRoutine);observedAiRoutine=null;}
+        GetComponent<BattlePresenter>()?.ResetTransientPresentation();
         if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("Battle save data is empty.", nameof(json));
         BattleSaveMarker marker;
         try { marker = JsonUtility.FromJson<BattleSaveMarker>(json); }

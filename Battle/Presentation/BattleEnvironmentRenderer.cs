@@ -24,11 +24,12 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
     public void Build(BattleSession session,BattleBoardLayout layout,BattleBiomeVisualDatabase database)
     {
         Clear();featureMaterial=CreateFeatureMaterial();
+        if(database==null||database.profiles==null||database.profiles.Count==0)Debug.LogWarning("Battle biome environment profiles are not configured. Ground surfaces will render, but optional vegetation/props may be absent.",this);
         for(int i=0;i<session.Map.CellCount;i++)
         {
             BattleCell cell=session.Map.Cells[i];BattleBiomeVisualProfile profile=database?.Get(cell.Biome);
             if(profile!=null&&!cell.IsWater)
-                foreach(var placement in BattleEnvironmentLayout.Generate(cell,profile,session.RandomSeed,BattleBoardLayout.HexRadius))Spawn(profile,placement,layout.GetCellCenter(i));
+                foreach(var placement in BattleEnvironmentLayout.Generate(cell,profile,session.RandomSeed,BattleBoardLayout.HexRadius,RiverDirection(session.Map,cell,layout),FeatureDirection(session.Map,cell,layout,c=>c.IsWater)))Spawn(profile,placement,layout.GetCellCenter(i));
             CreateFeatures(session.Map,cell,layout.GetCellCenter(i),layout,profile);
         }FinalizeGrassBatches();
     }
@@ -61,6 +62,8 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
     }
     private GameObject CreateStrip(string name,Vector3 position,Vector3 scale,float yaw,Color color){var go=GameObject.CreatePrimitive(PrimitiveType.Cube);go.name=name;go.transform.SetParent(transform,false);go.transform.localPosition=position;go.transform.localRotation=Quaternion.Euler(0f,yaw,0f);go.transform.localScale=scale;var c=go.GetComponent<Collider>();if(c!=null)Destroy(c);var r=go.GetComponent<Renderer>();r.sharedMaterial=featureMaterial;var block=new MaterialPropertyBlock();block.SetColor("_BaseColor",color);block.SetColor("_Color",color);r.SetPropertyBlock(block);spawned.Add(go);return go;}
     private static float ConnectionYaw(BattleMap map,BattleCell cell,BattleBoardLayout layout,System.Func<BattleCell,bool> predicate){foreach(int n in cell.NeighborIndices??System.Array.Empty<int>()){var other=map.GetCell(n);if(other!=null&&predicate(other)){Vector3 d=layout.GetCellCenter(n)-layout.GetCellCenter(cell.BattleIndex);return Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}}return 0f;}
+    public static Vector2 FeatureDirection(BattleMap map,BattleCell cell,BattleBoardLayout layout,System.Func<BattleCell,bool> predicate){Vector2 sum=Vector2.zero;int count=0;foreach(int n in cell.NeighborIndices??System.Array.Empty<int>()){var other=map.GetCell(n);if(other==null||!predicate(other))continue;Vector3 d=layout.GetCellCenter(n)-layout.GetCellCenter(cell.BattleIndex);sum+=new Vector2(d.x,d.z).normalized;count++;}return count>0?sum.normalized:Vector2.zero;}
+    public static Vector2 RiverDirection(BattleMap map,BattleCell cell,BattleBoardLayout layout){var connected=new List<Vector2>();foreach(int n in cell.NeighborIndices??System.Array.Empty<int>()){var other=map.GetCell(n);if(other==null||!other.HasRiver)continue;Vector3 d=layout.GetCellCenter(n)-layout.GetCellCenter(cell.BattleIndex);connected.Add(new Vector2(d.x,d.z));}if(connected.Count>=2)return(connected[1]-connected[0]).normalized;if(connected.Count==1)return connected[0].normalized;return Vector2.zero;}
     private static GameObject GetPrefab(BattleBiomeVisualProfile p,BattleDecorationPlacement x){GameObject[] a=x.Kind switch{BattleDecorationKind.Tree=>p.treePrefabs,BattleDecorationKind.Grass=>p.grassPrefabs,BattleDecorationKind.Bush=>p.bushPrefabs,BattleDecorationKind.Rock=>p.rockPrefabs,BattleDecorationKind.Prop=>p.environmentalPropPrefabs,BattleDecorationKind.SoftCover=>p.softCoverPrefabs,BattleDecorationKind.HardCover=>p.hardCoverPrefabs,BattleDecorationKind.Port=>p.portPrefabs,_=>null};return a!=null&&x.PrefabIndex>=0&&x.PrefabIndex<a.Length?a[x.PrefabIndex]:null;}
     private static bool HasPrefab(GameObject[] prefabs){if(prefabs!=null)foreach(var prefab in prefabs)if(prefab!=null)return true;return false;}
     private static Material CreateFeatureMaterial(){var shader=Shader.Find("HDRP/Unlit")??Shader.Find("Universal Render Pipeline/Unlit")??Shader.Find("Unlit/Color")??Shader.Find("Standard");return new Material(shader){name="Shared Tactical Feature Material"};}
