@@ -210,7 +210,7 @@ public sealed class BattleCommandExecutor
             hard,
             defender.IsDefending,
             HasExposed(defender),
-            0,
+            BattleFlankingResolver.CountSupportingDirections(session, attacker, defender),
             session.RandomSeed + session.CurrentRound + attacker.UnitId + defender.UnitId,
             selectedWeapon,
             attack.IsSpecialAttack ? attack.AttackProfile : null);
@@ -256,7 +256,7 @@ public sealed class BattleCommandExecutor
                 false,
                 attacker.IsDefending,
                 HasExposed(attacker),
-                0,
+                BattleFlankingResolver.CountSupportingDirections(session, defender, attacker),
                 session.RandomSeed + session.CurrentRound + defender.UnitId + attacker.UnitId + 31,
                 counterWeapon);
 

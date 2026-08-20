@@ -10,7 +10,7 @@ public sealed class BattleAIController
         this.detection = detection;
     }
 
-    public bool ExecuteSide(BattleSession session, BattleCommandExecutor executor, BattleOccupancy occupancy, int maxCommands, out int commandsExecuted, System.Action<BattleCommand> onExecuted = null)
+    public bool ExecuteSide(BattleSession session, BattleCommandExecutor executor, BattleOccupancy occupancy, int maxCommands, out int commandsExecuted, System.Action<BattleCommand> onExecuted = null, System.Action<BattleCommand> onBeforeExecute = null)
     {
         commandsExecuted = 0;
         if (session == null || executor == null)
@@ -36,6 +36,7 @@ public sealed class BattleAIController
                 for (int c = 0; c < candidates.Count; c++)
                 {
                     var command = candidates[c].Command;
+                    onBeforeExecute?.Invoke(command);
                     if (!executor.Execute(session, occupancy, command, out _))
                         continue;
                     onExecuted?.Invoke(command);

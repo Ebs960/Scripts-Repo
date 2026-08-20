@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>Visual-only tactical representation. It never owns or mutates campaign state.</summary>
 public sealed class BattleUnitView : MonoBehaviour
 {
+    public enum VisualLifecycle { Normal, PresentingAction, Dying, Retreating, Hidden }
     public int BattleUnitId { get; private set; }
     public BattleUnitSnapshot Snapshot { get; private set; }
 
@@ -14,6 +15,8 @@ public sealed class BattleUnitView : MonoBehaviour
     private bool hasPosition;
     private bool presenting;
     private BattleUnitAnimator animationAdapter;
+    private int deferredFigureCount = -1;
+    public VisualLifecycle Lifecycle { get; private set; }
 
     public void Initialize(BattleUnitState state)
     {
@@ -34,6 +37,20 @@ public sealed class BattleUnitView : MonoBehaviour
     public void PlayAttack()=>animationAdapter?.PlayAttack();
     public void PlayHit()=>animationAdapter?.PlayHit();
     public void PlayDeath()=>animationAdapter?.PlayDeath();
+    public void BeginPresentation(bool dying=false,bool retreating=false)
+    { Lifecycle=dying?VisualLifecycle.Dying:retreating?VisualLifecycle.Retreating:VisualLifecycle.PresentingAction; gameObject.SetActive(true); }
+    public void FinishPresentation(bool hide=false)
+    {
+        Lifecycle=hide?VisualLifecycle.Hidden:VisualLifecycle.Normal;
+        if(deferredFigureCount>=0){SetFigureCount(deferredFigureCount);deferredFigureCount=-1;}
+        if(hide)gameObject.SetActive(false);
+    }
+    public System.Collections.IEnumerator Lunge(Vector3 target,float distance=.28f)
+    {
+        if(figureRoot==null)yield break;Vector3 start=figureRoot.localPosition;Vector3 direction=transform.InverseTransformDirection(target-transform.position);direction.y=0f;direction=direction.sqrMagnitude>.001f?direction.normalized:Vector3.forward;
+        float t=0f;while(t<1f){t+=Time.unscaledDeltaTime*7f;figureRoot.localPosition=Vector3.Lerp(start,start+direction*distance,Mathf.Clamp01(t));yield return null;}
+        PlayAttack();yield return new WaitForSecondsRealtime(.16f);t=0f;while(t<1f){t+=Time.unscaledDeltaTime*8f;figureRoot.localPosition=Vector3.Lerp(start+direction*distance,start,Mathf.Clamp01(t));yield return null;}figureRoot.localPosition=start;
+    }
     public void SetFortified(bool value)=>animationAdapter?.SetFortified(value);
     public System.Collections.IEnumerator Traverse(IReadOnlyList<Vector3> path,float speed)
     {
@@ -52,8 +69,9 @@ public sealed class BattleUnitView : MonoBehaviour
             return;
         }
 
-        gameObject.SetActive(visible);
-        if (!visible)
+        bool preserve = Lifecycle != VisualLifecycle.Normal && Lifecycle != VisualLifecycle.Hidden;
+        gameObject.SetActive(visible || preserve);
+        if (!visible && !preserve)
             return;
 
         if(!presenting) targetPosition = worldPosition;
@@ -68,15 +86,15 @@ public sealed class BattleUnitView : MonoBehaviour
                 Mathf.Clamp01(state.CurrentHealth / (float)Mathf.Max(1, state.Snapshot.MaximumHealth))
                 * Mathf.Max(1, state.Snapshot.TacticalFigureCount)))
             : 0;
-        for (int i = 0; i < figures.Count; i++)
-            if (figures[i] != null)
-                figures[i].SetActive(i < desiredFigures);
+        if(preserve)deferredFigureCount=desiredFigures;else SetFigureCount(desiredFigures);
 
         if (selectionRing != null)
             selectionRing.transform.localScale = selected
                 ? new Vector3(0.62f, 0.014f, 0.62f)
                 : new Vector3(0.48f, 0.01f, 0.48f);
     }
+
+    private void SetFigureCount(int count){for(int i=0;i<figures.Count;i++)if(figures[i]!=null)figures[i].SetActive(i<count);}
 
     private void Update()
     {

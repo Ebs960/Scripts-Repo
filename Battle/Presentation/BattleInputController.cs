@@ -15,6 +15,7 @@ public sealed class BattleInputController : MonoBehaviour
     public BattleDomain DomainFilter { get; private set; } = BattleDomain.Land;
     public int SelectedWeaponIndex { get; private set; }
     public bool UseSpecialAttack { get; private set; }
+    public bool IsCommandInputLocked { get; private set; }
     public event Action SelectionChanged;
     public event Action<string> RequestRejected;
 
@@ -25,15 +26,17 @@ public sealed class BattleInputController : MonoBehaviour
     { IsActive = active; if (!active) Cancel(); }
 
     public void SetMode(BattleInteractionMode mode) { Mode = mode; SelectionChanged?.Invoke(); }
+    public void SetCommandInputLocked(bool locked) { IsCommandInputLocked = locked; }
     public void SetAttackSelection(int weaponIndex,bool special){SelectedWeaponIndex=Mathf.Max(0,weaponIndex);UseSpecialAttack=special;SelectionChanged?.Invoke();}
     public void SelectUnit(int unitId) { SelectedUnitId = unitId; SelectionChanged?.Invoke(); }
 
     public void SelectCell(int cellIndex)
     {
-        if (!IsActive || manager?.ActiveBattle == null) return;
+        if (!IsActive || IsCommandInputLocked || manager?.ActiveBattle == null) return;
         SelectedCellIndex = cellIndex;
         var clicked = manager.GetUnitAtCell(cellIndex);
-        if (clicked != null && clicked.Side == manager.ActiveBattle.ActiveSide)
+        bool friendlyTargetMode = Mode == BattleInteractionMode.Embark || Mode == BattleInteractionMode.Recovery;
+        if (!friendlyTargetMode && clicked != null && clicked.Side == manager.ActiveBattle.ActiveSide)
         {
             SelectedUnitId = clicked.UnitId;
             SelectionChanged?.Invoke();

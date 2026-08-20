@@ -19,4 +19,28 @@ public sealed class BattlePresentationEvent
     public bool Died;
     public int CounterDamage;
     public readonly List<int> Path = new();
+    public BattleAttackPresentation PrimaryAttack;
+    public BattleAttackPresentation CounterAttack;
+    public readonly List<BattleDamagePresentation> SplashDamage = new();
+    internal readonly Dictionary<int, int> HealthBeforeByUnit = new();
+    internal bool CounterAttackedBefore;
+}
+
+public sealed class BattleAttackPresentation
+{
+    public int AttackerUnitId;
+    public int TargetUnitId;
+    public int WeaponIndex = -1;
+    public bool IsRanged;
+    public bool IsSpecial;
+    public BattleDamagePresentation Damage;
+}
+
+public sealed class BattleDamagePresentation
+{
+    public int TargetUnitId;
+    public int HealthBefore;
+    public int HealthAfter;
+    public int Damage;
+    public bool Died;
 }
