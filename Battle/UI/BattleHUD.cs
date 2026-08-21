@@ -11,6 +11,7 @@ public sealed class BattleHUD : MonoBehaviour
     private TextMeshProUGUI selected;
     private TextMeshProUGUI unitSelector;
     private TextMeshProUGUI targetSelector;
+    private TextMeshProUGUI combatPreview;
     private int selectedUnitId = -1;
     private int selectedUnitIndex;
     private int selectedTargetIndex;
@@ -33,6 +34,8 @@ public sealed class BattleHUD : MonoBehaviour
         manager = battleManager;
         Build();
         presenter = BattlePresenter.GetOrCreate(battleManager);
+        presenter.CellPointerEntered += OnCellPointerEntered;
+        presenter.CellPointerExited += OnCellPointerExited;
         manager.BattleStarted += OnBattleStarted;
         manager.BattleStateChanged += OnBattleStateChanged;
         manager.BattlePreviewClosed += Refresh;
@@ -47,6 +50,7 @@ public sealed class BattleHUD : MonoBehaviour
             manager.BattleStateChanged -= OnBattleStateChanged;
             manager.BattlePreviewClosed -= Refresh;
         }
+        if(presenter!=null){presenter.CellPointerEntered-=OnCellPointerEntered;presenter.CellPointerExited-=OnCellPointerExited;}
     }
 
     public void Bind(BattleSession session)
@@ -115,6 +119,8 @@ public sealed class BattleHUD : MonoBehaviour
         CreateButton(panel.transform, "Active Scan", new Vector2(16f, -720f), ActiveScan, 112f);
         CreateButton(panel.transform, "Next Reserve", new Vector2(142f, -720f), NextReserve, 112f);
         CreateButton(panel.transform, "Deploy Reserve", new Vector2(268f, -720f), DeployReserve, 112f);
+        combatPreview = CreateText(panel.transform,"Combat Preview",new Vector2(0f,1f),new Vector2(16f,-770f),new Vector2(348f,190f),14f);
+        combatPreview.text="";
         root.SetActive(false);
     }
 
@@ -386,6 +392,17 @@ public sealed class BattleHUD : MonoBehaviour
         manager?.TacticalInput?.SetMode(BattleInteractionMode.Attack);
         Notify("Select a highlighted detected target.");
     }
+
+    private void OnCellPointerEntered(int cellIndex)
+    {
+        if(combatPreview==null||manager?.TacticalInput?.Mode!=BattleInteractionMode.Attack)return;
+        var target=presenter?.GetDisplayedUnitAtCell(cellIndex);var attacker=FindSelectedUnit();if(target==null||attacker==null||target.Side==attacker.Side){combatPreview.text="";return;}
+        BattleAttackProfile profile=selectedAttackMode==AttackMode.Special?attacker.Snapshot?.SpecialAttackProfile:null;
+        if(!manager.TryGetDamagePreview(attacker.UnitId,target.UnitId,selectedWeaponIndex,profile,out var p,out var detection)){combatPreview.text=detection==BattleDetectionLevel.Suspected?"Suspected contact\nExact combat information unavailable.":"";return;}
+        string ammo=p.AmmoRemaining<0?"Unlimited":p.AmmoRemaining.ToString();string cover=p.HasHardCover?"Hard":p.HasSoftCover?"Soft":"None";string elevation=p.ElevationDelta>0?"High ground":p.ElevationDelta<0?"Low ground":"Level";
+        combatPreview.text=$"<b>{p.WeaponName}</b> ({(p.IsSpecial?"Special":p.IsRanged?"Ranged":"Melee")})\n"+(p.CanAttack?$"Damage: {p.PredictedDamage}\nTarget HP: {target.CurrentHealth}/{target.Snapshot.MaximumHealth}":$"<color=#ff8a80>Cannot attack</color>\n{p.RejectionReason}")+$"\nRange: {p.Range} / {p.MinimumRange}-{p.MaximumRange}\nAmmo: {ammo} | Cooldown: {p.CooldownRemaining}\n{elevation} | Cover: {cover}"+(p.CounterattackPossible?$"\nCounterattack: {p.PredictedCounterDamage}":"");
+    }
+    private void OnCellPointerExited(int cellIndex){if(combatPreview!=null)combatPreview.text="";}
 
     private void Defend() { Submit(manager.TryDefendUnit(selectedUnitId, out string reason), reason); }
     private void Wait() { Submit(manager.TryWaitUnit(selectedUnitId, out string reason), reason); }

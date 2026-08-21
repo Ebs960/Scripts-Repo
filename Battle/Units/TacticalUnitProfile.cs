@@ -10,6 +10,13 @@ public sealed class TacticalWeaponProfile
     public bool usesRangedAttack;
     [Min(0.01f)] public float attackMultiplier = 1f;
     public bool usesIndirectFire;
+    [Header("Presentation (optional)")]
+    [Tooltip("Tactical-only projectile override. The weapon ProjectileData visual is used when this is empty.")]
+    public GameObject tacticalProjectilePrefab;
+    public GameObject tacticalImpactPrefab;
+    [Min(0.01f)] public float tacticalProjectileSpeed;
+    [Min(0f)] public float tacticalArcHeight;
+    public Vector3 tacticalProjectileScale = Vector3.one;
     [Tooltip("-1 means unlimited tactical ammunition.")] public int ammunition = -1;
     [Min(0)] public int cooldownRounds;
 }

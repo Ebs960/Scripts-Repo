@@ -417,6 +417,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool ConfirmDeployment(out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment) { reason = "no battle awaiting deployment"; return false; }
         BattleSide side = ActiveBattle.ActiveSide;
         if (!ValidateDeployment(side, out reason)) return false;
@@ -580,6 +581,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool TryDeployUnit(int unitId, int destinationCell, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
         { reason = "battle is not in deployment"; return false; }
         var unit = FindUnit(unitId);
@@ -611,6 +613,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool TrySwapDeploymentReserve(int deployedUnitId, int reserveUnitId, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
         { reason = "battle is not in deployment"; return false; }
         var deployed = FindUnit(deployedUnitId); var reserve = FindUnit(reserveUnitId);
@@ -807,6 +810,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool EndUnitActivation(int unitId, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         var unit = FindUnit(unitId);
         if (unit == null || ActiveBattle == null || !unit.CanAct(ActiveBattle.ActiveSide))
         {
@@ -823,7 +827,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public bool TrySubmitPlayerCommand(BattleCommand command, out string reason)
     {
-        if(battleInput!=null&&battleInput.IsCommandInputLocked){reason="wait for the current action presentation";return false;}
+        if(!CanAcceptPlayerTacticalAction(out reason))return false;
         if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
         { reason = "battle is not accepting commands"; return false; }
         if (!IsHumanControlledSide(ActiveBattle.ActiveSide))
@@ -842,6 +846,20 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             NotifyBattleStateChanged();
         }
         return ok;
+    }
+
+    private bool CanAcceptPlayerTacticalAction(out string reason)
+    {
+        if(battleInput!=null&&battleInput.IsCommandInputLocked){reason="wait for the current action presentation";return false;}
+        reason=string.Empty;return true;
+    }
+
+    public bool TryGetDamagePreview(int attackerId,int defenderId,int weaponIndex,BattleAttackProfile profile,out BattleDamagePreview preview,out BattleDetectionLevel detectionLevel)
+    {
+        preview=default;detectionLevel=BattleDetectionLevel.Undetected;if(ActiveBattleState==null)return false;var attacker=FindUnit(attackerId);var defender=FindUnit(defenderId);if(attacker==null||defender==null)return false;
+        detectionLevel=defender.Side==attacker.Side?BattleDetectionLevel.Identified:GetDetectionLevel(attacker.Side,defender);
+        if(detectionLevel<BattleDetectionLevel.Detected)return false;
+        preview=ActiveBattleState.CommandExecutor.PreviewAttack(ActiveBattle,attacker,defender,weaponIndex,profile);return true;
     }
 
     private BattlePresentationEvent CapturePresentationBefore(BattleCommand command)
