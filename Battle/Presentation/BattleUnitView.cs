@@ -11,6 +11,8 @@ public sealed class BattleUnitView : MonoBehaviour
     private readonly List<GameObject> figures = new();
     private Transform figureRoot;
     private GameObject selectionRing;
+    private Transform healthBar;
+    private Transform healthFill;
     private Vector3 targetPosition;
     private bool hasPosition;
     private bool presenting;
@@ -31,6 +33,7 @@ public sealed class BattleUnitView : MonoBehaviour
         animationAdapter.Rebuild();
         selectionRing = BattleUnitVisualFactory.CreateSelectionRing(transform, state?.Side ?? BattleSide.Attacker);
         selectionRing.SetActive(true);
+        CreateHealthBar();
     }
 
     public void Face(Vector3 target){Vector3 direction=target-transform.position;direction.y=0f;if(direction.sqrMagnitude>.001f)figureRoot.rotation=Quaternion.LookRotation(direction,Vector3.up);}
@@ -92,7 +95,16 @@ public sealed class BattleUnitView : MonoBehaviour
             selectionRing.transform.localScale = selected
                 ? new Vector3(0.62f, 0.014f, 0.62f)
                 : new Vector3(0.48f, 0.01f, 0.48f);
+        if(healthBar!=null){float ratio=Mathf.Clamp01(state.CurrentHealth/(float)Mathf.Max(1,state.Snapshot?.MaximumHealth??1));healthFill.localScale=new Vector3(ratio,1f,1f);healthFill.localPosition=new Vector3((ratio-1f)*.3f,0f,-.006f);healthBar.gameObject.SetActive(visible);}
     }
+
+    private void CreateHealthBar()
+    {
+        healthBar=new GameObject("Compact HP Bar").transform;healthBar.SetParent(transform,false);healthBar.localPosition=new Vector3(0f,.9f,0f);
+        var background=GameObject.CreatePrimitive(PrimitiveType.Cube);background.name="Background";background.transform.SetParent(healthBar,false);background.transform.localScale=new Vector3(.64f,.075f,.025f);Destroy(background.GetComponent<Collider>());SetColor(background,new Color(.04f,.04f,.04f,.9f));
+        var fill=GameObject.CreatePrimitive(PrimitiveType.Cube);fill.name="Health";fill.transform.SetParent(healthBar,false);fill.transform.localScale=new Vector3(.6f,.045f,.018f);fill.transform.localPosition=new Vector3(0f,0f,-.006f);Destroy(fill.GetComponent<Collider>());SetColor(fill,new Color(.18f,.8f,.25f));healthFill=fill.transform;
+    }
+    private static void SetColor(GameObject go,Color color){var renderer=go.GetComponent<Renderer>();var block=new MaterialPropertyBlock();block.SetColor("_BaseColor",color);block.SetColor("_Color",color);renderer.SetPropertyBlock(block);}
 
     private void SetFigureCount(int count){for(int i=0;i<figures.Count;i++)if(figures[i]!=null)figures[i].SetActive(i<count);}
 
@@ -110,4 +122,5 @@ public sealed class BattleUnitView : MonoBehaviour
                 Quaternion.LookRotation(movement.normalized, Vector3.up),
                 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
     }
+    private void LateUpdate(){Camera camera=Camera.main;if(healthBar!=null&&camera!=null)healthBar.rotation=camera.transform.rotation;}
 }
