@@ -32,6 +32,15 @@ public sealed class BattleEnvironmentTests
         Object.DestroyImmediate(equipment);Object.DestroyImmediate(projectile);Object.DestroyImmediate(projectilePrefab);
     }
 
+    [Test] public void SpecialAttackProjectileOverridesOrdinaryWeaponVisual()
+    {
+        var ordinary=new GameObject("Ordinary");var specialPrefab=new GameObject("Special");var impact=new GameObject("Impact");
+        var weapon=new TacticalWeaponProfile{tacticalProjectilePrefab=ordinary};var profile=ScriptableObject.CreateInstance<BattleAttackProfile>();profile.projectilePrefab=specialPrefab;profile.impactVfxPrefab=impact;profile.projectileTravelType=BattleProjectileTravelType.Beam;profile.projectileSpeed=31f;profile.projectileScale=new Vector3(2f,2f,2f);
+        var visual=BattleProjectileVisualResolver.ResolveForWeapon(weapon,true,null,profile);
+        Assert.AreSame(specialPrefab,visual.Prefab);Assert.AreSame(impact,visual.ImpactPrefab);Assert.AreEqual(BattleProjectileTravelType.Beam,visual.TravelType);Assert.AreEqual(31f,visual.Speed);Assert.AreEqual(new Vector3(3.2f,3.2f,3.2f),visual.Scale);
+        Object.DestroyImmediate(profile);Object.DestroyImmediate(ordinary);Object.DestroyImmediate(specialPrefab);Object.DestroyImmediate(impact);
+    }
+
     [Test] public void GroundResolvesBiomeForcedAndMountainVariants()
     {
         var db=ScriptableObject.CreateInstance<BiomeVisualDatabase>();var visual=ScriptableObject.CreateInstance<BiomeVisualData>();var family=ScriptableObject.CreateInstance<SurfaceFamilyData>();

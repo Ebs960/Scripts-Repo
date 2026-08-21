@@ -13,6 +13,7 @@ public sealed class BattleUnitView : MonoBehaviour
     private GameObject selectionRing;
     private Transform healthBar;
     private Transform healthFill;
+    private Camera tacticalCamera;
     private Vector3 targetPosition;
     private bool hasPosition;
     private bool presenting;
@@ -20,8 +21,9 @@ public sealed class BattleUnitView : MonoBehaviour
     private int deferredFigureCount = -1;
     public VisualLifecycle Lifecycle { get; private set; }
 
-    public void Initialize(BattleUnitState state)
+    public void Initialize(BattleUnitState state,Camera camera=null)
     {
+        tacticalCamera=camera;
         BattleUnitId = state != null ? state.UnitId : -1;
         Snapshot = state?.Snapshot;
         figureRoot = new GameObject("Figures").transform;
@@ -122,5 +124,5 @@ public sealed class BattleUnitView : MonoBehaviour
                 Quaternion.LookRotation(movement.normalized, Vector3.up),
                 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
     }
-    private void LateUpdate(){Camera camera=Camera.main;if(healthBar!=null&&camera!=null)healthBar.rotation=camera.transform.rotation;}
+    private void LateUpdate(){if(healthBar!=null&&tacticalCamera!=null)healthBar.rotation=tacticalCamera.transform.rotation;}
 }

@@ -13,6 +13,7 @@ public sealed class BattlePresentationEvent
     public int WeaponIndex = -1;
     public bool IsRanged;
     public bool IsSpecial;
+    public BattleAttackProfile AttackProfile;
     public int Damage;
     public int HealthBefore;
     public int HealthAfter;
