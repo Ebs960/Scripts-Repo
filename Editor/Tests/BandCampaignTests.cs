@@ -50,4 +50,25 @@ public sealed class BandCampaignTests
         Assert.That(worker.CurrentDefense, Is.Zero);
         Object.DestroyImmediate(workerObject);
     }
+
+    [Test]
+    public void CivilizationUsesLatestConfiguredArmyPrefabAtOrBeforeCurrentAge()
+    {
+        var civData = ScriptableObject.CreateInstance<CivData>();
+        var early = new GameObject("early-army");
+        var future = new GameObject("future-army");
+        civData.armyPrefabsByAge = new[]
+        {
+            new ArmyPrefabByAge { techAge = TechAge.PaleolithicAge, armyPrefab = early },
+            new ArmyPrefabByAge { techAge = (TechAge)int.MaxValue, armyPrefab = future }
+        };
+        var civObject = new GameObject("civilization");
+        var civ = civObject.AddComponent<Civilization>();
+        typeof(Civilization).GetProperty("civData").SetValue(civ, civData);
+        Assert.That(civ.GetCampaignArmyPrefab(), Is.SameAs(early));
+        Object.DestroyImmediate(civObject);
+        Object.DestroyImmediate(early);
+        Object.DestroyImmediate(future);
+        Object.DestroyImmediate(civData);
+    }
 }

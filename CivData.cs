@@ -131,6 +131,14 @@ public class CivData : ScriptableObject
     [Tooltip("City prefabs for different tech ages")]
     public CityPrefabByAge[] cityPrefabsByAge;
 
+    [Header("Campaign Army Models")]
+    [Tooltip("Campaign-map army presentation prefabs by technological age. The latest configured age at or before the civilization's current age is used.")]
+    public ArmyPrefabByAge[] armyPrefabsByAge;
+
+    [Header("Band Model")]
+    [Tooltip("Prefab for this civilization's mobile Band entity. Must contain a Band component. Falls back to BandData.prefab when unassigned.")]
+    public GameObject bandPrefab;
+
     [Header("Herds")]
     [Tooltip("Prefab used to visually represent a herd when spawned for this civ (optional)")]
     public GameObject herdPrefab;
@@ -142,6 +150,13 @@ public class CivData : ScriptableObject
     // Additional fields for future expansion:
     // public RouteType[] allowedRoutes;
     // public EquipmentData[] uniqueEquipment;
+}
+
+[System.Serializable]
+public class ArmyPrefabByAge
+{
+    public TechAge techAge;
+    public GameObject armyPrefab;
 }
 
 /// <summary>

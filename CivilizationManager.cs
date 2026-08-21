@@ -2635,11 +2635,14 @@ break; // Only propose one alliance per turn
         }
 
         // The opening uses a true non-unit Band. pioneerData remains for normal settlers and old saves.
-        if (startingBandData != null && startingBandData.prefab != null)
+        GameObject startingBandPrefab = data != null && data.bandPrefab != null
+            ? data.bandPrefab
+            : startingBandData != null ? startingBandData.prefab : null;
+        if (startingBandData != null && startingBandPrefab != null)
         {
             var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
             Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
-            var bandObject = Instantiate(startingBandData.prefab, bandPosition, Quaternion.identity);
+            var bandObject = Instantiate(startingBandPrefab, bandPosition, Quaternion.identity);
             if (planet != null) bandObject.transform.SetParent(planet.transform, true);
             var band = bandObject.GetComponent<Band>();
             if (band == null)

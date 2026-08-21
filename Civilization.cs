@@ -5391,6 +5391,27 @@ return true;
         return maxAge;
     }
 
+    /// <summary>Returns this civilization's campaign army prefab for its current technological age.</summary>
+    public GameObject GetCampaignArmyPrefab()
+    {
+        if (civData == null || civData.armyPrefabsByAge == null) return null;
+        TechAge currentAge = GetCurrentAge();
+        GameObject best = null;
+        TechAge bestAge = TechAge.PaleolithicAge;
+        bool found = false;
+        foreach (var entry in civData.armyPrefabsByAge)
+        {
+            if (entry == null || entry.armyPrefab == null || entry.techAge > currentAge) continue;
+            if (!found || entry.techAge >= bestAge)
+            {
+                best = entry.armyPrefab;
+                bestAge = entry.techAge;
+                found = true;
+            }
+        }
+        return best;
+    }
+
     /// <summary>
     /// Calculate total food consumption per turn (for UI display)
     /// Includes units AND city populations!

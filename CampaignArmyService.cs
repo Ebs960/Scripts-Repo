@@ -11,6 +11,15 @@ public static class CampaignArmyService
 {
     public const int DefaultArmySize = 4;
 
+    /// <summary>
+    /// Resolves the civilization-authored campaign army prefab for the army's current age.
+    /// Army membership remains CombatUnit-only; this prefab is presentation, not a unit.
+    /// </summary>
+    public static GameObject GetPresentationPrefab(CombatUnit unit)
+    {
+        return unit != null && unit.owner != null ? unit.owner.GetCampaignArmyPrefab() : null;
+    }
+
     public static string EnsureArmyIdentity(CombatUnit unit)
     {
         if (unit == null)
