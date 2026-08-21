@@ -59,7 +59,21 @@ public class Civilization : MonoBehaviour
     [SerializeField] private City capitalCity;
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
+    public List<Band> bands                 = new List<Band>();
     public City CapitalCity => capitalCity;
+
+    public void RegisterBand(Band band)
+    {
+        if (band != null && !bands.Contains(band)) bands.Add(band);
+    }
+
+    public void UnregisterBand(Band band)
+    {
+        if (band != null) bands.Remove(band);
+    }
+
+    /// <summary>A mobile Band sustains a pre-city civilization.</summary>
+    public bool HasSurvivingSettlement => cities.Any(city => city != null) || bands.Any(band => band != null);
     [Header("Attrition Settings")]
     [Tooltip("Base HP damage applied to units each turn while the civilization is in famine (food <= 0).")]
     public int famineAttritionDamage = 1;
@@ -5375,6 +5389,27 @@ return true;
                 maxAge = tech.techAge;
         }
         return maxAge;
+    }
+
+    /// <summary>Returns this civilization's campaign army prefab for its current technological age.</summary>
+    public GameObject GetCampaignArmyPrefab()
+    {
+        if (civData == null || civData.armyPrefabsByAge == null) return null;
+        TechAge currentAge = GetCurrentAge();
+        GameObject best = null;
+        TechAge bestAge = TechAge.PaleolithicAge;
+        bool found = false;
+        foreach (var entry in civData.armyPrefabsByAge)
+        {
+            if (entry == null || entry.armyPrefab == null || entry.techAge > currentAge) continue;
+            if (!found || entry.techAge >= bestAge)
+            {
+                best = entry.armyPrefab;
+                bestAge = entry.techAge;
+                found = true;
+            }
+        }
+        return best;
     }
 
     /// <summary>

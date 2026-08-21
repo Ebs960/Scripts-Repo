@@ -12,6 +12,9 @@ using GameCombat;
 /// </summary>
 public class WorkerUnit : BaseUnit
 {
+    [SerializeField] private string attachedArmyFormationId;
+    public string AttachedArmyFormationId => attachedArmyFormationId;
+    public bool IsArmyAttachedCivilian => !string.IsNullOrEmpty(attachedArmyFormationId);
     [Header("Worker Progression")]
     public int level = 1;
     public int experience { get; private set; } = 0;
@@ -57,8 +60,8 @@ public class WorkerUnit : BaseUnit
     #region Implement Abstract Members from BaseUnit
 
     public override string UnitName => data?.unitName ?? "Worker";
-    public override int BaseAttack => (data?.baseAttack ?? 0) + GetLeveledAttackBonus();
-    public override int BaseDefense => (data?.baseDefense ?? 0) + GetLeveledDefenseBonus();
+    public override int BaseAttack => 0;
+    public override int BaseDefense => 0;
     public override int BaseHealth => (data?.baseHealth ?? 0) + GetLeveledHealthBonus();
     public override float BaseRange => 1f + GetLeveledRangeBonus();
 
@@ -277,7 +280,7 @@ public class WorkerUnit : BaseUnit
         takesWeatherDamage = unitData.takesWeatherDamage;
 
         // Configure attack points from data asset
-        try { attackPointsPerTurn = unitData.attackPointsPerTurn; ResetAttackPointsForNewTurn(); } catch { }
+        attackPointsPerTurn = 0;
 
         // Position the unit on the tile
         PositionUnitOnSurface(startTileIndex);
@@ -294,6 +297,30 @@ public class WorkerUnit : BaseUnit
             if (visualCount > 1)
                 InitializeSoldierGroup(visualCount, data.GetSoldierVariants(owner), data.GetFormationType(owner), data.GetFormationSpacing(owner));
         }
+    }
+
+    public void SetCivilianAttachment(string formationId)
+    {
+        attachedArmyFormationId = formationId ?? string.Empty;
+        bool attached = !string.IsNullOrEmpty(attachedArmyFormationId);
+        isStored = attached;
+        if (attached) currentTileIndex = -1;
+        gameObject.SetActive(!attached);
+    }
+
+    public void TransferCivilianOwnership(Civilization newOwner)
+    {
+        if (newOwner == null || newOwner == owner) return;
+        owner?.workerUnits.Remove(this);
+        owner = newOwner;
+        if (!newOwner.workerUnits.Contains(this)) newOwner.workerUnits.Add(this);
+        SetCivilianAttachment(null);
+    }
+
+    public void KillCivilian()
+    {
+        SetCivilianAttachment(null);
+        Die();
     }
 
     /// <summary>
@@ -935,31 +962,12 @@ public class WorkerUnit : BaseUnit
 
     public override int CurrentDefense
     {
-        get
-        {
-            return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
-        }
+        get { return 0; }
     }
 
     public override int CurrentAttack
     {
-        get
-        {
-            float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
-            valF += GetStatusEffectAttackModifier();
-
-            if (owner != null && data != null)
-            {
-                var wb = AggregateWorkerBonusesLocal(owner, data);
-                valF = (valF + wb.attackAdd) * (1f + wb.attackPct);
-            }
-            var aura = AggregateIncomingAuraBonuses();
-            valF = (valF + aura.attackAdd) * (1f + aura.attackPct);
-
-            valF *= FatigueMultiplier;
-            valF = ApplyResourceUpkeepToStat(valF);
-            return Mathf.Max(0, Mathf.RoundToInt(valF));
-        }
+        get { return 0; }
     }
 
     protected override float ApplyOwnerDefenseBonuses(float defenseValue)
@@ -1027,56 +1035,16 @@ public class WorkerUnit : BaseUnit
     }
 
     /// <summary>
-    /// Workers can attack any unit (combat units, other workers, animals) — weakly.
+    /// Civilian workers and settlers never attack.
     /// </summary>
     public bool CanAttack(BaseUnit target)
     {
-        if (target == null) return false;
-        // Use tile-step distance for attack checks to match movement metric
-        try
-        {
-            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            if (ts != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
-            {
-                int tileSteps = ts.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
-                if (tileSteps >= 0)
-                {
-                    int maxSteps = Mathf.FloorToInt(CurrentRange);
-                    return tileSteps <= maxSteps;
-                }
-            }
-        }
-        catch (System.Exception) { }
-        // If tile-based check can't be performed, do not allow attack
         return false;
     }
 
     public override void Attack(BaseUnit target)
     {
-        if (!CanAttack(target)) return;
-
-        // Attack visuals are handled centrally by BaseUnit.PerformAttack (no local trigger)
-
-        float attackValue = Mathf.Max(1f, CurrentAttack);
-        attackValue = (attackValue + GetSituationalAttackAddAgainst(target)) * (1f + GetSituationalAttackPctAgainst(target));
-        float defenseValue = target.CurrentDefense;
-        defenseValue = (defenseValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
-        int damage = Mathf.Max(1, Mathf.RoundToInt(attackValue - defenseValue));
-        damage = Mathf.RoundToInt(damage * GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target));
-        damage = ApplySharedMeleeCombatModifiers(damage, target);
-        var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = null, damage = damage, isMelee = true, isRanged = false };
-        bool died = PerformAttack(ctx);
-        if (data != null)
-        {
-            GainExperience(Mathf.Max(0, damage) * Mathf.Max(0, data.experiencePerCombatDamage));
-            if (died && data.killExperience > 0)
-                GainExperience(data.killExperience);
-        }
-
-        if (died)
-        {
-            // Post-hit handling centralized in BaseUnit.ApplyDamage(attacker...)
-        }
+        // Intentionally empty: hostile contact is resolved by CivilianCaptureService.
     }
 
     /// <summary>

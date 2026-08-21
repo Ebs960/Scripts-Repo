@@ -11,6 +11,15 @@ public static class CampaignArmyService
 {
     public const int DefaultArmySize = 4;
 
+    /// <summary>
+    /// Resolves the civilization-authored campaign army prefab for the army's current age.
+    /// Army membership remains CombatUnit-only; this prefab is presentation, not a unit.
+    /// </summary>
+    public static GameObject GetPresentationPrefab(CombatUnit unit)
+    {
+        return unit != null && unit.owner != null ? unit.owner.GetCampaignArmyPrefab() : null;
+    }
+
     public static string EnsureArmyIdentity(CombatUnit unit)
     {
         if (unit == null)
@@ -118,6 +127,7 @@ public static class CampaignArmyService
         }
 
         string armyId = receivingMembers[0].EnsureMilitaryFormationIdentity();
+        string joiningArmyId = joiningMembers[0].MilitaryFormationId;
         string armyName = receivingMembers[0].MilitaryFormationName;
         MilitaryFormationType armyType = receivingMembers[0].MilitaryFormationType;
         for (int i = 0; i < receivingMembers.Count; i++)
@@ -129,6 +139,7 @@ public static class CampaignArmyService
         }
 
         RefreshPresentation(receivingMembers[0]);
+        CivilianAttachmentService.TransferOnMerge(receivingArmy.owner, joiningArmyId, armyId);
         return true;
     }
 

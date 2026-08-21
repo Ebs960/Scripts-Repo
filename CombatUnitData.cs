@@ -140,6 +140,11 @@ public struct CombatUnitCultureGroupVisualOverride
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
 public class CombatUnitData : ScriptableObject
 {
+    [Header("Band Recruitment")]
+    [Tooltip("Explicit opt-in for recruitment by an encamped Band.")]
+    public bool buildableByBand;
+    [Min(1), Tooltip("Production required when recruited by a Band.")]
+    public int bandProductionCost = 10;
     [Header("Basic Info")]
     public string unitName;
     [TextArea] public string description;

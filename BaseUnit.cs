@@ -557,6 +557,9 @@ public abstract class BaseUnit : MonoBehaviour
     public ImprovementInstance storedInImprovement = null;
     [System.NonSerialized]
     public Herd storedInHerd = null;
+    [System.NonSerialized]
+    public Band StoredInBand = null;
+    public bool IsBandGarrisoned => StoredInBand != null;
     #endregion
 
     #region Status Effects & Fatigue

@@ -91,7 +91,9 @@ public class WorkerUnitData : ScriptableObject
 
     public int baseMovePoints;
     public int baseHealth;
+    [HideInInspector, Tooltip("Legacy serialized field. Civilian workers never use combat attack at runtime.")]
     public int baseAttack = 0;
+    [HideInInspector, Tooltip("Legacy serialized field. Civilian workers never use combat defence at runtime.")]
     public int baseDefense = 0;
     public bool canFoundCity;
 
@@ -128,7 +130,7 @@ public class WorkerUnitData : ScriptableObject
     [Header("Action Points")]
     [Tooltip("How many attacks/actions this unit can perform per turn.")]
     [Range(0, 10)]
-    public int attackPointsPerTurn = 1;
+    [HideInInspector] public int attackPointsPerTurn = 0;
     
     [Header("Vision")]
     [Tooltip("How many tiles this unit can see (reveals fog of war). Default is 2 tiles.")]

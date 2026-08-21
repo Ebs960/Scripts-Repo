@@ -36,8 +36,10 @@ public class CivilizationManager : MonoBehaviour
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
-    [Tooltip("WorkerUnitData asset describing the global pioneer unit. Civ-specific visuals are resolved through WorkerUnitData prefab overrides first, with Addressables as fallback.")]
+    [Tooltip("Normal expansion settler data. This is no longer spawned at civilization creation; retained for settler production and legacy-save compatibility.")]
     public WorkerUnitData pioneerData;
+    [Tooltip("Default new-game Band rules/content. Individual CivData assets may override this, and every new civilization now requires a Band configuration.")]
+    public BandData startingBandData;
     [Tooltip("Prefab with a City component for founding new cities")]
     public GameObject cityPrefab;
 
@@ -2632,55 +2634,40 @@ break; // Only propose one alliance per turn
             playerCiv = civ;
         }
 
-        // Pioneer spawning uses the global data asset; civ-specific visuals come from WorkerUnitData overrides.
-        WorkerUnitData resolvedPioneerData = pioneerData;
-
-        if (resolvedPioneerData == null)
+        // Every new civilization opens with a true Band. Worker pioneers are only normal
+        // expansion settlers and legacy-save content; they are never a new-game fallback.
+        BandData resolvedStartingBandData = data != null && data.startingBandData != null
+            ? data.startingBandData
+            : startingBandData;
+        GameObject startingBandPrefab = data != null && data.bandPrefab != null
+            ? data.bandPrefab
+            : resolvedStartingBandData != null ? resolvedStartingBandData.prefab : null;
+        if (resolvedStartingBandData == null)
         {
-            Debug.LogError($"SpawnOneCivilization: No pioneerData configured on CivilizationManager for {data.civName}!");
+            Debug.LogError($"SpawnOneCivilization: {data.civName} has no starting BandData. New civilizations no longer fall back to obsolete Worker pioneers.");
+            civs.Remove(civ);
+            if (playerCiv == civ) playerCiv = null;
+            Destroy(civGO);
             return;
         }
-
-        // Use the normal worker prefab resolver so pioneers can come from direct prefabs
-        // or Addressables, with prefab references preferred when assigned.
-        GameObject resolvedPioneerPrefab = resolvedPioneerData.GetPrefab(civ);
-        if (resolvedPioneerPrefab == null)
+        var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
+        var bandObject = startingBandPrefab != null
+            ? Instantiate(startingBandPrefab, bandPosition, Quaternion.identity)
+            : new GameObject($"{data.civName} Band", typeof(Band));
+        if (startingBandPrefab == null) bandObject.transform.position = bandPosition;
+        if (planet != null) bandObject.transform.SetParent(planet.transform, true);
+        var band = bandObject.GetComponent<Band>();
+        if (band == null)
         {
-            Debug.LogError($"SpawnOneCivilization: Failed to resolve pioneer prefab for {data.civName}. Aborting spawn.");
-            return;
+            Debug.LogError($"Starting Band prefab for {data.civName} has no Band component.");
+            Destroy(bandObject); civs.Remove(civ); if (playerCiv == civ) playerCiv = null; Destroy(civGO); return;
         }
-
-        // Instantiate pioneer — parent under the planet so it deactivates on planet switch
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
-        var wgo = Instantiate(resolvedPioneerPrefab, pos, Quaternion.identity);
-        if (planet != null) wgo.transform.SetParent(planet.transform, true);
-        // Register pioneer with wrap registry
-        try
-        {
-            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
-            if (mgr != null) mgr.RegisterObjectForWrapAtTile(tile, wgo);
-        }
-        catch { }
-        if (wgo == null)
-        {
-            Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");
-            return;
-        }
-        
-        var pioneer = wgo.GetComponent<WorkerUnit>();
-        if (pioneer == null)
-        {
-            Debug.LogError($"WorkerUnit component not found on pioneer prefab for {data.civName}!");
-            Destroy(wgo);
-            return;
-        }
-        
-        pioneer.Initialize(resolvedPioneerData, civ, tile);
-        pioneer.planetIndex = planetIndex;
-        civ.workerUnits.Add(pioneer);
-        try { pioneer.RegisterToRegistry(); } catch { }
-        
+        IEnumerable<StartingBandGarrisonEntry> civGarrison = data.startingBandGarrison != null && data.startingBandGarrison.Length > 0
+            ? data.startingBandGarrison
+            : null;
+        band.Initialize(resolvedStartingBandData, civ, planetIndex, tile, civGarrison);
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, bandObject, TileLayer.Surface);
     }
 
     /// <summary>
@@ -2830,22 +2817,23 @@ break; // Only propose one alliance per turn
     /// </summary>
     private void PositionCameraOnPlayerStart()
     {
-        if (playerCiv == null || playerCiv.workerUnits.Count == 0)
+        if (playerCiv == null || ((playerCiv.bands == null || playerCiv.bands.Count == 0) && playerCiv.workerUnits.Count == 0))
         {
             Debug.LogWarning("Cannot position camera: no player civilization or pioneer found");
             return;
         }
 
         // Get the player's pioneer (starting unit)
-        var pioneer = playerCiv.workerUnits[0];
-        if (pioneer == null)
+        Band startingBand = playerCiv.bands != null ? playerCiv.bands.FirstOrDefault(b => b != null) : null;
+        var pioneer = startingBand == null ? playerCiv.workerUnits[0] : null;
+        if (pioneer == null && startingBand == null)
         {
             Debug.LogWarning("Cannot position camera: pioneer is null");
             return;
         }
 
         // Get the tile index where the pioneer is located
-        int pioneerTileIndex = pioneer.currentTileIndex;
+        int pioneerTileIndex = startingBand != null ? startingBand.CurrentTileIndex : pioneer.currentTileIndex;
         if (pioneerTileIndex < 0)
         {
             Debug.LogWarning("Cannot position camera: pioneer tile index is invalid");
@@ -2860,8 +2848,9 @@ break; // Only propose one alliance per turn
             return;
         }
 
-        int planetIndex = pioneer.planetIndex >= 0
-            ? pioneer.planetIndex
+        int startPlanetIndex = startingBand != null ? startingBand.PlanetIndex : pioneer.planetIndex;
+        int planetIndex = startPlanetIndex >= 0
+            ? startPlanetIndex
             : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         if (planet == null || planet.Grid == null)

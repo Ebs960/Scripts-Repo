@@ -76,6 +76,26 @@ public sealed class BattleParticipantCollector
         return true;
     }
 
+    /// <summary>
+    /// Party-based participant collection for Band engagements. It only snapshots the parties'
+    /// real CombatUnits; Band and civilian objects cannot enter tactical state.
+    /// </summary>
+    public bool TryCollectPartySnapshots(CampaignBattleParty attacker, CampaignBattleParty defender,
+        List<BattleUnitSnapshot> attackerSnapshots, List<BattleUnitSnapshot> defenderSnapshots,
+        BattleTheater theater, out string rejectionReason)
+    {
+        rejectionReason = string.Empty;
+        if (attacker == null || defender == null || attackerSnapshots == null || defenderSnapshots == null)
+        { rejectionReason = "missing battle party or snapshot destination"; return false; }
+        if (attacker.PlanetIndex != defender.PlanetIndex)
+        { rejectionReason = "different planets"; return false; }
+        AddSnapshots(new List<CombatUnit>(attacker.CombatUnits), attackerSnapshots, theater);
+        AddSnapshots(new List<CombatUnit>(defender.CombatUnits), defenderSnapshots, theater);
+        if (attackerSnapshots.Count == 0 || defenderSnapshots.Count == 0)
+        { rejectionReason = "empty participant side"; return false; }
+        return true;
+    }
+
     private void AddSnapshots(List<CombatUnit> sourceUnits, List<BattleUnitSnapshot> snapshots, BattleTheater theater)
     {
         for (int i = 0; i < sourceUnits.Count; i++)

@@ -541,6 +541,30 @@ public class CombatUnit : BaseUnit
         // available on CombatUnitData for tactical battle presentation.
     }
 
+    /// <summary>Stores this persistent military unit in a Band without recreating it.</summary>
+    public void StoreInBand(Band band)
+    {
+        if (band == null) return;
+        StoredInBand = band;
+        isStored = true;
+        currentTileIndex = -1;
+        moveOrderPath = null;
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>Returns this same unit (including health, XP and equipment) to the campaign.</summary>
+    public void ReleaseFromBand(int tileIndex, int targetPlanetIndex)
+    {
+        StoredInBand = null;
+        isStored = false;
+        planetIndex = targetPlanetIndex;
+        currentTileIndex = tileIndex;
+        gameObject.SetActive(true);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts != null) transform.position = ts.GetTileCenterFlat(tileIndex);
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, gameObject, currentLayer);
+    }
+
     private System.Collections.IEnumerator DeferredSubscribeToGameEventManager()
     {
         while (GameEventManager.Instance == null)
