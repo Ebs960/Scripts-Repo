@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using System.Reflection;
 
 public sealed class BandCampaignTests
 {
@@ -70,5 +71,14 @@ public sealed class BandCampaignTests
         Object.DestroyImmediate(early);
         Object.DestroyImmediate(future);
         Object.DestroyImmediate(civData);
+    }
+
+    [Test]
+    public void BandPanelKeepsTheHardcodedPaleolithicProductionRoster()
+    {
+        var structures = (string[])typeof(BandPanel).GetField("StructureButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        var units = (string[])typeof(BandPanel).GetField("UnitButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        CollectionAssert.AreEqual(new[] { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" }, structures);
+        CollectionAssert.AreEqual(new[] { "Hunter", "Clubman", "Spear Thrower", "Raft" }, units);
     }
 }

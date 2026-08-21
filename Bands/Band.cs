@@ -153,14 +153,42 @@ public sealed class Band : MonoBehaviour
 
     public bool QueueStructure(BandStructureData structure)
     {
-        if (state != BandState.Encamped || structure == null || !data.allowedStructures.Contains(structure) || builtStructures.Contains(structure)) return false;
+        if (!CanQueueStructure(structure, out _)) return false;
+        if (structure.goldCost > 0) owner.gold -= structure.goldCost;
+        if (!ResourceCost.Consume(owner, structure.resourceCosts)) return false;
         queuedStructure = structure; queuedUnit = null; productionProgress = 0; return true;
+    }
+
+    public bool CanQueueStructure(BandStructureData structure, out string reason)
+    {
+        reason = string.Empty;
+        if (state != BandState.Encamped) { reason = "Encamp to build"; return false; }
+        if (structure == null || data == null || !data.allowedStructures.Contains(structure)) { reason = "Not available to this Band"; return false; }
+        if (builtStructures.Contains(structure)) { reason = "Completed"; return false; }
+        if (queuedStructure == structure) { reason = "In progress"; return false; }
+        if (owner == null) { reason = "No owner"; return false; }
+        if (structure.requiredTech != null && !owner.researchedTechs.Contains(structure.requiredTech)) { reason = "Requires technology"; return false; }
+        if (structure.requiredCulture != null && !owner.researchedCultures.Contains(structure.requiredCulture)) { reason = "Requires culture"; return false; }
+        if (owner.gold < structure.goldCost) { reason = $"Requires {structure.goldCost} Gold"; return false; }
+        if (!ResourceCost.CanAfford(owner, structure.resourceCosts)) { reason = "Missing resources"; return false; }
+        return true;
     }
 
     public bool QueueMilitaryUnit(CombatUnitData unit)
     {
-        if (state != BandState.Encamped || unit == null || !unit.buildableByBand || !data.allowedMilitaryRecruitment.Contains(unit)) return false;
+        if (!CanQueueMilitaryUnit(unit, out _)) return false;
         queuedUnit = unit; queuedStructure = null; productionProgress = 0; return true;
+    }
+
+    public bool CanQueueMilitaryUnit(CombatUnitData unit, out string reason)
+    {
+        reason = string.Empty;
+        if (state != BandState.Encamped) { reason = "Encamp to recruit"; return false; }
+        if (unit == null || data == null || !unit.buildableByBand || !data.allowedMilitaryRecruitment.Contains(unit)) { reason = "Not recruitable by this Band"; return false; }
+        if (owner == null || !unit.IsBuildableFor(owner)) { reason = "Requirements not met"; return false; }
+        if (garrison.Count >= GarrisonCapacity) { reason = "Garrison full"; return false; }
+        if (queuedUnit == unit) { reason = "In progress"; return false; }
+        return true;
     }
 
     public void ProcessProduction(int production)

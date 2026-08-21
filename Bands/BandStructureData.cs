@@ -8,6 +8,7 @@ public sealed class BandStructureData : ScriptableObject
     [TextArea] public string description;
     public Sprite icon;
     [Min(0)] public int productionCost = 10;
+    [Min(0)] public int goldCost;
     public ResourceCost[] resourceCosts;
     public TechData requiredTech;
     public CultureData requiredCulture;
