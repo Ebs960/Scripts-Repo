@@ -417,6 +417,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool ConfirmDeployment(out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment) { reason = "no battle awaiting deployment"; return false; }
         BattleSide side = ActiveBattle.ActiveSide;
         if (!ValidateDeployment(side, out reason)) return false;
@@ -580,6 +581,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool TryDeployUnit(int unitId, int destinationCell, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
         { reason = "battle is not in deployment"; return false; }
         var unit = FindUnit(unitId);
@@ -611,6 +613,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool TrySwapDeploymentReserve(int deployedUnitId, int reserveUnitId, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         if (ActiveBattleState == null || ActiveBattle.Phase != BattlePhase.Deployment)
         { reason = "battle is not in deployment"; return false; }
         var deployed = FindUnit(deployedUnitId); var reserve = FindUnit(reserveUnitId);
@@ -807,6 +810,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     public bool EndUnitActivation(int unitId, out string reason)
     {
         reason = string.Empty;
+        if (!CanAcceptPlayerTacticalAction(out reason)) return false;
         var unit = FindUnit(unitId);
         if (unit == null || ActiveBattle == null || !unit.CanAct(ActiveBattle.ActiveSide))
         {
@@ -823,7 +827,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public bool TrySubmitPlayerCommand(BattleCommand command, out string reason)
     {
-        if(battleInput!=null&&battleInput.IsCommandInputLocked){reason="wait for the current action presentation";return false;}
+        if(!CanAcceptPlayerTacticalAction(out reason))return false;
         if (ActiveBattleState == null || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn))
         { reason = "battle is not accepting commands"; return false; }
         if (!IsHumanControlledSide(ActiveBattle.ActiveSide))
@@ -844,12 +848,26 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         return ok;
     }
 
+    private bool CanAcceptPlayerTacticalAction(out string reason)
+    {
+        if(battleInput!=null&&battleInput.IsCommandInputLocked){reason="wait for the current action presentation";return false;}
+        reason=string.Empty;return true;
+    }
+
+    public bool TryGetDamagePreview(int attackerId,int defenderId,int weaponIndex,BattleAttackProfile profile,out BattleDamagePreview preview,out BattleDetectionLevel detectionLevel)
+    {
+        preview=default;detectionLevel=BattleDetectionLevel.Undetected;if(ActiveBattleState==null)return false;var attacker=FindUnit(attackerId);var defender=FindUnit(defenderId);if(attacker==null||defender==null)return false;
+        detectionLevel=defender.Side==attacker.Side?BattleDetectionLevel.Identified:GetDetectionLevel(attacker.Side,defender);
+        if(detectionLevel<BattleDetectionLevel.Detected)return false;
+        preview=ActiveBattleState.CommandExecutor.PreviewAttack(ActiveBattle,attacker,defender,weaponIndex,profile);return true;
+    }
+
     private BattlePresentationEvent CapturePresentationBefore(BattleCommand command)
     {
         var unit=FindUnit(command.UnitId);var e=new BattlePresentationEvent{UnitId=command.UnitId,SourceCell=unit?.CellIndex??-1,HealthBefore=unit?.CurrentHealth??0};
         if(command is BattleMoveCommand move){e.Type=BattlePresentationEventType.Move;if(move.Path!=null)e.Path.AddRange(move.Path);}
         else if(command is BattleRetreatCommand retreat){e.Type=BattlePresentationEventType.Retreat;if(retreat.Route!=null)e.Path.AddRange(retreat.Route);e.TargetCell=retreat.ExitCell;}
-        else if(command is BattleAttackCommand attack){var target=FindUnit(attack.TargetUnitId);e.Type=BattlePresentationEventType.Attack;e.TargetUnitId=attack.TargetUnitId;e.TargetCell=target?.CellIndex??-1;e.HealthBefore=target?.CurrentHealth??0;e.WeaponIndex=attack.WeaponIndex;e.IsRanged=attack.IsRanged;e.IsSpecial=attack.IsSpecialAttack;e.CounterAttackedBefore=target?.CounterAttackedThisActivation??false;foreach(var candidate in ActiveBattle.Units)if(candidate!=null)e.HealthBeforeByUnit[candidate.UnitId]=candidate.CurrentHealth;e.PrimaryAttack=new BattleAttackPresentation{AttackerUnitId=attack.UnitId,TargetUnitId=attack.TargetUnitId,WeaponIndex=attack.WeaponIndex,IsRanged=attack.IsRanged,IsSpecial=attack.IsSpecialAttack};}
+        else if(command is BattleAttackCommand attack){var target=FindUnit(attack.TargetUnitId);e.Type=BattlePresentationEventType.Attack;e.TargetUnitId=attack.TargetUnitId;e.TargetCell=target?.CellIndex??-1;e.HealthBefore=target?.CurrentHealth??0;e.WeaponIndex=attack.WeaponIndex;e.IsRanged=attack.IsRanged;e.IsSpecial=attack.IsSpecialAttack;e.AttackProfile=attack.AttackProfile;e.CounterAttackedBefore=target?.CounterAttackedThisActivation??false;foreach(var candidate in ActiveBattle.Units)if(candidate!=null)e.HealthBeforeByUnit[candidate.UnitId]=candidate.CurrentHealth;e.PrimaryAttack=new BattleAttackPresentation{AttackerUnitId=attack.UnitId,TargetUnitId=attack.TargetUnitId,WeaponIndex=attack.WeaponIndex,IsRanged=attack.IsRanged,IsSpecial=attack.IsSpecialAttack};}
         else if(command is BattleDefendCommand)e.Type=BattlePresentationEventType.Defend;else if(command is BattleEmbarkCommand embark){e.Type=BattlePresentationEventType.Embark;e.TargetUnitId=embark.TransportUnitId;}else if(command is BattleDisembarkCommand disembark){e.Type=BattlePresentationEventType.Disembark;e.TargetCell=disembark.DestinationCell;}else if(command is BattleLaunchAircraftCommand launch){e.Type=BattlePresentationEventType.Launch;e.TargetCell=launch.LaunchCell;}else if(command is BattleRecoverAircraftCommand recover){e.Type=BattlePresentationEventType.Recover;e.TargetUnitId=recover.CarrierUnitId;}else if(command is BattleChangeDepthCommand)e.Type=BattlePresentationEventType.DepthChange;else if(command is BattleActiveDetectionCommand)e.Type=BattlePresentationEventType.DetectionChange;
         return e;
     }

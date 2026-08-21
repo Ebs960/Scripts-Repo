@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
+using GameCombat;
 
 public sealed class BattleEnvironmentTests
 {
@@ -20,6 +21,25 @@ public sealed class BattleEnvironmentTests
     [Test] public void RiverExclusionFollowsProvidedOrientation(){var cell=Cell();cell.HasRiver=true;profile.treeDensity=1f;profile.maximumTrees=20;var placements=BattleEnvironmentLayout.Generate(cell,profile,5,1.35f,Vector2.right);foreach(var item in placements)if(item.Kind==BattleDecorationKind.Tree)Assert.GreaterOrEqual(Mathf.Abs(item.LocalPosition.z),profile.riverClearHalfWidth-.001f);}
     [Test] public void CoastExclusionUsesWaterFacingNormal(){var cell=Cell();cell.HasBeach=true;profile.treeDensity=1f;profile.maximumTrees=20;var placements=BattleEnvironmentLayout.Generate(cell,profile,7,1.35f,default,Vector2.right);foreach(var item in placements)if(item.Kind==BattleDecorationKind.Tree)Assert.LessOrEqual(item.LocalPosition.x,.001f);}
     [Test] public void NullPrefabArraysAreSafe(){profile.treePrefabs=null;profile.grassPrefabs=null;profile.rockPrefabs=null;Assert.DoesNotThrow(()=>BattleEnvironmentLayout.Generate(Cell(),profile,1,1.35f));}
+
+    [Test] public void ProjectileVisualResolverUsesWeaponProjectileAndIndirectArc()
+    {
+        var projectile=ScriptableObject.CreateInstance<ProjectileData>();var projectilePrefab=new GameObject("Projectile");projectile.projectilePrefab=projectilePrefab;projectile.launchSpeed=23f;
+        var equipment=ScriptableObject.CreateInstance<EquipmentData>();equipment.projectileData=projectile;
+        var weapon=new TacticalWeaponProfile{equipment=equipment,usesRangedAttack=true,usesIndirectFire=true,tacticalProjectileScale=new Vector3(2f,1f,1f)};
+        var visual=BattleProjectileVisualResolver.ResolveForWeapon(weapon,false);
+        Assert.AreSame(projectilePrefab,visual.Prefab);Assert.AreEqual(BattleProjectileTravelType.BallisticArc,visual.TravelType);Assert.AreEqual(23f,visual.Speed);Assert.AreEqual(new Vector3(2f,1f,1f),visual.Scale);
+        Object.DestroyImmediate(equipment);Object.DestroyImmediate(projectile);Object.DestroyImmediate(projectilePrefab);
+    }
+
+    [Test] public void SpecialAttackProjectileOverridesOrdinaryWeaponVisual()
+    {
+        var ordinary=new GameObject("Ordinary");var specialPrefab=new GameObject("Special");var impact=new GameObject("Impact");
+        var weapon=new TacticalWeaponProfile{tacticalProjectilePrefab=ordinary};var profile=ScriptableObject.CreateInstance<BattleAttackProfile>();profile.projectilePrefab=specialPrefab;profile.impactVfxPrefab=impact;profile.projectileTravelType=BattleProjectileTravelType.Beam;profile.projectileSpeed=31f;profile.projectileScale=new Vector3(2f,2f,2f);
+        var visual=BattleProjectileVisualResolver.ResolveForWeapon(weapon,true,null,profile);
+        Assert.AreSame(specialPrefab,visual.Prefab);Assert.AreSame(impact,visual.ImpactPrefab);Assert.AreEqual(BattleProjectileTravelType.Beam,visual.TravelType);Assert.AreEqual(31f,visual.Speed);Assert.AreEqual(new Vector3(3.2f,3.2f,3.2f),visual.Scale);
+        Object.DestroyImmediate(profile);Object.DestroyImmediate(ordinary);Object.DestroyImmediate(specialPrefab);Object.DestroyImmediate(impact);
+    }
 
     [Test] public void GroundResolvesBiomeForcedAndMountainVariants()
     {

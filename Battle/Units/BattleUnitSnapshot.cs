@@ -30,6 +30,7 @@ public sealed class BattleUnitSnapshot
     public readonly float TacticalFormationSpacing;
     public readonly SoldierVariant[] TacticalSoldierVariants;
     public readonly List<TacticalWeaponProfile> Weapons = new();
+    public readonly List<GameCombat.ProjectileData> WeaponProjectiles = new();
     public readonly BattleAttackProfile SpecialAttackProfile;
 
     public readonly int Experience;
@@ -71,9 +72,20 @@ public sealed class BattleUnitSnapshot
         TacticalActionPoints = tacticalActionPoints;
 
         AddWeaponProfiles(source, tacticalProfile);
+        SnapshotProjectileVisuals(source);
 
         Experience = source != null ? source.experience : 0;
         Level = source != null ? source.level : 1;
+    }
+
+    private void SnapshotProjectileVisuals(CombatUnit source)
+    {
+        for(int i=0;i<Weapons.Count;i++)
+        {
+            var equipment=Weapons[i]?.equipment;var projectile=equipment?.projectileData;
+            if(projectile==null&&source?.ActiveProjectile!=null&&(equipment==null||!equipment.usesProjectiles||equipment.projectileCategory==source.ActiveProjectile.category))projectile=source.ActiveProjectile;
+            WeaponProjectiles.Add(projectile);
+        }
     }
 
     private void AddWeaponProfiles(CombatUnit source, TacticalUnitProfile profile)

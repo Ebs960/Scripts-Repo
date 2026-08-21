@@ -10,6 +10,8 @@ public sealed class BattleCellView : MonoBehaviour
     private MaterialPropertyBlock properties;
     public int CellIndex { get; private set; }
     public event Action<int> Clicked;
+    public event Action<int> PointerEntered;
+    public event Action<int> PointerExited;
 
     public void Initialize(BattleCell cell, Vector3 center, Material groundMaterial, Material overlayMaterial,BattleGroundSurface surface)
     {
@@ -28,6 +30,8 @@ public sealed class BattleCellView : MonoBehaviour
     }
 
     private void OnMouseDown() => Clicked?.Invoke(CellIndex);
+    private void OnMouseEnter() => PointerEntered?.Invoke(CellIndex);
+    private void OnMouseExit() => PointerExited?.Invoke(CellIndex);
     public void SetOverlay(BattlePresenter.CellOverlay state, bool selected)
     {
         Color color = selected ? new Color(1f,.75f,.12f,.75f) : OverlayColor(state);

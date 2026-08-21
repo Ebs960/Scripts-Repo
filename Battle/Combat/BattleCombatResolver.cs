@@ -16,6 +16,15 @@ public sealed class BattleCombatResolver
 
     public BattleCombatResult Resolve(in BattleCombatContext ctx, BattleDeterministicRandom random)
     {
+        float jitter = 0.95f + ((random ?? new BattleDeterministicRandom(ctx.RandomSeed)).NextUnitFloat() * 0.1f);
+        return Calculate(ctx, jitter);
+    }
+
+    /// <summary>Deterministic midpoint estimate; consumes no battle random state.</summary>
+    public BattleCombatResult Estimate(in BattleCombatContext ctx) => Calculate(ctx, 1f);
+
+    private BattleCombatResult Calculate(in BattleCombatContext ctx, float jitter)
+    {
         int attackStrength = ctx.IsRanged ? ctx.Attacker.Snapshot.RangedAttack : ctx.Attacker.Snapshot.MeleeAttack;
         attackStrength = Mathf.Max(0, Mathf.RoundToInt((attackStrength + GetDomainWeaponBonus(ctx.Weapon, ctx.Defender.Domain))
             * (ctx.Weapon != null ? Mathf.Max(0.01f, ctx.Weapon.attackMultiplier) : 1f)));
@@ -43,9 +52,8 @@ public sealed class BattleCombatResolver
 
         float t = Mathf.InverseLerp(ruleset.minAdvantage, ruleset.maxAdvantage, normalizedAdvantage);
         float damagePct = Mathf.Lerp(ruleset.minDamagePercent, ruleset.maxDamagePercent, t);
-        int damage = Mathf.RoundToInt(ctx.Defender.Snapshot.MaximumHealth * damagePct);
-
-        float jitter = 0.95f + ((random ?? new BattleDeterministicRandom(ctx.RandomSeed)).NextUnitFloat() * 0.1f);
+        float profileMultiplier = ctx.AttackProfile != null ? Mathf.Max(0f, ctx.AttackProfile.damageMultiplier) : 1f;
+        int damage = Mathf.RoundToInt(ctx.Defender.Snapshot.MaximumHealth * damagePct * profileMultiplier);
         damage = Mathf.Max(1, Mathf.RoundToInt(damage * jitter));
 
         bool dead = ctx.Defender.CurrentHealth - damage <= 0;

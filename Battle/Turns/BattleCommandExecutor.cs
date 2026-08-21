@@ -94,6 +94,27 @@ public sealed class BattleCommandExecutor
         }
     }
 
+    public BattleDamagePreview PreviewAttack(BattleSession session,BattleUnitState attacker,BattleUnitState defender,int weaponIndex,BattleAttackProfile profile=null)
+    {
+        bool special=profile!=null;TacticalWeaponProfile weapon=special?null:BattleTargetingService.GetWeapon(attacker,weaponIndex);bool ranged=special?profile.isRanged:weapon?.usesRangedAttack??false;
+        int distance=session?.MapDistance(attacker?.CellIndex??-1,defender?.CellIndex??-1)??0,min=special?profile.minimumRange:weapon?.minimumRange??0,max=special?profile.maximumRange:weapon?.maximumRange??0;
+        int ammo=!special&&attacker!=null&&weaponIndex>=0&&weaponIndex<attacker.WeaponAmmo.Count?attacker.WeaponAmmo[weaponIndex]:-1;
+        int cooldown=special?attacker?.SpecialAttackCooldownRemaining??0:attacker!=null&&weaponIndex>=0&&weaponIndex<attacker.WeaponCooldowns.Count?attacker.WeaponCooldowns[weaponIndex]:0;
+        string name=special?profile.attackName:weapon?.equipment?.equipmentName??"Built-in weapon";BattleLosBlockReason losReason=BattleLosBlockReason.None;
+        TargetingResult check=targeting.CanTarget(session,attacker,defender,ranged,weaponIndex,profile);string reason=check.Reason;
+        if(check.Allowed&&(attacker==null||!attacker.CanAct(session.ActiveSide))){reason="unit cannot act";check=new TargetingResult(false,reason);}
+        if(check.Allowed&&attacker.HasAttackedThisTurn){reason="already attacked";check=new TargetingResult(false,reason);}
+        if(check.Allowed&&attacker.HasMoved&&!(attacker.Snapshot?.TacticalProfile?.canAttackAfterMoving??true)){reason="cannot attack after moving";check=new TargetingResult(false,reason);}
+        if(check.Allowed&&special&&attacker.SpecialAttackCooldownRemaining>0){reason="special attack is cooling down";check=new TargetingResult(false,reason);}
+        if(check.Allowed&&special&&attacker.SpecialAttackUsesRemaining==0){reason="special attack is out of uses";check=new TargetingResult(false,reason);}
+        if(check.Allowed&&!special&&!IsWeaponReady(attacker,weaponIndex,out reason))check=new TargetingResult(false,reason);
+        if(check.Allowed&&ranged&&!(weapon?.usesIndirectFire??false)&&!los.HasLineOfSight(session,attacker,defender,out losReason)){reason=losReason.ToString();check=new TargetingResult(false,reason);}
+        var ac=session?.Map.GetCell(attacker?.CellIndex??-1);var dc=session?.Map.GetCell(defender?.CellIndex??-1);BattleCoverResolver.GetCover(dc,out bool soft,out bool hard);int damage=0;
+        if(check.Allowed){var ctx=new BattleCombatContext(attacker,defender,!ranged,ranged,false,ac?.ElevationLevel??1,dc?.ElevationLevel??1,soft,hard,defender.IsDefending,HasExposed(defender),BattleFlankingResolver.CountSupportingDirections(session,attacker,defender),0,weapon,profile);damage=combatResolver.Estimate(ctx).Damage;}
+        int counterDamage=0;bool counter=false;int counterIndex=BattleTargetingService.FindWeaponIndex(defender,attacker,distance);var counterWeapon=BattleTargetingService.GetWeapon(defender,counterIndex);if(check.Allowed&&counterWeapon!=null&&CanCounterAttack(defender)&&targeting.CanTarget(session,defender,attacker,counterWeapon.usesRangedAttack,counterIndex).Allowed&&HasRequiredLineOfSight(session,defender,attacker,counterWeapon)){counter=true;var cc=new BattleCombatContext(defender,attacker,!counterWeapon.usesRangedAttack,counterWeapon.usesRangedAttack,true,dc?.ElevationLevel??1,ac?.ElevationLevel??1,false,false,attacker.IsDefending,HasExposed(attacker),BattleFlankingResolver.CountSupportingDirections(session,defender,attacker),0,counterWeapon);counterDamage=combatResolver.Estimate(cc).Damage;}
+        return new BattleDamagePreview(name,check.Allowed,reason,damage,losReason,ranged,special,distance,min,max,ammo,cooldown,soft,hard,(ac?.ElevationLevel??1)-(dc?.ElevationLevel??1),counter,counterDamage);
+    }
+
     private bool ExecuteMove(BattleSession session, BattleOccupancy occupancy, BattleUnitState unit, BattleMoveCommand move, out string reason)
     {
         reason = string.Empty;
@@ -242,7 +263,8 @@ public sealed class BattleCommandExecutor
         var counterTargetCheck = counterWeaponIndex >= 0
             ? targeting.CanTarget(session, defender, attacker, counterWeapon.usesRangedAttack, counterWeaponIndex)
             : new TargetingResult(false, "no compatible counterattack weapon");
-        if (!defender.IsDead && CanCounterAttack(defender) && counterTargetCheck.Allowed)
+        if (!defender.IsDead && CanCounterAttack(defender) && counterTargetCheck.Allowed
+            && HasRequiredLineOfSight(session, defender, attacker, counterWeapon))
         {
             var counterContext = new BattleCombatContext(
                 defender,
@@ -268,6 +290,9 @@ public sealed class BattleCommandExecutor
 
         return true;
     }
+
+    private bool HasRequiredLineOfSight(BattleSession session,BattleUnitState attacker,BattleUnitState defender,TacticalWeaponProfile weapon)
+        => weapon==null||!weapon.usesRangedAttack||weapon.usesIndirectFire||los.HasLineOfSight(session,attacker,defender,out _);
 
     private bool ExecuteRetreat(BattleSession session, BattleOccupancy occupancy, BattleUnitState unit, BattleRetreatCommand retreat, out string reason)
     {
