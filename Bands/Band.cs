@@ -56,7 +56,8 @@ public sealed class Band : MonoBehaviour
     public int FoodCapacity => Mathf.Max(0, data != null ? data.foodStorageCapacity : 0) + builtStructures.Where(x => x != null).Sum(x => x.foodStorageBonus);
     public int GarrisonCapacity => Mathf.Max(0, data != null ? data.baseGarrisonCapacity : 0) + builtStructures.Where(x => x != null).Sum(x => x.garrisonCapacityBonus);
 
-    public void Initialize(BandData bandData, Civilization bandOwner, int startPlanet, int startTile)
+    public void Initialize(BandData bandData, Civilization bandOwner, int startPlanet, int startTile,
+        IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride = null)
     {
         if (bandData == null) throw new ArgumentNullException(nameof(bandData));
         data = bandData; owner = bandOwner; planetIndex = startPlanet; currentTileIndex = startTile;
@@ -65,7 +66,7 @@ public sealed class Band : MonoBehaviour
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
         PositionVisual(); RefreshVisuals();
-        SpawnStartingGarrison();
+        SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
     }
 
@@ -253,7 +254,20 @@ public sealed class Band : MonoBehaviour
     }
 
     private int GetProductionYield() => Mathf.Max(0, data.encampedYields.production + builtStructures.Where(x => x != null).Sum(x => x.yields.production));
-    private void SpawnStartingGarrison() { foreach (var e in data.startingGarrison) if (e != null) for (int i = 0; i < e.count; i++) SpawnAndGarrison(e.unit); }
+    private void SpawnStartingGarrison(IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride)
+    {
+        var entries = startingGarrisonOverride != null ? startingGarrisonOverride.ToList() : data.startingGarrison;
+        foreach (var entry in entries)
+        {
+            if (entry == null || entry.unit == null || entry.count <= 0) continue;
+            for (int i = 0; i < entry.count; i++)
+            {
+                if (SpawnAndGarrison(entry.unit)) continue;
+                Debug.LogWarning($"[Band] Could not add starting {entry.unit.unitName} to {data.displayName}; check its prefab and garrison capacity ({Garrison.Count}/{GarrisonCapacity}).");
+                break;
+            }
+        }
+    }
     private bool SpawnAndGarrison(CombatUnitData unitData)
     {
         if (unitData == null || garrison.Count >= GarrisonCapacity) return false;

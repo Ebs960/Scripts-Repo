@@ -36,9 +36,9 @@ public class CivilizationManager : MonoBehaviour
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
-    [Tooltip("WorkerUnitData asset describing the global pioneer unit. Civ-specific visuals are resolved through WorkerUnitData prefab overrides first, with Addressables as fallback.")]
+    [Tooltip("Normal expansion settler data. This is no longer spawned at civilization creation; retained for settler production and legacy-save compatibility.")]
     public WorkerUnitData pioneerData;
-    [Tooltip("New-game mobile proto-settlement. When assigned this replaces pioneerData for opening spawns; pioneerData remains the normal settler/legacy-save fallback.")]
+    [Tooltip("Default new-game Band rules/content. Individual CivData assets may override this, and every new civilization now requires a Band configuration.")]
     public BandData startingBandData;
     [Tooltip("Prefab with a City component for founding new cities")]
     public GameObject cityPrefab;
@@ -2634,77 +2634,40 @@ break; // Only propose one alliance per turn
             playerCiv = civ;
         }
 
-        // The opening uses a true non-unit Band. pioneerData remains for normal settlers and old saves.
+        // Every new civilization opens with a true Band. Worker pioneers are only normal
+        // expansion settlers and legacy-save content; they are never a new-game fallback.
+        BandData resolvedStartingBandData = data != null && data.startingBandData != null
+            ? data.startingBandData
+            : startingBandData;
         GameObject startingBandPrefab = data != null && data.bandPrefab != null
             ? data.bandPrefab
-            : startingBandData != null ? startingBandData.prefab : null;
-        if (startingBandData != null && startingBandPrefab != null)
+            : resolvedStartingBandData != null ? resolvedStartingBandData.prefab : null;
+        if (resolvedStartingBandData == null)
         {
-            var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
-            var bandObject = Instantiate(startingBandPrefab, bandPosition, Quaternion.identity);
-            if (planet != null) bandObject.transform.SetParent(planet.transform, true);
-            var band = bandObject.GetComponent<Band>();
-            if (band == null)
-            {
-                Debug.LogError($"Starting Band prefab for {data.civName} has no Band component.");
-                Destroy(bandObject);
-                return;
-            }
-            band.Initialize(startingBandData, civ, planetIndex, tile);
-            (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, bandObject, TileLayer.Surface);
+            Debug.LogError($"SpawnOneCivilization: {data.civName} has no starting BandData. New civilizations no longer fall back to obsolete Worker pioneers.");
+            civs.Remove(civ);
+            if (playerCiv == civ) playerCiv = null;
+            Destroy(civGO);
             return;
         }
-
-        // Compatibility fallback for scenes/assets not yet wired to startingBandData.
-        WorkerUnitData resolvedPioneerData = pioneerData;
-
-        if (resolvedPioneerData == null)
+        var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
+        var bandObject = startingBandPrefab != null
+            ? Instantiate(startingBandPrefab, bandPosition, Quaternion.identity)
+            : new GameObject($"{data.civName} Band", typeof(Band));
+        if (startingBandPrefab == null) bandObject.transform.position = bandPosition;
+        if (planet != null) bandObject.transform.SetParent(planet.transform, true);
+        var band = bandObject.GetComponent<Band>();
+        if (band == null)
         {
-            Debug.LogError($"SpawnOneCivilization: No pioneerData configured on CivilizationManager for {data.civName}!");
-            return;
+            Debug.LogError($"Starting Band prefab for {data.civName} has no Band component.");
+            Destroy(bandObject); civs.Remove(civ); if (playerCiv == civ) playerCiv = null; Destroy(civGO); return;
         }
-
-        // Use the normal worker prefab resolver so pioneers can come from direct prefabs
-        // or Addressables, with prefab references preferred when assigned.
-        GameObject resolvedPioneerPrefab = resolvedPioneerData.GetPrefab(civ);
-        if (resolvedPioneerPrefab == null)
-        {
-            Debug.LogError($"SpawnOneCivilization: Failed to resolve pioneer prefab for {data.civName}. Aborting spawn.");
-            return;
-        }
-
-        // Instantiate pioneer — parent under the planet so it deactivates on planet switch
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
-        var wgo = Instantiate(resolvedPioneerPrefab, pos, Quaternion.identity);
-        if (planet != null) wgo.transform.SetParent(planet.transform, true);
-        // Register pioneer with wrap registry
-        try
-        {
-            var mgr = FindObjectsByType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
-            if (mgr != null) mgr.RegisterObjectForWrapAtTile(tile, wgo);
-        }
-        catch { }
-        if (wgo == null)
-        {
-            Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");
-            return;
-        }
-        
-        var pioneer = wgo.GetComponent<WorkerUnit>();
-        if (pioneer == null)
-        {
-            Debug.LogError($"WorkerUnit component not found on pioneer prefab for {data.civName}!");
-            Destroy(wgo);
-            return;
-        }
-        
-        pioneer.Initialize(resolvedPioneerData, civ, tile);
-        pioneer.planetIndex = planetIndex;
-        civ.workerUnits.Add(pioneer);
-        try { pioneer.RegisterToRegistry(); } catch { }
-        
+        IEnumerable<StartingBandGarrisonEntry> civGarrison = data.startingBandGarrison != null && data.startingBandGarrison.Length > 0
+            ? data.startingBandGarrison
+            : null;
+        band.Initialize(resolvedStartingBandData, civ, planetIndex, tile, civGarrison);
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, bandObject, TileLayer.Surface);
     }
 
     /// <summary>

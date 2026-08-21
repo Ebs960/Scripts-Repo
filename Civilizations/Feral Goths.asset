@@ -34,6 +34,8 @@ MonoBehaviour:
   startingPolicies: []
   uniqueUnits: []
   uniqueBuildings: []
+  startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
+  startingBandGarrison: []
   climatePreferences: 090000000800000005000000
   attackBonus: 10
   defenseBonus: 0

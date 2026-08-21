@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using System.Reflection;
+using UnityEditor;
 
 public sealed class BandCampaignTests
 {
@@ -80,5 +81,26 @@ public sealed class BandCampaignTests
         var units = (string[])typeof(BandPanel).GetField("UnitButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
         CollectionAssert.AreEqual(new[] { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" }, structures);
         CollectionAssert.AreEqual(new[] { "Hunter", "Clubman", "Spear Thrower", "Raft" }, units);
+    }
+
+    [Test]
+    public void EveryCivilizationAssetStartsWithBandData()
+    {
+        string[] guids = AssetDatabase.FindAssets("t:CivData", new[] { "Assets/Civilizations" });
+        Assert.That(guids, Is.Not.Empty);
+        foreach (string guid in guids)
+        {
+            var civ = AssetDatabase.LoadAssetAtPath<CivData>(AssetDatabase.GUIDToAssetPath(guid));
+            Assert.That(civ.startingBandData, Is.Not.Null, $"{civ.name} must start with a BandData asset");
+        }
+    }
+
+    [Test]
+    public void PaleolithicBandHasRealStartingCombatUnits()
+    {
+        var data = AssetDatabase.LoadAssetAtPath<BandData>("Assets/Units/Paleolithic Units/Paleolithic Band Data.asset");
+        Assert.That(data, Is.Not.Null);
+        Assert.That(data.startingGarrison, Has.Count.EqualTo(2));
+        Assert.That(data.startingGarrison.TrueForAll(x => x != null && x.unit != null && x.count > 0), Is.True);
     }
 }

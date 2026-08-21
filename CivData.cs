@@ -40,6 +40,10 @@ public class CivData : ScriptableObject
     public PolicyData[] startingPolicies;    // Initial policies or governments
     public CombatUnitData[] uniqueUnits;     // Civilizational unique units
     public BuildingData[] uniqueBuildings;   // Unique city or tile improvements
+    [Tooltip("Optional Band rules/content override for this civilization. Falls back to CivilizationManager.startingBandData.")]
+    public BandData startingBandData;
+    [Tooltip("The real CombatUnits placed in this civilization's opening Band garrison. When empty, the selected BandData starting garrison is used.")]
+    public StartingBandGarrisonEntry[] startingBandGarrison;
 
     [Header("Preferences & Modifiers")]
     public Biome[] climatePreferences;   // Preferred biomes for starting placement
