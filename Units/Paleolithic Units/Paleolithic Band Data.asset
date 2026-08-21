@@ -32,10 +32,8 @@ MonoBehaviour:
   baseForageFood: 4
   baseGarrisonCapacity: 4
   startingGarrison:
-  - unit: {fileID: 11400000, guid: a2182e07ab550974cb9d28ecfaab6e98, type: 2}
-    count: 1
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
-    count: 1
+    count: 2
   allowedStructures: []
   allowedMilitaryRecruitment:
   - {fileID: 11400000, guid: a2182e07ab550974cb9d28ecfaab6e98, type: 2}

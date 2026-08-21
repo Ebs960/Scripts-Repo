@@ -100,7 +100,9 @@ public sealed class BandCampaignTests
     {
         var data = AssetDatabase.LoadAssetAtPath<BandData>("Assets/Units/Paleolithic Units/Paleolithic Band Data.asset");
         Assert.That(data, Is.Not.Null);
-        Assert.That(data.startingGarrison, Has.Count.EqualTo(2));
+        Assert.That(data.startingGarrison, Has.Count.EqualTo(1));
         Assert.That(data.startingGarrison.TrueForAll(x => x != null && x.unit != null && x.count > 0), Is.True);
+        Assert.That(data.startingGarrison[0].unit.unitName, Is.EqualTo("Clubman"));
+        Assert.That(data.startingGarrison[0].count, Is.EqualTo(2));
     }
 }
