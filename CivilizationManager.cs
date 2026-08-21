@@ -38,6 +38,8 @@ public class CivilizationManager : MonoBehaviour
     public GameObject civilizationPrefab;
     [Tooltip("WorkerUnitData asset describing the global pioneer unit. Civ-specific visuals are resolved through WorkerUnitData prefab overrides first, with Addressables as fallback.")]
     public WorkerUnitData pioneerData;
+    [Tooltip("New-game mobile proto-settlement. When assigned this replaces pioneerData for opening spawns; pioneerData remains the normal settler/legacy-save fallback.")]
+    public BandData startingBandData;
     [Tooltip("Prefab with a City component for founding new cities")]
     public GameObject cityPrefab;
 
@@ -2632,7 +2634,26 @@ break; // Only propose one alliance per turn
             playerCiv = civ;
         }
 
-        // Pioneer spawning uses the global data asset; civ-specific visuals come from WorkerUnitData overrides.
+        // The opening uses a true non-unit Band. pioneerData remains for normal settlers and old saves.
+        if (startingBandData != null && startingBandData.prefab != null)
+        {
+            var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
+            var bandObject = Instantiate(startingBandData.prefab, bandPosition, Quaternion.identity);
+            if (planet != null) bandObject.transform.SetParent(planet.transform, true);
+            var band = bandObject.GetComponent<Band>();
+            if (band == null)
+            {
+                Debug.LogError($"Starting Band prefab for {data.civName} has no Band component.");
+                Destroy(bandObject);
+                return;
+            }
+            band.Initialize(startingBandData, civ, planetIndex, tile);
+            (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, bandObject, TileLayer.Surface);
+            return;
+        }
+
+        // Compatibility fallback for scenes/assets not yet wired to startingBandData.
         WorkerUnitData resolvedPioneerData = pioneerData;
 
         if (resolvedPioneerData == null)
@@ -2830,22 +2851,23 @@ break; // Only propose one alliance per turn
     /// </summary>
     private void PositionCameraOnPlayerStart()
     {
-        if (playerCiv == null || playerCiv.workerUnits.Count == 0)
+        if (playerCiv == null || ((playerCiv.bands == null || playerCiv.bands.Count == 0) && playerCiv.workerUnits.Count == 0))
         {
             Debug.LogWarning("Cannot position camera: no player civilization or pioneer found");
             return;
         }
 
         // Get the player's pioneer (starting unit)
-        var pioneer = playerCiv.workerUnits[0];
-        if (pioneer == null)
+        Band startingBand = playerCiv.bands != null ? playerCiv.bands.FirstOrDefault(b => b != null) : null;
+        var pioneer = startingBand == null ? playerCiv.workerUnits[0] : null;
+        if (pioneer == null && startingBand == null)
         {
             Debug.LogWarning("Cannot position camera: pioneer is null");
             return;
         }
 
         // Get the tile index where the pioneer is located
-        int pioneerTileIndex = pioneer.currentTileIndex;
+        int pioneerTileIndex = startingBand != null ? startingBand.CurrentTileIndex : pioneer.currentTileIndex;
         if (pioneerTileIndex < 0)
         {
             Debug.LogWarning("Cannot position camera: pioneer tile index is invalid");
@@ -2860,8 +2882,9 @@ break; // Only propose one alliance per turn
             return;
         }
 
-        int planetIndex = pioneer.planetIndex >= 0
-            ? pioneer.planetIndex
+        int startPlanetIndex = startingBand != null ? startingBand.PlanetIndex : pioneer.planetIndex;
+        int planetIndex = startPlanetIndex >= 0
+            ? startPlanetIndex
             : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         if (planet == null || planet.Grid == null)

@@ -59,7 +59,21 @@ public class Civilization : MonoBehaviour
     [SerializeField] private City capitalCity;
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
+    public List<Band> bands                 = new List<Band>();
     public City CapitalCity => capitalCity;
+
+    public void RegisterBand(Band band)
+    {
+        if (band != null && !bands.Contains(band)) bands.Add(band);
+    }
+
+    public void UnregisterBand(Band band)
+    {
+        if (band != null) bands.Remove(band);
+    }
+
+    /// <summary>A mobile Band sustains a pre-city civilization.</summary>
+    public bool HasSurvivingSettlement => cities.Any(city => city != null) || bands.Any(band => band != null);
     [Header("Attrition Settings")]
     [Tooltip("Base HP damage applied to units each turn while the civilization is in famine (food <= 0).")]
     public int famineAttritionDamage = 1;

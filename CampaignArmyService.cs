@@ -118,6 +118,7 @@ public static class CampaignArmyService
         }
 
         string armyId = receivingMembers[0].EnsureMilitaryFormationIdentity();
+        string joiningArmyId = joiningMembers[0].MilitaryFormationId;
         string armyName = receivingMembers[0].MilitaryFormationName;
         MilitaryFormationType armyType = receivingMembers[0].MilitaryFormationType;
         for (int i = 0; i < receivingMembers.Count; i++)
@@ -129,6 +130,7 @@ public static class CampaignArmyService
         }
 
         RefreshPresentation(receivingMembers[0]);
+        CivilianAttachmentService.TransferOnMerge(receivingArmy.owner, joiningArmyId, armyId);
         return true;
     }
 
