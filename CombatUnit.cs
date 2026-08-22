@@ -9,6 +9,14 @@ using GameCombat;
 
 public class CombatUnit : BaseUnit
 {
+    [SerializeField] private string persistentId;
+    public string PersistentId => string.IsNullOrEmpty(persistentId) ? (persistentId = System.Guid.NewGuid().ToString("N")) : persistentId;
+    public void RestorePersistentId(string value)
+    {
+        if (!string.IsNullOrEmpty(value)) persistentId = value;
+        UnitRegistry.RegisterPersistent(PersistentId, gameObject);
+    }
+
     [Header("Stats (Override Data Asset)")]
     [HideInInspector][SerializeField] private int attack = 0; // legacy generic fallback
     [SerializeField] private int meleeAttack = 0;
@@ -324,6 +332,7 @@ public class CombatUnit : BaseUnit
     protected override void Awake()
     {
         base.Awake(); // This handles animator, grid, planet, and UnitRegistry
+        UnitRegistry.RegisterPersistent(PersistentId, gameObject);
         
         // CRITICAL FIX: Ensure animator is properly configured
         if (animator != null)
@@ -1860,7 +1869,7 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public bool CanAttack(WorkerUnit target)
     {
-        if (target == null || data == null) return false;
+        if (target == null || data == null || target.IsArmyAttachedCivilian) return false;
 
         CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
         if (!CanAttackTargetDomain(targetDomain)) return false;

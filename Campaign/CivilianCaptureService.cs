@@ -10,6 +10,11 @@ public static class CivilianCaptureService
     public static bool ResolveAttack(CombatUnit attacker, WorkerUnit civilian)
     {
         if (attacker == null || civilian == null || attacker.owner == civilian.owner) return false;
+        if (!CivilianAttachmentService.TryDetachForHostileContact(civilian, out string placementReason))
+        {
+            Debug.LogWarning($"[CivilianCapture] Capture rejected: {placementReason}");
+            return false;
+        }
         if (attacker.data != null && attacker.data.unitType == CombatCategory.Animal)
         {
             WorkerKilledByAnimal?.Invoke(civilian, attacker);

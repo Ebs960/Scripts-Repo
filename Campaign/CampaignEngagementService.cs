@@ -9,6 +9,7 @@ public static class CampaignEngagementService
         if (attacker == null || defender == null) { reason = "Missing attacker or Band."; return null; }
         if (defender.Garrison.Count == 0)
         {
+            if (!attacker.TryConsumeAttackPoint()) { reason = "Attacker has no actions remaining."; return null; }
             if (attacker.data != null && attacker.data.unitType == CombatCategory.Animal) defender.DestroyBand(BandLossReason.AnimalAttack);
             else defender.Capture(attacker.owner);
             return null;

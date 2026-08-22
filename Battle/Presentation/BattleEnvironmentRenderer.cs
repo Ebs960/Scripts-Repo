@@ -14,7 +14,7 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
     {
         public readonly Mesh Mesh;public readonly Material Material;public readonly int Submesh;
         public InstanceKey(Mesh mesh,Material material,int submesh){Mesh=mesh;Material=material;Submesh=submesh;}
-        public override int GetHashCode()=>((Mesh!=null?Mesh.GetInstanceID():0)*397)^(Material!=null?Material.GetInstanceID():0)^Submesh;
+        public override int GetHashCode()=>((Mesh!=null?Mesh.GetEntityId().GetHashCode():0)*397)^(Material!=null?Material.GetEntityId().GetHashCode():0)^Submesh;
         public override bool Equals(object obj)=>obj is InstanceKey other&&other.Mesh==Mesh&&other.Material==Material&&other.Submesh==Submesh;
     }
     private sealed class GrassBatch{public InstanceKey Key;public Matrix4x4[] Matrices;}
@@ -69,7 +69,7 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
     private static GameObject GetPrefab(BattleBiomeVisualProfile p,BattleDecorationPlacement x){GameObject[] a=x.Kind switch{BattleDecorationKind.Tree=>p.treePrefabs,BattleDecorationKind.Grass=>p.grassPrefabs,BattleDecorationKind.Bush=>p.bushPrefabs,BattleDecorationKind.Rock=>p.rockPrefabs,BattleDecorationKind.Prop=>p.environmentalPropPrefabs,BattleDecorationKind.SoftCover=>p.softCoverPrefabs,BattleDecorationKind.HardCover=>p.hardCoverPrefabs,BattleDecorationKind.Port=>p.portPrefabs,_=>null};return a!=null&&x.PrefabIndex>=0&&x.PrefabIndex<a.Length?a[x.PrefabIndex]:null;}
     private static bool HasPrefab(GameObject[] prefabs){if(prefabs!=null)foreach(var prefab in prefabs)if(prefab!=null)return true;return false;}
     private static Material CreateFeatureMaterial(){var shader=Shader.Find("HDRP/Unlit")??Shader.Find("Universal Render Pipeline/Unlit")??Shader.Find("Unlit/Color")??Shader.Find("Standard");return new Material(shader){name="Shared Tactical Feature Material"};}
-    public void Clear(){foreach(var go in spawned)DestroyObject(go);spawned.Clear();grassInstances.Clear();grassBatches.Clear();foreach(var material in instancedMaterials.Values)DestroyObject(material);instancedMaterials.Clear();DestroyObject(featureMaterial);featureMaterial=null;}
-    private static void DestroyObject(Object value){if(value==null)return;if(Application.isPlaying)Destroy(value);else DestroyImmediate(value);}
+    public void Clear(){foreach(var go in spawned)DestroyTrackedObject(go);spawned.Clear();grassInstances.Clear();grassBatches.Clear();foreach(var material in instancedMaterials.Values)DestroyTrackedObject(material);instancedMaterials.Clear();DestroyTrackedObject(featureMaterial);featureMaterial=null;}
+    private static void DestroyTrackedObject(Object value){if(value==null)return;if(Application.isPlaying)Destroy(value);else DestroyImmediate(value);}
     private void OnDestroy()=>Clear();
 }

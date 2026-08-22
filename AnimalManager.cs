@@ -375,6 +375,25 @@ public class AnimalManager : MonoBehaviour
 
         return nearestTarget;
     }
+
+    private Band FindNearestBand(CombatUnit predator, int maxSearchRange = 3)
+    {
+        if (predator == null || CivilizationManager.Instance == null) return null;
+        var tiles = TileSystem.GetForPlanet(predator.planetIndex) ?? TileSystem.Instance;
+        Band nearest = null;
+        float best = float.MaxValue;
+        foreach (var civ in CivilizationManager.Instance.GetAllCivs())
+        {
+            if (civ?.bands == null) continue;
+            foreach (var band in civ.bands)
+            {
+                if (band == null || band.PlanetIndex != predator.planetIndex) continue;
+                float distance = tiles != null ? tiles.GetTileDistance(predator.currentTileIndex, band.CurrentTileIndex) : float.MaxValue;
+                if (distance <= maxSearchRange && distance < best) { nearest = band; best = distance; }
+            }
+        }
+        return nearest;
+    }
     
     /// <summary>
     /// Get direction away from the nearest civilization unit for prey to flee
@@ -811,6 +830,16 @@ public class AnimalManager : MonoBehaviour
         int attackPointsBefore = attacker.CurrentAttackPoints;
         int movePointsBefore = attacker.currentMovePoints;
 
+        // Workers are civilians. Animal contact kills them through the canonical
+        // civilian service and still consumes the animal's normal attack action.
+        if (defender is WorkerUnit civilian)
+        {
+            attacker.Attack(civilian);
+            return attacker.CurrentAttackPoints < attackPointsBefore
+                || attacker.currentMovePoints != movePointsBefore
+                || attacker.hasActedThisTurn;
+        }
+
         var dmg = attacker.CurrentAttack;
         var ctx = new BaseUnit.AttackContext
         {
@@ -913,12 +942,24 @@ public class AnimalManager : MonoBehaviour
     if (predator.currentMovePoints <= 0) return false;
 
         var target = FindNearestCivilizationUnit(predator);
-        if (target == null) return false;
+        var bandTarget = FindNearestBand(predator);
+        if (target == null && bandTarget == null) return false;
 
         var ts = TileSystem.GetForPlanet(predator.planetIndex) ?? TileSystem.Instance;
+        float unitDistance = target != null && ts != null ? ts.GetTileDistance(predator.currentTileIndex, target.currentTileIndex) : float.MaxValue;
+        float bandDistance = bandTarget != null && ts != null ? ts.GetTileDistance(predator.currentTileIndex, bandTarget.CurrentTileIndex) : float.MaxValue;
+        if (bandDistance <= unitDistance)
+        {
+            if (bandDistance <= 1f)
+            {
+                CampaignEngagementService.AttackBand(predator, bandTarget, out _);
+                return true;
+            }
+            target = null;
+        }
 
         // If we're already adjacent to the target, perform an attack instead of moving
-        float distToTarget = ts != null ? ts.GetTileDistance(predator.currentTileIndex, target.currentTileIndex) : float.MaxValue;
+        float distToTarget = target != null ? unitDistance : bandDistance;
         if (distToTarget <= 1f)
         {
             return TryAnimalAttack(predator, target);
@@ -931,11 +972,12 @@ public class AnimalManager : MonoBehaviour
 
         // Find the destination that gets us closest to the target
         int bestDestination = validDestinations[0];
-        float minDistance = ts != null ? ts.GetTileDistance(bestDestination, target.currentTileIndex) : float.MaxValue;
+        int targetTile = target != null ? target.currentTileIndex : bandTarget.CurrentTileIndex;
+        float minDistance = ts != null ? ts.GetTileDistance(bestDestination, targetTile) : float.MaxValue;
 
         foreach (var destination in validDestinations)
         {
-            float distance = ts != null ? ts.GetTileDistance(destination, target.currentTileIndex) : float.MaxValue;
+            float distance = ts != null ? ts.GetTileDistance(destination, targetTile) : float.MaxValue;
             if (distance < minDistance)
             {
                 minDistance = distance;

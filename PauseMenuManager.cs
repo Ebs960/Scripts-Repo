@@ -87,6 +87,8 @@ public class PauseMenuManager : MonoBehaviour
     // ===== UNIT STATE =====
     public List<CombatUnitSaveData> combatUnits;
     public List<WorkerUnitSaveData> workerUnits;
+    public List<BandSaveData> bands;
+    public List<CivilianAttachmentSaveData> civilianAttachments;
     public List<CivilizationProgressSaveData> civilizationProgress;
     public List<CitySaveData> cities;
     public List<AnimalManager.PlanetEcologyState> ecologyStates;
@@ -108,6 +110,8 @@ public class PauseMenuManager : MonoBehaviour
         public List<ImprovementManager.JobAssignmentSaveData> jobAssignments = new List<ImprovementManager.JobAssignmentSaveData>();
         public List<CombatUnitSaveData> combatUnits = new List<CombatUnitSaveData>();
         public List<WorkerUnitSaveData> workerUnits = new List<WorkerUnitSaveData>();
+        public List<BandSaveData> bands = new List<BandSaveData>();
+        public List<CivilianAttachmentSaveData> civilianAttachments = new List<CivilianAttachmentSaveData>();
         public List<CivilizationProgressSaveData> civilizationProgress = new List<CivilizationProgressSaveData>();
         public List<CitySaveData> cities = new List<CitySaveData>();
         public List<CrisisManager.MissionStateSaveData> missionStates = new List<CrisisManager.MissionStateSaveData>();
@@ -118,6 +122,8 @@ public class PauseMenuManager : MonoBehaviour
             return (jobAssignments != null && jobAssignments.Count > 0)
                 || (combatUnits != null && combatUnits.Count > 0)
                 || (workerUnits != null && workerUnits.Count > 0)
+                || (bands != null && bands.Count > 0)
+                || (civilianAttachments != null && civilianAttachments.Count > 0)
                 || (civilizationProgress != null && civilizationProgress.Count > 0)
                 || (cities != null && cities.Count > 0)
                 || (missionStates != null && missionStates.Count > 0)
@@ -242,6 +248,7 @@ public class PauseMenuManager : MonoBehaviour
     [Serializable]
     public class CombatUnitSaveData
     {
+        public string persistentId;
         public string unitDataName;   // CombatUnitData.unitName — used to look up the SO
         public int ownerCivIndex;     // index in CivilizationManager.GetAllCivs()
         public int currentTileIndex;
@@ -271,6 +278,8 @@ public class PauseMenuManager : MonoBehaviour
     [Serializable]
     public class WorkerUnitSaveData
     {
+        public string persistentId;
+        public string attachedArmyFormationId;
         public string unitDataName;   // WorkerUnitData.unitName
         public int ownerCivIndex;
         public int currentTileIndex;

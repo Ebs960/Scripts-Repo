@@ -63,9 +63,23 @@ public sealed class BattleResultApplier
 
         foreach (var unit in byId.Values)
             if (unit != null && unit.currentHealth > 0)
+            {
                 CampaignArmyService.RefreshPresentation(unit);
+                CivilianAttachmentService.SynchronizeFormationLocation(unit);
+            }
+        ApplyCivilianFormationFate(result, preview);
         ApplyBandObjectiveResult(result, preview);
         result.CampaignApplied = true;
+    }
+
+    private static void ApplyCivilianFormationFate(BattleResult result, EngagementPreview preview)
+    {
+        var losing = result.WinningSide == BattleSide.Attacker ? preview.DefenderParty : preview.AttackerParty;
+        var winning = result.WinningSide == BattleSide.Attacker ? preview.AttackerParty : preview.DefenderParty;
+        if (losing == null || losing.Kind != CampaignBattlePartyKind.Army ||
+            losing.CombatUnits.Any(x => x != null && x.currentHealth > 0)) return;
+        var victor = winning?.CombatUnits?.FirstOrDefault(x => x != null && x.currentHealth > 0);
+        CivilianAttachmentService.ResolveFormationLoss(losing.Owner, losing.ArmyFormationId, victor);
     }
 
     private static void ApplyBandObjectiveResult(BattleResult result, EngagementPreview preview)

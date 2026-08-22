@@ -40,6 +40,12 @@ public class WorkerUnit : BaseUnit
         private set => persistentId = value;
     }
 
+    public void RestorePersistentId(string value)
+    {
+        if (!string.IsNullOrEmpty(value)) PersistentId = value;
+        UnitRegistry.RegisterPersistent(PersistentId, gameObject);
+    }
+
     [Header("Animation Control")]
     private readonly int idleYoungHash = Animator.StringToHash("IdleYoung");
     private readonly int idleExperiencedHash = Animator.StringToHash("IdleExperienced");
