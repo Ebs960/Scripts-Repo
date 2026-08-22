@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using UnityEngine;
-using System.Reflection;
 using UnityEditor;
 
 public sealed class BandCampaignTests
@@ -75,12 +74,10 @@ public sealed class BandCampaignTests
     }
 
     [Test]
-    public void BandPanelKeepsTheHardcodedPaleolithicProductionRoster()
+    public void BandPanelDoesNotHardcodePaleolithicProductionRoster()
     {
-        var structures = (string[])typeof(BandPanel).GetField("StructureButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-        var units = (string[])typeof(BandPanel).GetField("UnitButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-        CollectionAssert.AreEqual(new[] { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" }, structures);
-        CollectionAssert.AreEqual(new[] { "Hunter", "Clubman", "Spear Thrower", "Raft" }, units);
+        Assert.That(typeof(BandPanel).GetField("StructureButtonNames", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), Is.Null);
+        Assert.That(typeof(BandPanel).GetField("UnitButtonNames", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), Is.Null);
     }
 
     [Test]

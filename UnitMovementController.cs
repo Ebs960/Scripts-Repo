@@ -702,6 +702,8 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                 comp.DeductMovePoints(movementCost);
                 comp.currentTileIndex = targetTile;
             }
+            if (combatUnit != null)
+                CivilianAttachmentService.SynchronizeFormationLocation(combatUnit);
 
             if (mergeTarget != null && combatUnit != null)
             {

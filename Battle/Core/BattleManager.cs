@@ -222,6 +222,32 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         return preview;
     }
 
+    public EngagementPreview RequestEngagement(CampaignBattleParty attacker, CampaignBattleParty defender)
+    {
+        if (IsBattleActive || pendingPreview != null || pendingResult != null)
+            return new EngagementPreview { IsValid = false, RejectionReason = "battle already active", AttackerParty = attacker, DefenderParty = defender };
+        if (!participantCollector.TryBuildPreview(attacker, defender, out var preview)) return preview;
+        preview.Map = mapBuilder.Build(preview);
+        if (preview.Map == null) { preview.IsValid = false; preview.RejectionReason = "map generation failed"; return preview; }
+        preview.ApproachDirectionXZ = ResolveApproachDirection(preview);
+        BattleDeploymentBuilder.BuildDeploymentZones(preview.Map, preview, ruleset.deploymentDepthCells);
+        AssignReinforcementEntries(preview);
+        preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
+        int deployA = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.AttackerUnits.Count);
+        int deployD = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.DefenderUnits.Count);
+        if (!BattleMapValidator.Validate(preview.Map, deployA, deployD, out string reason))
+        { preview.IsValid = false; preview.RejectionReason = reason; return preview; }
+        pendingPreview = preview;
+        if (!IsPlayerInvolved(preview)) AutoResolve(preview);
+        else
+        {
+            GameInteractionStateService.GetOrCreate().SetMode(GameInteractionMode.BattlePreview);
+            BattlePreviewOpened?.Invoke(preview);
+            RaiseBattlePreviewOpened(preview);
+        }
+        return preview;
+    }
+
     public void BeginManualBattle(EngagementPreview preview)
     {
         if (preview == null || !preview.IsValid || IsBattleActive || pendingResult != null)

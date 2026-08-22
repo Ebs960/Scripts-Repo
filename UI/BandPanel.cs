@@ -9,18 +9,16 @@ public sealed class BandPanel : MonoBehaviour
 {
     [SerializeField] private TMP_Text titleText, populationText, foodText, starvationText, stateText, movementText, structuresText, productionText, garrisonText;
     [SerializeField] private Button packButton, encampButton, forageButton;
-    [Header("Hardcoded Paleolithic Production Grid")]
+    [Header("Data-driven Production Grid")]
     [SerializeField] private RectTransform productionButtonsRoot;
     private readonly List<GameObject> generatedButtons = new List<GameObject>();
-    private static readonly string[] StructureButtonNames = { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" };
-    private static readonly string[] UnitButtonNames = { "Hunter", "Clubman", "Spear Thrower", "Raft" };
     private Band band;
 
     public void Show(Band value)
     {
         band = value;
         gameObject.SetActive(value != null);
-        if (value != null) { BuildHardcodedProductionButtons(); Refresh(); }
+        if (value != null) { BuildProductionButtons(); Refresh(); }
     }
 
     public void Pack() { if (band != null) band.Pack(); Refresh(); }
@@ -34,7 +32,8 @@ public sealed class BandPanel : MonoBehaviour
         Set(populationText, $"Population: {band.Population}");
         Set(foodText, $"Food Reserve: {band.FoodReserve} / {band.FoodCapacity}\nFood Use: {band.FoodRequiredPerTurn} / turn");
         int collapse = band.Data != null ? band.Data.collapseAfterStarvationTurns : 8;
-        Set(starvationText, band.IsStarving ? $"STARVING\n{band.ConsecutiveStarvationTurns} / {collapse} turns" : $"Starvation: 0 / {collapse}");
+        int nextLoss = Mathf.Max(1, Mathf.CeilToInt(band.Population * (band.Data != null ? band.Data.populationLossPctPerStarvingTurn : .1f)));
+        Set(starvationText, band.IsStarving ? $"STARVING\n{band.ConsecutiveStarvationTurns} / {collapse} turns\nNext turn: -{nextLoss} population" : $"Starvation: 0 / {collapse}");
         Set(stateText, band.State.ToString());
         Set(movementText, $"Movement: {band.CurrentMovePoints}");
         Set(structuresText, "Structures\n" + string.Join("\n", band.BuiltStructures.Where(x => x != null).Select(x => "• " + x.structureName)));
@@ -43,10 +42,10 @@ public sealed class BandPanel : MonoBehaviour
         if (packButton != null) packButton.interactable = band.State == BandState.Encamped;
         if (encampButton != null) encampButton.interactable = band.State == BandState.Packed;
         if (forageButton != null) forageButton.interactable = band.CurrentMovePoints > 0;
-        RefreshHardcodedProductionButtons();
+        RefreshProductionButtons();
     }
 
-    private void BuildHardcodedProductionButtons()
+    private void BuildProductionButtons()
     {
         foreach (var go in generatedButtons) if (go != null) Destroy(go);
         generatedButtons.Clear();
@@ -54,27 +53,27 @@ public sealed class BandPanel : MonoBehaviour
         EnsureProductionRoot();
 
         CreateSectionLabel("BAND IMPROVEMENTS", new Vector2(0f, -8f));
-        for (int i = 0; i < StructureButtonNames.Length; i++)
+        var structures = band.Data != null ? band.Data.allowedStructures.Where(x => x != null).ToList() : new List<BandStructureData>();
+        for (int i = 0; i < structures.Count; i++)
         {
-            string hardcodedName = StructureButtonNames[i];
-            BandStructureData structure = band.Data.allowedStructures.FirstOrDefault(x => x != null && x.structureName == hardcodedName);
-            CreateOptionButton(hardcodedName, structure != null ? structure.icon : null, structure != null ? structure.productionCost : 0,
+            BandStructureData structure = structures[i];
+            CreateOptionButton(structure.structureName, structure.icon, structure.productionCost,
                 new Vector2((i % 3) * 164f, -42f - (i / 3) * 58f),
                 () => { if (structure != null && band.QueueStructure(structure)) Refresh(); });
         }
 
         CreateSectionLabel("MILITARY UNITS", new Vector2(0f, -166f));
-        for (int i = 0; i < UnitButtonNames.Length; i++)
+        var units = band.Data != null ? band.Data.allowedMilitaryRecruitment.Where(x => x != null).ToList() : new List<CombatUnitData>();
+        for (int i = 0; i < units.Count; i++)
         {
-            string hardcodedName = UnitButtonNames[i];
-            CombatUnitData unit = band.Data.allowedMilitaryRecruitment.FirstOrDefault(x => x != null && x.unitName == hardcodedName);
-            CreateOptionButton(hardcodedName, unit != null ? unit.GetIcon(band.Owner) : null, unit != null ? unit.bandProductionCost : 0,
+            CombatUnitData unit = units[i];
+            CreateOptionButton(unit.unitName, unit.GetIcon(band.Owner), unit.bandProductionCost,
                 new Vector2((i % 3) * 164f, -200f - (i / 3) * 58f),
                 () => { if (unit != null && band.QueueMilitaryUnit(unit)) Refresh(); });
         }
     }
 
-    private void RefreshHardcodedProductionButtons()
+    private void RefreshProductionButtons()
     {
         if (band == null) return;
         foreach (var go in generatedButtons)
@@ -107,7 +106,7 @@ public sealed class BandPanel : MonoBehaviour
     private void EnsureProductionRoot()
     {
         if (productionButtonsRoot != null) return;
-        var root = new GameObject("Hardcoded Paleolithic Production", typeof(RectTransform));
+        var root = new GameObject("Band Production", typeof(RectTransform));
         root.transform.SetParent(transform, false);
         productionButtonsRoot = (RectTransform)root.transform;
         productionButtonsRoot.anchorMin = productionButtonsRoot.anchorMax = new Vector2(0f, 1f);

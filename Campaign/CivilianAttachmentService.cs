@@ -15,6 +15,38 @@ public static class CivilianAttachmentService
         return army.owner.workerUnits.Where(w => w != null && w.AttachedArmyFormationId == id).ToList();
     }
 
+    public static bool TryGetAttachedArmyRepresentative(WorkerUnit civilian, out CombatUnit representative)
+    {
+        representative = null;
+        if (civilian == null || civilian.owner == null || string.IsNullOrEmpty(civilian.AttachedArmyFormationId)) return false;
+        var member = civilian.owner.combatUnits.FirstOrDefault(x => x != null && !x.IsBandGarrisoned &&
+            x.MilitaryFormationId == civilian.AttachedArmyFormationId);
+        representative = member != null ? CampaignArmyService.GetRepresentative(member) : null;
+        return representative != null;
+    }
+
+    public static int GetStrategicTile(WorkerUnit civilian)
+    {
+        return TryGetAttachedArmyRepresentative(civilian, out var army) ? army.currentTileIndex : civilian != null ? civilian.currentTileIndex : -1;
+    }
+
+    public static int GetStrategicPlanet(WorkerUnit civilian)
+    {
+        return TryGetAttachedArmyRepresentative(civilian, out var army) ? army.planetIndex : civilian != null ? civilian.planetIndex : -1;
+    }
+
+    /// <summary>Updates attached civilian campaign metadata after formation movement without claiming occupancy.</summary>
+    public static void SynchronizeFormationLocation(CombatUnit army)
+    {
+        var representative = CampaignArmyService.GetRepresentative(army);
+        if (representative == null) return;
+        foreach (var worker in GetAttachments(representative))
+        {
+            worker.planetIndex = representative.planetIndex;
+            worker.currentLayer = representative.currentLayer;
+        }
+    }
+
     public static bool Attach(WorkerUnit civilian, CombatUnit army, out string reason)
     {
         reason = string.Empty;

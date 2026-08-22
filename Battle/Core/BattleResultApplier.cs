@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public sealed class BattleResultApplier
@@ -63,7 +64,24 @@ public sealed class BattleResultApplier
         foreach (var unit in byId.Values)
             if (unit != null && unit.currentHealth > 0)
                 CampaignArmyService.RefreshPresentation(unit);
+        ApplyBandObjectiveResult(result, preview);
         result.CampaignApplied = true;
+    }
+
+    private static void ApplyBandObjectiveResult(BattleResult result, EngagementPreview preview)
+    {
+        var losingParty = result.WinningSide == BattleSide.Attacker ? preview.DefenderParty : preview.AttackerParty;
+        var winningParty = result.WinningSide == BattleSide.Attacker ? preview.AttackerParty : preview.DefenderParty;
+        if (losingParty == null || losingParty.Kind != CampaignBattlePartyKind.BandGarrison || losingParty.BandHost == null) return;
+
+        var band = losingParty.BandHost;
+        // Legitimate survivors withdraw as their old owner's real army before the objective changes hands.
+        band.ReleaseSurvivingGarrisonAsArmy();
+        var victor = winningParty?.CombatUnits?.FirstOrDefault(x => x != null && x.currentHealth > 0);
+        if (victor != null && victor.data != null && victor.data.unitType == CombatCategory.Animal)
+            band.DestroyBand(BandLossReason.AnimalAttack);
+        else if (winningParty?.Owner != null)
+            band.Capture(winningParty.Owner);
     }
 
     private static Dictionary<int, CombatUnit> BuildUnitLookup(EngagementPreview preview)

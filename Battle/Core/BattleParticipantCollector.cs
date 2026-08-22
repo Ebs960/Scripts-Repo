@@ -76,6 +76,28 @@ public sealed class BattleParticipantCollector
         return true;
     }
 
+    public bool TryBuildPreview(CampaignBattleParty attacker, CampaignBattleParty defender, out EngagementPreview preview)
+    {
+        var attackerUnit = attacker?.CombatUnits?.FirstOrDefault(x => x != null && x.currentHealth > 0);
+        var defenderUnit = defender?.CombatUnits?.FirstOrDefault(x => x != null && x.currentHealth > 0);
+        if (!TryBuildPreview(attackerUnit, defenderUnit, out preview)) return false;
+        preview.AttackerParty = attacker;
+        preview.DefenderParty = defender;
+        preview.PlanetIndex = defender.PlanetIndex;
+        preview.AnchorTile = defender.CampaignTileIndex;
+        preview.AttackerUnits.Clear();
+        preview.DefenderUnits.Clear();
+        if (!TryCollectPartySnapshots(attacker, defender, preview.AttackerUnits, preview.DefenderUnits,
+            preview.Theater, out string reason))
+        {
+            preview.IsValid = false;
+            preview.RejectionReason = reason;
+            return false;
+        }
+        preview.IsValid = true;
+        return true;
+    }
+
     /// <summary>
     /// Party-based participant collection for Band engagements. It only snapshots the parties'
     /// real CombatUnits; Band and civilian objects cannot enter tactical state.

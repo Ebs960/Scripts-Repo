@@ -155,8 +155,8 @@ public sealed class Band : MonoBehaviour
     public bool QueueStructure(BandStructureData structure)
     {
         if (!CanQueueStructure(structure, out _)) return false;
-        if (structure.goldCost > 0) owner.gold -= structure.goldCost;
         if (!ResourceCost.Consume(owner, structure.resourceCosts)) return false;
+        if (structure.goldCost > 0) owner.gold -= structure.goldCost;
         queuedStructure = structure; queuedUnit = null; productionProgress = 0; return true;
     }
 
@@ -229,6 +229,36 @@ public sealed class Band : MonoBehaviour
             if (i == 0) representative = unit;
         }
         CampaignArmyService.RefreshPresentation(representative); BandGarrisonChanged?.Invoke(this); return true;
+    }
+
+    public void ReleaseSurvivingGarrisonAsArmy()
+    {
+        FormArmy(garrison.Where(x => x != null && x.currentHealth > 0).ToList(), out _);
+    }
+
+    public bool TryGarrisonArmy(CombatUnit army, out string reason)
+    {
+        reason = string.Empty;
+        if (army == null) { reason = "Missing army."; return false; }
+        var members = CampaignArmyService.GetMembers(army);
+        if (owner == null || army.owner != owner) { reason = "Band and army must have the same owner."; return false; }
+        if (army.planetIndex != planetIndex || army.currentLayer != TileLayer.Surface || army.currentTileIndex != currentTileIndex)
+        { reason = "Army and Band must share a compatible campaign location."; return false; }
+        if (members.Count == 0 || garrison.Count + members.Count > GarrisonCapacity)
+        { reason = $"Not enough garrison capacity ({garrison.Count + members.Count}/{GarrisonCapacity})."; return false; }
+        if (members.Any(x => x == null || x.owner != owner || x.planetIndex != planetIndex || x.currentLayer != TileLayer.Surface ||
+            x.currentTileIndex != currentTileIndex || x.IsTransported || x.isStored || x.IsBandGarrisoned))
+        { reason = "One or more army members cannot be garrisoned."; return false; }
+
+        foreach (var member in members)
+        {
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            occ?.ClearOccupantById(currentTileIndex, member.currentLayer, member.gameObject.GetRuntimeId());
+            garrison.Add(member);
+            member.StoreInBand(this);
+        }
+        BandGarrisonChanged?.Invoke(this);
+        return true;
     }
 
     public void Capture(Civilization newOwner)
