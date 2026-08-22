@@ -89,7 +89,7 @@ public class Civilization : MonoBehaviour
         if (combatUnits == null) return result;
 
         var groups = combatUnits
-            .Where(u => u != null && !string.IsNullOrEmpty(u.MilitaryFormationId))
+            .Where(u => u != null && !u.IsBandGarrisoned && !string.IsNullOrEmpty(u.MilitaryFormationId))
             .GroupBy(u => u.MilitaryFormationId);
 
         var service = MilitaryCommanderAssignmentService.Instance;
@@ -2685,6 +2685,11 @@ public class Civilization : MonoBehaviour
                     if (w != null) w.ResetForNewTurn();
                 }
             }
+            if (bands != null)
+            {
+                foreach (var band in bands.ToArray())
+                    if (band != null) band.ResetForNewTurn();
+            }
 
             if (ImprovementManager.Instance != null)
                 ImprovementManager.Instance.ResetFortAttacksForCiv(this);
@@ -2724,6 +2729,30 @@ public class Civilization : MonoBehaviour
             : new Dictionary<ResourceData, int>();
         var buildingResourcesThisTurn = new Dictionary<ResourceData, int>();
         var globalBonuses = CalculateTotalBonuses(researchedTechs, researchedCultures);
+
+        // Band food is local and was already deposited into FoodReserve by ResetForNewTurn.
+        // All other authored Band yields enter the ordinary empire turn totals here.
+        if (bands != null)
+        {
+            foreach (var band in bands.ToArray())
+            {
+                if (band == null) continue;
+                var yield = band.GetCurrentYields();
+                int bandGold = Mathf.RoundToInt(yield.gold * (1 + goldModifier));
+                int bandScience = Mathf.RoundToInt(yield.science * (1 + scienceModifier));
+                int bandCulture = Mathf.RoundToInt(yield.culture * (1 + cultureModifier));
+                int bandFaith = Mathf.RoundToInt(yield.faith * (1 + faithModifier));
+                int bandPolicy = Mathf.RoundToInt(yield.policyPoints * (1 + globalBonuses.policyPointsModifier + policyPointGenerationModifier));
+                gold += bandGold;
+                faith += bandFaith;
+                policyPoints += bandPolicy;
+                totalGoldThisTurn += bandGold;
+                totalScienceThisTurn += bandScience;
+                totalCultureThisTurn += bandCulture;
+                totalFaithThisTurn += bandFaith;
+                totalPolicyThisTurn += bandPolicy;
+            }
+        }
 
         foreach (var city in cities)
         {

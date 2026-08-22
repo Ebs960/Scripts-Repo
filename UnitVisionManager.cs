@@ -197,6 +197,16 @@ public class UnitVisionManager : MonoBehaviour
             AddVisibleTilesInRange(worker.currentTileIndex, sightRange, tempVisibleSet);
         }
 
+        // Bands provide their own vision; invisible garrison units do not.
+        if (civ != null && civ.bands != null)
+        {
+            foreach (var band in civ.bands)
+            {
+                if (band == null || band.Data == null || band.PlanetIndex != planetIndex || band.CurrentTileIndex < 0) continue;
+                AddVisibleTilesInRange(band.CurrentTileIndex, Mathf.Max(0, band.Data.visionRange), tempVisibleSet);
+            }
+        }
+
         // Cities
         if (civ != null && civ.cities != null)
         {

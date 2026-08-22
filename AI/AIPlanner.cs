@@ -79,6 +79,37 @@ public class AIPlanner
         if (civ == null) return;
         PlanTurn(civ);
         ExecuteCommands();
+        ExecuteBandDecisions(civ);
+    }
+
+    private static void ExecuteBandDecisions(Civilization civ)
+    {
+        if (civ?.bands == null) return;
+        foreach (var band in civ.bands.ToArray())
+        {
+            if (band == null || band.Data == null) continue;
+            bool foodDanger = band.IsStarving || band.FoodReserve < band.FoodRequiredPerTurn * 2;
+            if (foodDanger && band.CurrentMovePoints >= band.Data.forageMovementCost)
+            {
+                band.Forage();
+                continue;
+            }
+            if (band.State == BandState.Packed)
+            {
+                band.Encamp();
+                continue;
+            }
+            if (band.QueuedStructure == null && band.QueuedUnit == null)
+            {
+                var structure = band.Data.allowedStructures.FirstOrDefault(x => x != null && band.CanQueueStructure(x, out _));
+                if (structure != null) { band.QueueStructure(structure); continue; }
+                if (band.Garrison.Count < Mathf.Min(2, band.GarrisonCapacity))
+                {
+                    var unit = band.Data.allowedMilitaryRecruitment.FirstOrDefault(x => x != null && band.CanQueueMilitaryUnit(x, out _));
+                    if (unit != null) band.QueueMilitaryUnit(unit);
+                }
+            }
+        }
     }
 
     // ─────────────────────── Phase 1: Planning ───────────────────────

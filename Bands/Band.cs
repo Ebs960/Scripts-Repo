@@ -27,6 +27,7 @@ public sealed class Band : MonoBehaviour
     [SerializeField] private CombatUnitData queuedUnit;
     [SerializeField] private int productionProgress;
     private readonly List<GameObject> structureVisuals = new List<GameObject>();
+    private GameObject stateVisual;
     private Civilization owner;
 
     public static event Action<Band> BandCreated, BandPacked, BandEncamped, BandMoved;
@@ -57,7 +58,7 @@ public sealed class Band : MonoBehaviour
     public int GarrisonCapacity => Mathf.Max(0, data != null ? data.baseGarrisonCapacity : 0) + builtStructures.Where(x => x != null).Sum(x => x.garrisonCapacityBonus);
 
     public void Initialize(BandData bandData, Civilization bandOwner, int startPlanet, int startTile,
-        IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride = null)
+        IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride = null, bool spawnStartingGarrison = true)
     {
         if (bandData == null) throw new ArgumentNullException(nameof(bandData));
         data = bandData; owner = bandOwner; planetIndex = startPlanet; currentTileIndex = startTile;
@@ -66,8 +67,9 @@ public sealed class Band : MonoBehaviour
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
         PositionVisual(); RefreshVisuals();
-        SpawnStartingGarrison(startingGarrisonOverride);
+        if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
+        RefreshOwnerVision(owner);
     }
 
     /// <summary>Restores Band-owned state after ordinary CombatUnits/formations have loaded.</summary>
@@ -91,8 +93,28 @@ public sealed class Band : MonoBehaviour
     public void ResetForNewTurn()
     {
         currentMovePoints = Mathf.Max(0, data.movementPoints + builtStructures.Where(x => x != null).Sum(x => x.movementBonus));
+        var yields = GetCurrentYields();
+        foodReserve = Mathf.Clamp(foodReserve + Mathf.Max(0, yields.food), 0, FoodCapacity);
         ProcessFoodUpkeep();
         if (this != null && state == BandState.Encamped) ProcessProduction(GetProductionYield());
+    }
+
+    public BandYieldSet GetCurrentYields()
+    {
+        BandYieldSet result = state == BandState.Encamped ? data.encampedYields : data.packedYields;
+        foreach (var structure in builtStructures.Where(x => x != null))
+        {
+            if (state == BandState.Packed && !structure.activeWhilePacked) continue;
+            float multiplier = state == BandState.Packed ? Mathf.Clamp01(structure.packedEffectMultiplier) : 1f;
+            result.food += Mathf.RoundToInt(structure.yields.food * multiplier);
+            result.production += Mathf.RoundToInt(structure.yields.production * multiplier);
+            result.gold += Mathf.RoundToInt(structure.yields.gold * multiplier);
+            result.science += Mathf.RoundToInt(structure.yields.science * multiplier);
+            result.culture += Mathf.RoundToInt(structure.yields.culture * multiplier);
+            result.faith += Mathf.RoundToInt(structure.yields.faith * multiplier);
+            result.policyPoints += Mathf.RoundToInt(structure.yields.policyPoints * multiplier);
+        }
+        return result;
     }
 
     public void ProcessFoodUpkeep()
@@ -137,11 +159,12 @@ public sealed class Band : MonoBehaviour
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tile = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tile == null || !tile.isPassable) return false;
+        if (currentTileIndex < 0 || ts.GetWrappedHexDistance(currentTileIndex, tileIndex) != 1) return false;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null && occ.GetOccupantObject(tileIndex, TileLayer.Surface) != null) return false;
         if (occ != null && currentTileIndex >= 0) occ.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
         currentTileIndex = tileIndex; currentMovePoints -= cost; PositionVisual();
-        occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); return true;
+        occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); RefreshOwnerVision(owner); return true;
     }
 
     public int Forage(int amount = -1)
@@ -155,8 +178,8 @@ public sealed class Band : MonoBehaviour
     public bool QueueStructure(BandStructureData structure)
     {
         if (!CanQueueStructure(structure, out _)) return false;
-        if (structure.goldCost > 0) owner.gold -= structure.goldCost;
         if (!ResourceCost.Consume(owner, structure.resourceCosts)) return false;
+        if (structure.goldCost > 0) owner.gold -= structure.goldCost;
         queuedStructure = structure; queuedUnit = null; productionProgress = 0; return true;
     }
 
@@ -178,6 +201,8 @@ public sealed class Band : MonoBehaviour
     public bool QueueMilitaryUnit(CombatUnitData unit)
     {
         if (!CanQueueMilitaryUnit(unit, out _)) return false;
+        if (!ResourceCost.Consume(owner, unit.requiredResourceCosts, unit.hasSubstituteResourceCosts)) return false;
+        if (unit.goldCost > 0) owner.gold -= unit.goldCost;
         queuedUnit = unit; queuedStructure = null; productionProgress = 0; return true;
     }
 
@@ -187,6 +212,9 @@ public sealed class Band : MonoBehaviour
         if (state != BandState.Encamped) { reason = "Encamp to recruit"; return false; }
         if (unit == null || data == null || !unit.buildableByBand || !data.allowedMilitaryRecruitment.Contains(unit)) { reason = "Not recruitable by this Band"; return false; }
         if (owner == null || !unit.IsBuildableFor(owner)) { reason = "Requirements not met"; return false; }
+        if (owner.gold < unit.goldCost) { reason = $"Requires {unit.goldCost} Gold"; return false; }
+        if (!ResourceCost.CanAfford(owner, unit.requiredResourceCosts, unit.hasSubstituteResourceCosts))
+        { reason = "Missing strategic resources"; return false; }
         if (garrison.Count >= GarrisonCapacity) { reason = "Garrison full"; return false; }
         if (queuedUnit == unit) { reason = "In progress"; return false; }
         return true;
@@ -231,10 +259,41 @@ public sealed class Band : MonoBehaviour
         CampaignArmyService.RefreshPresentation(representative); BandGarrisonChanged?.Invoke(this); return true;
     }
 
+    public void ReleaseSurvivingGarrisonAsArmy()
+    {
+        FormArmy(garrison.Where(x => x != null && x.currentHealth > 0).ToList(), out _);
+    }
+
+    public bool TryGarrisonArmy(CombatUnit army, out string reason)
+    {
+        reason = string.Empty;
+        if (army == null) { reason = "Missing army."; return false; }
+        var members = CampaignArmyService.GetMembers(army);
+        if (owner == null || army.owner != owner) { reason = "Band and army must have the same owner."; return false; }
+        if (army.planetIndex != planetIndex || army.currentLayer != TileLayer.Surface || army.currentTileIndex != currentTileIndex)
+        { reason = "Army and Band must share a compatible campaign location."; return false; }
+        if (members.Count == 0 || garrison.Count + members.Count > GarrisonCapacity)
+        { reason = $"Not enough garrison capacity ({garrison.Count + members.Count}/{GarrisonCapacity})."; return false; }
+        if (members.Any(x => x == null || x.owner != owner || x.planetIndex != planetIndex || x.currentLayer != TileLayer.Surface ||
+            x.currentTileIndex != currentTileIndex || x.IsTransported || x.isStored || x.IsBandGarrisoned))
+        { reason = "One or more army members cannot be garrisoned."; return false; }
+
+        foreach (var member in members)
+        {
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            occ?.ClearOccupantById(currentTileIndex, member.currentLayer, member.gameObject.GetRuntimeId());
+            garrison.Add(member);
+            member.StoreInBand(this);
+        }
+        BandGarrisonChanged?.Invoke(this);
+        return true;
+    }
+
     public void Capture(Civilization newOwner)
     {
         if (newOwner == null || newOwner == owner) return;
         var old = owner; old?.UnregisterBand(this); owner = newOwner; newOwner.RegisterBand(this); RefreshVisuals();
+        RefreshOwnerVision(old); RefreshOwnerVision(newOwner);
         BandCaptured?.Invoke(this, old, newOwner);
     }
 
@@ -250,7 +309,7 @@ public sealed class Band : MonoBehaviour
             }
         owner?.UnregisterBand(this);
         (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
-        BandDestroyed?.Invoke(this, reason); Destroy(gameObject);
+        RefreshOwnerVision(owner); BandDestroyed?.Invoke(this, reason); Destroy(gameObject);
     }
 
     private int GetProductionYield() => Mathf.Max(0, data.encampedYields.production + builtStructures.Where(x => x != null).Sum(x => x.yields.production));
@@ -279,8 +338,19 @@ public sealed class Band : MonoBehaviour
         return TryAddToGarrison(unit);
     }
     private void PositionVisual() { var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (ts != null && currentTileIndex >= 0) transform.position = ts.GetTileCenterFlat(currentTileIndex); }
+    private static void RefreshOwnerVision(Civilization civilization)
+    {
+        if (civilization != null && UnitVisionManager.Instance != null)
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(civilization));
+    }
     private void RefreshVisuals()
     {
+        if (stateVisual != null) Destroy(stateVisual);
+        GameObject visualPrefab = state == BandState.Packed ? data?.packedVisual : data?.encampedVisual;
+        var civOverride = data?.civilizationVisualOverrides?.FirstOrDefault(x => x != null && owner != null && x.civilization == owner.civData);
+        if (civOverride != null)
+            visualPrefab = state == BandState.Packed ? civOverride.packedVisual : civOverride.encampedVisual;
+        if (visualPrefab != null) stateVisual = Instantiate(visualPrefab, transform);
         foreach (var visual in structureVisuals) if (visual != null) Destroy(visual); structureVisuals.Clear();
         if (state == BandState.Encamped) foreach (var s in builtStructures) if (s != null && s.visualAttachmentPrefab != null) structureVisuals.Add(Instantiate(s.visualAttachmentPrefab, transform));
     }

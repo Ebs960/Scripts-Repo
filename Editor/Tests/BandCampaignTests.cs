@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using UnityEngine;
-using System.Reflection;
 using UnityEditor;
 
 public sealed class BandCampaignTests
@@ -75,12 +74,38 @@ public sealed class BandCampaignTests
     }
 
     [Test]
-    public void BandPanelKeepsTheHardcodedPaleolithicProductionRoster()
+    public void BandPanelDoesNotHardcodePaleolithicProductionRoster()
     {
-        var structures = (string[])typeof(BandPanel).GetField("StructureButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-        var units = (string[])typeof(BandPanel).GetField("UnitButtonNames", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-        CollectionAssert.AreEqual(new[] { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" }, structures);
-        CollectionAssert.AreEqual(new[] { "Hunter", "Clubman", "Spear Thrower", "Raft" }, units);
+        Assert.That(typeof(BandPanel).GetField("StructureButtonNames", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), Is.Null);
+        Assert.That(typeof(BandPanel).GetField("UnitButtonNames", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), Is.Null);
+    }
+
+    [Test]
+    public void CampaignSaveDtosPersistBandAndCivilianRelationships()
+    {
+        var snapshot = new PauseMenuManager.WorldSnapshotData();
+        Assert.That(snapshot.bands, Is.Not.Null);
+        Assert.That(snapshot.civilianAttachments, Is.Not.Null);
+        Assert.That(typeof(PauseMenuManager.CombatUnitSaveData).GetField("persistentId"), Is.Not.Null);
+        Assert.That(typeof(PauseMenuManager.WorkerUnitSaveData).GetField("persistentId"), Is.Not.Null);
+        Assert.That(typeof(PauseMenuManager.WorkerUnitSaveData).GetField("attachedArmyFormationId"), Is.Not.Null);
+    }
+
+    [Test]
+    public void PackedAndEncampedBandYieldsAreDataDriven()
+    {
+        var data = ScriptableObject.CreateInstance<BandData>();
+        data.packedYields = new BandYieldSet { gold = 2 };
+        data.encampedYields = new BandYieldSet { gold = 5 };
+        data.encampMovementCost = 0;
+        var go = new GameObject("yield-band");
+        var band = go.AddComponent<Band>();
+        band.Initialize(data, null, 0, -1, null, false);
+        Assert.That(band.GetCurrentYields().gold, Is.EqualTo(2));
+        Assert.That(band.Encamp(), Is.True);
+        Assert.That(band.GetCurrentYields().gold, Is.EqualTo(5));
+        Object.DestroyImmediate(go);
+        Object.DestroyImmediate(data);
     }
 
     [Test]

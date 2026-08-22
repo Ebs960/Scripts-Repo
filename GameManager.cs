@@ -2528,6 +2528,8 @@ public class GameManager : MonoBehaviour
             isAutosave = isAutosave,
             combatUnits = new List<PauseMenuManager.CombatUnitSaveData>(),
             workerUnits = new List<PauseMenuManager.WorkerUnitSaveData>(),
+            bands = new List<BandSaveData>(),
+            civilianAttachments = new List<CivilianAttachmentSaveData>(),
             civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>(),
             cities = new List<PauseMenuManager.CitySaveData>(),
             ecologyStates = AnimalManager.Instance != null ? AnimalManager.Instance.ExportEcologyStates() : new List<AnimalManager.PlanetEcologyState>(),
@@ -2539,6 +2541,8 @@ public class GameManager : MonoBehaviour
         saveData.jobAssignments = worldSnapshot.jobAssignments;
         saveData.combatUnits = worldSnapshot.combatUnits;
         saveData.workerUnits = worldSnapshot.workerUnits;
+        saveData.bands = worldSnapshot.bands;
+        saveData.civilianAttachments = worldSnapshot.civilianAttachments;
         saveData.civilizationProgress = worldSnapshot.civilizationProgress;
         saveData.cities = worldSnapshot.cities;
         saveData.missionStates = worldSnapshot.missionStates;
@@ -2738,6 +2742,7 @@ public class GameManager : MonoBehaviour
                         if (unit == null || unit.data == null) continue;
                         var unitSave = new PauseMenuManager.CombatUnitSaveData
                         {
+                            persistentId = unit.PersistentId,
                             unitDataName = unit.data.unitName,
                             ownerCivIndex = civIdx,
                             currentTileIndex = unit.currentTileIndex,
@@ -2753,7 +2758,7 @@ public class GameManager : MonoBehaviour
                             queuedSpacePath = unit.queuedSpacePath != null ? new List<int>(unit.queuedSpacePath) : new List<int>(),
                             queuedSpacePathCursor = unit.queuedSpacePathCursor,
                             spaceFleetId = unit.spaceFleetId,
-                            militaryFormationId = unit.EnsureMilitaryFormationIdentity(),
+                            militaryFormationId = unit.IsBandGarrisoned ? string.Empty : unit.MilitaryFormationId,
                             militaryFormationType = (int)unit.MilitaryFormationType,
                             militaryFormationName = unit.MilitaryFormationName,
                             armyOrder = unit.stackSlot,
@@ -2776,10 +2781,12 @@ public class GameManager : MonoBehaviour
                         if (worker == null || worker.data == null) continue;
                         snapshot.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
                         {
+                            persistentId = worker.PersistentId,
+                            attachedArmyFormationId = worker.AttachedArmyFormationId,
                             unitDataName = worker.data.unitName,
                             ownerCivIndex = civIdx,
-                            currentTileIndex = worker.currentTileIndex,
-                            planetIndex = worker.planetIndex,
+                            currentTileIndex = CivilianAttachmentService.GetStrategicTile(worker),
+                            planetIndex = CivilianAttachmentService.GetStrategicPlanet(worker),
                             currentLayer = (int)worker.currentLayer,
                             currentHealth = worker.currentHealth,
                             experience = worker.experience,
@@ -2790,6 +2797,40 @@ public class GameManager : MonoBehaviour
                             posY = worker.transform.position.y,
                             posZ = worker.transform.position.z,
                         });
+                        if (!string.IsNullOrEmpty(worker.AttachedArmyFormationId))
+                            snapshot.civilianAttachments.Add(new CivilianAttachmentSaveData
+                            {
+                                workerPersistentId = worker.PersistentId,
+                                attachedArmyFormationId = worker.AttachedArmyFormationId
+                            });
+                    }
+                }
+                if (civ.bands != null)
+                {
+                    foreach (var band in civ.bands)
+                    {
+                        if (band == null || band.Data == null) continue;
+                        var savedBand = new BandSaveData
+                        {
+                            persistentId = band.PersistentId,
+                            bandDataId = string.IsNullOrEmpty(band.Data.id) ? band.Data.name : band.Data.id,
+                            ownerIndex = civIdx,
+                            planetIndex = band.PlanetIndex,
+                            tileIndex = band.CurrentTileIndex,
+                            state = band.State,
+                            movementPoints = band.CurrentMovePoints,
+                            population = band.Population,
+                            foodReserve = band.FoodReserve,
+                            consecutiveStarvationTurns = band.ConsecutiveStarvationTurns,
+                            queuedStructureId = band.QueuedStructure != null ? band.QueuedStructure.name : null,
+                            queuedCombatUnitDataId = band.QueuedUnit != null ? band.QueuedUnit.unitName : null,
+                            productionProgress = band.ProductionProgress
+                        };
+                        foreach (var structure in band.BuiltStructures)
+                            if (structure != null) savedBand.builtStructureIds.Add(structure.name);
+                        foreach (var unit in band.Garrison)
+                            if (unit != null) savedBand.garrisonCombatUnitPersistentIds.Add(unit.PersistentId);
+                        snapshot.bands.Add(savedBand);
                     }
                 }
             }
@@ -2808,6 +2849,8 @@ public class GameManager : MonoBehaviour
             jobAssignments = saveData?.jobAssignments ?? new List<ImprovementManager.JobAssignmentSaveData>(),
             combatUnits = saveData?.combatUnits ?? new List<PauseMenuManager.CombatUnitSaveData>(),
             workerUnits = saveData?.workerUnits ?? new List<PauseMenuManager.WorkerUnitSaveData>(),
+            bands = saveData?.bands ?? new List<BandSaveData>(),
+            civilianAttachments = saveData?.civilianAttachments ?? new List<CivilianAttachmentSaveData>(),
             civilizationProgress = saveData?.civilizationProgress ?? new List<PauseMenuManager.CivilizationProgressSaveData>(),
             cities = saveData?.cities ?? new List<PauseMenuManager.CitySaveData>(),
             missionStates = saveData?.missionStates ?? new List<CrisisManager.MissionStateSaveData>(),
@@ -3511,6 +3554,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 unit.Initialize(unitData, civ);
+                unit.RestorePersistentId(usd.persistentId);
                 unit.planetIndex = usd.planetIndex;
                 unit.currentTileIndex = usd.currentTileIndex;
                 unit.spaceLocation = usd.spaceLocation;
@@ -3590,6 +3634,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 worker.Initialize(workerData, civ, wsd.currentTileIndex);
+                worker.RestorePersistentId(wsd.persistentId);
                 worker.planetIndex = wsd.planetIndex;
                 worker.RestoreState(wsd.currentHealth, wsd.currentWorkPoints, wsd.currentMovePoints,
                                     (TileLayer)wsd.currentLayer);
@@ -3602,7 +3647,68 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        RestoreBandsAndCivilianAttachments(snapshot, allCivs, combatUnitDataLookup);
+
         Debug.Log($"[SaveLoad] Restored {snapshot.combatUnits?.Count ?? 0} combat units and {snapshot.workerUnits?.Count ?? 0} worker units.");
+    }
+
+    private void RestoreBandsAndCivilianAttachments(PauseMenuManager.WorldSnapshotData snapshot,
+        IReadOnlyList<Civilization> allCivs, Dictionary<string, CombatUnitData> combatUnitDataLookup)
+    {
+        var bandAssets = Resources.FindObjectsOfTypeAll<BandData>()
+            .Concat(allCivs.Where(x => x?.civData?.startingBandData != null).Select(x => x.civData.startingBandData))
+            .Where(x => x != null).Distinct().ToList();
+        var bandLookup = BuildAssetLookup(bandAssets, b => string.IsNullOrEmpty(b.id) ? b.name : b.id);
+        var structureLookup = BuildAssetLookup(bandAssets.SelectMany(b => b.allowedStructures ?? new List<BandStructureData>())
+            .Concat(Resources.FindObjectsOfTypeAll<BandStructureData>()).Where(x => x != null).Distinct(), s => s.structureName);
+        var restoredBands = new List<Band>();
+
+        foreach (var saved in snapshot.bands ?? new List<BandSaveData>())
+        {
+            if (saved == null || saved.ownerIndex < 0 || saved.ownerIndex >= allCivs.Count ||
+                !bandLookup.TryGetValue(saved.bandDataId ?? string.Empty, out var data)) continue;
+            var owner = allCivs[saved.ownerIndex];
+            var prefab = data.prefab;
+            var go = prefab != null ? Instantiate(prefab) : new GameObject(data.displayName ?? "Band");
+            var band = go.GetComponent<Band>() ?? go.AddComponent<Band>();
+            var pg = GetPlanetGenerator(saved.planetIndex) ?? GetCurrentPlanetGenerator();
+            if (pg != null) go.transform.SetParent(pg.transform, true);
+            band.Initialize(data, owner, saved.planetIndex, saved.tileIndex, null, false);
+            var structures = ResolveAssets(saved.builtStructureIds, structureLookup);
+            structureLookup.TryGetValue(saved.queuedStructureId ?? string.Empty, out var queuedStructure);
+            combatUnitDataLookup.TryGetValue(saved.queuedCombatUnitDataId ?? string.Empty, out var queuedUnit);
+            band.RestoreState(saved.persistentId, saved.state, saved.population, saved.foodReserve,
+                saved.consecutiveStarvationTurns, saved.movementPoints, structures, queuedStructure, queuedUnit, saved.productionProgress);
+            (TileOccupancyManager.GetForPlanet(saved.planetIndex) ?? TileOccupancyManager.Instance)
+                ?.SetOccupant(saved.tileIndex, band.gameObject, TileLayer.Surface);
+            foreach (string unitId in saved.garrisonCombatUnitPersistentIds ?? new List<string>())
+            {
+                var unit = UnitRegistry.GetByPersistentId(unitId)?.GetComponent<CombatUnit>();
+                if (unit != null && !unit.IsBandGarrisoned) band.TryAddToGarrison(unit);
+            }
+            restoredBands.Add(band);
+        }
+
+        var attachments = snapshot.civilianAttachments ?? new List<CivilianAttachmentSaveData>();
+        if (attachments.Count == 0 && snapshot.workerUnits != null)
+            attachments = snapshot.workerUnits.Where(x => x != null && !string.IsNullOrEmpty(x.attachedArmyFormationId))
+                .Select(x => new CivilianAttachmentSaveData
+                {
+                    workerPersistentId = x.persistentId,
+                    attachedArmyFormationId = x.attachedArmyFormationId
+                }).ToList();
+        foreach (var attachment in attachments)
+        {
+            var worker = UnitRegistry.GetByPersistentId(attachment.workerPersistentId)?.GetComponent<WorkerUnit>();
+            if (worker == null || string.IsNullOrEmpty(attachment.attachedArmyFormationId)) continue;
+            var army = worker.owner?.combatUnits?.FirstOrDefault(x => x != null && !x.IsBandGarrisoned &&
+                x.MilitaryFormationId == attachment.attachedArmyFormationId);
+            if (army == null) continue; // worker remains safely restored at its saved position
+            var occupancy = TileOccupancyManager.GetForPlanet(worker.planetIndex) ?? TileOccupancyManager.Instance;
+            occupancy?.ClearOccupantById(worker.currentTileIndex, worker.currentLayer, worker.gameObject.GetRuntimeId());
+            worker.SetCivilianAttachment(attachment.attachedArmyFormationId);
+            CivilianAttachmentService.SynchronizeFormationLocation(army);
+        }
     }
 
     // --- Global UI Audio System ---

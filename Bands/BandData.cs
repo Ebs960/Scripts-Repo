@@ -44,6 +44,7 @@ public sealed class BandData : ScriptableObject
     [Min(0)] public int encampMovementCost = 1;
     [Min(0)] public int forageMovementCost = 1;
     [Min(0)] public int baseForageFood = 4;
+    [Min(0)] public int visionRange = 2;
 
     [Header("Garrison and production")]
     [Min(0)] public int baseGarrisonCapacity = 4;

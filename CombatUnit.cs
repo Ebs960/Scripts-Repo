@@ -9,6 +9,14 @@ using GameCombat;
 
 public class CombatUnit : BaseUnit
 {
+    [SerializeField] private string persistentId;
+    public string PersistentId => string.IsNullOrEmpty(persistentId) ? (persistentId = System.Guid.NewGuid().ToString("N")) : persistentId;
+    public void RestorePersistentId(string value)
+    {
+        if (!string.IsNullOrEmpty(value)) persistentId = value;
+        UnitRegistry.RegisterPersistent(PersistentId, gameObject);
+    }
+
     [Header("Stats (Override Data Asset)")]
     [HideInInspector][SerializeField] private int attack = 0; // legacy generic fallback
     [SerializeField] private int meleeAttack = 0;
@@ -324,6 +332,7 @@ public class CombatUnit : BaseUnit
     protected override void Awake()
     {
         base.Awake(); // This handles animator, grid, planet, and UnitRegistry
+        UnitRegistry.RegisterPersistent(PersistentId, gameObject);
         
         // CRITICAL FIX: Ensure animator is properly configured
         if (animator != null)
@@ -1855,12 +1864,12 @@ public class CombatUnit : BaseUnit
     // ===== COMBAT UNIT VS WORKER UNIT =====
     
     /// <summary>
-    /// Check if this combat unit can attack a worker unit - NEW!
-    /// Combat units can now attack workers (usually one-sided!)
+    /// Checks whether this unit can resolve hostile contact with a civilian.
+    /// This is target validation only; workers never enter the damage pipeline.
     /// </summary>
     public bool CanAttack(WorkerUnit target)
     {
-        if (target == null || data == null) return false;
+        if (target == null || data == null || target.IsArmyAttachedCivilian) return false;
 
         CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
         if (!CanAttackTargetDomain(targetDomain)) return false;
@@ -2083,101 +2092,16 @@ public class CombatUnit : BaseUnit
     }
     
     /// <summary>
-    /// Attack a worker unit - NEW!
-    /// Combat units can attack workers (usually devastating!)
+    /// Resolves hostile civilian contact without weapon, defence, counterattack, or
+    /// tactical-battle calculations. The contact consumes the normal attack action.
     /// </summary>
     public void Attack(WorkerUnit target)
     {
         if (target == null) return;
         if (!CanAttack(target)) return;
 
-        // Choose active weapon
-        EquipmentData activeWeapon = null;
-        if (engagedInMelee && equippedWeapon != null)
-            activeWeapon = equippedWeapon;
-        else if (equippedProjectileWeapon != null)
-            activeWeapon = equippedProjectileWeapon;
-        else if (equippedWeapon != null)
-            activeWeapon = equippedWeapon;
-
-        // For ranged attacks, still use the trigger (one-shot projectile launch animation)
-        bool isRangedAttack = activeWeapon != null && IsProjectileWeapon(activeWeapon);
-        if (isRangedAttack)
-        {
-            // Ranged visuals handled centrally by BaseUnit.PerformAttack
-        }
-        // Melee attacks use IsAttacking bool (continuous), not a trigger
-
-        // Combat units fight at advantage against workers (+2 bonus vs non-combatants)
-        int combatBonus = 2;
-        
-        AttackType attackType = isRangedAttack ? AttackType.Ranged : AttackType.Melee;
-        CombatTargetDomain targetDomain = GetTargetDomainForWorker(target);
-        float attackerValue = GetTargetedAttackValue(activeWeapon, target, targetDomain, attackType, combatBonus);
-        attackerValue = ApplyGoldMaintenanceToCombatStat(attackerValue);
-        float defenderValue = target.CurrentDefense;
-        defenderValue = (defenderValue + target.GetSituationalDefenseAddAgainst(this)) * (1f + target.GetSituationalDefensePctAgainst(this));
-        
-        float rawDamage = Mathf.Max(0f, attackerValue - defenderValue);
-
-        float chargeMulW = 1f;
-        try
-        {
-            var tsLocalW = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            if (tsLocalW != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
-            {
-                int moveDistW = tsLocalW.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
-                if (moveDistW > 1 && data != null && data.chargeBonusPercent > 0f)
-                    chargeMulW += data.chargeBonusPercent;
-            }
-        }
-        catch { }
-
-        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier() * GetTargetedAbilityDamageMultiplierAgainst(target) * chargeMulW);
-
-        finalDamage = ApplySharedMeleeCombatModifiers(finalDamage, target);
-
-        // Handle ranged vs melee
-        if (isRangedAttack)
-        {
-            ProjectileData resolvedProjectile = ResolveProjectileForWeapon(activeWeapon);
-            if (resolvedProjectile == null)
-            {
-                Debug.LogWarning($"{name}: Ranged attack aborted because no compatible ActiveProjectile/default projectile is available for {activeWeapon.name}.");
-                return;
-            }
-
-            if (!TryConsumeAttackPoint())
-                return;
-
-            SetAnimatorTriggerForFormation(attackHash);
-            AddFatigue(8f);
-
-            if (useAnimationEventForProjectiles)
-                QueueProjectileForAnimation(activeWeapon, target.transform.position, target, finalDamage);
-            else
-                SpawnProjectileFromEquipment(activeWeapon, target.transform.position, target, finalDamage);
-            return;
-        }
-
-        // Melee attack — use unified orchestrator so kill rewards/events are centralized
-        var ctxWorker = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = finalDamage, isMelee = true, isRanged = false };
-        bool targetDied = PerformAttack(ctxWorker);
-
-        if (targetDied)
-        {
-            // Post-hit handling centralized in BaseUnit.ApplyDamage(attacker...)
-        }
-        else
-        {
-            // Worker can try to fight back (usually futile!)
-            if (target.CanAttack(this))
-            {
-                target.Attack(this);
-            }
-        }
-
-        // XP awarded centrally in PerformAttack
+        if (!TryConsumeAttackPoint()) return;
+        CivilianCaptureService.ResolveAttack(this, target);
     }
 
     /// <summary>

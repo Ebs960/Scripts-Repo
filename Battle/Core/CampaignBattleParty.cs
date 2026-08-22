@@ -13,13 +13,15 @@ public sealed class CampaignBattleParty
     public IReadOnlyList<CombatUnit> CombatUnits { get; private set; }
     public CombatUnit ArmyRepresentative { get; private set; }
     public Band BandHost { get; private set; }
+    public string ArmyFormationId { get; private set; }
 
     public static CampaignBattleParty FromArmy(CombatUnit unit)
     {
         var representative = CampaignArmyService.GetRepresentative(unit);
         return new CampaignBattleParty { Kind = CampaignBattlePartyKind.Army, Owner = unit?.owner,
             PlanetIndex = unit != null ? unit.planetIndex : -1, CampaignTileIndex = unit != null ? unit.currentTileIndex : -1,
-            CombatUnits = CampaignArmyService.GetMembers(unit).Where(x => x != null && !x.IsBandGarrisoned).ToList(), ArmyRepresentative = representative };
+            CombatUnits = CampaignArmyService.GetMembers(unit).Where(x => x != null && !x.IsBandGarrisoned).ToList(), ArmyRepresentative = representative,
+            ArmyFormationId = representative != null ? representative.MilitaryFormationId : string.Empty };
     }
 
     public static CampaignBattleParty FromBand(Band band)
