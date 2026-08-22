@@ -89,7 +89,7 @@ public class Civilization : MonoBehaviour
         if (combatUnits == null) return result;
 
         var groups = combatUnits
-            .Where(u => u != null && !string.IsNullOrEmpty(u.MilitaryFormationId))
+            .Where(u => u != null && !u.IsBandGarrisoned && !string.IsNullOrEmpty(u.MilitaryFormationId))
             .GroupBy(u => u.MilitaryFormationId);
 
         var service = MilitaryCommanderAssignmentService.Instance;
@@ -2684,6 +2684,11 @@ public class Civilization : MonoBehaviour
                 {
                     if (w != null) w.ResetForNewTurn();
                 }
+            }
+            if (bands != null)
+            {
+                foreach (var band in bands.ToArray())
+                    if (band != null) band.ResetForNewTurn();
             }
 
             if (ImprovementManager.Instance != null)

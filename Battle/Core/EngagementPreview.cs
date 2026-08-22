@@ -10,6 +10,8 @@ public sealed class EngagementPreview
     public int AnchorTile;
     public CombatUnit Attacker;
     public CombatUnit Defender;
+    public CampaignBattleParty AttackerParty;
+    public CampaignBattleParty DefenderParty;
 
     public EngagementMode Mode;
     public BattleTheater Theater;
