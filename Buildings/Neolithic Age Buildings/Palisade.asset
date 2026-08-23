@@ -104,3 +104,6 @@ MonoBehaviour:
   herdYieldBonuses: []
   buildableByHerd: 0
   herdStorageBonus: 0
+
+  grantsCityFortifications: 1
+  tacticalFortificationProfile: {fileID: 11400000, guid: bb82b6bc24c0cc8efa17768e7b90b73b, type: 2}

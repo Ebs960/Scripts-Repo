@@ -11,6 +11,13 @@ public sealed class BattleBiomeVisualProfile : ScriptableObject
     public GameObject[] bushPrefabs;
     public GameObject[] rockPrefabs;
     public GameObject[] environmentalPropPrefabs;
+    [Tooltip("When an art array is empty, allow the renderer to create a restrained, material-coloured primitive instead of leaving the battlefield bare.")]
+    public bool allowProceduralFallback = true;
+    [Header("Fallback Palette")]
+    public Color foliageColor = new(.22f,.38f,.14f,1f);
+    public Color grassColor = new(.3f,.46f,.18f,1f);
+    public Color rockColor = new(.38f,.36f,.32f,1f);
+    public Color clutterColor = new(.34f,.27f,.17f,1f);
     [Header("Feature Props")]
     public GameObject[] softCoverPrefabs;
     public GameObject[] hardCoverPrefabs;

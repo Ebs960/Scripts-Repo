@@ -31,13 +31,13 @@ public static class BattleEnvironmentLayout
     private static int Count(float density,int maximum)=>Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(0f,density)*maximum),0,maximum);
     private static void Add(List<BattleDecorationPlacement> output,BattleCell cell,BattleBiomeVisualProfile profile,int seed,float radius,BattleDecorationKind kind,GameObject[] prefabs,int count,Vector2 scaleRange,bool clearCenter,Vector2 riverDirection,Vector2 coastNormal)
     {
-        int valid=ValidPrefabCount(prefabs);if(valid==0)return;float outer=radius*(1f-profile.edgePadding);
+        int valid=ValidPrefabCount(prefabs);if(valid==0&&!profile.allowProceduralFallback)return;float outer=radius*(1f-profile.edgePadding);
         for(int i=0;i<count;i++)for(int attempt=0;attempt<12;attempt++)
         {
             var rng=new LocalRng(Hash(seed,cell.CampaignTileIndex,(int)kind,i*17+attempt));float angle=rng.Value()*Mathf.PI*2f;float minimum=clearCenter?profile.unitClearRadius:0f;float distance=Mathf.Sqrt(Mathf.Lerp(minimum*minimum,outer*outer,rng.Value()));Vector3 p=new(Mathf.Cos(angle)*distance,.03f,Mathf.Sin(angle)*distance);
             Vector2 point=new(p.x,p.z);Vector2 river=riverDirection.sqrMagnitude>.001f?riverDirection.normalized:Vector2.up;if(cell.HasRiver&&Mathf.Abs(Vector2.Dot(point,new Vector2(-river.y,river.x)))<profile.riverClearHalfWidth)continue;
             if(cell.HasBeach&&coastNormal.sqrMagnitude>.001f&&Vector2.Dot(point,coastNormal.normalized)>0f&&kind!=BattleDecorationKind.Grass)continue;
-            int selected=SelectValidPrefab(prefabs,rng.Range(valid));float scale=Mathf.Lerp(scaleRange.x,scaleRange.y,rng.Value());output.Add(new BattleDecorationPlacement(kind,selected,p,rng.Value()*360f,scale));break;
+            int selected=valid>0?SelectValidPrefab(prefabs,rng.Range(valid)):-1;float scale=Mathf.Lerp(scaleRange.x,scaleRange.y,rng.Value());output.Add(new BattleDecorationPlacement(kind,selected,p,rng.Value()*360f,scale));break;
         }
     }
     private static int ValidPrefabCount(GameObject[] prefabs){int count=0;if(prefabs!=null)foreach(var p in prefabs)if(p!=null)count++;return count;}

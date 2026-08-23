@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e7c9117b4711ce47b12d929b827c996, type: 3}
+  m_Name: Fortified Keep
+  m_EditorClassIdentifier: Assembly-CSharp::BattleFortificationProfile
+  profileId: alpha-fort
+  displayName: Fortified Keep
+  fortificationTier: 4
+  material: 1
+  wallHitPoints: 220
+  gateHitPoints: 165
+  strongpointHitPoints: 297
+  defense: 24
+  siegeDamageTakenMultiplier: 1
+  autoResolveDefenseMultiplier: 1.25
+  visualProfile: {fileID: 11400000, guid: 864cbfdf62f94ef4648a59711af8f77c, type: 2}

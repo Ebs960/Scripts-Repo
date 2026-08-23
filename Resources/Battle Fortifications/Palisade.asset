@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e7c9117b4711ce47b12d929b827c996, type: 3}
+  m_Name: Palisade
+  m_EditorClassIdentifier: Assembly-CSharp::BattleFortificationProfile
+  profileId: alpha-wood
+  displayName: Palisade
+  fortificationTier: 1
+  material: 0
+  wallHitPoints: 70
+  gateHitPoints: 52
+  strongpointHitPoints: 94
+  defense: 6
+  siegeDamageTakenMultiplier: 1
+  autoResolveDefenseMultiplier: 1.25
+  visualProfile: {fileID: 11400000, guid: 0e33ee5e334ae99d35cef2bbea387fd8, type: 2}
