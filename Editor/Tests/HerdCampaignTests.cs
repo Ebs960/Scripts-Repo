@@ -52,4 +52,25 @@ public sealed class HerdCampaignTests
         Assert.That(herd.productionQueue[0].remainingPts, Is.EqualTo(progress));
         Object.DestroyImmediate(building); Object.DestroyImmediate(go);
     }
+
+    [Test]
+    public void HerdSaveData_RoundTripsIdentityLivestockModeFoodMovementAndProduction()
+    {
+        var source = new PauseMenuManager.HerdSaveData { persistentId = "herd-1", ownerCivilizationId = 2, planetIndex = 1,
+            tileIndex = 42, herdName = "Steppe Camp", isPacked = false, movementPoints = 1, maxMovementPoints = 3,
+            foodReserve = 77, level = 4, storageCapacity = 120, governorId = 9 };
+        source.livestock.Add(new PauseMenuManager.HerdLivestockSaveData { species = Herd.HerdSpecies.Cow, count = 240 });
+        source.livestock.Add(new PauseMenuManager.HerdLivestockSaveData { species = Herd.HerdSpecies.Sheep, count = 510 });
+        source.builtBuildingNames.Add("StableAsset");
+        source.productionQueue.Add(new PauseMenuManager.HerdProdEntrySaveData { dataName = "StableAsset", remainingPts = 13, goldCost = 2 });
+        source.militaryGarrisonUnitIds.Add("combat-1"); source.storedCivilianUnitIds.Add("worker-1");
+        var restored = JsonUtility.FromJson<PauseMenuManager.HerdSaveData>(JsonUtility.ToJson(source));
+        Assert.That(restored.persistentId, Is.EqualTo("herd-1")); Assert.That(restored.foodReserve, Is.EqualTo(77));
+        Assert.That(restored.isPacked, Is.False); Assert.That(restored.movementPoints, Is.EqualTo(1));
+        Assert.That(restored.livestock.Select(x => x.count), Is.EqualTo(new[] { 240, 510 }));
+        Assert.That(restored.productionQueue.Single().remainingPts, Is.EqualTo(13));
+        Assert.That(restored.builtBuildingNames, Is.EqualTo(new[] { "StableAsset" }));
+        Assert.That(restored.militaryGarrisonUnitIds.Single(), Is.EqualTo("combat-1"));
+        Assert.That(restored.storedCivilianUnitIds.Single(), Is.EqualTo("worker-1"));
+    }
 }
