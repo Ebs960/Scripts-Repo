@@ -69,6 +69,7 @@ public sealed class BattleResultApplier
             }
         ApplyCivilianFormationFate(result, preview);
         ApplyBandObjectiveResult(result, preview);
+        ApplyHerdObjectiveResult(result, preview);
         ApplySiegeObjectiveResult(result, preview);
         result.CampaignApplied = true;
     }
@@ -110,6 +111,26 @@ public sealed class BattleResultApplier
             band.DestroyBand(BandLossReason.AnimalAttack);
         else if (winningParty?.Owner != null)
             band.Capture(winningParty.Owner);
+    }
+
+    private static void ApplyHerdObjectiveResult(BattleResult result, EngagementPreview preview)
+    {
+        var losing = result.WinningSide == BattleSide.Attacker ? preview.DefenderParty : preview.AttackerParty;
+        var winning = result.WinningSide == BattleSide.Attacker ? preview.AttackerParty : preview.DefenderParty;
+        var objective = losing?.Kind == CampaignBattlePartyKind.HerdGarrison ? losing : winning?.Kind == CampaignBattlePartyKind.HerdGarrison ? winning : null;
+        var herd = objective?.HerdHost; if (herd == null) return;
+        if (objective == losing)
+        {
+            herd.ReleaseSurvivingGarrisonAsArmy();
+            var victor = winning?.CombatUnits?.FirstOrDefault(x => x != null && x.currentHealth > 0);
+            if (victor != null && victor.data != null && victor.data.unitType == CombatCategory.Animal) herd.ResolveLivestockRaid();
+            else if (winning?.Owner != null) herd.Capture(winning.Owner);
+        }
+        else
+        {
+            foreach (var unit in herd.MilitaryGarrison.Where(x => x != null && x.currentHealth > 0).ToList())
+                if (unit.storedInHerd != herd) herd.TryAddToGarrison(unit);
+        }
     }
 
     private static Dictionary<int, CombatUnit> BuildUnitLookup(EngagementPreview preview)
