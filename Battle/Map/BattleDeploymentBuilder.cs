@@ -8,6 +8,13 @@ public static class BattleDeploymentBuilder
         if (map == null || map.CellCount == 0)
             return;
 
+        if (preview.FortificationProfile != null)
+        {
+            BuildSiegeDeploymentZones(map);
+            AssignRetreatExits(map);
+            return;
+        }
+
         if (preview.Theater == BattleTheater.DeepSpace)
         {
             int count = Mathf.Max(1, depth * 3);
@@ -84,6 +91,19 @@ public static class BattleDeploymentBuilder
         }
 
         AssignRetreatExits(map);
+    }
+
+    private static void BuildSiegeDeploymentZones(BattleMap map)
+    {
+        foreach (var cell in map.Cells)
+        {
+            cell.DeploymentOwner = cell.IsFortifiedInterior ? BattleSide.Defender : BattleSide.Attacker;
+            cell.IsReinforcementEntry = !cell.IsFortifiedInterior;
+        }
+        // Perimeter structures are defender positions, but never attacker deployment cells.
+        foreach (var cell in map.Cells)
+            if (cell.HasHardCover && cell.DeploymentOwner == BattleSide.Attacker)
+            { cell.DeploymentOwner = BattleSide.Defender; cell.IsReinforcementEntry = false; }
     }
 
     private static void AssignRetreatExits(BattleMap map)

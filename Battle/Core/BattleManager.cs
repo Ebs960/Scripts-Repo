@@ -32,6 +32,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         public List<BattleCommandRecord> replay = new();
         public List<ReinforcementSave> reinforcements = new();
         public PlanSave aiPlan;
+        public List<BattleFortificationSaveData> fortifications = new();
     }
     [Serializable] private sealed class UnitSave
     {
@@ -181,9 +182,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
 
         preview.ApproachDirectionXZ = ResolveApproachDirection(preview);
+        preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
+        ConfigureSiege(preview);
         BattleDeploymentBuilder.BuildDeploymentZones(preview.Map, preview, ruleset.deploymentDepthCells);
         AssignReinforcementEntries(preview);
-        preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
 
         int deployA = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.AttackerUnits.Count);
         int deployD = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.DefenderUnits.Count);
@@ -230,9 +232,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         preview.Map = mapBuilder.Build(preview);
         if (preview.Map == null) { preview.IsValid = false; preview.RejectionReason = "map generation failed"; return preview; }
         preview.ApproachDirectionXZ = ResolveApproachDirection(preview);
+        preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
+        ConfigureSiege(preview);
         BattleDeploymentBuilder.BuildDeploymentZones(preview.Map, preview, ruleset.deploymentDepthCells);
         AssignReinforcementEntries(preview);
-        preview.Objective = BattleObjectiveBuilder.BuildObjective(preview.Map);
         int deployA = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.AttackerUnits.Count);
         int deployD = Mathf.Min(ruleset.maxInitialUnitsPerSide, preview.DefenderUnits.Count);
         if (!BattleMapValidator.Validate(preview.Map, deployA, deployD, out string reason))
@@ -1046,6 +1049,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             units,
             preview.Objective,
             preview.Reinforcements);
+        session.ConfigureSiege(preview.SiegeType, preview.FortificationProfile, preview.Fortifications);
 
         for (int i = 0; i < units.Count; i++)
         {
@@ -1095,6 +1099,30 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             TurnController = new BattleTurnController(ruleset),
             AiController = new BattleAIController(detectionService),
         };
+    }
+
+    private static void ConfigureSiege(EngagementPreview preview)
+    {
+        if (preview == null || preview.Theater == BattleTheater.DeepSpace || preview.DefenderUnits.Count == 0) return;
+        var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
+        var tile = ts?.GetTileData(preview.AnchorTile);
+        City city = tile?.controllingCity;
+        if (city != null && city.centerTileIndex == preview.AnchorTile)
+        {
+            preview.FortificationProfile = BattleSiegeResolver.SelectCityProfile(city.GetBuildings());
+            preview.SiegeType = preview.FortificationProfile == null
+                ? BattleSiegeType.Settlement : BattleSiegeType.FortifiedSettlement;
+        }
+        else
+        {
+            var improvement = tile?.improvement as ImprovementData;
+            preview.FortificationProfile = BattleSiegeResolver.SelectFortProfile(improvement);
+            if (preview.FortificationProfile != null) preview.SiegeType = BattleSiegeType.Fort;
+        }
+        if (preview.SiegeType == BattleSiegeType.None) return;
+        preview.Fortifications.Clear();
+        preview.Fortifications.AddRange(BattleSiegeLayoutBuilder.Apply(preview.Map, preview.SiegeType,
+            preview.FortificationProfile, ref preview.Objective));
     }
 
     private static void InitializeTacticalCargo(List<BattleUnitState> units)
@@ -1224,6 +1252,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             BattleObjectiveType.LandControl => unit.Domain == BattleDomain.Land,
             BattleObjectiveType.PortCapture => unit.Domain == BattleDomain.Land,
             BattleObjectiveType.Beachhead => unit.Domain == BattleDomain.Land,
+            BattleObjectiveType.SettlementCapture => unit.Domain == BattleDomain.Land,
+            BattleObjectiveType.StrongholdCapture => unit.Domain == BattleDomain.Land,
             BattleObjectiveType.NavalControl => unit.Domain == BattleDomain.NavalSurface,
             BattleObjectiveType.RegionControl => theater == BattleTheater.DeepSpace
                 ? unit.Domain == BattleDomain.Space
@@ -1473,6 +1503,9 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 foreach (var status in u.StatusEffects) d.statuses.Add(new StatusSave { type=(int)status.Type, rounds=status.RemainingRounds, magnitude=status.Magnitude });
                 save.active.units.Add(d);
             }
+            foreach (var f in s.Fortifications) save.active.fortifications.Add(new BattleFortificationSaveData
+                { id=f.StructureId, kind=(int)f.Kind, cell=f.CellIndex, currentHitPoints=f.CurrentHitPoints,
+                  maxHitPoints=f.MaxHitPoints, defense=f.Defense, breached=f.IsBreached });
             foreach (var g in s.Reinforcements) save.active.reinforcements.Add(new ReinforcementSave { id=g.ReinforcementGroupId,
                 availableRound=g.AvailableFromRound, distance=g.StrategicDistance, lastAttempt=g.LastEntryAttemptRound, eligible=g.IsEligible,
                 eligibility=g.EligibilityReason, delay=g.DelayReason, entryDelay=g.LastEntryDelayReason });
@@ -1563,6 +1596,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 throw new InvalidOperationException($"Saved occupancy for tactical unit {u.UnitId} is invalid.");
         }
         ActiveBattle.RestoreProgress((BattlePhase)saved.phase, (BattleSide)saved.activeSide, saved.round);
+        if (saved.fortifications != null)
+            foreach (var f in saved.fortifications)
+            {
+                var target = ActiveBattle.GetFortification(f.id);
+                if (target == null) continue;
+                target.CurrentHitPoints=f.currentHitPoints; target.MaxHitPoints=f.maxHitPoints;
+                target.Defense=f.defense; target.IsBreached=f.breached;
+            }
         ActiveBattle.SetDeploymentConfirmed(BattleSide.Attacker, saved.attackerDeploymentConfirmed);
         ActiveBattle.SetDeploymentConfirmed(BattleSide.Defender, saved.defenderDeploymentConfirmed);
         ActiveBattle.Random.RestoreState(unchecked((uint)saved.randomState));

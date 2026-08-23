@@ -30,6 +30,7 @@ public sealed class BattleCell
     public BattleSide? RetreatExitForSide;
     public bool IsObjective;
     public bool IsReinforcementEntry;
+    public bool IsFortifiedInterior;
 
     private readonly HashSet<int> cliffNeighbors = new();
 

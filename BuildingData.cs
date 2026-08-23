@@ -50,6 +50,11 @@ public struct BuildingCultureGroupVisualOverride
 [CreateAssetMenu(menuName="Data/Building Data")]
 public class BuildingData : ScriptableObject
 {
+    [Header("Tactical Fortifications")]
+    [Tooltip("Explicitly makes this operational building provide a city perimeter.")]
+    public bool grantsCityFortifications;
+    [Tooltip("Authoritative tactical profile. Names are never inspected to infer walls.")]
+    public BattleFortificationProfile tacticalFortificationProfile;
     [Header("Identity")]
     public string buildingName;
     public Sprite icon;

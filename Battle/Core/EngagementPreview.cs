@@ -28,6 +28,9 @@ public sealed class EngagementPreview
 
     public BattleMap Map;
     public BattleObjective Objective;
+    public BattleSiegeType SiegeType;
+    public BattleFortificationProfile FortificationProfile;
+    public readonly List<BattleFortificationState> Fortifications = new();
 
     public Vector2 ApproachDirectionXZ;
 

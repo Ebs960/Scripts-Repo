@@ -45,7 +45,13 @@ public enum BattleObjectiveType
     NavalControl,
     Escape,
     RegionControl,
+    SettlementCapture,
+    StrongholdCapture,
 }
+
+public enum BattleSiegeType { None, Settlement, FortifiedSettlement, Fort }
+public enum BattleFortificationKind { Wall, Gate, Strongpoint }
+public enum BattleFortificationMaterial { Wood, Stone, Earthwork, Metal, Other }
 
 public enum BattleResolutionType
 {
@@ -74,6 +80,7 @@ public enum BattleCommandType
     RecoverAircraft,
     ChangeDepth,
     ActiveDetection,
+    AttackFortification,
 }
 
 /// <summary>Independent occupancy/movement domains used by every tactical battle.</summary>

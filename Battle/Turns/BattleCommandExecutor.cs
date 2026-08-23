@@ -52,6 +52,8 @@ public sealed class BattleCommandExecutor
                 return ExecuteMove(session, occupancy, unit, move, out reason);
             case BattleAttackCommand attack:
                 return ExecuteAttack(session, occupancy, unit, attack, out reason);
+            case BattleFortificationAttackCommand structureAttack:
+                return ExecuteFortificationAttack(session, unit, structureAttack, out reason);
             case BattleDefendCommand:
                 unit.IsDefending = true;
                 unit.HasActed = true;
@@ -92,6 +94,32 @@ public sealed class BattleCommandExecutor
                 reason = "unsupported command";
                 return false;
         }
+    }
+
+    public int PreviewFortificationDamage(BattleUnitState attacker, BattleFortificationState target, TacticalWeaponProfile weapon, BattleFortificationProfile profile)
+    {
+        if (attacker?.Snapshot == null || target == null || target.IsBreached) return 0;
+        int attack = weapon != null && weapon.usesRangedAttack ? attacker.Snapshot.RangedAttack : attacker.Snapshot.MeleeAttack;
+        float role = attacker.Snapshot.TacticalProfile?.role == BattleRole.Siege ? 2.5f : 1f;
+        float weaponMultiplier = weapon != null ? weapon.fortificationDamageMultiplier : 1f;
+        float taken = profile != null ? profile.siegeDamageTakenMultiplier : 1f;
+        return Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(1, attack - target.Defense) * role * weaponMultiplier * taken));
+    }
+
+    private bool ExecuteFortificationAttack(BattleSession session, BattleUnitState attacker, BattleFortificationAttackCommand command, out string reason)
+    {
+        reason = string.Empty;
+        var target = session.GetFortification(command.TargetStructureId);
+        var weapon = BattleTargetingService.GetWeapon(attacker, command.WeaponIndex);
+        if (target == null || target.IsBreached) { reason = "invalid structure target"; return false; }
+        if (command.AttackFromCell != attacker.CellIndex) { reason = "attacker position mismatch"; return false; }
+        if (weapon == null || !IsWeaponReady(attacker, command.WeaponIndex, out reason)) return false;
+        int distance = session.MapDistance(attacker.CellIndex, target.CellIndex);
+        if (distance < weapon.minimumRange || distance > weapon.maximumRange) { reason = "target out of range"; return false; }
+        target.ApplyDamage(PreviewFortificationDamage(attacker, target, weapon, session.FortificationProfile));
+        attacker.HasActed = attacker.HasAttackedThisTurn = true; attacker.CurrentActionPoints = 0; attacker.RevealedByAttack = true;
+        ConsumeWeapon(attacker, command.WeaponIndex, weapon);
+        return true;
     }
 
     public BattleDamagePreview PreviewAttack(BattleSession session,BattleUnitState attacker,BattleUnitState defender,int weaponIndex,BattleAttackProfile profile=null)
