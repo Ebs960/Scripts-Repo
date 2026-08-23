@@ -96,10 +96,12 @@ public class Herd : MonoBehaviour
     public int storageCapacity = 50;
 
     // Retained only so old Unity scenes deserialize without losing data. Never used by combat.
+    #pragma warning disable CS0414 // Serialized only to migrate legacy scene and prefab data.
     [Obsolete("Herd combat uses MilitaryGarrison CombatUnits."), SerializeField, HideInInspector] private int defenseRating = 50;
     [Obsolete("Herd combat uses MilitaryGarrison CombatUnits."), SerializeField, HideInInspector] private int maxDefense = 50;
     [Obsolete("Herd has no combat HP."), SerializeField, HideInInspector] private int health = 100;
     [Obsolete("Herd has no combat HP."), SerializeField, HideInInspector] private int maxHealth = 100;
+    #pragma warning restore CS0414
 
     [Header("Livestock Upkeep / Raids")]
     [Range(0f, 1f)] public float predatorLivestockLossPct = 0.15f;

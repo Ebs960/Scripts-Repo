@@ -2851,7 +2851,7 @@ public class GameManager : MonoBehaviour
             movementPoints = herd.movementPoints, maxMovementPoints = herd.maxMovementPoints,
             foodReserve = herd.foodReserve, level = herd.level, baseStorage = herd.baseStorage,
             storageCapacity = herd.storageCapacity, baseGarrisonCapacity = herd.baseGarrisonCapacity,
-            governorId = herd.governor != null ? herd.governor.id : -1
+            governorId = herd.governor != null ? herd.governor.Id : -1
         };
         foreach (var entry in herd.animals ?? new List<Herd.HerdEntry>())
             if (entry != null) data.livestock.Add(new PauseMenuManager.HerdLivestockSaveData { species = entry.species, count = entry.count });
@@ -2902,7 +2902,7 @@ public class GameManager : MonoBehaviour
             foreach (var queued in saved.productionQueue ?? new List<PauseMenuManager.HerdProdEntrySaveData>())
                 if (buildingLookup.TryGetValue(queued.dataName ?? string.Empty, out var building))
                 { var entry = new Herd.ProdEntry(building, building.productionCost, queued.goldCost, building.requiredTileResourceDeposits, building.requiredTerrains); entry.remainingPts = queued.remainingPts; herd.productionQueue.Add(entry); }
-            herd.governor = saved.governorId < 0 ? null : owner.governors?.FirstOrDefault(g => g != null && g.id == saved.governorId);
+            herd.governor = saved.governorId < 0 ? null : owner.governors?.FirstOrDefault(g => g != null && g.Id == saved.governorId);
             foreach (var id in saved.militaryGarrisonUnitIds ?? new List<string>())
                 herd.RestoreGarrisonReference(UnitRegistry.GetByPersistentId(id)?.GetComponent<CombatUnit>());
             foreach (var id in saved.storedCivilianUnitIds ?? new List<string>())

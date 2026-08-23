@@ -36,11 +36,13 @@ public class TerrainOverlayGPU : MonoBehaviour
     // Public properties for external access
     public bool EnableFogOverlay => enableFogOverlay;
     public bool EnableOwnershipOverlay => enableOwnershipOverlay;
+    #pragma warning disable CS0414 // Retained so existing serialized overlay settings remain compatible.
     [Tooltip("Ownership blend strength (0-1)")]
     [Range(0f, 1f)]
     [SerializeField] private float ownershipBlend = 0.3f;
     [Tooltip("Ownership mode: 0 = blend with biome color, 1 = replace biome color")]
     [SerializeField] private int ownershipMode = 0;
+    #pragma warning restore CS0414
     
     [Header("Compute Shader")]
     [Tooltip("Compute shader for updating overlay textures (TerrainOverlayUpdate.compute)")]
