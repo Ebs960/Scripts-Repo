@@ -57,10 +57,30 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
     }
     private void Spawn(BattleBiomeVisualProfile profile,BattleDecorationPlacement placement,Vector3 center)
     {
-        GameObject prefab=GetPrefab(profile,placement);if(prefab==null)return;Matrix4x4 matrix=transform.localToWorldMatrix*Matrix4x4.TRS(center+placement.LocalPosition,Quaternion.Euler(0f,placement.Yaw,0f),Vector3.one*placement.Scale);
+        GameObject prefab=GetPrefab(profile,placement);
+        if(prefab==null){if(profile.allowProceduralFallback)SpawnFallback(profile,placement,center);return;}
+        Matrix4x4 matrix=transform.localToWorldMatrix*Matrix4x4.TRS(center+placement.LocalPosition,Quaternion.Euler(0f,placement.Yaw,0f),Vector3.one*placement.Scale);
         if(placement.Kind==BattleDecorationKind.Grass&&TryAddInstanced(prefab,matrix))return;
         var instance=Instantiate(prefab,transform);instance.name=$"Battle {placement.Kind} ({prefab.name})";instance.transform.SetPositionAndRotation(matrix.GetColumn(3),matrix.rotation);instance.transform.localScale=Vector3.one*placement.Scale;
         foreach(var collider in instance.GetComponentsInChildren<Collider>(true))collider.enabled=false;spawned.Add(instance);
+    }
+    private void SpawnFallback(BattleBiomeVisualProfile profile,BattleDecorationPlacement placement,Vector3 center)
+    {
+        // Deliberately simple silhouettes keep the fallback readable and cheap; authored prefabs always win.
+        PrimitiveType primitive=placement.Kind==BattleDecorationKind.Rock||placement.Kind==BattleDecorationKind.HardCover?PrimitiveType.Sphere:PrimitiveType.Cube;
+        Vector3 scale;Color color;
+        switch(placement.Kind)
+        {
+            case BattleDecorationKind.Tree: scale=new Vector3(.13f,.72f,.13f);color=profile.foliageColor;break;
+            case BattleDecorationKind.Grass: scale=new Vector3(.05f,.12f,.05f);color=profile.grassColor;break;
+            case BattleDecorationKind.Bush: case BattleDecorationKind.SoftCover: scale=new Vector3(.32f,.2f,.3f);color=profile.foliageColor;break;
+            case BattleDecorationKind.Rock: case BattleDecorationKind.HardCover: scale=new Vector3(.28f,.2f,.24f);color=profile.rockColor;break;
+            default: scale=new Vector3(.2f,.24f,.18f);color=profile.clutterColor;break;
+        }
+        scale*=placement.Scale;var go=GameObject.CreatePrimitive(primitive);go.name=$"Procedural {placement.Kind}";go.transform.SetParent(transform,false);
+        go.transform.localPosition=center+placement.LocalPosition+Vector3.up*scale.y*.5f;go.transform.localRotation=Quaternion.Euler(0f,placement.Yaw,0f);go.transform.localScale=scale;
+        var collider=go.GetComponent<Collider>();if(collider!=null)Destroy(collider);var renderer=go.GetComponent<Renderer>();renderer.sharedMaterial=featureMaterial;
+        var block=new MaterialPropertyBlock();block.SetColor("_BaseColor",color);block.SetColor("_Color",color);renderer.SetPropertyBlock(block);spawned.Add(go);
     }
     private bool TryAddInstanced(GameObject prefab,Matrix4x4 matrix)
     {

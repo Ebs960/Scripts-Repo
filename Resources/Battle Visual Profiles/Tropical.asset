@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff99589e240f45f1bbba12ebd316ecc2, type: 3}
+  m_Name: Tropical
+  m_EditorClassIdentifier: Assembly-CSharp::BattleBiomeVisualProfile
+  biome: 6
+  biomeVisualOverride: {fileID: 0}
+  treePrefabs: [{fileID: 100100000, guid: 276a7cef8d2836c4589f9ea2a98e1609, type: 3}]
+  grassPrefabs: []
+  bushPrefabs: [{fileID: 100100000, guid: 2709d235268c0354c902a8593aa95bd3, type: 3}]
+  rockPrefabs: []
+  environmentalPropPrefabs: []
+  allowProceduralFallback: 1
+  foliageColor: {r: 0.08, g: 0.32, b: 0.08, a: 1}
+  grassColor: {r: 0.18, g: 0.42, b: 0.12, a: 1}
+  rockColor: {r: 0.3, g: 0.3, b: 0.25, a: 1}
+  clutterColor: {r: .34, g: .27, b: .17, a: 1}
+  softCoverPrefabs: []
+  hardCoverPrefabs: []
+  portPrefabs: []
+  treeDensity: 0.1
+  grassDensity: 0.4
+  bushDensity: 0.14
+  rockDensity: 0.04
+  propDensity: .01
+  maximumTrees: 3
+  maximumGrassClumps: 12
+  maximumBushes: 3
+  maximumRocks: 4
+  maximumProps: 1
+  forestTreeMultiplier: 3
+  forestBushMultiplier: 2
+  mountainRockMultiplier: 2
+  mountainVegetationMultiplier: .4
+  treeScaleRange: {x: .85, y: 1.15}
+  grassScaleRange: {x: .8, y: 1.2}
+  bushScaleRange: {x: .8, y: 1.2}
+  rockScaleRange: {x: .75, y: 1.25}
+  propScaleRange: {x: .9, y: 1.1}
+  unitClearRadius: .65
+  edgePadding: .14
+  riverClearHalfWidth: .24

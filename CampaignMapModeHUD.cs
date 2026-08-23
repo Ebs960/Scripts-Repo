@@ -9,6 +9,7 @@ public class CampaignMapModeHUD : MonoBehaviour
     [SerializeField] private TMP_Dropdown modeDropdown;
     [SerializeField] private TMP_Text legendText;
     [SerializeField] private TMP_Text hoverText;
+    [SerializeField, Min(1)] private int maximumLegendEntries = 8;
     private CampaignMapModeController controller;
 
     private static readonly string[] Labels =
@@ -45,10 +46,17 @@ public class CampaignMapModeHUD : MonoBehaviour
         if (legendText == null || controller == null) return;
         var title = controller.CurrentMode == CampaignMapMode.Diplomacy
             ? $"DIPLOMACY — Relative to {controller.ReferenceCivilization?.civData?.civName ?? "Player"}"
-            : controller.CurrentMode.ToString().ToUpperInvariant();
-        var builder = new StringBuilder(title);
+            : DisplayName(controller.CurrentMode).ToUpperInvariant();
+        var builder = new StringBuilder("<b>").Append(title).Append("</b>");
+        int shown=0;
         foreach (var entry in controller.Legend)
-            builder.Append("\n■ ").Append(entry.label).Append(" (").Append(entry.tileCount).Append(')');
+        {
+            if(shown++>=maximumLegendEntries)break;
+            builder.Append("\n<color=#").Append(ColorUtility.ToHtmlStringRGB(entry.color)).Append(">■</color> ")
+                .Append(entry.label).Append("  <color=#A8ADB5>").Append(entry.tileCount).Append("</color>");
+        }
+        if(controller.Legend.Count>maximumLegendEntries)builder.Append("\n<color=#A8ADB5>+").Append(controller.Legend.Count-maximumLegendEntries).Append(" more</color>");
         legendText.text = builder.ToString();
     }
+    private static string DisplayName(CampaignMapMode mode)=>mode==CampaignMapMode.PoliticalOwnership?"Political":mode.ToString();
 }

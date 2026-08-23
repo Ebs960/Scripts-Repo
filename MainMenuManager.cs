@@ -21,6 +21,9 @@ public class ClimateIconEntry
 
 public class MainMenuManager : MonoBehaviour
 {
+    [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+    private static void MenuLog(object message) => Debug.Log(message);
+
     [Header("Panel References")]
     public GameObject mainMenuPanel;
     public GameObject civSelectionPanel;
@@ -269,7 +272,7 @@ public class MainMenuManager : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[MainMenuManager] Start() called");
+        MenuLog("[MainMenuManager] Start() called");
         
         // Get GameManager reference
         gameManager = GameManager.Instance;
@@ -279,7 +282,7 @@ public class MainMenuManager : MonoBehaviour
         }
 
         // Initialize panels: show only main menu at start
-        Debug.Log("[MainMenuManager] Initializing panels...");
+        MenuLog("[MainMenuManager] Initializing panels...");
         if (mainMenuPanel != null)
             mainMenuPanel.SetActive(true);
         else
@@ -305,10 +308,10 @@ public class MainMenuManager : MonoBehaviour
         else
             Debug.LogError("[MainMenuManager] optionsPanel is NULL!");
         
-        Debug.Log("[MainMenuManager] Panels initialized. optionsPanel is now DISABLED.");
+        MenuLog("[MainMenuManager] Panels initialized. optionsPanel is now DISABLED.");
         
         // Initialize audio settings EARLY to ensure optionsPanel state is correct
-        Debug.Log("[MainMenuManager] Calling InitializeAudioSettings early...");
+        MenuLog("[MainMenuManager] Calling InitializeAudioSettings early...");
         try
         {
             InitializeAudioSettings();
@@ -329,7 +332,7 @@ public class MainMenuManager : MonoBehaviour
         }
         
         // Hook up button callbacks
-        Debug.Log("[MainMenuManager] Hooking up button callbacks...");
+        MenuLog("[MainMenuManager] Hooking up button callbacks...");
         if (newGameButton != null) 
             newGameButton.onClick.AddListener(OnNewGameClicked);
         else
@@ -371,7 +374,7 @@ public class MainMenuManager : MonoBehaviour
             Debug.LogWarning("[MainMenuManager] startGameButton is NULL");
         
         // Options panel callbacks
-        Debug.Log("[MainMenuManager] Hooking up options panel callbacks...");
+        MenuLog("[MainMenuManager] Hooking up options panel callbacks...");
         if (optionsBackButton != null) 
             optionsBackButton.onClick.AddListener(OnOptionsBackClicked);
         else
@@ -513,40 +516,40 @@ public class MainMenuManager : MonoBehaviour
             animalPrevalenceDropdown.AddOptions(new List<string> { "Dead", "Sparse", "Scarce", "Normal", "Lively", "Bustling" });
             animalPrevalenceDropdown.value = selectedAnimalPrevalence;
             animalPrevalenceDropdown.onValueChanged.AddListener(OnAnimalPrevalenceChanged);
-            Debug.Log("[MainMenuManager] Animal prevalence dropdown initialized");
+            MenuLog("[MainMenuManager] Animal prevalence dropdown initialized");
         }
         else
             Debug.LogError("[MainMenuManager] animalPrevalenceDropdown is NULL!");
 
         // Initialize map size dropdown
-        Debug.Log("[MainMenuManager] Initializing map size dropdown...");
+        MenuLog("[MainMenuManager] Initializing map size dropdown...");
         try { InitializeMapSizeDropdown(); }
         catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeMapSizeDropdown: {ex}"); }
         
         // Initialize New World UI controls
-        Debug.Log("[MainMenuManager] Initializing new world controls...");
+        MenuLog("[MainMenuManager] Initializing new world controls...");
         try { InitializeNewWorldControls(); }
         catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeNewWorldControls: {ex}"); }
 
         // NOTE: InitializeAudioSettings was ALREADY CALLED EARLY in Start()
 
         // Initialize autosave settings
-        Debug.Log("[MainMenuManager] Initializing autosave settings...");
+        MenuLog("[MainMenuManager] Initializing autosave settings...");
         try { InitializeAutosaveSettings(); }
         catch (System.Exception ex) { Debug.LogError($"[MainMenuManager] Exception in InitializeAutosaveSettings: {ex}"); }
 
         // Update the map type name only after setup dropdowns are populated.
-        Debug.Log("[MainMenuManager] Updating map type name...");
+        MenuLog("[MainMenuManager] Updating map type name...");
         SafeUpdateMapTypeName();
 
-        Debug.Log("[MainMenuManager] Validating dropdowns...");
+        MenuLog("[MainMenuManager] Validating dropdowns...");
         ValidateDropdown("AI Count", aiCountDropdown, 9);
         ValidateDropdown("City States", cityStateCountDropdown, 7);
         ValidateDropdown("Tribes", tribeCountDropdown, 7);
         ValidateDropdown("Wildlife", animalPrevalenceDropdown, 6);
         ValidateDropdown("Map Size", mapSizeDropdown, 3);
         
-        Debug.Log("[MainMenuManager] Start() completed successfully");
+        MenuLog("[MainMenuManager] Start() completed successfully");
     }
 
     private void Update()
@@ -555,11 +558,11 @@ public class MainMenuManager : MonoBehaviour
         if (!_previewInitializedOnce && planetPreview != null && planetPreview.HasGeneratedWorldTextures)
         {
             _previewInitializedOnce = true;
-            Debug.Log("[MainMenuManager] Planet preview textures are ready - calling UpdateMapTypeName.");
+            MenuLog("[MainMenuManager] Planet preview textures are ready - calling UpdateMapTypeName.");
             try
             {
                 UpdateMapTypeName();
-                Debug.Log("[MainMenuManager] UpdateMapTypeName completed successfully");
+                MenuLog("[MainMenuManager] UpdateMapTypeName completed successfully");
             }
             catch (System.Exception ex)
             {
@@ -607,7 +610,7 @@ public class MainMenuManager : MonoBehaviour
     
     private void InitializeControls()
     {
-        Debug.Log("[MainMenuManager] InitializeControls() called");
+        MenuLog("[MainMenuManager] InitializeControls() called");
         
         // Initialize AI count dropdown (0-8)
         if (aiCountDropdown != null)
@@ -618,7 +621,7 @@ public class MainMenuManager : MonoBehaviour
             aiCountDropdown.AddOptions(opts);
             aiCountDropdown.value = Mathf.Clamp(aiCount, 0, 8);
             aiCountDropdown.onValueChanged.AddListener(OnAICountChanged);
-            Debug.Log("[MainMenuManager] AI count dropdown initialized");
+            MenuLog("[MainMenuManager] AI count dropdown initialized");
         }
         else
             Debug.LogError("[MainMenuManager] aiCountDropdown is NULL in InitializeControls!");
@@ -632,7 +635,7 @@ public class MainMenuManager : MonoBehaviour
             cityStateCountDropdown.AddOptions(opts);
             cityStateCountDropdown.value = Mathf.Clamp(cityStateCount, 0, 6);
             cityStateCountDropdown.onValueChanged.AddListener(OnCityStateCountChanged);
-            Debug.Log("[MainMenuManager] City state count dropdown initialized");
+            MenuLog("[MainMenuManager] City state count dropdown initialized");
         }
         else
             Debug.LogError("[MainMenuManager] cityStateCountDropdown is NULL in InitializeControls!");
@@ -648,22 +651,22 @@ public class MainMenuManager : MonoBehaviour
             tribeCountDropdown.AddOptions(opts);
             tribeCountDropdown.value = Mathf.Clamp(tribeCount, 0, 6);
             tribeCountDropdown.onValueChanged.AddListener(OnTribeCountChanged);
-            Debug.Log("[MainMenuManager] Tribe count dropdown initialized");
+            MenuLog("[MainMenuManager] Tribe count dropdown initialized");
         }
         else
             Debug.LogError("[MainMenuManager] tribeCountDropdown is NULL in InitializeControls!");
             
         UpdateTribeCountText();
 
-        Debug.Log("[MainMenuManager] NOT calling UpdateMapTypeName during InitializeControls - will call after preview is ready");
+        MenuLog("[MainMenuManager] NOT calling UpdateMapTypeName during InitializeControls - will call after preview is ready");
         
         // River UI removed (deprecated). River count still determined by moisture preset.
         
         // Update preset icons ONLY (no preview update yet)
-        Debug.Log("[MainMenuManager] Updating preset icons (no preview yet)...");
+        MenuLog("[MainMenuManager] Updating preset icons (no preview yet)...");
         UpdatePresetIcons();
         
-        Debug.Log("[MainMenuManager] InitializeControls() completed");
+        MenuLog("[MainMenuManager] InitializeControls() completed");
     }
     
     #region Value Change Handlers and Text Updates
@@ -705,10 +708,10 @@ public class MainMenuManager : MonoBehaviour
     // Map Settings
     private void OnMapSizeChanged(int value)
     {
-        Debug.Log($"[MainMenuManager] OnMapSizeChanged called with value: {value}");
+        MenuLog($"[MainMenuManager] OnMapSizeChanged called with value: {value}");
         GameManager.MapSize selectedSize = (GameManager.MapSize)value;
         GameSetupData.mapSize = selectedSize;
-        Debug.Log($"[MainMenuManager] Map size set to {selectedSize}");
+        MenuLog($"[MainMenuManager] Map size set to {selectedSize}");
         UpdatePlanetSizeText();
         UpdatePlanetPreview();
     }
@@ -1484,10 +1487,10 @@ public class MainMenuManager : MonoBehaviour
     // Animal settings
     private void OnAnimalPrevalenceChanged(int value)
     {
-        Debug.Log($"[MainMenuManager] OnAnimalPrevalenceChanged called with value: {value}");
+        MenuLog($"[MainMenuManager] OnAnimalPrevalenceChanged called with value: {value}");
         selectedAnimalPrevalence = value;
         GameSetupData.animalPrevalence = selectedAnimalPrevalence;  // Immediately save to GameSetupData
-        Debug.Log($"[MainMenuManager] Animal prevalence set to {selectedAnimalPrevalence}");
+        MenuLog($"[MainMenuManager] Animal prevalence set to {selectedAnimalPrevalence}");
         UpdateMapTypeName();
     }
 
@@ -1628,7 +1631,7 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeMapSizeDropdown()
     {
-        Debug.Log("[MainMenuManager] InitializeMapSizeDropdown() called");
+        MenuLog("[MainMenuManager] InitializeMapSizeDropdown() called");
         
         if (mapSizeDropdown == null)
         {
@@ -1647,7 +1650,7 @@ public class MainMenuManager : MonoBehaviour
         mapSizeDropdown.onValueChanged.AddListener(OnMapSizeChanged);
         UpdatePlanetSizeText();
         
-        Debug.Log($"[MainMenuManager] Map size dropdown initialized with {options.Count} options, value set to {mapSizeDropdown.value}");
+        MenuLog($"[MainMenuManager] Map size dropdown initialized with {options.Count} options, value set to {mapSizeDropdown.value}");
     }
 
     private void InitializeNewWorldControls()
@@ -1747,13 +1750,13 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeAudioSettings()
     {
-        Debug.Log("[MainMenuManager] InitializeAudioSettings() called");
+        MenuLog("[MainMenuManager] InitializeAudioSettings() called");
         
         // Initialize options panel state
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(false);
-            Debug.Log("[MainMenuManager] Options panel initialized and DISABLED in InitializeAudioSettings");
+            MenuLog("[MainMenuManager] Options panel initialized and DISABLED in InitializeAudioSettings");
         }
         else
             Debug.LogError("[MainMenuManager] InitializeAudioSettings: optionsPanel is NULL!");
@@ -1766,7 +1769,7 @@ public class MainMenuManager : MonoBehaviour
                 float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
                 menuMusicVolumeSlider.value = savedVolume;
                 UpdateMenuMusicVolumeText(savedVolume);
-                Debug.Log($"[MainMenuManager] Menu music volume set to {savedVolume}");
+                MenuLog($"[MainMenuManager] Menu music volume set to {savedVolume}");
             }
             catch (System.Exception ex)
             {
@@ -1783,7 +1786,7 @@ public class MainMenuManager : MonoBehaviour
             {
                 bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
                 menuMusicEnabledToggle.isOn = musicEnabled;
-                Debug.Log($"[MainMenuManager] Menu music enabled set to {musicEnabled}");
+                MenuLog($"[MainMenuManager] Menu music enabled set to {musicEnabled}");
             }
             catch (System.Exception ex)
             {
@@ -1793,16 +1796,16 @@ public class MainMenuManager : MonoBehaviour
         else
             Debug.LogWarning("[MainMenuManager] menuMusicEnabledToggle is NULL in InitializeAudioSettings");
             
-        Debug.Log("[MainMenuManager] InitializeAudioSettings() completed");
+        MenuLog("[MainMenuManager] InitializeAudioSettings() completed");
     }
 
     void OnOptionsClicked()
     {
-        Debug.Log("[MainMenuManager] OnOptionsClicked called");
+        MenuLog("[MainMenuManager] OnOptionsClicked called");
         if (mainMenuPanel != null)
         {
             mainMenuPanel.SetActive(false);
-            Debug.Log("[MainMenuManager] Main menu panel disabled");
+            MenuLog("[MainMenuManager] Main menu panel disabled");
         }
         else
             Debug.LogError("[MainMenuManager] OnOptionsClicked: mainMenuPanel is NULL!");
@@ -1810,7 +1813,7 @@ public class MainMenuManager : MonoBehaviour
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(true);
-            Debug.Log("[MainMenuManager] Options panel ENABLED");
+            MenuLog("[MainMenuManager] Options panel ENABLED");
         }
         else
             Debug.LogError("[MainMenuManager] OnOptionsClicked: optionsPanel is NULL!");
@@ -1818,11 +1821,11 @@ public class MainMenuManager : MonoBehaviour
 
     void OnOptionsBackClicked()
     {
-        Debug.Log("[MainMenuManager] OnOptionsBackClicked called");
+        MenuLog("[MainMenuManager] OnOptionsBackClicked called");
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(false);
-            Debug.Log("[MainMenuManager] Options panel DISABLED");
+            MenuLog("[MainMenuManager] Options panel DISABLED");
         }
         else
             Debug.LogError("[MainMenuManager] OnOptionsBackClicked: optionsPanel is NULL!");
@@ -1830,7 +1833,7 @@ public class MainMenuManager : MonoBehaviour
         if (mainMenuPanel != null)
         {
             mainMenuPanel.SetActive(true);
-            Debug.Log("[MainMenuManager] Main menu panel re-enabled");
+            MenuLog("[MainMenuManager] Main menu panel re-enabled");
         }
         else
             Debug.LogError("[MainMenuManager] OnOptionsBackClicked: mainMenuPanel is NULL!");

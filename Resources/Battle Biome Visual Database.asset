@@ -12,4 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62c0271fc50d499da84f873df36132db, type: 3}
   m_Name: Battle Biome Visual Database
   m_EditorClassIdentifier:
-  profiles: []
+  profiles:
+  - {fileID: 11400000, guid: 69c66d3bdec9b237146237e5733f741a, type: 2}
+  - {fileID: 11400000, guid: c6413923eddda2445c950b5708e0297e, type: 2}
+  - {fileID: 11400000, guid: 8011b6c3958e593e9a7e593110698ccd, type: 2}
+  - {fileID: 11400000, guid: e26830a9d07d42b9c6c598b08cf5b597, type: 2}
+  - {fileID: 11400000, guid: 1d5d9e646e434ee2059f3ac1851c2876, type: 2}
+  - {fileID: 11400000, guid: 08f2cc6e013d2dc18f707849a88a8bf9, type: 2}
+  - {fileID: 11400000, guid: eeda27b118e1b2a5359068f351c5b7ae, type: 2}
+  - {fileID: 11400000, guid: fb9b43b410e332854f0ab3e4d124f2d1, type: 2}
+  - {fileID: 11400000, guid: 5075781da41b3ab2d51db88ec6625269, type: 2}
+  - {fileID: 11400000, guid: 7ae5626af479c9176f04419c45d3597b, type: 2}
+  - {fileID: 11400000, guid: c91fcd839cefe32dec4f29489f8a3be2, type: 2}
+  - {fileID: 11400000, guid: 80bb0cd34b71cef10f0e17c780554c3d, type: 2}
+  - {fileID: 11400000, guid: 14118911c595387f7aac267c2c8c08d2, type: 2}
+  - {fileID: 11400000, guid: 15206c5ebba96715a2b71d5b9d6a8591, type: 2}
+  - {fileID: 11400000, guid: 19abf2ab1f49f6f469c5b3bc1d645456, type: 2}
+  - {fileID: 11400000, guid: 12986b06816c4e1dac6dd4830fd4664e, type: 2}

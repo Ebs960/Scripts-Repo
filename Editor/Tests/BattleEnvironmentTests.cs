@@ -21,6 +21,8 @@ public sealed class BattleEnvironmentTests
     [Test] public void RiverExclusionFollowsProvidedOrientation(){var cell=Cell();cell.HasRiver=true;profile.treeDensity=1f;profile.maximumTrees=20;var placements=BattleEnvironmentLayout.Generate(cell,profile,5,1.35f,Vector2.right);foreach(var item in placements)if(item.Kind==BattleDecorationKind.Tree)Assert.GreaterOrEqual(Mathf.Abs(item.LocalPosition.z),profile.riverClearHalfWidth-.001f);}
     [Test] public void CoastExclusionUsesWaterFacingNormal(){var cell=Cell();cell.HasBeach=true;profile.treeDensity=1f;profile.maximumTrees=20;var placements=BattleEnvironmentLayout.Generate(cell,profile,7,1.35f,default,Vector2.right);foreach(var item in placements)if(item.Kind==BattleDecorationKind.Tree)Assert.LessOrEqual(item.LocalPosition.x,.001f);}
     [Test] public void NullPrefabArraysAreSafe(){profile.treePrefabs=null;profile.grassPrefabs=null;profile.rockPrefabs=null;Assert.DoesNotThrow(()=>BattleEnvironmentLayout.Generate(Cell(),profile,1,1.35f));}
+    [Test] public void MissingArtUsesProceduralPlacementWhenEnabled(){profile.treePrefabs=null;profile.grassPrefabs=null;profile.rockPrefabs=null;profile.allowProceduralFallback=true;Assert.IsNotEmpty(BattleEnvironmentLayout.Generate(Cell(),profile,1,1.35f));}
+    [Test] public void MissingArtCanDisableProceduralPlacement(){profile.treePrefabs=null;profile.grassPrefabs=null;profile.rockPrefabs=null;profile.allowProceduralFallback=false;Assert.IsEmpty(BattleEnvironmentLayout.Generate(Cell(),profile,1,1.35f));}
 
     [Test] public void ProjectileVisualResolverUsesWeaponProjectileAndIndirectArc()
     {

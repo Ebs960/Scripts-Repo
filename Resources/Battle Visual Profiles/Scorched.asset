@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff99589e240f45f1bbba12ebd316ecc2, type: 3}
+  m_Name: Scorched
+  m_EditorClassIdentifier: Assembly-CSharp::BattleBiomeVisualProfile
+  biome: 20
+  biomeVisualOverride: {fileID: 0}
+  treePrefabs: [{fileID: 0}]
+  grassPrefabs: []
+  bushPrefabs: [{fileID: 100100000, guid: 2709d235268c0354c902a8593aa95bd3, type: 3}]
+  rockPrefabs: []
+  environmentalPropPrefabs: []
+  allowProceduralFallback: 1
+  foliageColor: {r: 0.28, g: 0.2, b: 0.12, a: 1}
+  grassColor: {r: 0.34, g: 0.26, b: 0.14, a: 1}
+  rockColor: {r: 0.4, g: 0.32, b: 0.25, a: 1}
+  clutterColor: {r: .34, g: .27, b: .17, a: 1}
+  softCoverPrefabs: []
+  hardCoverPrefabs: []
+  portPrefabs: []
+  treeDensity: 0
+  grassDensity: 0.03
+  bushDensity: 0.005
+  rockDensity: 0.14
+  propDensity: .01
+  maximumTrees: 3
+  maximumGrassClumps: 12
+  maximumBushes: 3
+  maximumRocks: 4
+  maximumProps: 1
+  forestTreeMultiplier: 3
+  forestBushMultiplier: 2
+  mountainRockMultiplier: 2
+  mountainVegetationMultiplier: .4
+  treeScaleRange: {x: .85, y: 1.15}
+  grassScaleRange: {x: .8, y: 1.2}
+  bushScaleRange: {x: .8, y: 1.2}
+  rockScaleRange: {x: .75, y: 1.25}
+  propScaleRange: {x: .9, y: 1.1}
+  unitClearRadius: .65
+  edgePadding: .14
+  riverClearHalfWidth: .24

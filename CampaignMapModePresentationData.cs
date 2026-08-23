@@ -45,4 +45,12 @@ public class CampaignMapModePresentationData : ScriptableObject
             default: return 0f;
         }
     }
+
+    private void OnValidate()
+    {
+        nationalBorderThickness=Mathf.Max(.01f,nationalBorderThickness);
+        thematicBorderThickness=Mathf.Clamp(thematicBorderThickness,.01f,nationalBorderThickness);
+        minimumReligionDominanceStrength=Mathf.Clamp01(minimumReligionDominanceStrength);
+        selfColor.a=friendlyColor.a=neutralColor.a=hostileColor.a=1f;
+    }
 }
