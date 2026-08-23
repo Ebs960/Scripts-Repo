@@ -9,6 +9,8 @@ public sealed class TacticalWeaponProfile
     public int maximumRange = 1;
     public bool usesRangedAttack;
     [Min(0.01f)] public float attackMultiplier = 1f;
+    [Min(0f), Tooltip("Damage multiplier against tactical structures.")]
+    public float fortificationDamageMultiplier = 1f;
     public bool usesIndirectFire;
     [Header("Presentation (optional)")]
     [Tooltip("Tactical-only projectile override. The weapon ProjectileData visual is used when this is empty.")]

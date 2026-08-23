@@ -16,6 +16,9 @@ public sealed class BattleSession
 
     public BattleMap Map { get; }
     public IReadOnlyList<BattleUnitState> Units => units;
+    public BattleSiegeType SiegeType { get; private set; }
+    public BattleFortificationProfile FortificationProfile { get; private set; }
+    public IReadOnlyList<BattleFortificationState> Fortifications => fortifications;
 
     public BattleObjective Objective;
     public IReadOnlyList<BattleReinforcementGroup> Reinforcements => reinforcements;
@@ -24,6 +27,7 @@ public sealed class BattleSession
     public BattleDeterministicRandom Random { get; }
 
     private readonly List<BattleUnitState> units;
+    private readonly List<BattleFortificationState> fortifications = new();
     private readonly List<BattleReinforcementGroup> reinforcements;
     private readonly HashSet<BattleSide> deploymentConfirmed = new();
 
@@ -35,6 +39,18 @@ public sealed class BattleSession
 
     public void RestoreProgress(BattlePhase phase, BattleSide activeSide, int round)
     { Phase = phase; ActiveSide = activeSide; CurrentRound = System.Math.Max(1, System.Math.Min(MaximumRounds, round)); }
+
+    public void ConfigureSiege(BattleSiegeType type, BattleFortificationProfile profile, IEnumerable<BattleFortificationState> structures)
+    {
+        SiegeType = type; FortificationProfile = profile; fortifications.Clear();
+        if (structures != null) fortifications.AddRange(structures);
+    }
+
+    public BattleFortificationState GetFortification(int structureId)
+        => fortifications.Find(x => x.StructureId == structureId);
+
+    public BattleFortificationState GetBlockingFortification(int cellIndex, BattleSide mover)
+        => mover != BattleSide.Attacker ? null : fortifications.Find(x => x.CellIndex == cellIndex && x.BlocksMovement);
 
     // Preserve the original planetary-battle API for callers that do not need to
     // select a theater explicitly, including existing battle tests.

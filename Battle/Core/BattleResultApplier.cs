@@ -69,7 +69,21 @@ public sealed class BattleResultApplier
             }
         ApplyCivilianFormationFate(result, preview);
         ApplyBandObjectiveResult(result, preview);
+        ApplySiegeObjectiveResult(result, preview);
         result.CampaignApplied = true;
+    }
+
+    private static void ApplySiegeObjectiveResult(BattleResult result, EngagementPreview preview)
+    {
+        if (preview.SiegeType != BattleSiegeType.Settlement && preview.SiegeType != BattleSiegeType.FortifiedSettlement) return;
+        if (result.WinningSide != BattleSide.Attacker || result.ResolutionType == BattleResolutionType.AttackerRetreated) return;
+        var ts=TileSystem.GetForPlanet(preview.PlanetIndex)??TileSystem.Instance;
+        var city=ts?.GetTileData(preview.AnchorTile)?.controllingCity;
+        Civilization attacker=preview.Attacker?.owner??preview.AttackerParty?.Owner;
+        if(city==null||attacker==null||city.owner==attacker)return;
+        // Reuse the authoritative City surrender/territory transfer flow rather than duplicating ownership mutation.
+        city.OnAttackedBy(attacker);
+        city.TakeDamage(city.defenseRating,attacker);
     }
 
     private static void ApplyCivilianFormationFate(BattleResult result, EngagementPreview preview)

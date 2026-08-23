@@ -337,6 +337,11 @@ public struct ImprovementCultureGroupVisualOverride
 [CreateAssetMenu(fileName = "NewImprovementData", menuName = "Data/Improvement Data")]
 public class ImprovementData : ScriptableObject
 {
+    [Header("Tactical Fortifications")]
+    [Tooltip("Explicitly identifies this improvement as a fort battle objective.")]
+    public bool grantsFortifications;
+    [Tooltip("Authoritative tactical profile. Names are never inspected to infer a fort.")]
+    public BattleFortificationProfile tacticalFortificationProfile;
     [Tooltip("Allows this coastal improvement to act as a tactical port.")] public bool isPort;
     [Header("Identity")]
     public string improvementName;

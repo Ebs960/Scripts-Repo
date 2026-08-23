@@ -31,7 +31,29 @@ public sealed class BattleEnvironmentRenderer : MonoBehaviour
             if(profile!=null&&!cell.IsWater)
                 foreach(var placement in BattleEnvironmentLayout.Generate(cell,profile,session.RandomSeed,BattleBoardLayout.HexRadius,RiverDirection(session.Map,cell,layout),FeatureDirection(session.Map,cell,layout,c=>c.IsWater)))Spawn(profile,placement,layout.GetCellCenter(i));
             CreateFeatures(session.Map,cell,layout.GetCellCenter(i),layout,profile);
-        }FinalizeGrassBatches();
+        }
+        CreateFortifications(session,layout);
+        FinalizeGrassBatches();
+    }
+    private void CreateFortifications(BattleSession session,BattleBoardLayout layout)
+    {
+        var profile=session.FortificationProfile; if(profile==null)return;
+        foreach(var structure in session.Fortifications)
+        {
+            var visual=profile.visualProfile; GameObject prefab=structure.Kind switch
+            {
+                BattleFortificationKind.Gate=>structure.IsBreached?visual?.breachedGatePrefab:visual?.gatePrefab,
+                BattleFortificationKind.Wall=>structure.IsBreached?visual?.breachedWallPrefab:visual?.wallPrefab,
+                _=>visual?.strongpointPrefab
+            };
+            Vector3 center=layout.GetCellCenter(structure.CellIndex);
+            if(prefab!=null){var instance=Instantiate(prefab,transform);instance.name=$"{structure.Kind} {structure.StructureId}";instance.transform.position=transform.TransformPoint(center);foreach(var c in instance.GetComponentsInChildren<Collider>(true))c.enabled=false;spawned.Add(instance);continue;}
+            Color color=visual!=null?visual.fallbackColor:profile.material switch
+            { BattleFortificationMaterial.Wood=>new Color(.38f,.2f,.08f),BattleFortificationMaterial.Stone=>new Color(.42f,.43f,.46f),BattleFortificationMaterial.Earthwork=>new Color(.3f,.24f,.13f),_=>Color.gray };
+            Vector3 scale=profile.material==BattleFortificationMaterial.Wood?new Vector3(1.15f,.65f,.16f):new Vector3(1.2f,.45f,.3f);
+            if(structure.IsBreached)scale=new Vector3(scale.x*.55f,scale.y*.35f,scale.z*1.4f);
+            CreateStrip(structure.IsBreached?$"Breached {structure.Kind}":structure.Kind.ToString(),center+Vector3.up*scale.y*.5f,scale,0f,color);
+        }
     }
     private void Spawn(BattleBiomeVisualProfile profile,BattleDecorationPlacement placement,Vector3 center)
     {

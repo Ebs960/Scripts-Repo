@@ -106,6 +106,23 @@ public sealed class BattleAIEvaluator
         }
 
         // Attack candidates first
+        if (unit.Side == BattleSide.Attacker)
+            foreach (var structure in session.Fortifications)
+            {
+                if (structure == null || structure.IsBreached || !structure.BlocksMovement) continue;
+                int distance = session.MapDistance(unit.CellIndex, structure.CellIndex);
+                for (int weaponIndex = 0; weaponIndex < (unit.Snapshot?.Weapons?.Count ?? 0); weaponIndex++)
+                {
+                    var weapon = BattleTargetingService.GetWeapon(unit, weaponIndex);
+                    if (weapon == null || distance < weapon.minimumRange || distance > weapon.maximumRange) continue;
+                    float siegeBonus = unit.Snapshot.TacticalProfile?.role == BattleRole.Siege ? 28f : 8f;
+                    candidates.Add(new BattleAICandidate(new BattleFortificationAttackCommand
+                    { UnitId=unit.UnitId, CommandType=BattleCommandType.AttackFortification, TargetStructureId=structure.StructureId,
+                      AttackFromCell=unit.CellIndex, WeaponIndex=weaponIndex }, siegeBonus));
+                    break;
+                }
+            }
+
         for (int i = 0; i < session.Units.Count; i++)
         {
             var enemy = session.Units[i];
@@ -194,6 +211,7 @@ public sealed class BattleAIEvaluator
             foreach (int next in cell.NeighborIndices)
             {
                 if (previous.ContainsKey(next) || !occupancy.CanEnter(unit, next, session.Map)) continue;
+                if (unit.Domain == BattleDomain.Land && session.GetBlockingFortification(next, unit.Side) != null) continue;
                 previous[next] = current; queue.Enqueue(next);
                 int distance = session.MapDistance(next, session.Objective.CellIndex);
                 if (distance < bestDistance || distance == bestDistance && next < best)

@@ -21,6 +21,13 @@ public sealed class BattleAttackCommand : BattleCommand
     public BattleAttackProfile AttackProfile;
 }
 
+public sealed class BattleFortificationAttackCommand : BattleCommand
+{
+    public int TargetStructureId;
+    public int AttackFromCell;
+    public int WeaponIndex;
+}
+
 public sealed class BattleDefendCommand : BattleCommand
 {
 }

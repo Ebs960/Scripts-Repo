@@ -56,6 +56,8 @@ public sealed class BattlePathfinder
                 var targetCell = session.Map.GetCell(n);
                 if (targetCell == null || !targetCell.Supports(unit.Domain))
                     continue;
+                if (unit.Domain == BattleDomain.Land && session.GetBlockingFortification(n, unit.Side) != null)
+                    continue;
 
                 if (occupancy.IsOccupied(n, unit.Domain, unit.OccupancyBand) && n != destination)
                     continue;

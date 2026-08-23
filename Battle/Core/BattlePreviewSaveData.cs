@@ -10,6 +10,9 @@ public sealed class BattlePreviewSaveData
     public int planet, anchor, attackerRuntimeId, defenderRuntimeId, mode, theater, environment, spaceRegion, seed;
     public float approachX, approachY;
     public BattleObjective objective;
+    public int siegeType;
+    public string fortificationProfileId;
+    public List<BattleFortificationSaveData> fortifications = new();
     public List<BattleUnitReferenceSaveData> attackerUnits = new(), defenderUnits = new();
     public List<BattleMapCellSaveData> cells = new();
     public List<BattleReinforcementSaveData> reinforcements = new();
@@ -28,7 +31,14 @@ public sealed class BattleMapCellSaveData
     public int index, campaignTile, elevation, waterDepth, deploymentOwner = -1, retreatSide = -1;
     public int[] neighbors;
     public List<int> cliffs = new();
-    public bool passable, water, land, naval, underwater, air, orbit, space, port, beach, forest, river, hardCover, softCover, objective, reinforcementEntry;
+    public bool passable, water, land, naval, underwater, air, orbit, space, port, beach, forest, river, hardCover, softCover, objective, reinforcementEntry, fortifiedInterior;
+}
+
+[Serializable]
+public sealed class BattleFortificationSaveData
+{
+    public int id, kind, cell, currentHitPoints, maxHitPoints, defense;
+    public bool breached;
 }
 
 [Serializable]
@@ -51,7 +61,11 @@ public static class BattlePreviewSaveCodec
             mode=(int)preview.Mode, theater=(int)preview.Theater, environment=(int)preview.PlanetaryEnvironment,
             spaceRegion=preview.SpaceRegionId, allowsManual=preview.AllowsManualBattle, allowsRetreat=preview.AllowsRetreat,
             allowsCancel=preview.AllowsCancel, seed=preview.RandomSeed, objective=preview.Objective,
-            approachX=preview.ApproachDirectionXZ.x, approachY=preview.ApproachDirectionXZ.y };
+            approachX=preview.ApproachDirectionXZ.x, approachY=preview.ApproachDirectionXZ.y,
+            siegeType=(int)preview.SiegeType, fortificationProfileId=preview.FortificationProfile?.Identity };
+        foreach (var f in preview.Fortifications) save.fortifications.Add(new BattleFortificationSaveData
+            { id=f.StructureId, kind=(int)f.Kind, cell=f.CellIndex, currentHitPoints=f.CurrentHitPoints,
+              maxHitPoints=f.MaxHitPoints, defense=f.Defense, breached=f.IsBreached });
         AddSnapshotIds(preview.AttackerUnits, save.attackerUnits); AddSnapshotIds(preview.DefenderUnits, save.defenderUnits);
         if (preview.Map != null) foreach (var cell in preview.Map.Cells)
         {
@@ -61,7 +75,7 @@ public static class BattlePreviewSaveCodec
                 land=cell.SupportsLand, naval=cell.SupportsNavalSurface, underwater=cell.SupportsUnderwater, air=cell.SupportsAir,
                 orbit=cell.SupportsOrbit, space=cell.SupportsSpace, port=cell.HasPort, beach=cell.HasBeach, forest=cell.IsForest,
                 river=cell.HasRiver, hardCover=cell.HasHardCover, softCover=cell.HasSoftCover, objective=cell.IsObjective,
-                reinforcementEntry=cell.IsReinforcementEntry };
+                reinforcementEntry=cell.IsReinforcementEntry, fortifiedInterior=cell.IsFortifiedInterior };
             foreach (int cliff in cell.CliffNeighbors) c.cliffs.Add(cliff);
             save.cells.Add(c);
         }
@@ -86,7 +100,11 @@ public static class BattlePreviewSaveCodec
             Mode=(EngagementMode)save.mode, Theater=(BattleTheater)save.theater, PlanetaryEnvironment=(PlanetaryBattleEnvironment)save.environment,
             SpaceRegionId=save.spaceRegion, AllowsManualBattle=save.allowsManual, AllowsRetreat=save.allowsRetreat,
             AllowsCancel=save.allowsCancel, RandomSeed=save.seed, Objective=save.objective,
-            ApproachDirectionXZ=new Vector2(save.approachX, save.approachY), Map=new BattleMap() };
+            ApproachDirectionXZ=new Vector2(save.approachX, save.approachY), Map=new BattleMap(),
+            SiegeType=(BattleSiegeType)save.siegeType, FortificationProfile=FindProfile(save.fortificationProfileId) };
+        if (save.fortifications != null) foreach (var f in save.fortifications) preview.Fortifications.Add(new BattleFortificationState
+            { StructureId=f.id, Kind=(BattleFortificationKind)f.kind, CellIndex=f.cell, CurrentHitPoints=f.currentHitPoints,
+              MaxHitPoints=f.maxHitPoints, Defense=f.defense, IsBreached=f.breached });
         RestoreSnapshots(save.attackerUnits, preview.AttackerUnits); RestoreSnapshots(save.defenderUnits, preview.DefenderUnits);
         if (preview.Attacker==null && preview.AttackerUnits.Count>0) preview.Attacker=preview.AttackerUnits[0].SourceUnit;
         if (preview.Defender==null && preview.DefenderUnits.Count>0) preview.Defender=preview.DefenderUnits[0].SourceUnit;
@@ -101,7 +119,7 @@ public static class BattlePreviewSaveCodec
                 SupportsLand=c.land, SupportsNavalSurface=c.naval, SupportsUnderwater=c.underwater, SupportsAir=c.air,
                 SupportsOrbit=c.orbit, SupportsSpace=c.space, HasPort=c.port, HasBeach=c.beach, IsForest=c.forest,
                 HasRiver=c.river, HasHardCover=c.hardCover, HasSoftCover=c.softCover, IsObjective=c.objective,
-                IsReinforcementEntry=c.reinforcementEntry,
+                IsReinforcementEntry=c.reinforcementEntry, IsFortifiedInterior=c.fortifiedInterior,
                 DeploymentOwner=c.deploymentOwner>=0?(BattleSide?)((BattleSide)c.deploymentOwner):null,
                 RetreatExitForSide=c.retreatSide>=0?(BattleSide?)((BattleSide)c.retreatSide):null };
             if (c.cliffs != null) foreach (int cliff in c.cliffs) cell.SetCliffTowardNeighbor(cliff, true);
@@ -162,6 +180,14 @@ public static class BattlePreviewSaveCodec
     {
         var direct=UnitRegistry.GetObject(id); if (direct != null && direct.TryGetComponent<CombatUnit>(out var found)) return found;
         foreach (var unit in UnitRegistry.GetCombatUnits()) if (RuntimeId(unit)==id) return unit;
+        return null;
+    }
+
+    private static BattleFortificationProfile FindProfile(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        foreach (var profile in Resources.LoadAll<BattleFortificationProfile>(string.Empty))
+            if (profile != null && profile.Identity == id) return profile;
         return null;
     }
 }
