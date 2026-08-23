@@ -2055,7 +2055,7 @@ public class CombatUnit : BaseUnit
             if (!TryConsumeAttackPoint())
                 return;
 
-            SetAnimatorTriggerForFormation(attackHash);
+            SetAnimatorTriggerForFormation(rangedAttackHash);
             AddFatigue(8f);
 
             if (useAnimationEventForProjectiles)
@@ -3173,17 +3173,19 @@ public class CombatUnit : BaseUnit
             else if (triggerHash != -1)
             {
                 Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - hash found but parameter doesn't exist in animator");
-                // Fallback to string-based trigger
-                animator.SetTrigger(animationName);
-                if (soldierGroup != null)
-                    soldierGroup.ForwardTrigger(Animator.StringToHash(animationName));
+                // Missing parameters are a content-validation issue, not a runtime error.
+                // Do not call SetTrigger(string): Unity logs an Animator error for an absent parameter.
+                return;
             }
             else
             {
-                // Fallback to string-based trigger for custom animations
-                animator.SetTrigger(animationName);
-                if (soldierGroup != null)
-                    soldierGroup.ForwardTrigger(Animator.StringToHash(animationName));
+                int customHash = Animator.StringToHash(animationName);
+                if (!HasParameter(animator, customHash))
+                {
+                    Debug.LogWarning($"[CombatUnit] {gameObject.name}: custom animation parameter '{animationName}' is missing");
+                    return;
+                }
+                SetAnimatorTriggerForFormation(customHash);
             }
             
             OnAnimationTrigger?.Invoke(animationName);

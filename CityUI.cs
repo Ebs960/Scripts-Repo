@@ -115,7 +115,6 @@ public class CityUI : MonoBehaviour
 
     private void Awake()
     {
-        EnsureCapitalControls();
         if (governorDropdown != null)
         {
             governorDropdown.onValueChanged.RemoveAllListeners();
@@ -135,45 +134,6 @@ public class CityUI : MonoBehaviour
         }
         if (tabController != null)
             tabController.TabChanged += OnCityTabChanged;
-    }
-
-    private void EnsureCapitalControls()
-    {
-        if (makeCapitalButton != null)
-            return;
-
-        var buttonObject = new GameObject("MakeCapitalButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        buttonObject.transform.SetParent(transform, false);
-
-        var buttonRect = buttonObject.GetComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(1f, 1f);
-        buttonRect.anchorMax = new Vector2(1f, 1f);
-        buttonRect.pivot = new Vector2(1f, 1f);
-        buttonRect.anchoredPosition = new Vector2(-70f, -18f);
-        buttonRect.sizeDelta = new Vector2(150f, 34f);
-
-        var buttonImage = buttonObject.GetComponent<Image>();
-        buttonImage.color = new Color(0.22f, 0.28f, 0.18f, 0.95f);
-
-        makeCapitalButton = buttonObject.GetComponent<Button>();
-
-        var labelObject = new GameObject("Label", typeof(RectTransform));
-        labelObject.transform.SetParent(buttonObject.transform, false);
-        var labelRect = labelObject.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-
-        makeCapitalButtonText = labelObject.AddComponent<TextMeshProUGUI>();
-        makeCapitalButtonText.alignment = TextAlignmentOptions.Center;
-        makeCapitalButtonText.fontSize = 20f;
-        makeCapitalButtonText.text = "Make Capital";
-        if (cityNameText != null)
-        {
-            makeCapitalButtonText.font = cityNameText.font;
-            makeCapitalButtonText.color = cityNameText.color;
-        }
     }
 
     private void OnMakeCapitalClicked()
@@ -261,17 +221,22 @@ if (currentCity == null)
         if (cityNameText != null)
             cityNameText.text = currentCity.isCapital ? $"{currentCity.cityName} [Capital]" : currentCity.cityName;
         if (levelText != null)
-            levelText.text = $"Level {currentCity.level}";
+        {
+            string ownerName = currentCity.owner?.civData != null ? currentCity.owner.civData.civName : "Unowned";
+            levelText.text = $"Population {currentCity.level} • Owner: {ownerName}";
+        }
 
         UpdateCapitalControls();
 
         int netFood = currentCity.GetFoodPerTurn();
-        netFoodPerTurnText.text = $"Net Food: {netFood:+#;-#;0}/turn"; // Shows + for positive, - for negative
-        goldPerTurnText.text = $"Gold: {currentCity.GetGoldPerTurn():+#;-#;0}/turn";
-        sciencePerTurnText.text = $"Science: {currentCity.GetSciencePerTurn():+#;-#;0}/turn";
-        culturePerTurnText.text = $"Culture: {currentCity.GetCulturePerTurn():+#;-#;0}/turn";
-        policyPointsPerTurnText.text = $"Policy: {currentCity.GetPolicyPointPerTurn():+#;-#;0}/turn";
-        faithPerTurnText.text = $"Faith: {currentCity.GetFaithPerTurn():+#;-#;0}/turn";
+        if (foodStorageText != null)
+            foodStorageText.text = $"Food: {currentCity.foodStorage}/{currentCity.foodGrowthRequirement} • Production: {currentCity.productionPerTurn}/turn";
+        if (netFoodPerTurnText != null) netFoodPerTurnText.text = $"Net Food: {netFood:+#;-#;0}/turn";
+        if (goldPerTurnText != null) goldPerTurnText.text = $"Gold: {currentCity.GetGoldPerTurn():+#;-#;0}/turn";
+        if (sciencePerTurnText != null) sciencePerTurnText.text = $"Science: {currentCity.GetSciencePerTurn():+#;-#;0}/turn";
+        if (culturePerTurnText != null) culturePerTurnText.text = $"Culture: {currentCity.GetCulturePerTurn():+#;-#;0}/turn";
+        if (policyPointsPerTurnText != null) policyPointsPerTurnText.text = $"Policy: {currentCity.GetPolicyPointPerTurn():+#;-#;0}/turn";
+        if (faithPerTurnText != null) faithPerTurnText.text = $"Faith: {currentCity.GetFaithPerTurn():+#;-#;0}/turn";
         RefreshCitizenAssignmentSummary();
         RefreshFeatureTabSummaries();
 
@@ -281,15 +246,15 @@ if (currentCity == null)
         if (netFood > 0 && currentCity.foodStorage < currentCity.foodGrowthRequirement)
         {
             int turnsToGrow = Mathf.CeilToInt((float)(currentCity.foodGrowthRequirement - currentCity.foodStorage) / netFood);
-            populationProgressText.text = $"Pop. Growth in: {turnsToGrow} turns";
+            if (populationProgressText != null) populationProgressText.text = $"Pop. Growth in: {turnsToGrow} turns";
         }
         else if (currentCity.foodStorage >= currentCity.foodGrowthRequirement)
         {
-            populationProgressText.text = "Pop. Maxed for next level (Excess stored)";
+            if (populationProgressText != null) populationProgressText.text = "Pop. Maxed for next level (Excess stored)";
         }
         else
         {
-            populationProgressText.text = "Pop. Stagnant or Shrinking";
+            if (populationProgressText != null) populationProgressText.text = "Pop. Stagnant or Shrinking";
         }
         
         // Update Current Production Display ("Thing we are making")
@@ -303,6 +268,20 @@ if (currentCity == null)
 
         // Populate disease list
         PopulateDiseaseList();
+    }
+
+    /// <summary>Refreshes every open view of a city after an authoritative ownership change.</summary>
+    public static void NotifyOwnershipChanged(City city)
+    {
+        if (city == null) return;
+        foreach (var view in FindObjectsByType<CityUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (view.currentCity != city) continue;
+            view.InvalidateBuildOptionsCache();
+            view.RefreshUI();
+        }
+        CityTileOverlayController.Instance?.RefreshOverlay();
+        CampaignMapModeController.Instance?.RefreshAll();
     }
 
     private void OnDestroy()
@@ -432,7 +411,8 @@ if (currentCity == null)
             unitStorageSummaryText.text =
                 $"Garrisoned Units: {garrisonedCombatUnits}\n" +
                 $"Based Aircraft: {basedAircraft}\n" +
-                $"Workers in City: {garrisonedWorkers}";
+                $"Workers in City: {garrisonedWorkers}\n" +
+                $"Attached Settlements: {currentCity.attachedSettlements?.Count ?? 0}";
         }
 
         if (missileStorageSummaryText != null)
@@ -571,7 +551,8 @@ if (currentCity == null)
         
         // Update UI with production info
         if (currentProductionItemNameText != null)
-            currentProductionItemNameText.text = $"Producing: {itemName}";
+            currentProductionItemNameText.text =
+                $"Producing: {itemName}\nProgress: {Mathf.Max(0, totalCost - currentProd.remainingPts)}/{totalCost}\nQueue: {currentCity.productionQueue.Count} item(s)";
         
         // Calculate turns remaining
         if (currentProductionTurnsRemainingText != null)
