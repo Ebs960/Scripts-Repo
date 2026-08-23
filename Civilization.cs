@@ -2901,19 +2901,7 @@ public class Civilization : MonoBehaviour
                     // Process herd-local production (herd acts like a mobile city)
                     try { h.ProcessProduction(); } catch { }
                     h.ProcessGrazingTick(round);
-
-                    // Sum animal per-turn yields using herd rules (per-100 species contributions)
-                    int totalAnimalConsumption = 0;
-                    int totalAnimals = 0;
-                    foreach (var ae in h.animals)
-                    {
-                        if (ae == null) continue;
-                        int cnt = Mathf.Max(0, ae.count);
-                        totalAnimals += cnt;
-                        // All herd species use per-100 consumption rules
-                        int per100 = Herd.GetFoodConsumptionPer100(ae.species);
-                        totalAnimalConsumption += (cnt * per100) / 100;
-                    }
+                    h.ProcessLivestockUpkeep();
 
                     // Animal yields (food/gold/production) computed by herd per-100 rules
                     var ay = h.GetAnimalYields();
@@ -2942,61 +2930,6 @@ public class Civilization : MonoBehaviour
                     // (optional display/aggregation)
                     // production += h.GetProductionPerTurn();
 
-                    // Consume from herd's foodReserve (herd grazing provides food, not civ stockpile)
-                    if (totalAnimalConsumption > 0)
-                    {
-                        if (h.foodReserve >= totalAnimalConsumption)
-                        {
-                            h.foodReserve -= totalAnimalConsumption;
-                        }
-                        else
-                        {
-                            int deficit = totalAnimalConsumption - h.foodReserve;
-                            h.foodReserve = 0;
-
-                            // Default starvation percent loss, reduced by civ/tech/culture/government/policy/pantheon/belief/structure bonuses.
-                            float baseStarvePercent = 0.25f;
-                            float reduction = GetHerdStarvationPercentReduction(h);
-                            float netPercent = Mathf.Max(0f, baseStarvePercent - reduction);
-
-                            // If there are animals, remove netPercent of total animals (round up)
-                            if (totalAnimals > 0 && netPercent > 0f)
-                            {
-                                int animalsToLose = Mathf.CeilToInt(totalAnimals * netPercent);
-                                int remainingToRemove = animalsToLose;
-
-                                // Remove proportionally from each animal entry
-                                for (int i = h.animals.Count - 1; i >= 0 && remainingToRemove > 0; i--)
-                                {
-                                    var ae = h.animals[i];
-                                    if (ae == null || ae.count <= 0) { h.animals.RemoveAt(i); continue; }
-                                    int remove = Mathf.FloorToInt(((float)ae.count / (float)totalAnimals) * animalsToLose);
-                                    // Ensure we remove at least 1 when needed
-                                    if (remove <= 0) remove = 1;
-                                    remove = Mathf.Min(remove, ae.count);
-                                    ae.count -= remove;
-                                    remainingToRemove -= remove;
-                                    if (ae.count == 0) h.animals.RemoveAt(i);
-                                }
-
-                                // If rounding left some remaining, remove from largest stacks
-                                if (remainingToRemove > 0 && h.animals.Count > 0)
-                                {
-                                    // Sort descending by count once, then trim from the top — O(m log m) instead of O(m*k)
-                                    h.animals.Sort((a, b) => b.count.CompareTo(a.count));
-                                    for (int i = 0; i < h.animals.Count && remainingToRemove > 0; i++)
-                                    {
-                                        var ae = h.animals[i];
-                                        if (ae == null) continue;
-                                        int take = Mathf.Min(remainingToRemove, ae.count);
-                                        ae.count -= take;
-                                        remainingToRemove -= take;
-                                    }
-                                    h.animals.RemoveAll(ae => ae == null || ae.count <= 0);
-                                }
-                            }
-                        }
-                    }
                 }
                 catch (System.Exception ex)
                 {

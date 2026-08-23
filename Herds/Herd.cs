@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -6,6 +7,8 @@ using UnityEngine.UI;
 
 public class Herd : MonoBehaviour
 {
+    [SerializeField] private string persistentId;
+    public string PersistentId => string.IsNullOrEmpty(persistentId) ? (persistentId = Guid.NewGuid().ToString("N")) : persistentId;
     [Header("Core")]
     public Civilization owner;
     public int planetIndex = 0;
@@ -19,8 +22,15 @@ public class Herd : MonoBehaviour
     public class HerdEntry { public HerdSpecies species; public int count = 0; }
 
     [Header("Stored Units")]
-    // Units stored inside this herd (e.g., worker who founded the herd)
-    public System.Collections.Generic.List<BaseUnit> storedUnits = new System.Collections.Generic.List<BaseUnit>();
+    [Tooltip("Legacy mixed storage. Migrated to the typed collections on enable.")]
+    [SerializeField, HideInInspector] public List<BaseUnit> storedUnits = new List<BaseUnit>();
+    [SerializeField] private List<CombatUnit> militaryGarrison = new List<CombatUnit>();
+    [SerializeField] private List<BaseUnit> storedCivilians = new List<BaseUnit>();
+    [Min(0)] public int baseGarrisonCapacity = 4;
+    public IReadOnlyList<CombatUnit> MilitaryGarrison => militaryGarrison;
+    public IReadOnlyList<BaseUnit> StoredCivilians => storedCivilians;
+    public int GarrisonCapacity => Mathf.Max(0, baseGarrisonCapacity);
+    public bool HasMilitaryDefenders => militaryGarrison.Any(u => u != null && u.currentHealth > 0);
 
     [Header("Animals (counts, abstract)")]
     public List<HerdEntry> animals = new List<HerdEntry>();
@@ -84,11 +94,19 @@ public class Herd : MonoBehaviour
     // How much food the herd can store from grazing / purchases
     public int storageCapacity = 50;
 
-    // Simple health/defense placeholders
-    public int defenseRating = 50;
-    public int maxDefense = 50;
-    public int health = 100;
-    public int maxHealth = 100;
+    // Retained only so old Unity scenes deserialize without losing data. Never used by combat.
+    [Obsolete("Herd combat uses MilitaryGarrison CombatUnits."), SerializeField, HideInInspector] private int defenseRating = 50;
+    [Obsolete("Herd combat uses MilitaryGarrison CombatUnits."), SerializeField, HideInInspector] private int maxDefense = 50;
+    [Obsolete("Herd has no combat HP."), SerializeField, HideInInspector] private int health = 100;
+    [Obsolete("Herd has no combat HP."), SerializeField, HideInInspector] private int maxHealth = 100;
+
+    [Header("Livestock Upkeep / Raids")]
+    [Range(0f, 1f)] public float predatorLivestockLossPct = 0.15f;
+    [Range(0f, 1f)] public float predatorFoodLossPct = 0.25f;
+    [HideInInspector] public int lastFoodConsumption;
+    [HideInInspector] public int lastStarvationLoss;
+    public int FoodRequiredPerTurn => animals.Sum(e => e == null ? 0 : Mathf.CeilToInt(Mathf.Max(0, e.count) * GetFoodConsumptionPer100(e.species) / 100f));
+    public bool IsStarving => foodReserve < FoodRequiredPerTurn;
 
     [Header("Disease")]
     [Tooltip("Active diseases currently afflicting this herd.")]
@@ -99,6 +117,7 @@ public class Herd : MonoBehaviour
 
     void OnEnable()
     {
+        MigrateLegacyStoredUnits();
         if (HerdManager.Instance != null) HerdManager.Instance.RegisterHerd(this);
         if (owner != null)
         {
@@ -342,6 +361,7 @@ public class Herd : MonoBehaviour
     public bool StoreUnit(BaseUnit unit)
     {
         if (unit == null) return false;
+        if (unit is CombatUnit combat) return TryAddToGarrison(combat);
         if (owner != null && unit.owner != owner) return false;
         if (storedUnits == null) storedUnits = new System.Collections.Generic.List<BaseUnit>();
         if (storedUnits.Contains(unit)) return false;
@@ -359,6 +379,7 @@ public class Herd : MonoBehaviour
         unit.gameObject.SetActive(false);
 
         storedUnits.Add(unit);
+        if (!storedCivilians.Contains(unit)) storedCivilians.Add(unit);
         return true;
     }
 
@@ -417,7 +438,80 @@ public class Herd : MonoBehaviour
         unit.storedInHerd = null;
 
         storedUnits.Remove(unit);
+        storedCivilians.Remove(unit);
         return true;
+    }
+
+    private void MigrateLegacyStoredUnits()
+    {
+        if (militaryGarrison == null) militaryGarrison = new List<CombatUnit>();
+        if (storedCivilians == null) storedCivilians = new List<BaseUnit>();
+        if (storedUnits == null) storedUnits = new List<BaseUnit>();
+        foreach (var unit in storedUnits.Where(x => x != null).ToList())
+            if (unit is CombatUnit combat) { if (!militaryGarrison.Contains(combat)) militaryGarrison.Add(combat); }
+            else if (!storedCivilians.Contains(unit)) storedCivilians.Add(unit);
+        storedUnits.RemoveAll(x => x == null || x is CombatUnit);
+    }
+
+    public bool TryAddToGarrison(CombatUnit unit)
+    {
+        if (unit == null || unit.owner != owner || unit.planetIndex != planetIndex || militaryGarrison.Contains(unit)) return false;
+        if (militaryGarrison.Count >= GarrisonCapacity || (unit.currentTileIndex >= 0 && unit.currentTileIndex != currentTileIndex)) return false;
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId());
+        militaryGarrison.Add(unit); unit.isStored = true; unit.storedInHerd = this; unit.currentTileIndex = -1; unit.gameObject.SetActive(false);
+        worldUI?.MarkDirty(); return true;
+    }
+
+    public bool FormArmy(IList<CombatUnit> selected, out CombatUnit representative)
+    {
+        representative = null;
+        if (selected == null || selected.Count == 0 || selected.Distinct().Count() != selected.Count || selected.Any(x => x == null || !militaryGarrison.Contains(x))) return false;
+        if (selected.Count > (owner != null ? owner.GetMaxArmySize() : CampaignArmyService.DefaultArmySize)) return false;
+        string formationId = Guid.NewGuid().ToString("N");
+        for (int i = 0; i < selected.Count; i++) { var u = selected[i]; militaryGarrison.Remove(u); u.isStored = false; u.storedInHerd = null; u.planetIndex = planetIndex; u.currentTileIndex = currentTileIndex; u.AssignMilitaryFormation(formationId, MilitaryFormationType.Army); u.stackSlot = i; u.gameObject.SetActive(i == 0); if (i == 0) representative = u; }
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (representative != null && ts != null) representative.transform.position = ts.GetTileCenterFlat(currentTileIndex);
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.TryAddToStack(currentTileIndex, TileLayer.Surface, representative.gameObject, 1);
+        CampaignArmyService.RefreshPresentation(representative); worldUI?.MarkDirty(); return true;
+    }
+
+    public bool TryGarrisonArmy(CombatUnit army, out string reason)
+    {
+        reason = string.Empty; if (army == null) { reason = "Missing army."; return false; }
+        var members = CampaignArmyService.GetMembers(army);
+        if (owner == null || army.owner != owner) { reason = "Herd and army must have the same owner."; return false; }
+        if (army.planetIndex != planetIndex || army.currentLayer != TileLayer.Surface || army.currentTileIndex != currentTileIndex) { reason = "Army and Herd must share the same land location."; return false; }
+        if (members.Count == 0 || militaryGarrison.Count + members.Count > GarrisonCapacity) { reason = $"Not enough garrison capacity ({militaryGarrison.Count + members.Count}/{GarrisonCapacity})."; return false; }
+        if (members.Any(x => x == null || x.owner != owner || x.planetIndex != planetIndex || x.currentLayer != TileLayer.Surface || x.currentTileIndex != currentTileIndex || x.IsTransported || x.isStored)) { reason = "One or more army members cannot be garrisoned."; return false; }
+        foreach (var u in members) TryAddToGarrison(u); return true;
+    }
+
+    public void ReleaseSurvivingGarrisonAsArmy() => FormArmy(militaryGarrison.Where(x => x != null && x.currentHealth > 0).ToList(), out _);
+
+    public void ProcessLivestockUpkeep()
+    {
+        int required = FoodRequiredPerTurn; int consumed = Mathf.Min(foodReserve, required); foodReserve -= consumed; lastFoodConsumption = consumed; lastStarvationLoss = 0;
+        if (consumed >= required || required <= 0) return;
+        float shortage = (required - consumed) / (float)required;
+        foreach (var e in animals.Where(x => x != null && x.count > 0).ToList()) { int loss = Mathf.CeilToInt(e.count * shortage); e.count = Mathf.Max(0, e.count - loss); lastStarvationLoss += loss; }
+        animals.RemoveAll(x => x == null || x.count <= 0); worldUI?.MarkDirty();
+    }
+
+    public void ResolveLivestockRaid()
+    {
+        lastStarvationLoss = 0;
+        foreach (var e in animals.Where(x => x != null && x.count > 0).ToList()) { int loss = Mathf.CeilToInt(e.count * predatorLivestockLossPct); e.count -= loss; lastStarvationLoss += loss; }
+        animals.RemoveAll(x => x == null || x.count <= 0); foodReserve = Mathf.Max(0, foodReserve - Mathf.CeilToInt(foodReserve * predatorFoodLossPct)); worldUI?.MarkDirty();
+    }
+
+    public void Capture(Civilization newOwner)
+    {
+        if (newOwner == null || newOwner == owner) return; var old = owner;
+        if (governor != null && old != null) old.RemoveGovernorFromHerd(governor, this); governor = null;
+        // Defeated/retreated soldiers never change civilization with the Herd.
+        militaryGarrison.RemoveAll(unit => unit == null || unit.owner == old);
+        old?.herds.Remove(this); owner = newOwner; if (!newOwner.herds.Contains(this)) newOwner.herds.Add(this);
+        foreach (var unit in storedCivilians.OfType<WorkerUnit>().ToList()) { unit.gameObject.SetActive(true); unit.isStored = false; unit.storedInHerd = null; unit.planetIndex = planetIndex; unit.currentTileIndex = currentTileIndex; var victor = newOwner.combatUnits.FirstOrDefault(x => x != null); if (victor != null) CivilianCaptureService.ResolveAttack(victor, unit); storedCivilians.Remove(unit); storedUnits.Remove(unit); }
+        UpdateLabelUI(); worldUI?.MarkDirty();
     }
 
     /// <summary>
@@ -602,7 +696,8 @@ public class Herd : MonoBehaviour
         if (ts == null || !ts.IsReady()) return false;
 
         var td = ts.GetTileData(tileIndex);
-        if (td == null || !td.isPassable) return false;
+        if (td == null || !td.isPassable || movementPoints <= 0) return false;
+        if (currentTileIndex < 0 || ts.GetWrappedHexDistance(currentTileIndex, tileIndex) != 1) return false;
 
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null)
@@ -618,6 +713,7 @@ public class Herd : MonoBehaviour
         try { transform.position = ts.GetTileCenterFlat(tileIndex); } catch { }
 
         currentTileIndex = tileIndex;
+        movementPoints--;
 
         // Notify spatial index that a herd moved
         if (HerdManager.Instance != null) HerdManager.Instance.MarkDirty();
@@ -949,6 +1045,7 @@ public class Herd : MonoBehaviour
     /// </summary>
     public void ProcessProduction()
     {
+        if (isPacked) return;
         if (productionQueue == null || productionQueue.Count == 0) return;
         var entry = productionQueue[0];
         if (entry == null) return;

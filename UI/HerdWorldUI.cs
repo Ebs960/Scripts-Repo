@@ -46,13 +46,13 @@ public class HerdWorldUI : MonoBehaviour
     private void RefreshUIData()
     {
         if (herd == null) return;
-        if (populationText != null) populationText.text = $"Pop: {herd.GetPopulation()}";
+        if (populationText != null) populationText.text = $"{herd.GetTotalAnimalCount()} livestock | {(herd.isPacked ? "Packed" : "Settled")}" + (herd.MilitaryGarrison.Count > 0 ? $" | Garrison {herd.MilitaryGarrison.Count}" : "") + (herd.IsStarving ? " | LOW FOOD" : "");
         if (moveText != null) moveText.text = $"MP: {herd.movementPoints}/{herd.maxMovementPoints}";
         var tileY = herd.GetNeighborhoodTileYields();
         var animalY = herd.GetAnimalYields();
         if (yieldsText != null)
         {
-            yieldsText.text = $"Yield (animals): F{animalY.Food} G{animalY.Gold} | Tiles: F{tileY.Food} G{tileY.Gold}";
+            yieldsText.text = $"Food {herd.foodReserve} ({herd.lastGrazedAmount - herd.FoodRequiredPerTurn:+#;-#;0}/turn)";
         }
         // Civ and herd name
         if (civText != null) civText.text = herd.owner != null && herd.owner.civData != null ? herd.owner.civData.civName : "(No Owner)";

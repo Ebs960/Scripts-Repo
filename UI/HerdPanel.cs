@@ -86,14 +86,14 @@ public class HerdPanel : MonoBehaviour
                     if (a == null) continue;
                     s += $"{a.species.ToString()}: {a.count}\n";
                 }
-                animalsText.text = string.IsNullOrEmpty(s) ? "(no animals)" : s;
+                animalsText.text = (string.IsNullOrEmpty(s) ? "(no animals)\n" : s) + $"Total livestock: {currentHerd.GetTotalAnimalCount()}";
             }
 
             // Governor display and dropdown
             UpdateGovernorDisplay();
 
-        if (foodText != null) foodText.text = $"Food: {currentHerd.foodReserve} (last +{currentHerd.lastGrazedAmount})";
-        if (populationText != null) populationText.text = $"Population: {currentHerd.GetPopulation()}";
+        if (foodText != null) { int need = currentHerd.FoodRequiredPerTurn; int net = currentHerd.lastGrazedAmount - need; foodText.text = $"Reserve: {currentHerd.foodReserve}/{currentHerd.storageCapacity} | Grazing +{currentHerd.lastGrazedAmount} | Upkeep -{need} | Net {net:+#;-#;0}" + (currentHerd.IsStarving ? $"\nSTARVATION: projected livestock losses (last {currentHerd.lastStarvationLoss})" : ""); }
+        if (populationText != null) populationText.text = $"Military Garrison: {currentHerd.MilitaryGarrison.Count}/{currentHerd.GarrisonCapacity}\nStored Civilians: {currentHerd.StoredCivilians.Count}";
         if (movePointsText != null) movePointsText.text = $"Move: {currentHerd.movementPoints}/{currentHerd.maxMovementPoints}";
         if (storageText != null) storageText.text = $"Storage: {currentHerd.storageCapacity}";
 
