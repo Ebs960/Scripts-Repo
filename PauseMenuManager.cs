@@ -88,6 +88,7 @@ public class PauseMenuManager : MonoBehaviour
     public List<CombatUnitSaveData> combatUnits;
     public List<WorkerUnitSaveData> workerUnits;
     public List<BandSaveData> bands;
+    public List<HerdSaveData> herds;
     public List<CivilianAttachmentSaveData> civilianAttachments;
     public List<CivilizationProgressSaveData> civilizationProgress;
     public List<CitySaveData> cities;
@@ -111,6 +112,7 @@ public class PauseMenuManager : MonoBehaviour
         public List<CombatUnitSaveData> combatUnits = new List<CombatUnitSaveData>();
         public List<WorkerUnitSaveData> workerUnits = new List<WorkerUnitSaveData>();
         public List<BandSaveData> bands = new List<BandSaveData>();
+        public List<HerdSaveData> herds = new List<HerdSaveData>();
         public List<CivilianAttachmentSaveData> civilianAttachments = new List<CivilianAttachmentSaveData>();
         public List<CivilizationProgressSaveData> civilizationProgress = new List<CivilizationProgressSaveData>();
         public List<CitySaveData> cities = new List<CitySaveData>();
@@ -123,6 +125,7 @@ public class PauseMenuManager : MonoBehaviour
                 || (combatUnits != null && combatUnits.Count > 0)
                 || (workerUnits != null && workerUnits.Count > 0)
                 || (bands != null && bands.Count > 0)
+                || (herds != null && herds.Count > 0)
                 || (civilianAttachments != null && civilianAttachments.Count > 0)
                 || (civilizationProgress != null && civilizationProgress.Count > 0)
                 || (cities != null && cities.Count > 0)
@@ -188,6 +191,37 @@ public class PauseMenuManager : MonoBehaviour
         public string dataName; // BuildingData asset name
         public int remainingPts;
         public int goldCost;
+    }
+
+    [Serializable] public class HerdLivestockSaveData { public Herd.HerdSpecies species; public int count; }
+    [Serializable] public class HerdDiseaseSaveData { public string dataName; public int turnsRemaining; public float accumulatedPopulationLoss; }
+    [Serializable] public class HerdImmunitySaveData { public string dataName; public int turnsRemaining; }
+
+    /// <summary>Herd-owned state only. Units are references into the normal unit snapshots.</summary>
+    [Serializable]
+    public class HerdSaveData
+    {
+        public string persistentId;
+        public int ownerCivilizationId = -1;
+        public int planetIndex;
+        public int tileIndex = -1;
+        public string herdName;
+        public bool isPacked;
+        public int movementPoints;
+        public int maxMovementPoints;
+        public int foodReserve;
+        public int level = 1;
+        public int baseStorage;
+        public int storageCapacity;
+        public int baseGarrisonCapacity;
+        public int governorId = -1;
+        public List<HerdLivestockSaveData> livestock = new List<HerdLivestockSaveData>();
+        public List<string> builtBuildingNames = new List<string>();
+        public List<HerdProdEntrySaveData> productionQueue = new List<HerdProdEntrySaveData>();
+        public List<string> militaryGarrisonUnitIds = new List<string>();
+        public List<string> storedCivilianUnitIds = new List<string>();
+        public List<HerdDiseaseSaveData> activeDiseases = new List<HerdDiseaseSaveData>();
+        public List<HerdImmunitySaveData> diseaseImmunities = new List<HerdImmunitySaveData>();
     }
 
     [Serializable]

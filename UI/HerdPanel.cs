@@ -1,6 +1,8 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using System.Linq;
 
 public class HerdPanel : MonoBehaviour
 {
@@ -52,6 +54,21 @@ public class HerdPanel : MonoBehaviour
     [Header("Build UI")]
     public Transform buildListContainer; // container to populate build entries
     public GameObject buildEntryPrefab; // prefab: should contain a TextMeshProUGUI and a Button
+    [Header("Military Garrison")]
+    public Transform garrisonContainer;
+    public GameObject garrisonEntryPrefab;
+    public TextMeshProUGUI garrisonHeaderText;
+    public Button selectAllGarrisonButton;
+    public Button formArmyButton;
+    public Button garrisonArmyButton;
+    public TMP_Dropdown nearbyArmyDropdown;
+    public TextMeshProUGUI garrisonMessageText;
+    [Header("Stored Civilians")]
+    public Transform civilianContainer;
+    public GameObject civilianEntryPrefab;
+    public TextMeshProUGUI civilianHeaderText;
+    private readonly HashSet<CombatUnit> selectedGarrison = new HashSet<CombatUnit>();
+    private readonly List<CombatUnit> nearbyArmies = new List<CombatUnit>();
     [Header("Move Herd")]
     public Button closeButton;
 
@@ -90,7 +107,8 @@ public class HerdPanel : MonoBehaviour
             }
 
             // Governor display and dropdown
-            UpdateGovernorDisplay();
+        UpdateGovernorDisplay();
+        RefreshGarrisonControls();
 
         if (foodText != null) { int need = currentHerd.FoodRequiredPerTurn; int net = currentHerd.lastGrazedAmount - need; foodText.text = $"Reserve: {currentHerd.foodReserve}/{currentHerd.storageCapacity} | Grazing +{currentHerd.lastGrazedAmount} | Upkeep -{need} | Net {net:+#;-#;0}" + (currentHerd.IsStarving ? $"\nSTARVATION: projected livestock losses (last {currentHerd.lastStarvationLoss})" : ""); }
         if (populationText != null) populationText.text = $"Military Garrison: {currentHerd.MilitaryGarrison.Count}/{currentHerd.GarrisonCapacity}\nStored Civilians: {currentHerd.StoredCivilians.Count}";
@@ -155,35 +173,8 @@ public class HerdPanel : MonoBehaviour
                     }
                     else
                     {
-                        // Fallback: create a simple button entry
-                        var go = new GameObject("BuildEntry_" + b.buildingName, typeof(RectTransform));
-                        go.transform.SetParent(buildListContainer, false);
-                        var txtGO = new GameObject("Label", typeof(RectTransform));
-                        txtGO.transform.SetParent(go.transform, false);
-                        var tmp = txtGO.AddComponent<TextMeshProUGUI>();
-                        tmp.text = b.buildingName + (b.herdStorageBonus != 0 ? $" (+{b.herdStorageBonus})" : "");
-                        tmp.fontSize = 18;
-
-                        var btnGO = new GameObject("AttachBtn", typeof(RectTransform));
-                        btnGO.transform.SetParent(go.transform, false);
-                        var btn = btnGO.AddComponent<UnityEngine.UI.Button>();
-                        var img = btnGO.AddComponent<UnityEngine.UI.Image>();
-                        img.color = new Color(0.2f, 0.6f, 0.2f, 1f);
-                        var btnTextGO = new GameObject("Text", typeof(RectTransform));
-                        btnTextGO.transform.SetParent(btnGO.transform, false);
-                        var btxt = btnTextGO.AddComponent<TextMeshProUGUI>();
-                        btxt.text = "Attach";
-                        btxt.fontSize = 16;
-                        var captured = b;
-                        if (isBuildingInProgress)
-                        {
-                            var txt = btn.GetComponentInChildren<TextMeshProUGUI>(); if (txt != null) txt.text = "In Progress";
-                            btn.interactable = false;
-                        }
-                        else
-                        {
-                            btn.onClick.AddListener(() => OnBuildClicked(captured));
-                        }
+                        WarnMissingPrefab(nameof(buildEntryPrefab));
+                        break;
                     }
                 }
             }
@@ -216,12 +207,8 @@ public class HerdPanel : MonoBehaviour
                     }
                     else
                     {
-                        var go = new GameObject("QueueEntry_" + i, typeof(RectTransform));
-                        go.transform.SetParent(queueContainer, false);
-                        var tmpGO = new GameObject("Text", typeof(RectTransform)); tmpGO.transform.SetParent(go.transform, false);
-                        var tmp = tmpGO.AddComponent<TextMeshProUGUI>(); tmp.text = label; tmp.fontSize = 18;
-                        var cg = go.AddComponent<UnityEngine.CanvasGroup>();
-                        var q = go.AddComponent<HerdQueueEntry>(); q.owner = this; q.queueIndex = i;
+                        WarnMissingPrefab(nameof(queueEntryPrefab));
+                        break;
                     }
                 }
             }
@@ -290,6 +277,56 @@ public class HerdPanel : MonoBehaviour
         
         // (Move-target UI removed - new movement system replaces per-panel neighbor buttons)
     }
+
+    private void RefreshGarrisonControls()
+    {
+        selectedGarrison.RemoveWhere(x => x == null || !currentHerd.MilitaryGarrison.Contains(x));
+        bool controlled = currentHerd.owner == CivilizationManager.Instance?.playerCiv;
+        if (garrisonHeaderText != null) garrisonHeaderText.text = $"MILITARY GARRISON  {currentHerd.MilitaryGarrison.Count} / {currentHerd.GarrisonCapacity}";
+        ClearChildren(garrisonContainer);
+        foreach (var unit in currentHerd.MilitaryGarrison)
+        {
+            if (unit == null) continue;
+            if (garrisonEntryPrefab == null) { WarnMissingPrefab(nameof(garrisonEntryPrefab)); break; }
+            var row = Instantiate(garrisonEntryPrefab, garrisonContainer);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.text = $"{unit.UnitName}  {unit.currentHealth} / {unit.MaxHealth} HP  Lv {unit.level} XP {unit.experience}";
+            var toggle = row.GetComponentInChildren<Toggle>();
+            if (toggle != null) { toggle.SetIsOnWithoutNotify(selectedGarrison.Contains(unit)); toggle.interactable = controlled; toggle.onValueChanged.AddListener(on => { if (on) selectedGarrison.Add(unit); else selectedGarrison.Remove(unit); UpdateFormArmyButton(); }); }
+        }
+        if (selectAllGarrisonButton != null) { selectAllGarrisonButton.gameObject.SetActive(controlled); selectAllGarrisonButton.onClick.RemoveAllListeners(); selectAllGarrisonButton.onClick.AddListener(() => { selectedGarrison.Clear(); foreach (var unit in currentHerd.MilitaryGarrison) if (unit != null) selectedGarrison.Add(unit); Refresh(); }); }
+        if (formArmyButton != null) { formArmyButton.gameObject.SetActive(controlled); formArmyButton.onClick.RemoveAllListeners(); formArmyButton.onClick.AddListener(FormSelectedArmy); }
+        RefreshNearbyArmies(controlled);
+
+        if (civilianHeaderText != null) civilianHeaderText.text = $"STORED CIVILIANS  {currentHerd.StoredCivilians.Count}";
+        ClearChildren(civilianContainer);
+        foreach (var civilian in currentHerd.StoredCivilians)
+        {
+            if (civilian == null) continue;
+            if (civilianEntryPrefab == null) { WarnMissingPrefab(nameof(civilianEntryPrefab)); break; }
+            var row = Instantiate(civilianEntryPrefab, civilianContainer);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>(); if (label != null) label.text = civilian.name;
+            var button = row.GetComponentInChildren<Button>();
+            if (button != null) { button.interactable = controlled; button.onClick.AddListener(() => { if (!currentHerd.TryUnstoreUnit(civilian)) ShowGarrisonMessage("No safe placement is available."); Refresh(); }); }
+        }
+        UpdateFormArmyButton();
+    }
+
+    private void RefreshNearbyArmies(bool controlled)
+    {
+        nearbyArmies.Clear();
+        if (controlled && currentHerd.owner?.combatUnits != null)
+            nearbyArmies.AddRange(currentHerd.owner.combatUnits.Where(x => x != null && !x.isStored && CampaignArmyService.IsRepresentative(x) && x.planetIndex == currentHerd.planetIndex && x.currentTileIndex == currentHerd.currentTileIndex));
+        if (nearbyArmyDropdown != null) { nearbyArmyDropdown.ClearOptions(); nearbyArmyDropdown.AddOptions(nearbyArmies.Select(x => x.MilitaryFormationName ?? x.UnitName).ToList()); nearbyArmyDropdown.interactable = nearbyArmies.Count > 1; }
+        if (garrisonArmyButton != null) { garrisonArmyButton.gameObject.SetActive(controlled); garrisonArmyButton.interactable = nearbyArmies.Count > 0; garrisonArmyButton.onClick.RemoveAllListeners(); garrisonArmyButton.onClick.AddListener(() => { int index = nearbyArmyDropdown != null ? nearbyArmyDropdown.value : 0; if (index < 0 || index >= nearbyArmies.Count) return; if (!currentHerd.TryGarrisonArmy(nearbyArmies[index], out string reason)) ShowGarrisonMessage(reason); else ShowGarrisonMessage(string.Empty); Refresh(); }); }
+    }
+
+    private void FormSelectedArmy() { if (currentHerd.FormArmy(selectedGarrison.ToList(), out _)) { selectedGarrison.Clear(); ShowGarrisonMessage(string.Empty); } else ShowGarrisonMessage("Selected units cannot be safely formed here."); Refresh(); }
+    private void UpdateFormArmyButton() { if (formArmyButton != null) formArmyButton.interactable = selectedGarrison.Count > 0 && selectedGarrison.All(x => x != null && currentHerd.MilitaryGarrison.Contains(x)); }
+    private void ShowGarrisonMessage(string message) { if (garrisonMessageText != null) garrisonMessageText.text = message; if (!string.IsNullOrEmpty(message)) UIManager.Instance?.ShowNotification(message); }
+    private static void ClearChildren(Transform root) { if (root == null) return; for (int i = root.childCount - 1; i >= 0; i--) { var child = root.GetChild(i).gameObject; if (Application.isPlaying) Destroy(child); else DestroyImmediate(child); } }
+    private static readonly HashSet<string> warnedPrefabs = new HashSet<string>();
+    private static void WarnMissingPrefab(string field) { if (warnedPrefabs.Add(field)) Debug.LogWarning($"[HerdPanel] Required authored prefab '{field}' is not assigned. Configure the HerdPanel prefab; runtime fallback UI is not used."); }
 
     private void UpdateGovernorDisplay()
     {

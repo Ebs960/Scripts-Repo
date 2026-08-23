@@ -79,7 +79,57 @@ public class AIPlanner
         if (civ == null) return;
         PlanTurn(civ);
         ExecuteCommands();
+        ExecuteHerdDecisions(civ);
         ExecuteBandDecisions(civ);
+    }
+
+    /// <summary>Cheap, turn-based Herd survival decisions. Tactical combat remains in the campaign engagement flow.</summary>
+    internal static void ExecuteHerdDecisions(Civilization civ)
+    {
+        if (civ?.herds == null) return;
+        foreach (var herd in civ.herds.ToArray())
+        {
+            if (herd == null || herd.currentTileIndex < 0) continue;
+            var ts = TileSystem.GetForPlanet(herd.planetIndex) ?? TileSystem.Instance;
+            if (ts == null) continue;
+            var occupancy = TileOccupancyManager.GetForPlanet(herd.planetIndex) ?? TileOccupancyManager.Instance;
+            bool danger = false;
+            foreach (int tile in ts.GetNeighbors(herd.currentTileIndex))
+            {
+                var enemy = occupancy?.GetOccupantObject(tile, TileLayer.Surface)?.GetComponent<CombatUnit>();
+                if (enemy != null && enemy.owner != civ) { danger = true; break; }
+            }
+            int need = herd.FoodRequiredPerTurn;
+            int localForage = HerdManager.Instance != null ? HerdManager.Instance.ComputeHerdForageShare(herd.planetIndex, herd.currentTileIndex, herd) : 0;
+            bool foodDanger = herd.foodReserve + localForage < need * 2;
+
+            // Survival has priority. Settled camps pack first; packed camps inspect only adjacent tiles.
+            if ((foodDanger || danger) && !herd.isPacked) { herd.Pack(); continue; }
+            if (herd.isPacked && foodDanger && herd.movementPoints > 0)
+            {
+                int bestTile = herd.currentTileIndex, bestForage = localForage;
+                foreach (int tile in ts.GetNeighbors(herd.currentTileIndex))
+                {
+                    if (occupancy?.GetOccupantObject(tile, TileLayer.Surface) != null) continue;
+                    int forage = HerdManager.Instance != null ? HerdManager.Instance.ComputeHerdForageShare(herd.planetIndex, tile, herd) : Mathf.Max(0, ts.GetTileData(tile)?.food ?? 0);
+                    if (forage > bestForage + 1) { bestForage = forage; bestTile = tile; }
+                }
+                if (bestTile != herd.currentTileIndex) { herd.MoveToTile(bestTile); continue; }
+            }
+            if (herd.isPacked && !foodDanger && !danger && localForage >= need) { herd.Settle(); continue; }
+
+            if (!herd.isPacked && herd.productionQueue.Count == 0)
+            {
+                // Prefer explicit Herd survival effects, then output; never infer purpose from an asset's name.
+                var choices = (civ.unlockedBuildings ?? new List<BuildingData>()).Where(b => b != null && b.buildableByHerd && b.AreRequirementsMet(civ))
+                    .OrderByDescending(b => (b.herdStorageBonus > 0 || b.foodPerTurn > 0 ? 10000 : 0) + b.foodPerTurn * 100 + b.productionPerTurn).ToList();
+                foreach (var building in choices) if (herd.QueueProduction(building)) break;
+            }
+
+            // Preserve two defenders. An excess force is released only for a nearby strategic threat.
+            if (!danger || herd.MilitaryGarrison.Count <= 2) continue;
+            herd.FormArmy(herd.MilitaryGarrison.Skip(2).Take(civ.GetMaxArmySize()).ToList(), out _);
+        }
     }
 
     private static void ExecuteBandDecisions(Civilization civ)

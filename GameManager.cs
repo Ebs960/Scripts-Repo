@@ -2529,6 +2529,7 @@ public class GameManager : MonoBehaviour
             combatUnits = new List<PauseMenuManager.CombatUnitSaveData>(),
             workerUnits = new List<PauseMenuManager.WorkerUnitSaveData>(),
             bands = new List<BandSaveData>(),
+            herds = new List<PauseMenuManager.HerdSaveData>(),
             civilianAttachments = new List<CivilianAttachmentSaveData>(),
             civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>(),
             cities = new List<PauseMenuManager.CitySaveData>(),
@@ -2542,6 +2543,7 @@ public class GameManager : MonoBehaviour
         saveData.combatUnits = worldSnapshot.combatUnits;
         saveData.workerUnits = worldSnapshot.workerUnits;
         saveData.bands = worldSnapshot.bands;
+        saveData.herds = worldSnapshot.herds;
         saveData.civilianAttachments = worldSnapshot.civilianAttachments;
         saveData.civilizationProgress = worldSnapshot.civilizationProgress;
         saveData.cities = worldSnapshot.cities;
@@ -2642,12 +2644,13 @@ public class GameManager : MonoBehaviour
 
                 try
                 {
-                    if (civ.herds != null)
+                if (civ.herds != null)
+                {
+                    foreach (var h in civ.herds)
                     {
-                        foreach (var h in civ.herds)
-                        {
-                            if (h == null) continue;
-                            var hq = new PauseMenuManager.HerdQueueSaveData
+                        if (h == null) continue;
+                        snapshot.herds.Add(CaptureHerd(h, civIdx));
+                        var hq = new PauseMenuManager.HerdQueueSaveData
                             {
                                 planetIndex = h.planetIndex,
                                 tileIndex = h.currentTileIndex,
@@ -2745,8 +2748,8 @@ public class GameManager : MonoBehaviour
                             persistentId = unit.PersistentId,
                             unitDataName = unit.data.unitName,
                             ownerCivIndex = civIdx,
-                            currentTileIndex = unit.currentTileIndex,
-                            planetIndex = unit.planetIndex,
+                            currentTileIndex = unit.storedInHerd != null ? unit.storedInHerd.currentTileIndex : unit.currentTileIndex,
+                            planetIndex = unit.storedInHerd != null ? unit.storedInHerd.planetIndex : unit.planetIndex,
                             currentLayer = (int)unit.currentLayer,
                             currentHealth = unit.currentHealth,
                             experience = unit.experience,
@@ -2785,8 +2788,8 @@ public class GameManager : MonoBehaviour
                             attachedArmyFormationId = worker.AttachedArmyFormationId,
                             unitDataName = worker.data.unitName,
                             ownerCivIndex = civIdx,
-                            currentTileIndex = CivilianAttachmentService.GetStrategicTile(worker),
-                            planetIndex = CivilianAttachmentService.GetStrategicPlanet(worker),
+                            currentTileIndex = worker.storedInHerd != null ? worker.storedInHerd.currentTileIndex : CivilianAttachmentService.GetStrategicTile(worker),
+                            planetIndex = worker.storedInHerd != null ? worker.storedInHerd.planetIndex : CivilianAttachmentService.GetStrategicPlanet(worker),
                             currentLayer = (int)worker.currentLayer,
                             currentHealth = worker.currentHealth,
                             experience = worker.experience,
@@ -2839,6 +2842,85 @@ public class GameManager : MonoBehaviour
         return snapshot;
     }
 
+    private static PauseMenuManager.HerdSaveData CaptureHerd(Herd herd, int ownerIndex)
+    {
+        var data = new PauseMenuManager.HerdSaveData
+        {
+            persistentId = herd.PersistentId, ownerCivilizationId = ownerIndex, planetIndex = herd.planetIndex,
+            tileIndex = herd.currentTileIndex, herdName = herd.herdName, isPacked = herd.isPacked,
+            movementPoints = herd.movementPoints, maxMovementPoints = herd.maxMovementPoints,
+            foodReserve = herd.foodReserve, level = herd.level, baseStorage = herd.baseStorage,
+            storageCapacity = herd.storageCapacity, baseGarrisonCapacity = herd.baseGarrisonCapacity,
+            governorId = herd.governor != null ? herd.governor.id : -1
+        };
+        foreach (var entry in herd.animals ?? new List<Herd.HerdEntry>())
+            if (entry != null) data.livestock.Add(new PauseMenuManager.HerdLivestockSaveData { species = entry.species, count = entry.count });
+        foreach (var building in herd.builtStructures ?? new List<BuildingData>())
+            if (building != null) data.builtBuildingNames.Add(building.name);
+        foreach (var entry in herd.productionQueue ?? new List<Herd.ProdEntry>())
+            if (entry?.data != null) data.productionQueue.Add(new PauseMenuManager.HerdProdEntrySaveData { dataName = entry.data.name, remainingPts = entry.remainingPts, goldCost = entry.goldCost });
+        foreach (var unit in herd.MilitaryGarrison) if (unit != null) data.militaryGarrisonUnitIds.Add(unit.PersistentId);
+        foreach (var unit in herd.StoredCivilians)
+        {
+            if (unit is WorkerUnit worker) data.storedCivilianUnitIds.Add(worker.PersistentId);
+            else if (unit is CombatUnit combat) data.storedCivilianUnitIds.Add(combat.PersistentId);
+        }
+        foreach (var disease in herd.activeDiseases ?? new List<DiseaseInstance>())
+            if (disease?.data != null) data.activeDiseases.Add(new PauseMenuManager.HerdDiseaseSaveData { dataName = disease.data.name, turnsRemaining = disease.turnsRemaining, accumulatedPopulationLoss = disease.accumulatedPopulationLoss });
+        foreach (var immunity in herd.diseaseImmunities)
+            if (immunity.Key != null) data.diseaseImmunities.Add(new PauseMenuManager.HerdImmunitySaveData { dataName = immunity.Key.name, turnsRemaining = immunity.Value });
+        return data;
+    }
+
+    private void RestoreHerdsFromSnapshot(PauseMenuManager.WorldSnapshotData snapshot)
+    {
+        if (snapshot?.herds == null || snapshot.herds.Count == 0) return; // legacy herdQueues remain supported
+        var civs = CivilizationManager.Instance?.GetAllCivs();
+        if (civs == null) return;
+        var buildingLookup = BuildAssetLookup(ResourceCache.GetAllBuildings(), b => b.buildingName);
+        var diseaseLookup = BuildAssetLookup(Resources.FindObjectsOfTypeAll<DiseaseData>(), d => d.name);
+        foreach (var saved in snapshot.herds)
+        {
+            if (saved == null || saved.ownerCivilizationId < 0 || saved.ownerCivilizationId >= civs.Count) continue;
+            var owner = civs[saved.ownerCivilizationId];
+            var herd = owner.herds?.FirstOrDefault(h => h != null && h.PersistentId == saved.persistentId)
+                ?? owner.herds?.FirstOrDefault(h => h != null && h.planetIndex == saved.planetIndex && h.currentTileIndex == saved.tileIndex);
+            if (herd == null)
+            {
+                var go = new GameObject(string.IsNullOrEmpty(saved.herdName) ? "Herd" : saved.herdName);
+                herd = go.AddComponent<Herd>();
+            }
+            herd.owner = owner;
+            if (!owner.herds.Contains(herd)) owner.herds.Add(herd);
+            herd.RestorePersistentId(saved.persistentId); herd.planetIndex = saved.planetIndex; herd.currentTileIndex = saved.tileIndex;
+            herd.herdName = saved.herdName; herd.isPacked = saved.isPacked; herd.movementPoints = saved.movementPoints;
+            herd.maxMovementPoints = saved.maxMovementPoints; herd.foodReserve = saved.foodReserve; herd.level = Mathf.Max(1, saved.level);
+            herd.baseStorage = saved.baseStorage; herd.storageCapacity = saved.storageCapacity; herd.baseGarrisonCapacity = saved.baseGarrisonCapacity;
+            herd.animals = (saved.livestock ?? new List<PauseMenuManager.HerdLivestockSaveData>()).Select(x => new Herd.HerdEntry { species = x.species, count = x.count }).ToList();
+            herd.builtStructures = ResolveAssets(saved.builtBuildingNames, buildingLookup);
+            herd.productionQueue = new List<Herd.ProdEntry>();
+            foreach (var queued in saved.productionQueue ?? new List<PauseMenuManager.HerdProdEntrySaveData>())
+                if (buildingLookup.TryGetValue(queued.dataName ?? string.Empty, out var building))
+                { var entry = new Herd.ProdEntry(building, building.productionCost, queued.goldCost, building.requiredTileResourceDeposits, building.requiredTerrains); entry.remainingPts = queued.remainingPts; herd.productionQueue.Add(entry); }
+            herd.governor = saved.governorId < 0 ? null : owner.governors?.FirstOrDefault(g => g != null && g.id == saved.governorId);
+            foreach (var id in saved.militaryGarrisonUnitIds ?? new List<string>())
+                herd.RestoreGarrisonReference(UnitRegistry.GetByPersistentId(id)?.GetComponent<CombatUnit>());
+            foreach (var id in saved.storedCivilianUnitIds ?? new List<string>())
+                herd.RestoreCivilianReference(UnitRegistry.GetByPersistentId(id)?.GetComponent<BaseUnit>());
+            herd.activeDiseases.Clear();
+            foreach (var active in saved.activeDiseases ?? new List<PauseMenuManager.HerdDiseaseSaveData>())
+                if (diseaseLookup.TryGetValue(active.dataName ?? string.Empty, out var disease)) { var instance = new DiseaseInstance(disease, active.turnsRemaining) { accumulatedPopulationLoss = active.accumulatedPopulationLoss }; herd.activeDiseases.Add(instance); }
+            herd.diseaseImmunities.Clear();
+            foreach (var immune in saved.diseaseImmunities ?? new List<PauseMenuManager.HerdImmunitySaveData>())
+                if (diseaseLookup.TryGetValue(immune.dataName ?? string.Empty, out var disease)) herd.diseaseImmunities[disease] = immune.turnsRemaining;
+            var ts = TileSystem.GetForPlanet(saved.planetIndex) ?? TileSystem.Instance;
+            if (ts != null) herd.transform.position = ts.GetTileCenterFlat(saved.tileIndex);
+            (TileOccupancyManager.GetForPlanet(saved.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(saved.tileIndex, herd.gameObject, TileLayer.Surface);
+            herd.UpdateVisualRepresentation();
+        }
+        HerdManager.Instance?.MarkDirty();
+    }
+
     private static PauseMenuManager.WorldSnapshotData GetWorldSnapshot(PauseMenuManager.GameSaveData saveData)
     {
         if (saveData?.worldSnapshot != null && saveData.worldSnapshot.HasState())
@@ -2850,6 +2932,7 @@ public class GameManager : MonoBehaviour
             combatUnits = saveData?.combatUnits ?? new List<PauseMenuManager.CombatUnitSaveData>(),
             workerUnits = saveData?.workerUnits ?? new List<PauseMenuManager.WorkerUnitSaveData>(),
             bands = saveData?.bands ?? new List<BandSaveData>(),
+            herds = saveData?.herds ?? new List<PauseMenuManager.HerdSaveData>(),
             civilianAttachments = saveData?.civilianAttachments ?? new List<CivilianAttachmentSaveData>(),
             civilizationProgress = saveData?.civilizationProgress ?? new List<PauseMenuManager.CivilizationProgressSaveData>(),
             cities = saveData?.cities ?? new List<PauseMenuManager.CitySaveData>(),
@@ -3060,6 +3143,7 @@ public class GameManager : MonoBehaviour
         try
         {
             RestoreUnitsFromSnapshot(worldSnapshot);
+            RestoreHerdsFromSnapshot(worldSnapshot);
         }
         catch (System.Exception e)
         {

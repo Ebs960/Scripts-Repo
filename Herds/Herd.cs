@@ -9,6 +9,7 @@ public class Herd : MonoBehaviour
 {
     [SerializeField] private string persistentId;
     public string PersistentId => string.IsNullOrEmpty(persistentId) ? (persistentId = Guid.NewGuid().ToString("N")) : persistentId;
+    public void RestorePersistentId(string value) { if (!string.IsNullOrWhiteSpace(value)) persistentId = value; }
     [Header("Core")]
     public Civilization owner;
     public int planetIndex = 0;
@@ -460,6 +461,24 @@ public class Herd : MonoBehaviour
         (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId());
         militaryGarrison.Add(unit); unit.isStored = true; unit.storedInHerd = this; unit.currentTileIndex = -1; unit.gameObject.SetActive(false);
         worldUI?.MarkDirty(); return true;
+    }
+
+    /// <summary>Reconnects a unit created by the normal unit loader without changing its identity or stats.</summary>
+    public bool RestoreGarrisonReference(CombatUnit unit)
+    {
+        if (unit == null || unit.owner != owner || militaryGarrison.Contains(unit) || militaryGarrison.Count >= GarrisonCapacity) return false;
+        (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId());
+        militaryGarrison.Add(unit); unit.isStored = true; unit.storedInHerd = this; unit.planetIndex = planetIndex; unit.currentTileIndex = -1; unit.gameObject.SetActive(false);
+        return true;
+    }
+
+    public bool RestoreCivilianReference(BaseUnit unit)
+    {
+        if (unit == null || unit.owner != owner || unit is CombatUnit || storedCivilians.Contains(unit)) return false;
+        (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId());
+        storedCivilians.Add(unit); unit.isStored = true; unit.storedInHerd = this; unit.planetIndex = planetIndex; unit.currentTileIndex = -1; unit.gameObject.SetActive(false);
+        if (!storedUnits.Contains(unit)) storedUnits.Add(unit);
+        return true;
     }
 
     public bool FormArmy(IList<CombatUnit> selected, out CombatUnit representative)
