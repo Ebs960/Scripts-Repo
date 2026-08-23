@@ -6,6 +6,10 @@ public enum PantheonRequirementMode { None, Any, MinimumTier, Specific }
 [CreateAssetMenu(menuName="CivGame/Religion/Religion")]
 public class ReligionData : ScriptableObject
 {
+    [Header("Map Presentation")]
+    [Tooltip("Color used when this religion is dominant in Religion map mode.")]
+    public Color mapModeColor = Color.clear;
+
     [Header("Identity")]
     public string religionName;
     [TextArea] public string description;

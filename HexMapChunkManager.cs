@@ -4327,6 +4327,8 @@ public class HexMapChunkManager : MonoBehaviour
         terrainOverlayGPU = FindAnyObjectByType<TerrainOverlayGPU>();
         if (terrainOverlayGPU != null && bakeResult.lut != null)
         {
+            terrainOverlayGPU.OnMapModeOverlayChanged -= ApplyOverlayTexturesToMaterial;
+            terrainOverlayGPU.OnMapModeOverlayChanged += ApplyOverlayTexturesToMaterial;
             terrainOverlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, textureWidth, textureHeight);
             
             // Subscribe to TileSystem events
@@ -4345,9 +4347,7 @@ public class HexMapChunkManager : MonoBehaviour
     
     /// <summary>
     /// Apply fog and ownership overlay textures to the shared material.
-    /// NOTE: The current shader graph does NOT have _FogMask, _EnableFog, _OwnershipOverlay, _EnableOwnership properties.
-    /// These are set here for future compatibility when the shader is updated, or for alternative rendering approaches.
-    /// Consider using a separate overlay pass or decal system for fog/ownership until the shader graph is extended.
+    /// Binds the separate fog mask and the single reusable campaign thematic overlay.
     /// </summary>
     private void ApplyOverlayTexturesToMaterial()
     {
@@ -4361,11 +4361,11 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetFloat("_EnableFog", terrainOverlayGPU.EnableFogOverlay ? 1f : 0f);
         }
         
-        var ownershipTex = terrainOverlayGPU.GetOwnershipTexture();
-        if (ownershipTex != null)
+        var mapModeTex = terrainOverlayGPU.GetMapModeOverlayTexture();
+        if (mapModeTex != null)
         {
-            sharedMaterial.SetTexture("_OwnershipOverlay", ownershipTex);
-            sharedMaterial.SetFloat("_EnableOwnership", terrainOverlayGPU.EnableOwnershipOverlay ? 1f : 0f);
+            sharedMaterial.SetTexture("_MapModeOverlay", mapModeTex);
+            sharedMaterial.SetFloat("_EnableMapMode", terrainOverlayGPU.IsMapModeOverlayActive ? 1f : 0f);
         }
     }
     

@@ -19,6 +19,7 @@ public enum DiplomaticState
 /// </summary>
 public class Civilization : MonoBehaviour
 {
+    public static event Action<Civilization, City> GovernorAssignmentChanged;
     [Header("Static Data")]
     public CivData civData { get; private set; }
     public LeaderData leader { get; private set; } // Added to store the active leader
@@ -921,6 +922,8 @@ public class Civilization : MonoBehaviour
 
         // Refresh eligibility now that domain size changed
         governor.RefreshCouncilEligibility();
+        TileSystem.GetForPlanet(city.planetIndex)?.NotifyAdministrationChanged(city.GetTerritoryTiles(city.TerritoryRadius));
+        GovernorAssignmentChanged?.Invoke(this, city);
         return true;
     }
 
@@ -932,6 +935,8 @@ public class Civilization : MonoBehaviour
         {
             city.governor = null;
             governor.Cities.Remove(city);
+            TileSystem.GetForPlanet(city.planetIndex)?.NotifyAdministrationChanged(city.GetTerritoryTiles(city.TerritoryRadius));
+            GovernorAssignmentChanged?.Invoke(this, city);
             return true;
         }
         return false;

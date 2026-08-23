@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// GPU-accelerated terrain overlays (fog of war and ownership).
+/// GPU-accelerated terrain overlays (fog of war plus one reusable thematic map-mode layer).
 /// Phase 6: Moves visual-only tile state updates to GPU for dramatically faster rendering.
 /// 
 /// IMPORTANT:
@@ -12,6 +12,7 @@ using System.Collections.Generic;
 /// </summary>
 public class TerrainOverlayGPU : MonoBehaviour
 {
+    public event System.Action OnMapModeOverlayChanged;
     [Header("References")]
     [Tooltip("TileSystem reference for fog and ownership data (auto-finds if null)")]
     [SerializeField] private TileSystem tileSystem;
@@ -28,8 +29,8 @@ public class TerrainOverlayGPU : MonoBehaviour
     [Tooltip("Fog mask texture resolution (should match terrain texture resolution)")]
     [SerializeField] private int fogTextureHeight = 2048;
     
-    [Header("Ownership Overlay")]
-    [Tooltip("Enable ownership overlay")]
+    [Header("Thematic Map Mode Overlay")]
+    [Tooltip("Enable the single active thematic overlay")]
     [SerializeField] private bool enableOwnershipOverlay = true;
     
     // Public properties for external access
@@ -47,16 +48,17 @@ public class TerrainOverlayGPU : MonoBehaviour
     
     // Cached resources
     private RenderTexture _fogMaskTexture;
-    private RenderTexture _ownershipTexture;
+    private RenderTexture _mapModeOverlayTexture;
     private ComputeBuffer _fogBuffer;
-    private ComputeBuffer _ownerBuffer;
-    private ComputeBuffer _ownerColorBuffer;
+    private ComputeBuffer _mapColorBuffer;
     private ComputeBuffer _lutBuffer;
     // Unity ComputeBuffer stride must be a multiple of 4, so fog values (byte[]) are expanded to int[] for GPU upload.
     private int[] _fogIntCache;
     private int[] _cachedLUT;
     private int _cachedLUTWidth;
     private int _cachedLUTHeight;
+    private Color[] _mapColorByTile;
+    private bool _mapModeActive;
     
     // Dirty tracking
     private HashSet<int> _dirtyTiles = new HashSet<int>();
@@ -185,7 +187,6 @@ public class TerrainOverlayGPU : MonoBehaviour
         EnsureBuffers(ownerArray.Length, ownerColors.Length);
         
         // Update buffers with latest data
-        _ownerBuffer.SetData(ownerArray);
         // Expand fog bytes (0..2) into ints for stride-4 ComputeBuffer upload.
         EnsureFogIntCache(ownerArray.Length);
         for (int i = 0; i < fogArray.Length && i < _fogIntCache.Length; i++)
@@ -193,7 +194,7 @@ public class TerrainOverlayGPU : MonoBehaviour
             _fogIntCache[i] = fogArray[i];
         }
         _fogBuffer.SetData(_fogIntCache);
-        _ownerColorBuffer.SetData(ownerColors);
+        if (_mapColorByTile != null && _mapColorByTile.Length == ownerArray.Length) _mapColorBuffer.SetData(_mapColorByTile);
         _lutBuffer.SetData(_cachedLUT);
         
         // Convert dirty tiles to array for compute shader
@@ -211,9 +212,9 @@ public class TerrainOverlayGPU : MonoBehaviour
         }
         
         // Update ownership overlay if enabled
-        if (enableOwnershipOverlay && _ownershipTexture != null)
+        if (enableOwnershipOverlay && _mapModeOverlayTexture != null)
         {
-            UpdateOwnershipOverlay(dirtyArray, ownerColors.Length);
+            UpdateMapModeOverlay();
         }
         
         // Clear dirty set
@@ -233,7 +234,20 @@ public class TerrainOverlayGPU : MonoBehaviour
     /// </summary>
     public RenderTexture GetOwnershipTexture()
     {
-        return _ownershipTexture;
+        return _mapModeOverlayTexture;
+    }
+
+    public RenderTexture GetMapModeOverlayTexture() => _mapModeOverlayTexture;
+    public bool IsMapModeOverlayActive => enableOwnershipOverlay && _mapModeActive;
+
+    /// <summary>Bind the controller's reused per-tile color array. The array remains CPU presentation state.</summary>
+    public void SetMapModeData(TileSystem source, Color[] colors, bool active, IEnumerable<int> dirtyTiles = null)
+    {
+        if (source != null) tileSystem = source;
+        _mapColorByTile = colors; _mapModeActive = active;
+        if (dirtyTiles != null) MarkTilesDirty(dirtyTiles); else MarkAllTilesDirty();
+        UpdateOverlays();
+        OnMapModeOverlayChanged?.Invoke();
     }
     
     private void CreateOverlayTextures()
@@ -258,21 +272,21 @@ public class TerrainOverlayGPU : MonoBehaviour
         RenderTexture.active = null;
         
         // Create ownership overlay texture (RGBA32 - full color overlay)
-        if (_ownershipTexture != null)
+        if (_mapModeOverlayTexture != null)
         {
-            _ownershipTexture.Release();
+            _mapModeOverlayTexture.Release();
         }
-        _ownershipTexture = new RenderTexture(fogTextureWidth, fogTextureHeight, 0, RenderTextureFormat.ARGB32)
+        _mapModeOverlayTexture = new RenderTexture(fogTextureWidth, fogTextureHeight, 0, RenderTextureFormat.ARGB32)
         {
             enableRandomWrite = true,
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Repeat,
-            name = "OwnershipTexture"
+            name = "MapModeOverlayTexture"
         };
-        _ownershipTexture.Create();
+        _mapModeOverlayTexture.Create();
         
         // Initialize to transparent (no ownership overlay)
-        RenderTexture.active = _ownershipTexture;
+        RenderTexture.active = _mapModeOverlayTexture;
         GL.Clear(true, true, Color.clear);
         RenderTexture.active = null;
     }
@@ -288,17 +302,10 @@ public class TerrainOverlayGPU : MonoBehaviour
         }
         
         // Owner buffer (int per tile: -1=neutral, >=0=civId)
-        if (_ownerBuffer == null || _ownerBuffer.count != tileCount)
+        if (_mapColorBuffer == null || _mapColorBuffer.count != tileCount)
         {
-            _ownerBuffer?.Release();
-            _ownerBuffer = new ComputeBuffer(tileCount, sizeof(int));
-        }
-        
-        // Owner color palette (Color per civ)
-        if (_ownerColorBuffer == null || _ownerColorBuffer.count != ownerColorCount)
-        {
-            _ownerColorBuffer?.Release();
-            _ownerColorBuffer = new ComputeBuffer(ownerColorCount, sizeof(float) * 4);
+            _mapColorBuffer?.Release();
+            _mapColorBuffer = new ComputeBuffer(tileCount, sizeof(float) * 4);
         }
         
         // LUT buffer (int per pixel: pixel -> tile index)
@@ -347,32 +354,29 @@ public class TerrainOverlayGPU : MonoBehaviour
         overlayComputeShader.Dispatch(kernel, threadGroupsX, threadGroupsY, 1);
     }
     
-    private void UpdateOwnershipOverlay(int[] dirtyTiles, int ownerColorCount)
+    private void UpdateMapModeOverlay()
     {
         if (overlayComputeShader == null) return;
         
-        int kernel = overlayComputeShader.FindKernel("UpdateOwnership");
+        int kernel = overlayComputeShader.FindKernel("UpdateMapModeOverlay");
         if (kernel < 0)
         {
-            Debug.LogWarning("[TerrainOverlayGPU] UpdateOwnership kernel not found!");
+            Debug.LogWarning("[TerrainOverlayGPU] UpdateMapModeOverlay kernel not found!");
             return;
         }
         
         // Set buffers
         overlayComputeShader.SetBuffer(kernel, "_PixelToTileLUT", _lutBuffer);
-        overlayComputeShader.SetBuffer(kernel, "_OwnerByTile", _ownerBuffer);
-        overlayComputeShader.SetBuffer(kernel, "_OwnerColors", _ownerColorBuffer);
+        overlayComputeShader.SetBuffer(kernel, "_MapColorByTile", _mapColorBuffer);
         
         // Set output texture
-        overlayComputeShader.SetTexture(kernel, "_OwnershipOverlay", _ownershipTexture);
+        overlayComputeShader.SetTexture(kernel, "_MapModeOverlay", _mapModeOverlayTexture);
         
         // Set parameters
         overlayComputeShader.SetInt("_Width", fogTextureWidth);
         overlayComputeShader.SetInt("_Height", fogTextureHeight);
-        overlayComputeShader.SetInt("_TileCount", _ownerBuffer.count);
-        overlayComputeShader.SetInt("_OwnerColorCount", ownerColorCount);
-        overlayComputeShader.SetFloat("_OwnershipBlend", ownershipBlend);
-        overlayComputeShader.SetInt("_OwnershipMode", ownershipMode);
+        overlayComputeShader.SetInt("_TileCount", _mapColorBuffer.count);
+        overlayComputeShader.SetInt("_MapModeActive", _mapModeActive ? 1 : 0);
         
         // Dispatch (update ALL pixels - compute shader processes entire texture)
         // Note: We update all pixels because fog/ownership affects the entire visual map
@@ -389,23 +393,19 @@ public class TerrainOverlayGPU : MonoBehaviour
             _fogMaskTexture = null;
         }
         
-        if (_ownershipTexture != null)
+        if (_mapModeOverlayTexture != null)
         {
-            _ownershipTexture.Release();
-            _ownershipTexture = null;
+            _mapModeOverlayTexture.Release();
+            _mapModeOverlayTexture = null;
         }
         
         _fogBuffer?.Release();
         _fogBuffer = null;
         
-        _ownerBuffer?.Release();
-        _ownerBuffer = null;
-        
-        _ownerColorBuffer?.Release();
-        _ownerColorBuffer = null;
+        _mapColorBuffer?.Release();
+        _mapColorBuffer = null;
         
         _lutBuffer?.Release();
         _lutBuffer = null;
     }
 }
-

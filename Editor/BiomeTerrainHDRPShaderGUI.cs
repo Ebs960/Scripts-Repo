@@ -290,10 +290,9 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             DrawShaderProperty(materialEditor, Find(properties, "_EnableFog"), "Enable Fog Overlay");
             DrawColorProperty(materialEditor, Find(properties, "_TerrainFogColor"), "Fog Color");
 
-            Header("Ownership Overlay");
-            DrawTextureProperty(materialEditor, Find(properties, "_OwnershipOverlay"), new GUIContent("Ownership Overlay"));
-            DrawShaderProperty(materialEditor, Find(properties, "_EnableOwnership"), "Enable Ownership Overlay");
-            DrawShaderProperty(materialEditor, Find(properties, "_OwnershipAlpha"), "Ownership Alpha");
+            Header("Campaign Map Mode Overlay");
+            DrawTextureProperty(materialEditor, Find(properties, "_MapModeOverlay"), new GUIContent("Map Mode Overlay"));
+            DrawShaderProperty(materialEditor, Find(properties, "_EnableMapMode"), "Enable Map Mode Overlay");
 
             EditorGUILayout.Space(4);
             Header("Hex Grid Overlay");
@@ -376,4 +375,3 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
     }
 }
 #endif
-

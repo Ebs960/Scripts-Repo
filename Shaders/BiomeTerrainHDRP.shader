@@ -69,9 +69,8 @@ Shader "Custom/BiomeTerrainHDRP"
         _FogMask ("Fog Mask", 2D) = "black" {}
         _EnableFog ("Enable Fog Overlay", Float) = 0
         _TerrainFogColor ("Fog Color", Color) = (0.15, 0.15, 0.2, 0.85)
-        _OwnershipOverlay ("Ownership Overlay", 2D) = "black" {}
-        _EnableOwnership ("Enable Ownership Overlay", Float) = 0
-        _OwnershipAlpha ("Ownership Overlay Alpha", Range(0, 1)) = 0.3
+        _MapModeOverlay ("Campaign Map Mode Overlay", 2D) = "black" {}
+        _EnableMapMode ("Enable Campaign Map Mode", Float) = 0
 
         [Header(Per Biome Lookup)]
         _SliceToBiomeMap ("Slice To Biome Map", 2D) = "black" {}
@@ -172,7 +171,7 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D(_TileSeasonMask);
     TEXTURE2D(_FreezeMaskTex);
     TEXTURE2D(_FogMask);
-    TEXTURE2D(_OwnershipOverlay);
+    TEXTURE2D(_MapModeOverlay);
     TEXTURE2D(_SliceToBiomeMap);
 
     // ===================== Uniforms =====================
@@ -199,8 +198,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _SnowSmoothness;
     float _EnableFog;
     float4 _TerrainFogColor;
-    float _EnableOwnership;
-    float _OwnershipAlpha;
+    float _EnableMapMode;
     float _HighlightTileIndex;
     float4 _HighlightColor;
 
@@ -1134,13 +1132,12 @@ Shader "Custom/BiomeTerrainHDRP"
                 }
 
                 // ==========================================================
-                // OWNERSHIP OVERLAY
+                // UNIFIED CAMPAIGN MAP MODE OVERLAY
                 // ==========================================================
-                if (_EnableOwnership > 0.5)
+                if (_EnableMapMode > 0.5)
                 {
-                    float4 ownerColor = SAMPLE_TEXTURE2D(_OwnershipOverlay, sampler_BiomeIndexMap, uv);
-                    float ownerMask = ownerColor.a * _OwnershipAlpha;
-                    albedo = lerp(albedo, ownerColor.rgb, ownerMask);
+                    float4 mapModeColor = SAMPLE_TEXTURE2D(_MapModeOverlay, sampler_BiomeIndexMap, uv);
+                    albedo = lerp(albedo, mapModeColor.rgb, saturate(mapModeColor.a));
                 }
 
 
