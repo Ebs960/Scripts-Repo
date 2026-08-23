@@ -83,6 +83,8 @@ public class TileSystem : MonoBehaviour
     // Events
     public event Action<int,int,int> OnTileOwnerChanged;         // (tile, oldOwner, newOwner)
     public event Action<int,List<int>> OnFogChanged;             // (civId, changedTiles)
+    public event Action<int, IReadOnlyList<int>> OnReligionPressureChanged; // (planet, changed tiles)
+    public event Action<int, IReadOnlyList<int>> OnAdministrationChanged;   // (planet, changed tiles)
     public event Action<int,Vector3> OnTileHovered;              // (tile, worldPos)
     public event Action OnTileHoverExited;                       // hover exit
     // Consumable tile-click handler: return true to consume the click and stop propagation.
@@ -609,6 +611,9 @@ public class TileSystem : MonoBehaviour
             }
         }
 
+        if (prevCity != controllingCity)
+            NotifyAdministrationChanged(new[] { tile });
+
         return true;
     }
 
@@ -832,6 +837,7 @@ public class TileSystem : MonoBehaviour
         return new Vector3(c.x, flatY, c.z);
     }
     public int[] GetNeighbors(int tile) => (neighbors != null && tile >=0 && tile < neighbors.Length) ? neighbors[tile] : System.Array.Empty<int>();
+    public Vector3 GetTileCenter(int tile) => (tileCenters != null && tile >= 0 && tile < tileCenters.Length) ? tileCenters[tile] : Vector3.zero;
     public bool IsReady() => isReady;
 		#endregion
 
@@ -1005,10 +1011,20 @@ public class TileSystem : MonoBehaviour
         {
             if (list[i].religion == religion)
             {
-                var e = list[i]; e.pressure += amount; list[i] = e; return;
+                var e = list[i]; e.pressure += amount; list[i] = e;
+                OnReligionPressureChanged?.Invoke(planetIndex, new[] { tile }); return;
             }
         }
         list.Add(new ReligionPressureEntry { religion = religion, pressure = amount });
+        OnReligionPressureChanged?.Invoke(planetIndex, new[] { tile });
+    }
+
+    /// <summary>Canonical notification for a controlling-city or governor change.</summary>
+    public void NotifyAdministrationChanged(IEnumerable<int> changedTiles)
+    {
+        if (changedTiles == null) return;
+        var snapshot = changedTiles as IReadOnlyList<int> ?? new List<int>(changedTiles);
+        OnAdministrationChanged?.Invoke(planetIndex, snapshot);
     }
 
     public ReligionData GetDominantReligion(int tile)

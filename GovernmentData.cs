@@ -3,6 +3,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "NewGovernmentData", menuName = "Data/Government Data")]
 public class GovernmentData : ScriptableObject
 {
+    [Header("Map Presentation")]
+    [Tooltip("Shared thematic color used by every civilization with this government type.")]
+    public Color mapModeColor = Color.clear;
+
     [Header("Identity")]
     public string governmentName;
     [Tooltip("Icon shown for this government in menus and HUD elements.")]
