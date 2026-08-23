@@ -837,7 +837,6 @@ public class TileSystem : MonoBehaviour
         return new Vector3(c.x, flatY, c.z);
     }
     public int[] GetNeighbors(int tile) => (neighbors != null && tile >=0 && tile < neighbors.Length) ? neighbors[tile] : System.Array.Empty<int>();
-    public Vector3 GetTileCenter(int tile) => (tileCenters != null && tile >= 0 && tile < tileCenters.Length) ? tileCenters[tile] : Vector3.zero;
     public bool IsReady() => isReady;
 		#endregion
 

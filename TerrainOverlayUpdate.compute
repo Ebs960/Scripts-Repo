@@ -22,7 +22,7 @@ int _MapModeActive;
 void UpdateFogMask (uint3 id : SV_DispatchThreadID)
 {
     // Bounds check
-    if (id.x >= _Width || id.y >= _Height) return;
+    if (id.x >= (uint)_Width || id.y >= (uint)_Height) return;
     
     // Calculate pixel index
     int pixelIndex = (int)(id.y * _Width + id.x);
@@ -53,7 +53,7 @@ void UpdateFogMask (uint3 id : SV_DispatchThreadID)
 void UpdateMapModeOverlay (uint3 id : SV_DispatchThreadID)
 {
     // Bounds check
-    if (id.x >= _Width || id.y >= _Height) return;
+    if (id.x >= (uint)_Width || id.y >= (uint)_Height) return;
     
     // Calculate pixel index
     int pixelIndex = (int)(id.y * _Width + id.x);
