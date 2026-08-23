@@ -274,7 +274,7 @@ if (currentCity == null)
     public static void NotifyOwnershipChanged(City city)
     {
         if (city == null) return;
-        foreach (var view in FindObjectsByType<CityUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var view in FindObjectsByType<CityUI>(FindObjectsInactive.Include))
         {
             if (view.currentCity != city) continue;
             view.InvalidateBuildOptionsCache();

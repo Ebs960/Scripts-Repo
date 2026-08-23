@@ -46,7 +46,7 @@ public sealed class CampaignMapModeDataService
         if (tile.owner == null) return MapModeTileVisual.Hidden;
         var gov = tile.owner.currentGovernment;
         if (gov == null) return Visual(2000, "No Formal Government", presentation.noGovernmentColor, 1f, true);
-        Color color = IsMeaningful(gov.mapModeColor) ? gov.mapModeColor : DeterministicColor(gov.GetInstanceID(), .65f, .9f);
+        Color color = IsMeaningful(gov.mapModeColor) ? gov.mapModeColor : DeterministicColor(StableAssetId(gov), .65f, .9f);
         return Visual(StableAssetCategory(gov, 2100), gov.governmentName, color, 1f, true);
     }
 
@@ -65,7 +65,7 @@ public sealed class CampaignMapModeDataService
         if (dominant == null || total <= Mathf.Epsilon)
             return Visual(3000, "No Dominant Religion", presentation.noReligionColor, 1f);
         float dominance = highest / total;
-        Color color = IsMeaningful(dominant.mapModeColor) ? dominant.mapModeColor : DeterministicColor(dominant.GetInstanceID(), .65f, .9f);
+        Color color = IsMeaningful(dominant.mapModeColor) ? dominant.mapModeColor : DeterministicColor(StableAssetId(dominant), .65f, .9f);
         return Visual(StableAssetCategory(dominant, 3100), dominant.religionName, color,
             Mathf.Lerp(presentation.minimumReligionDominanceStrength, 1f, dominance));
     }
@@ -154,7 +154,19 @@ public sealed class CampaignMapModeDataService
         var colors = ts.GetOwnerColors(); int slot = civ != null ? civ.MapActorSlot : -1;
         return colors != null && slot >= 0 && slot < colors.Length ? colors[slot] : DeterministicColor(slot, .65f, .95f);
     }
-    private static int StableAssetCategory(Object asset, int offset) => offset + Mathf.Abs(asset.GetInstanceID());
+    private static int StableAssetCategory(Object asset, int offset) => offset + StableAssetId(asset);
+    private static int StableAssetId(Object asset)
+    {
+        // Asset names persist between sessions, unlike Unity's runtime instance/entity identifiers.
+        string name = asset != null ? asset.name : string.Empty;
+        unchecked
+        {
+            uint hash = 2166136261;
+            for (int i = 0; i < name.Length; i++)
+                hash = (hash ^ name[i]) * 16777619;
+            return (int)(hash & 0x7fffffff);
+        }
+    }
     private static bool IsMeaningful(Color color) => color.a > .01f && color.r + color.g + color.b > .03f;
     private static Color DeterministicColor(int id, float saturation, float value)
     { return Color.HSVToRGB(Mathf.Repeat(id * .61803398875f, 1f), saturation, value); }
