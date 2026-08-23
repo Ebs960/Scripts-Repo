@@ -363,6 +363,7 @@ MonoBehaviour:
   planetIndex: -1
   moveSpeed: 2
   useAnimationEventForProjectiles: 1
+  persistentId: 
   attack: 0
   meleeAttack: 0
   rangedAttack: 0

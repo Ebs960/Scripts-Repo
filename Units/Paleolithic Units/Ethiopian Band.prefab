@@ -227,6 +227,7 @@ MonoBehaviour:
   planetIndex: -1
   moveSpeed: 2
   useAnimationEventForProjectiles: 1
+  attachedArmyFormationId: 
   level: 1
   <data>k__BackingField: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
   persistentId: 
