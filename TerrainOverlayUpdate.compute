@@ -1,25 +1,22 @@
 #pragma kernel UpdateFogMask
-#pragma kernel UpdateOwnership
+#pragma kernel UpdateMapModeOverlay
 
 // Input buffers
 StructuredBuffer<int> _PixelToTileLUT;      // Pixel index -> tile index
 // NOTE: Using byte here would require a stride-1 ComputeBuffer, which Unity does not support.
 // We store fog values as uint (0=hidden, 1=explored, 2=visible) in a stride-4 ComputeBuffer.
 StructuredBuffer<uint> _FogByTile;          // Tile index -> fog value (0=hidden, 1=explored, 2=visible)
-StructuredBuffer<int> _OwnerByTile;        // Tile index -> owner (-1=neutral, >=0=civId)
-StructuredBuffer<float4> _OwnerColors;      // Owner index -> color
+StructuredBuffer<float4> _MapColorByTile;   // active category color/strength by tile
 
 // Output textures
 RWTexture2D<float> _FogMask;                // R8 fog mask (0=hidden, 0.5=explored, 1=visible)
-RWTexture2D<float4> _OwnershipOverlay;      // RGBA32 ownership overlay
+RWTexture2D<float4> _MapModeOverlay;        // the only full-resolution thematic overlay
 
 // Parameters
 int _Width;
 int _Height;
 int _TileCount;
-int _OwnerColorCount;
-float _OwnershipBlend;
-int _OwnershipMode; // 0 = blend, 1 = replace
+int _MapModeActive;
 
 [numthreads(8,8,1)]
 void UpdateFogMask (uint3 id : SV_DispatchThreadID)
@@ -53,7 +50,7 @@ void UpdateFogMask (uint3 id : SV_DispatchThreadID)
 }
 
 [numthreads(8,8,1)]
-void UpdateOwnership (uint3 id : SV_DispatchThreadID)
+void UpdateMapModeOverlay (uint3 id : SV_DispatchThreadID)
 {
     // Bounds check
     if (id.x >= _Width || id.y >= _Height) return;
@@ -68,31 +65,5 @@ void UpdateOwnership (uint3 id : SV_DispatchThreadID)
     if (tileIndex < 0 || tileIndex >= _TileCount)
         tileIndex = 0;
     
-    // Get owner
-    int owner = _OwnerByTile[tileIndex];
-    
-    // Default: transparent (no ownership)
-    float4 overlayColor = float4(0, 0, 0, 0);
-    
-    // If tile has an owner, get owner color
-    if (owner >= 0 && owner < _OwnerColorCount)
-    {
-        float4 ownerColor = _OwnerColors[owner];
-        
-        // Apply ownership overlay
-        if (_OwnershipMode == 0)
-        {
-            // Blend mode: tint with owner color
-            overlayColor = float4(ownerColor.rgb * _OwnershipBlend, _OwnershipBlend);
-        }
-        else
-        {
-            // Replace mode: full owner color
-            overlayColor = ownerColor;
-        }
-    }
-    
-    // Write ownership overlay
-    _OwnershipOverlay[int2(id.x, id.y)] = overlayColor;
+    _MapModeOverlay[int2(id.x, id.y)] = _MapModeActive != 0 ? _MapColorByTile[tileIndex] : float4(0,0,0,0);
 }
-
