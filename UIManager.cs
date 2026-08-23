@@ -37,6 +37,8 @@ public class UIManager : MonoBehaviour
     [Header("UI Panels")]
     public GameObject notificationPanel;
     public GameObject cityPanel;
+    [Tooltip("Canonical authored city screen prefab. City UI Rebuild is the alpha canonical asset.")]
+    [SerializeField] private GameObject cityPanelPrefab;
     public GameObject techPanel;
     public GameObject culturePanel;
     public GameObject herdPanel;
@@ -140,6 +142,12 @@ public class UIManager : MonoBehaviour
             return;
         }
         UIManager.Instance = this;
+        if (cityPanel == null && cityPanelPrefab != null)
+        {
+            cityPanel = Instantiate(cityPanelPrefab, transform);
+            cityPanel.name = "City Panel";
+            cityPanel.SetActive(false);
+        }
         DontDestroyOnLoad(gameObject);
         defaultFont = TMP_Settings.defaultFontAsset;
         panelDict = new Dictionary<string, GameObject>

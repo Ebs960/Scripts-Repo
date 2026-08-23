@@ -46,6 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   notificationPanel: {fileID: 0}
   cityPanel: {fileID: 0}
+  cityPanelPrefab: {fileID: 3139522281658145626, guid: 07a5e31e57e74f10a283f31b87e14d0b, type: 3}
   techPanel: {fileID: 0}
   culturePanel: {fileID: 0}
   herdPanel: {fileID: 0}

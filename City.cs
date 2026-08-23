@@ -4171,6 +4171,16 @@ Destroy(oldTuple.instance);
             {
                 UIManager.Instance.ShowNotification($"{cityName} has been captured by {attackerCiv.civData.civName}!");
             }
+
+            // Ownership is authoritative above; presentation systems only observe and refresh it.
+            // This prevents a city panel opened during the siege from retaining the old owner,
+            // old production availability, or stale political overlays.
+            CityUI.NotifyOwnershipChanged(this);
+            if (UnitVisionManager.Instance != null)
+            {
+                UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(oldOwner));
+                UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(attackerCiv));
+            }
 }
         else
         {
