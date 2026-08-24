@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class PolicyManager : MonoBehaviour
@@ -14,6 +15,11 @@ public class PolicyManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        if (allPolicies == null || !allPolicies.Exists(p => p != null))
+            allPolicies = new List<PolicyData>(ResourceCache.GetAllPolicyData().Where(p => p != null));
+        if (allGovernments == null || !allGovernments.Exists(g => g != null))
+            allGovernments = new List<GovernmentData>(ResourceCache.GetAllGovernmentData().Where(g => g != null));
     }
 
     /// <summary>
@@ -199,6 +205,8 @@ public class PolicyManager : MonoBehaviour
 
         civ.policyPoints -= p.policyPointCost;
         ApplyGovernorPoliticalReactions(civ, p.governorOpinionEffects);
+        if (civ.isPlayerControlled)
+            UIManager.Instance?.ShowNotification($"Policy adopted: {p.policyName}");
         return true;
     }
 
@@ -315,6 +323,8 @@ public class PolicyManager : MonoBehaviour
 
         civ.policyPoints -= g.policyPointCost;
         ApplyGovernorPoliticalReactions(civ, g.governorOpinionEffects);
+        if (civ.isPlayerControlled)
+            UIManager.Instance?.ShowNotification($"Government changed to {g.governmentName}");
         return true;
     }
 

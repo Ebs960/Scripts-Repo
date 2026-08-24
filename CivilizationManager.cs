@@ -2905,17 +2905,30 @@ break; // Only propose one alliance per turn
     public Civilization CreateRebelFaction(City revoltedCity)
     {
         // Try to reuse an existing rebel faction
-        var existing = civs.FirstOrDefault(c => c.civData.civName.StartsWith("Rebels"));
+        var existing = civs.FirstOrDefault(c => c != null && c.civData != null &&
+            c.civData.civName.StartsWith("Rebels", StringComparison.Ordinal));
         if (existing != null) return existing;
+
+        if (civilizationPrefab == null || allCivDatas == null || allCivDatas.Length == 0)
+        {
+            Debug.LogError("[CivilizationManager] Cannot create rebel faction: civilization prefab or base civilization catalog is missing.");
+            return null;
+        }
 
         // Otherwise, spawn a new one
         var go = Instantiate(civilizationPrefab);
-        int rebelCounter = civs.Count(c => c.civData.civName.Contains("Rebel")) + 1;
+        int rebelCounter = civs.Count(c => c != null && c.civData != null &&
+            c.civData.civName.Contains("Rebel")) + 1;
         go.name = $"Rebels {rebelCounter}";
         var civ = go.GetComponent<Civilization>();
 
         // Pick a generic CivData (e.g. a city-state template)
-        var template = allCivDatas.FirstOrDefault(d => d.isCityState) ?? allCivDatas[0];
+        var baseTemplate = allCivDatas.FirstOrDefault(d => d != null && d.isCityState)
+            ?? allCivDatas.FirstOrDefault(d => d != null);
+        if (baseTemplate == null) { Destroy(go); return null; }
+        // Never rename/mutate the authored base asset when a rebel realm needs a runtime identity.
+        var template = Instantiate(baseTemplate);
+        template.civName = go.name;
         // Use GameManager API for multi-planet support
         var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         var grid = planet != null ? planet.Grid : null;
@@ -2935,7 +2948,7 @@ break; // Only propose one alliance per turn
         if (civ != null && !string.IsNullOrEmpty(rebelName))
         {
             civ.gameObject.name = rebelName;
-            // Update civData name if the ScriptableObject is writable at runtime
+            // Rebel CivData is a runtime clone, so naming it cannot corrupt the authored template.
             if (civ.civData != null)
                 civ.civData.civName = rebelName;
         }
