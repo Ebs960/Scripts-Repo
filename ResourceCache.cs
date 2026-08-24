@@ -1,12 +1,8 @@
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using System.Collections.Generic;
 using System.Linq;
 using GameCombat;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 /// <summary>
 /// Static cache for all Resources.LoadAll calls to avoid repeated expensive I/O operations.
@@ -16,6 +12,8 @@ using UnityEditor;
 public static class ResourceCache
 {
     // Optional ResearchDatabase instance. Can be set at runtime via SetResearchDatabase()
+    private static BaseGameContentDatabase _baseGameDatabase;
+    private static bool _baseGameDatabaseLoadAttempted;
     private static ResearchDatabase _researchDatabase = null;
     private static ReligionDatabase _religionDatabase = null;
     private static EquipmentDatabase _equipmentDatabase = null;
@@ -70,7 +68,6 @@ public static class ResourceCache
     public static ReligionDatabase GetReligionDatabase() => _religionDatabase;
 
     private static bool _initialized = false;
-    private const string CombatUnitAssetFolder = "Assets/Scripts Repo/Units";
     
     // Cached resource arrays - loaded lazily on first access
     private static CombatUnitData[] _allCombatUnits;
@@ -88,6 +85,9 @@ public static class ResourceCache
     private static PantheonData[] _allPantheonData;
     private static ReligionData[] _allReligionData;
     private static BeliefData[] _allBeliefData;
+    private static LeaderData[] _allLeaderData;
+    private static GovernmentData[] _allGovernmentData;
+    private static PolicyData[] _allPolicyData;
     
     // Track which resources have been loaded (for lazy loading)
     private static bool _combatUnitsLoaded = false;
@@ -105,6 +105,9 @@ public static class ResourceCache
     private static bool _pantheonDataLoaded = false;
     private static bool _religionDataLoaded = false;
     private static bool _beliefDataLoaded = false;
+    private static bool _leaderDataLoaded;
+    private static bool _governmentDataLoaded;
+    private static bool _policyDataLoaded;
     
     /// <summary>
     /// Initialize the resource cache - now just marks as initialized, resources load lazily
@@ -137,6 +140,7 @@ public static class ResourceCache
         _allWorkerUnits = null;
         _allBuildings = null;
         _allProjectiles = null;
+        _allMissiles = null;
         _allCivDatas = null;
         _allEquipment = null;
         _allDistricts = null;
@@ -147,12 +151,21 @@ public static class ResourceCache
         _allPantheonData = null;
         _allReligionData = null;
         _allBeliefData = null;
+        _allLeaderData = null;
+        _allGovernmentData = null;
+        _allPolicyData = null;
+        _baseGameDatabase = null;
+        _researchDatabase = null;
+        _religionDatabase = null;
+        _equipmentDatabase = null;
+        _baseGameDatabaseLoadAttempted = false;
         
         // Reset loaded flags
         _combatUnitsLoaded = false;
         _workerUnitsLoaded = false;
         _buildingsLoaded = false;
         _projectilesLoaded = false;
+        _missilesLoaded = false;
         _civDatasLoaded = false;
         _equipmentLoaded = false;
         _districtsLoaded = false;
@@ -163,6 +176,9 @@ public static class ResourceCache
         _pantheonDataLoaded = false;
         _religionDataLoaded = false;
         _beliefDataLoaded = false;
+        _leaderDataLoaded = false;
+        _governmentDataLoaded = false;
+        _policyDataLoaded = false;
         _unitNamesLoaded = false;
         _cachedUnitNames = null;
     }
@@ -222,30 +238,9 @@ public static class ResourceCache
         }
         
         List<string> names = new List<string>();
-        
-#if UNITY_EDITOR
-        // In editor: Use AssetDatabase to get names without loading full assets
-        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CombatUnitData", new[] { CombatUnitAssetFolder });
-        foreach (string guid in guids)
-        {
-            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-            // Extract name from path without loading the asset
-            string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
-            names.Add(fileName);
-        }
-#else
-        // In build: Need to load ScriptableObjects (no way around it without a manifest)
-        // But we can at least cache the names
-        var units = GetAllCombatUnits();
-        foreach (var unit in units)
-        {
-            if (unit != null)
-            {
-                names.Add(unit.unitName ?? "Unknown");
-            }
-        }
-#endif
-        
+        foreach (var unit in GetAllCombatUnits())
+            if (unit != null) names.Add(unit.unitName ?? "Unknown");
+
         _cachedUnitNames = names.ToArray();
         _unitNamesLoaded = true;
         return _cachedUnitNames;
@@ -264,77 +259,16 @@ public static class ResourceCache
             return System.Array.Find(_allCombatUnits, u => u != null && u.unitName == unitName);
         }
         
-#if UNITY_EDITOR
-        // In editor: Load just the specific unit
-        string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:CombatUnitData {unitName}", new[] { CombatUnitAssetFolder });
-        foreach (string guid in guids)
-        {
-            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-            CombatUnitData unit = UnityEditor.AssetDatabase.LoadAssetAtPath<CombatUnitData>(path);
-            if (unit != null && unit.unitName == unitName)
-            {
-                return unit;
-            }
-        }
-        return null;
-#else
-        // In build: Must load all units to find the one we want
         EnsureCombatUnitsLoaded();
         return System.Array.Find(_allCombatUnits, u => u != null && u.unitName == unitName);
-#endif
     }
     
     private static void EnsureCombatUnitsLoaded()
     {
         if (!_combatUnitsLoaded)
         {
-            // Load ScriptableObjects from Assets/Scripts Repo/Units/ (not Resources folder)
-            
-#if UNITY_EDITOR
-            // In editor: Use AssetDatabase to load from Assets/Scripts Repo/Units/
-            string[] guids = AssetDatabase.FindAssets("t:CombatUnitData", new[] { CombatUnitAssetFolder });
-            List<CombatUnitData> units = new List<CombatUnitData>();
-            
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                CombatUnitData unit = AssetDatabase.LoadAssetAtPath<CombatUnitData>(path);
-                if (unit != null)
-                {
-                    units.Add(unit);
-                }
-            }
-            
-            _allCombatUnits = units.ToArray();
-#else
-            // In build: Try to load from Addressables first, fallback to Resources
-            // If ScriptableObjects are marked as Addressable, load them via Addressables
-            // Otherwise, fallback to Resources (for backward compatibility)
-            try
-            {
-                // Try Addressables first (if ScriptableObjects are marked as addressable)
-                var handle = Addressables.LoadAssetsAsync<CombatUnitData>("CombatUnitData", null);
-                handle.WaitForCompletion();
-                
-                if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
-                {
-                    _allCombatUnits = handle.Result.ToArray();
-                    Addressables.Release(handle);
-                }
-                else
-                {
-                    // Fallback to Resources
-                    Debug.LogWarning("[ResourceCache] Addressables failed, falling back to Resources/Units/");
-                    _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
-                }
-            }
-            catch
-            {
-                // Fallback to Resources
-                Debug.LogWarning("[ResourceCache] Addressables not available, falling back to Resources/Units/");
-            _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
-            }
-#endif
+            EnsureBaseGameDatabaseLoaded();
+            _allCombatUnits = _baseGameDatabase != null ? _baseGameDatabase.combatUnits : null;
             _combatUnitsLoaded = true;
             
             int count = _allCombatUnits?.Length ?? 0;
@@ -361,45 +295,8 @@ public static class ResourceCache
     {
         if (!_workerUnitsLoaded)
         {
-#if UNITY_EDITOR
-            // Search the whole project for WorkerUnitData assets to avoid depending on a specific folder.
-            string[] guids = AssetDatabase.FindAssets("t:WorkerUnitData");
-            List<WorkerUnitData> units = new List<WorkerUnitData>();
-
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                WorkerUnitData unit = AssetDatabase.LoadAssetAtPath<WorkerUnitData>(path);
-                if (unit != null)
-                {
-                    units.Add(unit);
-                }
-            }
-
-            _allWorkerUnits = units.ToArray();
-#else
-            try
-            {
-                var handle = Addressables.LoadAssetsAsync<WorkerUnitData>("WorkerUnitData", null);
-                handle.WaitForCompletion();
-
-                if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
-                {
-                    _allWorkerUnits = handle.Result.ToArray();
-                    Addressables.Release(handle);
-                }
-                else
-                {
-                    Debug.LogWarning("[ResourceCache] Addressables failed, falling back to Resources/Workers/");
-                    _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
-                }
-            }
-            catch
-            {
-                Debug.LogWarning("[ResourceCache] Addressables not available, falling back to Resources/Workers/");
-                _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
-            }
-#endif
+            EnsureBaseGameDatabaseLoaded();
+            _allWorkerUnits = _baseGameDatabase != null ? _baseGameDatabase.workerUnits : null;
 
             _workerUnitsLoaded = true;
 
@@ -419,7 +316,8 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_buildingsLoaded)
         {
-            _allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+            EnsureBaseGameDatabaseLoaded();
+            _allBuildings = _baseGameDatabase != null ? _baseGameDatabase.buildings : null;
             _buildingsLoaded = true;
         }
         return _allBuildings ?? new BuildingData[0];
@@ -440,10 +338,10 @@ public static class ResourceCache
         if (!_projectilesLoaded)
         {
             if (_equipmentDatabase == null)
-                _equipmentDatabase = Resources.Load<EquipmentDatabase>("Equipment/EquipmentDatabase");
+                EnsureBaseGameDatabaseLoaded();
             _allProjectiles = _equipmentDatabase != null && _equipmentDatabase.projectiles != null
                 ? _equipmentDatabase.projectiles
-                : Resources.LoadAll<ProjectileData>("Projectiles");
+                : new ProjectileData[0];
             _projectilesLoaded = true;
         }
     }
@@ -456,7 +354,8 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_missilesLoaded)
         {
-            _allMissiles = Resources.LoadAll<MissileData>("Missiles");
+            EnsureBaseGameDatabaseLoaded();
+            _allMissiles = _baseGameDatabase != null ? _baseGameDatabase.missiles : null;
             _missilesLoaded = true;
         }
         return _allMissiles ?? new MissileData[0];
@@ -476,7 +375,8 @@ public static class ResourceCache
     {
         if (!_civDatasLoaded)
         {
-            _allCivDatas = Resources.LoadAll<CivData>("Civilizations");
+            EnsureBaseGameDatabaseLoaded();
+            _allCivDatas = _baseGameDatabase != null ? _baseGameDatabase.civilizations : null;
             _civDatasLoaded = true;
         }
     }
@@ -490,10 +390,10 @@ public static class ResourceCache
         if (!_equipmentLoaded)
         {
             if (_equipmentDatabase == null)
-                _equipmentDatabase = Resources.Load<EquipmentDatabase>("Equipment/EquipmentDatabase");
+                EnsureBaseGameDatabaseLoaded();
             _allEquipment = _equipmentDatabase != null && _equipmentDatabase.equipment != null
                 ? _equipmentDatabase.equipment
-                : Resources.LoadAll<EquipmentData>("Equipment");
+                : new EquipmentData[0];
             _equipmentLoaded = true;
         }
         return _allEquipment ?? new EquipmentData[0];
@@ -507,7 +407,8 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_districtsLoaded)
         {
-            _allDistricts = Resources.LoadAll<DistrictData>("Districts");
+            EnsureBaseGameDatabaseLoaded();
+            _allDistricts = _baseGameDatabase != null ? _baseGameDatabase.districts : null;
             _districtsLoaded = true;
         }
         return _allDistricts ?? new DistrictData[0];
@@ -521,7 +422,8 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_improvementsLoaded)
         {
-            _allImprovements = Resources.LoadAll<ImprovementData>("Improvements");
+            EnsureBaseGameDatabaseLoaded();
+            _allImprovements = _baseGameDatabase != null ? _baseGameDatabase.improvements : null;
             _improvementsLoaded = true;
         }
         return _allImprovements ?? new ImprovementData[0];
@@ -535,7 +437,8 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_resourceDataLoaded)
         {
-            _allResourceData = Resources.LoadAll<ResourceData>("Data/Resources");
+            EnsureBaseGameDatabaseLoaded();
+            _allResourceData = _baseGameDatabase != null ? _baseGameDatabase.resources : null;
             _resourceDataLoaded = true;
         }
         return _allResourceData ?? new ResourceData[0];
@@ -550,39 +453,9 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_techDataLoaded)
         {
-            // Prefer an assigned ResearchDatabase (settable at runtime or found in editor)
-            if (_researchDatabase != null && _researchDatabase.techs != null && _researchDatabase.techs.Length > 0)
-            {
-                _allTechData = _researchDatabase.techs;
-                _techDataLoaded = true;
-            }
-            else
-            {
-                // In editor, try to find a ResearchDatabase asset anywhere in the project
-#if UNITY_EDITOR
-                if (_researchDatabase == null)
-                {
-                    string[] guids = AssetDatabase.FindAssets("t:ResearchDatabase");
-                    if (guids != null && guids.Length > 0)
-                    {
-                        var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                        var db = AssetDatabase.LoadAssetAtPath<ResearchDatabase>(path);
-                        if (db != null)
-                        {
-                            _researchDatabase = db;
-                            _allTechData = _researchDatabase.techs ?? new TechData[0];
-                            _techDataLoaded = true;
-                        }
-                    }
-                }
-#endif
-                // Fallback: load from Resources/Tech (backward compatibility)
-                if (!_techDataLoaded)
-                {
-                    _allTechData = Resources.LoadAll<TechData>("Tech");
-                    _techDataLoaded = true;
-                }
-            }
+            EnsureBaseGameDatabaseLoaded();
+            _allTechData = _researchDatabase != null ? _researchDatabase.techs : null;
+            _techDataLoaded = true;
         }
         return _allTechData ?? new TechData[0];
     }
@@ -596,39 +469,9 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_cultureDataLoaded)
         {
-            // Prefer an assigned ResearchDatabase
-            if (_researchDatabase != null && _researchDatabase.cultures != null && _researchDatabase.cultures.Length > 0)
-            {
-                _allCultureData = _researchDatabase.cultures;
-                _cultureDataLoaded = true;
-            }
-            else
-            {
-                // In editor, try to find a ResearchDatabase asset anywhere in the project
-#if UNITY_EDITOR
-                if (_researchDatabase == null)
-                {
-                    string[] guids = AssetDatabase.FindAssets("t:ResearchDatabase");
-                    if (guids != null && guids.Length > 0)
-                    {
-                        var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                        var db = AssetDatabase.LoadAssetAtPath<ResearchDatabase>(path);
-                        if (db != null)
-                        {
-                            _researchDatabase = db;
-                            _allCultureData = _researchDatabase.cultures ?? new CultureData[0];
-                            _cultureDataLoaded = true;
-                        }
-                    }
-                }
-#endif
-                // Fallback: load from Resources/Culture (backward compatibility)
-                if (!_cultureDataLoaded)
-                {
-                    _allCultureData = Resources.LoadAll<CultureData>("Culture");
-                    _cultureDataLoaded = true;
-                }
-            }
+            EnsureBaseGameDatabaseLoaded();
+            _allCultureData = _researchDatabase != null ? _researchDatabase.cultures : null;
+            _cultureDataLoaded = true;
         }
         return _allCultureData ?? new CultureData[0];
     }
@@ -638,6 +481,7 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_pantheonDataLoaded)
         {
+            EnsureBaseGameDatabaseLoaded();
             if (_religionDatabase != null && _religionDatabase.pantheons != null && _religionDatabase.pantheons.Length > 0)
             {
                 _allPantheonData = _religionDatabase.pantheons;
@@ -659,6 +503,7 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_religionDataLoaded)
         {
+            EnsureBaseGameDatabaseLoaded();
             if (_religionDatabase != null && _religionDatabase.religions != null && _religionDatabase.religions.Length > 0)
             {
                 _allReligionData = _religionDatabase.religions;
@@ -685,6 +530,7 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_beliefDataLoaded)
         {
+            EnsureBaseGameDatabaseLoaded();
             if (_religionDatabase != null && _religionDatabase.beliefs != null && _religionDatabase.beliefs.Length > 0)
             {
                 _allBeliefData = _religionDatabase.beliefs;
@@ -700,6 +546,42 @@ public static class ResourceCache
         return _allBeliefData ?? new BeliefData[0];
     }
     
+    public static LeaderData[] GetAllLeaderData()
+    {
+        EnsureInitialized();
+        if (!_leaderDataLoaded) { EnsureBaseGameDatabaseLoaded(); _allLeaderData = _baseGameDatabase?.leaders; _leaderDataLoaded = true; }
+        return _allLeaderData ?? new LeaderData[0];
+    }
+
+    public static GovernmentData[] GetAllGovernmentData()
+    {
+        EnsureInitialized();
+        if (!_governmentDataLoaded) { EnsureBaseGameDatabaseLoaded(); _allGovernmentData = _baseGameDatabase?.governments; _governmentDataLoaded = true; }
+        return _allGovernmentData ?? new GovernmentData[0];
+    }
+
+    public static PolicyData[] GetAllPolicyData()
+    {
+        EnsureInitialized();
+        if (!_policyDataLoaded) { EnsureBaseGameDatabaseLoaded(); _allPolicyData = _baseGameDatabase?.policies; _policyDataLoaded = true; }
+        return _allPolicyData ?? new PolicyData[0];
+    }
+
+    private static void EnsureBaseGameDatabaseLoaded()
+    {
+        if (_baseGameDatabaseLoadAttempted) return;
+        _baseGameDatabaseLoadAttempted = true;
+        _baseGameDatabase = Resources.Load<BaseGameContentDatabase>("BaseGameContentDatabase");
+        if (_baseGameDatabase == null)
+        {
+            Debug.LogError("[ResourceCache] BaseGameContentDatabase could not be loaded. Dynamic units, buildings, improvements, governments, and civilizations may be unavailable. Rebuild it with 'Populate From Project'.");
+            return;
+        }
+        if (_researchDatabase == null) SetResearchDatabase(_baseGameDatabase.research);
+        if (_religionDatabase == null) SetReligionDatabase(_baseGameDatabase.religion);
+        if (_equipmentDatabase == null) SetEquipmentDatabase(_baseGameDatabase.equipment);
+    }
+
     /// <summary>
     /// Get available combat units for a civilization (meets requirements)
     /// </summary>

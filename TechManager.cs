@@ -125,7 +125,8 @@ return;
         civ.currentTechProgress = 0;
         // Ensure the civ does not get progress the same turn (minimum 1 turn research)
         civ.MarkResearchStartedThisTurn();
-// TODO: play sound, show feedback, etc.
+        if (civ.isPlayerControlled)
+            UIManager.Instance?.ShowNotification($"Research begun: {DisplayName(tech)}");
     }
     
     /// <summary>
@@ -145,6 +146,9 @@ return;
         if (OnTechResearchCompleted != null)
             OnTechResearchCompleted(civ, tech);
 
+        if (civ.isPlayerControlled)
+            UIManager.Instance?.ShowNotification($"Technology researched: {DisplayName(tech)}");
+
         if (tech.IsVictoryTech)
         {
             string civName = civ.civData != null ? civ.civData.civName : "A civilization";
@@ -152,6 +156,9 @@ return;
             GameManager.Instance?.EndGame(civ, tech, $"{civName} wins by researching {techName}!");
         }
     }
+
+    private static string DisplayName(TechData tech) =>
+        !string.IsNullOrWhiteSpace(tech?.techName) ? tech.techName : tech != null ? tech.name : "Unknown";
     
     /// <summary>
     /// Check if a unit can be produced based on tech requirements

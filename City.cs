@@ -1005,9 +1005,9 @@ if (UIManager.Instance != null)
     /// </summary>
     public void TriggerRevolt(string rebelName)
     {
-// 1) Remove from old owner
         var oldOwner = owner;
-    oldOwner?.RemoveCity(this);
+        if (oldOwner == null || CivilizationManager.Instance == null) return;
+        oldOwner.RemoveCity(this);
 
         // 2) Create or fetch rebel faction
         var rebelCiv = string.IsNullOrEmpty(rebelName)
@@ -1015,28 +1015,35 @@ if (UIManager.Instance != null)
             : CivilizationManager.Instance.CreateRebelFaction(this, rebelName);
 
         // 3) Transfer city to rebel civ
+        if (rebelCiv == null)
+        {
+            oldOwner.AddCity(this);
+            Debug.LogError($"[City] Revolt in {cityName} aborted because no rebel civilization could be created.");
+            return;
+        }
         owner = rebelCiv;
-        rebelCiv?.AddCity(this);
+        rebelCiv.AddCity(this);
+        governor = null;
 
         // 4) Reassign any garrisoned units (those on the city tile)
         //    Combat units:
-        var combatToMove = oldOwner.combatUnits
+        var combatToMove = (oldOwner.combatUnits ?? new List<CombatUnit>())
             .Where(u => u.currentTileIndex == centerTileIndex)
             .ToList();
         foreach (var u in combatToMove)
         {
             oldOwner.combatUnits.Remove(u);
-            rebelCiv.combatUnits.Add(u);
+            if (!rebelCiv.combatUnits.Contains(u)) rebelCiv.combatUnits.Add(u);
             u.Initialize(u.data, rebelCiv);  // reset its owner internally
         }
         //    Worker units:
-        var workerToMove = oldOwner.workerUnits
+        var workerToMove = (oldOwner.workerUnits ?? new List<WorkerUnit>())
             .Where(w => w.currentTileIndex == centerTileIndex)
             .ToList();
         foreach (var w in workerToMove)
         {
             oldOwner.workerUnits.Remove(w);
-            rebelCiv.workerUnits.Add(w);
+            if (!rebelCiv.workerUnits.Contains(w)) rebelCiv.workerUnits.Add(w);
             w.Initialize(w.data, rebelCiv, w.currentTileIndex);   // reset its owner, keep position
         }
 
@@ -1045,10 +1052,7 @@ if (UIManager.Instance != null)
         var planet = ResolvePlanetGenerator();
         if (planet != null)
         {
-            // Get territory radius based on number of remaining cities
-            int radius = oldOwner.cities.Count >= 1 ? oldOwner.cities.Count : 1;
-            // Convert tiles in radius to rebel ownership
-            List<int> territoryTiles = GetTerritoryTiles(radius);
+            List<int> territoryTiles = GetTerritoryTiles(TerritoryRadius);
             foreach (int idx in territoryTiles)
             {
                 var ts = TileSys;
@@ -1059,8 +1063,17 @@ if (UIManager.Instance != null)
         // 6) Reset loyalty so rebels stabilize somewhat
         loyalty = 50f;
         orderRating = Mathf.Max(50, orderRating);
+        moraleRating = Mathf.Max(50, moraleRating);
 
-        // TODO: spawn rebel units, trigger UI popup, play SFX/VFX, etc.
+        // Ownership changes are complete before presentation observes them.
+        CityUI.NotifyOwnershipChanged(this);
+        if (UnitVisionManager.Instance != null)
+        {
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(oldOwner));
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(rebelCiv));
+        }
+        if (oldOwner.isPlayerControlled || rebelCiv.isPlayerControlled)
+            UIManager.Instance?.ShowNotification($"{cityName} has revolted!");
     }
     
     // Helper method to get all tiles in this city's territory
