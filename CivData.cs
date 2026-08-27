@@ -7,7 +7,7 @@ public enum CultureGroup
     EastAsian = 2,
     WestAfrican = 3,
     EastAfrican = 4,
-    NativeAmerican = 8,
+    Mesoamerican = 9,
     NativeNorthAmerican = 10,
     MiddleEastern = 12,
     SouthAsian = 13
