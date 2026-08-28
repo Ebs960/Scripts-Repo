@@ -6,6 +6,15 @@ using System.Linq;
 
 public class City : MonoBehaviour
 {
+    [Header("Settlement Visual")]
+    [SerializeField] private Transform visualRoot;
+    private GameObject currentVisualInstance;
+    private GameObject currentVisualPrefab;
+    private CityVisualPeriod lastVisualPeriod;
+    private CityVisualSize lastVisualSize;
+    private bool hasResolvedVisual;
+
+    public GameObject CurrentVisualInstance => currentVisualInstance;
     // ─── Events ───
     public event Action<City, BuildingData> OnBuildingCompleted;
     public event Action<City, BuildingData, BuildingRemovalReason> OnBuildingRemoved;
@@ -257,6 +266,7 @@ public class City : MonoBehaviour
                    ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator != null) planetIndex = planetGenerator.planetIndex;
         RefreshCityDefenseAndHappinessBonuses();
+        RefreshCityVisual();
     }
 
     /// <summary>
@@ -614,6 +624,7 @@ if (UIManager.Instance != null)
         ApplyDiseaseTurnEffects();
         // 5c) Apply natural disaster population effects and tick building repairs
         ApplyDisasterTurnEffects();
+        RefreshCityVisual();
         TickBuildingRepairs();
         // 6) Check surrender (only if defense was reduced by attacks, not just decay)
         // Surrender is handled in TakeDamage() when a unit attacks
@@ -1024,6 +1035,7 @@ if (UIManager.Instance != null)
         owner = rebelCiv;
         rebelCiv.AddCity(this);
         governor = null;
+        RefreshCityVisual();
 
         // 4) Reassign any garrisoned units (those on the city tile)
         //    Combat units:
@@ -4130,6 +4142,7 @@ Destroy(oldTuple.instance);
             // 2) Transfer city to attacker
             owner = attackerCiv;
             attackerCiv?.AddCity(this);
+            RefreshCityVisual();
             
             // 3) Reassign any garrisoned units (those on the city tile)
             //    Combat units:
@@ -4558,57 +4571,57 @@ cityUI.ShowForCity(this);
     /// </summary>
     public void UpdateCityModelForAge()
     {
-// 1. Get the correct prefab for the new age
-        GameObject newPrefab = null;
-        if (owner?.civData?.cityPrefabsByAge != null)
-        {
-        TechAge currentAge = owner.GetCurrentAge();
-        foreach (var agePrefab in owner.civData.cityPrefabsByAge)
-        {
-            if (agePrefab.techAge == currentAge && agePrefab.cityPrefab != null)
-            {
-                    newPrefab = agePrefab.cityPrefab;
-                    break;
-            }
-        }
-        }
-        if (newPrefab == null)
-        {
-            Debug.LogWarning($"[City] No city prefab found for age {owner?.GetCurrentAge()} for {cityName}");
-            return;
+        RefreshCityVisual();
     }
-    
-        // 2. Instantiate the new prefab at the current position/rotation
-        GameObject newCityGO = Instantiate(newPrefab, transform.position, transform.rotation);
-        // Keep hierarchy stable: preserve parent so the city stays under its planet in the hierarchy.
-        if (transform.parent != null) newCityGO.transform.SetParent(transform.parent, true);
-        City newCity = newCityGO.GetComponent<City>();
-        if (newCity == null)
+
+    public void RefreshCityVisual(bool force = false)
+    {
+        if (owner == null || owner.civData == null) return;
+
+        TechAge age = owner.GetCurrentAge();
+        CityVisualPeriod period = CityVisualResolver.GetVisualPeriod(age);
+        CityVisualSize size = CityVisualResolver.GetVisualSize(level);
+        GameObject desiredPrefab = CityVisualResolver.ResolveCityVisual(owner.civData, age, level);
+        if (desiredPrefab == null)
         {
-            Debug.LogError("[City] New city prefab is missing the City script!");
-            Destroy(newCityGO);
+            Debug.LogWarning($"[City] Missing city visual for civilization '{owner.civData.civName}', period {period}, size {size}. Keeping the current visual.", this);
             return;
-            }
-            
-        // 3. Copy over relevant data
-        newCity.cityName = this.cityName;
-        newCity.owner = this.owner;
-        newCity.OriginalOwner = this.OriginalOwner != null ? this.OriginalOwner : this.owner;
-        newCity.centerTileIndex = this.centerTileIndex;
-        newCity.cityLayer = this.cityLayer;
-        newCity.planetIndex = this.planetIndex;
-        // Copy label prefab if needed
-
-
-        // 4. Replace in the owner's city list
-        if (owner != null)
-        {
-            owner.ReplaceCityReference(this, newCity);
         }
 
-        // 5. Destroy the old city object
-Destroy(gameObject);
-                }
+        if (currentVisualInstance != null && currentVisualPrefab == desiredPrefab &&
+            (!force || currentVisualInstance.transform.parent == EnsureVisualRoot()))
+        {
+            lastVisualPeriod = period;
+            lastVisualSize = size;
+            hasResolvedVisual = true;
+            return;
+        }
+
+        Transform root = EnsureVisualRoot();
+        GameObject replacement = Instantiate(desiredPrefab, root);
+        replacement.transform.localPosition = Vector3.zero;
+        replacement.transform.localRotation = Quaternion.identity;
+        replacement.transform.localScale = Vector3.one;
+
+        GameObject previous = currentVisualInstance;
+        currentVisualInstance = replacement;
+        currentVisualPrefab = desiredPrefab;
+        lastVisualPeriod = period;
+        lastVisualSize = size;
+        hasResolvedVisual = true;
+        if (previous != null) Destroy(previous);
+    }
+
+    private Transform EnsureVisualRoot()
+    {
+        if (visualRoot != null) return visualRoot;
+        Transform existing = transform.Find("VisualRoot");
+        if (existing != null) return visualRoot = existing;
+        var rootObject = new GameObject("VisualRoot");
+        visualRoot = rootObject.transform;
+        visualRoot.SetParent(transform, false);
+        return visualRoot;
+    }
 
     // Add a method to set references
     public void SetReferences(PlanetGenerator planet)
