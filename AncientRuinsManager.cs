@@ -471,6 +471,7 @@ public class AncientRuinsManager : MonoBehaviour
                 {
                     nearest.level += data.populationBonus;
                     nearest.foodGrowthRequirement = nearest.level * 10;
+                    nearest.RefreshCityVisual();
                     rewards.Add($"Population increased by {data.populationBonus} in {nearest.cityName}!");
                 }
                 else
@@ -548,6 +549,7 @@ public class AncientRuinsManager : MonoBehaviour
                     {
                         nearestCity.level += 1;
                         nearestCity.foodGrowthRequirement = nearestCity.level * 10;
+                        nearestCity.RefreshCityVisual();
                         rewards.Add($"Population increased by 1 in {nearestCity.cityName}!");
                     }
                     else

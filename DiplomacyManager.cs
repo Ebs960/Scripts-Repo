@@ -715,6 +715,7 @@ public class DiplomacyManager : MonoBehaviour
                     giver.cities.Remove(item.city);
                     receiver.cities.Add(item.city);
                     item.city.owner = receiver;
+                    item.city.RefreshCityVisual();
                     TradeNetworkManager.EnsureInstance().RegisterCityNode(item.city);
                 }
                 break;
