@@ -3281,6 +3281,7 @@ public class GameManager : MonoBehaviour
             }
 
             city.RestoreProductionQueueForSave(restoredQueue, districtTargets);
+            city.RefreshCityVisual(force: true);
 
             // Restore city missile inventory
             if (cityData.storedMissileNames != null && cityData.storedMissileNames.Count > 0)

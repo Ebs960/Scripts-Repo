@@ -3080,6 +3080,7 @@ public class Civilization : MonoBehaviour
                             city.level--;
                             city.faminePopulationLossProgress -= 1f;
                         }
+                        city.RefreshCityVisual();
                     }
                     catch { }
                 }
@@ -3253,7 +3254,7 @@ public class Civilization : MonoBehaviour
         {
             if (city != null)
             {
-                city.UpdateCityModelForAge();
+                city.RefreshCityVisual();
             }
         }
     }
@@ -3881,7 +3882,10 @@ public class Civilization : MonoBehaviour
         {
             cities.Add(city);
             if (city.owner != this)
+            {
                 city.owner = this;
+                city.RefreshCityVisual();
+            }
             EnsureCapitalCity();
             TradeNetworkManager.EnsureInstance().RegisterCityNode(city);
             PlanetSimulationManager.NotifyCityAdded(city.planetIndex);
@@ -5193,6 +5197,7 @@ return true;
         newCity.planetIndex = (planetToUse != null) ? planetToUse.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         newCity.Initialize(cityName, this);
         AddCity(newCity);
+        newCity.RefreshCityVisual();
     }
 
     public List<EquipmentData> GetAvailableEquipment()

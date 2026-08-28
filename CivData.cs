@@ -131,8 +131,12 @@ public class CivData : ScriptableObject
     [Header("Music")]
     public MusicData musicData;
 
-    [Header("City Models")]
-    [Tooltip("City prefabs for different tech ages")]
+    [Header("City Visuals")]
+    [Tooltip("Whole-settlement visual prefabs by broad period. These explicit per-civilization references are authoritative when configured.")]
+    public CityVisualSet[] cityVisuals;
+
+    [Header("Legacy City Models (Migration Only)")]
+    [Tooltip("Legacy per-tech-age city root prefabs. Retained for serialized asset migration; not used to resolve settlement artwork.")]
     public CityPrefabByAge[] cityPrefabsByAge;
 
     [Header("Campaign Army Models")]
