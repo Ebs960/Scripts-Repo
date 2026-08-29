@@ -44,6 +44,83 @@ public class CityVisualResolverTests
         Assert.AreEqual(expected, CityVisualResolver.GetVisualSize(level));
     }
 
+    [TestCase(TechAge.PaleolithicAge, CityVisualSize.Village)]
+    [TestCase(TechAge.NeolithicAge, CityVisualSize.Town)]
+    [TestCase(TechAge.CopperAge, CityVisualSize.Town)]
+    [TestCase(TechAge.BronzeAge, CityVisualSize.City)]
+    [TestCase(TechAge.IronAge, CityVisualSize.City)]
+    [TestCase(TechAge.ClassicalAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.DarkAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.RenaissanceAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.SteamAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.ModernAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.InformationAge, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.GalacticAge, CityVisualSize.Metropolis)]
+    public void TechAgeCapsSettlementSize(TechAge age, CityVisualSize expected)
+    {
+        Assert.AreEqual(expected, CityVisualResolver.GetMaxVisualSizeForAge(age));
+    }
+
+    [Test]
+    public void UnknownTechAgeHasNoImplicitVisualSizeCap()
+    {
+        Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+            CityVisualResolver.GetMaxVisualSizeForAge((TechAge)int.MaxValue));
+    }
+
+    [TestCase(TechAge.PaleolithicAge, 40, CityVisualSize.Village)]
+    [TestCase(TechAge.NeolithicAge, 1, CityVisualSize.Village)]
+    [TestCase(TechAge.NeolithicAge, 4, CityVisualSize.Village)]
+    [TestCase(TechAge.NeolithicAge, 5, CityVisualSize.Town)]
+    [TestCase(TechAge.NeolithicAge, 9, CityVisualSize.Town)]
+    [TestCase(TechAge.NeolithicAge, 10, CityVisualSize.Town)]
+    [TestCase(TechAge.NeolithicAge, 20, CityVisualSize.Town)]
+    [TestCase(TechAge.NeolithicAge, 40, CityVisualSize.Town)]
+    [TestCase(TechAge.CopperAge, 40, CityVisualSize.Town)]
+    [TestCase(TechAge.BronzeAge, 1, CityVisualSize.Village)]
+    [TestCase(TechAge.BronzeAge, 5, CityVisualSize.Town)]
+    [TestCase(TechAge.BronzeAge, 10, CityVisualSize.City)]
+    [TestCase(TechAge.BronzeAge, 20, CityVisualSize.City)]
+    [TestCase(TechAge.BronzeAge, 40, CityVisualSize.City)]
+    [TestCase(TechAge.IronAge, 40, CityVisualSize.City)]
+    [TestCase(TechAge.ClassicalAge, 1, CityVisualSize.Village)]
+    [TestCase(TechAge.ClassicalAge, 5, CityVisualSize.Town)]
+    [TestCase(TechAge.ClassicalAge, 10, CityVisualSize.City)]
+    [TestCase(TechAge.ClassicalAge, 20, CityVisualSize.Metropolis)]
+    [TestCase(TechAge.ClassicalAge, 40, CityVisualSize.Metropolis)]
+    public void LevelAndAgeMapToEffectiveSettlementSize(TechAge age, int level, CityVisualSize expected)
+    {
+        Assert.AreEqual(expected, CityVisualResolver.GetVisualSizeForAge(age, level));
+    }
+
+    [Test]
+    public void ResolverUsesExactAgeLimitedPrefabSlot()
+    {
+        var data = ScriptableObject.CreateInstance<CivData>();
+        var village = new GameObject("VillagePrefab");
+        var town = new GameObject("TownPrefab");
+        var city = new GameObject("CityPrefab");
+        var metropolis = new GameObject("MetropolisPrefab");
+        try
+        {
+            data.cityVisuals = CompleteSets(village, town, city, metropolis);
+
+            Assert.AreSame(village, CityVisualResolver.ResolveCityVisual(data, TechAge.PaleolithicAge, 20));
+            Assert.AreSame(town, CityVisualResolver.ResolveCityVisual(data, TechAge.NeolithicAge, 20));
+            Assert.AreSame(city, CityVisualResolver.ResolveCityVisual(data, TechAge.BronzeAge, 20));
+            Assert.AreSame(metropolis, CityVisualResolver.ResolveCityVisual(data, TechAge.ClassicalAge, 20));
+            Assert.AreSame(village, CityVisualResolver.ResolveCityVisual(data, TechAge.NeolithicAge, 4));
+            Assert.AreSame(town, CityVisualResolver.ResolveCityVisual(data, TechAge.BronzeAge, 5));
+            Assert.AreSame(city, CityVisualResolver.ResolveCityVisual(data, TechAge.ClassicalAge, 10));
+        }
+        finally
+        {
+            Object.DestroyImmediate(village); Object.DestroyImmediate(town);
+            Object.DestroyImmediate(city); Object.DestroyImmediate(metropolis);
+            Object.DestroyImmediate(data);
+        }
+    }
+
     [Test]
     public void CivDataIsAuthoritativeEvenForMatchingCultureGroups()
     {
@@ -74,14 +151,14 @@ public class CityVisualResolverTests
         var village = new GameObject("VillageVisual");
         var town = new GameObject("TownVisual");
         var data = ScriptableObject.CreateInstance<CivData>();
-        var paleolithic = ScriptableObject.CreateInstance<TechData>();
+        var neolithic = ScriptableObject.CreateInstance<TechData>();
         try
         {
             var civ = civObject.AddComponent<Civilization>();
             var city = cityRoot.AddComponent<City>();
-            paleolithic.techAge = TechAge.PaleolithicAge;
+            neolithic.techAge = TechAge.NeolithicAge;
             civ.civData = data;
-            civ.researchedTechs = new System.Collections.Generic.List<TechData> { paleolithic };
+            civ.researchedTechs = new System.Collections.Generic.List<TechData> { neolithic };
             data.cityVisuals = Sets(CityVisualPeriod.Prehistoric, village, town);
             city.owner = civ;
             city.cityName = "Stateful";
@@ -117,13 +194,68 @@ public class CityVisualResolverTests
         {
             Object.DestroyImmediate(cityRoot); Object.DestroyImmediate(civObject);
             Object.DestroyImmediate(village); Object.DestroyImmediate(town);
-            Object.DestroyImmediate(data); Object.DestroyImmediate(paleolithic);
+            Object.DestroyImmediate(data); Object.DestroyImmediate(neolithic);
+        }
+    }
+
+    [Test]
+    public void RefreshUsesEffectiveSizeForCachingAndAgeAdvancement()
+    {
+        var civObject = new GameObject("Civ");
+        var cityRoot = new GameObject("PermanentCityRoot");
+        var prehistoricTown = new GameObject("PrehistoricTown");
+        var ancientCity = new GameObject("AncientCity");
+        var data = ScriptableObject.CreateInstance<CivData>();
+        var neolithic = ScriptableObject.CreateInstance<TechData>();
+        var bronze = ScriptableObject.CreateInstance<TechData>();
+        try
+        {
+            var civ = civObject.AddComponent<Civilization>();
+            var city = cityRoot.AddComponent<City>();
+            neolithic.techAge = TechAge.NeolithicAge;
+            bronze.techAge = TechAge.BronzeAge;
+            civ.civData = data;
+            civ.researchedTechs = new System.Collections.Generic.List<TechData> { neolithic };
+            data.cityVisuals = new[]
+            {
+                new CityVisualSet { period = CityVisualPeriod.Prehistoric, townPrefab = prehistoricTown },
+                new CityVisualSet { period = CityVisualPeriod.Ancient, cityPrefab = ancientCity }
+            };
+            city.owner = civ;
+            city.level = 5;
+
+            city.RefreshCityVisual();
+            var townInstance = city.CurrentVisualInstance;
+            city.level = 15;
+            city.RefreshCityVisual();
+            Assert.AreSame(townInstance, city.CurrentVisualInstance, "Levels clamped to Town must not respawn artwork.");
+
+            civ.researchedTechs.Add(bronze);
+            city.RefreshCityVisual();
+            Assert.AreNotSame(townInstance, city.CurrentVisualInstance);
+            Assert.AreEqual("AncientCity(Clone)", city.CurrentVisualInstance.name);
+        }
+        finally
+        {
+            Object.DestroyImmediate(cityRoot); Object.DestroyImmediate(civObject);
+            Object.DestroyImmediate(prehistoricTown); Object.DestroyImmediate(ancientCity);
+            Object.DestroyImmediate(data); Object.DestroyImmediate(neolithic); Object.DestroyImmediate(bronze);
         }
     }
 
     private static CityVisualSet[] Sets(CityVisualPeriod period, GameObject village, GameObject town)
     {
         return new[] { new CityVisualSet { period = period, villagePrefab = village, townPrefab = town } };
+    }
+
+    private static CityVisualSet[] CompleteSets(GameObject village, GameObject town, GameObject city, GameObject metropolis)
+    {
+        return new[]
+        {
+            new CityVisualSet { period = CityVisualPeriod.Prehistoric, villagePrefab = village, townPrefab = town, cityPrefab = city, metropolisPrefab = metropolis },
+            new CityVisualSet { period = CityVisualPeriod.Ancient, villagePrefab = village, townPrefab = town, cityPrefab = city, metropolisPrefab = metropolis },
+            new CityVisualSet { period = CityVisualPeriod.Classical, villagePrefab = village, townPrefab = town, cityPrefab = city, metropolisPrefab = metropolis }
+        };
     }
 }
 #endif
