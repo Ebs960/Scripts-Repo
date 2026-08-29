@@ -70,11 +70,35 @@ public static class CityVisualResolver
         return CityVisualSize.Village;
     }
 
+    public static CityVisualSize GetMaxVisualSizeForAge(TechAge age)
+    {
+        return age switch
+        {
+            TechAge.PaleolithicAge => CityVisualSize.Village,
+            TechAge.NeolithicAge or TechAge.CopperAge => CityVisualSize.Town,
+            TechAge.BronzeAge or TechAge.IronAge => CityVisualSize.City,
+            TechAge.ClassicalAge or
+            TechAge.DarkAge or TechAge.FeudalAge or TechAge.CastleAge or TechAge.RenaissanceAge or
+            TechAge.ColonialAge or TechAge.EnlightenmentAge or TechAge.SteamAge or
+            TechAge.ImperialAge or TechAge.ModernAge or
+            TechAge.InformationAge or TechAge.NanoAge or
+            TechAge.SolarAge or TechAge.InterstellarAge or TechAge.GalacticAge => CityVisualSize.Metropolis,
+            _ => throw new ArgumentOutOfRangeException(nameof(age), age, "Unknown technology age")
+        };
+    }
+
+    public static CityVisualSize GetVisualSizeForAge(TechAge age, int cityLevel)
+    {
+        CityVisualSize rawSize = GetVisualSize(cityLevel);
+        CityVisualSize maxSize = GetMaxVisualSizeForAge(age);
+        return rawSize <= maxSize ? rawSize : maxSize;
+    }
+
     public static GameObject ResolveCityVisual(CivData civData, TechAge age, int cityLevel)
     {
         if (civData == null || civData.cityVisuals == null) return null;
         CityVisualPeriod period = GetVisualPeriod(age);
-        CityVisualSize size = GetVisualSize(cityLevel);
+        CityVisualSize size = GetVisualSizeForAge(age, cityLevel);
         foreach (var set in civData.cityVisuals)
             if (set != null && set.period == period)
                 return set.GetPrefab(size);
