@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &7310615564387936787
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 435.40207
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.000000083989676
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -181.57288
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      propertyPath: m_Name
+      value: Ancient City (Middle Eastern)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6269145840824081735}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1378365309474784734}
+  m_SourcePrefab: {fileID: 100100000, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+--- !u!1 &7617258015909336898 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 932b54fa5c5c80642a6807adef179b1f, type: 3}
+  m_PrefabInstance: {fileID: 7310615564387936787}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &6269145840824081735
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7617258015909336898}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.97039807, y: 1.0000005, z: 0.50994885}
+  m_Center: {x: 0, y: 0, z: 0.25497442}
+--- !u!114 &1378365309474784734
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7617258015909336898}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 684e1f959e18a5247b078e4658290d84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::City
+  cityName: 
+  owner: {fileID: 0}
+  OriginalOwner: {fileID: 0}
+  isCapital: 0
+  centerTileIndex: 0
+  cityLayer: 0
+  planetIndex: -1
+  level: 1
+  foodStorage: 0
+  foodGrowthRequirement: 20
+  foodConsumptionPerPopulation: 1
+  manualCitizenAssignment: 0
+  citizenAssignments: []
+  orderPenaltyPerUnemployedCitizen: 2
+  banditRiskPerUnemployedCitizen: 5
+  cachedUnemployedCitizens: 0
+  cachedBanditRiskFromUnemployment: 0
+  baseMaxDefense: 100
+  defenseRating: 100
+  maxDefense: 100
+  baseMaxHappiness: 100
+  moraleRating: 100
+  maxMorale: 100
+  moraleDropPerTurn: 1
+  baseMaxOrder: 100
+  orderRating: 100
+  maxOrder: 100
+  orderDropPerTurn: 1
+  cachedNonStateReligionUnhappiness: 0
+  loyalty: 100
+  revoltThreshold: 30
+  capitalLoyaltyBonus: 10
+  baseRadius: 1
+  baseBuildingSlots:
+  - slotType: 9
+    slotIncrease: 3
+    description: 
+  - slotType: 1
+    slotIncrease: 1
+    description: 
+  - slotType: 2
+    slotIncrease: 1
+    description: 
+  - slotType: 3
+    slotIncrease: 1
+    description: 
+  - slotType: 8
+    slotIncrease: 1
+    description: 
+  attachedSettlements: []
+  productionPerTurn: 10
+  producedUnits: []
+  producedEquipment: []
+  storedMissiles: []
+  maxMissileStorage: 10
+  nearbyImprovements: []
+  baseFaithPerTurn: 0
+  activeDiseases: []
+  activeDisasterEffects: []
+  faminePopulationLossProgress: 0

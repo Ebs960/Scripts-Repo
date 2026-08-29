@@ -1,0 +1,179 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &7049134727755080159
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.53
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.53
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.53
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 434.38712
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.00000008805978
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -180.72025
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      propertyPath: m_Name
+      value: Medieval Village (Middle Eastern)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7153543420412754480}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4822077908529704337}
+  m_SourcePrefab: {fileID: 100100000, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+--- !u!1 &7859598829035396238 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: ad81637d5de499e4cbc0102cc10f74f6, type: 3}
+  m_PrefabInstance: {fileID: 7049134727755080159}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7153543420412754480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7859598829035396238}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 684e1f959e18a5247b078e4658290d84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::City
+  cityName: 
+  owner: {fileID: 0}
+  OriginalOwner: {fileID: 0}
+  isCapital: 0
+  centerTileIndex: 0
+  cityLayer: 0
+  planetIndex: -1
+  level: 1
+  foodStorage: 0
+  foodGrowthRequirement: 20
+  foodConsumptionPerPopulation: 1
+  manualCitizenAssignment: 0
+  citizenAssignments: []
+  orderPenaltyPerUnemployedCitizen: 2
+  banditRiskPerUnemployedCitizen: 5
+  cachedUnemployedCitizens: 0
+  cachedBanditRiskFromUnemployment: 0
+  baseMaxDefense: 100
+  defenseRating: 100
+  maxDefense: 100
+  baseMaxHappiness: 100
+  moraleRating: 100
+  maxMorale: 100
+  moraleDropPerTurn: 1
+  baseMaxOrder: 100
+  orderRating: 100
+  maxOrder: 100
+  orderDropPerTurn: 1
+  cachedNonStateReligionUnhappiness: 0
+  loyalty: 100
+  revoltThreshold: 30
+  capitalLoyaltyBonus: 10
+  baseRadius: 1
+  baseBuildingSlots:
+  - slotType: 9
+    slotIncrease: 3
+    description: 
+  - slotType: 1
+    slotIncrease: 1
+    description: 
+  - slotType: 2
+    slotIncrease: 1
+    description: 
+  - slotType: 3
+    slotIncrease: 1
+    description: 
+  - slotType: 8
+    slotIncrease: 1
+    description: 
+  attachedSettlements: []
+  productionPerTurn: 10
+  producedUnits: []
+  producedEquipment: []
+  storedMissiles: []
+  maxMissileStorage: 10
+  nearbyImprovements: []
+  baseFaithPerTurn: 0
+  activeDiseases: []
+  activeDisasterEffects: []
+  faminePopulationLossProgress: 0
+--- !u!65 &4822077908529704337
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7859598829035396238}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.973755, y: 1.0000004, z: 0.44992077}
+  m_Center: {x: 0, y: 0, z: 0.22496039}
