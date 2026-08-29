@@ -39,6 +39,9 @@ MonoBehaviour:
   startingBandGarrison: []
   climatePreferences: 0500000004000000
   attackBonus: 1
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 1
   movementBonus: 0
   foodModifier: 0
@@ -47,8 +50,47 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
   unitBonuses: []
   workerBonuses: []
+  auraBonuses: []
+  unitProductionModifiers: []
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  genericYieldBonuses: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  citySlotModifiers: []
+  effects:
+    unitBonuses: []
+    workerBonuses: []
+    auraBonuses: []
+    unitProductionModifiers: []
+    unitYieldBonuses: []
+    workerYieldBonuses: []
+    allWorkersWorkPoints: 0
+    equipmentBonuses: []
+    equipmentYieldBonuses: []
+    tileYieldBonuses: []
+    improvementBonuses: []
+    buildingBonuses: []
+    cityBonuses: []
+    genericYieldBonuses: []
+    unitLimitModifiers: []
+    buildingLimitModifiers: []
+    citySlotModifiers: []
+    nonStateReligionUnhappinessModifiers: []
+    diseaseBonuses: []
+    attritionBonuses: []
+    herdStarvationPercentReduction: 0
+    herdYieldBonuses: []
   diseaseBonuses: []
   attritionBonuses: []
   herdStarvationPercentReduction: 0
@@ -56,13 +98,35 @@ MonoBehaviour:
   isTribe: 0
   isCityState: 0
   musicData: {fileID: 11400000, guid: 96eff261ae4948f4a8f783c14bd5acd8, type: 2}
-  cityPrefabsByAge:
-  - techAge: 0
-    cityPrefab: {fileID: 4190042404842890405, guid: c0face8f3d5c4fb4d8f881f72abc5dbe, type: 3}
-  - techAge: 1
-    cityPrefab: {fileID: 9048948297536333698, guid: 65c2616984db3dc419321ddfc54c1bc4, type: 3}
-  - techAge: 2
-    cityPrefab: {fileID: 8258165273280901363, guid: 36cb236dbd7e4aa43a1c9a5141aba6ec, type: 3}
+  cityVisuals:
+  - period: 0
+    villagePrefab: {fileID: 2430886023896367875, guid: b22fb86c1ea3fad40829284aca972b30, type: 3}
+    townPrefab: {fileID: 5799542862628595310, guid: d88d1dbadab3d81448837e9c27d3c82b, type: 3}
+    cityPrefab: {fileID: 0}
+    metropolisPrefab: {fileID: 0}
+  - period: 1
+    villagePrefab: {fileID: 3957525918319293263, guid: efd9e428561a4144ca5f338c3de42f81, type: 3}
+    townPrefab: {fileID: 1325209516033459054, guid: 120006902adbf2f419456260340f3409, type: 3}
+    cityPrefab: {fileID: 1592323218145887313, guid: 7072fb1c5d1e5fa43ac73f0d80e97463, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 2
+    villagePrefab: {fileID: 2329429823473337154, guid: 7b1087252aa4dfc41a40986d25dfdbab, type: 3}
+    townPrefab: {fileID: 2759139328135837837, guid: b360172728811454b9b39df870838408, type: 3}
+    cityPrefab: {fileID: 7243016815345362981, guid: a4d60758cbf14444ebebc6e2f8885f00, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 3
+    villagePrefab: {fileID: 4185699959561138431, guid: 754d0d9ce37c3584f902116102d6db89, type: 3}
+    townPrefab: {fileID: 3119800847110624202, guid: 98c229d6210ffcf469e679a50785b666, type: 3}
+    cityPrefab: {fileID: 5751395362969147611, guid: 612d90f51cb8a134099474999161c25e, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 4
+    villagePrefab: {fileID: 6158843637158488608, guid: 7c209f155fdca204db324451e0cb8883, type: 3}
+    townPrefab: {fileID: 808170284212095309, guid: d9f48afbac0f26d4d93f22a65dea9d7c, type: 3}
+    cityPrefab: {fileID: 5293528966041815351, guid: a1626ca446417894b86d0474dfdda8c5, type: 3}
+    metropolisPrefab: {fileID: 0}
+  cityPrefabsByAge: []
+  armyPrefabsByAge: []
+  bandPrefab: {fileID: 0}
   herdPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
   herdPackedPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
   herdSettledPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}

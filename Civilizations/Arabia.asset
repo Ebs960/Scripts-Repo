@@ -37,6 +37,9 @@ MonoBehaviour:
   startingBandGarrison: []
   climatePreferences: 0200000003000000
   attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
@@ -45,10 +48,15 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
   unitBonuses:
   - unit: {fileID: 0}
     useUnitCategoryFilter: 0
     unitCategory: 0
+    buildingScope: 0
     targetUnit: {fileID: 0}
     targetWorker: {fileID: 0}
     useTargetUnitCategoryFilter: 0
@@ -58,23 +66,83 @@ MonoBehaviour:
     biome: 0
     hillRequirement: 0
     mountainRequirement: 0
+    layerRequirement: 0
+    underwaterRequirement: 0
+    orbitRequirement: 0
     useResourceFilter: 0
     resource: {fileID: 0}
     territoryRequirement: 0
     useSeasonFilter: 0
     seasons: 01000000
+    earthWorldScope: 0
+    usePlanetFilter: 0
+    planets: 
+    planetTypes: 
     attackAdd: 2
+    meleeAttackAdd: 0
+    rangedAttackAdd: 0
+    cityAttackAdd: 0
+    groundAttackAdd: 0
+    underwaterAttackAdd: 0
+    airAttackAdd: 0
+    spaceAttackAdd: 0
     defenseAdd: 0
     healthAdd: 0
+    movePointsAdd: 0
     rangeAdd: 0
+    sightRangeAdd: 0
     attackPct: 0
+    meleeAttackPct: 0
+    rangedAttackPct: 0
+    cityAttackPct: 0
+    groundAttackPct: 0
+    underwaterAttackPct: 0
+    airAttackPct: 0
+    spaceAttackPct: 0
     defensePct: 0
     healthPct: 0
+    movePointsPct: 0
     rangePct: 0
+    sightRangePct: 0
     healingRatePct: 0
     startingExperienceAdd: 0
     startingLevelsAdd: 0
   workerBonuses: []
+  auraBonuses: []
+  unitProductionModifiers: []
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  genericYieldBonuses: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  citySlotModifiers: []
+  effects:
+    unitBonuses: []
+    workerBonuses: []
+    auraBonuses: []
+    unitProductionModifiers: []
+    unitYieldBonuses: []
+    workerYieldBonuses: []
+    allWorkersWorkPoints: 0
+    equipmentBonuses: []
+    equipmentYieldBonuses: []
+    tileYieldBonuses: []
+    improvementBonuses: []
+    buildingBonuses: []
+    cityBonuses: []
+    genericYieldBonuses: []
+    unitLimitModifiers: []
+    buildingLimitModifiers: []
+    citySlotModifiers: []
+    nonStateReligionUnhappinessModifiers: []
+    diseaseBonuses: []
+    attritionBonuses: []
+    herdStarvationPercentReduction: 0
+    herdYieldBonuses: []
   diseaseBonuses: []
   attritionBonuses:
   - useSeasonFilter: 0
@@ -82,12 +150,22 @@ MonoBehaviour:
     winterDamageReductionPct: 0
     famineDamageReductionPct: 0.5
     biomeDamageReductionPct: 0.5
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   herdStarvationPercentReduction: 0.4
   herdYieldBonuses:
   - useSpeciesFilter: 1
     species: 5
     useSeasonFilter: 0
     seasons: 
+    earthWorldScope: 0
+    usePlanetFilter: 0
+    planets: 
+    planetTypes: 
     foodAdd: 0
     productionAdd: 0
     goldAdd: 2
@@ -105,13 +183,35 @@ MonoBehaviour:
   isTribe: 0
   isCityState: 0
   musicData: {fileID: 11400000, guid: d6aaa3870d41fc94185df8d4215c613c, type: 2}
-  cityPrefabsByAge:
-  - techAge: 0
-    cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
-  - techAge: 1
-    cityPrefab: {fileID: 8258165273280901363, guid: 36cb236dbd7e4aa43a1c9a5141aba6ec, type: 3}
-  - techAge: 2
-    cityPrefab: {fileID: 9048948297536333698, guid: 65c2616984db3dc419321ddfc54c1bc4, type: 3}
+  cityVisuals:
+  - period: 0
+    villagePrefab: {fileID: 1657735428330002912, guid: 2b8ec232fd3ceac4aa47ff207a09f9f8, type: 3}
+    townPrefab: {fileID: 3273841895270631041, guid: 99de41c232fb7ee459fc93e54d99c02e, type: 3}
+    cityPrefab: {fileID: 0}
+    metropolisPrefab: {fileID: 0}
+  - period: 1
+    villagePrefab: {fileID: 4662640274315555606, guid: 804b1093c8d02bb49a48df34a2d8b18f, type: 3}
+    townPrefab: {fileID: 6272294765314595033, guid: 443a5cb8fe253744288375c9621c7962, type: 3}
+    cityPrefab: {fileID: 7617258015909336898, guid: 753df8e038475a548855ee7c00683c18, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 2
+    villagePrefab: {fileID: 7874768463452766653, guid: d51dff11be860f84690a993560951ec9, type: 3}
+    townPrefab: {fileID: 7544929934938396638, guid: 7dd015e45ca4fe14f942222afc223bc2, type: 3}
+    cityPrefab: {fileID: 8589323019976317103, guid: 9ecd60ea839f9d640af0eaf047747404, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 3
+    villagePrefab: {fileID: 7859598829035396238, guid: b4c1a58d7a235ab4d8dc6d691ab20754, type: 3}
+    townPrefab: {fileID: 7470510408926769259, guid: 773e38b62c79c6e439553bef5b6a1b02, type: 3}
+    cityPrefab: {fileID: 4734116474877383991, guid: e9d7561dde6c4044ab702cf1bdae27ca, type: 3}
+    metropolisPrefab: {fileID: 0}
+  - period: 4
+    villagePrefab: {fileID: 2927404454195862218, guid: b906b7bb61543534ea5f5e8d558525cf, type: 3}
+    townPrefab: {fileID: 7357071277067441406, guid: d87ef306e80f4f84d88d15aef03a513b, type: 3}
+    cityPrefab: {fileID: 2211171538659637127, guid: 8fd8d55d66fab2e40aad915302f7124f, type: 3}
+    metropolisPrefab: {fileID: 0}
+  cityPrefabsByAge: []
+  armyPrefabsByAge: []
+  bandPrefab: {fileID: 0}
   herdPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
   herdPackedPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
   herdSettledPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
