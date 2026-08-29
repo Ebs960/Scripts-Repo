@@ -4580,7 +4580,7 @@ cityUI.ShowForCity(this);
 
         TechAge age = owner.GetCurrentAge();
         CityVisualPeriod period = CityVisualResolver.GetVisualPeriod(age);
-        CityVisualSize size = CityVisualResolver.GetVisualSize(level);
+        CityVisualSize size = CityVisualResolver.GetVisualSizeForAge(age, level);
         GameObject desiredPrefab = CityVisualResolver.ResolveCityVisual(owner.civData, age, level);
         if (desiredPrefab == null)
         {
