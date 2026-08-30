@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b623d63a0d444a89f267ebc326a64f9, type: 3}
+  m_Name: West African Band
+  m_EditorClassIdentifier: Assembly-CSharp::BandData
+  id: 
+  displayName: Band
+  description: 
+  icon: {fileID: 0}
+  prefab: {fileID: 0}
+  startingPopulation: 30
+  startingFoodReserve: 12
+  foodStorageCapacity: 30
+  baseFoodConsumptionPerTurn: 1
+  populationPerFoodUnit: 10
+  starvationGraceTurns: 2
+  populationLossPctPerStarvingTurn: 0.1
+  collapseAfterStarvationTurns: 8
+  movementPoints: 2
+  packMovementCost: 1
+  encampMovementCost: 1
+  forageMovementCost: 1
+  baseForageFood: 4
+  visionRange: 2
+  baseGarrisonCapacity: 4
+  startingGarrison: []
+  allowedStructures: []
+  allowedMilitaryRecruitment: []
+  packedYields:
+    food: 0
+    production: 0
+    gold: 0
+    science: 0
+    culture: 0
+    faith: 0
+    policyPoints: 0
+  encampedYields:
+    food: 0
+    production: 0
+    gold: 0
+    science: 0
+    culture: 0
+    faith: 0
+    policyPoints: 0
+  canFoundSettlement: 1
+  cityPopulationDivisor: 10
+  packedVisual: {fileID: 0}
+  encampedVisual: {fileID: 0}
+  civilizationVisualOverrides: []

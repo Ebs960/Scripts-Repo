@@ -36,7 +36,9 @@ MonoBehaviour:
   uniqueUnits: []
   uniqueBuildings: []
   startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
-  startingBandGarrison: []
+  startingBandGarrison:
+  - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
+    count: 2
   climatePreferences: 0200000003000000
   attackBonus: 0
   meleeAttackBonus: 0
