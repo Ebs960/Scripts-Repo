@@ -12,6 +12,10 @@ public enum BandLossReason { Starvation, AnimalAttack, Scripted, ConvertedToSett
 /// </summary>
 public sealed class Band : MonoBehaviour
 {
+    [Header("Presentation")]
+    [SerializeField, Tooltip("Parent for the currently active packed or encamped prefab. Defaults to this transform for legacy prefabs.")]
+    private Transform visualRoot;
+
     [SerializeField] private BandData data;
     [SerializeField] private string persistentId;
     [SerializeField] private int planetIndex;
@@ -66,7 +70,7 @@ public sealed class Band : MonoBehaviour
         foodReserve = Mathf.Clamp(data.startingFoodReserve, 0, FoodCapacity);
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
-        PositionVisual(); RefreshVisuals();
+        PositionVisual(); RefreshVisual();
         if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
         RefreshOwnerVision(owner);
@@ -87,7 +91,7 @@ public sealed class Band : MonoBehaviour
         queuedStructure = savedQueuedStructure;
         queuedUnit = savedQueuedUnit;
         productionProgress = Mathf.Max(0, savedProgress);
-        PositionVisual(); RefreshVisuals();
+        PositionVisual(); RefreshVisual();
     }
 
     public void ResetForNewTurn()
@@ -144,13 +148,13 @@ public sealed class Band : MonoBehaviour
     public bool Pack()
     {
         if (state == BandState.Packed || currentMovePoints < data.packMovementCost) return false;
-        currentMovePoints -= data.packMovementCost; state = BandState.Packed; RefreshVisuals(); BandPacked?.Invoke(this); return true;
+        currentMovePoints -= data.packMovementCost; state = BandState.Packed; RefreshVisual(); BandPacked?.Invoke(this); return true;
     }
 
     public bool Encamp()
     {
         if (state == BandState.Encamped || currentMovePoints < data.encampMovementCost) return false;
-        currentMovePoints -= data.encampMovementCost; state = BandState.Encamped; RefreshVisuals(); BandEncamped?.Invoke(this); return true;
+        currentMovePoints -= data.encampMovementCost; state = BandState.Encamped; RefreshVisual(); BandEncamped?.Invoke(this); return true;
     }
 
     public bool TryMove(int tileIndex, int cost = 1)
@@ -227,7 +231,7 @@ public sealed class Band : MonoBehaviour
         if (queuedStructure != null && productionProgress >= queuedStructure.productionCost)
         {
             var completed = queuedStructure; builtStructures.Add(completed); queuedStructure = null; productionProgress = 0;
-            RefreshVisuals(); BandStructureCompleted?.Invoke(this, completed);
+            RefreshStructureVisuals(); BandStructureCompleted?.Invoke(this, completed);
         }
         else if (queuedUnit != null && productionProgress >= Mathf.Max(1, queuedUnit.bandProductionCost))
         {
@@ -292,7 +296,7 @@ public sealed class Band : MonoBehaviour
     public void Capture(Civilization newOwner)
     {
         if (newOwner == null || newOwner == owner) return;
-        var old = owner; old?.UnregisterBand(this); owner = newOwner; newOwner.RegisterBand(this); RefreshVisuals();
+        var old = owner; old?.UnregisterBand(this); owner = newOwner; newOwner.RegisterBand(this); RefreshVisual();
         RefreshOwnerVision(old); RefreshOwnerVision(newOwner);
         BandCaptured?.Invoke(this, old, newOwner);
     }
@@ -343,15 +347,75 @@ public sealed class Band : MonoBehaviour
         if (civilization != null && UnitVisionManager.Instance != null)
             UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(civilization));
     }
-    private void RefreshVisuals()
+    /// <summary>Rebuilds presentation from Band data. Runtime visuals are never persistent state.</summary>
+    public void RefreshVisual()
     {
-        if (stateVisual != null) Destroy(stateVisual);
-        GameObject visualPrefab = state == BandState.Packed ? data?.packedVisual : data?.encampedVisual;
-        var civOverride = data?.civilizationVisualOverrides?.FirstOrDefault(x => x != null && owner != null && x.civilization == owner.civData);
-        if (civOverride != null)
-            visualPrefab = state == BandState.Packed ? civOverride.packedVisual : civOverride.encampedVisual;
-        if (visualPrefab != null) stateVisual = Instantiate(visualPrefab, transform);
-        foreach (var visual in structureVisuals) if (visual != null) Destroy(visual); structureVisuals.Clear();
-        if (state == BandState.Encamped) foreach (var s in builtStructures) if (s != null && s.visualAttachmentPrefab != null) structureVisuals.Add(Instantiate(s.visualAttachmentPrefab, transform));
+        ClearVisuals();
+        GameObject visualPrefab = ResolveStateVisualPrefab();
+        if (visualPrefab == null) return;
+        stateVisual = Instantiate(visualPrefab, visualRoot != null ? visualRoot : transform, false);
+        if (state == BandState.Encamped) RefreshStructureVisuals();
     }
+
+    /// <summary>Reconstructs encamped attachments exclusively from builtStructures.</summary>
+    public void RefreshStructureVisuals()
+    {
+        foreach (var visual in structureVisuals) if (visual != null) Destroy(visual); structureVisuals.Clear();
+        if (state != BandState.Encamped || stateVisual == null) return;
+
+        var camp = stateVisual.GetComponent<BandCampVisual>();
+        if (camp == null && builtStructures.Any(x => x != null && x.visualAttachmentPrefab != null))
+        {
+            Debug.LogWarning($"[Band] Encamped visual '{stateVisual.name}' has no BandCampVisual sockets; structure visuals were skipped.", stateVisual);
+            return;
+        }
+
+        var occupied = new HashSet<Transform>();
+        foreach (var structure in builtStructures.Where(x => x != null))
+        {
+            if (structure.visualAttachmentPrefab == null)
+            {
+                Debug.LogWarning($"[Band] Structure '{structure.structureName}' has no visual attachment prefab; gameplay is unaffected.", this);
+                continue;
+            }
+            if (camp == null || !camp.TryGetSocket(structure.visualSlot, occupied, out var anchor))
+            {
+                Debug.LogWarning($"[Band] Camp '{stateVisual.name}' has no available {structure.visualSlot} socket for '{structure.structureName}'; gameplay is unaffected.", this);
+                continue;
+            }
+
+            var attachment = Instantiate(structure.visualAttachmentPrefab, anchor, false);
+            attachment.transform.localPosition = Vector3.zero;
+            attachment.transform.localRotation = Quaternion.identity;
+            occupied.Add(anchor);
+            structureVisuals.Add(attachment);
+        }
+    }
+
+    public void ClearVisuals()
+    {
+        foreach (var visual in structureVisuals) if (visual != null) Destroy(visual);
+        structureVisuals.Clear();
+        if (stateVisual != null) Destroy(stateVisual);
+        stateVisual = null;
+    }
+
+    private GameObject ResolveStateVisualPrefab()
+    {
+        if (data == null) return null;
+        GameObject fallback = state == BandState.Packed ? data.packedVisual : data.encampedVisual;
+        var visualOverride = data.civilizationVisualOverrides?.FirstOrDefault(x =>
+            x != null && owner != null && x.civilization == owner.civData);
+        if (visualOverride == null) return fallback;
+        GameObject overridden = state == BandState.Packed ? visualOverride.packedVisual : visualOverride.encampedVisual;
+        return overridden != null ? overridden : fallback;
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (visualRoot == null)
+            Debug.LogWarning($"[Band] '{name}' has no visualRoot assigned; visuals will use the gameplay transform for backward compatibility.", this);
+    }
+#endif
 }

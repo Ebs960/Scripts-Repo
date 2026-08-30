@@ -20,5 +20,9 @@ public sealed class BandStructureData : ScriptableObject
     public int forageBonus;
     public bool activeWhilePacked;
     [Range(0f, 1f)] public float packedEffectMultiplier;
+
+    [Header("Presentation")]
+    [Tooltip("Semantic socket used by this structure on every culture's encamped visual prefab.")]
+    public BandStructureVisualSlot visualSlot = BandStructureVisualSlot.Generic;
     public GameObject visualAttachmentPrefab;
 }
