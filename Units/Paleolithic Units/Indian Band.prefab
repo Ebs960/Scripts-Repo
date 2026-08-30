@@ -115,7 +115,7 @@ PrefabInstance:
       addedObject: {fileID: 3459309019007488682}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4dccd22be94535c4894c2d5e5d6dc57e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1467634779982296708}
+      addedObject: {fileID: 3107575340667575243}
   m_SourcePrefab: {fileID: 100100000, guid: 4dccd22be94535c4894c2d5e5d6dc57e, type: 3}
 --- !u!1 &7439041745517911526 stripped
 GameObject:
@@ -143,7 +143,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &1467634779982296708
+--- !u!114 &3107575340667575243
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -152,39 +152,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 7439041745517911526}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1cb93753e1e150c4e9d6c8ddddcd8adf, type: 3}
+  m_Script: {fileID: 11500000, guid: 361fe3b074fc45fa8711a3931e7a3f7d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WorkerUnit
-  labelAnchor: {fileID: 1940618168629897312}
-  weaponHolder: {fileID: 0}
-  projectileWeaponHolder: {fileID: 0}
-  projectileHandHolder: {fileID: 0}
-  shieldHolder: {fileID: 0}
-  armorHolder: {fileID: 0}
-  miscHolder: {fileID: 0}
-  _equippedWeapon: {fileID: 0}
-  _equippedProjectileWeapon: {fileID: 0}
-  _equippedShield: {fileID: 0}
-  _equippedArmor: {fileID: 0}
-  _equippedMiscellaneous: {fileID: 0}
-  updateEquipmentInEditor: 1
-  _activeProjectile: {fileID: 0}
-  unitLabelPrefab: {fileID: 2985757512682955238, guid: 34179e55795ab524d985e7c20dba34dd, type: 3}
-  healthPopupVerticalOffset: 1.5
-  healthPopupRiseDistance: 1.5
-  healthPopupDuration: 0.7
-  healthPopupScale: 1.2
-  healthPopupFontSize: 7
-  takesWeatherDamage: 1
-  attackPointsPerTurn: 1
-  currentTileIndex: -1
-  currentLayer: 0
-  planetIndex: -1
-  moveSpeed: 2
-  useAnimationEventForProjectiles: 1
-  level: 1
-  <data>k__BackingField: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
+  m_EditorClassIdentifier: Assembly-CSharp::Band
+  data: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
   persistentId: 
+  planetIndex: 0
+  currentTileIndex: -1
+  state: 0
+  population: 0
+  foodReserve: 0
+  consecutiveStarvationTurns: 0
+  currentMovePoints: 0
+  garrison: []
+  builtStructures: []
+  queuedStructure: {fileID: 0}
+  queuedUnit: {fileID: 0}
+  productionProgress: 0
 --- !u!4 &7815743859154339676 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4dccd22be94535c4894c2d5e5d6dc57e, type: 3}
