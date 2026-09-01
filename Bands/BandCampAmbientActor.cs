@@ -1,6 +1,13 @@
 using UnityEngine;
 
-public enum BandCampIdleCategory { Campfire, Shelter, General }
+public enum BandCampIdleCategory
+{
+    Campfire = 0,
+    Shelter = 1,
+    General = 2,
+    StoryCircle = 3,
+    Work = 4
+}
 
 /// <summary>One visual-only camp inhabitant. It initializes once whenever its camp appears.</summary>
 public sealed class BandCampAmbientActor : MonoBehaviour
