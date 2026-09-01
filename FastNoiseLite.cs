@@ -2150,7 +2150,7 @@ public class FastNoiseLite
     }
 
 
-    // Domain Warp Fractal Independant
+    // Domain Warp Fractal Independent
     private void DomainWarpFractalIndependent(ref FNLfloat x, ref FNLfloat y)
     {
         FNLfloat xs = x;
