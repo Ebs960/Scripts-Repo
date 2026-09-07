@@ -12,9 +12,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c281ecb74ce25a4ba6f8fc8dc7f76f0, type: 3}
   m_Name: Camp
   m_EditorClassIdentifier: 
+  grantsFortifications: 0
+  tacticalFortificationProfile: {fileID: 0}
+  isPort: 0
   improvementName: Camp
   icon: {fileID: 21300000, guid: 7cbbce6381c43794f8cc2b0d140bf0ef, type: 3}
-  description: A small campfire, bedrolls, and rough windbreaks give travelers a place to cook, rest, and survive dangerous seasons. Provides +1 Food, +1 Culture, and shelter for 1 unit.
+  description: A small campfire, bedrolls, and rough windbreaks give travelers a
+    place to cook, rest, and survive dangerous seasons. Provides +1 Food, +1 Culture,
+    and shelter for 1 unit.
+  tradeNodeCapability:
+    providesTradeNode: 0
+    nodeType: 1
+    supportedDomains: 1
+    tradeRange: 0
+    surfaceTradeRange: 0
+    maritimeTradeRange: 0
+    airTradeRange: 0
+    orbitTradeRange: 0
+    solarSpaceTradeRange: 0
+    interstellarTradeRange: 0
+    civilizationRouteCapacityBonus: 0
+    nodeThroughputCapacity: 0
+    canOriginateRoutes: 0
+    canReceiveRoutes: 1
+    canRelayRoutes: 0
+    routeGoldModifier: 0
+    raidChanceReduction: 0
+    isPlanetaryGateway: 0
+    isOrbitalGateway: 0
   workCost: 6
   buildGoldCost: 0
   buildResourceCosts:
@@ -23,18 +48,22 @@ MonoBehaviour:
   constructionPrefab: {fileID: 919132149155446097, guid: bce3b66a9052358409ff335add3307db, type: 3}
   completePrefab: {fileID: 2980188352748557176, guid: 8f7ba61c7aa083141a032c6d7a0760c5, type: 3}
   destroyedPrefab: {fileID: 3976725663811050892, guid: 99482d830c8360941bf0dcb902258cd0, type: 3}
+  civVisualOverrides: []
+  cultureGroupVisualOverrides: []
+  hasSubstituteBuildCosts: 0
   canBeDismantled: 1
   dismantleGoldRefund: 0
   dismantleResourceRefunds: []
   isShelter: 1
   shelterCapacity: 1
+  storageTypes: 0
   needsCity: 0
   requiresControlledTerritory: 0
   canBuildInNeutralTerritory: 1
   canBuildInEnemyTerritory: 0
   allowedBiomes: 
   allowedUnderwaterBiomes: 
-  requiredResources: []
+  requiredTileResourceDeposits: []
   requiredTechs:
   - {fileID: 11400000, guid: 4fdea5583da84344cbeedb421757bbbe, type: 2}
   requiredCultures: []
@@ -43,6 +72,12 @@ MonoBehaviour:
   isMissileSilo: 0
   siloMissileCapacity: 5
   allowedMissileTypes: []
+  earthquakeChanceReductionPct: 0
+  earthquakeDamageReductionPct: 0
+  floodChanceReductionPct: 0
+  floodDamageReductionPct: 0
+  stormChanceReductionPct: 0
+  stormDamageReductionPct: 0
   foodPerTurn: 1
   productionPerTurn: 0
   goldPerTurn: 0
@@ -50,6 +85,16 @@ MonoBehaviour:
   culturePerTurn: 1
   policyPointsPerTurn: 0
   faithPerTurn: 0
+  auraBonuses: []
+  empireFoodModifier: 0
+  empireProductionModifier: 0
+  empireGoldModifier: 0
+  empireScienceModifier: 0
+  empireCultureModifier: 0
+  empireFaithModifier: 0
+  empirePolicyPointsModifier: 0
+  resourceProductionPerTurn: []
+  ruralSpecialistSlots: []
   movementSpeedBonus: 0
   isRoad: 0
   connectedGoldPerTurn: 0
@@ -67,8 +112,16 @@ MonoBehaviour:
   trapMaxTriggers: 1
   trapConsumeOnDeplete: 1
   trapFriendlySafe: 1
+  isFort: 0
+  fortAttack: 0
+  fortDefense: 0
+  fortHitPoints: 100
+  fortAttackRange: 1
+  fortAutoFireOnEnemyEntry: 1
+  fortAttacksPerTurn: 1
   grantsZoneOfControl: 0
   blocksZoneOfControl: 0
+  usesLaborTypes: 0
   replacesImprovements:
   - {fileID: 11400000, guid: 30aae2b8223c4524ba8b5f890b3f8d45, type: 2}
   availableUpgrades:
@@ -81,6 +134,7 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 11400000, guid: de3ddceb3f87c8640923792c23f64107, type: 2}
     requiredCulture: {fileID: 0}
     goldCost: 25
@@ -89,6 +143,7 @@ MonoBehaviour:
       amount: 2
     - resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
       amount: 1
+    hasSubstituteCosts: 0
     additionalFood: 2
     additionalProduction: 0
     additionalGold: 0
@@ -97,11 +152,47 @@ MonoBehaviour:
     additionalPolicyPoints: 0
     additionalFaith: 0
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   - upgradeName: Story Circle
     upgradeId: 
     icon: {fileID: 0}
@@ -111,6 +202,7 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 0}
     requiredCulture: {fileID: 11400000, guid: e096199803463cb44accd0747e7d9ca1, type: 2}
     goldCost: 20
@@ -119,6 +211,7 @@ MonoBehaviour:
       amount: 2
     - resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
       amount: 1
+    hasSubstituteCosts: 0
     additionalFood: 0
     additionalProduction: 0
     additionalGold: 0
@@ -127,11 +220,47 @@ MonoBehaviour:
     additionalPolicyPoints: 1
     additionalFaith: 0
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   - upgradeName: Burial Pit
     upgradeId: 
     icon: {fileID: 0}
@@ -141,10 +270,12 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 0}
     requiredCulture: {fileID: 11400000, guid: bd38031b40796bc4c956f68fab870e21, type: 2}
     goldCost: 30
     resourceCosts: []
+    hasSubstituteCosts: 0
     additionalFood: 0
     additionalProduction: 0
     additionalGold: 0
@@ -153,11 +284,47 @@ MonoBehaviour:
     additionalPolicyPoints: 0
     additionalFaith: 2
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   - upgradeName: Stone Pile
     upgradeId: 
     icon: {fileID: 0}
@@ -167,12 +334,14 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}
     requiredCulture: {fileID: 0}
     goldCost: 30
     resourceCosts:
     - resource: {fileID: 11400000, guid: e427caeeba215d640a24944aa420566b, type: 2}
       amount: 1
+    hasSubstituteCosts: 0
     additionalFood: 0
     additionalProduction: 1
     additionalGold: 2
@@ -181,11 +350,47 @@ MonoBehaviour:
     additionalPolicyPoints: 0
     additionalFaith: 0
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   - upgradeName: Tool Maker
     upgradeId: 
     icon: {fileID: 0}
@@ -195,6 +400,7 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}
     requiredCulture: {fileID: 0}
     goldCost: 35
@@ -203,6 +409,7 @@ MonoBehaviour:
       amount: 1
     - resource: {fileID: 11400000, guid: e427caeeba215d640a24944aa420566b, type: 2}
       amount: 1
+    hasSubstituteCosts: 0
     additionalFood: 0
     additionalProduction: 1
     additionalGold: 2
@@ -211,11 +418,47 @@ MonoBehaviour:
     additionalPolicyPoints: 0
     additionalFaith: 0
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0
   - upgradeName: Fishing Tent
     upgradeId: 
     icon: {fileID: 0}
@@ -225,6 +468,7 @@ MonoBehaviour:
     attachLocalPositions: []
     attachLocalEulerAngles: []
     replacePrefab: {fileID: 0}
+    civVisualOverrides: []
     requiredTech: {fileID: 11400000, guid: e08dba9323c763740a39d60a322535c5, type: 2}
     requiredCulture: {fileID: 0}
     goldCost: 40
@@ -233,6 +477,7 @@ MonoBehaviour:
       amount: 1
     - resource: {fileID: 11400000, guid: e427caeeba215d640a24944aa420566b, type: 2}
       amount: 1
+    hasSubstituteCosts: 0
     additionalFood: 2
     additionalProduction: 0
     additionalGold: 2
@@ -241,8 +486,44 @@ MonoBehaviour:
     additionalPolicyPoints: 0
     additionalFaith: 0
     additionalShelterCapacity: 0
+    auraBonuses: []
+    empireFoodModifier: 0
+    empireProductionModifier: 0
+    empireGoldModifier: 0
+    empireScienceModifier: 0
+    empireCultureModifier: 0
+    empireFaithModifier: 0
+    empirePolicyPointsModifier: 0
+    resourceProductionPerTurn: []
+    tradeRangeModifier: 0
+    tradeRouteCapacityModifier: 0
+    grantsTradeRelay: 0
+    tradeRouteGoldModifier: 0
+    tradeRaidChanceReduction: 0
+    tradeSupportedDomains: 0
+    addedRuralSpecialistSlots: []
     defenseAdd: 0
     defensePct: 0
+    fortAttackAdd: 0
+    fortAttackPct: 0
+    fortDefenseAdd: 0
+    fortDefensePct: 0
+    additionalFortHitPoints: 0
     grantsZoneOfControl: 0
     blocksZoneOfControl: 0
     uniqueUpgrade: 1
+    isSwitchableOption: 0
+    upgradeSlot: 
+    upgradePath: 
+    exclusiveGroupId: 
+    pathTier: 0
+    allowMultipleInSlot: 0
+    maxUpgradesInSlot: 0
+    supersedesLowerTiersInPath: 1
+    mutuallyExclusiveUpgradeIds: []
+    earthquakeChanceReductionPct: 0
+    earthquakeDamageReductionPct: 0
+    floodChanceReductionPct: 0
+    floodDamageReductionPct: 0
+    stormChanceReductionPct: 0
+    stormDamageReductionPct: 0

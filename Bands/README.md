@@ -2,7 +2,7 @@
 
 `Units/Paleolithic Units/Band.asset` is retained as legacy `WorkerUnitData` so old serialized references do not become missing objects. New games use `CivilizationManager.startingBandData` when it is assigned; `pioneerData` is now only the normal settler and compatibility fallback.
 
-`Improvements/Camp.asset` and `Improvements/Tent Camp.asset` are also retained. They remain permanent campsite/waystation improvements, but are not created by `Band` and are not its internal progression. Use **Tools > Campaign > Migrate Paleolithic Band Data** to create a `BandData`, then create `BandStructureData` assets for Foraging Tent, Story Circle, Burial Pit, Stone Pile, Tool Maker, and Fishing Tent after copying the project-specific costs, icons, yields, technology, and culture references from the current Camp upgrade content.
+`Improvements/Camp.asset` and `Improvements/Tent Camp.asset` are also retained. They remain permanent campsite/waystation improvements, but are not created by `Band` and are not its internal progression. Use **Tools > Campaign > Migrate Paleolithic Band Data** to create a `BandData`, then create `BandStructureData` assets for Foraging Tent, Story Circle, Stone Pile, Tool Maker, and Fishing Tent after copying the project-specific costs, icons, yields, technology, and culture references from the current Camp upgrade content.
 
 Inspector setup still required: assign the shared rules/content asset to `CivilizationManager.startingBandData`; assign each civilization's prefab containing `Band` to `CivData.bandPrefab`; configure packed/encamped visual children, allowed structures/recruits, and actual starting garrison entries. Configure `CivData.armyPrefabsByAge` with one campaign army presentation prefab per supported age. A missing civ Band prefab falls back to `BandData.prefab`. These explicit assignments avoid destructive automated guesses about existing asset GUIDs.
 
@@ -39,17 +39,19 @@ Encamped Visual Root (BandCampVisual)
 └── Structure Sockets
     ├── Foraging Tent
     ├── Story Circle
-    ├── Burial Pit
     ├── Stone Pile
     ├── Tool Maker
     └── Fishing Tent
 ```
 
-Add the six anchors to `BandCampVisual.structureSockets` with their matching semantic slots.
+  Add the five anchors to `BandCampVisual.structureSockets` with their matching semantic slots.
 Multiple anchors may share a slot; priority determines which is filled first. Set each
 `BandStructureData.visualSlot` and `visualAttachmentPrefab`. Attachment prefabs should be
 authored with their desired pivot because their local position and rotation are reset at the
-socket.
+socket. Optionally add entries to `BandStructureData.cultureGroupVisualOverrides` for shared
+Western, Middle Eastern, or other culture-group variants, and use `civilizationVisualOverrides`
+for individual civilizations. An exact civilization override takes precedence over its culture
+group; civilizations without either override fall back to `visualAttachmentPrefab`.
 
 For ambient actors, assign an Animator and choose one of these categories:
 
@@ -75,6 +77,6 @@ instantiated and destroyed with the structure visual, so their people automatica
 while that built structure is visually present. Do not add save data for these actors, add them
 to Band population or garrison lists, or create gameplay units for them.
 
-The migration command now creates/updates the six hardcoded Paleolithic structure choices (Foraging Tent, Story Circle, Burial Pit, Stone Pile, Tool Maker, and Fishing Tent), copying Camp unlocks, gold/resource costs, and yields. It also opts Hunter, Clubman, Spear Thrower, and Raft into Band recruitment. `BandPanel` lays these ten buttons out at fixed positions in a three-column Paleolithic production grid; unavailable or unassigned content remains visible with a reason instead of silently disappearing.
+The migration command now creates/updates the five hardcoded Paleolithic structure choices (Foraging Tent, Story Circle, Stone Pile, Tool Maker, and Fishing Tent), copying Camp unlocks, gold/resource costs, and yields. It also opts Hunter, Clubman, Spear Thrower, and Raft into Band recruitment. `BandPanel` lays these nine buttons out at fixed positions in a three-column Paleolithic production grid; unavailable or unassigned content remains visible with a reason instead of silently disappearing.
 
 New civilization spawning no longer falls back to the legacy Worker Band. All shipped `CivData` assets reference `Paleolithic Band Data`; that shared default begins with two real Clubmen in its garrison. A civilization can override both the BandData and its `startingBandGarrison` list. Missing visual prefabs use a runtime `Band` GameObject so gameplay initialization still succeeds, while `CivData.bandPrefab` remains the intended visual assignment.

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -16,6 +17,15 @@ public sealed class Band : MonoBehaviour
     [SerializeField, Tooltip("Parent for the currently active packed or encamped prefab. Defaults to this transform for legacy prefabs.")]
     private Transform visualRoot;
 
+    [Header("Packed Visual Animation")]
+    [SerializeField] private string packedMovingParameter = "Moving";
+    [SerializeField] private string packedIdleVariantParameter = "IdleVariant";
+    [SerializeField] private string packedWalkVariantParameter = "WalkVariant";
+    [Min(1), SerializeField] private int packedIdleVariantCount = 1;
+    [Min(1), SerializeField] private int packedWalkVariantCount = 1;
+    [SerializeField] private Vector2 packedAnimatorSpeedRange = new Vector2(.95f, 1.05f);
+    [Min(0.01f), SerializeField] private float visualMoveDuration = .4f;
+
     [SerializeField] private BandData data;
     [SerializeField] private string persistentId;
     [SerializeField] private int planetIndex;
@@ -32,6 +42,10 @@ public sealed class Band : MonoBehaviour
     [SerializeField] private int productionProgress;
     private readonly List<GameObject> structureVisuals = new List<GameObject>();
     private GameObject stateVisual;
+    private Animator[] packedAnimators = Array.Empty<Animator>();
+    private Coroutine visualMoveRoutine;
+    private Transform visualMovementRoot;
+    private Vector3 visualMovementRestingLocalPosition;
     private Civilization owner;
 
     public static event Action<Band> BandCreated, BandPacked, BandEncamped, BandMoved;
@@ -166,8 +180,10 @@ public sealed class Band : MonoBehaviour
         if (currentTileIndex < 0 || ts.GetWrappedHexDistance(currentTileIndex, tileIndex) != 1) return false;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null && occ.GetOccupantObject(tileIndex, TileLayer.Surface) != null) return false;
+        Vector3 visualStartWorldPosition = GetPackedVisualWorldPosition();
         if (occ != null && currentTileIndex >= 0) occ.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
         currentTileIndex = tileIndex; currentMovePoints -= cost; PositionVisual();
+        BeginPackedVisualMovement(visualStartWorldPosition);
         occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); RefreshOwnerVision(owner); return true;
     }
 
@@ -354,7 +370,120 @@ public sealed class Band : MonoBehaviour
         GameObject visualPrefab = ResolveStateVisualPrefab();
         if (visualPrefab == null) return;
         stateVisual = Instantiate(visualPrefab, visualRoot != null ? visualRoot : transform, false);
-        if (state == BandState.Encamped) RefreshStructureVisuals();
+        if (state == BandState.Packed) InitializePackedAnimators();
+        else RefreshStructureVisuals();
+    }
+
+    private void InitializePackedAnimators()
+    {
+        packedAnimators = stateVisual != null
+            ? stateVisual.GetComponentsInChildren<Animator>(true)
+            : Array.Empty<Animator>();
+
+        float minimumSpeed = Mathf.Min(packedAnimatorSpeedRange.x, packedAnimatorSpeedRange.y);
+        float maximumSpeed = Mathf.Max(packedAnimatorSpeedRange.x, packedAnimatorSpeedRange.y);
+        foreach (var animator in packedAnimators)
+        {
+            if (animator == null) continue;
+
+            // Packed actor clips must be in-place; the Band presentation root supplies all travel.
+            animator.applyRootMotion = false;
+            animator.speed = UnityEngine.Random.Range(minimumSpeed, maximumSpeed);
+            SetAnimatorIntegerIfPresent(animator, packedIdleVariantParameter,
+                UnityEngine.Random.Range(0, Mathf.Max(1, packedIdleVariantCount)));
+            SetAnimatorIntegerIfPresent(animator, packedWalkVariantParameter,
+                UnityEngine.Random.Range(0, Mathf.Max(1, packedWalkVariantCount)));
+            SetAnimatorBoolIfPresent(animator, packedMovingParameter, false);
+
+            if (!animator.isActiveAndEnabled || animator.runtimeAnimatorController == null) continue;
+            animator.Update(0f);
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            if (stateInfo.loop) animator.Play(stateInfo.fullPathHash, 0, UnityEngine.Random.value);
+        }
+    }
+
+    private void SetPackedAnimatorsMoving(bool moving)
+    {
+        foreach (var animator in packedAnimators)
+            SetAnimatorBoolIfPresent(animator, packedMovingParameter, moving);
+    }
+
+    private static void SetAnimatorBoolIfPresent(Animator animator, string parameterName, bool value)
+    {
+        if (animator == null || string.IsNullOrEmpty(parameterName)) return;
+        int hash = Animator.StringToHash(parameterName);
+        foreach (var parameter in animator.parameters)
+            if (parameter.nameHash == hash && parameter.type == AnimatorControllerParameterType.Bool)
+            {
+                animator.SetBool(hash, value);
+                return;
+            }
+    }
+
+    private static void SetAnimatorIntegerIfPresent(Animator animator, string parameterName, int value)
+    {
+        if (animator == null || string.IsNullOrEmpty(parameterName)) return;
+        int hash = Animator.StringToHash(parameterName);
+        foreach (var parameter in animator.parameters)
+            if (parameter.nameHash == hash && parameter.type == AnimatorControllerParameterType.Int)
+            {
+                animator.SetInteger(hash, value);
+                return;
+            }
+    }
+
+    private Vector3 GetPackedVisualWorldPosition()
+    {
+        Transform movementRoot = GetPackedVisualMovementRoot();
+        return movementRoot != null ? movementRoot.position : transform.position;
+    }
+
+    private Transform GetPackedVisualMovementRoot()
+    {
+        if (visualRoot != null && visualRoot != transform) return visualRoot;
+        return stateVisual != null ? stateVisual.transform : null;
+    }
+
+    private void BeginPackedVisualMovement(Vector3 startWorldPosition)
+    {
+        Transform movementRoot = GetPackedVisualMovementRoot();
+        if (movementRoot == null) return;
+
+        Vector3 restingLocalPosition = visualMoveRoutine != null && visualMovementRoot == movementRoot
+            ? visualMovementRestingLocalPosition
+            : movementRoot.localPosition;
+        if (visualMoveRoutine != null) StopCoroutine(visualMoveRoutine);
+
+        visualMovementRoot = movementRoot;
+        visualMovementRestingLocalPosition = restingLocalPosition;
+        movementRoot.position = startWorldPosition;
+        SetPackedAnimatorsMoving(true);
+        visualMoveRoutine = StartCoroutine(MovePackedVisualToRest(movementRoot, restingLocalPosition));
+    }
+
+    private IEnumerator MovePackedVisualToRest(Transform movementRoot, Vector3 restingLocalPosition)
+    {
+        Vector3 startLocalPosition = movementRoot.localPosition;
+        float duration = Mathf.Max(0.01f, visualMoveDuration);
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            if (movementRoot == null)
+            {
+                visualMoveRoutine = null;
+                visualMovementRoot = null;
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            movementRoot.localPosition = Vector3.Lerp(startLocalPosition, restingLocalPosition, Mathf.Clamp01(elapsed / duration));
+            yield return null;
+        }
+
+        movementRoot.localPosition = restingLocalPosition;
+        SetPackedAnimatorsMoving(false);
+        visualMoveRoutine = null;
+        visualMovementRoot = null;
     }
 
     /// <summary>Reconstructs encamped attachments exclusively from builtStructures.</summary>
@@ -364,7 +493,8 @@ public sealed class Band : MonoBehaviour
         if (state != BandState.Encamped || stateVisual == null) return;
 
         var camp = stateVisual.GetComponent<BandCampVisual>();
-        if (camp == null && builtStructures.Any(x => x != null && x.visualAttachmentPrefab != null))
+        var civData = owner != null ? owner.civData : null;
+        if (camp == null && builtStructures.Any(x => x != null && x.GetVisualAttachmentPrefab(civData) != null))
         {
             Debug.LogWarning($"[Band] Encamped visual '{stateVisual.name}' has no BandCampVisual sockets; structure visuals were skipped.", stateVisual);
             return;
@@ -373,7 +503,8 @@ public sealed class Band : MonoBehaviour
         var occupied = new HashSet<Transform>();
         foreach (var structure in builtStructures.Where(x => x != null))
         {
-            if (structure.visualAttachmentPrefab == null)
+            GameObject prefab = structure.GetVisualAttachmentPrefab(civData);
+            if (prefab == null)
             {
                 Debug.LogWarning($"[Band] Structure '{structure.structureName}' has no visual attachment prefab; gameplay is unaffected.", this);
                 continue;
@@ -384,7 +515,7 @@ public sealed class Band : MonoBehaviour
                 continue;
             }
 
-            var attachment = Instantiate(structure.visualAttachmentPrefab, anchor, false);
+            var attachment = Instantiate(prefab, anchor, false);
             attachment.transform.localPosition = Vector3.zero;
             attachment.transform.localRotation = Quaternion.identity;
             occupied.Add(anchor);
@@ -394,6 +525,17 @@ public sealed class Band : MonoBehaviour
 
     public void ClearVisuals()
     {
+        if (visualMoveRoutine != null)
+        {
+            StopCoroutine(visualMoveRoutine);
+            visualMoveRoutine = null;
+        }
+        if (visualMovementRoot != null)
+            visualMovementRoot.localPosition = visualMovementRestingLocalPosition;
+        visualMovementRoot = null;
+        SetPackedAnimatorsMoving(false);
+        packedAnimators = Array.Empty<Animator>();
+
         foreach (var visual in structureVisuals) if (visual != null) Destroy(visual);
         structureVisuals.Clear();
         if (stateVisual != null) Destroy(stateVisual);

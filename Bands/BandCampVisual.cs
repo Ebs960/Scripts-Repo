@@ -6,13 +6,12 @@ using UnityEngine;
 /// <summary>Semantic attachment points supplied by every culture-specific camp prefab.</summary>
 public enum BandStructureVisualSlot
 {
-    Generic,
-    ForagingTent,
-    StoryCircle,
-    BurialPit,
-    StonePile,
-    ToolMaker,
-    FishingTent
+    Generic = 0,
+    ForagingTent = 1,
+    StoryCircle = 2,
+    StonePile = 4,
+    ToolMaker = 5,
+    FishingTent = 6
 }
 
 [Serializable]
