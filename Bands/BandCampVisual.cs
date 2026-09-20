@@ -9,6 +9,7 @@ public enum BandStructureVisualSlot
     Generic = 0,
     ForagingTent = 1,
     StoryCircle = 2,
+    BurialPit = 3,
     StonePile = 4,
     ToolMaker = 5,
     FishingTent = 6

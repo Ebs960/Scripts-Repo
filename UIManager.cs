@@ -42,6 +42,7 @@ public class UIManager : MonoBehaviour
     public GameObject techPanel;
     public GameObject culturePanel;
     public GameObject herdPanel;
+    [SerializeField] private GameObject bandPanel;
     public GameObject governmentPanel;
     public GameObject religionPanel;
     public GameObject tradePanel;
@@ -174,6 +175,8 @@ public class UIManager : MonoBehaviour
             { "unitInfoPanel", unitInfoPanel },
             { "HerdPanel", herdPanel },
             { "herdPanel", herdPanel },
+            { "BandPanel", bandPanel },
+            { "bandPanel", bandPanel },
             { "GovernmentPanel", governmentPanel },
             { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
@@ -940,6 +943,33 @@ public class UIManager : MonoBehaviour
         if (herdPanel == null) return;
         var hp = herdPanel.GetComponent<HerdPanel>();
         if (hp != null) hp.HidePanel();
+    }
+
+    public void ShowBandPanelForBand(Band band)
+    {
+        if (band == null || modalVisible || IsLoadingActive()) return;
+        if (bandPanel == null)
+        {
+            var found = FindAnyObjectByType<BandPanel>(FindObjectsInactive.Include);
+            if (found == null)
+            {
+                Debug.LogError("UIManager.ShowBandPanelForBand: assign an authored BandPanel in the Inspector.");
+                return;
+            }
+            bandPanel = found.gameObject;
+            panelDict["BandPanel"] = bandPanel;
+            panelDict["bandPanel"] = bandPanel;
+        }
+        ShowPanel("BandPanel");
+        bandPanel.GetComponent<BandPanel>()?.Show(band);
+    }
+
+    public void HideBandPanel()
+    {
+        if (bandPanel == null) return;
+        var panel = bandPanel.GetComponent<BandPanel>();
+        if (panel != null) panel.Hide();
+        else bandPanel.SetActive(false);
     }
 
     public void HideUnitInfoPanel()

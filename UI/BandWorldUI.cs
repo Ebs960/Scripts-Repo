@@ -7,6 +7,11 @@ public sealed class BandWorldUI : MonoBehaviour
     [SerializeField] private TMP_Text label;
     [SerializeField] private Color packedColor = Color.white, encampedColor = new Color(.8f, .65f, .4f), starvingColor = Color.red;
     private Band band;
+    private void OnEnable()
+    {
+        if (band == null) band = GetComponentInParent<Band>();
+        Refresh();
+    }
     public void Initialize(Band value) { band = value; Refresh(); }
     public void Refresh()
     {

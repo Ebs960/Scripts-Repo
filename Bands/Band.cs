@@ -52,6 +52,7 @@ public sealed class Band : MonoBehaviour
     public static event Action<Band, Civilization, Civilization> BandCaptured;
     public static event Action<Band, BandLossReason> BandDestroyed;
     public static event Action<Band> BandStarvationStarted, BandStarvationEnded, BandGarrisonChanged;
+    public static event Action<Band> BandChanged;
     public static event Action<Band, int, int> BandPopulationChanged;
     public static event Action<Band, BandStructureData> BandStructureCompleted;
 
@@ -85,6 +86,7 @@ public sealed class Band : MonoBehaviour
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
         PositionVisual(); RefreshVisual();
+        GetComponentInChildren<BandWorldUI>(true)?.Initialize(this);
         if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
         RefreshOwnerVision(owner);
@@ -106,6 +108,7 @@ public sealed class Band : MonoBehaviour
         queuedUnit = savedQueuedUnit;
         productionProgress = Mathf.Max(0, savedProgress);
         PositionVisual(); RefreshVisual();
+        NotifyChanged();
     }
 
     public void ResetForNewTurn()
@@ -115,6 +118,7 @@ public sealed class Band : MonoBehaviour
         foodReserve = Mathf.Clamp(foodReserve + Mathf.Max(0, yields.food), 0, FoodCapacity);
         ProcessFoodUpkeep();
         if (this != null && state == BandState.Encamped) ProcessProduction(GetProductionYield());
+        if (this != null) NotifyChanged();
     }
 
     public BandYieldSet GetCurrentYields()
@@ -162,13 +166,13 @@ public sealed class Band : MonoBehaviour
     public bool Pack()
     {
         if (state == BandState.Packed || currentMovePoints < data.packMovementCost) return false;
-        currentMovePoints -= data.packMovementCost; state = BandState.Packed; RefreshVisual(); BandPacked?.Invoke(this); return true;
+        currentMovePoints -= data.packMovementCost; state = BandState.Packed; RefreshVisual(); BandPacked?.Invoke(this); NotifyChanged(); return true;
     }
 
     public bool Encamp()
     {
         if (state == BandState.Encamped || currentMovePoints < data.encampMovementCost) return false;
-        currentMovePoints -= data.encampMovementCost; state = BandState.Encamped; RefreshVisual(); BandEncamped?.Invoke(this); return true;
+        currentMovePoints -= data.encampMovementCost; state = BandState.Encamped; RefreshVisual(); BandEncamped?.Invoke(this); NotifyChanged(); return true;
     }
 
     public bool TryMove(int tileIndex, int cost = 1)
@@ -184,7 +188,7 @@ public sealed class Band : MonoBehaviour
         if (occ != null && currentTileIndex >= 0) occ.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
         currentTileIndex = tileIndex; currentMovePoints -= cost; PositionVisual();
         BeginPackedVisualMovement(visualStartWorldPosition);
-        occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); RefreshOwnerVision(owner); return true;
+        occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); RefreshOwnerVision(owner); NotifyChanged(); return true;
     }
 
     public int Forage(int amount = -1)
@@ -192,7 +196,7 @@ public sealed class Band : MonoBehaviour
         if (currentMovePoints < data.forageMovementCost) return 0;
         int gathered = amount >= 0 ? amount : data.baseForageFood + builtStructures.Where(x => x != null).Sum(x => x.forageBonus);
         int accepted = Mathf.Clamp(gathered, 0, Mathf.Max(0, FoodCapacity - foodReserve));
-        foodReserve += accepted; currentMovePoints -= data.forageMovementCost; return accepted;
+        foodReserve += accepted; currentMovePoints -= data.forageMovementCost; NotifyChanged(); return accepted;
     }
 
     public bool QueueStructure(BandStructureData structure)
@@ -200,7 +204,7 @@ public sealed class Band : MonoBehaviour
         if (!CanQueueStructure(structure, out _)) return false;
         if (!ResourceCost.Consume(owner, structure.resourceCosts)) return false;
         if (structure.goldCost > 0) owner.gold -= structure.goldCost;
-        queuedStructure = structure; queuedUnit = null; productionProgress = 0; return true;
+        queuedStructure = structure; queuedUnit = null; productionProgress = 0; NotifyChanged(); return true;
     }
 
     public bool CanQueueStructure(BandStructureData structure, out string reason)
@@ -210,6 +214,7 @@ public sealed class Band : MonoBehaviour
         if (structure == null || data == null || !data.allowedStructures.Contains(structure)) { reason = "Not available to this Band"; return false; }
         if (builtStructures.Contains(structure)) { reason = "Completed"; return false; }
         if (queuedStructure == structure) { reason = "In progress"; return false; }
+        if (queuedStructure != null || queuedUnit != null) { reason = "Production already active"; return false; }
         if (owner == null) { reason = "No owner"; return false; }
         if (structure.requiredTech != null && !owner.researchedTechs.Contains(structure.requiredTech)) { reason = "Requires technology"; return false; }
         if (structure.requiredCulture != null && !owner.researchedCultures.Contains(structure.requiredCulture)) { reason = "Requires culture"; return false; }
@@ -223,7 +228,7 @@ public sealed class Band : MonoBehaviour
         if (!CanQueueMilitaryUnit(unit, out _)) return false;
         if (!ResourceCost.Consume(owner, unit.requiredResourceCosts, unit.hasSubstituteResourceCosts)) return false;
         if (unit.goldCost > 0) owner.gold -= unit.goldCost;
-        queuedUnit = unit; queuedStructure = null; productionProgress = 0; return true;
+        queuedUnit = unit; queuedStructure = null; productionProgress = 0; NotifyChanged(); return true;
     }
 
     public bool CanQueueMilitaryUnit(CombatUnitData unit, out string reason)
@@ -237,6 +242,7 @@ public sealed class Band : MonoBehaviour
         { reason = "Missing strategic resources"; return false; }
         if (garrison.Count >= GarrisonCapacity) { reason = "Garrison full"; return false; }
         if (queuedUnit == unit) { reason = "In progress"; return false; }
+        if (queuedStructure != null || queuedUnit != null) { reason = "Production already active"; return false; }
         return true;
     }
 
@@ -253,6 +259,7 @@ public sealed class Band : MonoBehaviour
         {
             var completed = queuedUnit; queuedUnit = null; productionProgress = 0; SpawnAndGarrison(completed);
         }
+        NotifyChanged();
     }
 
     public bool TryAddToGarrison(CombatUnit unit)
@@ -261,7 +268,7 @@ public sealed class Band : MonoBehaviour
         if (unit.currentTileIndex >= 0 && unit.currentTileIndex != currentTileIndex) return false;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (unit.currentTileIndex >= 0) occ?.ClearOccupantById(unit.currentTileIndex, unit.currentLayer, unit.gameObject.GetRuntimeId());
-        garrison.Add(unit); unit.StoreInBand(this); BandGarrisonChanged?.Invoke(this); return true;
+        garrison.Add(unit); unit.StoreInBand(this); BandGarrisonChanged?.Invoke(this); NotifyChanged(); return true;
     }
 
     public bool FormArmy(IList<CombatUnit> selected, out CombatUnit representative)
@@ -276,7 +283,7 @@ public sealed class Band : MonoBehaviour
             unit.AssignMilitaryFormation(id, MilitaryFormationType.Army); unit.stackSlot = i;
             if (i == 0) representative = unit;
         }
-        CampaignArmyService.RefreshPresentation(representative); BandGarrisonChanged?.Invoke(this); return true;
+        CampaignArmyService.RefreshPresentation(representative); BandGarrisonChanged?.Invoke(this); NotifyChanged(); return true;
     }
 
     public void ReleaseSurvivingGarrisonAsArmy()
@@ -306,7 +313,42 @@ public sealed class Band : MonoBehaviour
             member.StoreInBand(this);
         }
         BandGarrisonChanged?.Invoke(this);
+        NotifyChanged();
         return true;
+    }
+
+    public bool CanFoundSettlement(out string reason)
+    {
+        reason = string.Empty;
+        if (data == null || !data.canFoundSettlement) { reason = "This Band cannot found a settlement."; return false; }
+        if (state != BandState.Encamped) { reason = "Encamp before founding a settlement."; return false; }
+        if (owner == null) { reason = "This Band has no owner."; return false; }
+        if (!owner.CanFoundMoreCities()) { reason = $"City capacity reached ({owner.cities.Count}/{owner.CurrentCityCap})."; return false; }
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null ? ts.GetTileData(currentTileIndex) : null;
+        if (tile == null || !tile.isLand) { reason = "A settlement requires a valid land tile."; return false; }
+        const int minimumCityDistance = 4;
+        var civilizations = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetAllCivs() : null;
+        if (civilizations != null)
+            foreach (var civilization in civilizations)
+                foreach (var city in civilization.cities)
+                    if (city != null && city.planetIndex == planetIndex && ts.GetWrappedHexDistance(currentTileIndex, city.centerTileIndex) < minimumCityDistance)
+                    { reason = "Too close to another settlement."; return false; }
+        return true;
+    }
+
+    public City FoundSettlement(out string reason)
+    {
+        if (!CanFoundSettlement(out reason)) return null;
+        int oldCount = owner.cities.Count;
+        owner.FoundNewCity(currentTileIndex, null, GameManager.Instance?.GetPlanetGenerator(planetIndex), GameManager.PlanetLayerType.Surface);
+        if (owner.cities.Count <= oldCount) { reason = "Settlement creation failed."; return null; }
+        City city = owner.cities[owner.cities.Count - 1];
+        city.level = Mathf.Max(1, population / Mathf.Max(1, data.cityPopulationDivisor));
+        city.UpdateLabel();
+        ReleaseSurvivingGarrisonAsArmy();
+        DestroyBand(BandLossReason.ConvertedToSettlement);
+        return city;
     }
 
     public void Capture(Civilization newOwner)
@@ -315,6 +357,7 @@ public sealed class Band : MonoBehaviour
         var old = owner; old?.UnregisterBand(this); owner = newOwner; newOwner.RegisterBand(this); RefreshVisual();
         RefreshOwnerVision(old); RefreshOwnerVision(newOwner);
         BandCaptured?.Invoke(this, old, newOwner);
+        NotifyChanged();
     }
 
     public void DestroyBand(BandLossReason reason)
@@ -330,6 +373,12 @@ public sealed class Band : MonoBehaviour
         owner?.UnregisterBand(this);
         (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
         RefreshOwnerVision(owner); BandDestroyed?.Invoke(this, reason); Destroy(gameObject);
+    }
+
+    private void NotifyChanged()
+    {
+        BandChanged?.Invoke(this);
+        GetComponentInChildren<BandWorldUI>(true)?.Refresh();
     }
 
     private int GetProductionYield() => Mathf.Max(0, data.encampedYields.production + builtStructures.Where(x => x != null).Sum(x => x.yields.production));
