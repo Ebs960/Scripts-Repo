@@ -28,7 +28,7 @@ public static class BandMigrationTool
         EditorUtility.SetDirty(data);
         AssetDatabase.SaveAssets();
         Selection.activeObject = data;
-        Debug.Log("Created/updated Paleolithic BandData, five Camp-derived Band structures, and the four Paleolithic recruitment entries. Legacy assets were retained for compatibility.");
+        Debug.Log("Created/updated Paleolithic BandData, six data-driven Band structures, and the four Paleolithic recruitment entries. Legacy assets were retained for compatibility.");
     }
 
     private static void MigrateCampUpgrades(BandData bandData)
@@ -41,11 +41,12 @@ public static class BandMigrationTool
         var serialized = new SerializedObject(camp);
         var upgrades = serialized.FindProperty("availableUpgrades");
         bandData.allowedStructures = new List<BandStructureData>();
+        string[] intendedStructures = { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" };
         for (int i = 0; upgrades != null && i < upgrades.arraySize; i++)
         {
             var source = upgrades.GetArrayElementAtIndex(i);
             string structureName = source.FindPropertyRelative("upgradeName").stringValue;
-            if (System.Array.IndexOf(new[] { "Foraging Tent", "Story Circle", "Stone Pile", "Tool Maker", "Fishing Tent" }, structureName) < 0) continue;
+            if (System.Array.IndexOf(intendedStructures, structureName) < 0) continue;
             string assetPath = $"{outputFolder}/{structureName}.asset";
             var target = AssetDatabase.LoadAssetAtPath<BandStructureData>(assetPath);
             if (target == null) { target = ScriptableObject.CreateInstance<BandStructureData>(); AssetDatabase.CreateAsset(target, assetPath); }
@@ -57,6 +58,7 @@ public static class BandMigrationTool
             target.requiredTech = source.FindPropertyRelative("requiredTech").objectReferenceValue as TechData;
             target.requiredCulture = source.FindPropertyRelative("requiredCulture").objectReferenceValue as CultureData;
             target.resourceCosts = ReadResourceCosts(source.FindPropertyRelative("resourceCosts"));
+            target.visualSlot = GetVisualSlot(structureName);
             target.yields = new BandYieldSet
             {
                 food = source.FindPropertyRelative("additionalFood").intValue,
@@ -68,6 +70,30 @@ public static class BandMigrationTool
                 faith = source.FindPropertyRelative("additionalFaith").intValue
             };
             EditorUtility.SetDirty(target); bandData.allowedStructures.Add(target);
+        }
+        foreach (string structureName in intendedStructures)
+        {
+            if (bandData.allowedStructures.Exists(x => x != null && x.structureName == structureName)) continue;
+            string assetPath = $"{outputFolder}/{structureName}.asset";
+            var target = AssetDatabase.LoadAssetAtPath<BandStructureData>(assetPath);
+            if (target == null) { target = ScriptableObject.CreateInstance<BandStructureData>(); target.structureName = structureName; AssetDatabase.CreateAsset(target, assetPath); }
+            target.visualSlot = GetVisualSlot(structureName);
+            EditorUtility.SetDirty(target); bandData.allowedStructures.Add(target);
+            Debug.LogWarning($"Created '{structureName}' with default costs. Assign its reviewed requirements, yields, icon, and visual attachment before shipping.");
+        }
+    }
+
+    private static BandStructureVisualSlot GetVisualSlot(string structureName)
+    {
+        switch (structureName)
+        {
+            case "Foraging Tent": return BandStructureVisualSlot.ForagingTent;
+            case "Story Circle": return BandStructureVisualSlot.StoryCircle;
+            case "Burial Pit": return BandStructureVisualSlot.BurialPit;
+            case "Stone Pile": return BandStructureVisualSlot.StonePile;
+            case "Tool Maker": return BandStructureVisualSlot.ToolMaker;
+            case "Fishing Tent": return BandStructureVisualSlot.FishingTent;
+            default: return BandStructureVisualSlot.Generic;
         }
     }
 
