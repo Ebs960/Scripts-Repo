@@ -39,12 +39,13 @@ Encamped Visual Root (BandCampVisual)
 └── Structure Sockets
     ├── Foraging Tent
     ├── Story Circle
+    ├── Burial Pit
     ├── Stone Pile
     ├── Tool Maker
     └── Fishing Tent
 ```
 
-  Add the five anchors to `BandCampVisual.structureSockets` with their matching semantic slots.
+  Add the six anchors to `BandCampVisual.structureSockets` with their matching semantic slots.
 Multiple anchors may share a slot; priority determines which is filled first. Set each
 `BandStructureData.visualSlot` and `visualAttachmentPrefab`. Attachment prefabs should be
 authored with their desired pivot because their local position and rotation are reset at the
@@ -77,6 +78,18 @@ instantiated and destroyed with the structure visual, so their people automatica
 while that built structure is visually present. Do not add save data for these actors, add them
 to Band population or garrison lists, or create gameplay units for them.
 
-The migration command now creates/updates the five hardcoded Paleolithic structure choices (Foraging Tent, Story Circle, Stone Pile, Tool Maker, and Fishing Tent), copying Camp unlocks, gold/resource costs, and yields. It also opts Hunter, Clubman, Spear Thrower, and Raft into Band recruitment. `BandPanel` lays these nine buttons out at fixed positions in a three-column Paleolithic production grid; unavailable or unassigned content remains visible with a reason instead of silently disappearing.
+The migration command now creates/updates the six intended Paleolithic structure choices (Foraging Tent, Story Circle, Burial Pit, Stone Pile, Tool Maker, and Fishing Tent), copying Camp unlocks, gold/resource costs, and yields where matching source content exists. It also opts Hunter, Clubman, Spear Thrower, and Raft into Band recruitment. `BandPanel` uses direct asset bindings in a responsive three-column grid; unavailable content remains visible with a reason instead of being found by a display-name lookup.
+
+## Band management UI authoring
+
+The runtime integration deliberately does not serialize hand-written prefab YAML. In Unity, duplicate the visual shell of `Herds/Herd UI.prefab`, remove Herd-only governor/animal controls, add `BandPanel`, and save it as `UI/Band UI.prefab`. Assign its overview texts, five action buttons, close button, a `ScrollRect` content transform as `productionButtonsRoot`, and the garrison controls listed on `BandPanel`. The production root must be inside a vertical `ScrollRect`; `BandPanel` supplies/configures its three-column `GridLayoutGroup` and `ContentSizeFitter`. Assign this prefab instance to `UIManager.bandPanel`. Buttons are wired by `BandPanel.Awake`, so persistent Inspector OnClick entries should be empty.
+
+For a world marker, add one child canvas to each gameplay Band prefab (not to transient packed/camp visual prefabs), add `BandWorldUI`, and assign its TMP label. The component locates its parent Band on enable and the Band refreshes it on state changes, moves, starvation, garrison changes, production, and restoration. Set the canvas to the same world-space/raycast conventions as the Herd label and disable raycast targets so it cannot consume map clicks. Do not add more than one marker per gameplay prefab.
+
+Before play-mode validation, run **Tools > Campaign > Migrate Paleolithic Band Data**. Review the generated Burial Pit defaults and assign icons, requirements, yields, structure visual attachments, and all six semantic `BandCampVisual` sockets. The shared data currently contains null default prefab/visual fields by design; retain culture-specific `CivData.bandPrefab` and visual overrides rather than replacing them globally.
 
 New civilization spawning no longer falls back to the legacy Worker Band. All shipped `CivData` assets reference `Paleolithic Band Data`; that shared default begins with two real Clubmen in its garrison. A civilization can override both the BandData and its `startingBandGarrison` list. Missing visual prefabs use a runtime `Band` GameObject so gameplay initialization still succeeds, while `CivData.bandPrefab` remains the intended visual assignment.
+
+## Band UI play-mode acceptance checklist
+
+Unity play-mode validation is required after the Inspector work above; command-line source checks do not verify scene/prefab wiring. In a campaign with a player-owned Band, verify: select through the map and click an adjacent passable tile; reject occupied/non-adjacent movement without changing occupancy or movement; encamp, forage, pack, and observe the panel and single world marker; queue and complete each configured structure and one military unit across turns; save/load both an active queue and an encamped developed Band; select individual/all garrison members, form an army, then garrison an eligible same-tile army; trigger and recover from starvation, then destroy a selected Band; found a settlement and confirm the Band panel closes and City UI opens. Repeat selection/action cycles while watching the Hierarchy to confirm that panels, markers, listeners, and selection indicators do not accumulate. Finally repeat with every configured culture visual override (Western, West African, East African, Mesoamerican, East Asian, Middle Eastern, South Asian, and North American Native).

@@ -36,6 +36,7 @@ public class UnitSelectionManager : MonoBehaviour
     private BaseUnit selectedUnit; // Can be CombatUnit or WorkerUnit (both inherit from BaseUnit)
     // Selected herd (packed/mobile)
     private Herd selectedHerd;
+    private Band selectedBand;
     private GameObject selectionIndicator;
     // Frame guard: prevent OnTileClickedTileSystem from deselecting a unit
     // that was just selected by OnMouseDown in the same frame.
@@ -240,6 +241,21 @@ public class UnitSelectionManager : MonoBehaviour
         }
         else
         {
+            var clickedBand = GetBandOnTile(tileIndex) ?? GetBandAtPosition(worldPos);
+            if (clickedBand != null)
+            {
+                SelectBand(clickedBand);
+                return true;
+            }
+            if (selectedBand != null)
+            {
+                var ts = TileSystem.GetForPlanet(selectedBand.PlanetIndex) ?? TileSystem.Instance;
+                if (ts != null && ts.GetWrappedHexDistance(selectedBand.CurrentTileIndex, tileIndex) == 1)
+                {
+                    MoveSelectedBandToTile(tileIndex);
+                    return true;
+                }
+            }
             // Guard: if a unit was selected this very frame (e.g. via OnMouseDown on the
             // unit's collider), do NOT deselect it here. Let that click be authoritative.
             // Try herd selection: if a Herd is occupying this tile, open the Herd panel
@@ -249,6 +265,7 @@ public class UnitSelectionManager : MonoBehaviour
                 if (herd == null) herd = GetHerdAtPosition(worldPos);
                 if (herd != null)
                 {
+                    DeselectBand();
                     if (herd.isPacked)
                     {
                         SelectHerd(herd);
@@ -266,6 +283,7 @@ public class UnitSelectionManager : MonoBehaviour
                 return false;
 
             DeselectUnit();
+            DeselectBand();
             PlayResourceClickSound(tileIndex);
             return false; // don't consume; allow improvements to open when no unit present
         }
@@ -333,6 +351,23 @@ public class UnitSelectionManager : MonoBehaviour
         catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetHerdOnTile({tileIndex}) failed: {ex.Message}"); }
         return null;
     }
+
+    private Band GetBandOnTile(int tileIndex)
+    {
+        int planet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var occupant = (TileOccupancyManager.GetForPlanet(planet) ?? TileOccupancyManager.Instance)?.TryGetAnyOccupantObject(tileIndex);
+        return occupant != null ? occupant.GetComponentInParent<Band>() : null;
+    }
+
+    private static Band GetBandAtPosition(Vector3 worldPosition)
+    {
+        foreach (var collider in Physics.OverlapSphere(worldPosition, 1.5f))
+        {
+            var result = collider.GetComponentInParent<Band>();
+            if (result != null) return result;
+        }
+        return null;
+    }
     
     /// <summary>
     /// Handle mouse input for unit selection and movement
@@ -373,13 +408,15 @@ public class UnitSelectionManager : MonoBehaviour
         // Left click on void (no tile hit): deselect the current unit.
         // OnTileClicked only fires for valid tile hits, so we must handle the
         // "clicked on nothing" case here.
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && selectedUnit != null)
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && (selectedUnit != null || selectedHerd != null || selectedBand != null))
         {
             // Only deselect if TileSystem did NOT already handle this click
             // (i.e., the click didn't land on a valid tile).
             if (!isHoveringTile || cachedHoveredTileIndex < 0)
             {
                 DeselectUnit();
+                DeselectHerd();
+                DeselectBand();
             }
         }
 
@@ -442,7 +479,7 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void StartPathPreview()
     {
-        if (selectedUnit == null && selectedHerd == null) return;
+        if (selectedUnit == null && selectedHerd == null && selectedBand == null) return;
         isPreviewing = true;
         previewTargetTile = ResolvePreviewTargetTile();
         EnsurePreviewObjects();
@@ -451,7 +488,7 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void UpdatePathPreviewWhileDragging()
     {
-        if (!isPreviewing || (selectedUnit == null && selectedHerd == null)) return;
+        if (!isPreviewing || (selectedUnit == null && selectedHerd == null && selectedBand == null)) return;
 
         int target = ResolvePreviewTargetTile();
 
@@ -470,7 +507,9 @@ public class UnitSelectionManager : MonoBehaviour
 
         if (previewTargetTile >= 0)
         {
-            if (selectedHerd != null) MoveSelectedHerdToTile(previewTargetTile); else MoveSelectedUnitToTile(previewTargetTile);
+            if (selectedBand != null) MoveSelectedBandToTile(previewTargetTile);
+            else if (selectedHerd != null) MoveSelectedHerdToTile(previewTargetTile);
+            else MoveSelectedUnitToTile(previewTargetTile);
         }
 
         // Clear transient preview visuals, then immediately show persistent queued path if still selected
@@ -1295,6 +1334,7 @@ public class UnitSelectionManager : MonoBehaviour
         
         // Deselect previous unit
         DeselectUnit();
+        DeselectBand();
         
         // Select new unit
         selectedUnit = unit;
@@ -1328,6 +1368,7 @@ public class UnitSelectionManager : MonoBehaviour
         // Deselect previous selections
         DeselectUnit();
         DeselectHerd();
+        DeselectBand();
 
         selectedHerd = herd;
         lastSelectionFrame = Time.frameCount;
@@ -1336,6 +1377,18 @@ public class UnitSelectionManager : MonoBehaviour
         CreateSelectionIndicator();
 
         if (previewDebug) Debug.Log($"[USM] SelectHerd -> {herd.name} (tile {herd.currentTileIndex})");
+    }
+
+    public void SelectBand(Band band)
+    {
+        if (band == null) return;
+        DeselectUnit();
+        DeselectHerd();
+        DeselectBand();
+        selectedBand = band;
+        lastSelectionFrame = Time.frameCount;
+        CreateSelectionIndicator();
+        UIManager.Instance?.ShowBandPanelForBand(band);
     }
 
     /// <summary>
@@ -1432,6 +1485,17 @@ public class UnitSelectionManager : MonoBehaviour
         // Clear preview visuals as well
         ClearPreviewVisuals();
     }
+
+    public void DeselectBand()
+    {
+        if (selectedBand == null) return;
+        selectedBand = null;
+        if (selectionIndicator != null) { Destroy(selectionIndicator); selectionIndicator = null; }
+        ClearPreviewVisuals();
+        UIManager.Instance?.HideBandPanel();
+    }
+
+    public Band GetSelectedBand() => selectedBand;
 
     private void OnMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
     {
@@ -1617,6 +1681,20 @@ public class UnitSelectionManager : MonoBehaviour
             UnitMovementController.Instance.IssueHerdMove(selectedHerd, targetTileIndex);
         }
     }
+
+    private void MoveSelectedBandToTile(int targetTileIndex)
+    {
+        if (selectedBand == null) return;
+        if (!selectedBand.TryMove(targetTileIndex))
+        {
+            UIManager.Instance?.ShowNotification(selectedBand.State != BandState.Packed
+                ? "Band must be packed to move."
+                : "Band cannot move to that adjacent tile.");
+            return;
+        }
+        UIManager.Instance?.ShowBandPanelForBand(selectedBand);
+        CreateSelectionIndicator();
+    }
     
     /// <summary>
     /// Create a visual selection indicator for the selected unit
@@ -1624,8 +1702,10 @@ public class UnitSelectionManager : MonoBehaviour
     private void CreateSelectionIndicator()
     {
         // Support selection indicator for either a unit or a selected herd
-        if (selectedUnit == null && selectedHerd == null) return;
-        Transform parentTransform = selectedUnit != null ? selectedUnit.transform : (selectedHerd != null ? (selectedHerd.visualInstance != null ? selectedHerd.visualInstance.transform : selectedHerd.transform) : null);
+        if (selectedUnit == null && selectedHerd == null && selectedBand == null) return;
+        if (selectionIndicator != null) Destroy(selectionIndicator);
+        Transform parentTransform = selectedUnit != null ? selectedUnit.transform :
+            selectedHerd != null ? (selectedHerd.visualInstance != null ? selectedHerd.visualInstance.transform : selectedHerd.transform) : selectedBand.transform;
         if (parentTransform == null) return;
         
         // Simple approach: create a colored sphere as selection indicator
