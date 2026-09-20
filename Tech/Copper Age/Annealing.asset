@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Annealing
   m_EditorClassIdentifier: Assembly-CSharp::TechData
   techName: Annealing
-  techAge: 3
+  techAge: 2
   description: Lets make the metal better.
   techIcon: {fileID: 21300000, guid: 74a6409eaef2aa046a869050939a4a9b, type: 3}
   positionHint: 0

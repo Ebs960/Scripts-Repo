@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Masonry
   m_EditorClassIdentifier: Assembly-CSharp::TechData
   techName: Masonry
-  techAge: 3
+  techAge: 2
   description: Lets make our cities a bit safer
   techIcon: {fileID: 21300000, guid: 924b78f4af94c5f46bfc8a5292262e9d, type: 3}
   positionHint: 0

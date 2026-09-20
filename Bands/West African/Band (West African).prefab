@@ -1,0 +1,494 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4509998070895736879
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2617368219927120000}
+  - component: {fileID: 6368157830725769325}
+  - component: {fileID: 3241667941283191238}
+  m_Layer: 0
+  m_Name: Band (West African)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2617368219927120000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4509998070895736879}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 437.5306, y: 0, z: -179.844}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1278055165797157159}
+  - {fileID: 1138347430815479711}
+  - {fileID: 6544409361020651548}
+  - {fileID: 1846978977145841231}
+  - {fileID: 7502935841301953921}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6368157830725769325
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4509998070895736879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361fe3b074fc45fa8711a3931e7a3f7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Band
+  visualRoot: {fileID: 7502935841301953921}
+  packedMovingParameter: Moving
+  packedIdleVariantParameter: IdleVariant
+  packedWalkVariantParameter: WalkVariant
+  packedIdleVariantCount: 1
+  packedWalkVariantCount: 1
+  packedAnimatorSpeedRange: {x: 0.95, y: 1.05}
+  visualMoveDuration: 0.4
+  data: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
+  persistentId: 
+  planetIndex: 0
+  currentTileIndex: -1
+  state: 0
+  population: 0
+  foodReserve: 0
+  consecutiveStarvationTurns: 0
+  currentMovePoints: 0
+  garrison: []
+  builtStructures: []
+  queuedStructure: {fileID: 0}
+  queuedUnit: {fileID: 0}
+  productionProgress: 0
+--- !u!65 &3241667941283191238
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4509998070895736879}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.9534302, y: 1, z: 1.9832306}
+  m_Center: {x: 0.3321228, y: 1, z: -0.63455963}
+--- !u!1 &7194926063171639094
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7502935841301953921}
+  m_Layer: 0
+  m_Name: Visual Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7502935841301953921
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7194926063171639094}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.44}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2617368219927120000}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &596306423835611252
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2617368219927120000}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.8874512
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.1437683
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      propertyPath: m_Name
+      value: West African Band Man 2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6415598553373193130}
+  m_SourcePrefab: {fileID: 100100000, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+--- !u!1 &326484969608998181 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+  m_PrefabInstance: {fileID: 596306423835611252}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &6415598553373193130
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 326484969608998181}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &1138347430815479711 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8827456068e0d9b4b8f524f21a4b0bda, type: 3}
+  m_PrefabInstance: {fileID: 596306423835611252}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1600511916169244364
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2617368219927120000}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.84
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.9388428
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      propertyPath: m_Name
+      value: West African Band Man 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7986708357740674797}
+  m_SourcePrefab: {fileID: 100100000, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+--- !u!4 &1278055165797157159 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+  m_PrefabInstance: {fileID: 1600511916169244364}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1943093002608120733 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+  m_PrefabInstance: {fileID: 1600511916169244364}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &7986708357740674797
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1943093002608120733}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 16b659be18148ff4c866e8f8112cf5a5, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!1001 &2173955375845933476
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2617368219927120000}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.8655548
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      propertyPath: m_Name
+      value: West African Band Woman 2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9071058828001437596}
+  m_SourcePrefab: {fileID: 100100000, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+--- !u!1 &1362929550691155189 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+  m_PrefabInstance: {fileID: 2173955375845933476}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9071058828001437596
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1362929550691155189}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &1846978977145841231 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1dd5727696531024eb0a98d897b9e2f6, type: 3}
+  m_PrefabInstance: {fileID: 2173955375845933476}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &6726355698111606775
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2617368219927120000}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.38458252
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.112
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      propertyPath: m_Name
+      value: West African Band Woman 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5731968760491286929}
+  m_SourcePrefab: {fileID: 100100000, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+--- !u!1 &5879934263772631718 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+  m_PrefabInstance: {fileID: 6726355698111606775}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &5731968760491286929
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5879934263772631718}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &6544409361020651548 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 729b698503b640841a6caf8199ff2311, type: 3}
+  m_PrefabInstance: {fileID: 6726355698111606775}
+  m_PrefabAsset: {fileID: 0}

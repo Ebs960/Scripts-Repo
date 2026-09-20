@@ -143,10 +143,7 @@ public static class AIScorer
         if (civ == null || civ.civData == null)
             return false;
 
-        if (civ.civData.isTribe || civ.civData.isCityState)
-            return false;
-
-        return !civ.HasMosquitoImmunityTechnology();
+        return !civ.IsImmuneToMosquitoDamage();
     }
 
     private static float GetMosquitoPenalty(BaseUnit unit, HexTileData tileData)

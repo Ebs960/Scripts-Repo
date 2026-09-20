@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: The Sling
   m_EditorClassIdentifier: Assembly-CSharp::TechData
   techName: The Sling
-  techAge: 3
+  techAge: 2
   description: Throw rocks very far
   techIcon: {fileID: 21300000, guid: b8dcd8c8d16c44343a460ee7cde0ad44, type: 3}
   positionHint: 0

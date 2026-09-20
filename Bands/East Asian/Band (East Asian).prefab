@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4922279697406689155
+--- !u!1 &3271146370399382187
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,40 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2573804634269283597}
-  - component: {fileID: 2140677789054215625}
-  - component: {fileID: 7450050637691683817}
+  - component: {fileID: 7839185043017852297}
+  m_Layer: 0
+  m_Name: Visual Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7839185043017852297
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3271146370399382187}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.44}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8559295538994625544}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8884676634760873528
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8559295538994625544}
+  - component: {fileID: 1134060886344645335}
+  - component: {fileID: 3389116569841060357}
   m_Layer: 0
   m_Name: Band (East Asian)
   m_TagString: Untagged
@@ -18,39 +49,39 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2573804634269283597
+--- !u!4 &8559295538994625544
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4922279697406689155}
+  m_GameObject: {fileID: 8884676634760873528}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 437.5306, y: 0, z: -179.844}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 4496390318329500069}
-  - {fileID: 6860261567691933777}
-  - {fileID: 6258951511902984137}
-  - {fileID: 5613831940313883767}
-  - {fileID: 3670281469409354005}
+  - {fileID: 5249227563894539917}
+  - {fileID: 2690868434215144444}
+  - {fileID: 3300231083460158918}
+  - {fileID: 8008990854331779199}
+  - {fileID: 7839185043017852297}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2140677789054215625
+--- !u!114 &1134060886344645335
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4922279697406689155}
+  m_GameObject: {fileID: 8884676634760873528}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 361fe3b074fc45fa8711a3931e7a3f7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Band
-  visualRoot: {fileID: 3670281469409354005}
+  visualRoot: {fileID: 7839185043017852297}
   packedMovingParameter: Moving
   packedIdleVariantParameter: IdleVariant
   packedWalkVariantParameter: WalkVariant
@@ -72,13 +103,13 @@ MonoBehaviour:
   queuedStructure: {fileID: 0}
   queuedUnit: {fileID: 0}
   productionProgress: 0
---- !u!65 &7450050637691683817
+--- !u!65 &3389116569841060357
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4922279697406689155}
+  m_GameObject: {fileID: 8884676634760873528}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -93,320 +124,13 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.9534302, y: 1, z: 1.9832306}
   m_Center: {x: 0.3321228, y: 1, z: -0.63455963}
---- !u!1 &7171540080005164030
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3670281469409354005}
-  m_Layer: 0
-  m_Name: Visual Root
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3670281469409354005
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7171540080005164030}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0.44}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2573804634269283597}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &4173951020003784270
+--- !u!1001 &2512265223294544919
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 2573804634269283597}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.6593933
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -1.0161896
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      propertyPath: m_Name
-      value: East Asian Band Man 1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6877312840710079926}
-  m_SourcePrefab: {fileID: 100100000, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
---- !u!1 &3831916252330806047 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-  m_PrefabInstance: {fileID: 4173951020003784270}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &6877312840710079926
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3831916252330806047}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!4 &4496390318329500069 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
-  m_PrefabInstance: {fileID: 4173951020003784270}
-  m_PrefabAsset: {fileID: 0}
---- !u!1001 &5360109382037914524
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 2573804634269283597}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      propertyPath: m_Name
-      value: East Asian Band Woman 2
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4194024551521361073}
-  m_SourcePrefab: {fileID: 100100000, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
---- !u!1 &5090060182874422989 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-  m_PrefabInstance: {fileID: 5360109382037914524}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &4194024551521361073
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5090060182874422989}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!4 &5613831940313883767 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
-  m_PrefabInstance: {fileID: 5360109382037914524}
-  m_PrefabAsset: {fileID: 0}
---- !u!1001 &5861147119529914402
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 2573804634269283597}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.291687
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.83
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      propertyPath: m_Name
-      value: East Asian Band Woman 1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 3821636050431345109}
-  m_SourcePrefab: {fileID: 100100000, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
---- !u!4 &6258951511902984137 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-  m_PrefabInstance: {fileID: 5861147119529914402}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &6744021220270755187 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
-  m_PrefabInstance: {fileID: 5861147119529914402}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &3821636050431345109
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6744021220270755187}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!1001 &6394604531819720634
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 2573804634269283597}
+    m_TransformParent: {fileID: 8559295538994625544}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 959e7f42190d2434db441343593d8d77, type: 3}
       propertyPath: m_LocalPosition.x
@@ -458,24 +182,29 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 959e7f42190d2434db441343593d8d77, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 421486629165695513}
+      addedObject: {fileID: 7284140484448501434}
   m_SourcePrefab: {fileID: 100100000, guid: 959e7f42190d2434db441343593d8d77, type: 3}
---- !u!1 &6088685418154988267 stripped
+--- !u!4 &2690868434215144444 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 959e7f42190d2434db441343593d8d77, type: 3}
+  m_PrefabInstance: {fileID: 2512265223294544919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3322585845957185862 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 959e7f42190d2434db441343593d8d77, type: 3}
-  m_PrefabInstance: {fileID: 6394604531819720634}
+  m_PrefabInstance: {fileID: 2512265223294544919}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &421486629165695513
+--- !u!95 &7284140484448501434
 Animator:
   serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6088685418154988267}
+  m_GameObject: {fileID: 3322585845957185862}
   m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
+  m_Avatar: {fileID: 9000000, guid: 959e7f42190d2434db441343593d8d77, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -487,8 +216,279 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!4 &6860261567691933777 stripped
+--- !u!1001 &3046262738434458157
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8559295538994625544}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.291687
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.83
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      propertyPath: m_Name
+      value: East Asian Band Woman 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2812626641601134694}
+  m_SourcePrefab: {fileID: 100100000, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+--- !u!1 &2776211900741468028 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+  m_PrefabInstance: {fileID: 3046262738434458157}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &2812626641601134694
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2776211900741468028}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &3300231083460158918 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 959e7f42190d2434db441343593d8d77, type: 3}
-  m_PrefabInstance: {fileID: 6394604531819720634}
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2bdba46776a459a4285cafafeb45a93e, type: 3}
+  m_PrefabInstance: {fileID: 3046262738434458157}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &5716116677039677798
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8559295538994625544}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.6593933
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.0161896
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      propertyPath: m_Name
+      value: East Asian Band Man 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9209846788595625833}
+  m_SourcePrefab: {fileID: 100100000, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+--- !u!1 &4869182866928426039 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+  m_PrefabInstance: {fileID: 5716116677039677798}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9209846788595625833
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4869182866928426039}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &5249227563894539917 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a33882aed95cd1c459c7b73b239d2b95, type: 3}
+  m_PrefabInstance: {fileID: 5716116677039677798}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &7543282822701723540
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8559295538994625544}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      propertyPath: m_Name
+      value: East Asian Band Woman 2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4007126767596068646}
+  m_SourcePrefab: {fileID: 100100000, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+--- !u!1 &7236851476205408965 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+  m_PrefabInstance: {fileID: 7543282822701723540}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4007126767596068646
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7236851476205408965}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &8008990854331779199 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 046fee54e261ac947acf0cb977673c84, type: 3}
+  m_PrefabInstance: {fileID: 7543282822701723540}
   m_PrefabAsset: {fileID: 0}

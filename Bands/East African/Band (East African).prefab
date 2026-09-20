@@ -1,0 +1,558 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6804273637138774788
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5600713350814274886}
+  - component: {fileID: 6330601083253899200}
+  - component: {fileID: 7956743799032776826}
+  m_Layer: 0
+  m_Name: Band (East African)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5600713350814274886
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6804273637138774788}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 437.5306, y: 0, z: -179.844}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5602536034220516197}
+  - {fileID: 5541290728373838216}
+  - {fileID: 1363847468210206603}
+  - {fileID: 986870273839185381}
+  - {fileID: 7094538745317683895}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6330601083253899200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6804273637138774788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361fe3b074fc45fa8711a3931e7a3f7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Band
+  visualRoot: {fileID: 7094538745317683895}
+  packedMovingParameter: Moving
+  packedIdleVariantParameter: IdleVariant
+  packedWalkVariantParameter: WalkVariant
+  packedIdleVariantCount: 1
+  packedWalkVariantCount: 1
+  packedAnimatorSpeedRange: {x: 0.95, y: 1.05}
+  visualMoveDuration: 0.4
+  data: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
+  persistentId: 
+  planetIndex: 0
+  currentTileIndex: -1
+  state: 0
+  population: 0
+  foodReserve: 0
+  consecutiveStarvationTurns: 0
+  currentMovePoints: 0
+  garrison: []
+  builtStructures: []
+  queuedStructure: {fileID: 0}
+  queuedUnit: {fileID: 0}
+  productionProgress: 0
+--- !u!65 &7956743799032776826
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6804273637138774788}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.9534302, y: 1, z: 1.9832306}
+  m_Center: {x: 0.3321228, y: 1, z: -0.63455963}
+--- !u!1 &8131433880201484436
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7094538745317683895}
+  m_Layer: 0
+  m_Name: Visual Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7094538745317683895
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8131433880201484436}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.44}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5600713350814274886}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &736523482265737742
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5600713350814274886}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.7
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.7
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.7
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.46917725
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.8655548
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_Name
+      value: Band Woman 2 (East African)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6476507185420186133}
+  m_SourcePrefab: {fileID: 100100000, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+--- !u!1 &502646025222350687 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+  m_PrefabInstance: {fileID: 736523482265737742}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &6476507185420186133
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 502646025222350687}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &986870273839185381 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+  m_PrefabInstance: {fileID: 736523482265737742}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1542453695063609440
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5600713350814274886}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.291687
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.83
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      propertyPath: m_Name
+      value: Band Woman 1 (East African)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6516808314007588881}
+  m_SourcePrefab: {fileID: 100100000, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+--- !u!4 &1363847468210206603 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+  m_PrefabInstance: {fileID: 1542453695063609440}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1848319347123842353 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 7a13f66b95fecdd43b934c113a577a54, type: 3}
+  m_PrefabInstance: {fileID: 1542453695063609440}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &6516808314007588881
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1848319347123842353}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 15545f21acaa73e46aaf71bb0135f12c, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!1001 &5353246875073332366
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5600713350814274886}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.6593933
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.01619
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      propertyPath: m_Name
+      value: Band Man 1 (East African)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4784176801463015933}
+  m_SourcePrefab: {fileID: 100100000, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+--- !u!1 &5083407818862262751 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+  m_PrefabInstance: {fileID: 5353246875073332366}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4784176801463015933
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5083407818862262751}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &5602536034220516197 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: be3d1967da82f924295d4b53238bb458, type: 3}
+  m_PrefabInstance: {fileID: 5353246875073332366}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &5434762777298077283
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5600713350814274886}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.8874512
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.1437683
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      propertyPath: m_Name
+      value: Band Man 2 (East African)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5455853047171265757}
+  m_SourcePrefab: {fileID: 100100000, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+--- !u!1 &5164870257467407154 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+  m_PrefabInstance: {fileID: 5434762777298077283}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &5455853047171265757
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5164870257467407154}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+  m_Controller: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!4 &5541290728373838216 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 329efb2604f8d8043808a037606a35b5, type: 3}
+  m_PrefabInstance: {fileID: 5434762777298077283}
+  m_PrefabAsset: {fileID: 0}

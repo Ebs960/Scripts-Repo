@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Housing
   m_EditorClassIdentifier: 
   techName: Housing
-  techAge: 3
+  techAge: 2
   description: Fuck dude we need more houses for people we got a lot.
   techIcon: {fileID: 21300000, guid: 4afbaa9e0db27a84f855e4f1ce6c7810, type: 3}
   positionHint: 0

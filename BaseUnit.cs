@@ -3489,7 +3489,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (owner == null || owner.civData == null)
             return;
 
-        if (owner.civData.isTribe || owner.civData.isCityState)
+        if (owner.IsImmuneToMosquitoDamage())
             return;
 
         // Stored/sheltered units, transported units, and any non-surface unit are immune.
@@ -3502,7 +3502,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (currentTileIndex < 0 || currentLayer != TileLayer.Surface)
             return;
 
-        if (IsImmuneToMosquitoes() || owner.HasMosquitoImmunityTechnology())
+        if (IsImmuneToMosquitoes())
             return;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;

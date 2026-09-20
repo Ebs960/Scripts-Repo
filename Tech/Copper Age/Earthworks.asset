@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Earthworks
   m_EditorClassIdentifier: Assembly-CSharp::TechData
   techName: Earthworks
-  techAge: 3
+  techAge: 2
   description: Lets defend this town a little harder now
   techIcon: {fileID: 21300000, guid: b0f7ae296e115c14b83ea315e58c0529, type: 3}
   positionHint: 0

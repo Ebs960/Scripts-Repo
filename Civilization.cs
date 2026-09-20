@@ -850,6 +850,11 @@ public class Civilization : MonoBehaviour
         return false;
     }
 
+    public bool IsImmuneToMosquitoDamage()
+    {
+        return civData != null && (civData.isTribe || civData.isCityState || HasMosquitoImmunityTechnology());
+    }
+
     /// <summary>
     /// Returns the maximum number of units that can belong to one campaign army.
     /// Technologies can raise the default Humankind-style army capacity.

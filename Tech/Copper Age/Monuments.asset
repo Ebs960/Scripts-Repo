@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Monuments
   m_EditorClassIdentifier: 
   techName: Monuments
-  techAge: 3
+  techAge: 2
   description: Build a monument to your tibal spirits
   techIcon: {fileID: 21300000, guid: db4c8fc60f7b19b47a689a2baee44fbb, type: 3}
   positionHint: 0
