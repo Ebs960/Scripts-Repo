@@ -35,6 +35,9 @@ public sealed class Band : MonoBehaviour
     [SerializeField] private int foodReserve;
     [SerializeField] private int consecutiveStarvationTurns;
     [SerializeField] private int currentMovePoints;
+    [SerializeField] private int moveOrderDestination = -1;
+    [SerializeField] private List<int> moveOrderPath = new List<int>();
+    [SerializeField] private int moveOrderNextStep;
     [SerializeField] private List<CombatUnit> garrison = new List<CombatUnit>();
     [SerializeField] private List<BandStructureData> builtStructures = new List<BandStructureData>();
     [SerializeField] private BandStructureData queuedStructure;
@@ -46,6 +49,7 @@ public sealed class Band : MonoBehaviour
     private Coroutine visualMoveRoutine;
     private Transform visualMovementRoot;
     private Vector3 visualMovementRestingLocalPosition;
+    private bool queuedTravelVisualActive;
     private Civilization owner;
 
     public static event Action<Band> BandCreated, BandPacked, BandEncamped, BandMoved;
@@ -66,6 +70,12 @@ public sealed class Band : MonoBehaviour
     public int FoodReserve => foodReserve;
     public int ConsecutiveStarvationTurns => consecutiveStarvationTurns;
     public int CurrentMovePoints => currentMovePoints;
+    public int StartingMovePoints => data == null ? 0 : Mathf.Max(0, data.movementPoints + builtStructures.Where(x => x != null).Sum(x => x.movementBonus));
+    public int MoveOrderDestination => moveOrderDestination;
+    public IReadOnlyList<int> MoveOrderPath => moveOrderPath;
+    public int MoveOrderNextStep => moveOrderNextStep;
+    public bool HasMoveOrder => moveOrderDestination >= 0 && moveOrderPath != null && moveOrderNextStep < moveOrderPath.Count;
+    public bool IsVisualStepMoving => visualMoveRoutine != null;
     public IReadOnlyList<CombatUnit> Garrison => garrison;
     public IReadOnlyList<BandStructureData> BuiltStructures => builtStructures;
     public BandStructureData QueuedStructure => queuedStructure;
@@ -166,12 +176,14 @@ public sealed class Band : MonoBehaviour
     public bool Pack()
     {
         if (state == BandState.Packed || currentMovePoints < data.packMovementCost) return false;
+        UnitMovementController.Instance?.CancelBandMove(this, true);
         currentMovePoints -= data.packMovementCost; state = BandState.Packed; RefreshVisual(); BandPacked?.Invoke(this); NotifyChanged(); return true;
     }
 
     public bool Encamp()
     {
         if (state == BandState.Encamped || currentMovePoints < data.encampMovementCost) return false;
+        UnitMovementController.Instance?.CancelBandMove(this, true);
         currentMovePoints -= data.encampMovementCost; state = BandState.Encamped; RefreshVisual(); BandEncamped?.Invoke(this); NotifyChanged(); return true;
     }
 
@@ -189,6 +201,40 @@ public sealed class Band : MonoBehaviour
         currentTileIndex = tileIndex; currentMovePoints -= cost; PositionVisual();
         BeginPackedVisualMovement(visualStartWorldPosition);
         occ?.SetOccupant(tileIndex, gameObject, TileLayer.Surface); BandMoved?.Invoke(this); RefreshOwnerVision(owner); NotifyChanged(); return true;
+    }
+
+    public void SetMoveOrder(int destination, IEnumerable<int> path, int nextStep = 0)
+    {
+        moveOrderDestination = destination;
+        moveOrderPath = path != null ? new List<int>(path) : new List<int>();
+        moveOrderNextStep = Mathf.Clamp(nextStep, 0, moveOrderPath.Count);
+        if (!HasMoveOrder) ClearMoveOrder();
+        NotifyChanged();
+    }
+
+    public void AdvanceMoveOrder()
+    {
+        if (HasMoveOrder) moveOrderNextStep++;
+        if (!HasMoveOrder) ClearMoveOrder();
+    }
+
+    public void ClearMoveOrder()
+    {
+        moveOrderDestination = -1;
+        moveOrderPath?.Clear();
+        moveOrderNextStep = 0;
+    }
+
+    public void BeginQueuedTravelVisual()
+    {
+        queuedTravelVisualActive = true;
+        SetPackedAnimatorsMoving(true);
+    }
+
+    public void EndQueuedTravelVisual()
+    {
+        queuedTravelVisualActive = false;
+        SetPackedAnimatorsMoving(false);
     }
 
     public int Forage(int amount = -1)
@@ -354,6 +400,7 @@ public sealed class Band : MonoBehaviour
     public void Capture(Civilization newOwner)
     {
         if (newOwner == null || newOwner == owner) return;
+        UnitMovementController.Instance?.CancelBandMove(this, true);
         var old = owner; old?.UnregisterBand(this); owner = newOwner; newOwner.RegisterBand(this); RefreshVisual();
         RefreshOwnerVision(old); RefreshOwnerVision(newOwner);
         BandCaptured?.Invoke(this, old, newOwner);
@@ -362,6 +409,7 @@ public sealed class Band : MonoBehaviour
 
     public void DestroyBand(BandLossReason reason)
     {
+        UnitMovementController.Instance?.CancelBandMove(this, true);
         if (reason == BandLossReason.Starvation || reason == BandLossReason.Scripted)
             FormArmy(garrison.ToList(), out _);
         else
@@ -530,7 +578,7 @@ public sealed class Band : MonoBehaviour
         }
 
         movementRoot.localPosition = restingLocalPosition;
-        SetPackedAnimatorsMoving(false);
+        if (!queuedTravelVisualActive) SetPackedAnimatorsMoving(false);
         visualMoveRoutine = null;
         visualMovementRoot = null;
     }
@@ -589,6 +637,12 @@ public sealed class Band : MonoBehaviour
         structureVisuals.Clear();
         if (stateVisual != null) Destroy(stateVisual);
         stateVisual = null;
+    }
+
+    private void OnDisable()
+    {
+        queuedTravelVisualActive = false;
+        SetPackedAnimatorsMoving(false);
     }
 
     private GameObject ResolveStateVisualPrefab()

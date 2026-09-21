@@ -249,12 +249,8 @@ public class UnitSelectionManager : MonoBehaviour
             }
             if (selectedBand != null)
             {
-                var ts = TileSystem.GetForPlanet(selectedBand.PlanetIndex) ?? TileSystem.Instance;
-                if (ts != null && ts.GetWrappedHexDistance(selectedBand.CurrentTileIndex, tileIndex) == 1)
-                {
-                    MoveSelectedBandToTile(tileIndex);
-                    return true;
-                }
+                MoveSelectedBandToTile(tileIndex);
+                return true;
             }
             // Guard: if a unit was selected this very frame (e.g. via OnMouseDown on the
             // unit's collider), do NOT deselect it here. Let that click be authoritative.
@@ -514,7 +510,7 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Clear transient preview visuals, then immediately show persistent queued path if still selected
         ClearPreviewVisuals();
-        if (HasSelectedUnit()) ShowQueuedPathPreviewIfAny();
+        if (HasSelectedUnit() || selectedBand != null) ShowQueuedPathPreviewIfAny();
     }
 
     private int ResolvePreviewTargetTile()
@@ -569,8 +565,9 @@ public class UnitSelectionManager : MonoBehaviour
                 return;
             }
         }
-        int start = selectedUnit != null ? selectedUnit.currentTileIndex : (selectedHerd != null ? selectedHerd.currentTileIndex : -1);
-        var ts = (selectedUnit != null) ? (TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance) : (selectedHerd != null ? (TileSystem.GetForPlanet(selectedHerd.planetIndex) ?? TileSystem.Instance) : TileSystem.Instance);
+        int start = selectedUnit != null ? selectedUnit.currentTileIndex : (selectedHerd != null ? selectedHerd.currentTileIndex : (selectedBand != null ? selectedBand.CurrentTileIndex : -1));
+        int previewPlanet = selectedUnit != null ? selectedUnit.planetIndex : (selectedHerd != null ? selectedHerd.planetIndex : (selectedBand != null ? selectedBand.PlanetIndex : 0));
+        var ts = TileSystem.GetForPlanet(previewPlanet) ?? TileSystem.Instance;
         if (ts == null)
         {
             return;
@@ -583,6 +580,11 @@ public class UnitSelectionManager : MonoBehaviour
         {
             previewPath = umc.FindPath(start, previewTargetTile, null);
             segments = umc.GetPathSegmentsForHerd(selectedHerd, previewPath);
+        }
+        else if (selectedBand != null)
+        {
+            previewPath = umc.FindPathForBand(selectedBand, previewTargetTile);
+            segments = umc.GetPathSegmentsForBand(selectedBand, previewPath);
         }
         else
         {
@@ -978,14 +980,14 @@ public class UnitSelectionManager : MonoBehaviour
         // Coalesce multiple queued-preview updates in the same frame
         if (_lastQueuedPreviewFrame == Time.frameCount) return;
         _lastQueuedPreviewFrame = Time.frameCount;
-        if (selectedUnit == null) return;
+        if (selectedUnit == null && selectedBand == null) return;
         var umc = UnitMovementController.Instance;
         if (umc == null) return;
-        var segments = umc.GetPathSegmentsForPreview(selectedUnit);
+        var segments = selectedBand != null ? umc.GetPathSegmentsForBand(selectedBand) : umc.GetPathSegmentsForPreview(selectedUnit);
         if (segments == null || segments.Count == 0) return;
 
         EnsurePreviewObjects();
-        var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+        var ts = TileSystem.GetForPlanet(selectedBand != null ? selectedBand.PlanetIndex : selectedUnit.planetIndex) ?? TileSystem.Instance;
         if (ts == null) return;
 
         var positions = new System.Collections.Generic.List<Vector3>();
@@ -1389,6 +1391,8 @@ public class UnitSelectionManager : MonoBehaviour
         lastSelectionFrame = Time.frameCount;
         CreateSelectionIndicator();
         UIManager.Instance?.ShowBandPanelForBand(band);
+        ClearPreviewVisuals();
+        ShowQueuedPathPreviewIfAny();
     }
 
     /// <summary>
@@ -1685,13 +1689,12 @@ public class UnitSelectionManager : MonoBehaviour
     private void MoveSelectedBandToTile(int targetTileIndex)
     {
         if (selectedBand == null) return;
-        if (!selectedBand.TryMove(targetTileIndex))
+        if (selectedBand.State != BandState.Packed)
         {
-            UIManager.Instance?.ShowNotification(selectedBand.State != BandState.Packed
-                ? "Band must be packed to move."
-                : "Band cannot move to that adjacent tile.");
+            UIManager.Instance?.ShowNotification("Band must be packed to move.");
             return;
         }
+        UnitMovementController.Instance?.IssueBandMove(selectedBand, targetTileIndex);
         UIManager.Instance?.ShowBandPanelForBand(selectedBand);
         CreateSelectionIndicator();
     }
