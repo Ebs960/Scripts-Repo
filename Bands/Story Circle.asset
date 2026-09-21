@@ -10,33 +10,35 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 154cd678fc784d5b9002dd7d032e6cdc, type: 3}
-  m_Name: Stone Pile
+  m_Name: Story Circle
   m_EditorClassIdentifier: Assembly-CSharp::BandStructureData
-  structureName: Stone Pile
-  description: A stockpile of carefully gathered stone, ready to be shaped into tools
-    and weapons.
+  structureName: Story Circle
+  description: A communal gathering place where stories, traditions, and knowledge
+    pass between generations.
   icon: {fileID: 0}
-  productionCost: 5
+  productionCost: 8
   goldCost: 0
-  resourceCosts: []
-  requiredTech: {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}
-  requiredCulture: {fileID: 0}
+  resourceCosts:
+  - resource: {fileID: 11400000, guid: 12667ab8105402e4daffbddf9589d544, type: 2}
+    amount: 2
+  requiredTech: {fileID: 0}
+  requiredCulture: {fileID: 11400000, guid: e096199803463cb44accd0747e7d9ca1, type: 2}
   yields:
     food: 0
-    production: 2
+    production: 0
     gold: 0
     science: 0
-    culture: 0
-    faith: 0
+    culture: 2
+    faith: 1
     policyPoints: 0
   foodStorageBonus: 0
   garrisonCapacityBonus: 0
   populationGrowthBonus: 0
   movementBonus: 0
   forageBonus: 0
-  activeWhilePacked: 0
-  packedEffectMultiplier: 0
-  visualSlot: 4
-  visualAttachmentPrefab: {fileID: 919132149155446097, guid: 6dc4b52ed09653b439c9e5c67da9fe6f, type: 3}
+  activeWhilePacked: 1
+  packedEffectMultiplier: 0.651
+  visualSlot: 2
+  visualAttachmentPrefab: {fileID: 919132149155446097, guid: b61545366a5589a4d92e4dc188f4b20f, type: 3}
   civilizationVisualOverrides: []
   cultureGroupVisualOverrides: []

@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 154cd678fc784d5b9002dd7d032e6cdc, type: 3}
+  m_Name: Fishing Tent
+  m_EditorClassIdentifier: Assembly-CSharp::BandStructureData
+  structureName: Fishing Tent
+  description: A simple shelter for preparing fishing gear and storing the day's
+    catch.
+  icon: {fileID: 0}
+  productionCost: 10
+  goldCost: 5
+  resourceCosts: []
+  requiredTech: {fileID: 11400000, guid: e08dba9323c763740a39d60a322535c5, type: 2}
+  requiredCulture: {fileID: 0}
+  yields:
+    food: 2
+    production: 0
+    gold: 0
+    science: 0
+    culture: 0
+    faith: 0
+    policyPoints: 0
+  foodStorageBonus: 0
+  garrisonCapacityBonus: 0
+  populationGrowthBonus: 1
+  movementBonus: 0
+  forageBonus: 0
+  activeWhilePacked: 0
+  packedEffectMultiplier: 0
+  visualSlot: 6
+  visualAttachmentPrefab: {fileID: 0}
+  civilizationVisualOverrides: []
+  cultureGroupVisualOverrides:
+  - cultureGroup: 0
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 8e816a661ce5f514783082c88e90d5c5, type: 3}
+  - cultureGroup: 2
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: bedcbc4089741e547a35c81fd9aa776e, type: 3}
+  - cultureGroup: 9
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: a22338ce3016da64b8d08e8f03f63d79, type: 3}
+  - cultureGroup: 10
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 260cc8a0b2921a84ebfa0e62b1da9341, type: 3}
+  - cultureGroup: 4
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: bca8442d35f46eb4ebb1d104a2cbec5b, type: 3}
+  - cultureGroup: 3
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 985bb5afedcfec04db226706fe44e960, type: 3}
+  - cultureGroup: 12
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 232297849751fa541b9a986926fccac1, type: 3}
+  - cultureGroup: 13
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: fb11c8dbd4bb3c84ebaba7e52b94543d, type: 3}

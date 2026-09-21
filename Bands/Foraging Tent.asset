@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 154cd678fc784d5b9002dd7d032e6cdc, type: 3}
+  m_Name: Foraging Tent
+  m_EditorClassIdentifier: Assembly-CSharp::BandStructureData
+  structureName: Foraging Tent
+  description: A sheltered gathering place for sorting and storing wild plants, roots,
+    and berries.
+  icon: {fileID: 0}
+  productionCost: 10
+  goldCost: 0
+  resourceCosts: []
+  requiredTech: {fileID: 11400000, guid: cadd255d81a7ae94da84b507e2fb7a7a, type: 2}
+  requiredCulture: {fileID: 0}
+  yields:
+    food: 2
+    production: 1
+    gold: 0
+    science: 0
+    culture: 0
+    faith: 0
+    policyPoints: 0
+  foodStorageBonus: 10
+  garrisonCapacityBonus: 1
+  populationGrowthBonus: 2
+  movementBonus: 0
+  forageBonus: 2
+  activeWhilePacked: 1
+  packedEffectMultiplier: 0
+  visualSlot: 1
+  visualAttachmentPrefab: {fileID: 0}
+  civilizationVisualOverrides: []
+  cultureGroupVisualOverrides:
+  - cultureGroup: 0
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 5bbe7b4ed7aea9e4982fbdc472b6234e, type: 3}
+  - cultureGroup: 3
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 841f3254518869041999e9a0010607e5, type: 3}
+  - cultureGroup: 2
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 41c7b1aa9bc0aa74d8e9dd70eb2b0d0c, type: 3}
+  - cultureGroup: 4
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: bca8442d35f46eb4ebb1d104a2cbec5b, type: 3}
+  - cultureGroup: 9
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 2cf904c884bc4174cb35196bfacfa747, type: 3}
+  - cultureGroup: 10
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: ab2dd9a97f52b834c96b3f69853e28a7, type: 3}
+  - cultureGroup: 12
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: 2f082422484acde45bbf8d841965a9f4, type: 3}
+  - cultureGroup: 13
+    visualAttachmentPrefab: {fileID: 919132149155446097, guid: b5130afef1d112c4ca24f008363e65a0, type: 3}
