@@ -271,6 +271,11 @@ public class CivilizationManager : MonoBehaviour
         aiPlanner.ExecuteCommands();
         yield return null;
 
+        // Bands and herds are non-unit actors and deliberately run after tactical movement.
+        // Keep this as one phase so every actor tier receives it exactly once per turn.
+        aiPlanner.ExecutePostCommandDecisions(civ);
+        yield return null;
+
         // ───── Phase 2: High-level strategic decisions (retained) ─────
         // These handle empire-wide choices that don't map to single-unit commands.
         // Scope narrows with actor tier:
@@ -2426,7 +2431,7 @@ break; // Only propose one alliance per turn
 
     /// <summary>
     /// Spawns the player civ, AI civs, tribes, and city-states after the map is generated.
-    /// Instead of cities, each civ starts with a pioneer unit at their start tile.
+    /// Instead of cities, each civilization starts with its configured Band at its start tile.
     /// </summary>
     public void SpawnCivilizations(CivData playerCivData, int aiCount, int cityStateCount, int tribeCount)
     {
@@ -2530,19 +2535,20 @@ break; // Only propose one alliance per turn
             AdvanceTurn();
         }
         
-        // FIXED: Position camera to focus on player's pioneer starting tile
-        if (playerCiv != null && playerCiv.workerUnits.Count > 0)
+        // Focus the new-game Band, while retaining worker fallback for legacy saves/scenarios.
+        if (playerCiv != null && ((playerCiv.bands != null && playerCiv.bands.Any(b => b != null)) ||
+                                  (playerCiv.workerUnits != null && playerCiv.workerUnits.Any(w => w != null))))
         {
             PositionCameraOnPlayerStart();
         }
         else
         {
-            Debug.LogWarning("[CivilizationManager] Cannot position camera: No player pioneer found!");
+            Debug.LogWarning("[CivilizationManager] Cannot position camera: no player Band or legacy starting worker found.");
         }
     }
 
     /// <summary>
-    /// Instantiates a Civilization and its starting pioneer.
+    /// Instantiates a Civilization and its starting Band.
     /// </summary>
     void SpawnOneCivilization(CivData data, HashSet<int> occupied, bool isPlayer)
     {
@@ -2660,8 +2666,12 @@ break; // Only propose one alliance per turn
         var band = bandObject.GetComponent<Band>();
         if (band == null)
         {
-            Debug.LogError($"Starting Band prefab for {data.civName} has no Band component.");
-            Destroy(bandObject); civs.Remove(civ); if (playerCiv == civ) playerCiv = null; Destroy(civGO); return;
+            Debug.LogWarning($"Starting Band prefab for {data.civName} has no Band component; using a functional runtime Band.");
+            Destroy(bandObject);
+            bandObject = new GameObject($"{data.civName} Band", typeof(Band));
+            bandObject.transform.position = bandPosition;
+            if (planet != null) bandObject.transform.SetParent(planet.transform, true);
+            band = bandObject.GetComponent<Band>();
         }
         IEnumerable<StartingBandGarrisonEntry> civGarrison = data.startingBandGarrison != null && data.startingBandGarrison.Length > 0
             ? data.startingBandGarrison
@@ -2813,19 +2823,22 @@ break; // Only propose one alliance per turn
     }
 
     /// <summary>
-    /// Positions the camera to focus on the player's pioneer starting tile at game start
+    /// Positions the camera on the player's Band, with a legacy-worker fallback.
     /// </summary>
     private void PositionCameraOnPlayerStart()
     {
-        if (playerCiv == null || ((playerCiv.bands == null || playerCiv.bands.Count == 0) && playerCiv.workerUnits.Count == 0))
+        if (playerCiv == null || ((playerCiv.bands == null || !playerCiv.bands.Any(b => b != null)) &&
+                                  (playerCiv.workerUnits == null || !playerCiv.workerUnits.Any(w => w != null))))
         {
-            Debug.LogWarning("Cannot position camera: no player civilization or pioneer found");
+            Debug.LogWarning("Cannot position camera: no player civilization, Band, or legacy starting worker found");
             return;
         }
 
-        // Get the player's pioneer (starting unit)
+        // New games use a Band; old saves and authored scenarios may still use a worker.
         Band startingBand = playerCiv.bands != null ? playerCiv.bands.FirstOrDefault(b => b != null) : null;
-        var pioneer = startingBand == null ? playerCiv.workerUnits[0] : null;
+        var pioneer = startingBand == null && playerCiv.workerUnits != null
+            ? playerCiv.workerUnits.FirstOrDefault(w => w != null)
+            : null;
         if (pioneer == null && startingBand == null)
         {
             Debug.LogWarning("Cannot position camera: pioneer is null");
