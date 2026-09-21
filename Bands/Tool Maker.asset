@@ -15,7 +15,7 @@ MonoBehaviour:
   structureName: Tool Maker
   description: A primitive workspace where stone, bone, and wood are fashioned into
     useful tools.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d380afde0fd20cc4f94bca264eb54827, type: 3}
   productionCost: 10
   goldCost: 0
   resourceCosts:

@@ -238,6 +238,8 @@ MonoBehaviour:
   _equippedShield: {fileID: 0}
   _equippedArmor: {fileID: 0}
   _equippedMiscellaneous: {fileID: 0}
+  _equippedHead: {fileID: 0}
+  _equippedTool: {fileID: 0}
   updateEquipmentInEditor: 1
   _activeProjectile: {fileID: 0}
   unitLabelPrefab: {fileID: 2985757512682955238, guid: 34179e55795ab524d985e7c20dba34dd, type: 3}
@@ -250,9 +252,27 @@ MonoBehaviour:
   attackPointsPerTurn: 1
   currentTileIndex: -1
   currentLayer: 0
+  spaceLocation:
+    locationType: 0
+    planetIndex: -1
+    planetaryTileIndex: -1
+    spaceTileIndex: -1
+  spaceMovementPointsPerTurn: 3
+  currentSpaceMovementPoints: 3
+  currentSpaceTileIndex: -1
+  queuedSpacePath: 
+  queuedSpacePathCursor: 0
+  spaceVisionRange: 2
+  spaceReconRange: 5
+  canPerformSpaceRecon: 0
+  reconActionCost: 1
+  spaceFleetId: -1
+  isPackedInSpaceFleet: 0
+  hasUsedSpaceReactionThisTurn: 0
   planetIndex: -1
   moveSpeed: 2
   useAnimationEventForProjectiles: 1
+  persistentId: 
   attack: 0
   meleeAttack: 0
   rangedAttack: 0
@@ -266,6 +286,9 @@ MonoBehaviour:
   range: 0
   useOverrideStats: 0
   <data>k__BackingField: {fileID: 11400000, guid: b0aad9739bb5d7e4295a818b07611e2e, type: 2}
+  militaryFormationId: 
+  militaryFormationType: 0
+  militaryFormationName: 
   OnUnitLoaded:
     m_PersistentCalls:
       m_Calls: []

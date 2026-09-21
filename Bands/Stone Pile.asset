@@ -15,7 +15,7 @@ MonoBehaviour:
   structureName: Stone Pile
   description: A stockpile of carefully gathered stone, ready to be shaped into tools
     and weapons.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 62fb108cd7421834bbe9e7fe9dfd33d8, type: 3}
   productionCost: 5
   goldCost: 0
   resourceCosts: []

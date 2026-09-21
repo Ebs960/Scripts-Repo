@@ -15,7 +15,7 @@ MonoBehaviour:
   structureName: Fishing Tent
   description: A simple shelter for preparing fishing gear and storing the day's
     catch.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 69bf92c42e072a946be42d6ad4fede32, type: 3}
   productionCost: 10
   goldCost: 5
   resourceCosts: []

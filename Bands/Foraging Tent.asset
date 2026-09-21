@@ -15,7 +15,7 @@ MonoBehaviour:
   structureName: Foraging Tent
   description: A sheltered gathering place for sorting and storing wild plants, roots,
     and berries.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 179b78632273ee04aace980881b76822, type: 3}
   productionCost: 10
   goldCost: 0
   resourceCosts: []

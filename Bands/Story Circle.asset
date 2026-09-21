@@ -15,7 +15,7 @@ MonoBehaviour:
   structureName: Story Circle
   description: A communal gathering place where stories, traditions, and knowledge
     pass between generations.
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6a62a31b6ac811f41bac27cd70637721, type: 3}
   productionCost: 8
   goldCost: 0
   resourceCosts:
