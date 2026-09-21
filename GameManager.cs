@@ -2822,6 +2822,9 @@ public class GameManager : MonoBehaviour
                             tileIndex = band.CurrentTileIndex,
                             state = band.State,
                             movementPoints = band.CurrentMovePoints,
+                            moveOrderDestination = band.MoveOrderDestination,
+                            moveOrderPath = new List<int>(band.MoveOrderPath),
+                            moveOrderNextStep = band.MoveOrderNextStep,
                             population = band.Population,
                             foodReserve = band.FoodReserve,
                             consecutiveStarvationTurns = band.ConsecutiveStarvationTurns,
@@ -3764,6 +3767,9 @@ public class GameManager : MonoBehaviour
             combatUnitDataLookup.TryGetValue(saved.queuedCombatUnitDataId ?? string.Empty, out var queuedUnit);
             band.RestoreState(saved.persistentId, saved.state, saved.population, saved.foodReserve,
                 saved.consecutiveStarvationTurns, saved.movementPoints, structures, queuedStructure, queuedUnit, saved.productionProgress);
+            if (saved.state == BandState.Packed && saved.moveOrderPath != null &&
+                saved.moveOrderNextStep >= 0 && saved.moveOrderNextStep < saved.moveOrderPath.Count)
+                band.SetMoveOrder(saved.moveOrderDestination, saved.moveOrderPath, saved.moveOrderNextStep);
             (TileOccupancyManager.GetForPlanet(saved.planetIndex) ?? TileOccupancyManager.Instance)
                 ?.SetOccupant(saved.tileIndex, band.gameObject, TileLayer.Surface);
             foreach (string unitId in saved.garrisonCombatUnitPersistentIds ?? new List<string>())
@@ -3773,6 +3779,15 @@ public class GameManager : MonoBehaviour
             }
             restoredBands.Add(band);
         }
+
+        // Loading restores position and MP before restarting an order. Only the
+        // civilization whose turn is currently eligible may resume immediately;
+        // all other Bands resume from UnitMovementController's turn-start hook.
+        var activeCiv = TurnManager.Instance?.GetCurrentCivilization();
+        if (activeCiv != null && UnitMovementController.Instance != null)
+            foreach (var band in restoredBands)
+                if (band != null && band.Owner == activeCiv && band.HasMoveOrder)
+                    UnitMovementController.Instance.ExecuteBandMovement(band);
 
         var attachments = snapshot.civilianAttachments ?? new List<CivilianAttachmentSaveData>();
         if (attachments.Count == 0 && snapshot.workerUnits != null)
