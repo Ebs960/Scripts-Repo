@@ -1,0 +1,470 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1640297337132960801
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2723665175916781769}
+  - component: {fileID: 854433955741790009}
+  - component: {fileID: 2753810653127275861}
+  m_Layer: 0
+  m_Name: Band (North American Native)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2723665175916781769
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640297337132960801}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 437.5306, y: 0, z: -179.844}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7725164899982951376}
+  - {fileID: 1913940703819069145}
+  - {fileID: 1621134937221860685}
+  - {fileID: 3363747235292568520}
+  - {fileID: 7817742007436292587}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &854433955741790009
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640297337132960801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361fe3b074fc45fa8711a3931e7a3f7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Band
+  visualRoot: {fileID: 7817742007436292587}
+  packedMovingParameter: Moving
+  packedIdleVariantParameter: IdleVariant
+  packedWalkVariantParameter: WalkVariant
+  packedIdleVariantCount: 1
+  packedWalkVariantCount: 1
+  packedAnimatorSpeedRange: {x: 0.95, y: 1.05}
+  visualMoveDuration: 0.4
+  data: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
+  persistentId: 
+  planetIndex: 0
+  currentTileIndex: -1
+  state: 0
+  population: 0
+  foodReserve: 0
+  consecutiveStarvationTurns: 0
+  currentMovePoints: 0
+  garrison: []
+  builtStructures: []
+  queuedStructure: {fileID: 0}
+  queuedUnit: {fileID: 0}
+  productionProgress: 0
+--- !u!65 &2753810653127275861
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640297337132960801}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.9534302, y: 1, z: 1.5783386}
+  m_Center: {x: 0.3321228, y: 1, z: -0.43211365}
+--- !u!1 &8413672054059388596
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7817742007436292587}
+  m_Layer: 0
+  m_Name: Visual Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7817742007436292587
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8413672054059388596}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.44}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2723665175916781769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1294174524809996966
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2723665175916781769}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.3845825
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.112
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_Name
+      value: Band Woman 1 (North American Native)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+    - target: {fileID: 5866666021909216657, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+--- !u!4 &1621134937221860685 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
+  m_PrefabInstance: {fileID: 1294174524809996966}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2091103511423390002
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2723665175916781769}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.8874512
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.1437683
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_Name
+      value: Band Man 2 (North American Native)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+    - target: {fileID: 5866666021909216657, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+--- !u!4 &1913940703819069145 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
+  m_PrefabInstance: {fileID: 2091103511423390002}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2964731075729669155
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2723665175916781769}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.8655548
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_Name
+      value: Band Woman 2 (North American Native)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+--- !u!4 &3363747235292568520 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7754656948e6c394fa33fd801a3adcbf, type: 3}
+  m_PrefabInstance: {fileID: 2964731075729669155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &7836252315713643579
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2723665175916781769}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.84
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.9388428
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_Name
+      value: Band Man 1 (North American Native)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b5d4e5b52bfa68e48add1f073afad44a, type: 2}
+    - target: {fileID: 5866666021909216657, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+--- !u!4 &7725164899982951376 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
+  m_PrefabInstance: {fileID: 7836252315713643579}
+  m_PrefabAsset: {fileID: 0}
