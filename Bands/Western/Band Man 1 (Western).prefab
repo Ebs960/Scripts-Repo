@@ -106,10 +106,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BandCampAmbientActor
   animator: {fileID: 8076892597496515780}
-  idleCategory: 0
-  compatibleVariantCount: 1
-  categoryParameter: CampIdleCategory
-  variantParameter: CampIdleVariant
   speedRange: {x: 0.95, y: 1.05}
 --- !u!95 &8076892597496515780 stripped
 Animator:
