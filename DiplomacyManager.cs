@@ -705,7 +705,7 @@ public class DiplomacyManager : MonoBehaviour
 
             case DealItemType.Technology:
                 if (item.tech != null && !receiver.researchedTechs.Contains(item.tech))
-                    receiver.researchedTechs.Add(item.tech);
+                    receiver.HandleTechResearched(item.tech);
                 break;
 
             case DealItemType.City:

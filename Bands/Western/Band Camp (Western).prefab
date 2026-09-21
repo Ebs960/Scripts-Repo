@@ -308,6 +308,9 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: f42b8990d96b2b644a9cf448f1676c2f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7156419795984166912}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f42b8990d96b2b644a9cf448f1676c2f, type: 3}
       insertIndex: -1
@@ -892,6 +895,8 @@ MonoBehaviour:
   - slot: 4
     anchor: {fileID: 4635500732699983420}
     priority: 0
+  fireRoot: {fileID: 7156419795984166912}
+  ignitionTrigger: Ignite
 --- !u!1001 &9172537670663164899
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -953,4 +958,82 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 3465072961035457419, guid: 0ce6f0f8ca7fbe142aa4ba5b5fa78263, type: 3}
   m_PrefabInstance: {fileID: 9172537670663164899}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &6156419795984166912
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7156419795984166912}
+  m_Layer: 0
+  m_Name: Fire Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &7156419795984166912
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6156419795984166912}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.01}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5156419795984166912}
+  m_Father: {fileID: 1360785262089689452}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &8156419795984166912
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 7156419795984166912}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+      propertyPath: m_Name
+      value: Campfire Stones, Firewood, Embers and Animated Flames
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+--- !u!4 &5156419795984166912 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
+  m_PrefabInstance: {fileID: 8156419795984166912}
   m_PrefabAsset: {fileID: 0}

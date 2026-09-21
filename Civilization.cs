@@ -73,6 +73,14 @@ public class Civilization : MonoBehaviour
         if (band != null) bands.Remove(band);
     }
 
+    private void RefreshBandFireVisuals(TechData changedTech = null, bool playIgnition = false)
+    {
+        if (bands == null) return;
+        foreach (var band in bands)
+            if (band != null && (changedTech == null || band.Data?.fireTechnology == changedTech))
+                band.RefreshFireVisual(playIgnition);
+    }
+
     /// <summary>A mobile Band sustains a pre-city civilization.</summary>
     public bool HasSurvivingSettlement => cities.Any(city => city != null) || bands.Any(band => band != null);
     [Header("Attrition Settings")]
@@ -798,6 +806,7 @@ public class Civilization : MonoBehaviour
 
         InvalidateAvailabilityCache();
         UpdateCityModelsForNewAge();
+        RefreshBandFireVisuals();
 
         try
         {
@@ -3242,8 +3251,7 @@ public class Civilization : MonoBehaviour
             {
                 Debug.LogError($"Civilization {civData.civName}: TechManager.Instance is null. Cannot complete research for {completedTech.techName}.");
                 // Fallback: Manually do critical parts if manager is missing (not ideal)
-                if (!researchedTechs.Contains(completedTech)) researchedTechs.Add(completedTech);
-                ApplyTechBonuses(completedTech); 
+                HandleTechResearched(completedTech);
             }
 
             StartNextQueuedTech();
@@ -4539,6 +4547,9 @@ return true;
         // Add tech to researched list if not already there
         if (!researchedTechs.Contains(tech))
             researchedTechs.Add(tech);
+
+        // Update only this civilization's existing camps; packed Bands have no camp visual.
+        RefreshBandFireVisuals(tech, true);
 
         // Apply tech bonuses
         ApplyTechBonuses(tech);
