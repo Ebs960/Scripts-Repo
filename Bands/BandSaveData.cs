@@ -15,6 +15,9 @@ public sealed class BandSaveData
     public int tileIndex;
     public BandState state;
     public int movementPoints;
+    public int moveOrderDestination = -1;
+    public List<int> moveOrderPath = new List<int>();
+    public int moveOrderNextStep;
     public int population;
     public int foodReserve;
     public int consecutiveStarvationTurns;

@@ -34,8 +34,8 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
     private const float MIN_MOVE_COST = 1f; // minimum possible single-step cost (Plains = 1)
 
     // Path cache: avoids recomputing identical paths within the same turn.
-    // Key = (start, end, unitInstanceId), Value = (path, turn).
-    private readonly Dictionary<(int, int, int), (List<int> path, int turn)> pathCache = new(32);
+    // Key = (planet, start, end, unitInstanceId, requirePassable), Value = (path, turn).
+    private readonly Dictionary<(int, int, int, int, bool), (List<int> path, int turn)> pathCache = new(32);
     private const int PATH_CACHE_MAX = 64;
 
     // Telemetry counters (reset each turn, readable by AIDebugOverlay)
@@ -107,6 +107,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
     private readonly Dictionary<int, int> cameFrom = new Dictionary<int, int>();
     // Track active move coroutines per-unit so they can be cancelled from BaseUnit (failsafe, interruptions)
     private readonly Dictionary<int, Coroutine> _activeMoveCoroutines = new Dictionary<int, Coroutine>();
+    private readonly Dictionary<int, Coroutine> activeBandMoveCoroutines = new Dictionary<int, Coroutine>();
 
     void Awake()
     {
@@ -123,6 +124,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         if (TurnManager.Instance != null)
         {
             TurnManager.Instance.OnCivTurnEnded += HandleTurnChanged;
+            TurnManager.Instance.OnTurnChanged += HandleBandTurnStarted;
         }
     }
 
@@ -131,7 +133,15 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         if (TurnManager.Instance != null)
         {
             TurnManager.Instance.OnCivTurnEnded -= HandleTurnChanged;
+            TurnManager.Instance.OnTurnChanged -= HandleBandTurnStarted;
         }
+    }
+
+    private void HandleBandTurnStarted(Civilization civ, int round)
+    {
+        if (civ?.bands == null) return;
+        foreach (var band in civ.bands.ToArray())
+            if (band != null && band.HasMoveOrder && !HasActiveBandMove(band)) ExecuteBandMovement(band);
     }
 
     private void HandleTurnChanged(Civilization civ, int round)
@@ -210,9 +220,18 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
     /// </summary>
     public List<int> FindPath(int startIndex, int endIndex, BaseUnit unit = null)
     {
-        PathQueries++;
+        int planetIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        return FindPathOnPlanet(startIndex, endIndex, planetIndex, unit, false);
+    }
 
-        int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+    public List<int> FindPathForBand(Band band, int destination)
+    {
+        return band == null ? null : FindPathOnPlanet(band.CurrentTileIndex, destination, band.PlanetIndex, null, true);
+    }
+
+    private List<int> FindPathOnPlanet(int startIndex, int endIndex, int pIndex, BaseUnit unit, bool requirePassableTile)
+    {
+        PathQueries++;
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady())
         {
@@ -235,7 +254,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         // ── Path cache lookup ──
         int unitId = unit != null ? unit.GetRuntimeId() : 0;
         int currentTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
-        var cacheKey = (startIndex, endIndex, unitId);
+        var cacheKey = (pIndex, startIndex, endIndex, unitId, requirePassableTile);
         if (pathCache.TryGetValue(cacheKey, out var cached) && cached.turn == currentTurn)
         {
             PathCacheHits++;
@@ -307,6 +326,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
             {
                 var neighborTile = ts.GetTileData(neighbor);
                 if (neighborTile == null) continue;
+                if (requirePassableTile && !neighborTile.isPassable) continue;
 
                 int moveCost;
                 if (isOrbit)
@@ -361,7 +381,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
         return tile != null ? Mathf.Max(1, BiomeHelper.GetMovementCost(tile, unit)) : int.MaxValue;
     }
 
-    private void CacheResult((int, int, int) key, List<int> path, int turn)
+    private void CacheResult((int, int, int, int, bool) key, List<int> path, int turn)
     {
         if (pathCache.Count >= PATH_CACHE_MAX) pathCache.Clear();
         pathCache[key] = (path, turn);
@@ -979,6 +999,110 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
 
         // Start visual animation coroutine
         StartCoroutine(AnimateHerdAlongPath(herd, fullPath));
+    }
+
+    public void IssueBandMove(Band band, int targetTileIndex)
+    {
+        if (band == null) return;
+        if (band.State != BandState.Packed)
+        {
+            UIManager.Instance?.ShowNotification("Band must be packed to move.");
+            return;
+        }
+        // A click is authoritative: it replaces any previous order, even when the
+        // newly requested destination proves unreachable.
+        CancelBandMove(band, true);
+        var path = FindPathForBand(band, targetTileIndex);
+        if (path == null || path.Count == 0)
+        {
+            UIManager.Instance?.ShowNotification("Band can't reach that tile!");
+            return;
+        }
+        band.SetMoveOrder(targetTileIndex, path);
+        ExecuteBandMovement(band);
+    }
+
+    public void ExecuteBandMovement(Band band)
+    {
+        if (band == null || !band.HasMoveOrder || HasActiveBandMove(band)) return;
+        Coroutine routine = StartCoroutine(AnimateBandOrder(band));
+        activeBandMoveCoroutines[band.gameObject.GetRuntimeId()] = routine;
+    }
+
+    private IEnumerator AnimateBandOrder(Band band)
+    {
+        int id = band.gameObject.GetRuntimeId();
+        // StartCoroutine executes immediately up to the first yield. Deferring one frame
+        // guarantees the registry contains this routine even when the Band has no MP.
+        yield return null;
+        band.BeginQueuedTravelVisual();
+        try
+        {
+            while (band != null && band.HasMoveOrder && band.State == BandState.Packed)
+            {
+                int next = band.MoveOrderPath[band.MoveOrderNextStep];
+                var ts = TileSystem.GetForPlanet(band.PlanetIndex) ?? TileSystem.Instance;
+                var tile = ts != null ? ts.GetTileData(next) : null;
+                int cost = tile != null ? BiomeHelper.GetMovementCost(tile, null) : int.MaxValue;
+                if (cost >= 99) { band.ClearMoveOrder(); break; }
+                if (band.CurrentMovePoints < cost) break;
+
+                // TryMove revalidates adjacency, terrain, occupancy and MP at the instant of entry.
+                if (!band.TryMove(next, cost)) { band.ClearMoveOrder(); break; }
+                band.AdvanceMoveOrder();
+                while (band != null && band.IsVisualStepMoving) yield return null;
+            }
+        }
+        finally
+        {
+            if (band != null) band.EndQueuedTravelVisual();
+            activeBandMoveCoroutines.Remove(id);
+        }
+    }
+
+    public void CancelBandMove(Band band, bool clearOrder)
+    {
+        if (band == null) return;
+        int id = band.gameObject.GetRuntimeId();
+        if (activeBandMoveCoroutines.TryGetValue(id, out var routine))
+        {
+            if (routine != null) StopCoroutine(routine);
+            activeBandMoveCoroutines.Remove(id);
+        }
+        band.EndQueuedTravelVisual();
+        if (clearOrder) band.ClearMoveOrder();
+    }
+
+    public bool HasActiveBandMove(Band band)
+    {
+        return band != null && activeBandMoveCoroutines.ContainsKey(band.gameObject.GetRuntimeId());
+    }
+
+    public List<List<int>> GetPathSegmentsForBand(Band band, List<int> explicitPath = null)
+    {
+        if (band == null) return null;
+        var path = explicitPath ?? (band.HasMoveOrder ? band.MoveOrderPath.Skip(band.MoveOrderNextStep).ToList() : null);
+        if (path == null || path.Count == 0) return null;
+        int remaining = band.CurrentMovePoints;
+        int full = band.StartingMovePoints;
+        var ts = TileSystem.GetForPlanet(band.PlanetIndex) ?? TileSystem.Instance;
+        var result = new List<List<int>>();
+        var segment = new List<int>();
+        foreach (int index in path)
+        {
+            var tile = ts != null ? ts.GetTileData(index) : null;
+            int cost = tile != null ? BiomeHelper.GetMovementCost(tile, null) : 99;
+            if (cost >= 99 || full <= 0) break;
+            if (remaining < cost)
+            {
+                if (segment.Count > 0) { result.Add(segment); segment = new List<int>(); }
+                while (remaining < cost) remaining += full;
+            }
+            segment.Add(index);
+            remaining -= cost;
+        }
+        if (segment.Count > 0) result.Add(segment);
+        return result;
     }
 
     /// <summary>
