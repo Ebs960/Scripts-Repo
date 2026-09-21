@@ -65,6 +65,7 @@ MonoBehaviour:
     policyPoints: 0
   canFoundSettlement: 1
   cityPopulationDivisor: 10
+  fireTechnology: {fileID: 11400000, guid: 4fdea5583da84344cbeedb421757bbbe, type: 2}
   packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
   encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   civilizationVisualOverrides:

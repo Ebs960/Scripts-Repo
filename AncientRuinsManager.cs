@@ -491,7 +491,7 @@ public class AncientRuinsManager : MonoBehaviour
                     if (tech == null) continue;
                     if (civ.researchedTechs != null && !civ.researchedTechs.Contains(tech))
                     {
-                        civ.researchedTechs.Add(tech);
+                        civ.HandleTechResearched(tech);
                         rewards.Add($"Discovered the technology: {tech.techName}!");
                     }
                 }
