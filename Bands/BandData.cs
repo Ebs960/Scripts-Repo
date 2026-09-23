@@ -61,6 +61,8 @@ public sealed class BandData : ScriptableObject
     [Min(1)] public int cityPopulationDivisor = 10;
 
     [Header("Presentation")]
+    [Tooltip("Technology that reveals the complete campfire on encamped Band visuals.")]
+    public TechData fireTechnology;
     public GameObject packedVisual;
     public GameObject encampedVisual;
     public List<BandVisualOverride> civilizationVisualOverrides = new List<BandVisualOverride>();

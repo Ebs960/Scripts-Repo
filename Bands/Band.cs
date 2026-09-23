@@ -468,7 +468,28 @@ public sealed class Band : MonoBehaviour
         if (visualPrefab == null) return;
         stateVisual = Instantiate(visualPrefab, visualRoot != null ? visualRoot : transform, false);
         if (state == BandState.Packed) InitializePackedAnimators();
-        else RefreshStructureVisuals();
+        else
+        {
+            RefreshStructureVisuals();
+            RefreshFireVisual();
+        }
+    }
+
+    /// <summary>Updates only the existing campfire presentation from the owner's Fire research.</summary>
+    public void RefreshFireVisual(bool playIgnition = false)
+    {
+        if (state != BandState.Encamped || stateVisual == null) return;
+
+        var camp = stateVisual.GetComponentInChildren<BandCampVisual>(true);
+        if (camp == null)
+        {
+            Debug.LogWarning($"[Band] Encamped visual '{stateVisual.name}' has no BandCampVisual; its Fire Root cannot be updated.", stateVisual);
+            return;
+        }
+
+        bool unlocked = data != null && data.fireTechnology != null && owner != null
+            && owner.researchedTechs != null && owner.researchedTechs.Contains(data.fireTechnology);
+        camp.SetFireUnlocked(unlocked, playIgnition);
     }
 
     private void InitializePackedAnimators()

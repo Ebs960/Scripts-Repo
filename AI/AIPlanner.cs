@@ -79,6 +79,17 @@ public class AIPlanner
         if (civ == null) return;
         PlanTurn(civ);
         ExecuteCommands();
+        ExecutePostCommandDecisions(civ);
+    }
+
+    /// <summary>
+    /// Executes the non-command actors after tactical commands have resolved.  The split turn
+    /// coroutine calls this explicitly so planning and command execution can remain on separate
+    /// frames without silently omitting Bands or executing tactical commands twice.
+    /// </summary>
+    public void ExecutePostCommandDecisions(Civilization civ)
+    {
+        if (civ == null) return;
         ExecuteHerdDecisions(civ);
         ExecuteBandDecisions(civ);
     }
@@ -132,34 +143,205 @@ public class AIPlanner
         }
     }
 
-    private static void ExecuteBandDecisions(Civilization civ)
+    internal void ExecuteBandDecisions(Civilization civ)
     {
         if (civ?.bands == null) return;
         foreach (var band in civ.bands.ToArray())
         {
             if (band == null || band.Data == null) continue;
-            bool foodDanger = band.IsStarving || band.FoodReserve < band.FoodRequiredPerTurn * 2;
-            if (foodDanger && band.CurrentMovePoints >= band.Data.forageMovementCost)
+
+            var ts = TileSystem.GetForPlanet(band.PlanetIndex) ?? TileSystem.Instance;
+            if (ts == null || band.CurrentTileIndex < 0) continue;
+            var occupancy = TileOccupancyManager.GetForPlanet(band.PlanetIndex) ?? TileOccupancyManager.Instance;
+            var dangerMap = currentContext?.GetDangerMap(band.PlanetIndex);
+            int need = band.FoodRequiredPerTurn;
+            int turnsOfFood = need > 0 ? band.FoodReserve / need : int.MaxValue;
+            bool foodDanger = band.IsStarving || turnsOfFood < 2;
+            bool storageHasRoom = band.FoodReserve < band.FoodCapacity;
+            bool nearbyThreat = IsBandThreatened(civ, band, ts, occupancy, dangerMap);
+
+            // Foraging is an emergency action, not a reflex: do it only if it can store food and
+            // still has the movement required by the authored Band rules.
+            if (foodDanger && storageHasRoom && band.Data.baseForageFood > 0 &&
+                band.CurrentMovePoints >= band.Data.forageMovementCost && band.Forage() > 0)
             {
-                band.Forage();
                 continue;
             }
+
             if (band.State == BandState.Packed)
             {
-                band.Encamp();
+                int destination = ChooseBandDestination(civ, band, ts, occupancy, dangerMap, foodDanger, nearbyThreat);
+                if (destination >= 0 && TryMoveBandOneStep(band, destination)) continue;
+
+                // Encamp only where the local yields can support the Band, except that a Band
+                // with no reachable improvement must stop travelling before it starves.
+                if (!nearbyThreat && band.CurrentMovePoints >= band.Data.encampMovementCost &&
+                    (IsSustainableBandTile(band, ts, band.CurrentTileIndex) || foodDanger))
+                    band.Encamp();
                 continue;
             }
+
+            // An encamped first Band is allowed to create the bootstrap city. Prefer a materially
+            // better *reachable* known site, but never wait forever for a perfect one.
+            if (civ.cities != null && civ.cities.Count == 0 && band.CanFoundSettlement(out _))
+            {
+                int betterSite = ChooseMateriallyBetterCitySite(band, ts, occupancy, dangerMap);
+                if (betterSite < 0 || foodDanger)
+                {
+                    band.FoundSettlement(out _);
+                    continue;
+                }
+                if (band.CurrentMovePoints >= band.Data.packMovementCost && band.Pack())
+                    continue; // movement begins next turn; prevents pack/move/encamp oscillation.
+            }
+
+            if ((nearbyThreat || (!IsSustainableBandTile(band, ts, band.CurrentTileIndex) && foodDanger)) &&
+                band.CurrentMovePoints >= band.Data.packMovementCost && band.Pack())
+                continue;
+
             if (band.QueuedStructure == null && band.QueuedUnit == null)
             {
-                var structure = band.Data.allowedStructures.FirstOrDefault(x => x != null && band.CanQueueStructure(x, out _));
-                if (structure != null) { band.QueueStructure(structure); continue; }
-                if (band.Garrison.Count < Mathf.Min(2, band.GarrisonCapacity))
+                int desiredGarrison = nearbyThreat ? Mathf.Min(3, band.GarrisonCapacity) : Mathf.Min(1, band.GarrisonCapacity);
+                if (nearbyThreat && band.Garrison.Count < desiredGarrison && !foodDanger)
                 {
-                    var unit = band.Data.allowedMilitaryRecruitment.FirstOrDefault(x => x != null && band.CanQueueMilitaryUnit(x, out _));
+                    var defender = band.Data.allowedMilitaryRecruitment
+                        .Where(x => x != null && band.CanQueueMilitaryUnit(x, out _))
+                        .OrderBy(x => Mathf.Max(1, x.bandProductionCost))
+                        .ThenBy(x => x.goldCost)
+                        .FirstOrDefault();
+                    if (defender != null) { band.QueueMilitaryUnit(defender); continue; }
+                }
+
+                var structure = band.Data.allowedStructures
+                    .Where(x => x != null && band.CanQueueStructure(x, out _))
+                    .OrderByDescending(x => ScoreBandStructure(x, foodDanger, band))
+                    .FirstOrDefault();
+                if (structure != null) { band.QueueStructure(structure); continue; }
+
+                if (band.Garrison.Count < desiredGarrison && !foodDanger)
+                {
+                    var unit = band.Data.allowedMilitaryRecruitment
+                        .Where(x => x != null && band.CanQueueMilitaryUnit(x, out _))
+                        .OrderBy(x => Mathf.Max(1, x.bandProductionCost))
+                        .ThenBy(x => x.goldCost)
+                        .FirstOrDefault();
                     if (unit != null) band.QueueMilitaryUnit(unit);
                 }
             }
         }
+    }
+
+    private int ChooseBandDestination(Civilization civ, Band band, TileSystem ts, TileOccupancyManager occupancy,
+        DangerMap dangerMap, bool foodDanger, bool threatened)
+    {
+        // Reuse the bounded city-site cache produced during normal planning. This avoids another
+        // world scan and naturally respects actor-tier scan budgets.
+        if (!foodDanger && !threatened && civ.cities != null && civ.cities.Count == 0 &&
+            currentContext != null && currentContext.CitySites.TryGetValue(band.PlanetIndex, out var sites))
+        {
+            foreach (var site in sites)
+            {
+                // CitySites is score ordered. Once the best viable site is reached, stop roaming
+                // rather than immediately targeting the runner-up.
+                if (site.TileIndex == band.CurrentTileIndex) return -1;
+                if (IsAvailableBandTile(site.TileIndex, ts, occupancy) &&
+                    UnitMovementController.Instance?.FindPathForBand(band, site.TileIndex)?.Count > 0)
+                    return site.TileIndex;
+            }
+        }
+
+        int best = -1;
+        float bestScore = ScoreBandTile(band, ts, band.CurrentTileIndex, dangerMap);
+        foreach (int tile in ts.GetNeighbors(band.CurrentTileIndex))
+        {
+            if (!IsAvailableBandTile(tile, ts, occupancy)) continue;
+            float score = ScoreBandTile(band, ts, tile, dangerMap);
+            if (foodDanger) score += Mathf.Max(0, ts.GetTileData(tile).food) * 3f;
+            if (score > bestScore + (threatened ? 0f : 2f)) { bestScore = score; best = tile; }
+        }
+        return best;
+    }
+
+    private int ChooseMateriallyBetterCitySite(Band band, TileSystem ts, TileOccupancyManager occupancy, DangerMap dangerMap)
+    {
+        if (currentContext == null || !currentContext.CitySites.TryGetValue(band.PlanetIndex, out var sites)) return -1;
+        float current = ScoreBandTile(band, ts, band.CurrentTileIndex, dangerMap);
+        foreach (var site in sites)
+        {
+            if (site.TileIndex == band.CurrentTileIndex || site.Score < current + 8f) continue;
+            if (!IsAvailableBandTile(site.TileIndex, ts, occupancy)) continue;
+            var path = UnitMovementController.Instance?.FindPathForBand(band, site.TileIndex);
+            if (path != null && path.Count > 0 && path.Count <= 6) return site.TileIndex;
+        }
+        return -1;
+    }
+
+    private static bool TryMoveBandOneStep(Band band, int destination)
+    {
+        var movement = UnitMovementController.Instance;
+        var path = movement?.FindPathForBand(band, destination);
+        if (path == null || path.Count == 0) return false;
+        var ts = TileSystem.GetForPlanet(band.PlanetIndex) ?? TileSystem.Instance;
+        var tile = ts?.GetTileData(path[0]);
+        int cost = tile != null ? BiomeHelper.GetMovementCost(tile, null) : 99;
+        return cost < 99 && band.CurrentMovePoints >= cost && band.TryMove(path[0], cost);
+    }
+
+    private static bool IsAvailableBandTile(int tile, TileSystem ts, TileOccupancyManager occupancy)
+    {
+        var data = ts.GetTileData(tile);
+        return data != null && data.isLand && data.isPassable &&
+               (occupancy == null || occupancy.GetOccupantObject(tile, TileLayer.Surface) == null);
+    }
+
+    private static bool IsSustainableBandTile(Band band, TileSystem ts, int tile)
+    {
+        var data = ts.GetTileData(tile);
+        if (data == null) return false;
+        var yields = data.GetTotalYield();
+        return yields.Food + band.Data.baseForageFood >= band.FoodRequiredPerTurn;
+    }
+
+    private static float ScoreBandTile(Band band, TileSystem ts, int tile, DangerMap dangerMap)
+    {
+        var data = ts.GetTileData(tile);
+        if (data == null || !data.isLand || !data.isPassable) return float.MinValue;
+        var yields = data.GetTotalYield();
+        float score = yields.Food * 4f + yields.Production * 2f;
+        foreach (int neighbor in ts.GetNeighbors(tile))
+        {
+            var nearby = ts.GetTileData(neighbor);
+            if (nearby == null) continue;
+            var nearbyYield = nearby.GetTotalYield();
+            score += nearbyYield.Food + nearbyYield.Production * .5f;
+        }
+        if (data.hasMosquitoes && band.Owner?.civData != null && !band.Owner.IsImmuneToMosquitoDamage()) score -= 20f;
+        if (dangerMap != null) score -= dangerMap.GetDanger(tile) * 4f;
+        return score;
+    }
+
+    private static bool IsBandThreatened(Civilization civ, Band band, TileSystem ts,
+        TileOccupancyManager occupancy, DangerMap dangerMap)
+    {
+        if (dangerMap != null && dangerMap.GetDanger(band.CurrentTileIndex) > 0f) return true;
+        if (occupancy == null) return false;
+        foreach (int tile in ts.GetNeighbors(band.CurrentTileIndex))
+        {
+            var unit = occupancy.GetOccupantObject(tile, TileLayer.Surface)?.GetComponent<CombatUnit>();
+            if (unit != null && unit.owner != civ) return true;
+        }
+        return false;
+    }
+
+    private static float ScoreBandStructure(BandStructureData structure, bool foodDanger, Band band)
+    {
+        float score = structure.yields.production * 5f + structure.populationGrowthBonus * 4f +
+                      structure.foodStorageBonus * 1.5f + structure.forageBonus * 3f +
+                      structure.garrisonCapacityBonus;
+        if (foodDanger) score += structure.yields.food * 10f + structure.forageBonus * 8f + structure.foodStorageBonus * 2f;
+        if (band.Garrison.Count >= band.GarrisonCapacity) score += structure.garrisonCapacityBonus * 5f;
+        score -= Mathf.Max(0, structure.productionCost - band.ProductionProgress) * .05f;
+        return score;
     }
 
     // ─────────────────────── Phase 1: Planning ───────────────────────
