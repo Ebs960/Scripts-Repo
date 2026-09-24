@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LegacyData
   legacyName: No Man Left Behind
   icon: {fileID: 21300000, guid: b92e050d96a6de14a9667f8e6cb95726, type: 3}
-  description: No matter what we never abandon our own.
+  description: Shared stores and common purpose help every member of the community endure.
   flavorText: 
   bannerImage: {fileID: 21300000, guid: b92e050d96a6de14a9667f8e6cb95726, type: 3}
   policyPointCost: 50
@@ -25,11 +25,11 @@ MonoBehaviour:
   attackModifier: 0
   defenseModifier: 0
   movementModifier: 0
-  foodModifier: 0.05
+  foodModifier: 0.08
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.1
+  cultureModifier: 0.08
   faithModifier: 0
   policyBiases:
   - policy: {fileID: 11400000, guid: 3dc619635f28bb544b17579357aba52b, type: 2}

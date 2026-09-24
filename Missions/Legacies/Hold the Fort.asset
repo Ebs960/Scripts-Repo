@@ -14,22 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LegacyData
   legacyName: Hold the Fort
   icon: {fileID: 21300000, guid: ec90a3e1becc6be4daf44eb42bd0b268, type: 3}
-  description: We dont run we bunker down and hold out.
+  description: Fortified communities turn prepared ground into an enduring defensive advantage.
   flavorText: 
   bannerImage: {fileID: 21300000, guid: ec90a3e1becc6be4daf44eb42bd0b268, type: 3}
   policyPointCost: 50
   goldCost: 50
   attackBonus: 0
-  defenseBonus: 10
+  defenseBonus: 8
   movementBonus: 0
   attackModifier: 0
   defenseModifier: 0
   movementModifier: 0
-  foodModifier: 0.05
-  productionModifier: 0
+  foodModifier: 0
+  productionModifier: 0.05
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.1
+  cultureModifier: 0
   faithModifier: 0
   policyBiases:
   - policy: {fileID: 11400000, guid: 1593fb683dba5f047ac58f2d3a77cf21, type: 2}

@@ -47,10 +47,10 @@ MonoBehaviour:
     beast?  Stand firm against the night? Or do we swear to take vengeance upon the
     predators that stalk us. These choices will shape who we become when the world
     grows warm again.\n\nWe must survive the Long Winter."
-  escalationSplash: {fileID: 0}
-  escalationText: 
-  climaxSplash: {fileID: 0}
-  climaxText: 
+  escalationSplash: {fileID: 21300000, guid: 1dccb808118c4734eb9e33d0f335bb37, type: 3}
+  escalationText: "The cold deepens. Game trails empty beneath fresh snow, while starving predators range ever closer to the fires. The tribe must ration every meal and shelter every traveler; the easy days of this winter are gone."
+  climaxSplash: {fileID: 21300000, guid: 1dccb808118c4734eb9e33d0f335bb37, type: 3}
+  climaxText: "The heart of the Long Cold is upon us. Killing frost grips the land, prey is desperately scarce, and the hungriest beasts hunt without fear. Hold to the oath. These final nights will decide who sees the thaw."
   resolutionSplash: {fileID: 21300000, guid: f127d8e863042234f9cac4863e3d985d, type: 3}
   resolutionText: "The snow is melting.\n\nFor the first time in many seasons, the
     wind no longer carries the bite of death. Ice cracks along the rivers, and dark
@@ -63,8 +63,8 @@ MonoBehaviour:
   ominousWarningTurns: 2
   obviousWarningTurns: 1
   durationTurns: 13
-  escalationAtTurn: 0
-  climaxAtTurn: 0
+  escalationAtTurn: 4
+  climaxAtTurn: 9
   earliestTurn: 4
   latestTurn: 6
   requiredTechs: []
@@ -83,3 +83,17 @@ MonoBehaviour:
     value: 0.5
   - type: 4
     value: 1.5
+  escalationWorldOverrides:
+  - type: 5
+    value: 6
+  - type: 3
+    value: 0.4
+  - type: 4
+    value: 1.75
+  climaxWorldOverrides:
+  - type: 5
+    value: 8
+  - type: 3
+    value: 0.3
+  - type: 4
+    value: 2

@@ -14,23 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LegacyData
   legacyName: Blood Lust
   icon: {fileID: 21300000, guid: 4d11798e5e8fcd643b7bf724d89d3130, type: 3}
-  description: Fight. Kill. Repeat
+  description: A tradition of relentless aggression drives armies and the war effort forward.
   flavorText: 
   bannerImage: {fileID: 21300000, guid: 4d11798e5e8fcd643b7bf724d89d3130, type: 3}
   policyPointCost: 50
   goldCost: 50
-  attackBonus: 10
+  attackBonus: 7
   defenseBonus: 0
   movementBonus: 0
   attackModifier: 0
   defenseModifier: 0
   movementModifier: 0
   foodModifier: 0
-  productionModifier: 0.1
+  productionModifier: 0.08
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0.05
+  faithModifier: 0
   policyBiases:
   - policy: {fileID: 11400000, guid: 1593fb683dba5f047ac58f2d3a77cf21, type: 2}
     opinionModifier: 8.9

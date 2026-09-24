@@ -82,6 +82,9 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     }
     private OriginalWorldValues originalWorld;
     private readonly Dictionary<int, MissionState> activeMissions = new Dictionary<int, MissionState>();
+    // A mission choice is an oath for the whole crisis, not a repeatable quest. Keep this
+    // after success/failure so a completed short mission cannot reopen the choice popup.
+    private readonly HashSet<int> crisisParticipants = new HashSet<int>();
     private readonly HashSet<int> subscribedCivs = new HashSet<int>();
     private bool subscribedToTurnManager;
     private bool subscribedToImprovementManager;
@@ -318,7 +321,12 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             return result;
 
         int civIdx = GetCivIndex(civ);
-        if (civIdx < 0 || activeMissions.ContainsKey(civIdx))
+        if (civIdx < 0 || activeMissions.ContainsKey(civIdx) || crisisParticipants.Contains(civIdx))
+            return result;
+
+        // Mission choice belongs to the crisis-start turn. This gives the announcement UI
+        // the entire turn to open without allowing a late-crisis survival-oath exploit.
+        if (sourceCrisis == activeCrisis && !IsMissionSelectionOpen())
             return result;
 
         foreach (var mission in sourceCrisis.crisisMissions)
@@ -341,19 +349,21 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
 
         int civIdx = GetCivIndex(civ);
-        if (civIdx < 0 || activeMissions.ContainsKey(civIdx))
+        if (civIdx < 0 || activeMissions.ContainsKey(civIdx) || crisisParticipants.Contains(civIdx))
         {
             LogCrisisDebug("StartMission", $"Rejected: civIdx={civIdx}, alreadyHasMission={activeMissions.ContainsKey(civIdx)}.");
             return false;
         }
 
-        if (!activeCrisis.crisisMissions.Contains(mission) || !MeetsPrerequisites(civ, mission))
+        if (!IsMissionSelectionOpen()
+            || !activeCrisis.crisisMissions.Contains(mission) || !MeetsPrerequisites(civ, mission))
         {
             LogCrisisDebug("StartMission", $"Rejected: mission not part of active crisis or prerequisites failed for civ={DescribeCiv(civ)} mission={DescribeMission(mission)}.");
             return false;
         }
 
         var state = CreateState(mission);
+        crisisParticipants.Add(civIdx);
         activeMissions[civIdx] = state;
         LogCrisisDebug("StartMission", $"Mission state created for civIdx={civIdx} objectiveCount={state.objectiveProgress.Length} startTurn={state.startTurn}.");
         OnMissionStarted?.Invoke(civ, mission);
@@ -727,12 +737,14 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         {
             LogCrisisDebug("AdvanceActivePhase", "Climax threshold reached.");
             SetPhase(CrisisData.CrisisPhase.Climax);
+            ReapplyWorldOverridesForCurrentPhase();
         }
         else if (activeCrisis.escalationAtTurn > 0 && elapsed >= activeCrisis.escalationAtTurn
                  && currentPhase == CrisisData.CrisisPhase.Active)
         {
             LogCrisisDebug("AdvanceActivePhase", "Escalation threshold reached.");
             SetPhase(CrisisData.CrisisPhase.Escalation);
+            ReapplyWorldOverridesForCurrentPhase();
         }
     }
 
@@ -744,12 +756,13 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     {
         LogCrisisDebug("ActivateCrisis", $"Activating {DescribeCrisis(activeCrisis)} at turn={CurrentTurn}. triggerTurn={crisisTriggerTurn}");
         crisisActiveTurn = CurrentTurn;
+        crisisParticipants.Clear();
         SetPhase(CrisisData.CrisisPhase.Active);
 
         LogCrisisDebug("ActivateCrisis", "Capturing original world state.");
         CaptureOriginalWorld();
         LogCrisisDebug("ActivateCrisis", "Applying world overrides.");
-        ApplyWorldOverrides();
+        ReapplyWorldOverridesForCurrentPhase();
 
         LogCrisisDebug("ActivateCrisis", "Invoking OnCrisisStarted listeners.");
         OnCrisisStarted?.Invoke(activeCrisis);
@@ -775,6 +788,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         OnCrisisEnded?.Invoke(crisis);
         activeCrisis = null;
         currentPhase = CrisisData.CrisisPhase.Dormant;
+        crisisParticipants.Clear();
         LogCrisisDebug("EndCrisis", "Crisis state cleared; manager returned to Dormant.");
     }
 
@@ -984,15 +998,11 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         LogCrisisDebug("RestoreOriginalWorld", "Original world restoration complete.");
     }
 
-    private void ApplyWorldOverrides()
+    private void ApplyWorldOverrides(CrisisData.WorldOverride[] overrides)
     {
-        if (activeCrisis.worldOverrides == null || activeCrisis.worldOverrides.Length == 0)
-        {
-            LogCrisisDebug("ApplyWorldOverrides", $"No world overrides configured for {DescribeCrisis(activeCrisis)}.");
-            return;
-        }
+        if (overrides == null || overrides.Length == 0) return;
 
-        foreach (var ov in activeCrisis.worldOverrides)
+        foreach (var ov in overrides)
         {
             LogCrisisDebug("ApplyWorldOverrides", $"Applying override type={ov.type} value={ov.value:F3}");
             switch (ov.type)
@@ -1032,17 +1042,58 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 {
                     // Add as a delta to every civ's foodModifier (e.g. -0.5 = −50% food)
                     float delta = ov.value;
+                    // Phase arrays replace, rather than stack, a food delta of the same type.
+                    float previousDelta = originalWorld.foodMultiplier;
                     originalWorld.foodMultiplier = delta;
                     var allCivs = CivilizationManager.Instance?.GetAllCivs();
                     if (allCivs != null)
                         foreach (var civ in allCivs)
-                            if (civ != null) civ.foodModifier += delta;
+                            if (civ != null) civ.foodModifier += delta - previousDelta;
                     break;
                 }
             }
         }
 
-        LogCrisisDebug("ApplyWorldOverrides", $"Finished applying {activeCrisis.worldOverrides.Length} overrides for {DescribeCrisis(activeCrisis)}.");
+        LogCrisisDebug("ApplyWorldOverrides", $"Finished applying {overrides.Length} overrides for {DescribeCrisis(activeCrisis)}.");
+    }
+
+    private void ReapplyWorldOverridesForCurrentPhase()
+    {
+        if (activeCrisis == null || !originalWorld.captured) return;
+
+        // Return every mutable value to the captured pre-crisis baseline before layering
+        // the phase values. This makes phase events and save/load replay idempotent.
+        ResetWorldToCapturedBaseline();
+        ApplyWorldOverrides(activeCrisis.worldOverrides);
+        if (currentPhase == CrisisData.CrisisPhase.Escalation || currentPhase == CrisisData.CrisisPhase.Climax)
+            ApplyWorldOverrides(activeCrisis.escalationWorldOverrides);
+        if (currentPhase == CrisisData.CrisisPhase.Climax)
+            ApplyWorldOverrides(activeCrisis.climaxWorldOverrides);
+    }
+
+    private void ResetWorldToCapturedBaseline()
+    {
+        if (ClimateManager.Instance != null)
+        {
+            ClimateManager.Instance.ClearWinterDurationOverride();
+            ClimateManager.Instance.SetForceWinterOverride(originalWorld.winterForced);
+            ClimateManager.Instance.summerDroughtChance = originalWorld.droughtChance;
+            ClimateManager.Instance.summerDroughtSeverity = originalWorld.droughtSeverity;
+            ClimateManager.Instance.winterAttritionDamage = originalWorld.winterAttritionDamage;
+        }
+        if (AnimalManager.Instance != null)
+        {
+            AnimalManager.Instance.crisisPreySpawnMultiplier = originalWorld.preySpawnMultiplier;
+            AnimalManager.Instance.crisisPredatorSpawnMultiplier = originalWorld.predatorSpawnMultiplier;
+        }
+        if (originalWorld.foodMultiplier != 0f)
+        {
+            var civs = CivilizationManager.Instance?.GetAllCivs();
+            if (civs != null)
+                foreach (var civ in civs)
+                    if (civ != null) civ.foodModifier -= originalWorld.foodMultiplier;
+            originalWorld.foodMultiplier = 0f;
+        }
     }
 
     // ═══════════════════════════════════════════════
@@ -1088,6 +1139,15 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         public int activeTurn;
         public List<string> injectedMissionNames;
         public List<string> completedCrisisNames;
+        public List<int> participantCivIndices;
+        public bool hasOriginalWorld;
+        public int originalWinterDuration;
+        public bool originalWinterForced;
+        public float originalDroughtChance;
+        public float originalDroughtSeverity;
+        public int originalWinterAttritionDamage;
+        public float originalPreySpawnMultiplier;
+        public float originalPredatorSpawnMultiplier;
     }
 
     public CrisisSaveData ExportCrisisState()
@@ -1099,7 +1159,16 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             phase = (int)currentPhase,
             triggerTurn = crisisTriggerTurn,
             activeTurn = crisisActiveTurn,
-            injectedMissionNames = new List<string>()
+            injectedMissionNames = new List<string>(),
+            participantCivIndices = new List<int>(crisisParticipants),
+            hasOriginalWorld = originalWorld.captured,
+            originalWinterDuration = originalWorld.winterDuration,
+            originalWinterForced = originalWorld.winterForced,
+            originalDroughtChance = originalWorld.droughtChance,
+            originalDroughtSeverity = originalWorld.droughtSeverity,
+            originalWinterAttritionDamage = originalWorld.winterAttritionDamage,
+            originalPreySpawnMultiplier = originalWorld.preySpawnMultiplier,
+            originalPredatorSpawnMultiplier = originalWorld.predatorSpawnMultiplier
         };
         data.completedCrisisNames = new List<string>(crisisHistory);
         return data;
@@ -1108,10 +1177,15 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     public void ImportCrisisState(CrisisSaveData data)
     {
         // Reset
+        // Restore an already-applied crisis before replacing its state. This matters for
+        // in-place loads and prevents food/climate modifiers from accumulating.
+        if (originalWorld.captured)
+            RestoreOriginalWorld();
         activeCrisis = null;
         currentPhase = CrisisData.CrisisPhase.Dormant;
         originalWorld.captured = false;
         crisisHistory.Clear();
+        crisisParticipants.Clear();
 
         // Restore history
         if (data != null && data.completedCrisisNames != null)
@@ -1136,14 +1210,35 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         crisisTriggerTurn = data.triggerTurn;
         crisisActiveTurn = data.activeTurn;
         currentPhase = (CrisisData.CrisisPhase)data.phase;
+        if (data.participantCivIndices != null)
+            foreach (int civIndex in data.participantCivIndices)
+                crisisParticipants.Add(civIndex);
 
         // Restore world overrides if the crisis is past the warning phases
         if (currentPhase != CrisisData.CrisisPhase.OminousWarning
             && currentPhase != CrisisData.CrisisPhase.ObviousWarning
             && currentPhase != CrisisData.CrisisPhase.Dormant)
         {
-            CaptureOriginalWorld();
-            ApplyWorldOverrides();
+            if (data.hasOriginalWorld)
+            {
+                originalWorld = new OriginalWorldValues
+                {
+                    winterDuration = data.originalWinterDuration,
+                    winterForced = data.originalWinterForced,
+                    droughtChance = data.originalDroughtChance,
+                    droughtSeverity = data.originalDroughtSeverity,
+                    winterAttritionDamage = data.originalWinterAttritionDamage,
+                    preySpawnMultiplier = data.originalPreySpawnMultiplier,
+                    predatorSpawnMultiplier = data.originalPredatorSpawnMultiplier,
+                    foodMultiplier = 0f,
+                    captured = true
+                };
+            }
+            else
+            {
+                CaptureOriginalWorld();
+            }
+            ReapplyWorldOverridesForCurrentPhase();
         }
 
         Debug.Log($"[CrisisManager] Restored crisis '{crisis.crisisName}' in phase {currentPhase}");
@@ -1220,8 +1315,19 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             currentObjectiveIndex = 0,
             objectiveProgress = new int[mission.objectives.Count],
             objectiveCompleted = new bool[mission.objectives.Count],
-            startTurn = CurrentTurn
+            // Survival oaths measure the crisis, not how long the player spent reading
+            // the modal. Selection is restricted to this same start turn.
+            startTurn = crisisActiveTurn
         };
+    }
+
+    private bool IsMissionSelectionOpen()
+    {
+        if (activeCrisis == null) return false;
+        bool activePhase = currentPhase == CrisisData.CrisisPhase.Active
+            || currentPhase == CrisisData.CrisisPhase.Escalation
+            || currentPhase == CrisisData.CrisisPhase.Climax;
+        return activePhase && CurrentTurn == crisisActiveTurn;
     }
 
     private void TryAdvance(Civilization civ, int civIdx, MissionState state, MissionData.ObjectiveType type, int amount, object filter)
