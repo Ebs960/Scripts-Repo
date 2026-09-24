@@ -73,6 +73,14 @@ public class CrisisData : ScriptableObject
     [Header("World Overrides (active while crisis runs)")]
     public WorldOverride[] worldOverrides;
 
+    [Header("Escalation World Overrides")]
+    [Tooltip("Overrides layered over the active-crisis values when escalation begins. Later values replace earlier values of the same type.")]
+    public WorldOverride[] escalationWorldOverrides;
+
+    [Header("Climax World Overrides")]
+    [Tooltip("Overrides layered over the escalation values when the climax begins. Later values replace earlier values of the same type.")]
+    public WorldOverride[] climaxWorldOverrides;
+
     // ─────────────────────────────────────────────
     //  Phase enum
     // ─────────────────────────────────────────────

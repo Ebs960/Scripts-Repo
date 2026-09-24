@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
   missionName: Oath of Steadfastness
   icon: {fileID: 0}
-  description: 
+  description: Survive all 13 turns of the Long Cold while maintaining at least one qualifying shelter.
   flavorText: "The cold tightens around us. Snow buries the paths we once followed,
     and hunger waits beyond every frozen hill. If we wander, we weaken. If we scatter,
     we die. Here we build our shelter. Here we defend our fire. Predators will test
@@ -57,8 +57,8 @@ MonoBehaviour:
   - type: 1
     activatesAfterObjectiveIndex: -1
     targetValue: 1
-    comparison: 0
-    failureFlavorText: 
+    comparison: 1
+    failureFlavorText: The final shelter was lost while the Oath of Steadfastness was active.
     specificUnit: {fileID: 0}
     specificUnits: []
     specificWorkerUnits: []
@@ -74,5 +74,5 @@ MonoBehaviour:
   - tierName: Hold the Fort
     completionFlavorText: We dont run. Ever
     tierBadge: {fileID: 0}
-    requiredObjectivesCompleted: 0
+    requiredObjectivesCompleted: 1
     rewardLegacy: {fileID: 11400000, guid: 65a301742ca26e64183c49a5db45c45d, type: 2}

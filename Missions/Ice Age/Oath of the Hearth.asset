@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
   missionName: Oath of the Hearth
   icon: {fileID: 0}
-  description: 
+  description: Survive all 13 turns of the Long Cold without losing a combat or worker unit.
   flavorText: 'The cold takes the careless and the slow. Hunger divides the selfish
     from the strong. If we leave our wounded behind, the tribe grows smaller with
     every storm. We gather close to the fire. We share what we hunt. We carry those
@@ -49,7 +49,7 @@ MonoBehaviour:
     description: Lose no one. Not even one member of our people
     icon: {fileID: 0}
     type: 0
-    targetValue: 0
+    targetValue: 13
     biomeFilter: 
     specificTech: {fileID: 0}
     specificCulture: {fileID: 0}
@@ -66,7 +66,7 @@ MonoBehaviour:
     activatesAfterObjectiveIndex: -1
     targetValue: 0
     comparison: 0
-    failureFlavorText: 
+    failureFlavorText: A member of the tribe was lost while the Oath of the Hearth was active.
     specificUnit: {fileID: 0}
     specificUnits: []
     specificWorkerUnits: []
@@ -80,5 +80,5 @@ MonoBehaviour:
   - tierName: No Man Left Behind
     completionFlavorText: We protected all of us, even the weak/
     tierBadge: {fileID: 0}
-    requiredObjectivesCompleted: 0
+    requiredObjectivesCompleted: 1
     rewardLegacy: {fileID: 11400000, guid: fb023f75c2a78a94e8e8db5cc56a2a6d, type: 2}
