@@ -34,8 +34,6 @@ public sealed class BandCampVisual : MonoBehaviour
     [Header("Technology visuals")]
     [SerializeField, Tooltip("The complete campfire hierarchy. It must include every fire-only prop and start inactive.")]
     private Transform fireRoot;
-    [SerializeField, Tooltip("Optional trigger sent to Animators under Fire Root when Fire is first discovered.")]
-    private string ignitionTrigger = "Ignite";
 
     private bool fireStateApplied;
     private bool fireUnlocked;
@@ -57,17 +55,9 @@ public sealed class BandCampVisual : MonoBehaviour
         bool changed = !fireStateApplied || fireUnlocked != unlocked;
         if (!changed) return;
 
-        bool wasUnlocked = fireStateApplied && fireUnlocked;
         fireStateApplied = true;
         fireUnlocked = unlocked;
         fireRoot.gameObject.SetActive(unlocked);
-
-        if (unlocked && !wasUnlocked && playIgnition && !string.IsNullOrEmpty(ignitionTrigger))
-        {
-            foreach (var animator in fireRoot.GetComponentsInChildren<Animator>(true))
-                if (animator != null && animator.runtimeAnimatorController != null)
-                    animator.SetTrigger(ignitionTrigger);
-        }
     }
 
     public bool TryGetSocket(BandStructureVisualSlot slot, ISet<Transform> occupied, out Transform anchor)

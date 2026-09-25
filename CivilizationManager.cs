@@ -44,7 +44,7 @@ public class CivilizationManager : MonoBehaviour
     public GameObject cityPrefab;
 
     [Header("All Civilization Data")]
-    [Tooltip("Include normal civs, tribes (isTribe), and city-states (isCityState). This will be loaded from Resources/Civilizations.")]
+    [Tooltip("Runtime catalog of normal civs, tribes, and city-states. GameManager.civilizationCatalog is authoritative when assigned.")]
     public CivData[] allCivDatas;
 
     [HideInInspector] public Civilization playerCiv;
@@ -63,11 +63,20 @@ public class CivilizationManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
 
-        // Load all CivData from Resources
-        allCivDatas = ResourceCache.GetAllCivDatas();
+        ConfigureCivilizationCatalog(GameManager.Instance != null ? GameManager.Instance.civilizationCatalog : null);
+        if (allCivDatas == null || allCivDatas.Length == 0)
+            allCivDatas = ResourceCache.GetAllCivDatas();
         if (allCivDatas == null || allCivDatas.Length == 0) {
-            Debug.LogError("CivilizationManager: No CivData assets found in Resources/Civilizations!");
+            Debug.LogError("CivilizationManager: No civilizations configured. Assign GameManager.civilizationCatalog.");
         }
+    }
+
+    public void ConfigureCivilizationCatalog(CivData[] catalog)
+    {
+        if (catalog == null || catalog.Length == 0)
+            return;
+
+        allCivDatas = catalog.Where(data => data != null).Distinct().ToArray();
     }
 
     void Start()
@@ -2448,7 +2457,7 @@ break; // Only propose one alliance per turn
         // Check if allCivDatas is populated
         if (allCivDatas == null || allCivDatas.Length == 0)
         {
-            Debug.LogError("allCivDatas is null or empty! Make sure CivData assets are in Resources/Civilizations/");
+            Debug.LogError("allCivDatas is null or empty! Assign every civilization to GameManager.civilizationCatalog.");
             return;
         }
         

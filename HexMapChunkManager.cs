@@ -2617,24 +2617,13 @@ public class HexMapChunkManager : MonoBehaviour
         BindTexture("_BiomeNormalArray", biomeNormalArray, true);
         BindTexture("_BiomeMaskArray", biomeMaskArray, true);
         BindTexture("_BiomeSurfaceMapTex", biomeSurfaceMapTexture, true);
-        BindTexture("_BiomeEmissiveMapTex", biomeEmissiveMapTexture, false);
-        BindTexture("_TileSeasonMask", null, false);
-        BindTexture("_CliffAlbedoArray", cliffAlbedoArray, true);
-        BindTexture("_CliffNormalArray", cliffNormalArray, true);
+        BindTexture("_BiomeEmissiveMaskTex", biomeEmissiveMapTexture, false);
+        BindTexture("_SurfaceEmissiveArray", biomeEmissiveArray, false);
 
-        BindFloat("_MapWidth", mapWidth);
-        BindFloat("_MapHeight", mapHeight);
-        BindFloat("_BiomeNormalStrength", biomeNormalStrength);
-        BindFloat("_CliffTiling", cliffTiling);
-        BindFloat("_CliffStrength", cliffStrength);
-        BindFloat("_CliffSlopeThreshold", cliffSlopeThreshold);
-        BindFloat("_CliffSlopeBlend", cliffSlopeBlend);
-        BindFloat("_CliffStepThreshold", cliffStepThreshold);
-        BindFloat("_CliffStepBlend", cliffStepBlend);
-        float cliffSliceCount = cliffAlbedoArray != null
-            ? Mathf.Max(1, cliffAlbedoArray.depth)
-            : 1f;
-        BindFloat("_CliffSliceCount", cliffSliceCount, false);
+        BindFloat("_ElevationScale", displacementStrength);
+        BindFloat("_BiomeCount", biomeTintArray != null ? biomeTintArray.Length : 0f);
+        BindFloat("_TriTiling", triplanarTiling);
+        BindFloat("_TriBlend", triplanarBlend);
         BindFloat("_GlobalSnowAmount", globalSnowAmount);
     }
 

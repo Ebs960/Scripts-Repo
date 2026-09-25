@@ -149,6 +149,7 @@ public class UIManager : MonoBehaviour
             cityPanel.name = "City Panel";
             cityPanel.SetActive(false);
         }
+        transform.SetParent(null, true);
         DontDestroyOnLoad(gameObject);
         defaultFont = TMP_Settings.defaultFontAsset;
         panelDict = new Dictionary<string, GameObject>

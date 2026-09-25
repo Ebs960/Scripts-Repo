@@ -67,6 +67,9 @@ MonoBehaviour:
   foodReserve: 0
   consecutiveStarvationTurns: 0
   currentMovePoints: 0
+  moveOrderDestination: -1
+  moveOrderPath: 
+  moveOrderNextStep: 0
   garrison: []
   builtStructures: []
   queuedStructure: {fileID: 0}
@@ -146,7 +149,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.46917725
+      value: -0.14
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
       propertyPath: m_LocalPosition.y
@@ -154,7 +157,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.8655548
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
       propertyPath: m_LocalRotation.w
@@ -191,6 +194,14 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
       propertyPath: m_Name
       value: Band Woman 2 (East African)
+      objectReference: {fileID: 0}
+    - target: {fileID: 4264617379926448517, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4264617379926448517, guid: 2daf3061f97dcf9439bc7869c09f1655, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.071
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

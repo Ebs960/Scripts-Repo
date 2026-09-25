@@ -200,7 +200,7 @@ public class GovernmentPanel : MonoBehaviour
                 msg.text = "Confirm?";
                 msg.alignment = TextAlignmentOptions.Center;
                 msg.fontSize = 16;
-                var msgRt = msgGO.AddComponent<RectTransform>();
+                var msgRt = msg.rectTransform;
                 msgRt.anchorMin = new Vector2(0f, 0.7f);
                 msgRt.anchorMax = new Vector2(1f, 1f);
                 msgRt.offsetMin = new Vector2(8, 8);

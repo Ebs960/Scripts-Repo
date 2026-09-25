@@ -1176,11 +1176,11 @@ public class MainMenuManager : MonoBehaviour
             return;
         }
         
-        // Fallback: load all CivData assets from Resources/Civilizations
+        // Fallback: use the catalog registered by GameManager.
         CivData[] allCivs = ResourceCache.GetAllCivDatas();
         if (allCivs == null || allCivs.Length == 0)
         {
-            Debug.LogError("No civilizations found in Resources/Civilizations!");
+            Debug.LogError("No civilizations configured. Assign GameManager.civilizationCatalog or manual civilization entries.");
             return;
         }
         

@@ -17,6 +17,7 @@ public class LimitManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            transform.SetParent(null, true);
             DontDestroyOnLoad(gameObject);
         }
         else

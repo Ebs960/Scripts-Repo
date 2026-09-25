@@ -59,6 +59,10 @@ public class GameManager : MonoBehaviour
     public int numberOfCityStates = 2;
     public int numberOfTribes = 2;
 
+    [Header("Civilization Catalog")]
+    [Tooltip("Assign every playable civilization, tribe, and city-state here. CivData assets do not need to be in a Resources folder.")]
+    public CivData[] civilizationCatalog;
+
     // Animal prevalence: 0=dead, 1=sparse, 2=scarce, 3=normal, 4=lively, 5=bustling
     [Range(0, 5)]
     public int animalPrevalence = 3;
@@ -523,6 +527,7 @@ public class GameManager : MonoBehaviour
 
         // Initialize ResourceCache early (before any Resources.LoadAll calls)
         ResourceCache.Initialize();
+        RegisterCivilizationCatalog();
 
         // Initialize global UI audio system
         SetupGlobalUIAudio();
@@ -621,8 +626,19 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded_AutoInit(Scene scene, LoadSceneMode mode)
     {
+        RegisterCivilizationCatalog();
+
         // If we persist across scenes, Start() will not run again—so we trigger auto-init here.
         TryAutoInitializeForActiveScene();
+    }
+
+    private void RegisterCivilizationCatalog()
+    {
+        if (civilizationCatalog == null || civilizationCatalog.Length == 0)
+            return;
+
+        ResourceCache.SetCivDatas(civilizationCatalog);
+        civilizationManager?.ConfigureCivilizationCatalog(civilizationCatalog);
     }
 
     private void TryAutoInitializeForActiveScene()
@@ -759,6 +775,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: CivilizationManager not found and no prefab assigned!");
             }
         }
+        civilizationManager?.ConfigureCivilizationCatalog(civilizationCatalog);
 
         // Find or create ClimateManager
         climateManager = foundManagers.climateManager;

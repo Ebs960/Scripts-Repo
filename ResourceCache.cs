@@ -67,6 +67,18 @@ public static class ResourceCache
 
     public static ReligionDatabase GetReligionDatabase() => _religionDatabase;
 
+    /// <summary>
+    /// Assign the civilization catalog explicitly at runtime. This avoids requiring CivData assets
+    /// or the base-game content manifest to live under a Resources folder.
+    /// </summary>
+    public static void SetCivDatas(CivData[] civDatas)
+    {
+        _allCivDatas = civDatas != null
+            ? civDatas.Where(civ => civ != null).Distinct().ToArray()
+            : new CivData[0];
+        _civDatasLoaded = true;
+    }
+
     private static bool _initialized = false;
     
     // Cached resource arrays - loaded lazily on first access

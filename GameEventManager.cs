@@ -284,6 +284,7 @@ public class GameEventManager : MonoBehaviour
         }
         
         Instance = this;
+        transform.SetParent(null, true);
         DontDestroyOnLoad(gameObject);
         
         // Pre-populate pools

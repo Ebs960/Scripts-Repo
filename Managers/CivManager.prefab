@@ -49,5 +49,29 @@ MonoBehaviour:
   pioneerData: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
   startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
   cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
-  allCivDatas: []
+  allCivDatas:
+  - {fileID: 11400000, guid: fd40c750163cf0b40965f2a2cb5e7b94, type: 2}
+  - {fileID: 11400000, guid: 301a6892b8ad50c4e90e5244e555991b, type: 2}
+  - {fileID: 11400000, guid: e07c9ddbee3f7da498fe718a19dcb22c, type: 2}
+  - {fileID: 11400000, guid: 07843d53afd7edb4ab65b0c1e61c2140, type: 2}
+  - {fileID: 11400000, guid: b89280a654ebe92459449d6a66fe50ab, type: 2}
+  - {fileID: 11400000, guid: e1dc68799771f004ba736d9c23ecca7a, type: 2}
+  - {fileID: 11400000, guid: 46b9be47a06809e4baf66e0dca03588b, type: 2}
+  - {fileID: 11400000, guid: 40b53e88121ea6345aaf1cead21953a0, type: 2}
+  - {fileID: 11400000, guid: f26bd0858db1b4649942db951f2293bc, type: 2}
+  - {fileID: 11400000, guid: fd36916eea3132848948206c912faf09, type: 2}
+  - {fileID: 11400000, guid: d1a7bd9d5509edd4e99ce59ea636b262, type: 2}
+  - {fileID: 11400000, guid: 39129248f5e9fdc4d954bad65646a4b9, type: 2}
+  - {fileID: 11400000, guid: f05123cc0a1460f4cbfcdffdfa3200e9, type: 2}
+  - {fileID: 11400000, guid: bf976d55bf40ed5479a4fa1673152a73, type: 2}
+  - {fileID: 11400000, guid: 92e2060b45e33304793fe94ddc5bdc8e, type: 2}
+  - {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
+  - {fileID: 11400000, guid: 4097346a033d8bd469056a6fcfef8ac5, type: 2}
+  - {fileID: 11400000, guid: c8e126a91ef83e449b94bad32dc06bbc, type: 2}
+  - {fileID: 11400000, guid: 92376482cce3093429fb6878de9eae19, type: 2}
+  - {fileID: 11400000, guid: 616044bb37c77984cb61b75e569f6c1d, type: 2}
+  - {fileID: 11400000, guid: aafb245f3dc21a94fa68262b40dd804d, type: 2}
+  - {fileID: 11400000, guid: 89d2129ed9cca354db64ad8655e81c0d, type: 2}
+  - {fileID: 11400000, guid: 35c253e6569830548918c1c8136c50a3, type: 2}
+  - {fileID: 11400000, guid: 3bbd49bd0f67c124ba85fee23e0ba118, type: 2}
   playerCiv: {fileID: 0}
