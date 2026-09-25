@@ -3,7 +3,7 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b2f9bb0d7c94bdf8444ee2b7125aea6, type: 3}
-  m_Name: Counterintelligence
+  m_Name: Counterintelligence Project
   projectName: Counterintelligence
   description: Temporary production option for the active crisis.
   productionCost: 100

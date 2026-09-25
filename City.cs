@@ -12,7 +12,6 @@ public class City : MonoBehaviour
     private GameObject currentVisualPrefab;
     private CityVisualPeriod lastVisualPeriod;
     private CityVisualSize lastVisualSize;
-    private bool hasResolvedVisual;
 
     public GameObject CurrentVisualInstance => currentVisualInstance;
     // ─── Events ───
@@ -4599,7 +4598,6 @@ cityUI.ShowForCity(this);
         {
             lastVisualPeriod = period;
             lastVisualSize = size;
-            hasResolvedVisual = true;
             return;
         }
 
@@ -4614,7 +4612,6 @@ cityUI.ShowForCity(this);
         currentVisualPrefab = desiredPrefab;
         lastVisualPeriod = period;
         lastVisualSize = size;
-        hasResolvedVisual = true;
         if (previous != null) Destroy(previous);
     }
 

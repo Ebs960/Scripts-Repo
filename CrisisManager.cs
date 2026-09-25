@@ -1679,8 +1679,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             civilizationIndex=index, population=cities.Sum(c=>c.level), cityCount=cities.Count,
             buildingCount=cities.Sum(c=>c.builtBuildings?.Count ?? 0), militaryUnits=civ.combatUnits?.Count ?? 0,
             gold=civ.gold, food=civ.food, goldIncome=civ.cachedGoldPerTurn,
-            averageOrder=cities.Count>0?cities.Average(c=>c.orderRating):0f,
-            averageHappiness=cities.Count>0?cities.Average(c=>c.moraleRating):0f
+            averageOrder=cities.Count>0?(float)cities.Average(c=>c.orderRating):0f,
+            averageHappiness=cities.Count>0?(float)cities.Average(c=>c.moraleRating):0f
         });
         if (context.targetCityId < 0 && cities.Count > 0) context.targetCityId=cities[0].gameObject.GetRuntimeId();
     }
@@ -1787,10 +1787,10 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 break;
             }
             case MissionData.ObjectiveType.RaiseAverageHappiness:
-                state.objectiveProgress[state.currentObjectiveIndex]=civ.cities!=null&&civ.cities.Count>0?Mathf.RoundToInt(civ.cities.Where(c=>c!=null).Average(c=>c.moraleRating)):0;
+                state.objectiveProgress[state.currentObjectiveIndex]=civ.cities!=null&&civ.cities.Count>0?Mathf.RoundToInt((float)civ.cities.Where(c=>c!=null).Average(c=>c.moraleRating)):0;
                 break;
             case MissionData.ObjectiveType.RaiseAverageOrder:
-                state.objectiveProgress[state.currentObjectiveIndex]=civ.cities!=null&&civ.cities.Count>0?Mathf.RoundToInt(civ.cities.Where(c=>c!=null).Average(c=>c.orderRating)):0;
+                state.objectiveProgress[state.currentObjectiveIndex]=civ.cities!=null&&civ.cities.Count>0?Mathf.RoundToInt((float)civ.cities.Where(c=>c!=null).Average(c=>c.orderRating)):0;
                 break;
         }
 
