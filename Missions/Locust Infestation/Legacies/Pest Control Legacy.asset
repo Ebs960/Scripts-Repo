@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Pest Control Legacy
   legacyName: Pest Management
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Agricultural improvements generate 8% more Food."
+  flavorText: "Saving the fields required farmers to understand pests rather than simply curse them. Planting schedules changed, damaged areas were cleared more systematically, vulnerable crops were watched more closely, and communities became quicker to recognize the difference between an ordinary infestation and the beginning of something dangerous. Later generations combined those habits with whatever new tools and scientific knowledge their age provided. The original locust swarm eventually became history, but agriculture never again treated pests as an unpredictable act of fate. Better protection also meant better harvests in years when no disaster came at all."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

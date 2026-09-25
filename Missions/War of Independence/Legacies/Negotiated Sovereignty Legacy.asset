@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Negotiated Sovereignty Legacy
   legacyName: Autonomous Tradition
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "+5% Domestic Trade and +1 Happiness in every city."
+  flavorText: "The settlement that ended the independence struggle left behind more than a treaty. Local institutions became accustomed to governing substantial portions of their own affairs, and communities learned that political autonomy could strengthen internal exchange rather than isolate them from one another. Regions traded freely while preserving traditions and institutions that no distant authority needed to standardize. Citizens took pride in belonging to a larger civilization without surrendering every decision to its center. Unity became something negotiated and renewed rather than something presumed. That arrangement was occasionally untidy, but people who felt ownership of their government proved remarkably willing to keep participating in it."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Asteroid Killer Legacy
   legacyName: World Savior
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "+8% Science and +5% Culture."
+  flavorText: "For one moment, every argument about whether science could alter the fate of civilization had an answer visible in the sky. The interception demanded astronomy, mathematics, engineering, computation, manufacturing, logistics, and political coordination on a scale few projects had ever approached. When the asteroid's path finally changed, the achievement became more than a technical success. It entered art, education, public memory, and the civilization's understanding of what collective knowledge could accomplish. Children grew up in a world where their ancestors had literally moved a threat in the heavens. Ambition became easier to justify after that."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

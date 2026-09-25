@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Rebellion Crusher Legacy
   legacyName: Imperial Authority
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Subject tribute is increased by 5%, and Subject Liberty Desire grows 10% more slowly."
+  flavorText: "The failed secession became a warning written across every dependent territory in the empire. Provincial elites had watched to see whether rebellion could convert disputed obligations into independence; its defeat supplied an answer. Imperial officials returned with greater confidence, tribute collectors found resistance less fashionable, and subject governments understood that the central state possessed both the will and the means to enforce the relationship. Authority gained through victory was never permanent, but victory changed expectations. Subjects might resent the empire, bargain with it, or wait for a more favorable moment. They would no longer mistake dissatisfaction for freedom already won."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

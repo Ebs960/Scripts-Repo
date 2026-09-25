@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Prepare for Impact Legacy
   legacyName: Planetary Resilience
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Every city gains +5 Defense and +1 Happiness."
+  flavorText: "Preparing for impact required planners to imagine the failure of almost everything at once. Food stores were dispersed, utilities hardened, emergency routes duplicated, shelters constructed, archives copied, and critical systems designed to keep functioning even if neighboring systems did not. The asteroid threat eventually passed into history, but the infrastructure created for survival remained useful against disasters no astronomer had predicted. Citizens took reassurance from knowing that catastrophe was no longer something the state simply hoped would never happen. Resilience became part of ordinary civic design: not a promise that nothing would go wrong, but confidence that something would remain when it did."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

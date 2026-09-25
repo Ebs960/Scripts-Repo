@@ -174,7 +174,7 @@ public class WorkerUnit : BaseUnit
         {
             FaceTowardBuildTile(tileIndex);
             PlayBuildActionAnimation();
-            int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+            int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex, owner);
             GainWorkExperience(applied);
             currentWorkPoints = 0;
             return true;
@@ -401,7 +401,7 @@ public class WorkerUnit : BaseUnit
         if (currentWorkPoints <= 0) return;
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasBuildJobAtTile(currentTileIndex, planetIndex)) return;
         PlayBuildActionAnimation();
-        int applied = ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex, owner);
         GainWorkExperience(applied);
         currentWorkPoints = 0;
     }
@@ -1151,7 +1151,7 @@ public class WorkerUnit : BaseUnit
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
         FaceTowardBuildTile(tileIndex);
         PlayBuildActionAnimation();
-        int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
+        int applied = ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex, owner);
         GainWorkExperience(applied);
         currentWorkPoints = 0;
     }

@@ -352,7 +352,7 @@ public class HexTileData
             foreach (var b in bonuses)
             {
                 if (b == null) continue;
-                bool targetMatches=b.improvement==imp || (b.improvement==null && b.agriculturalOnly && imp.name.IndexOf("farm",System.StringComparison.OrdinalIgnoreCase)>=0);
+                bool targetMatches=ImprovementBonusFilterUtility.Matches(imp,b.improvement,b.agriculturalOnly);
                 if (!targetMatches || !PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope,b.usePlanetFilter,b.planets,b.planetTypes,planetIndex)) continue;
                 a.foodAdd+=b.foodAdd; a.productionAdd+=b.productionAdd; a.goldAdd+=b.goldAdd; a.scienceAdd+=b.scienceAdd; a.cultureAdd+=b.cultureAdd; a.faithAdd+=b.faithAdd; a.policyAdd+=b.policyPointsAdd;
                 a.foodPct+=b.foodPct; a.productionPct+=b.productionPct; a.goldPct+=b.goldPct; a.sciencePct+=b.sciencePct; a.culturePct+=b.culturePct; a.faithPct+=b.faithPct; a.policyPct+=b.policyPointsPct;

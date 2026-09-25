@@ -242,7 +242,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
 
             bool shouldPetition = contract.libertyDesire >= 50f
                                || contract.tributeExhaustion >= 30f
-                               || contract.subjectOpinion <= -20f;
+                               || SubjectManager.Instance.GetEffectiveSubjectOpinion(contract) <= -20f;
             if (!shouldPetition) continue;
 
             string subjectName = contract.subject.civData?.civName ?? contract.subject.name;

@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: New Pastures Legacy
   legacyName: Agricultural Expansion
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Workers construct agricultural improvements 10% faster."
+  flavorText: "The swarm forced farmers and surveyors to create productive land faster than custom would normally allow. New fields had to be measured, cleared, irrigated, divided, and connected while older farms were still disappearing beneath insects. Communities learned how to establish agricultural settlements with fewer delays, standardize the work that could be standardized, and move experienced labor rapidly toward unused land. Those methods remained valuable when the emergency ended. Expansion no longer required every generation of farmers to rediscover how to turn open ground into an organized landscape of cultivation."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
@@ -22,9 +23,10 @@ MonoBehaviour:
   unitBonuses: []
   workerBonuses: []
   unitProductionModifiers: []
-  improvementBonuses:
+  improvementBonuses: []
+  improvementWorkBonuses:
   - agriculturalOnly: 1
-    productionPct: 0.1
+    workPct: 0.1
   diseaseBonuses: []
   attritionBonuses: []
   buildingBonuses: []

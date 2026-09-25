@@ -221,7 +221,8 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
             foreach (var contract in subjects)
             {
                 if (contract == null) continue;
-                lines.Add($"• {contract.subjectCivName} | Liberty {contract.libertyDesire:F2} | Opinion {Mathf.RoundToInt(contract.subjectOpinion)} | Tribute Gold {contract.goldTributePct:P0}");
+                float effectiveOpinion = SubjectManager.Instance.GetEffectiveSubjectOpinion(contract);
+                lines.Add($"• {contract.subjectCivName} | Liberty {contract.libertyDesire:F2} | Opinion {Mathf.RoundToInt(effectiveOpinion)} | Tribute Gold {contract.goldTributePct:P0}");
             }
         }
 

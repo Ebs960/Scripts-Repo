@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Grain Reserves Legacy
   legacyName: Strategic Granaries
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "+5% Food across the civilization."
+  flavorText: "The swarm proved that harvest and food security were not the same thing. Crops standing in a field could disappear in hours, while grain properly stored behind sealed doors survived long after the insects had stripped the countryside bare. Granaries became larger, better maintained, and more deliberately distributed so that the loss of one agricultural district could not immediately starve every nearby city. Officials learned to rotate reserves before they spoiled and replenish them before memory of the last emergency faded. A civilization that stores food strategically does more than prepare for famine. It makes every ordinary harvest more useful."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
