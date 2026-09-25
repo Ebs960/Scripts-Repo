@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: War of Independence
   crisisName: War of Independence
+  ominousWarningText: "The provinces speak openly of liberty. Local assemblies and influential leaders increasingly challenge decisions imposed by the imperial government, while petitions for greater autonomy become demands that the relationship itself be reconsidered. Imperial symbols disappear from meeting halls and marketplaces, replaced by local colors, old emblems, and new banners whose meaning is unmistakable. Militias drill outside towns under the pretense of maintaining public order, but their officers increasingly answer to provincial leaders rather than imperial officials."
+  obviousWarningText: "The provinces have rejected imperial authority. Local banners now fly over administrative buildings where imperial standards stood only weeks ago, while militias establish checkpoints and openly pledge loyalty to provincial governments. Officials appointed by the empire withdraw from hostile towns or find their orders ignored by populations that no longer recognize their authority. Forts, warehouses, and tax offices are being transferred into local hands, sometimes peacefully and sometimes under threat. Negotiations continue, but they now concern the terms of separation rather than whether separation should occur."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

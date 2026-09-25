@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Coup Attempt
   crisisName: Coup Attempt
+  ominousWarningText: "Officers have begun whispering behind closed doors. Senior military and political figures hold meetings outside normal channels, while private messages move between commanders who rarely dealt with one another before. Loyal officials report that routine orders are being questioned or delayed, and several units have unexpectedly changed commanders without clear authorization. Rumors circulate through the capital of secret pledges, lists of political enemies, and promises of promotion once the current leadership is gone. No one is willing to accuse the conspirators openly without proof, and many powerful figures remain carefully silent."
+  obviousWarningText: "Loyal troops report unauthorized military movements across the capital. Units have taken positions near government buildings, communications centers, armories, and major roads without orders from civilian authorities. Several senior officers have stopped answering official messages, while competing commands circulate contradictory instructions through the armed forces. Government guards seal entrances as ministers attempt to determine which commanders can still be trusted. Rumors of arrests and defections race through the city faster than they can be confirmed."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 12

@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Industrial Disaster
   crisisName: Industrial Disaster
+  ominousWarningText: "The machinery groans under increasing strain. Engineers report irregular pressure in boilers, dangerous heat in furnaces, unstable supports in mines, and equipment failing well ahead of its expected service life. Production continues because factories and extraction sites cannot easily afford to stop, but accidents once dismissed as isolated mistakes are occurring with troubling frequency. Workers complain that maintenance crews are being asked to repair problems faster than they can understand them. Supervisors insist that output must be maintained, while engineers warn that temporary repairs are hiding deeper failures."
+  obviousWarningText: "The engineers have ordered emergency shutdowns and evacuations at several major industrial sites. Boilers are overheating faster than crews can cool them, mine supports are shifting under loads they once carried safely, and machinery is failing in clusters rather than one piece at a time. Production managers who resisted interruptions are now abandoning entire facilities rather than risk a catastrophic chain reaction. Workers pour out through factory gates while repair teams struggle to identify which systems can still be trusted. Mines, mills, and foundries that support the wider economy are beginning to fall silent."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 7

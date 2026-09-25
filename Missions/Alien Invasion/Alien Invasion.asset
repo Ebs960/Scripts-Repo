@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Alien Invasion
   crisisName: Alien Invasion
+  ominousWarningText: "Unknown objects have entered our skies. Observatories first detect them beyond the atmosphere, moving along trajectories that no natural object and no known spacecraft should be capable of following. Their courses change without visible propulsion, sometimes stopping or turning in ways that defy conventional orbital mechanics. Civilian pilots and military radar stations begin reporting the same contacts, confirming that the phenomenon is neither an instrument failure nor an astronomical mistake. Attempts at radio communication, visual signaling, and encoded transmission receive no identifiable response."
+  obviousWarningText: "The objects are artificial. High-resolution observations reveal structured hulls, coordinated formations, and deliberate changes in course as several craft descend toward populated regions, military facilities, and strategic infrastructure. Every available channel of communication has been used—radio, light, digital transmission, mathematical sequences, and signals designed to demonstrate peaceful intent—without receiving an answer that anyone can recognize. Aircraft scramble while radar installations track vessels whose size and capabilities remain uncertain. Civilians gather beneath the sky as shapes once visible only on screens emerge through clouds large enough to be seen with the naked eye."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 18

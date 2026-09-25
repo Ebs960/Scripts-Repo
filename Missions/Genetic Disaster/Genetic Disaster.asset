@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Genetic Disaster
   crisisName: Genetic Disaster
+  ominousWarningText: "The latest genetic trials are producing changes that no model predicted. Cell cultures alter themselves several generations after the procedures that were supposed to stabilize them, while experimental organisms develop traits that researchers never deliberately introduced. At first the anomalies are treated as extraordinary scientific discoveries, but excitement gives way to concern when separate laboratories report remarkably similar results. Genetic sequences believed to be stable begin changing again under ordinary environmental pressure, suggesting that the modifications are continuing without further intervention. Researchers disagree over whether the process represents adaptation, contamination, or an entirely new mechanism."
+  obviousWarningText: "Containment is failing. Multiple specimens are changing simultaneously, with new mutations appearing faster than laboratories can catalogue, isolate, or reverse them. Emergency protocols designed for ordinary biological accidents prove inadequate when altered organisms begin adapting to the very measures intended to contain them. Laboratories seal entire wings while researchers evacuate samples, destroy compromised material, and attempt to determine whether any mutations have already left controlled environments. Reports from separate facilities suggest that the phenomenon is no longer confined to a single experiment or research team."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

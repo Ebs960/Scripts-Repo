@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Drought
   crisisName: Drought
+  ominousWarningText: "The rains do not come. Streams that once ran freely through the valleys have narrowed to shallow channels, and ponds shrink farther from their banks with each passing day. Farmers dig deeper into the soil searching for moisture, but cracks already spread between rows of young crops. Livestock gather around muddy watering holes long after they would normally have moved on, and distant hills have begun to lose their color beneath the relentless sun."
+  obviousWarningText: "The wells are nearly dry. Fields that survived the first weeks of heat are now failing across entire districts, while livestock weaken around watering places that can no longer sustain them. Villages have begun rationing water, and arguments break out over access to streams that once seemed inexhaustible. Grain stores are being opened earlier than planned as farmers realize that much of this season's harvest may never reach maturity. Dust rises from roads and abandoned fields whenever the wind blows, turning the horizon into a dull brown haze."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 12
