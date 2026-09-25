@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Refuse to Lose Mission
   missionName: Refuse to Lose
-  description: Crisis-specific response objective.
+  description: "The invaders will break themselves against prepared defenses. Win 3 defensive city battles and allow no city to fall before the crisis ends."
+  flavorText: "Let them come to the walls. Every gate has been reinforced, every approach studied, and every defender told that there will be no retreat to another city because this city is the line. The enemy expects momentum: one victory opening the road to another. Instead they will find walls that remain standing after each assault. We do not need to chase glory across the frontier. We need only refuse to lose."
   participantRole: 0
   strategyTags: 17
   objectives:
   - objectiveName: Refuse to Lose
-    description: Win 3 defensive city battles and lose no cities before the invasion ends.
+    description: "Win 3 defensive city battles before the invasion ends."
     type: 26
     targetValue: 3
     targetMode: 0
@@ -23,6 +24,7 @@ MonoBehaviour:
     activatesAfterObjectiveIndex: -1
     targetValue: 0
     comparison: 0
+    failureFlavorText: "A city has fallen to the invasion. Refuse to Lose can no longer be completed."
   rewardTiers:
   - tierName: Complete
     requiredObjectivesCompleted: 1

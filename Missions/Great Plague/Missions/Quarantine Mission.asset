@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Quarantine Mission
   missionName: Quarantine
-  description: Crisis-specific response objective.
+  description: "Containment may accomplish what medicine cannot. Keep the plague confined to no more than 1 infected city for 10 consecutive turns."
+  flavorText: "An enemy carried by breath, touch, and ordinary human contact turns kindness itself into a danger. Gates will close, gatherings will end, and travelers who once entered freely will be kept outside. Families will curse the restrictions, merchants will count their losses, and officials will be accused of cruelty by those they are trying to protect. Quarantine cannot cure the sick already behind a closed door. It can keep that door from becoming a gateway for the disease."
   participantRole: 0
   strategyTags: 48
   objectives:
   - objectiveName: Quarantine
-    description: Keep the plague confined to no more than 1 infected city for 10 consecutive turns.
+    description: "Keep the plague confined to no more than 1 infected city for 10 consecutive turns."
     type: 47
     targetValue: 1
     targetMode: 0

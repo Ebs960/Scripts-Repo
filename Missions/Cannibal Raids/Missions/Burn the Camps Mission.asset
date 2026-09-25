@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Burn the Camps Mission
   missionName: Burn the Camps
-  description: Crisis-specific response objective.
+  description: "The raids will continue as long as the attackers have safe places from which to gather and strike. Locate and destroy {Objective0Target} raider camps so that they can no longer serve as bases for new attacks."
+  flavorText: "A raiding party can be killed and replaced. A camp gives the next band food, shelter, stolen supplies, and a place from which to plan another attack. Scouts will follow the trails beyond our settlements until they lead to the places the raiders believe are hidden. Those camps will be dismantled, burned, or otherwise made useless. Without bases to return to, every surviving attacker will find the wilderness a little less welcoming."
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Burn the Camps
-    description: Destroy {Objective0Target} raider camps.
+    description: "Destroy {Objective0Target} raider camps."
     type: 22
     targetValue: 1
     targetMode: 1

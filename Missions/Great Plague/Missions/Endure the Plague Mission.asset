@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Endure the Plague Mission
   missionName: Endure the Plague
-  description: Crisis-specific response objective.
+  description: "The plague may spread, but demographic catastrophe is not inevitable. Finish the crisis with at least 90% of the population that was alive when the outbreak began."
+  flavorText: "Plagues are remembered in numbers: the dead, the empty houses, the villages that never recovered. But every life spared is also a family that remains, a workshop that reopens, and a field that can be planted again. Food, care, isolation, and simple resilience must keep disease from becoming demographic collapse. We may not defeat the plague in the way an army defeats an invader. We can deny it the power to erase a generation."
   participantRole: 0
   strategyTags: 32
   objectives:
   - objectiveName: Endure the Plague
-    description: Finish the plague with at least 90% of your starting population alive.
+    description: "Finish the plague with at least 90% of your starting population alive."
     type: 31
     targetValue: 90
     targetMode: 0

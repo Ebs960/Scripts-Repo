@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Desperate Times Mission
   missionName: Desperate Times
-  description: Crisis-specific response objective.
+  description: "Our stores are failing faster than the land can recover. Successfully raid or pillage 2 hostile settlements or food targets and seize the supplies our people need to survive."
+  flavorText: "Hunger has a way of narrowing the distance between necessity and wrongdoing. Beyond our borders are granaries, herds, and storehouses held by people who would guard them as fiercely as we guard our own. The council may condemn what must be done and order it in the same breath. Warriors will return carrying food rather than trophies. History can decide whether desperation excused us; the living must first survive long enough to write it."
   participantRole: 0
   strategyTags: 129
   objectives:
   - objectiveName: Desperate Times
-    description: Successfully raid or pillage 2 hostile settlements or food targets.
+    description: "Successfully raid or pillage 2 hostile settlements or food targets."
     type: 41
     targetValue: 2
     targetMode: 0

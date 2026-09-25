@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Wise Steward Mission
   missionName: Wise Steward
-  description: Crisis-specific response objective.
+  description: "The land may fail us, but preparation does not have to. Maintain non-negative net Food for 6 consecutive turns and keep consumption within what the civilization can still sustain."
+  flavorText: "Plenty tempts a people to believe that tomorrow will resemble today. The empty sky has exposed the danger of that assumption. Grain will be counted carefully, waste reduced, and stores protected from demands that seemed harmless in richer seasons. Stewardship is rarely glorious; no songs are written about the sack of grain that was not eaten too early. Yet when the fields turn brown, foresight becomes its own form of abundance."
   participantRole: 0
   strategyTags: 34
   objectives:
   - objectiveName: Wise Steward
-    description: Maintain non-negative net Food for 6 consecutive turns.
+    description: "Maintain non-negative net Food for 6 consecutive turns."
     type: 28
     targetValue: 6
     targetMode: 0

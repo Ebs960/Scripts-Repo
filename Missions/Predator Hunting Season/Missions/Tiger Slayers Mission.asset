@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Tiger Slayers Mission
   missionName: Tiger Slayers
-  description: Crisis-specific response objective.
+  description: "The greatest predators have grown bold enough to contest our people for the wilderness itself. Hunt down {Objective0Target} predators spawned by the crisis and prove that even the largest hunters can become prey."
+  flavorText: "Some dangers cannot be frightened away with fire and noise. The great predators have learned that our trails, camps, and hunting grounds are places where food can be found, and every retreat teaches them to return more boldly. Our strongest hunters will seek them deliberately, following spoor into the places others now avoid. Their hides and teeth may become trophies, but the real victory will be fear reversed. Let the beasts learn that approaching our people means being hunted in turn."
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Tiger Slayers
-    description: Defeat {Objective0Target} predators spawned by the crisis.
+    description: "Defeat {Objective0Target} predators spawned by the crisis."
     type: 21
     targetValue: 2
     targetMode: 4
