@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Emergency Mandate Legacy
   legacyName: Executive Capacity
-  description: Earned permanently; bonuses apply only while promoted.
+  description: '+8% Administrative Efficiency, but +0.03 Unrest.'
+  flavorText: 'The emergency mandate demonstrated how quickly a government could act when authority stopped passing through its usual maze of vetoes, committees, jurisdictions, and procedural delays. Temporary offices became experienced at coordinating ministries, resolving contradictory orders, and forcing decisions that ordinary government might have debated for months. Some of those administrative habits proved valuable enough to preserve after the crisis. So did the memory of how easily procedure had been bypassed. Supporters remembered decisive government; opponents remembered how quickly extraordinary authority had begun to feel normal. The state became more capable of acting—and its citizens somewhat more suspicious of what that capability might eventually be used to do.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

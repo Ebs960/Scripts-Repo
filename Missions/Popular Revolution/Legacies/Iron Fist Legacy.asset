@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Iron Fist Legacy
   legacyName: Internal Security
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Every city gains +1 Order, and units gain +5% Attack against Rebel and Revolutionary crisis units.'
+  flavorText: 'The uprising left behind institutions built to prevent another government from discovering too late that entire districts had slipped beyond its control. Authorities improved coordination between local officials and security forces, maintained better records of unrest, and developed units trained specifically for fighting organized resistance inside territory the state still considered its own. The memory of barricades shaped planning long after the barricades themselves were gone. These measures made future rebellions harder to organize openly and easier to confront once violence began. They also ensured that the government never again looked at a restless street as merely a restless street.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

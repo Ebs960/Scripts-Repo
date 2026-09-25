@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Rainy Day Fund Legacy
   legacyName: Lean Government
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Military upkeep costs are reduced by 5%.'
+  flavorText: 'Protecting the treasury during the crisis forced every institution to answer an uncomfortable question: which expenses were truly necessary? The armed forces were not exempt. Supply chains were simplified, redundant contracts eliminated, inventories standardized, and commanders learned that readiness did not require paying indefinitely for every habit accumulated during richer years. The reforms survived the emergency because they made the military easier to sustain without making it smaller on paper simply for the sake of saving money. A reserve is built not only by collecting more revenue, but by learning how much of yesterday''s spending can be left in yesterday.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

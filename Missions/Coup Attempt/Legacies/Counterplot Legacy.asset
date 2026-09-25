@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Counterplot Legacy
   legacyName: Counterintelligence State
-  description: Earned permanently; bonuses apply only while promoted.
+  description: '+8% Espionage Defense and +5% Cyber Defense.'
+  flavorText: 'The conspiracy failed because secrecy proved less secure than its authors believed. In its aftermath, temporary investigative networks became permanent institutions. Sensitive commands were authenticated more carefully, unusual communications attracted scrutiny, and security officials learned to map relationships rather than wait for an obvious act of betrayal. As technology advanced, the same institutional suspicion migrated naturally from intercepted letters and private meetings into encrypted networks and digital systems. The state could never know every secret held within its borders. It became much better at noticing when too many secrets began pointing in the same direction.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

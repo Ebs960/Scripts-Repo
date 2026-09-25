@@ -118,7 +118,7 @@ public class LegacyData : ScriptableObject
 [System.Serializable]
 public class LegacyInstitutionModifiers
 {
-    public float unrestModifier, administrativeEfficiencyModifier, policyPointGenerationModifier;
+    public float unrestModifier, corruptionModifier, administrativeEfficiencyModifier, policyPointGenerationModifier;
     public float domesticTradeModifier, foreignTradeModifier, militaryUpkeepModifier;
     public float cyberDefenseModifier, espionageDefenseModifier;
     public float subjectLibertyGrowthModifier, subjectOpinionModifier, subjectTributeModifier;

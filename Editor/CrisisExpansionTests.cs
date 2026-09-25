@@ -13,6 +13,45 @@ public class CrisisExpansionTests
         return AssetDatabase.LoadAssetAtPath<MissionData>(AssetDatabase.GUIDToAssetPath(guid));
     }
 
+    private static LegacyData Legacy(string path)
+        => AssetDatabase.LoadAssetAtPath<LegacyData>($"Assets/Scripts Repo/Missions/{path}");
+
+    [Test]
+    public void FiscalDiscipline_PromotionAndRemoval_AdjustsCorruptionWithoutChangingUnrest()
+    {
+        var legacy = Legacy("Financial Crisis/Legacies/Financial Genius Legacy.asset");
+        Assert.IsNotNull(legacy);
+        Assert.AreEqual(0.05f, legacy.goldModifier, 0.0001f);
+        Assert.AreEqual(-0.03f, legacy.institutions.corruptionModifier, 0.0001f);
+        Assert.AreEqual(0f, legacy.institutions.unrestModifier, 0.0001f);
+
+        var managerObject = new GameObject("Fiscal Discipline LegacyManager Test");
+        var civilizationObject = new GameObject("Fiscal Discipline Civilization Test");
+        try
+        {
+            var manager = managerObject.AddComponent<LegacyManager>();
+            var civ = civilizationObject.AddComponent<Civilization>();
+            civ.corruptionModifier = 0.12f;
+            civ.unrestModifier = 0.07f;
+            civ.gold = legacy.goldCost;
+            civ.policyPoints = legacy.policyPointCost;
+            civ.earnedLegacies.Add(legacy);
+
+            Assert.IsTrue(manager.PromoteLegacy(civ, legacy));
+            Assert.AreEqual(0.09f, civ.corruptionModifier, 0.0001f);
+            Assert.AreEqual(0.07f, civ.unrestModifier, 0.0001f);
+
+            Assert.IsTrue(manager.DemoteLegacy(civ, legacy));
+            Assert.AreEqual(0.12f, civ.corruptionModifier, 0.0001f);
+            Assert.AreEqual(0.07f, civ.unrestModifier, 0.0001f);
+        }
+        finally
+        {
+            Object.DestroyImmediate(civilizationObject);
+            Object.DestroyImmediate(managerObject);
+        }
+    }
+
     [Test] public void CrisisMissionNarratives_ResolveNumericTokensWithoutLeakingBraces()
     {
         var tiger=Mission("Tiger Slayers");
