@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Cure the Genome Legacy
   legacyName: Genetic Medicine
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Diseases cause 10% less population loss."
+  flavorText: "Stabilizing the genome required medicine to operate at a level earlier generations could barely describe. Physicians learned to distinguish symptoms from the cellular instructions producing them, while researchers developed techniques for identifying dangerous biological changes before entire organs or populations were affected. Those methods quickly escaped the narrow problem for which they had first been created. Diseases that once could only be endured could now be understood through the damage they caused to cells, immunity, and inherited biology. Genetic medicine did not make humanity invulnerable. It made far fewer illnesses capable of turning infection into irreversible loss of life."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

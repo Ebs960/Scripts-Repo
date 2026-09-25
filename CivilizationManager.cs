@@ -459,15 +459,13 @@ public class CivilizationManager : MonoBehaviour
         if (civ.leader == null) return;
         
         var leader = civ.leader;
-        var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
-        
         foreach (var otherCiv in GetAllCivs())
         {
             if (otherCiv == civ) continue;
             
             var currentRelation = DiplomacyManager.Instance.GetRelationship(civ, otherCiv);
-            var reputation = memory.GetReputation(otherCiv);
-            var trustLevel = memory.GetTrustLevel(otherCiv);
+            var reputation = DiplomacyManager.Instance.GetEffectiveReputation(civ, otherCiv);
+            var trustLevel = DiplomacyManager.Instance.GetEffectiveTrustLevel(civ, otherCiv);
             float diplomaticWeightDelta = otherCiv.GetDiplomaticWeight() - civ.GetDiplomaticWeight();
             
             // Evaluate if this civ has traits we like/dislike
@@ -1877,9 +1875,8 @@ public class CivilizationManager : MonoBehaviour
             // Diplomatic memory modifiers
             try
             {
-                var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
-                var reputation = memory.GetReputation(target);
-                var trustLevel = memory.GetTrustLevel(target);
+                var reputation = DiplomacyManager.Instance.GetEffectiveReputation(civ, target);
+                var trustLevel = DiplomacyManager.Instance.GetEffectiveTrustLevel(civ, target);
                 if (trustLevel >= 7) warScore -= 15f;
                 if (reputation > 20f) warScore -= 8f;
                 if (reputation < -30f) warScore += 10f;
@@ -2024,9 +2021,8 @@ break; // Only queue one pioneer per turn
             if (currentRelation != DiplomaticState.Peace) continue; // Already allied or at war
             
             // Check diplomatic memory
-            var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
-            var reputation = memory.GetReputation(target);
-            var trustLevel = memory.GetTrustLevel(target);
+            var reputation = DiplomacyManager.Instance.GetEffectiveReputation(civ, target);
+            var trustLevel = DiplomacyManager.Instance.GetEffectiveTrustLevel(civ, target);
             
             // Propose alliance if conditions are good
             if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < allianceChance)
@@ -2307,9 +2303,8 @@ break; // Only propose one alliance per turn
             if (currentRelation != DiplomaticState.Peace) continue;
             
             // Check diplomatic memory
-            var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
-            var reputation = memory.GetReputation(otherCiv);
-            var trustLevel = memory.GetTrustLevel(otherCiv);
+            var reputation = DiplomacyManager.Instance.GetEffectiveReputation(civ, otherCiv);
+            var trustLevel = DiplomacyManager.Instance.GetEffectiveTrustLevel(civ, otherCiv);
             
             // Must have good reputation and trust
             if (reputation < 20f || trustLevel < 6) continue;

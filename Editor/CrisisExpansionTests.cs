@@ -191,6 +191,48 @@ public class CrisisExpansionTests
         }
     }
 
+    [Test] public void FinalSixLegacies_HaveAuthoredNarrativeAndIntendedMechanics()
+    {
+        var adaptive = Legacy("Genetic Disaster/Legacies/Acceptance Legacy.asset");
+        Assert.AreEqual(.05f, adaptive.scienceModifier, .0001f);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(adaptive.flavorText));
+        Assert.AreEqual(1, adaptive.unitBonuses.Length);
+        Assert.IsTrue(adaptive.unitBonuses[0].useTargetUnitCategoryFilter);
+        Assert.AreEqual(CombatCategory.Mutant, adaptive.unitBonuses[0].targetUnitCategory);
+        Assert.AreEqual(.05f, adaptive.unitBonuses[0].defensePct, .0001f);
+        Assert.AreEqual(.05f, adaptive.unitBonuses[0].healthPct, .0001f);
+        Assert.IsFalse(adaptive.unitBonuses[0].useCrisisActorTagFilter);
+
+        var hunters = Legacy("Genetic Disaster/Legacies/Mutant Exterminators Legacy.asset");
+        Assert.IsTrue(hunters.unitBonuses[0].useTargetUnitCategoryFilter);
+        Assert.AreEqual(CombatCategory.Mutant, hunters.unitBonuses[0].targetUnitCategory);
+        Assert.AreEqual(.05f, hunters.unitBonuses[0].attackPct, .0001f);
+        Assert.IsFalse(hunters.unitBonuses[0].useCrisisActorTagFilter);
+
+        var medicine = Legacy("Genetic Disaster/Legacies/Cure the Genome Legacy.asset");
+        Assert.IsTrue(medicine.diseaseBonuses[0].affectsAllDiseases);
+        Assert.AreEqual(-.10f, medicine.diseaseBonuses[0].cityPopulationLossPct, .0001f);
+        Assert.AreEqual(0f, medicine.institutions.populationGrowthModifier, .0001f);
+
+        var xenodiplomacy = Legacy("Alien Invasion/Legacies/Xenodiplomats Legacy.asset");
+        Assert.AreEqual(5f, xenodiplomacy.institutions.diplomaticOpinionModifier, .0001f);
+        Assert.AreEqual(.05f, xenodiplomacy.institutions.foreignTradeModifier, .0001f);
+
+        var warfare = Legacy("Alien Invasion/Legacies/Defenders of Earth Legacy.asset");
+        Assert.IsTrue(warfare.unitBonuses[0].useCrisisActorTagFilter);
+        Assert.AreEqual(CrisisActorTag.Alien, warfare.unitBonuses[0].targetCrisisActorTags);
+        Assert.AreEqual(.05f, warfare.unitBonuses[0].attackPct, .0001f);
+
+        var engineering = Legacy("Alien Invasion/Legacies/Reverse Engineers Legacy.asset");
+        Assert.AreEqual(.08f, engineering.scienceModifier, .0001f);
+
+        foreach (var legacy in new[] { adaptive, hunters, medicine, xenodiplomacy, warfare, engineering })
+        {
+            StringAssert.DoesNotContain("Earned permanently", legacy.description, legacy.name);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(legacy.flavorText), legacy.name);
+        }
+    }
+
     [Test] public void AllRegisteredCrisisAssets_HaveMissionsAndValidWindows()
     {
         var guids=AssetDatabase.FindAssets("t:CrisisData",new[]{"Assets/Scripts Repo/Missions"}).Where(g=>AssetDatabase.LoadAssetAtPath<CrisisData>(AssetDatabase.GUIDToAssetPath(g)).crisisName!="The Long Cold").ToArray();

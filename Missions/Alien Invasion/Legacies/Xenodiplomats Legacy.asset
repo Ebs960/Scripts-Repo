@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Xenodiplomats Legacy
   legacyName: Xenodiplomacy
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Other civilizations view us with +5 Diplomatic Reputation, and Foreign Trade is increased by 5%."
+  flavorText: "Negotiating with an intelligence from another world transformed diplomacy at home almost as much as it changed relations with the visitors. Concepts once assumed to be universal—territory, sovereignty, exchange, threat, promise, even the meaning of agreement—had to be explained rather than presumed. Diplomats became unusually skilled at identifying the assumptions hidden beneath language and at finding common interests between societies with almost nothing else in common. After establishing communication across the gulf between worlds, bargaining with another human civilization seemed considerably less impossible. Foreign courts respected the achievement, and merchants benefited from a diplomatic culture unusually comfortable dealing with unfamiliar partners."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
@@ -20,6 +21,7 @@ MonoBehaviour:
   faithModifier: 0
   institutions:
     foreignTradeModifier: 0.05
+    diplomaticOpinionModifier: 5
   unitBonuses: []
   workerBonuses: []
   unitProductionModifiers: []

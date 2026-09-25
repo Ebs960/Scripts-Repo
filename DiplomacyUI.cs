@@ -306,11 +306,10 @@ public class DiplomacyUI : MonoBehaviour
         }
         if (reputationText != null || trustText != null)
         {
-            var memory = DiplomacyManager.Instance.GetDiplomaticMemory(selectedCiv);
             if (reputationText != null)
-                reputationText.text = $"Reputation: {memory.GetReputation(playerCiv)}";
+                reputationText.text = $"Reputation: {DiplomacyManager.Instance.GetEffectiveReputation(selectedCiv, playerCiv)}";
             if (trustText != null)
-                trustText.text = $"Trust: {memory.GetTrustLevel(playerCiv)}/10";
+                trustText.text = $"Trust: {DiplomacyManager.Instance.GetEffectiveTrustLevel(selectedCiv, playerCiv)}/10";
         }
 
         // Optional comparison fields
@@ -888,4 +887,4 @@ public class DiplomacyUI : MonoBehaviour
         RefreshActionButtons();
         RefreshLeaderPresentation();
     }
-} 
+}
