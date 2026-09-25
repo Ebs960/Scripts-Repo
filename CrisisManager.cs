@@ -359,7 +359,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         foreach (var mission in sourceCrisis.crisisMissions)
         {
             if (mission != null && MeetsParticipantRole(civ, mission.participantRole) && MeetsPrerequisites(civ, mission)
-                && HasObjectiveBasis(mission) && HasNarrativeBasis(mission,civ))
+                && HasObjectiveBasis(mission,civ) && HasNarrativeBasis(mission,civ))
                 result.Add(mission);
         }
 
@@ -378,7 +378,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         return ActiveContext?.narrativeSnapshots?.FirstOrDefault(s=>s != null && s.civilizationIndex==index);
     }
 
-    private bool HasObjectiveBasis(MissionData mission)
+    private bool HasObjectiveBasis(MissionData mission, Civilization civ)
     {
         if (mission?.objectives == null) return false;
         foreach (var objective in mission.objectives)
@@ -389,7 +389,12 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             if (objective.targetMode == MissionData.ObjectiveTargetMode.PerAffectedBuilding
                 && (ActiveContext?.infrastructureStates?.Count(r=>r.state==ImprovementManager.CrisisImprovementState.Disabled) ?? 0) == 0) return false;
             if (objective.targetMode == MissionData.ObjectiveTargetMode.PerCrisisActorAtActivation
-                && (ActiveContext?.spawnedActorIds?.Count ?? 0) == 0) return false;
+                && GetActorCountAtActivation(objective) < ResolveObjectiveTarget(objective,civ)) return false;
+            if (objective.type == MissionData.ObjectiveType.CompleteCrisisProject
+                && (objective.specificProject == null || activeCrisis?.crisisProjects == null
+                    || !activeCrisis.crisisProjects.Contains(objective.specificProject))) return false;
+            if (objective.type == MissionData.ObjectiveType.NegotiateCrisisSettlement
+                && !HasLiveCrisisActor(CrisisActorTag.Alien)) return false;
         }
         return true;
     }
@@ -460,7 +465,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
 
         if (!IsMissionSelectionOpen()
-            || !activeCrisis.crisisMissions.Contains(mission) || !MeetsPrerequisites(civ, mission))
+            || !activeCrisis.crisisMissions.Contains(mission) || !MeetsPrerequisites(civ, mission)
+            || !HasObjectiveBasis(mission,civ))
         {
             LogCrisisDebug("StartMission", $"Rejected: mission not part of active crisis or prerequisites failed for civ={DescribeCiv(civ)} mission={DescribeMission(mission)}.");
             return false;
@@ -507,6 +513,60 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     {
         if (city?.owner != null && activeCrisis?.crisisDisease == disease)
             AddProgress(city.owner, MissionData.ObjectiveType.CureInfectedCities, 1, disease);
+    }
+
+    public bool IsAlienSettledWith(Civilization civ)
+        => ActiveContext != null && civ != null
+           && ActiveContext.alienSettlementCivilizationIndices.Contains(GetCivIndex(civ));
+
+    public bool IsCrisisActorHostileTo(Civilization civ, BaseUnit actor)
+    {
+        if (civ == null || actor == null || actor.crisisActorTags == CrisisActorTag.None) return false;
+        if ((actor.crisisActorTags & CrisisActorTag.Alien) != 0 && IsAlienSettledWith(civ)) return false;
+        return ActiveContext != null && ActiveContext.spawnedActorIds.Contains(actor.gameObject.GetRuntimeId())
+            && !ActiveContext.integratedActorIds.Contains(actor.gameObject.GetRuntimeId());
+    }
+
+    public bool CanIntegrateCrisisActor(Civilization civ, BaseUnit actor)
+    {
+        int civIndex=GetCivIndex(civ), actorId=actor != null ? actor.gameObject.GetRuntimeId() : -1;
+        return activeCrisis?.mechanic == CrisisData.CrisisMechanic.GeneticMutation && civIndex >= 0
+            && crisisParticipants.Contains(civIndex) && actor != null
+            && (actor.crisisActorTags & CrisisActorTag.Mutant) != 0
+            && ActiveContext != null && ActiveContext.spawnedActorIds.Contains(actorId)
+            && !ActiveContext.integratedActorIds.Contains(actorId)
+            && activeMissions.TryGetValue(civIndex,out var state)
+            && state?.mission?.missionName == "Acceptance"
+            && state.CurrentObjective?.type == MissionData.ObjectiveType.IntegrateCrisisUnits;
+    }
+
+    public bool TryIntegrateCrisisActor(Civilization civ, BaseUnit actor)
+    {
+        if (!CanIntegrateCrisisActor(civ,actor)) return false;
+        int actorId=actor.gameObject.GetRuntimeId();
+        actor.TransferOwnership(civ);
+        ActiveContext.integratedActorIds.Add(actorId);
+        AddProgress(civ,MissionData.ObjectiveType.IntegrateCrisisUnits,1,actor);
+        return true;
+    }
+
+    public bool CanNegotiateAlienSettlement(Civilization civ)
+    {
+        int civIndex=GetCivIndex(civ);
+        return activeCrisis?.mechanic == CrisisData.CrisisMechanic.AlienLanding && civIndex >= 0
+            && crisisParticipants.Contains(civIndex) && HasLiveCrisisActor(CrisisActorTag.Alien)
+            && !ActiveContext.alienSettlementCivilizationIndices.Contains(civIndex)
+            && activeMissions.TryGetValue(civIndex,out var state)
+            && state?.mission?.missionName == "Xenodiplomats"
+            && state.CurrentObjective?.type == MissionData.ObjectiveType.NegotiateCrisisSettlement;
+    }
+
+    public bool TryNegotiateAlienSettlement(Civilization civ)
+    {
+        if (!CanNegotiateAlienSettlement(civ)) return false;
+        ActiveContext.alienSettlementCivilizationIndices.Add(GetCivIndex(civ));
+        AddProgress(civ,MissionData.ObjectiveType.NegotiateCrisisSettlement,1);
+        return true;
     }
 
     public List<MissionStateSaveData> ExportMissionStates()
@@ -906,6 +966,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         LogCrisisDebug("ActivateCrisis", "Applying world overrides.");
         ReapplyWorldOverridesForCurrentPhase();
         ApplyCrisisMechanicOnActivation();
+        SnapshotCrisisActorCounts();
 
         LogCrisisDebug("ActivateCrisis", "Invoking OnCrisisStarted listeners.");
         OnCrisisStarted?.Invoke(activeCrisis);
@@ -925,7 +986,24 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             if (legal.Count == 0) continue;
             var choice=legal.OrderByDescending(m=>ScoreAiMission(civ,m)).First();
             StartMission(civ,choice);
+            ExecuteAiCrisisAction(civ);
         }
+    }
+
+    private void ExecuteAiCrisisAction(Civilization civ)
+    {
+        int index=GetCivIndex(civ);
+        if (!activeMissions.TryGetValue(index,out var state)) return;
+        if (state.CurrentObjective?.type == MissionData.ObjectiveType.NegotiateCrisisSettlement)
+        {
+            TryNegotiateAlienSettlement(civ);
+            return;
+        }
+        if (state.CurrentObjective?.type != MissionData.ObjectiveType.IntegrateCrisisUnits) return;
+        int target=GetCurrentObjectiveTarget(state);
+        foreach(var actor in FindObjectsByType<BaseUnit>(FindObjectsSortMode.None)
+            .Where(a=>CanIntegrateCrisisActor(civ,a)).Take(target).ToList())
+            TryIntegrateCrisisActor(civ,actor);
     }
 
     public float ScoreAiMission(Civilization civ, MissionData mission)
@@ -959,6 +1037,40 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         else if (activeCrisis.mechanic == CrisisData.CrisisMechanic.LocustInfestation)
         {
             MarkFarmsInfested(); // never destroys on activation: the player receives an actionable turn.
+        }
+        else if (activeCrisis.mechanic == CrisisData.CrisisMechanic.GeneticMutation)
+            SpawnInitialCrisisActors(CrisisActorTag.Mutant);
+        else if (activeCrisis.mechanic == CrisisData.CrisisMechanic.AlienLanding)
+            SpawnInitialCrisisActors(CrisisActorTag.Alien);
+    }
+
+    private void SpawnInitialCrisisActors(CrisisActorTag tag)
+    {
+        var candidates=(activeCrisis.crisisActorUnits ?? Array.Empty<CombatUnitData>()).Where(u=>u!=null).ToList();
+        if (candidates.Count == 0 && tag == CrisisActorTag.Alien)
+        {
+            var target=ActiveContext.targetCivilizationIndices.Select(GetCivByIndex).FirstOrDefault(c=>c!=null);
+            int desired=Mathf.Min((int)TechAge.GalacticAge,(int)(target?.GetCurrentAge() ?? TechAge.PaleolithicAge)+1);
+            candidates=ResourceCache.GetAllCombatUnits().Where(u=>u!=null
+                && u.unitType!=CombatCategory.Animal && u.unitType!=CombatCategory.Mutant
+                && u.requiredTechs != null && u.requiredTechs.Any(t=>t!=null && (int)t.techAge>=desired))
+                .OrderBy(u=>u.requiredTechs.Where(t=>t!=null).Min(t=>(int)t.techAge)).ToList();
+        }
+        if (candidates.Count == 0) { Debug.LogError($"[CrisisManager] No suitable data for {tag} actors."); return; }
+        var cities=ActiveContext.targetCivilizationIndices.Select(GetCivByIndex).Where(c=>c?.cities!=null)
+            .SelectMany(c=>c.cities).Where(c=>c!=null).ToList();
+        int wanted=Mathf.Max(1,activeCrisis.initialCrisisActorCount);
+        for(int i=0;i<wanted && cities.Count>0;i++)
+        {
+            var city=cities[i%cities.Count]; var ts=TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
+            var data=candidates[i%candidates.Count]; var prefab=data.GetPrefab();
+            if (ts == null || prefab == null) continue;
+            int tile=city.centerTileIndex; var go=Instantiate(prefab,ts.GetTileCenterFlat(tile),Quaternion.identity);
+            var unit=go.GetComponent<CombatUnit>(); if (unit == null) { Destroy(go); continue; }
+            unit.Initialize(data,null); unit.planetIndex=city.planetIndex; unit.currentTileIndex=tile;
+            unit.currentLayer=UnitLayerRules.GetSpawnTileLayerForUnit(unit,ts.GetTileData(tile));
+            unit.crisisActorTags=tag; unit.RegisterToRegistry();
+            ActiveContext.spawnedActorIds.Add(go.GetRuntimeId());
         }
     }
 
@@ -1022,7 +1134,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         var type = isAnimal ? MissionData.ObjectiveType.DefeatAnimals : MissionData.ObjectiveType.DefeatUnits;
         AddProgress(attacker.owner, type, 1, defender.data);
         if (defender.crisisActorTags != CrisisActorTag.None)
-            AddProgress(attacker.owner, MissionData.ObjectiveType.DefeatCrisisUnits, 1, defender.data);
+            AddProgress(attacker.owner, MissionData.ObjectiveType.DefeatCrisisUnits, 1, defender);
         if (attacker.crisisActorTags != CrisisActorTag.None && defender.owner != null)
             RecordAttributedLoss(defender.owner, CrisisAttributedLoss.LossKind.Unit, attacker, 1);
     }
@@ -1601,7 +1713,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             case MissionData.ObjectiveTargetMode.PerAffectedImprovement: basis=Mathf.Max(1,ActiveContext?.damagedInfrastructureIds?.Count ?? 0); break;
             case MissionData.ObjectiveTargetMode.PerStartingTradeRoute: basis=baseline?.startingTradeRoutes ?? 1; break;
             case MissionData.ObjectiveTargetMode.PerStartingRobotUnit: basis=baseline?.robotUnits ?? 0; break;
-            case MissionData.ObjectiveTargetMode.PerCrisisActorAtActivation: basis=ActiveContext?.spawnedActorIds?.Count ?? 0; break;
+            case MissionData.ObjectiveTargetMode.PerCrisisActorAtActivation: basis=GetActorCountAtActivation(objective); break;
             case MissionData.ObjectiveTargetMode.PerAffectedBuilding: basis=ActiveContext?.infrastructureStates?.Count(r=>r.state==ImprovementManager.CrisisImprovementState.Disabled) ?? 0; break;
             case MissionData.ObjectiveTargetMode.PercentOfBaseline: basis=GetBaselineMetric(baseline, objective.baselineMetric); break;
         }
@@ -1611,6 +1723,47 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         if (objective.minimumTarget > 0) value = Mathf.Max(value, objective.minimumTarget);
         if (objective.maximumTarget > 0) value = Mathf.Min(value, objective.maximumTarget);
         return Mathf.Max(0, value);
+    }
+
+    public static int ResolveCrisisActorTarget(int actorCount, float multiplier, int minimum, int maximum)
+    {
+        int value=Mathf.CeilToInt(Mathf.Max(0,actorCount)*multiplier);
+        if (minimum > 0) value=Mathf.Max(value,minimum);
+        if (maximum > 0) value=Mathf.Min(value,maximum);
+        return Mathf.Max(0,value);
+    }
+
+    private int GetActorCountAtActivation(MissionData.Objective objective)
+    {
+        if (ActiveContext == null) return 0;
+        if (objective == null || !objective.useCrisisActorTagFilter)
+            return ActiveContext.spawnedActorIds?.Count ?? 0;
+        return ActiveContext.actorCountsAtActivation?
+            .Where(s=>s != null && (s.tag & objective.targetCrisisActorTags) != 0)
+            .Sum(s=>s.count) ?? 0;
+    }
+
+    private void SnapshotCrisisActorCounts()
+    {
+        if (ActiveContext == null) return;
+        ActiveContext.actorCountsAtActivation.Clear();
+        var actors=FindObjectsByType<BaseUnit>(FindObjectsSortMode.None)
+            .Where(a=>a != null && ActiveContext.spawnedActorIds.Contains(a.gameObject.GetRuntimeId())).ToList();
+        foreach(CrisisActorTag tag in Enum.GetValues(typeof(CrisisActorTag)))
+        {
+            if (tag == CrisisActorTag.None || (((int)tag & ((int)tag-1)) != 0)) continue;
+            int count=actors.Count(a=>(a.crisisActorTags & tag) != 0);
+            if (count > 0) ActiveContext.actorCountsAtActivation.Add(new CrisisActorCountSnapshot { tag=tag,count=count });
+        }
+    }
+
+    private bool HasLiveCrisisActor(CrisisActorTag tag)
+    {
+        if (ActiveContext == null) return false;
+        return FindObjectsByType<BaseUnit>(FindObjectsSortMode.None).Any(a=>a != null
+            && (a.crisisActorTags & tag) != 0
+            && ActiveContext.spawnedActorIds.Contains(a.gameObject.GetRuntimeId())
+            && !ActiveContext.integratedActorIds.Contains(a.gameObject.GetRuntimeId()));
     }
 
     private static float GetBaselineMetric(CrisisBaselineSnapshot b, MissionData.BaselineMetric metric)
@@ -2046,6 +2199,14 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     private bool MatchesFilter(MissionData.Objective objective, object filter)
     {
         if (filter == null) return true;
+        if (filter is BaseUnit actor)
+        {
+            if (objective.useCrisisActorTagFilter
+                && (actor.crisisActorTags & objective.targetCrisisActorTags) == 0) return false;
+            if (actor is CombatUnit combatActor) return MatchesFilter(objective,combatActor.data);
+            if (actor is WorkerUnit workerActor) return MatchesFilter(objective,workerActor.data);
+            return !objective.useCrisisActorTagFilter;
+        }
         if (filter is CombatUnitData unitData)
         {
             if (objective.specificUnit != null) return unitData == objective.specificUnit;

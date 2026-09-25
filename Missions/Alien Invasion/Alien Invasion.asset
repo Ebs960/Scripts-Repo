@@ -24,6 +24,8 @@ MonoBehaviour:
   useSeasonFilter: 0
   allowedSeasons:
   mustStartAtSeasonBoundary: 0
+  crisisActorUnits: []
+  initialCrisisActorCount: 9
   crisisMissions:
   - {fileID: 11400000, guid: f6b0fd86755446878965b1c3261e1d16, type: 2}
   - {fileID: 11400000, guid: d7836126975c4bb899b3119d85b2d475, type: 2}

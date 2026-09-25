@@ -24,6 +24,12 @@ public enum CrisisActorTag
     public float tradeIncome, goldIncome, averageOrder, averageHappiness;
 }
 
+[Serializable] public class CrisisActorCountSnapshot
+{
+    public CrisisActorTag tag;
+    public int count;
+}
+
 [Serializable] public class CrisisRuntimeContext
 {
     public string crisisIdentity;
@@ -33,6 +39,9 @@ public enum CrisisActorTag
     public string riskExplanation;
     public float resolvedRisk;
     public List<int> spawnedActorIds = new List<int>();
+    public List<CrisisActorCountSnapshot> actorCountsAtActivation = new List<CrisisActorCountSnapshot>();
+    public List<int> integratedActorIds = new List<int>();
+    public List<int> alienSettlementCivilizationIndices = new List<int>();
     public List<int> damagedInfrastructureIds = new List<int>();
     public List<CrisisInfrastructureRecord> infrastructureStates = new List<CrisisInfrastructureRecord>();
     public List<CrisisBaselineSnapshot> baselines = new List<CrisisBaselineSnapshot>();

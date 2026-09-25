@@ -1210,6 +1210,8 @@ public class UnitSelectionManager : MonoBehaviour
     private bool CanSelectedUnitAttack(BaseUnit target)
     {
         if (selectedUnit == null || target == null) return false;
+        if (target.crisisActorTags != CrisisActorTag.None && CrisisManager.Instance != null
+            && !CrisisManager.Instance.IsCrisisActorHostileTo(selectedUnit.owner,target)) return false;
         if (selectedUnit is CombatUnit attackerCombat)
         {
             if (target is CombatUnit targetCombat) return attackerCombat.CanAttack(targetCombat);
@@ -1566,7 +1568,9 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Check if there is an enemy unit on the target tile
         BaseUnit targetUnit = GetUnitOnTile(targetTileIndex);
-        bool isEnemy = targetUnit != null && targetUnit.owner != selectedUnit.owner;
+        bool isEnemy = targetUnit != null && targetUnit.owner != selectedUnit.owner
+            && (targetUnit.crisisActorTags == CrisisActorTag.None || CrisisManager.Instance == null
+                || CrisisManager.Instance.IsCrisisActorHostileTo(selectedUnit.owner,targetUnit));
 
         if (previewDebug)
         {

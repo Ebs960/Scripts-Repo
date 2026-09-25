@@ -112,6 +112,9 @@ public class MissionData : ScriptableObject
         public BuildingData[] specificBuildings;
         [Tooltip("If set, only this crisis project counts")]
         public CrisisProjectData specificProject;
+        [Tooltip("If enabled, only crisis actors carrying one of these tags count.")]
+        public bool useCrisisActorTagFilter;
+        public CrisisActorTag targetCrisisActorTags;
         public bool useBuildingCategoryFilter;
         public BuildingCategory buildingCategory;
     }
@@ -147,6 +150,8 @@ public class MissionData : ScriptableObject
         RaidSettlements, HuntOrForage, BuildImprovementsInUnaffectedArea,
         AchieveIndependence, RestoreSubjectControl, NegotiateAutonomy,
         CurrentInfectedCities,
+        IntegrateCrisisUnits,
+        NegotiateCrisisSettlement,
     }
 
     [System.Serializable]

@@ -5,18 +5,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Acceptance Mission
   missionName: Acceptance
-  description: Crisis-specific response objective.
+  description: The altered are not merely a problem to be destroyed or cured. Peacefully integrate {Objective0Target} Mutant crisis actors into our civilization and prove that biological difference does not have to become permanent war.
+  flavorText: The first instinct of frightened societies is often to decide who still counts as one of us. The altered make that question impossible to avoid. Some were created deliberately, others changed through processes no one intended, and many now possess bodies or abilities that ordinary citizens find disturbing simply because they are unfamiliar. We will not assume that mutation itself is a declaration of hostility. Those willing to live within our society will be offered a place in it, with obligations, protections, and a future that does not depend upon pretending they were never changed. There will be resistance from citizens who see every mutation as contamination and from altered people who no longer trust the society that created or rejected them. Acceptance does not require denying those fears. It requires refusing to let fear alone decide who belongs.
   participantRole: 0
   strategyTags: 72
   objectives:
   - objectiveName: Acceptance
-    description: Integrate {Objective0Target} altered individuals or mutant crisis units into society.
-    type: 40
+    description: Peacefully integrate {Objective0Target} Mutant crisis actors.
+    type: 48
     targetValue: 0
     targetMode: 9
     targetMultiplier: 0.5
     minimumTarget: 1
     maximumTarget: 8
+    useCrisisActorTagFilter: 1
+    targetCrisisActorTags: 512
   constraints: []
   rewardTiers:
   - tierName: Complete

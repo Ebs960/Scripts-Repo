@@ -935,6 +935,17 @@ UpdateUnitInfoForCombatUnit();
         if (captureButton != null)
         {
             captureButton.onClick.RemoveAllListeners();
+            var player=CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+            bool canIntegrate=CrisisManager.Instance != null && CrisisManager.Instance.CanIntegrateCrisisActor(player,combatUnit);
+            if (canIntegrate)
+            {
+                captureButton.gameObject.SetActive(true);
+                captureButton.interactable=true;
+                var label=captureButton.GetComponentInChildren<TextMeshProUGUI>(); if (label != null) label.text="Offer Integration";
+                AddTooltipToButton(captureButton,"Offer Integration","Peacefully incorporate this Mutant crisis actor into your civilization.");
+                captureButton.onClick.AddListener(()=>CrisisManager.Instance.TryIntegrateCrisisActor(player,combatUnit));
+                return;
+            }
             var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
             bool canCapture = actor != null && actor != combatUnit && combatUnit.data != null && combatUnit.data.captureable && AreAdjacent(actor, combatUnit);
             // Always show capture button; grey out (non-interactable) when not possible

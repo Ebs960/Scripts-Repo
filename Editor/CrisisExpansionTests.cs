@@ -110,6 +110,48 @@ public class CrisisExpansionTests
         Assert.AreEqual(3,restored.crisisOriginalOwnerCivIndex);
     }
 
+    [Test] public void FinalCrisisNarrativeBatch_UsesDedicatedFilteredObjectives()
+    {
+        var acceptance=Mission("Acceptance").objectives[0];
+        Assert.AreEqual(MissionData.ObjectiveType.IntegrateCrisisUnits,acceptance.type);
+        Assert.IsTrue(acceptance.useCrisisActorTagFilter);
+        Assert.AreEqual(CrisisActorTag.Mutant,acceptance.targetCrisisActorTags);
+        var exterminators=Mission("Mutant Exterminators").objectives[0];
+        Assert.AreEqual(CrisisActorTag.Mutant,exterminators.targetCrisisActorTags);
+        var defenders=Mission("Defenders of Earth").objectives[0];
+        Assert.AreEqual(CrisisActorTag.Alien,defenders.targetCrisisActorTags);
+        Assert.AreEqual(MissionData.ObjectiveType.NegotiateCrisisSettlement,Mission("Xenodiplomats").objectives[0].type);
+    }
+
+    [TestCase(7,.5f,1,8,4)]
+    [TestCase(7,.6f,2,12,5)]
+    [TestCase(9,.5f,3,15,5)]
+    public void CrisisActorTargets_AreCeiledAndClamped(int count,float multiplier,int min,int max,int expected)
+        => Assert.AreEqual(expected,CrisisManager.ResolveCrisisActorTarget(count,multiplier,min,max));
+
+    [Test] public void CrisisActorRuntimeState_RoundTripsThroughJson()
+    {
+        var context=new CrisisRuntimeContext();
+        context.actorCountsAtActivation.Add(new CrisisActorCountSnapshot { tag=CrisisActorTag.Alien,count=9 });
+        context.integratedActorIds.Add(42); context.alienSettlementCivilizationIndices.Add(3);
+        var restored=JsonUtility.FromJson<CrisisRuntimeContext>(JsonUtility.ToJson(context));
+        Assert.AreEqual(9,restored.actorCountsAtActivation[0].count);
+        CollectionAssert.AreEqual(new[]{42},restored.integratedActorIds);
+        CollectionAssert.AreEqual(new[]{3},restored.alienSettlementCivilizationIndices);
+    }
+
+    [Test] public void FinalSixMissions_HaveAuthoredNarrativeAndResolvableTokens()
+    {
+        foreach(var name in new[]{"Acceptance","Mutant Exterminators","Cure the Genome","Xenodiplomats","Defenders of Earth","Reverse Engineers"})
+        {
+            var mission=Mission(name);
+            StringAssert.DoesNotContain("Crisis-specific response objective.",mission.description,name);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(mission.flavorText),name);
+            var state=new CrisisManager.MissionState { mission=mission,resolvedTargets=mission.objectives.Select(o=>Mathf.Max(1,o.minimumTarget>0?o.minimumTarget:o.targetValue)).ToArray() };
+            StringAssert.DoesNotMatch(@"\{Objective",MissionNarrativeFormatter.Resolve(mission.description+mission.objectives[0].description,mission,null,null,state),name);
+        }
+    }
+
     [Test] public void AllRegisteredCrisisAssets_HaveMissionsAndValidWindows()
     {
         var guids=AssetDatabase.FindAssets("t:CrisisData",new[]{"Assets/Scripts Repo/Missions"}).Where(g=>AssetDatabase.LoadAssetAtPath<CrisisData>(AssetDatabase.GUIDToAssetPath(g)).crisisName!="The Long Cold").ToArray();
