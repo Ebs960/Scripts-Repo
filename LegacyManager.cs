@@ -182,6 +182,7 @@ public class LegacyManager : MonoBehaviour
     {
         if (civ == null || m == null) return;
         civ.unrestModifier += m.unrestModifier * direction;
+        civ.corruptionModifier += m.corruptionModifier * direction;
         civ.administrativeEfficiencyModifier += m.administrativeEfficiencyModifier * direction;
         civ.policyPointGenerationModifier += m.policyPointGenerationModifier * direction;
         civ.domesticTradeModifier += m.domesticTradeModifier * direction;

@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Rule of Law Legacy
   legacyName: Constitutional Norms
-  description: Earned permanently; bonuses apply only while promoted.
+  description: '+8% Policy Point generation and -0.03 Unrest.'
+  flavorText: 'The crisis did not end because every faction suddenly agreed. It ended because enough of them accepted that losing under recognized rules was preferable to winning by destroying the rules themselves. Procedures once treated as technical details acquired political weight precisely because they had survived a moment when ignoring them would have been easier. Officials became more willing to seek lawful mechanisms for change, while citizens gained confidence that political conflict did not automatically require the collapse of government. Written constitutions mattered, but habits surrounding them mattered just as much. A norm is only a rule people could break and repeatedly choose not to.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

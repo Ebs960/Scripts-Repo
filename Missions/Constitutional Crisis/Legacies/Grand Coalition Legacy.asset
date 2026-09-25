@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Grand Coalition Legacy
   legacyName: Coalition Builder
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Governors gain +5 Opinion of the government.'
+  flavorText: 'The grand coalition taught political leaders a skill rarely celebrated during ordinary government: how to work beside people they still intended to defeat later. Negotiators became practiced at identifying which disagreements were fundamental, which were symbolic, and which could be exchanged for concessions somewhere else. Governors learned that joining a compromise did not require pretending their differences had vanished. The institutions that emerged from the crisis rewarded consultation before confrontation and made political exclusion somewhat harder to justify. Coalition government remained frustrating, untidy, and full of people taking credit for the same agreement. It also kept functioning.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

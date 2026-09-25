@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Buy Their Loyalty Legacy
   legacyName: Court Politics
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Governors gain +5 Opinion of the government.'
+  flavorText: 'The failed coup taught the government that loyalty was rarely produced by ideology alone. Offices, access, prestige, concessions, personal rivalries, and the simple desire to be heard could determine whether a powerful figure defended the regime, ignored its danger, or joined those plotting against it. Rulers became more attentive to the political ecosystem surrounding formal authority, learning when a grievance could be settled cheaply before it became expensive to suppress. Critics called the resulting system patronage; its practitioners preferred realism. A court survived not merely by knowing who possessed power, but by knowing what each powerful person wanted.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

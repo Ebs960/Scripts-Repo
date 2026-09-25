@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Trade Lifeline Legacy
   legacyName: Diversified Commerce
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Domestic and foreign trade are increased by 5%.'
+  flavorText: 'The financial panic exposed the danger of allowing commerce to depend upon too few routes, markets, creditors, or partners. When one connection failed, merchants who possessed alternatives survived while those tied to a single chain of exchange often failed with it. In response, trading houses cultivated multiple suppliers, ports sought new destinations, and inland markets became valuable complements rather than competitors to overseas commerce. No individual route became indispensable enough to threaten the entire system if it disappeared. Trade grew stronger not because risk vanished, but because risk was spread across more places than any single crisis could easily reach.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

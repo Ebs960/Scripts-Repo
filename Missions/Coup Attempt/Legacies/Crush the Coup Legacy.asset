@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Crush the Coup Legacy
   legacyName: Established Authority
-  description: Earned permanently; bonuses apply only while promoted.
+  description: '-0.05 Unrest, +5% Subject Tribute, and units gain +5% Defense against Rebel and Coup Rebel crisis units.'
+  flavorText: 'The coup''s defeat became a public demonstration that challenging the state did not automatically mean replacing it. Institutions that had appeared fragile emerged with renewed confidence, loyal commanders gained prestige, and governors who had waited to see which side would prevail suddenly rediscovered their enthusiasm for obedience. Subjects beyond the capital drew their own conclusions about how much resistance the government could survive. Military doctrine also absorbed the experience of fighting enemies who knew the state''s institutions, personnel, and routines from the inside. Authority remained contestable, as authority always is, but it no longer looked easy to seize.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

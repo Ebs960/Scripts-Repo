@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Mass Mobilization Legacy
   legacyName: Emergency Mobilization
-  description: Earned permanently; bonuses apply only while promoted.
+  description: 'Military units are trained 8% faster.'
+  flavorText: 'The industrial breakdown forced recruiters, factories, depots, and commanders to work with capacity that changed from day to day. Equipment was standardized where possible, procurement rules shortened, substitutes approved quickly, and training schedules reorganized around what the damaged economy could actually deliver. Those emergency procedures proved too useful to discard afterward. Future mobilizations began from plans already written, suppliers already identified, and institutions accustomed to expanding military production under pressure. The civilization no longer had to invent mass mobilization at the moment it became necessary.'
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
