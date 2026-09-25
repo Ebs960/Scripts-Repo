@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Burn the Camps Legacy
   legacyName: Watchful Settlements
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Every city gains +1 Order."
+  flavorText: "The disappearances changed how settlements thought about security. Watch duty stopped being an improvised response to danger and became an ordinary responsibility shared by the community. Approaches were kept visible, strangers noticed, gates watched, and news from neighboring settlements carried quickly enough that one attack could warn everyone else. The original raiders eventually disappeared, but the institutions created to survive them did not. Generations later, a settlement without organized watches seemed as incomplete as one without roads or wells."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

@@ -4,8 +4,9 @@
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Reclaimers Legacy
-  legacyName: Coalition Builder
-  description: Earned permanently; bonuses apply only while promoted.
+  legacyName: Reconquest
+  description: "Units gain +5% City Attack and +5% Movement while in enemy territory."
+  flavorText: "The campaign to retake our captured cities created a military tradition fundamentally different from ordinary conquest. Soldiers marched toward places whose streets, walls, roads, and surrounding countryside were already known to the people fighting for them. Speed mattered: an occupier given enough time could fortify what had been seized, move supplies, and turn temporary victory into permanent possession. Commanders therefore learned to push aggressively through hostile territory and bring force against captured cities before occupation could harden into rule. Later generations called the doctrine Reconquest. Lost ground was not treated as a new border—it was treated as unfinished business."
   policyPointCost: 1
   attackBonus: 0
   cityAttackBonus: 0.05

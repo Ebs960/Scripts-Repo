@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Sweet Revenge Legacy
   legacyName: Retribution
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Cannibal and Barbarian crisis units."
+  flavorText: "The raids ended the day fear stopped moving in only one direction. War parties learned not merely to drive attackers away, but to track retreating bands, discover their routes, and pursue them into places once considered too dangerous to enter. Stories of the missing became obligations carried by those who survived them. Later generations romanticized that vengeance, but the military lesson beneath the stories remained practical: enemies who rely on raiding must never assume retreat means safety. Strike back quickly enough, and the hunter becomes the hunted."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

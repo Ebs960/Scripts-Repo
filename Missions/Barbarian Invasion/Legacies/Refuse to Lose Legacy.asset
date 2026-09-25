@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Refuse to Lose Legacy
   legacyName: Unbroken Walls
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Cities gain +5 Defense, and units gain +5% Defense while fighting in owned territory."
+  flavorText: "The cities that survived the invasion became proof that defense was more than stone piled high enough to slow an attacker. Roads behind the walls had to remain open, local soldiers needed places to rally, civilians had to move supplies, and armies fighting nearby drew strength from knowing every river, hill, village, and route of retreat. Fortification became a relationship between the city and the land around it rather than a wall separating one from the other. Later generations inherited an expectation that home ground was ground to be defended stubbornly. An enemy might enter our territory. Making us yield it would be another matter entirely."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
@@ -19,7 +20,9 @@ MonoBehaviour:
   cultureModifier: 0
   faithModifier: 0
   institutions:
-  unitBonuses: []
+  unitBonuses:
+  - territoryRequirement: 1
+    defensePct: 0.05
   workerBonuses: []
   unitProductionModifiers: []
   improvementBonuses: []

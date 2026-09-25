@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Tiger Slayers Legacy
   legacyName: Tiger Slayers
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Animal units."
+  flavorText: "The first great predators were remembered not merely as animals, but as rivals for the wilderness itself. Hunters who learned how to track them, provoke them from cover, and strike without becoming prey passed those methods down long after the original danger had faded. Teeth, claws, hides, and stories of impossible hunts became symbols of prestige among later generations. Over time, what began as desperate survival hardened into a specialized tradition of bringing down dangerous beasts. Where others see a monster, our hunters see tracks, habits, weaknesses—and quarry."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

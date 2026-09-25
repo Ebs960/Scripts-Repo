@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Counter-Invasion Legacy
   legacyName: Frontier Legions
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Barbarian crisis units."
+  flavorText: "The invasion proved that a frontier defended only at its walls was already surrendering the initiative. Permanent forces emerged whose purpose was not simply to guard settlements, but to patrol beyond them, discover hostile concentrations, and strike raiding bases before they could become armies. These soldiers became accustomed to long distances, uncertain supply, rough terrain, and enemies who rarely fought according to the expectations of conventional warfare. Frontier service developed its own prestige and its own methods. Future invaders would find that crossing the border was no longer the point at which resistance began."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

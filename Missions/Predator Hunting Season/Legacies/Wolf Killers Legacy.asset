@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Wolf Killers Legacy
   legacyName: Wolf Tooth
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Defense against Animal units."
+  flavorText: "The packs taught our people that survival begins before the first attack. Camps learned to place fires where darkness once offered easy approaches, travelers learned to move in groups, and sentries learned the difference between ordinary night sounds and something circling just beyond sight. Children grew up hearing which animals tested a perimeter, which charged directly, and which waited for isolation. Those habits survived after the great packs disappeared. A wolf tooth worn at the neck became less a trophy of victory than a reminder: never give the predator the easy opening it expects."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
