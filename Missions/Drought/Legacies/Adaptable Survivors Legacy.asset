@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Adaptable Survivors Legacy
   legacyName: Adaptive Subsistence
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Hunting and foraging produce +10% more yields."
+  flavorText: "Agriculture brought abundance, but the drought reminded our people that abundance can become dependence. Old knowledge returned to importance: migration routes, edible roots, seasonal fruits, hidden water sources, animal tracks, and landscapes that settled farmers had gradually stopped reading. These skills were no longer dismissed as remnants of an earlier age. Communities deliberately preserved them alongside farming, teaching each generation that fields were only one part of the land capable of sustaining life. When one source of food fails, a people who remember many ways to eat rarely face an empty table for long."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

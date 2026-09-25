@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Wise Steward Legacy
   legacyName: Reserve Culture
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "+5% Food across the civilization."
+  flavorText: "The drought transformed storage from an afterthought into a virtue. Families that once displayed prosperity through immediate abundance began earning respect for what they could preserve against an uncertain future. Granaries grew larger, spoilage was watched more carefully, and wasting food acquired a social cost that no decree could have imposed as effectively as memory. Even in years of heavy harvests, elders repeated stories of the season when the wells failed and every forgotten sack mattered. Prosperity was no longer measured only by what could be consumed today, but by what would still exist tomorrow."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

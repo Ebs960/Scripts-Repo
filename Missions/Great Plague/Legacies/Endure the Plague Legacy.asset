@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Endure the Plague Legacy
   legacyName: Resilient Communities
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Disease-related Morale and Loyalty penalties are reduced by 10%."
+  flavorText: "The plague tested more than bodies. It emptied workshops, separated families, interrupted rituals, and forced communities to function while grief became part of ordinary life. Neighborhoods responded by sharing food, caring for orphaned children, replacing missing workers, and maintaining institutions that might otherwise have disappeared with the people who once ran them. These networks outlived the epidemic that created them. Later outbreaks still frightened the population, but fear no longer meant that social life immediately unraveled. The civilization had learned how to remain a community even while disease tried to reduce it to isolated households."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

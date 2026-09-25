@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Healers Legacy
   legacyName: Public Health Tradition
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Cities have 10% lower chance of infection from all diseases."
+  flavorText: "The healers who survived the plague carried more than remedies into the generations that followed. They compared cases, recorded symptoms, noticed which practices preceded outbreaks, and slowly separated observations that could be repeated from traditions that merely sounded convincing. Their successors established permanent habits of sanitation, surveillance, caregiving, and preparation long before anyone fully understood the invisible mechanisms of disease. Medicine remained imperfect, but illness was no longer treated solely as the private misfortune of the household where it appeared. Protecting health had become a responsibility shared by the community."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

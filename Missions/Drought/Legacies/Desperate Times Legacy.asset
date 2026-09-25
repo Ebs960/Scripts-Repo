@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Desperate Times Legacy
   legacyName: Raider Logistics
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Raids and pillaging produce +10% more yields."
+  flavorText: "The first raids had been acts of desperation, carried out by warriors thinking less about conquest than about whether their families would eat. That urgency produced an unexpected expertise. Raiders learned which stores could be moved quickly, which animals were worth driving home, how much a war party could carry without slowing itself, and which targets contained wealth that looked impressive but did little for survival. Later armies inherited these methods without inheriting the famine that created them. What began as theft under an empty sky became a disciplined science of taking what an enemy could least afford to lose."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Quarantine Legacy
   legacyName: Quarantine Protocols
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "All diseases have 10% lower spread chance and cause 10% less population loss."
+  flavorText: "During the plague, every city had improvised its own rules until experience separated useful precautions from frightened ritual. Those lessons were eventually written down. Authorities learned when to close gates, how to isolate infected households, where travelers could be examined, and how supplies could move without carrying sickness freely between communities. Quarantine remained disruptive and unpopular, but it ceased to be invented from nothing every time disease appeared. The civilization had acquired something more valuable than memory of one epidemic: a repeatable procedure for containing the next."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
