@@ -3,7 +3,7 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a40d145353d533a4ca8f6973a0e0b74c, type: 3}
-  m_Name: Great Plague
+  m_Name: Great Plague Disease
   diseaseName: Great Plague
   description: Severe trade-borne epidemic used by the Great Plague crisis.
   baseDuration: 10
