@@ -690,7 +690,16 @@ public class CombatUnit : BaseUnit
             {
                 if (b == null || !Civilization.MatchesCombatUnitBonusTarget(u, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
                     continue;
-                if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter || b.useCrisisActorTagFilter)
+                // A target-category health bonus describes the durable unit category
+                // receiving health/defense (for example Adaptive Genome's Mutants),
+                // rather than a situational opponent. Keep other target filters in the
+                // per-opponent combat path below.
+                bool categorySelfStatBonus = b.useTargetUnitCategoryFilter
+                    && b.targetUnit == null && b.targetWorker == null && !b.useCrisisActorTagFilter
+                    && b.targetUnitCategory == u.unitType
+                    && (b.healthAdd != 0 || !Mathf.Approximately(b.healthPct, 0f));
+                if (b.targetUnit != null || b.targetWorker != null || b.useCrisisActorTagFilter
+                    || (b.useTargetUnitCategoryFilter && !categorySelfStatBonus))
                     continue;
 
                 Add(b);
@@ -750,6 +759,12 @@ public class CombatUnit : BaseUnit
             foreach (var b in bonuses)
             {
                 if (b == null || !Civilization.MatchesCombatUnitBonusTarget(actualUnit, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
+                    continue;
+                // Health-bearing target-category entries are category self-stat bonuses
+                // consumed by AggregateUnitBonusesLocal, not opponent bonuses.
+                if (b.useTargetUnitCategoryFilter && b.targetUnit == null && b.targetWorker == null
+                    && !b.useCrisisActorTagFilter && b.targetUnitCategory == actualUnit.unitType
+                    && (b.healthAdd != 0 || !Mathf.Approximately(b.healthPct, 0f)))
                     continue;
                 if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory, b.useCrisisActorTagFilter, b.targetCrisisActorTags))
                     continue;

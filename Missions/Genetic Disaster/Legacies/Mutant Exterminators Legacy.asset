@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Mutant Exterminators Legacy
   legacyName: Mutant Hunters
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Mutant units."
+  flavorText: "The hostile altered had fought with bodies that violated generations of military assumption. Some tolerated wounds that would stop an ordinary soldier; others moved, sensed, or survived in environments that conventional doctrine had never considered. The forces sent against them learned quickly or did not return. Anatomical knowledge entered field manuals, specialized weapons were developed for unfamiliar weaknesses, and soldiers were trained to recognize which apparent injuries actually disabled a Mutant opponent. What began as emergency extermination became a permanent body of military knowledge. Mutation could produce extraordinary soldiers. It no longer produced incomprehensible ones."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
@@ -20,8 +21,8 @@ MonoBehaviour:
   faithModifier: 0
   institutions:
   unitBonuses:
-  - useCrisisActorTagFilter: 1
-    targetCrisisActorTags: 512
+  - useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 16
     attackPct: 0.05
     defensePct: 0
   workerBonuses: []

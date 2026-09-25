@@ -571,9 +571,8 @@ public static class AIScorer
         {
             if (DiplomacyManager.Instance != null)
             {
-                var memory = DiplomacyManager.Instance.GetDiplomaticMemory(attacker);
-                reputation = memory.GetReputation(defender);   // -100 to +100
-                trustLevel = memory.GetTrustLevel(defender);   // 0 to 10
+                reputation = DiplomacyManager.Instance.GetEffectiveReputation(attacker, defender); // -100 to +100
+                trustLevel = DiplomacyManager.Instance.GetEffectiveTrustLevel(attacker, defender); // 0 to 10
             }
         }
         catch { }

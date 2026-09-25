@@ -205,6 +205,49 @@ public class DiplomacyManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the reputation the observer currently assigns to the subject, including
+    /// reputation granted by the subject's promoted legacies. The stored diplomatic
+    /// memory is never changed by this calculation.
+    /// </summary>
+    public float GetEffectiveReputation(Civilization observer, Civilization subject)
+    {
+        if (observer == null || subject == null)
+            return 0f;
+
+        float reputation = GetDiplomaticMemory(observer).GetReputation(subject);
+        if (subject.activeLegacies != null)
+        {
+            foreach (var legacy in subject.activeLegacies)
+                if (legacy != null && legacy.institutions != null)
+                    reputation += legacy.institutions.diplomaticOpinionModifier;
+        }
+
+        return Mathf.Clamp(reputation, -100f, 100f);
+    }
+
+    /// <summary>
+    /// Derives trust from effective reputation without writing to the persistent trust
+    /// dictionary. This keeps promoted diplomatic legacies reversible and save-safe.
+    /// </summary>
+    public int GetEffectiveTrustLevel(Civilization observer, Civilization subject)
+    {
+        float reputation = GetEffectiveReputation(observer, subject);
+        return reputation switch
+        {
+            >= 80f => 10,
+            >= 60f => 8,
+            >= 40f => 7,
+            >= 20f => 6,
+            >= 0f => 5,
+            >= -20f => 4,
+            >= -40f => 3,
+            >= -60f => 2,
+            >= -80f => 1,
+            _ => 0
+        };
+    }
+
+    /// <summary>
     /// Propose a deal from 'from' to 'to'.  
     /// If 'to' is AI, auto-evaluate; if 'to' is player, fire UI event.
     /// </summary>
@@ -355,8 +398,8 @@ public class DiplomacyManager : MonoBehaviour
 
         // NEW: Factor in diplomatic memory and reputation
         var memory = GetDiplomaticMemory(ai);
-        float reputationModifier = memory.GetReputation(other) / 100f; // -1 to +1
-        int trustLevel = memory.GetTrustLevel(other);
+        float reputationModifier = GetEffectiveReputation(ai, other) / 100f; // -1 to +1
+        int trustLevel = GetEffectiveTrustLevel(ai, other);
         
         // Trust affects willingness to make deals
         float trustModifier = (trustLevel - 5) / 10f; // -0.5 to +0.5
@@ -585,8 +628,8 @@ public class DiplomacyManager : MonoBehaviour
         }
 
         var memory = GetDiplomaticMemory(ai);
-        float rep = memory.GetReputation(offer.proposer) / 100f; // -1..+1
-        int trust = memory.GetTrustLevel(offer.proposer);
+        float rep = GetEffectiveReputation(ai, offer.proposer) / 100f; // -1..+1
+        int trust = GetEffectiveTrustLevel(ai, offer.proposer);
 
         // Hard refusal if very low trust and recent betrayal
         if (trust <= 1 && memory.HasRecentEvent(offer.proposer, DiplomaticEventType.BrokePeace, 15))

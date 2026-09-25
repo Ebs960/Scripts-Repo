@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Defenders of Earth Legacy
   legacyName: Alien Warfare Doctrine
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Alien forces."
+  flavorText: "The first battles against extraterrestrial forces shattered comfortable assumptions about what an army was expected to look like. Weapons behaved differently, machines moved according to unfamiliar engineering constraints, and tactics evolved around senses, communications, and technologies developed beneath another sky. Every victory produced information: which defenses failed, which weapons penetrated, how alien formations reacted to pressure, and where supposedly superior technology still depended upon vulnerable systems. Those observations became doctrine rather than folklore. Humanity could no longer claim that it understood every enemy it might encounter. It could claim that the unknown stopped being unknowable once someone survived the first battle."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
