@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Buy Their Loyalty Mission
   missionName: Buy Their Loyalty
-  description: Crisis-specific response objective.
+  description: "The conspiracy draws strength from grievance as much as ambition. Resolve 1 demand from {FactionName}—{Demand}—and separate the dissatisfied from those truly committed to overthrowing the government."
+  flavorText: "Not everyone gathering behind closed doors dreams of sitting in the ruler's chair. Some have entered the conspiracy because {FactionName} believes the government ignored a grievance until ordinary politics no longer seemed capable of resolving it. Its immediate demand is clear: {Demand}. Concession may be humiliating, expensive, or bitterly opposed by factions that remained loyal, but governments occasionally survive by giving their enemies less reason to remain enemies. Satisfy enough of the dissatisfied, and the men planning a coup may discover that they no longer possess a coalition willing to carry it out."
   participantRole: 0
   strategyTags: 24
   objectives:
   - objectiveName: Buy Their Loyalty
-    description: Successfully resolve 1 demand from {FactionName}: {Demand}.
+    description: "Successfully resolve 1 demand from {FactionName}: {Demand}."
     type: 37
     targetValue: 1
     targetMode: 0

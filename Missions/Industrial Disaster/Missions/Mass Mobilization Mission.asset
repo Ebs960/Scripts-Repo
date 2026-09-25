@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Mass Mobilization Mission
   missionName: Mass Mobilization
-  description: Crisis-specific response objective.
+  description: "The disruption has exposed how quickly industrial weakness can become military weakness. Train {Objective0Target} new military units during the crisis and prove that mobilization can continue even while the economy is under strain."
+  flavorText: "Factories may be silent and mines may be struggling, but danger elsewhere has not agreed to wait for repairs. The state will redirect whatever productive capacity remains toward recruits, weapons, equipment, and formations that can be placed into service immediately. Workshops will improvise, depots will ration, and recruitment officers will make use of every resource the damaged economy can still provide. The result may lack the efficiency of peacetime mobilization. Resilience is not the ability to function perfectly under pressure. It is the ability to function at all."
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Mass Mobilization
-    description: Train {Objective0Target} new military units during the crisis.
+    description: "Train {Objective0Target} new military units during the crisis."
     type: 12
     targetValue: 1
     targetMode: 4

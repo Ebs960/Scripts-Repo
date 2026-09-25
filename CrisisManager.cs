@@ -107,6 +107,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         public int[] resolvedTargets;
         public int[] consecutiveTurnProgress;
         public int startTurn;
+        public CrisisNarrativeSnapshot narrativeSnapshot;
     }
 
     public class MissionState
@@ -118,6 +119,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         public int[] resolvedTargets;
         public int[] consecutiveTurnProgress;
         public int startTurn;
+        public CrisisNarrativeSnapshot narrativeSnapshot;
 
         public int CompletedObjectiveCount => objectiveCompleted != null ? objectiveCompleted.Count(c => c) : 0;
         public bool AllObjectivesComplete => objectiveCompleted != null && objectiveCompleted.All(c => c);
@@ -357,11 +359,23 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         foreach (var mission in sourceCrisis.crisisMissions)
         {
             if (mission != null && MeetsParticipantRole(civ, mission.participantRole) && MeetsPrerequisites(civ, mission)
-                && HasObjectiveBasis(mission))
+                && HasObjectiveBasis(mission) && HasNarrativeBasis(mission,civ))
                 result.Add(mission);
         }
 
         return result;
+    }
+
+    private bool HasNarrativeBasis(MissionData mission, Civilization civ)
+    {
+        if (mission == null || mission.missionName != "Grand Coalition") return true;
+        return (GetNarrativeSnapshot(civ)?.distinctDemandCount ?? 0) >= 2;
+    }
+
+    public CrisisNarrativeSnapshot GetNarrativeSnapshot(Civilization civ)
+    {
+        int index=GetCivIndex(civ);
+        return ActiveContext?.narrativeSnapshots?.FirstOrDefault(s=>s != null && s.civilizationIndex==index);
     }
 
     private bool HasObjectiveBasis(MissionData mission)
@@ -513,7 +527,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 objectiveCompleted = (bool[])state.objectiveCompleted.Clone(),
                 resolvedTargets = state.resolvedTargets != null ? (int[])state.resolvedTargets.Clone() : null,
                 consecutiveTurnProgress = state.consecutiveTurnProgress != null ? (int[])state.consecutiveTurnProgress.Clone() : null,
-                startTurn = state.startTurn
+                startTurn = state.startTurn,
+                narrativeSnapshot = state.narrativeSnapshot
             });
         }
 
@@ -554,7 +569,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 objectiveCompleted = saveData.objectiveCompleted ?? new bool[mission.objectives.Count],
                 resolvedTargets = saveData.resolvedTargets ?? mission.objectives.Select(o => Mathf.Max(0, o.targetValue)).ToArray(),
                 consecutiveTurnProgress = saveData.consecutiveTurnProgress ?? new int[mission.objectives.Count],
-                startTurn = saveData.startTurn
+                startTurn = saveData.startTurn,
+                narrativeSnapshot = saveData.narrativeSnapshot
             };
         }
 
@@ -586,7 +602,9 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 PollTurnObjectives(civ, kvp.Key, kvp.Value, round);
                 if (activeMissions.TryGetValue(kvp.Key, out var deadlineState) && deadlineState.mission.completionDeadlineTurns > 0
                     && round - deadlineState.startTurn >= deadlineState.mission.completionDeadlineTurns)
-                    FailMission(civ, kvp.Key, deadlineState, $"Deadline of {deadlineState.mission.completionDeadlineTurns} turns expired.");
+                    FailMission(civ, kvp.Key, deadlineState, !string.IsNullOrWhiteSpace(deadlineState.mission.failureFlavorText)
+                        ? deadlineState.mission.failureFlavorText
+                        : $"Deadline of {deadlineState.mission.completionDeadlineTurns} turns expired.");
                 if (activeMissions.TryGetValue(kvp.Key, out var stillActive) && stillActive == kvp.Value)
                 {
                     LogCrisisDebug("HandleRoundStarted", $"Validating active constraints for civ={DescribeCiv(civ)} mission={DescribeMission(kvp.Value.mission)}.");
@@ -1560,6 +1578,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             objectiveCompleted = new bool[mission.objectives.Count],
             resolvedTargets = mission.objectives.Select(o=>ResolveObjectiveTarget(o,civ)).ToArray(),
             consecutiveTurnProgress = new int[mission.objectives.Count],
+            narrativeSnapshot = GetNarrativeSnapshot(civ),
             // Survival oaths measure the crisis, not how long the player spent reading
             // the modal. Selection is restricted to this same start turn.
             startTurn = crisisActiveTurn
@@ -1748,6 +1767,22 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             startingTradeRoutes=CountTradeRoutes(civ), tradeIncome=GetTradeIncome(civ),
             averageOrder=cities.Count>0?cities.Average(c=>(float)c.orderRating):0f,
             averageHappiness=cities.Count>0?cities.Average(c=>(float)c.moraleRating):0f
+        });
+        var demands=(civ.nobleFactions ?? new List<FactionBloc>())
+            .Where(f=>f != null && f.ActiveDemands != null)
+            .SelectMany(f=>f.ActiveDemands.Where(d=>d != null && !string.IsNullOrWhiteSpace(d.description))
+                .Select(d=>new { faction=f.FactionName, demand=d.description.Trim() }))
+            .GroupBy(d=>$"{d.faction}\n{d.demand}").Select(g=>g.First()).ToList();
+        var principal=demands.FirstOrDefault();
+        context.narrativeSnapshots.Add(new CrisisNarrativeSnapshot {
+            civilizationIndex=index,
+            factionName=principal?.faction ?? "the concerned faction",
+            demand=principal?.demand ?? "a settlement of its outstanding demand",
+            factionDemandSummary=demands.Count > 0
+                ? string.Join(" ",demands.Select(d=>$"{d.faction} demands: {d.demand}"))
+                : "The factions have presented their demands.",
+            primaryGrievance=principal?.demand ?? context.riskExplanation ?? "unresolved political grievances",
+            distinctDemandCount=demands.Count
         });
         if (context.targetCityId < 0 && cities.Count > 0) context.targetCityId=cities[0].gameObject.GetRuntimeId();
     }

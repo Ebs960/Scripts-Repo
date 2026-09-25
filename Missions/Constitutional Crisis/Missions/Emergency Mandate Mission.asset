@@ -5,13 +5,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Emergency Mandate Mission
   missionName: Emergency Mandate
-  description: Crisis-specific response objective.
+  description: "Ordinary government has become too divided to act. Resolve the principal constitutional dispute within 3 turns by concentrating enough temporary authority to force a decision before paralysis becomes collapse."
+  flavorText: "Debate has become paralysis, and paralysis is beginning to threaten the state itself. Legislatures cannot agree, rival institutions reject one another's authority, and even routine administration is being swallowed by the dispute. The immediate conflict over {Demand} will not be allowed to consume the government indefinitely. Emergency authority will be used to impose a settlement quickly, bypassing procedures that have ceased to produce one on their own. Supporters will call the decision necessary. Opponents may remember it as the moment temporary power learned how useful it could be."
+  failureFlavorText: "The constitutional dispute remained unresolved after 3 turns. The Emergency Mandate has failed."
   participantRole: 0
   completionDeadlineTurns: 3
   strategyTags: 128
   objectives:
   - objectiveName: Emergency Mandate
-    description: Resolve the principal constitutional dispute within 3 turns.
+    description: "Resolve the principal constitutional dispute within 3 turns."
     type: 37
     targetValue: 1
     targetMode: 0

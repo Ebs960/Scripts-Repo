@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Crush the Coup Mission
   missionName: Crush the Coup
-  description: Crisis-specific response objective.
+  description: "The conspirators have abandoned secrecy and taken up arms against the government. Defeat {Objective0Target} units fighting for the coup and break their attempt to turn conspiracy into a new regime."
+  flavorText: "There will be no bargaining with officers who believe armed force gives them the right to choose the government. Loyal units are ordered to secure the institutions of state, protect critical positions, and destroy formations that have openly joined the conspiracy. Some commanders will hesitate as friendships, patronage, and old loyalties are tested, but neutrality becomes less possible with every hour. If the conspirators survive long enough, rebellion will begin to resemble authority and obedience may follow appearances. They chose to settle the question by force. The government will answer on the ground they selected."
   participantRole: 0
   strategyTags: 129
   objectives:
   - objectiveName: Crush the Coup
-    description: Defeat {Objective0Target} units fighting for the coup.
+    description: "Defeat {Objective0Target} units fighting for the coup."
     type: 21
     targetValue: 1
     targetMode: 4

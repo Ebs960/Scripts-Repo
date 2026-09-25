@@ -21,6 +21,25 @@ public class CrisisExpansionTests
         StringAssert.IsMatch(@"\d+",rendered);
     }
 
+    [Test] public void NarrativeBatchTwo_HasAuthoredDescriptionsAndResolvableTokens()
+    {
+        string[] names={"Financial Genius","Trade Lifeline","Rainy Day Fund","Unstoppable Industry","Mass Mobilization",
+            "Engineer Corps","Crush the Coup","Buy Their Loyalty","Counterplot","Rule of Law","Grand Coalition",
+            "Emergency Mandate","Appeasement","Iron Fist","Reform the State"};
+        var snapshot=new CrisisNarrativeSnapshot { factionName="Reform League",demand="Repeal the levy",
+            factionDemandSummary="The Reform League demands repeal of the levy.",primaryGrievance="the emergency levy",distinctDemandCount=2 };
+        foreach(string name in names)
+        {
+            var mission=Mission(name);
+            Assert.IsFalse(mission.description.Contains("Crisis-specific response objective."),name);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(mission.flavorText),name);
+            var state=new CrisisManager.MissionState { mission=mission,
+                resolvedTargets=mission.objectives.Select(o=>Mathf.Max(1,o.targetValue)).ToArray(),narrativeSnapshot=snapshot };
+            string rendered=MissionNarrativeFormatter.Resolve(mission.description+mission.flavorText+mission.objectives[0].description,mission,null,null,state);
+            StringAssert.DoesNotMatch(@"\{[A-Za-z]",rendered,name);
+        }
+    }
+
     [Test] public void CorrectedIndustryAndTrainingAssets_UseAuthoritativeEventTypes()
     {
         var industry=Mission("Unstoppable Industry").objectives[0];
@@ -46,6 +65,17 @@ public class CrisisExpansionTests
         var restored=JsonUtility.FromJson<CrisisManager.MissionStateSaveData>(JsonUtility.ToJson(original));
         CollectionAssert.AreEqual(original.resolvedTargets,restored.resolvedTargets);
         CollectionAssert.AreEqual(original.consecutiveTurnProgress,restored.consecutiveTurnProgress);
+    }
+
+    [Test] public void MissionSavePayload_PreservesSnapshottedNarrative()
+    {
+        var original=new CrisisManager.MissionStateSaveData { narrativeSnapshot=new CrisisNarrativeSnapshot {
+            civilizationIndex=2,factionName="Civic Bloc",demand="Restore elections",
+            factionDemandSummary="Civic Bloc demands restored elections.",primaryGrievance="suspended elections",distinctDemandCount=2 } };
+        var restored=JsonUtility.FromJson<CrisisManager.MissionStateSaveData>(JsonUtility.ToJson(original));
+        Assert.AreEqual(original.narrativeSnapshot.factionName,restored.narrativeSnapshot.factionName);
+        Assert.AreEqual(original.narrativeSnapshot.demand,restored.narrativeSnapshot.demand);
+        Assert.AreEqual(2,restored.narrativeSnapshot.distinctDemandCount);
     }
     [Test] public void TenPercentCombatBonus_IsOnePointOneTimes()
         => Assert.AreEqual(110f, CombatModifierUtility.ApplyFractionalModifier(100f,.10f),.001f);

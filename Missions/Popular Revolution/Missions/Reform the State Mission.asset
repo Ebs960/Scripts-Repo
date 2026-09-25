@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Reform the State Mission
   missionName: Reform the State
-  description: Crisis-specific response objective.
+  description: "The revolution has exposed a political demand that can no longer be ignored. Resolve the principal demand of {FactionName}—{Demand}—and use institutional reform rather than repression to end the crisis."
+  flavorText: "Revolutions often begin because peaceful demands repeatedly fail. {FactionName} has placed one issue at the center of the present confrontation: {Demand}. Granting meaningful reform will anger those who see every concession as surrender, but continued refusal may convince thousands more that change is impossible without destroying the existing order. The government will attempt something harder than repression and more permanent than temporary appeasement: changing the institutions themselves. If the state can absorb the demand that threatened it, survival may leave it stronger rather than merely intact."
   participantRole: 0
   strategyTags: 80
   objectives:
   - objectiveName: Reform the State
-    description: Resolve the principal revolutionary demand: {Demand}.
+    description: "Resolve the principal revolutionary demand: {Demand}."
     type: 37
     targetValue: 1
     targetMode: 0

@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Counterplot Mission
   missionName: Counterplot
-  description: Crisis-specific response objective.
+  description: "The coup depends upon secrecy, coordination, and surprise. Complete the Counterintelligence crisis project before the conspirators can convert preparation into control of the state."
+  flavorText: "Armies do not overthrow governments by strength alone. Orders must be transmitted, officers recruited, weapons positioned, communications secured, and sympathetic officials brought into the conspiracy without alerting those who remain loyal. Every intercepted message, compromised courier, and identified organizer tears another hole in that network. Investigators will trace unexplained movements, private commands, and suspicious communications until the conspiracy can no longer tell who knows what. A coup exposed too early loses the advantage on which it depends. Let the conspirators discover that their secret stopped being theirs long before they acted."
   participantRole: 0
   strategyTags: 20
   objectives:
   - objectiveName: Counterplot
-    description: Complete the Counterintelligence crisis project.
+    description: "Complete the Counterintelligence crisis project."
     type: 39
     targetValue: 1
     targetMode: 0

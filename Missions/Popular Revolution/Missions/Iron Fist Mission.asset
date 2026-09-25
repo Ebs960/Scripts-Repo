@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Iron Fist Mission
   missionName: Iron Fist
-  description: Crisis-specific response objective.
+  description: "The movement has crossed from protest into armed rebellion. Defeat {Objective0Target} revolutionary units and restore the state's ability to enforce its authority."
+  flavorText: "The time for petitions and speeches has passed. Barricades divide the streets, public buildings have been seized, and armed revolutionaries openly deny the government's right to rule. Loyal forces will retake the districts that have slipped beyond state control and dismantle the formations sustaining the uprising. Repression may restore order without restoring trust, and memories of the crackdown may survive long after the final barricade is cleared. That reckoning can come later. A state that cannot enforce its authority soon discovers that its authority exists only on paper."
   participantRole: 0
   strategyTags: 129
   objectives:
   - objectiveName: Iron Fist
-    description: Defeat {Objective0Target} revolutionary units.
+    description: "Defeat {Objective0Target} revolutionary units."
     type: 21
     targetValue: 1
     targetMode: 4
