@@ -52,7 +52,7 @@ public class HudCrisisSummaryItem : MonoBehaviour
     private string GetEffectsDescription(CrisisData crisis)
     {
         if (crisis == null || crisis.worldOverrides == null || crisis.worldOverrides.Length == 0)
-            return "No effects";
+            return GetContextDescription(crisis);
 
         var effectLines = new System.Collections.Generic.List<string>();
 
@@ -73,6 +73,21 @@ public class HudCrisisSummaryItem : MonoBehaviour
             effectLines.Add(effectText);
         }
 
+        string context=GetContextDescription(crisis);
+        if (!string.IsNullOrEmpty(context)) effectLines.Insert(0,context);
         return string.Join("\n", effectLines);
+    }
+
+    private string GetContextDescription(CrisisData crisis)
+    {
+        var manager=CrisisManager.Instance;
+        var context=manager != null && manager.ActiveCrisis==crisis ? manager.ActiveContext : null;
+        if (context == null) return "No active effects";
+        var lines=new System.Collections.Generic.List<string>();
+        if (context.targetContinentId>=0) lines.Add($"Continent {context.targetContinentId}");
+        if (context.targetCityId>=0) lines.Add("Targeted city");
+        if (context.overlordIndex>=0 && context.subjectIndex>=0) lines.Add("Subject relationship crisis");
+        if (!string.IsNullOrEmpty(context.riskExplanation)) lines.Add($"Risk {context.resolvedRisk:0.#}: {context.riskExplanation}");
+        return lines.Count>0?string.Join("\n",lines):"Global crisis";
     }
 }

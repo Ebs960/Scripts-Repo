@@ -5,6 +5,20 @@ using UnityEngine;
 
 public class ImprovementManager : MonoBehaviour
 {
+    public enum CrisisImprovementState { Healthy, Infested, Destroyed, Disabled }
+    private readonly Dictionary<string, CrisisImprovementState> crisisStates = new Dictionary<string, CrisisImprovementState>();
+    private static string CrisisKey(int planetIndex, int tileIndex) => planetIndex + ":" + tileIndex;
+    public CrisisImprovementState GetCrisisState(int planetIndex, int tileIndex)
+        => crisisStates.TryGetValue(CrisisKey(planetIndex,tileIndex), out var state) ? state : CrisisImprovementState.Healthy;
+    public void SetCrisisState(int planetIndex, int tileIndex, CrisisImprovementState state)
+    {
+        string key=CrisisKey(planetIndex,tileIndex);
+        if (state==CrisisImprovementState.Healthy) crisisStates.Remove(key); else crisisStates[key]=state;
+    }
+    public bool ClearCrisisDamage(int planetIndex, int tileIndex)
+    {
+        string key=CrisisKey(planetIndex,tileIndex); return crisisStates.Remove(key);
+    }
     public static ImprovementManager Instance { get; private set; }
 
     public enum ImprovementRemovalReason

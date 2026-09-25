@@ -1,0 +1,11 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 4b2f9bb0d7c94bdf8444ee2b7125aea6, type: 3}
+  m_Name: Asteroid Interception
+  projectName: Asteroid Interception
+  description: Temporary production option for the active crisis.
+  productionCost: 100
+  goldCost: 0
+  validCrisis: {fileID: 11400000, guid: fdaca0ca584e4126909e004b1a2c636e, type: 2}

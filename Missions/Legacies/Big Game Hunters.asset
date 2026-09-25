@@ -19,7 +19,7 @@ MonoBehaviour:
   bannerImage: {fileID: 21300000, guid: bfde394eabd8a9b4fb717be2a9dd37b4, type: 3}
   policyPointCost: 50
   goldCost: 50
-  attackBonus: 3
+  attackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   attackModifier: 0
@@ -31,6 +31,11 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  unitBonuses:
+  - useCrisisActorTagFilter: 0
+    useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 25
+    attackPct: 0.05
   policyBiases:
   - policy: {fileID: 11400000, guid: 1593fb683dba5f047ac58f2d3a77cf21, type: 2}
     opinionModifier: 11.2

@@ -10,6 +10,15 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Crisis", menuName = "Data/Crisis Data")]
 public class CrisisData : ScriptableObject
 {
+    public enum CrisisScope { Global, Civilization, City, Continent, SubjectRelationship }
+    public enum CrisisRepeatMode { OneTime, Repeatable }
+    public enum CrisisMechanic
+    {
+        None, PredatorSurge, HostileRaiders, Drought, DiseaseOutbreak, IndustrialDamage,
+        FinancialShock, PoliticalCoup, ConstitutionalConflict, PopularRevolution,
+        IndependenceWar, LocustInfestation, TerroristCells, RobotDefection,
+        AsteroidCountdown, GeneticMutation, AlienLanding
+    }
     [Header("Identity")]
     public string crisisName;
     public Sprite icon;
@@ -61,6 +70,29 @@ public class CrisisData : ScriptableObject
     public int earliestTurn;
     [Tooltip("Latest game turn this crisis can trigger. 0 = no limit.")]
     public int latestTurn;
+
+    [Header("Age, Season, Scope & Repetition")]
+    public bool useAgeWindow;
+    public TechAge minimumAge = TechAge.PaleolithicAge;
+    public TechAge maximumAge = TechAge.GalacticAge;
+    public CrisisScope scope = CrisisScope.Global;
+    public CrisisMechanic mechanic;
+    public CrisisRepeatMode repeatMode = CrisisRepeatMode.OneTime;
+    [Min(0)] public int cooldownTurns;
+    [Tooltip("0 means unlimited for a repeatable crisis.")]
+    [Min(0)] public int maximumOccurrences;
+    public bool useSeasonFilter;
+    public Season[] allowedSeasons;
+    public bool mustStartAtSeasonBoundary;
+
+    [Header("Runtime Integration")]
+    [Min(0f)] public float minimumRiskScore;
+    [Tooltip("Optional disease used by DiseaseOutbreak. Population loss remains owned by DiseaseManager/City disease processing.")]
+    public DiseaseData crisisDisease;
+    public CrisisProjectData[] crisisProjects;
+
+    [Header("Repeat Completion")]
+    public RepeatCompletionReward repeatCompletionReward;
 
     [Header("Activation Requirements")]
     public TechData[] requiredTechs;
@@ -118,4 +150,12 @@ public class CrisisData : ScriptableObject
         FoodYieldMultiplier,
         ForceWinter,
     }
+}
+
+[System.Serializable]
+public class RepeatCompletionReward
+{
+    [Min(0)] public int gold;
+    [Min(0)] public int food;
+    [Min(0)] public int policyPoints;
 }

@@ -50,6 +50,7 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
+  archetypes: 135
   usesRoyalCouncil: 1
   councilSeatCount: 7
   councilVetoDomains: 255
@@ -83,9 +84,9 @@ MonoBehaviour:
   signatureMechanic: Constituent states exercise maximum autonomy through an all-domain Confederate Council veto.
   majorTradeoff: Central policy, taxation, and mobilization are deliberately weak.
   electionRules:
-    enabled: 0
+    enabled: 1
     termLengthTurns: 16
-    electorateModel: 1
+    electorateModel: 2
     incumbentEligible: 1
     candidateCount: 3
     volatility: 0.1

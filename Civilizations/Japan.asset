@@ -50,7 +50,7 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.35
+  cultureModifier: 0.3
   faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []

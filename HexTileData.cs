@@ -346,6 +346,20 @@ public class HexTileData
     private static YieldAgg AggregateImprovementBonusesLocal(Civilization civ, ImprovementData imp, int planetIndex = -1)
     {
         YieldAgg a = new YieldAgg(); if (civ == null || imp == null) return a;
+        void Accumulate(ImprovementYieldBonus[] bonuses)
+        {
+            if (bonuses == null) return;
+            foreach (var b in bonuses)
+            {
+                if (b == null) continue;
+                bool targetMatches=b.improvement==imp || (b.improvement==null && b.agriculturalOnly && imp.name.IndexOf("farm",System.StringComparison.OrdinalIgnoreCase)>=0);
+                if (!targetMatches || !PlanetBonusFilterUtility.MatchesPlanetFilter(b.earthWorldScope,b.usePlanetFilter,b.planets,b.planetTypes,planetIndex)) continue;
+                a.foodAdd+=b.foodAdd; a.productionAdd+=b.productionAdd; a.goldAdd+=b.goldAdd; a.scienceAdd+=b.scienceAdd; a.cultureAdd+=b.cultureAdd; a.faithAdd+=b.faithAdd; a.policyAdd+=b.policyPointsAdd;
+                a.foodPct+=b.foodPct; a.productionPct+=b.productionPct; a.goldPct+=b.goldPct; a.sciencePct+=b.sciencePct; a.culturePct+=b.culturePct; a.faithPct+=b.faithPct; a.policyPct+=b.policyPointsPct;
+            }
+        }
+        Accumulate(civ.civData?.improvementBonuses);
+        if (civ.activeLegacies != null) foreach (var legacy in civ.activeLegacies) Accumulate(legacy?.improvementBonuses);
         if (civ.researchedTechs != null)
             foreach (var t in civ.researchedTechs)
             {

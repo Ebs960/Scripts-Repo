@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Predator Hunting Season
+  crisisName: Predator Hunting Season
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 6
+  useAgeWindow: 1
+  minimumAge: 0
+  maximumAge: 1
+  mechanic: 1
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 1
+  cooldownTurns: 20
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  repeatCompletionReward:
+    gold: 25
+    food: 25
+    policyPoints: 1
+  crisisMissions:
+  - {fileID: 11400000, guid: abbe79bfe2084c62ad29ef53e60ae84b, type: 2}
+  - {fileID: 11400000, guid: a26c0ea82e084ce9a79db3be7a05abcd, type: 2}
+  - {fileID: 11400000, guid: eb415345d15643c8858b47715f0e8300, type: 2}
+  worldOverrides:
+  - type: 3
+    value: 2
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

@@ -546,20 +546,23 @@ public class ResourceManager : MonoBehaviour
         if (inst == null || inst.data == null) return;
         
         var rd = inst.data;
+        float forageMultiplier = 1f + (civ != null ? civ.ActiveLegacyHuntingForagingYieldModifier : 0f);
         // Use centralized civ helpers where available so UI events fire immediately.
         if (rd.forageFood != 0)
-            civ.AddFood(rd.forageFood);
+            civ.AddFood(Mathf.RoundToInt(rd.forageFood * forageMultiplier));
         if (rd.forageGold != 0)
-            civ.AddGold(rd.forageGold);
+            civ.AddGold(Mathf.RoundToInt(rd.forageGold * forageMultiplier));
         // Science and culture currently don't have centralized Add helpers; update fields directly.
         if (rd.forageScience != 0)
-            civ.science += rd.forageScience;
+            civ.science += Mathf.RoundToInt(rd.forageScience * forageMultiplier);
         if (rd.forageCulture != 0)
-            civ.culture += rd.forageCulture;
+            civ.culture += Mathf.RoundToInt(rd.forageCulture * forageMultiplier);
         if (rd.foragePolicyPoints != 0)
-            civ.AddPolicyPoints(rd.foragePolicyPoints);
+            civ.AddPolicyPoints(Mathf.RoundToInt(rd.foragePolicyPoints * forageMultiplier));
         if (rd.forageFaith != 0)
-            civ.AddFaith(rd.forageFaith);
+            civ.AddFaith(Mathf.RoundToInt(rd.forageFaith * forageMultiplier));
+
+        CrisisManager.Instance?.AddProgress(civ, MissionData.ObjectiveType.HuntOrForage, 1, rd);
 
         // Request tile-level removal of the resource; TileSystem will raise event and ResourceManager will destroy the instance.
         TileSystem.SetResourceOnTile(null, inst.tileIndex, inst.planetIndex);

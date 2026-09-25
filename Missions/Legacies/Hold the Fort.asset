@@ -20,7 +20,7 @@ MonoBehaviour:
   policyPointCost: 50
   goldCost: 50
   attackBonus: 0
-  defenseBonus: 8
+  defenseBonus: 0.05
   movementBonus: 0
   attackModifier: 0
   defenseModifier: 0

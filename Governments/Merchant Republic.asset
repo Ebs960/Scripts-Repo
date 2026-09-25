@@ -71,6 +71,7 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
+  archetypes: 39
   usesRoyalCouncil: 1
   councilSeatCount: 3
   councilVetoDomains: 69
@@ -104,9 +105,9 @@ MonoBehaviour:
   signatureMechanic: Commercial oligarchs expand routes and foreign trade.
   majorTradeoff: Dependence on commerce raises inequality and military costs.
   electionRules:
-    enabled: 0
+    enabled: 1
     termLengthTurns: 16
-    electorateModel: 1
+    electorateModel: 4
     incumbentEligible: 1
     candidateCount: 3
     volatility: 0.1

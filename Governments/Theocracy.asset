@@ -48,6 +48,7 @@ MonoBehaviour:
   nonStateReligionUnhappinessModifiers: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
+  archetypes: 66
   usesRoyalCouncil: 1
   councilSeatCount: 4
   councilVetoDomains: 74

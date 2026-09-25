@@ -51,6 +51,7 @@ public class ClimateManager : MonoBehaviour
     [Header("Season Configuration")]
     public int turnsPerSeason = 3;
     public Season currentSeason = Season.Spring;
+    public bool IsAtSeasonBoundary => TurnManager.Instance != null && TurnManager.Instance.round == seasonStartTurn;
 
     [Header("Debug")]
     public bool forceSeasonChange = false;

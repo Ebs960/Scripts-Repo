@@ -519,8 +519,8 @@ public class LegacyTrackerUI : MonoBehaviour
     private string BuildBonusSummary(LegacyData legacy)
     {
         var sb = new StringBuilder();
-        if (legacy.attackBonus != 0f) sb.AppendLine($"Attack: +{legacy.attackBonus:0.#}");
-        if (legacy.defenseBonus != 0f) sb.AppendLine($"Defense: +{legacy.defenseBonus:0.#}");
+        if (legacy.attackBonus != 0f) sb.AppendLine($"Attack: {legacy.attackBonus:+0%;-0%;0%}");
+        if (legacy.defenseBonus != 0f) sb.AppendLine($"Defense: {legacy.defenseBonus:+0%;-0%;0%}");
         if (legacy.movementBonus != 0f) sb.AppendLine($"Movement: +{legacy.movementBonus:0.#}");
         if (legacy.attackModifier != 0f) sb.AppendLine($"Attack: {legacy.attackModifier * 100f:+0.#;-0.#}%");
         if (legacy.defenseModifier != 0f) sb.AppendLine($"Defense: {legacy.defenseModifier * 100f:+0.#;-0.#}%");

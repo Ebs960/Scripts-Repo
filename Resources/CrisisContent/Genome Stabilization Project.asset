@@ -1,0 +1,11 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 4b2f9bb0d7c94bdf8444ee2b7125aea6, type: 3}
+  m_Name: Genome Stabilization
+  projectName: Genome Stabilization
+  description: Temporary production option for the active crisis.
+  productionCost: 100
+  goldCost: 0
+  validCrisis: {fileID: 11400000, guid: 7af7ad8b9ee340b4952126bb03a6bb7b, type: 2}

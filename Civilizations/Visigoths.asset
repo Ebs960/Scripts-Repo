@@ -39,7 +39,7 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 0500000004000000
-  attackBonus: 4
+  attackBonus: 0.04
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0

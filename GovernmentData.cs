@@ -1,4 +1,13 @@
 using UnityEngine;
+using System;
+
+[Flags]
+public enum GovernmentArchetypeFlags
+{
+    None=0, Representative=1, Legislature=2, ElectedExecutive=4, HereditaryExecutive=8,
+    CentralizedExecutive=16, Oligarchic=32, Clerical=64, Decentralized=128,
+    Militarized=256, MachineRule=512, ConsensusRule=1024, CollectiveMind=2048
+}
 
 [CreateAssetMenu(fileName = "NewGovernmentData", menuName = "Data/Government Data")]
 public class GovernmentData : ScriptableObject
@@ -79,6 +88,8 @@ public class GovernmentData : ScriptableObject
     public HerdYieldBonus[] herdYieldBonuses;
 
     [Header("Council & Political Structure")]
+    [Tooltip("Structural classification used by elections and political crises; never infer this from display names at runtime.")]
+    public GovernmentArchetypeFlags archetypes;
     [Tooltip("Whether this government uses a Royal Council of seated governors. When false, seat count and veto domains are ignored entirely.")]
     public bool usesRoyalCouncil = false;
     [Tooltip("How many governors may sit on the royal council under this government type. Only used when usesRoyalCouncil is true.")]

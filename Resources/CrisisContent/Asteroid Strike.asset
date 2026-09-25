@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Asteroid Strike
+  crisisName: Asteroid Strike
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 20
+  useAgeWindow: 1
+  minimumAge: 15
+  maximumAge: 19
+  mechanic: 14
+  minimumRiskScore: 0
+  scope: 3
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisProjects:
+  - {fileID: 11400000, guid: b5953098a3294ad48d93e12bcce7e207, type: 2}
+  crisisMissions:
+  - {fileID: 11400000, guid: fdc2e31a81734121b423b92b5e779303, type: 2}
+  - {fileID: 11400000, guid: 2455a4c042d241ae9078ee7534fb7048, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

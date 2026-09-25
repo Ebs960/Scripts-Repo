@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Financial Crisis
+  crisisName: Financial Crisis
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 8
+  useAgeWindow: 1
+  minimumAge: 10
+  maximumAge: 19
+  mechanic: 6
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisMissions:
+  - {fileID: 11400000, guid: e380242278964ad19151480c9b62f61b, type: 2}
+  - {fileID: 11400000, guid: 1b30beadba5f4f38a548960c3ec676b8, type: 2}
+  - {fileID: 11400000, guid: 3276db9714eb4e699f74f3bbd30a0844, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

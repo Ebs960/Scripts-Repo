@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Robot Uprising
+  crisisName: Robot Uprising
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 13
+  useAgeWindow: 1
+  minimumAge: 16
+  maximumAge: 19
+  mechanic: 13
+  minimumRiskScore: 0
+  scope: 1
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisProjects:
+  - {fileID: 11400000, guid: 20686cd3c036468f80bf7a8e65cfb7f5, type: 2}
+  crisisMissions:
+  - {fileID: 11400000, guid: 1c7e6644271049729244baf4320f39a3, type: 2}
+  - {fileID: 11400000, guid: 424d685f957d47a0a12b969767700018, type: 2}
+  - {fileID: 11400000, guid: 8c7d33747c2446e5a8669c7fd982570f, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

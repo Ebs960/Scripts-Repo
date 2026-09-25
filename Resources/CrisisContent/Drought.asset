@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Drought
+  crisisName: Drought
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 12
+  useAgeWindow: 1
+  minimumAge: 1
+  maximumAge: 9
+  mechanic: 3
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 1
+  cooldownTurns: 20
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  repeatCompletionReward:
+    gold: 25
+    food: 25
+    policyPoints: 1
+  crisisMissions:
+  - {fileID: 11400000, guid: 4d992fc1879d488f8bfcb8b11b71c50a, type: 2}
+  - {fileID: 11400000, guid: 13da43ddac43405bbe8a8f19e88d7eba, type: 2}
+  - {fileID: 11400000, guid: bd23d396aee5450da45268893ebde493, type: 2}
+  worldOverrides:
+  - type: 1
+    value: 1
+  - type: 2
+    value: 0.35
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []
