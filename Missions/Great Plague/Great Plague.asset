@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Great Plague
   crisisName: Great Plague
+  ominousWarningText: "A strange sickness has begun moving quietly from house to house. It starts with fever and exhaustion, then leaves some victims too weak to rise from their beds for days. Healers disagree over its cause, and remedies that seem to help one patient fail completely on another. Markets grow quieter as families avoid crowded streets, travelers are questioned at city gates, and rumors spread faster than any physician can answer them. A few homes have already shuttered themselves entirely, refusing visitors out of fear that the illness might enter with them."
+  obviousWarningText: "The sickness is no longer contained. Entire neighborhoods are reporting new cases, and healers who once treated a handful of patients now find lines forming outside their doors before sunrise. Families are carrying the sick from overcrowded homes while officials struggle to separate those who may be infected from those who are still healthy. Trade and travel are beginning to spread the disease beyond the first affected cities, and reports from neighboring settlements describe the same symptoms appearing there. Fear is emptying markets, disrupting work, and turning strangers away from one another."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 10

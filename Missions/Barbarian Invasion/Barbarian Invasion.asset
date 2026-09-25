@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Barbarian Invasion
   crisisName: Barbarian Invasion
+  ominousWarningText: "Smoke rises beyond the frontier. Refugees arrive from isolated villages carrying stories of stolen livestock, burned storehouses, and patrols that vanished after riding into the borderlands. Watchmen have seen scattered warbands moving through the hills in greater numbers than usual, sometimes traveling beneath banners that have never before appeared together. Traders returning from the frontier say old rivalries among the raiders seem to have been set aside, at least for now. Fort commanders ask for reinforcements while local farmers begin moving families and supplies behind stronger walls."
+  obviousWarningText: "The warbands have united. Their camps now stretch across the frontier, marked by hundreds of fires and banners belonging to tribes that once fought one another as often as they fought us. Scouts report large formations of warriors, mounted troops, supply wagons, and siege equipment moving toward our lands along several routes. Refugees crowd the roads ahead of them, while frontier garrisons signal that they may soon be cut off. This is no season of scattered raids and stolen cattle."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 10

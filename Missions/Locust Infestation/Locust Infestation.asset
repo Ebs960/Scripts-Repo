@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Locust Infestation
   crisisName: Locust Infestation
+  ominousWarningText: "At first there are only a few. Farmers notice unfamiliar numbers of insects clinging to grain stalks, gathering along irrigation channels, and rising from the grass whenever workers cross the fields. Most dismiss them as another seasonal nuisance, though older farmers remember stories of years when similar sightings came before devastation. On the horizon, strange dark clouds appear even when the weather is otherwise clear, shifting in ways that ordinary storm clouds do not. Birds gather and scatter unpredictably beneath them."
+  obviousWarningText: "The swarm has reached the valley. Thousands of locusts descend ahead of an even larger cloud, filling roads, rooftops, irrigation ditches, and the edges of cultivated fields. Farmers rush to move grain into sealed stores, drive livestock toward shelter, and protect whatever crops can still be covered or harvested early. The sound of wings is now audible long before the insects themselves arrive, a low continuous roar carried across the countryside. Sunlight dims beneath the advancing swarm even though the sky above remains clear."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 6

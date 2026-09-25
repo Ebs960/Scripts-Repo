@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Domestic Terrorism
   crisisName: Domestic Terrorism
+  ominousWarningText: "Warnings are multiplying. Security services have intercepted threatening messages, unexplained financial transfers, suspicious movements around vulnerable infrastructure, and communications between individuals already connected to extremist networks. Some messages speak of retaliation, others of independence, religious struggle, political revenge, or resistance to the state, but authorities cannot yet determine which threats are genuine and which are intended only to spread fear. Local officials request additional security around transport hubs, government buildings, utilities, and crowded public spaces. Rumors circulate faster than verified information, increasing tension in communities already divided by political or social grievances."
+  obviousWarningText: "Security services have identified an active plot. Surveillance and intercepted communications indicate that several teams may already be moving toward possible targets, though authorities cannot determine whether every location under threat has been discovered. Transport hubs close with little warning, government facilities restrict access, and emergency units deploy around power stations, communications centers, and other critical infrastructure. Police checkpoints appear across affected cities while investigators race to locate weapons, explosives, safe houses, or accomplices before the operation begins. The sudden security measures themselves spread fear, disrupting ordinary life even before violence occurs."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 20

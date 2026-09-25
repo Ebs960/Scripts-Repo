@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Predator Hunting Season
   crisisName: Predator Hunting Season
+  ominousWarningText: "Fresh tracks have begun appearing around the settlement, larger and more numerous than the hunters remember seeing before. Game that once wandered close to camp has retreated deeper into the wilderness, and even experienced hunters return with little to show for days spent beyond the fires. At night, unfamiliar cries echo through the trees, sometimes answered by others from far across the valley. A few hunters insist that the predators are simply following migrating prey, but others have noticed tracks circling shelters and food stores before disappearing back into the darkness."
+  obviousWarningText: "The predators no longer hide their presence. Their calls can be heard just beyond the light of the fires, and shadowy forms have been spotted moving between the trees after sunset. Packs that once hunted separately now travel together along familiar hunting trails and near the approaches to the settlement. Scouts report that several animals have begun ignoring ordinary attempts to frighten them away, as though hunger or competition has overcome their fear of people. Hunting parties are returning early, and families have begun bringing children and livestock closer to the center of camp."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 6

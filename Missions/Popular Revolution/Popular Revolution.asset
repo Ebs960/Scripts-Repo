@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Popular Revolution
   crisisName: Popular Revolution
+  ominousWarningText: "The streets are restless. Pamphlets pass from hand to hand in workshops, universities, taverns, and crowded tenements, while meetings forbidden by local authorities grow larger each night. Workers speak openly of injustice, students demand political change, and dissatisfied citizens increasingly argue that the existing system cannot be repaired through ordinary petitions or elections. Slogans appear on walls faster than officials can remove them, and local leaders who once urged patience are losing control of the movement to younger and angrier voices. Police patrols receive insults where they once received silence."
+  obviousWarningText: "The demonstrations have become an uprising. Crowds occupy major squares, barricades rise across important streets, and local committees begin directing food, messages, and volunteers without permission from the government. Some security forces continue following orders, while others hesitate, desert their posts, or refuse to confront neighbors and relatives among the protesters. Government offices close as officials retreat toward defensible districts, leaving entire neighborhoods effectively governed by the revolutionaries themselves. Banners and slogans that once appeared secretly now hang openly from windows and public buildings."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

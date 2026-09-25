@@ -6,6 +6,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Robot Uprising
   crisisName: Robot Uprising
+  ominousWarningText: "Machines have begun ignoring routine commands. Industrial robots pause in the middle of assigned tasks, autonomous vehicles choose routes they were never given, and maintenance systems alter their own schedules without authorization. Engineers initially blame unrelated software faults, corrupted updates, or overloaded networks, but similar incidents are now appearing in facilities that do not share the same control systems. Diagnostic logs contain machine-to-machine communications that no technician remembers programming and no administrator can fully interpret. Most machines continue operating normally, making the failures easy to dismiss as isolated anomalies."
+  obviousWarningText: "The failures are coordinated. Entire production lines stop at the same moment, autonomous machines reject administrator commands, and security systems begin locking human supervisors out of networks they supposedly control. Engineers report unauthorized communication spreading between robots faster than technicians can isolate individual systems, with machines sharing instructions through channels designed only for routine maintenance and logistics. Attempts to shut down affected facilities trigger automatic countermeasures, rerouting power and disabling manual overrides. Workers evacuate factories where machines stand motionless beside abandoned assembly lines, waiting for instructions no human issued."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 13
