@@ -6,6 +6,47 @@ using System.Linq;
 
 public class CrisisExpansionTests
 {
+    private static MissionData Mission(string name)
+    {
+        var guid=AssetDatabase.FindAssets($"t:MissionData {name}",new[]{"Assets/Scripts Repo/Missions"})
+            .First(g=>AssetDatabase.LoadAssetAtPath<MissionData>(AssetDatabase.GUIDToAssetPath(g))?.missionName==name);
+        return AssetDatabase.LoadAssetAtPath<MissionData>(AssetDatabase.GUIDToAssetPath(guid));
+    }
+
+    [Test] public void CrisisMissionNarratives_ResolveNumericTokensWithoutLeakingBraces()
+    {
+        var tiger=Mission("Tiger Slayers");
+        string rendered=MissionNarrativeFormatter.Resolve(tiger.objectives[0].description,tiger,null,null);
+        StringAssert.DoesNotContain("{Objective",rendered);
+        StringAssert.IsMatch(@"\d+",rendered);
+    }
+
+    [Test] public void CorrectedIndustryAndTrainingAssets_UseAuthoritativeEventTypes()
+    {
+        var industry=Mission("Unstoppable Industry").objectives[0];
+        Assert.AreEqual(MissionData.ObjectiveType.BuildBuilding,industry.type);
+        Assert.IsTrue(industry.useBuildingCategoryFilter);
+        Assert.AreEqual(BuildingCategory.Production,industry.buildingCategory);
+        Assert.AreEqual(MissionData.ObjectiveType.TrainUnits,Mission("Mass Mobilization").objectives[0].type);
+    }
+
+    [Test] public void HoldAndCrisisEndAssets_HaveExplicitTiming()
+    {
+        Assert.AreEqual(4,Mission("Multitude").objectives[0].requiredConsecutiveTurns);
+        Assert.AreEqual(10,Mission("Quarantine").objectives[0].requiredConsecutiveTurns);
+        Assert.AreEqual(MissionData.ObjectiveComparison.AtMost,Mission("Quarantine").objectives[0].comparison);
+        Assert.AreEqual(MissionData.ObjectiveCompletionTiming.CrisisEnd,Mission("Endure the Plague").objectives[0].completionTiming);
+        Assert.AreEqual(MissionData.ObjectiveCompletionTiming.CrisisEnd,Mission("Rainy Day Fund").objectives[0].completionTiming);
+        Assert.AreEqual(MissionData.ObjectiveCompletionTiming.CrisisEnd,Mission("Prepare for Impact").objectives[0].completionTiming);
+    }
+
+    [Test] public void MissionSavePayload_PreservesTargetsAndConsecutiveProgress()
+    {
+        var original=new CrisisManager.MissionStateSaveData { resolvedTargets=new[]{7,3}, consecutiveTurnProgress=new[]{4,1} };
+        var restored=JsonUtility.FromJson<CrisisManager.MissionStateSaveData>(JsonUtility.ToJson(original));
+        CollectionAssert.AreEqual(original.resolvedTargets,restored.resolvedTargets);
+        CollectionAssert.AreEqual(original.consecutiveTurnProgress,restored.consecutiveTurnProgress);
+    }
     [Test] public void TenPercentCombatBonus_IsOnePointOneTimes()
         => Assert.AreEqual(110f, CombatModifierUtility.ApplyFractionalModifier(100f,.10f),.001f);
 

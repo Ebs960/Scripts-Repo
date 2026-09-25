@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 80
   objectives:
   - objectiveName: Hearts and Minds
-    description: Complete the named crisis response.
+    description: Restore average Order to at least 70.
     type: 36
     targetValue: 70
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 70
-    maximumTarget: 70
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

@@ -809,6 +809,7 @@ if (UIManager.Instance != null)
                 if (di.data.immunityTurnsAfterRecovery > 0)
                     diseaseImmunities[di.data] = di.data.immunityTurnsAfterRecovery;
                 activeDiseases.RemoveAt(i);
+                CrisisManager.Instance?.ReportDiseaseRecovery(this, di.data);
             }
         }
 
@@ -949,6 +950,7 @@ if (UIManager.Instance != null)
         if (grantImmunity && disease.immunityTurnsAfterRecovery > 0)
             diseaseImmunities[disease] = disease.immunityTurnsAfterRecovery;
         activeDiseases.RemoveAt(idx);
+        CrisisManager.Instance?.ReportDiseaseRecovery(this, disease);
         return true;
     }
 

@@ -10,13 +10,22 @@ MonoBehaviour:
   strategyTags: 4
   objectives:
   - objectiveName: Master Hackers
-    description: Complete the named crisis response.
+    description: Complete the Hacking crisis project.
     type: 39
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
+    minimumTarget: 0
+    maximumTarget: 0
+    specificProject: {fileID: 11400000, guid: 20686cd3c036468f80bf7a8e65cfb7f5, type: 2}
+  - objectiveName: Objective 2
+    description: Reintegrate at least {Objective1Target} defected robots.
+    type: 40
+    targetValue: 0
+    targetMode: 8
+    targetMultiplier: 0.5
     minimumTarget: 1
-    maximumTarget: 1
+    maximumTarget: 10
   constraints: []
   rewardTiers:
   - tierName: Complete

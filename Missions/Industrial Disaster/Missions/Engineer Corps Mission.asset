@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 20
   objectives:
   - objectiveName: Engineer Corps
-    description: Complete the named crisis response.
+    description: Restore all {Objective0Target} industrial buildings disabled by the crisis.
     type: 24
     targetValue: 0
-    targetMode: 5
+    targetMode: 10
     targetMultiplier: 1
     minimumTarget: 1
-    maximumTarget: 99
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

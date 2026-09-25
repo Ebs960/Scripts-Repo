@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Wolf Killers
-    description: Complete the named crisis response.
+    description: Defeat {Objective0Target} predators threatening the settlement.
     type: 21
-    targetValue: 1
+    targetValue: 2
     targetMode: 4
     targetMultiplier: 0.5
-    minimumTarget: 1
-    maximumTarget: 5
+    minimumTarget: 3
+    maximumTarget: 6
   constraints: []
   rewardTiers:
   - tierName: Complete

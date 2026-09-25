@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 34
   objectives:
   - objectiveName: Wise Steward
-    description: Complete the named crisis response.
+    description: Maintain non-negative net Food for 6 consecutive turns.
     type: 28
-    targetValue: 1
-    targetMode: 7
-    targetMultiplier: 0.25
-    minimumTarget: 1
-    maximumTarget: 999
+    targetValue: 6
+    targetMode: 0
+    targetMultiplier: 1
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

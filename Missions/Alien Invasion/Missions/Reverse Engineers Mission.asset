@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 4
   objectives:
   - objectiveName: Reverse Engineers
-    description: Complete the named crisis response.
+    description: Complete the Alien Reverse Engineering crisis project.
     type: 39
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
+    specificProject: {fileID: 11400000, guid: 71c8f367e99b452dba224855f8d8431b, type: 2}
   constraints: []
   rewardTiers:
   - tierName: Complete

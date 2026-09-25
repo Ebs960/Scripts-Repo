@@ -490,7 +490,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
         bool isSurviveObjective = objective != null && objective.type == MissionData.ObjectiveType.SurviveTurns;
         int remaining = Mathf.Max(0, target - current);
 
-        entry.objectiveText.text = BuildObjectiveSummary(objective, target);
+        entry.objectiveText.text = MissionNarrativeFormatter.Resolve(BuildObjectiveSummary(objective, target),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state);
         entry.progressText.text = isSurviveObjective ? $"{remaining} left" : $"{Mathf.Min(current, target)}/{target}";
 
         float fill = subscribedCrisisManager.GetCurrentObjectiveProgress01(state);
@@ -509,11 +509,11 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
         var bodyBuilder = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(state.mission.description))
-            bodyBuilder.AppendLine(state.mission.description.Trim());
+            bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.description.Trim(),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state));
         if (!string.IsNullOrWhiteSpace(state.mission.flavorText))
         {
             if (bodyBuilder.Length > 0) bodyBuilder.AppendLine();
-            bodyBuilder.AppendLine(state.mission.flavorText.Trim());
+            bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.flavorText.Trim(),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state));
         }
         detailBodyText.text = bodyBuilder.ToString().Trim();
 
@@ -539,10 +539,10 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
             var description = CreateText("Description", item.transform, 14f, FontStyles.Normal, TextAlignmentOptions.Left);
             description.color = DimTextColor;
-            description.text = !string.IsNullOrWhiteSpace(objective.description) ? objective.description : BuildObjectiveSummary(objective, objective.targetValue);
+            description.text = MissionNarrativeFormatter.Resolve(!string.IsNullOrWhiteSpace(objective.description) ? objective.description : BuildObjectiveSummary(objective, objective.targetValue),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state);
 
             int progress = state.objectiveProgress != null && i < state.objectiveProgress.Length ? state.objectiveProgress[i] : 0;
-            int target = Mathf.Max(1, objective.targetValue);
+            int target = Mathf.Max(1, state.resolvedTargets != null && i < state.resolvedTargets.Length ? state.resolvedTargets[i] : objective.targetValue);
 
             var progressLabel = CreateText("Progress", item.transform, 14f, FontStyles.Bold, TextAlignmentOptions.Left);
             if (objective.type == MissionData.ObjectiveType.SurviveTurns)
@@ -633,7 +633,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
         var builder = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(state.mission.description))
-            builder.AppendLine(state.mission.description.Trim());
+            builder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.description.Trim(),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state));
 
         for (int i = 0; i < state.mission.objectives.Count; i++)
         {
@@ -641,7 +641,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             if (objective == null) continue;
 
             int progress = state.objectiveProgress != null && i < state.objectiveProgress.Length ? state.objectiveProgress[i] : 0;
-            int target = Mathf.Max(1, objective.targetValue);
+            int target = Mathf.Max(1, state.resolvedTargets != null && i < state.resolvedTargets.Length ? state.resolvedTargets[i] : objective.targetValue);
             bool completed = state.objectiveCompleted != null && i < state.objectiveCompleted.Length && state.objectiveCompleted[i];
             string marker = completed ? "[Done]" : i == state.currentObjectiveIndex ? "[Current]" : "[Next]";
             string progressText = objective.type == MissionData.ObjectiveType.SurviveTurns
@@ -649,7 +649,7 @@ public class CrisisMissionTrackerUI : MonoBehaviour
                 : $"{Mathf.Min(progress, target)}/{target}";
 
             builder.AppendLine();
-            builder.AppendLine($"{marker} {BuildObjectiveSummary(objective, target)}");
+            builder.AppendLine($"{marker} {MissionNarrativeFormatter.Resolve(BuildObjectiveSummary(objective, target),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state)}");
             builder.AppendLine($"Progress: {progressText}");
         }
 

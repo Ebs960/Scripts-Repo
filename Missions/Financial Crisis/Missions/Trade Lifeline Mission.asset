@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 2
   objectives:
   - objectiveName: Trade Lifeline
-    description: Complete the named crisis response.
+    description: Maintain at least 70% of your pre-crisis trade income for 5 consecutive turns.
     type: 34
     targetValue: 70
-    targetMode: 7
+    targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 70
-    maximumTarget: 70
+    minimumTarget: 0
+    maximumTarget: 0
+    requiredConsecutiveTurns: 5
   constraints: []
   rewardTiers:
   - tierName: Complete

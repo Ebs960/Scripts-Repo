@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 88
   objectives:
   - objectiveName: Grand Coalition
-    description: Complete the named crisis response.
+    description: Resolve 2 faction demands and assemble a workable governing coalition.
     type: 37
     targetValue: 2
-    targetMode: 1
-    targetMultiplier: 0.5
-    minimumTarget: 1
-    maximumTarget: 10
+    targetMode: 0
+    targetMultiplier: 1
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

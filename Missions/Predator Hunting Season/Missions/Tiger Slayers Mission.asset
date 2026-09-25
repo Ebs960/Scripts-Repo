@@ -10,12 +10,12 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Tiger Slayers
-    description: Complete the named crisis response.
+    description: Defeat {Objective0Target} predators spawned by the crisis.
     type: 21
-    targetValue: 1
+    targetValue: 2
     targetMode: 4
-    targetMultiplier: 0.5
-    minimumTarget: 1
+    targetMultiplier: 0.35
+    minimumTarget: 2
     maximumTarget: 5
   constraints: []
   rewardTiers:

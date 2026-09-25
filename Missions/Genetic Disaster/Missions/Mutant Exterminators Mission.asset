@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 129
   objectives:
   - objectiveName: Mutant Exterminators
-    description: Complete the named crisis response.
+    description: Eliminate {Objective0Target} hostile mutants.
     type: 21
-    targetValue: 1
-    targetMode: 4
-    targetMultiplier: 0.4
-    minimumTarget: 1
-    maximumTarget: 15
+    targetValue: 0
+    targetMode: 9
+    targetMultiplier: 0.6
+    minimumTarget: 2
+    maximumTarget: 12
   constraints: []
   rewardTiers:
   - tierName: Complete

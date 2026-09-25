@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Reclaimers
-    description: Complete the named crisis response.
+    description: Retake 1 city lost to the invasion.
     type: 25
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

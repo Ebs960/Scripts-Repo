@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 129
   objectives:
   - objectiveName: Iron Fist
-    description: Complete the named crisis response.
+    description: Defeat {Objective0Target} revolutionary units.
     type: 21
     targetValue: 1
     targetMode: 4
     targetMultiplier: 0.4
-    minimumTarget: 1
-    maximumTarget: 15
+    minimumTarget: 3
+    maximumTarget: 12
   constraints: []
   rewardTiers:
   - tierName: Complete

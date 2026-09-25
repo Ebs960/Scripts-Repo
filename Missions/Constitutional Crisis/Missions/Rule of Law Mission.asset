@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 80
   objectives:
   - objectiveName: Rule of Law
-    description: Complete the named crisis response.
+    description: Resolve 1 faction demand through the constitutional political system.
     type: 37
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Defenders of Earth
-    description: Complete the named crisis response.
+    description: Destroy {Objective0Target} alien invasion units.
     type: 21
-    targetValue: 1
-    targetMode: 4
-    targetMultiplier: 0.4
-    minimumTarget: 1
-    maximumTarget: 20
+    targetValue: 0
+    targetMode: 9
+    targetMultiplier: 0.5
+    minimumTarget: 3
+    maximumTarget: 15
   constraints: []
   rewardTiers:
   - tierName: Complete

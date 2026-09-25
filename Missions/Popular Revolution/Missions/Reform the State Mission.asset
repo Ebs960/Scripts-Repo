@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 80
   objectives:
   - objectiveName: Reform the State
-    description: Complete the named crisis response.
+    description: Resolve the principal revolutionary demand: {Demand}.
     type: 37
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

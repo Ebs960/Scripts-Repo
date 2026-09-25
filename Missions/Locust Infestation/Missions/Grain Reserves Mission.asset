@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 34
   objectives:
   - objectiveName: Grain Reserves
-    description: Complete the named crisis response.
-    type: 28
-    targetValue: 1
-    targetMode: 7
-    targetMultiplier: 0.25
-    minimumTarget: 1
-    maximumTarget: 999
+    description: Finish the infestation with at least {Objective0Target} Food in reserve.
+    type: 10
+    targetValue: 0
+    targetMode: 3
+    targetMultiplier: 2
+    minimumTarget: 20
+    maximumTarget: 200
+    completionTiming: 1
   constraints: []
   rewardTiers:
   - tierName: Complete

@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 129
   objectives:
   - objectiveName: No Negotiations
-    description: Complete the named crisis response.
+    description: Eliminate {Objective0Target} terrorist cells or crisis units.
     type: 21
     targetValue: 1
     targetMode: 4
     targetMultiplier: 0.4
-    minimumTarget: 1
-    maximumTarget: 12
+    minimumTarget: 3
+    maximumTarget: 10
   constraints: []
   rewardTiers:
   - tierName: Complete

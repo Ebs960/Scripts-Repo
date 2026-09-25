@@ -10,13 +10,15 @@ MonoBehaviour:
   strategyTags: 2
   objectives:
   - objectiveName: Unstoppable Industry
-    description: Complete the named crisis response.
-    type: 14
+    description: Construct {Objective0Target} Production-category buildings.
+    type: 13
     targetValue: 0
     targetMode: 1
     targetMultiplier: 0.5
-    minimumTarget: 1
-    maximumTarget: 8
+    minimumTarget: 2
+    maximumTarget: 6
+    useBuildingCategoryFilter: 1
+    buildingCategory: 1
   constraints: []
   rewardTiers:
   - tierName: Complete

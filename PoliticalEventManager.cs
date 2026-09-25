@@ -372,6 +372,9 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             return false;
         }
 
+        if (resolution.success)
+            CrisisManager.Instance?.ReportCrisisOutcome(civ, MissionData.ObjectiveType.ResolveFactionDemand, demand);
+
         return true;
     }
 

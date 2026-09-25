@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Sweet Revenge
-    description: Complete the named crisis response.
+    description: Kill {Objective0Target} crisis raiders.
     type: 21
     targetValue: 2
     targetMode: 4
     targetMultiplier: 0.5
-    minimumTarget: 2
-    maximumTarget: 10
+    minimumTarget: 3
+    maximumTarget: 8
   constraints: []
   rewardTiers:
   - tierName: Complete

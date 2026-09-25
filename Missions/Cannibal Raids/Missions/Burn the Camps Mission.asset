@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Burn the Camps
-    description: Complete the named crisis response.
+    description: Destroy {Objective0Target} raider camps.
     type: 22
     targetValue: 1
-    targetMode: 5
-    targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 12
+    targetMode: 1
+    targetMultiplier: 0.5
+    minimumTarget: 2
+    maximumTarget: 5
   constraints: []
   rewardTiers:
   - tierName: Complete

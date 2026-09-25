@@ -14,7 +14,10 @@ public class MissionData : ScriptableObject
     [System.Flags]
     public enum MissionStrategyTag { None=0, Military=1, Economic=2, Scientific=4, Diplomatic=8, Stability=16, Survival=32, Reform=64, Repression=128 }
     public enum ParticipantRole { Any, Overlord, Subject }
-    public enum ObjectiveTargetMode { Fixed, PerCity, PerAffectedCity, PerStartingPopulation, PerStartingMilitaryUnit, PerAffectedImprovement, PerStartingTradeRoute, PercentOfBaseline }
+    public enum ObjectiveTargetMode { Fixed, PerCity, PerAffectedCity, PerStartingPopulation, PerStartingMilitaryUnit, PerAffectedImprovement, PerStartingTradeRoute, PercentOfBaseline, PerStartingRobotUnit, PerCrisisActorAtActivation, PerAffectedBuilding }
+    public enum ObjectiveComparison { AtLeast, AtMost }
+    public enum ObjectiveCompletionTiming { Immediate, CrisisEnd }
+    public enum BaselineMetric { None, Population, Cities, Infrastructure, Treasury, FoodReserve, TradeIncome, MilitaryUnits, RobotUnits }
     [Header("Identity")]
     public string missionName;
     public Sprite icon;
@@ -43,6 +46,8 @@ public class MissionData : ScriptableObject
     public CultureData[] requiredCultures;
     public ParticipantRole participantRole;
     public MissionStrategyTag strategyTags;
+    [Min(0), Tooltip("0 uses the crisis duration; otherwise the mission fails this many turns after it starts.")]
+    public int completionDeadlineTurns;
 
     [Header("Objectives (completed sequentially)")]
     public List<Objective> objectives = new List<Objective>();
@@ -77,6 +82,10 @@ public class MissionData : ScriptableObject
         public float targetMultiplier = 1f;
         public int minimumTarget;
         public int maximumTarget;
+        public ObjectiveComparison comparison = ObjectiveComparison.AtLeast;
+        [Min(0)] public int requiredConsecutiveTurns;
+        public ObjectiveCompletionTiming completionTiming = ObjectiveCompletionTiming.Immediate;
+        public BaselineMetric baselineMetric;
 
         [Header("Optional Filters")]
         [Tooltip("If set, only counts toward objective on these biomes")]
@@ -101,6 +110,10 @@ public class MissionData : ScriptableObject
         public BuildingData specificBuilding;
         [Tooltip("If set, only these specific buildings count")]
         public BuildingData[] specificBuildings;
+        [Tooltip("If set, only this crisis project counts")]
+        public CrisisProjectData specificProject;
+        public bool useBuildingCategoryFilter;
+        public BuildingCategory buildingCategory;
     }
 
     public enum ObjectiveType
@@ -133,6 +146,7 @@ public class MissionData : ScriptableObject
         ResolveFactionDemand, CureInfectedCities, CompleteCrisisProject, ReintegrateCrisisUnits,
         RaidSettlements, HuntOrForage, BuildImprovementsInUnaffectedArea,
         AchieveIndependence, RestoreSubjectControl, NegotiateAutonomy,
+        CurrentInfectedCities,
     }
 
     [System.Serializable]
