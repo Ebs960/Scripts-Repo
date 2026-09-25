@@ -50,9 +50,9 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0.2
+  productionModifier: 0.17
   goldModifier: 0
-  scienceModifier: 0.25
+  scienceModifier: 0.21
   cultureModifier: 0
   faithModifier: 0
   tileYieldBonuses: []

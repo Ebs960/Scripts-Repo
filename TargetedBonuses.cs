@@ -268,6 +268,9 @@ public struct CombatTargetedModifier
     [Tooltip("If enabled, this modifier only applies against enemy combat units in the selected category.")]
     public bool useTargetUnitCategoryFilter;
     public CombatCategory targetUnitCategory;
+    [Tooltip("Optional crisis provenance filter, independent of mechanical CombatCategory.")]
+    public bool useCrisisActorTagFilter;
+    public CrisisActorTag targetCrisisActorTags;
 
     [Header("Additive (flat)")]
     public float attackAdd;
@@ -300,6 +303,11 @@ public class UnitStatBonus
     [Tooltip("If enabled, attack/defense portions of this bonus only apply against enemy combat units in the selected category.")]
     public bool useTargetUnitCategoryFilter = false;
     public CombatCategory targetUnitCategory;
+    [Tooltip("Optional crisis provenance filter, independent of mechanical CombatCategory.")]
+    public bool useCrisisActorTagFilter;
+    public CrisisActorTag targetCrisisActorTags;
+    [Tooltip("Optional formation condition for effects such as Teamwork.")]
+    public BoolRequirement armyFormationRequirement;
 
     [Header("Location Filters")]
     [Tooltip("Whether the unit must be standing in a city tile.")]
@@ -720,6 +728,8 @@ public class EquipmentYieldBonus
 public class ImprovementYieldBonus
 {
     public ImprovementData improvement;
+    [Tooltip("When true, matches farm/agricultural improvements without requiring one exact asset.")]
+    public bool agriculturalOnly;
 
     [Header("Planet Filter")]
     public CityPlanetEarthScope earthWorldScope = CityPlanetEarthScope.Any;
@@ -790,6 +800,8 @@ public class BuildingYieldBonus
     public int defenseAdd;
     [Tooltip("Flat happiness/morale added to the matching building.")]
     public int happinessAdd;
+    [Tooltip("Flat public order added to each matching city.")]
+    public int orderAdd;
 
     [Header("Yield % (per turn)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -806,6 +818,7 @@ public class BuildingYieldBonus
     public float defensePct;
     [Tooltip("Percent happiness/morale increase as 0.10 = +10%.")]
     public float happinessPct;
+    public float orderPct;
 }
 
 [System.Serializable]
@@ -911,6 +924,8 @@ public class CityYieldBonus
     public int defenseAdd;
     [Tooltip("Flat happiness/morale added to each matching city.")]
     public int happinessAdd;
+    [Tooltip("Flat public order added to each matching city.")]
+    public int orderAdd;
 
     [Header("Yield % (per city per turn)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -927,6 +942,8 @@ public class CityYieldBonus
     public float defensePct;
     [Tooltip("Percent happiness/morale increase as 0.10 = +10%.")]
     public float happinessPct;
+    [Tooltip("Percent public order increase as 0.10 = +10%.")]
+    public float orderPct;
 }
 
 [System.Serializable]

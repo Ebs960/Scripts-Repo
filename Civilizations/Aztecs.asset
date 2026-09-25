@@ -42,18 +42,18 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 030000000600000009000000
-  attackBonus: 1
+  attackBonus: 0.01
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 1
+  defenseBonus: 0.01
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.3
+  goldModifier: 0.25
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0.1
+  faithModifier: 0.09
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

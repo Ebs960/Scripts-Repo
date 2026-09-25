@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: a40d145353d533a4ca8f6973a0e0b74c, type: 3}
+  m_Name: Great Plague
+  diseaseName: Great Plague
+  description: Severe trade-borne epidemic used by the Great Plague crisis.
+  baseDuration: 10
+  baseInfectionChance: 0
+  infectionChancePerPopulation: 0
+  spreadChance: 0.2
+  spreadRadius: 4
+  spreadsAlongTradeRoutes: 1
+  cityPopulationLossPerTurn: 0.08
+  cityFoodPenaltyPct: 0.2
+  cityProductionPenaltyPct: 0.15
+  cityGoldPenaltyPct: 0.15
+  citySciencePenaltyPct: 0.08
+  cityCulturePenaltyPct: 0.08
+  cityMoralePenaltyPerTurn: 2
+  cityLoyaltyPenaltyPerTurn: 1
+  immunityTurnsAfterRecovery: 8

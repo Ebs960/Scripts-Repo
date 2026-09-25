@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Locust Infestation
+  crisisName: Locust Infestation
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 6
+  useAgeWindow: 1
+  minimumAge: 4
+  maximumAge: 14
+  mechanic: 11
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 1
+  cooldownTurns: 20
+  maximumOccurrences: 0
+  useSeasonFilter: 1
+  allowedSeasons: 0000000001000000
+  mustStartAtSeasonBoundary: 0
+  repeatCompletionReward:
+    gold: 25
+    food: 25
+    policyPoints: 1
+  crisisMissions:
+  - {fileID: 11400000, guid: e1e3d3ba7b144b1db88d44d865d9eca6, type: 2}
+  - {fileID: 11400000, guid: b13ed6be4b844afcbf0d9324df75bbe3, type: 2}
+  - {fileID: 11400000, guid: 5cb3aef160bb4da7a6c2ea1953d21c4b, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

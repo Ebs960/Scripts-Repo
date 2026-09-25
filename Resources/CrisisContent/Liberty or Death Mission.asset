@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Liberty or Death
+  missionName: Liberty or Death
+  description: Crisis-specific response objective.
+  participantRole: 2
+  strategyTags: 33
+  objectives:
+  - objectiveName: Liberty or Death
+    description: Complete the named crisis response.
+    type: 44
+    targetValue: 1
+    targetMode: 0
+    targetMultiplier: 1
+    minimumTarget: 1
+    maximumTarget: 1
+  constraints: []
+  rewardTiers:
+  - tierName: Complete
+    requiredObjectivesCompleted: 1
+    rewardLegacy: {fileID: 11400000, guid: 5b30c7c32cbe41fe9b8cc27d17e92f60, type: 2}

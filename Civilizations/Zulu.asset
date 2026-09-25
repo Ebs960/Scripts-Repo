@@ -41,15 +41,15 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 030000000600000004000000
-  attackBonus: 2
+  attackBonus: 0.02
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.2
+  foodModifier: 0.17
   productionModifier: 0
-  goldModifier: 0.2
+  goldModifier: 0.17
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

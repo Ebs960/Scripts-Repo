@@ -302,6 +302,8 @@ public class PauseMenuManager : MonoBehaviour
         public int militaryFormationType;
         public string militaryFormationName;
         public int armyOrder;
+        public int crisisActorTags;
+        public int crisisOriginalOwnerCivIndex = -1;
         public float posX, posY, posZ;
         public List<string> storedMissileNames = new List<string>(); // missile inventory
     }

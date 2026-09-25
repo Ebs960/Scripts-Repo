@@ -50,6 +50,15 @@ public class LegacyData : ScriptableObject
     public float cultureModifier;
     public float faithModifier;
 
+    [Header("Reusable Targeted Bonuses")]
+    public UnitStatBonus[] unitBonuses;
+    public WorkerUnitStatBonus[] workerBonuses;
+    public UnitProductionModifier[] unitProductionModifiers;
+    public ImprovementYieldBonus[] improvementBonuses;
+    public DiseaseModifierBonus[] diseaseBonuses;
+    public AttritionModifierBonus[] attritionBonuses;
+    public LegacyInstitutionModifiers institutions = new LegacyInstitutionModifiers();
+
     [Header("Building Yield Bonuses")]
     [Tooltip("Per-building yield/stat bonuses granted while this legacy is promoted. Can target exact buildings or building categories.")]
     public BuildingYieldBonus[] buildingBonuses;
@@ -104,4 +113,15 @@ public class LegacyData : ScriptableObject
         [Tooltip("Multiplier on all opinion biases for governors with this trait. 1.5 = 50% stronger, 0.5 = 50% weaker")]
         public float multiplier = 1f;
     }
+}
+
+[System.Serializable]
+public class LegacyInstitutionModifiers
+{
+    public float unrestModifier, administrativeEfficiencyModifier, policyPointGenerationModifier;
+    public float domesticTradeModifier, foreignTradeModifier, militaryUpkeepModifier;
+    public float cyberDefenseModifier, espionageDefenseModifier;
+    public float subjectLibertyGrowthModifier, subjectOpinionModifier, subjectTributeModifier;
+    public float governorOpinionModifier, diplomaticOpinionModifier, populationGrowthModifier;
+    public float raidYieldModifier, huntingForagingYieldModifier;
 }

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Burn the Camps
+  missionName: Burn the Camps
+  description: Crisis-specific response objective.
+  participantRole: 0
+  strategyTags: 1
+  objectives:
+  - objectiveName: Burn the Camps
+    description: Complete the named crisis response.
+    type: 22
+    targetValue: 1
+    targetMode: 5
+    targetMultiplier: 1
+    minimumTarget: 1
+    maximumTarget: 12
+  constraints: []
+  rewardTiers:
+  - tierName: Complete
+    requiredObjectivesCompleted: 1
+    rewardLegacy: {fileID: 11400000, guid: 27e6f2682e534f74a1a927b1b5447af3, type: 2}

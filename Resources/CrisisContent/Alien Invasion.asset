@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Alien Invasion
+  crisisName: Alien Invasion
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 18
+  useAgeWindow: 1
+  minimumAge: 15
+  maximumAge: 19
+  mechanic: 16
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisMissions:
+  - {fileID: 11400000, guid: f6b0fd86755446878965b1c3261e1d16, type: 2}
+  - {fileID: 11400000, guid: d7836126975c4bb899b3119d85b2d475, type: 2}
+  - {fileID: 11400000, guid: a097ed1b299f4627a6c54575efcbb642, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

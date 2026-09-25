@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Popular Revolution
+  crisisName: Popular Revolution
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 15
+  useAgeWindow: 1
+  minimumAge: 11
+  maximumAge: 16
+  mechanic: 9
+  minimumRiskScore: 25
+  scope: 1
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisMissions:
+  - {fileID: 11400000, guid: a5e28dc38f9d45cf96d97b93ce3a3588, type: 2}
+  - {fileID: 11400000, guid: a7191690620341a39cc23f0f524b6194, type: 2}
+  - {fileID: 11400000, guid: 2dfbee4be16e4b6e91d11c198f23ee88, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

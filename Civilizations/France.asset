@@ -46,12 +46,12 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.2
+  foodModifier: 0.17
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.3
-  faithModifier: 0.15
+  cultureModifier: 0.25
+  faithModifier: 0.13
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

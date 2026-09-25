@@ -45,11 +45,11 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 3
+  defenseBonus: 0.03
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0.2
-  goldModifier: 0.2
+  productionModifier: 0.17
+  goldModifier: 0.17
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

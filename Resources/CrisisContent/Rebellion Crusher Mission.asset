@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Rebellion Crusher
+  missionName: Rebellion Crusher
+  description: Crisis-specific response objective.
+  participantRole: 1
+  strategyTags: 129
+  objectives:
+  - objectiveName: Rebellion Crusher
+    description: Complete the named crisis response.
+    type: 45
+    targetValue: 1
+    targetMode: 0
+    targetMultiplier: 1
+    minimumTarget: 1
+    maximumTarget: 1
+  constraints: []
+  rewardTiers:
+  - tierName: Complete
+    requiredObjectivesCompleted: 1
+    rewardLegacy: {fileID: 11400000, guid: aff1c94694f84f42ba85915580093599, type: 2}

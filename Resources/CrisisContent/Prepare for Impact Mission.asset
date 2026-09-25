@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Prepare for Impact
+  missionName: Prepare for Impact
+  description: Crisis-specific response objective.
+  participantRole: 0
+  strategyTags: 48
+  objectives:
+  - objectiveName: Prepare for Impact
+    description: Complete the named crisis response.
+    type: 33
+    targetValue: 80
+    targetMode: 7
+    targetMultiplier: 1
+    minimumTarget: 80
+    maximumTarget: 80
+  constraints: []
+  rewardTiers:
+  - tierName: Complete
+    requiredObjectivesCompleted: 1
+    rewardLegacy: {fileID: 11400000, guid: e5db9ea6485c4f1694b73bbbcdbe54ce, type: 2}

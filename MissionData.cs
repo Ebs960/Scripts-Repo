@@ -11,6 +11,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Mission", menuName = "Data/Mission Data")]
 public class MissionData : ScriptableObject
 {
+    [System.Flags]
+    public enum MissionStrategyTag { None=0, Military=1, Economic=2, Scientific=4, Diplomatic=8, Stability=16, Survival=32, Reform=64, Repression=128 }
+    public enum ParticipantRole { Any, Overlord, Subject }
+    public enum ObjectiveTargetMode { Fixed, PerCity, PerAffectedCity, PerStartingPopulation, PerStartingMilitaryUnit, PerAffectedImprovement, PerStartingTradeRoute, PercentOfBaseline }
     [Header("Identity")]
     public string missionName;
     public Sprite icon;
@@ -37,6 +41,8 @@ public class MissionData : ScriptableObject
     public int latestTurn;
     public TechData[] requiredTechs;
     public CultureData[] requiredCultures;
+    public ParticipantRole participantRole;
+    public MissionStrategyTag strategyTags;
 
     [Header("Objectives (completed sequentially)")]
     public List<Objective> objectives = new List<Objective>();
@@ -67,6 +73,10 @@ public class MissionData : ScriptableObject
         public ObjectiveType type;
         [Tooltip("Target count / duration for this objective")]
         public int targetValue;
+        public ObjectiveTargetMode targetMode;
+        public float targetMultiplier = 1f;
+        public int minimumTarget;
+        public int maximumTarget;
 
         [Header("Optional Filters")]
         [Tooltip("If set, only counts toward objective on these biomes")]
@@ -116,6 +126,13 @@ public class MissionData : ScriptableObject
         DeclareWar,
         MakePeace,
         EstablishTrade,
+        DefeatCrisisUnits, DestroyCrisisSpawners, RepairImprovements, RestoreDisabledBuildings,
+        ReclaimCity, DefendCityBattles, MaintainNetGold, MaintainNetFood,
+        MaintainPercentOfBaseline, MaintainArmySize, PreservePopulation, PreserveCities,
+        PreserveInfrastructure, MaintainTradeIncome, RaiseAverageHappiness, RaiseAverageOrder,
+        ResolveFactionDemand, CureInfectedCities, CompleteCrisisProject, ReintegrateCrisisUnits,
+        RaidSettlements, HuntOrForage, BuildImprovementsInUnaffectedArea,
+        AchieveIndependence, RestoreSubjectControl, NegotiateAutonomy,
     }
 
     [System.Serializable]
@@ -146,6 +163,8 @@ public class MissionData : ScriptableObject
         NoUnitLosses,
         MaintainImprovementCount,
         MaintainBuildingCount,
+        NoCityLosses, NoCrisisInfrastructureLosses, NoPopulationLossFromCrisis,
+        MaximumPopulationLossPercent, MaximumCrisisDamage, NoCrisisUnitLosses,
     }
 
     public enum CountComparison

@@ -309,6 +309,10 @@ public abstract class BaseUnit : MonoBehaviour
 
     // Runtime state
     public Civilization owner { get; protected set; }
+    [Tooltip("Runtime/saveable provenance for units spawned or defected during a crisis.")]
+    public CrisisActorTag crisisActorTags;
+    [Tooltip("Original owner before a crisis defection; -1 when not applicable.")]
+    public int crisisOriginalOwnerCivIndex = -1;
     // Single source of truth for queued movement: full path and cursor.
     [System.NonSerialized] public System.Collections.Generic.List<int> moveOrderPath = null;
     [System.NonSerialized] public int moveOrderNextStep = 0;

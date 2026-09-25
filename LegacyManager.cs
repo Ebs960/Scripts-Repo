@@ -137,21 +137,21 @@ public class LegacyManager : MonoBehaviour
         civ.cityAttackBonus += legacy.cityAttackBonus;
         civ.defenseBonus += legacy.defenseBonus;
         civ.movementBonus += legacy.movementBonus;
-        // Percentage-style modifiers: legacy fields are fractional (0.1 = +10%).
-        // Convert to the existing civ attack/defense/movement scale by multiplying by 100 so
-        // that inspector/tooltip displays (which expect percent-like numbers) remain meaningful.
-        civ.attackBonus += legacy.attackModifier * 100f;
-        civ.meleeAttackBonus += legacy.meleeAttackModifier * 100f;
-        civ.rangedAttackBonus += legacy.rangedAttackModifier * 100f;
-        civ.cityAttackBonus += legacy.cityAttackModifier * 100f;
-        civ.defenseBonus += legacy.defenseModifier * 100f;
-        civ.movementBonus += legacy.movementModifier * 100f;
+        // Global combat modifiers are fractions everywhere: 0.10 means +10%.
+        civ.attackBonus += legacy.attackModifier;
+        civ.meleeAttackBonus += legacy.meleeAttackModifier;
+        civ.rangedAttackBonus += legacy.rangedAttackModifier;
+        civ.cityAttackBonus += legacy.cityAttackModifier;
+        civ.defenseBonus += legacy.defenseModifier;
+        // movementBonus remains a flat movement-point value in the current runtime path.
+        // Percentage movement belongs in targeted UnitStatBonus.movePointsPct.
         civ.foodModifier += legacy.foodModifier;
         civ.productionModifier += legacy.productionModifier;
         civ.goldModifier += legacy.goldModifier;
         civ.scienceModifier += legacy.scienceModifier;
         civ.cultureModifier += legacy.cultureModifier;
         civ.faithModifier += legacy.faithModifier;
+        ApplyInstitutionModifiers(civ, legacy.institutions, 1f);
     }
 
     private void RemoveLegacyBonuses(Civilization civ, LegacyData legacy)
@@ -164,18 +164,31 @@ public class LegacyManager : MonoBehaviour
         civ.defenseBonus -= legacy.defenseBonus;
         civ.movementBonus -= legacy.movementBonus;
         // Remove percentage-style modifiers (converted the same way as when applied)
-        civ.attackBonus -= legacy.attackModifier * 100f;
-        civ.meleeAttackBonus -= legacy.meleeAttackModifier * 100f;
-        civ.rangedAttackBonus -= legacy.rangedAttackModifier * 100f;
-        civ.cityAttackBonus -= legacy.cityAttackModifier * 100f;
-        civ.defenseBonus -= legacy.defenseModifier * 100f;
-        civ.movementBonus -= legacy.movementModifier * 100f;
+        civ.attackBonus -= legacy.attackModifier;
+        civ.meleeAttackBonus -= legacy.meleeAttackModifier;
+        civ.rangedAttackBonus -= legacy.rangedAttackModifier;
+        civ.cityAttackBonus -= legacy.cityAttackModifier;
+        civ.defenseBonus -= legacy.defenseModifier;
         civ.foodModifier -= legacy.foodModifier;
         civ.productionModifier -= legacy.productionModifier;
         civ.goldModifier -= legacy.goldModifier;
         civ.scienceModifier -= legacy.scienceModifier;
         civ.cultureModifier -= legacy.cultureModifier;
         civ.faithModifier -= legacy.faithModifier;
+        ApplyInstitutionModifiers(civ, legacy.institutions, -1f);
+    }
+
+    private static void ApplyInstitutionModifiers(Civilization civ, LegacyInstitutionModifiers m, float direction)
+    {
+        if (civ == null || m == null) return;
+        civ.unrestModifier += m.unrestModifier * direction;
+        civ.administrativeEfficiencyModifier += m.administrativeEfficiencyModifier * direction;
+        civ.policyPointGenerationModifier += m.policyPointGenerationModifier * direction;
+        civ.domesticTradeModifier += m.domesticTradeModifier * direction;
+        civ.foreignTradeModifier += m.foreignTradeModifier * direction;
+        civ.militaryUpkeepModifier += m.militaryUpkeepModifier * direction;
+        civ.cyberDefenseModifier += m.cyberDefenseModifier * direction;
+        civ.espionageDefenseModifier += m.espionageDefenseModifier * direction;
     }
 
     // ─── Governor opinion integration ───
@@ -201,6 +214,9 @@ public class LegacyManager : MonoBehaviour
                 if (legacy == null) continue;
 
                 float personalityMult = GetPersonalityMultiplier(governor, legacy);
+                if (legacy.institutions != null && Mathf.Abs(legacy.institutions.governorOpinionModifier) > .01f)
+                    governor.OpinionModifiers.Add(new OpinionModifier(LEGACY_OPINION_PREFIX + legacy.legacyName,
+                        legacy.institutions.governorOpinionModifier * personalityMult, -1));
 
                 // Policy biases
                 if (legacy.policyBiases != null)

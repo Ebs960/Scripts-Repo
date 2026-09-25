@@ -520,6 +520,8 @@ public class Civilization : MonoBehaviour
     public List<LegacyData> earnedLegacies = new List<LegacyData>();
     [Tooltip("Currently promoted legacies (max governed by maxActiveLegacies)")]
     public List<LegacyData> activeLegacies = new List<LegacyData>();
+    public float ActiveLegacyHuntingForagingYieldModifier => activeLegacies == null ? 0f : activeLegacies.Where(l=>l!=null && l.institutions!=null).Sum(l=>l.institutions.huntingForagingYieldModifier);
+    public float ActiveLegacyRaidYieldModifier => activeLegacies == null ? 0f : activeLegacies.Where(l=>l!=null && l.institutions!=null).Sum(l=>l.institutions.raidYieldModifier);
     [Tooltip("Maximum number of legacies that can be promoted at once")]
     public int maxActiveLegacies = 3;
 
@@ -2148,6 +2150,10 @@ public class Civilization : MonoBehaviour
             foreach (var policy in activePolicies)
                 Accumulate(policy?.diseaseBonuses);
 
+        if (activeLegacies != null)
+            foreach (var legacy in activeLegacies)
+                Accumulate(legacy?.diseaseBonuses);
+
         foreach (var pantheonBonuses in EnumeratePantheonBonuses())
             Accumulate(pantheonBonuses?.diseaseBonuses);
 
@@ -2420,9 +2426,9 @@ public class Civilization : MonoBehaviour
         return targetUnit != null || targetWorker != null || useTargetUnitCategoryFilter;
     }
 
-    public static bool MatchesCombatBonusOpponent(BaseUnit opponent, CombatUnitData targetUnit, WorkerUnitData targetWorker, bool useTargetUnitCategoryFilter, CombatCategory targetUnitCategory)
+    public static bool MatchesCombatBonusOpponent(BaseUnit opponent, CombatUnitData targetUnit, WorkerUnitData targetWorker, bool useTargetUnitCategoryFilter, CombatCategory targetUnitCategory, bool useCrisisActorTagFilter = false, CrisisActorTag targetCrisisActorTags = CrisisActorTag.None)
     {
-        if (!HasCombatBonusOpponentFilter(targetUnit, targetWorker, useTargetUnitCategoryFilter))
+        if (!HasCombatBonusOpponentFilter(targetUnit, targetWorker, useTargetUnitCategoryFilter) && !useCrisisActorTagFilter)
             return true;
 
         if (opponent == null)
@@ -2445,6 +2451,9 @@ public class Civilization : MonoBehaviour
             if (opponent is not CombatUnit categoryOpponent || categoryOpponent.data == null || categoryOpponent.data.unitType != targetUnitCategory)
                 return false;
         }
+
+        if (useCrisisActorTagFilter && (opponent.crisisActorTags & targetCrisisActorTags) == 0)
+            return false;
 
         return true;
     }

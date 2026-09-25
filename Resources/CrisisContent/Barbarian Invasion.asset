@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Barbarian Invasion
+  crisisName: Barbarian Invasion
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 10
+  useAgeWindow: 1
+  minimumAge: 4
+  maximumAge: 8
+  mechanic: 2
+  minimumRiskScore: 0
+  scope: 0
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisMissions:
+  - {fileID: 11400000, guid: 9c4d10379980469f874542661ae61b2f, type: 2}
+  - {fileID: 11400000, guid: 8dc68612dfaf4d74bf524667e29e2f71, type: 2}
+  - {fileID: 11400000, guid: 6ae7c2eff81d48f2848ada8ea2b1f730, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

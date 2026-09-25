@@ -120,7 +120,8 @@ public class WorkerUnit : BaseUnit
     public new int GetStartingMovePoints()
     {
         var wb = AggregateWorkerBonusesLocal(owner, data);
-        int baseMove = Mathf.RoundToInt((GetBaseMovePoints() + wb.moveAdd) * (1f + wb.movePct));
+        float globalFlat = owner != null ? owner.movementBonus : 0f;
+        int baseMove = Mathf.RoundToInt((GetBaseMovePoints() + globalFlat + wb.moveAdd) * (1f + wb.movePct));
         // Winter/trapped penalties are handled centrally in BaseUnit.RestoreMovePointsForNewTurn()
         return baseMove;
     }

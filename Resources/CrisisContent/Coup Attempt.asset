@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: Coup Attempt
+  crisisName: Coup Attempt
+  ominousWarningTurns: 1
+  obviousWarningTurns: 1
+  durationTurns: 12
+  useAgeWindow: 1
+  minimumAge: 12
+  maximumAge: 16
+  mechanic: 7
+  minimumRiskScore: 20
+  scope: 1
+  repeatMode: 0
+  cooldownTurns: 0
+  maximumOccurrences: 0
+  useSeasonFilter: 0
+  allowedSeasons:
+  mustStartAtSeasonBoundary: 0
+  crisisProjects:
+  - {fileID: 11400000, guid: 0a020ad790e24ac1a825a63d6f2bb6cc, type: 2}
+  crisisMissions:
+  - {fileID: 11400000, guid: 9cb59c462eff435e9d3f190f98565ab5, type: 2}
+  - {fileID: 11400000, guid: 224939e9dc6e4476a013b3321763c6d3, type: 2}
+  - {fileID: 11400000, guid: d022aa6986d74809ad5ec5771757b7cd, type: 2}
+  worldOverrides: []
+  escalationWorldOverrides: []
+  climaxWorldOverrides: []

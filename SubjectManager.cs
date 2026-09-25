@@ -114,9 +114,10 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         {
             if (c.overlord == null || c.subject == null) continue;
 
-            int goldTransfer    = Mathf.FloorToInt(c.subject.cachedGoldPerTurn * c.goldTributePct);
-            int sciTransfer     = Mathf.FloorToInt(c.subject.cachedSciencePerTurn * c.scienceTributePct);
-            int foodTransfer    = Mathf.FloorToInt(c.subject.cachedFoodPerTurn * c.foodTributePct);
+            float tributeModifier = GetLegacyInstitutionTotal(c.overlord, m=>m.subjectTributeModifier);
+            int goldTransfer    = Mathf.FloorToInt(c.subject.cachedGoldPerTurn * c.goldTributePct * (1f+tributeModifier));
+            int sciTransfer     = Mathf.FloorToInt(c.subject.cachedSciencePerTurn * c.scienceTributePct * (1f+tributeModifier));
+            int foodTransfer    = Mathf.FloorToInt(c.subject.cachedFoodPerTurn * c.foodTributePct * (1f+tributeModifier));
 
             // Deduct from subject
             c.subject.gold    = Mathf.Max(0, c.subject.gold    - goldTransfer);
@@ -151,6 +152,10 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             EnforceSubjectReligionRule(c);
 
             c.TickLibertyDesire(currentTurn);
+            float libertyModifier=GetLegacyInstitutionTotal(c.overlord,m=>m.subjectLibertyGrowthModifier);
+            if (!Mathf.Approximately(libertyModifier,0f)) c.libertyDesire=Mathf.Clamp(c.libertyDesire*(1f+libertyModifier),0f,100f);
+            float opinionSupport=GetLegacyInstitutionTotal(c.overlord,m=>m.subjectOpinionModifier);
+            c.libertyDesire=Mathf.Clamp(c.libertyDesire-opinionSupport*.02f,0f,100f);
 
             // Update military confidence (rough proxy: subject unit count vs overlord)
             int subjectMilitary  = c.subject.combatUnits?.Count ?? 0;
@@ -161,6 +166,15 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             if (c.WantsIndependence())
                 AttemptIndependence(c, currentTurn);
         }
+    }
+
+    private static float GetLegacyInstitutionTotal(Civilization civ, System.Func<LegacyInstitutionModifiers,float> selector)
+    {
+        if (civ?.activeLegacies == null) return 0f;
+        float total=0f;
+        foreach (var legacy in civ.activeLegacies)
+            if (legacy?.institutions != null) total+=selector(legacy.institutions);
+        return total;
     }
 
     // ── Behavioral Restrictions ───────────────────────────────────────────────

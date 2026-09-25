@@ -3168,6 +3168,8 @@ Destroy(oldTuple.instance);
         agg.defensePct += bonus.defensePct;
         agg.happinessAdd += bonus.happinessAdd;
         agg.happinessPct += bonus.happinessPct;
+        agg.orderAdd += bonus.orderAdd;
+        agg.orderPct += bonus.orderPct;
     }
 
     private static void AddBuildingStatBonusScaled(ref CityStatAgg agg, BuildingYieldBonus bonus, float scale)
@@ -3177,6 +3179,8 @@ Destroy(oldTuple.instance);
         agg.defensePct += bonus.defensePct * scale;
         agg.happinessAdd += Mathf.RoundToInt(bonus.happinessAdd * scale);
         agg.happinessPct += bonus.happinessPct * scale;
+        agg.orderAdd += Mathf.RoundToInt(bonus.orderAdd * scale);
+        agg.orderPct += bonus.orderPct * scale;
     }
 
     private static void AddCityStatBonus(ref CityStatAgg agg, CityYieldBonus bonus)
@@ -3186,6 +3190,8 @@ Destroy(oldTuple.instance);
         agg.defensePct += bonus.defensePct;
         agg.happinessAdd += bonus.happinessAdd;
         agg.happinessPct += bonus.happinessPct;
+        agg.orderAdd += bonus.orderAdd;
+        agg.orderPct += bonus.orderPct;
     }
 
 

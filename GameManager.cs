@@ -2782,6 +2782,8 @@ public class GameManager : MonoBehaviour
                             militaryFormationType = (int)unit.MilitaryFormationType,
                             militaryFormationName = unit.MilitaryFormationName,
                             armyOrder = unit.stackSlot,
+                            crisisActorTags = (int)unit.crisisActorTags,
+                            crisisOriginalOwnerCivIndex = unit.crisisOriginalOwnerCivIndex,
                             posX = unit.transform.position.x,
                             posY = unit.transform.position.y,
                             posZ = unit.transform.position.z,
@@ -3672,6 +3674,8 @@ public class GameManager : MonoBehaviour
                     unit.AssignMilitaryFormation(usd.militaryFormationId,
                         (MilitaryFormationType)usd.militaryFormationType, usd.militaryFormationName);
                 unit.stackSlot = Mathf.Max(0, usd.armyOrder);
+                unit.crisisActorTags = (CrisisActorTag)usd.crisisActorTags;
+                unit.crisisOriginalOwnerCivIndex = usd.crisisOriginalOwnerCivIndex;
                 unit.RestoreState(usd.currentHealth, usd.experience, usd.level,
                                   usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
 

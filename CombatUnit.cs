@@ -629,6 +629,8 @@ public class CombatUnit : BaseUnit
     {
         if (bonus == null)
             return false;
+        if (!MatchesRequirement(bonus.armyFormationRequirement,!string.IsNullOrEmpty(MilitaryFormationId)))
+            return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tile = ts != null && currentTileIndex >= 0 ? ts.GetTileData(currentTileIndex) : null;
@@ -688,7 +690,7 @@ public class CombatUnit : BaseUnit
             {
                 if (b == null || !Civilization.MatchesCombatUnitBonusTarget(u, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
                     continue;
-                if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter)
+                if (b.targetUnit != null || b.targetWorker != null || b.useTargetUnitCategoryFilter || b.useCrisisActorTagFilter)
                     continue;
 
                 Add(b);
@@ -710,6 +712,10 @@ public class CombatUnit : BaseUnit
                 Accumulate(c?.unitBonuses);
 
         Accumulate(civ.currentGovernment?.unitBonuses);
+
+        if (civ.activeLegacies != null)
+            foreach (var legacy in civ.activeLegacies)
+                Accumulate(legacy?.unitBonuses);
 
         if (civ.activePolicies != null)
             foreach (var policy in civ.activePolicies)
@@ -745,7 +751,7 @@ public class CombatUnit : BaseUnit
             {
                 if (b == null || !Civilization.MatchesCombatUnitBonusTarget(actualUnit, b.unit, b.useUnitCategoryFilter, b.unitCategory) || !MatchesUnitBonusLocation(civ, b))
                     continue;
-                if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory))
+                if (!Civilization.MatchesCombatBonusOpponent(opponent, b.targetUnit, b.targetWorker, b.useTargetUnitCategoryFilter, b.targetUnitCategory, b.useCrisisActorTagFilter, b.targetCrisisActorTags))
                     continue;
 
                 a.attackAdd += b.attackAdd; a.meleeAttackAdd += b.meleeAttackAdd; a.rangedAttackAdd += b.rangedAttackAdd; a.cityAttackAdd += b.cityAttackAdd; a.groundAttackAdd += b.groundAttackAdd; a.underwaterAttackAdd += b.underwaterAttackAdd; a.airAttackAdd += b.airAttackAdd; a.spaceAttackAdd += b.spaceAttackAdd;
@@ -769,6 +775,10 @@ public class CombatUnit : BaseUnit
                 Accumulate(c?.unitBonuses);
 
         Accumulate(civ.currentGovernment?.unitBonuses);
+
+        if (civ.activeLegacies != null)
+            foreach (var legacy in civ.activeLegacies)
+                Accumulate(legacy?.unitBonuses);
 
         if (civ.activePolicies != null)
             foreach (var policy in civ.activePolicies)
@@ -1245,7 +1255,7 @@ public class CombatUnit : BaseUnit
                 break;
         }
 
-        return valF * (1f + attackPct);
+        return CombatModifierUtility.ApplyFractionalModifier(valF, attackPct);
     }
 
 
@@ -1687,6 +1697,7 @@ public class CombatUnit : BaseUnit
             baseMove = data.animalMovePoints;
 
         float move = baseMove;
+        if (owner != null) move += owner.movementBonus; // legacy/global movement is flat points
         if (data != null)
         {
             var u = AggregateUnitBonusesLocal(owner, data);
