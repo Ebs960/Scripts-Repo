@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Healers Mission
   missionName: Healers
-  description: Crisis-specific response objective.
+  description: "The sick do not need merely to be isolated; they need to recover. Cause 3 cities infected by the crisis plague to overcome the disease."
+  flavorText: "Fear teaches people to avoid the sick. Civilization requires some to walk toward them. Healers, attendants, physicians, priests, and volunteers will enter homes others refuse to approach and learn from every patient who survives. Knowledge will spread beside the disease: what helps, what fails, which symptoms come first, and what gives the body its best chance. We cannot promise that everyone will live. We can refuse to let sickness have the final word."
   participantRole: 0
   strategyTags: 48
   objectives:
   - objectiveName: Healers
-    description: Cause 3 cities infected by the crisis plague to recover.
+    description: "Cause 3 cities infected by the crisis plague to recover."
     type: 38
     targetValue: 3
     targetMode: 0

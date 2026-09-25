@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Sweet Revenge Mission
   missionName: Sweet Revenge
-  description: Crisis-specific response objective.
+  description: "Fear can travel in both directions. Kill {Objective0Target} crisis raiders and inflict enough losses to break their ability to terrorize our people."
+  flavorText: "For too long they chose the time, the place, and the victim. Now our hunters know their trails, their camps, and the signs they leave behind when they believe no one is following. Those who vanished cannot be brought back, but their killers need not believe they acted without consequence. Our war parties will carry fear in the other direction. Revenge may not feed the living—but tonight it will taste very sweet."
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Sweet Revenge
-    description: Kill {Objective0Target} crisis raiders.
+    description: "Kill {Objective0Target} crisis raiders."
     type: 21
     targetValue: 2
     targetMode: 4

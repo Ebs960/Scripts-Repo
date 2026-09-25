@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Multitude Mission
   missionName: Multitude
-  description: Crisis-specific response objective.
+  description: "No single hunter needs to face the crisis alone. Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns and make numbers themselves our defense."
+  flavorText: "The predators have teeth, claws, speed, and senses sharper than our own. We possess something they do not: the ability to gather deliberately in numbers greater than any pack. Hunters who once ranged alone will move beside warriors, camps will maintain watches, and every cry from the darkness will be answered by many spears rather than one. Survival does not always belong to the strongest creature. Sometimes it belongs to the multitude."
   participantRole: 0
   strategyTags: 33
   objectives:
   - objectiveName: Multitude
-    description: Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns.
+    description: "Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns."
     type: 30
     targetValue: 4
     targetMode: 4

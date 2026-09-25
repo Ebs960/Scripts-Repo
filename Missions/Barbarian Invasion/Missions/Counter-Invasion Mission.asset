@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Counter-Invasion Mission
   missionName: Counter-Invasion
-  description: Crisis-specific response objective.
+  description: "Do not wait behind the walls for the next attack. Destroy {Objective0Target} barbarian camps and break the network sustaining the invasion."
+  flavorText: "Every army that crosses a frontier leaves something behind it: camps, supplies, routes, and places from which the next wave can assemble. Our soldiers will not merely repel whatever reaches the walls. They will march toward the fires on the horizon and tear apart the machinery of invasion before it can send another army forward. The frontier will cease to be a shield behind which we hide. It will become the ground from which we strike back."
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Counter-Invasion
-    description: Destroy {Objective0Target} barbarian camps.
+    description: "Destroy {Objective0Target} barbarian camps."
     type: 22
     targetValue: 1
     targetMode: 1

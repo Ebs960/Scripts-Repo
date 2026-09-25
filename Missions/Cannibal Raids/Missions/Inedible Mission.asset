@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Inedible Mission
   missionName: Inedible
-  description: Crisis-specific response objective.
+  description: "The raiders expect isolated victims who cannot fight back. Survive all 15 turns of the raids without losing a single unit to a crisis raider and teach them that our people are far harder prey than they imagined."
+  flavorText: "They came expecting frightened travelers and undefended camps. Instead they will find watched roads, guarded hunting parties, and people who refuse to disappear quietly into the dark. Every warrior who returns home denies the raiders the terror on which they depend. Fires will remain lit, journeys will be made in groups, and no missing patrol will simply be forgotten. If they intend to make a meal of our people, they are about to discover that we are remarkably difficult to swallow."
   participantRole: 0
   strategyTags: 32
   objectives:
   - objectiveName: Inedible
-    description: Survive all 15 turns of the raids without losing a unit to a crisis raider.
+    description: "Survive all 15 turns of the raids."
     type: 0
     targetValue: 15
     targetMode: 0
@@ -22,6 +23,7 @@ MonoBehaviour:
     activatesAfterObjectiveIndex: -1
     targetValue: 0
     comparison: 0
+    failureFlavorText: "One of our units has been lost to the crisis raiders. The Inedible mission can no longer be completed."
   rewardTiers:
   - tierName: Complete
     requiredObjectivesCompleted: 1
