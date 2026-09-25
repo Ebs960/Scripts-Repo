@@ -60,6 +60,12 @@ public sealed class BandData : ScriptableObject
     public bool canFoundSettlement = true;
     [Min(1)] public int cityPopulationDivisor = 10;
 
+    [Header("Splinter (found a new Band)")]
+    public bool canSplinterNewBand = true;
+    [Min(1)] public int splinterMinimumPopulation = 40;
+    [Min(1)] public int splinterPopulationCost = 20;
+    [Min(0)] public int splinterMovementCost = 1;
+
     [Header("Presentation")]
     [Tooltip("Technology that reveals the complete campfire on encamped Band visuals.")]
     public TechData fireTechnology;

@@ -37,6 +37,7 @@ public class UnitSelectionManager : MonoBehaviour
     // Selected herd (packed/mobile)
     private Herd selectedHerd;
     private Band selectedBand;
+    private bool isPendingBandSplinter;
     private GameObject selectionIndicator;
     // Frame guard: prevent OnTileClickedTileSystem from deselecting a unit
     // that was just selected by OnMouseDown in the same frame.
@@ -245,6 +246,11 @@ public class UnitSelectionManager : MonoBehaviour
             if (clickedBand != null)
             {
                 SelectBand(clickedBand);
+                return true;
+            }
+            if (selectedBand != null && isPendingBandSplinter)
+            {
+                TrySplinterSelectedBandToTile(tileIndex);
                 return true;
             }
             if (selectedBand != null)
@@ -1388,6 +1394,7 @@ public class UnitSelectionManager : MonoBehaviour
         DeselectHerd();
         DeselectBand();
         selectedBand = band;
+        isPendingBandSplinter = false;
         lastSelectionFrame = Time.frameCount;
         CreateSelectionIndicator();
         UIManager.Instance?.ShowBandPanelForBand(band);
@@ -1494,12 +1501,32 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (selectedBand == null) return;
         selectedBand = null;
+        isPendingBandSplinter = false;
         if (selectionIndicator != null) { Destroy(selectionIndicator); selectionIndicator = null; }
         ClearPreviewVisuals();
         UIManager.Instance?.HideBandPanel();
     }
 
     public Band GetSelectedBand() => selectedBand;
+
+    /// <summary>Arms "click an adjacent tile to splinter" mode for the selected Band; the next tile click consumes it.</summary>
+    public void BeginSplinterTargeting()
+    {
+        if (selectedBand == null) return;
+        isPendingBandSplinter = true;
+        UIManager.Instance?.ShowNotification("Select an adjacent tile for the new Band.");
+    }
+
+    public void CancelSplinterTargeting() => isPendingBandSplinter = false;
+
+    private void TrySplinterSelectedBandToTile(int targetTileIndex)
+    {
+        isPendingBandSplinter = false;
+        if (selectedBand == null) return;
+        Band newBand = selectedBand.SplinterNewBand(targetTileIndex, out string reason);
+        if (newBand == null) { UIManager.Instance?.ShowNotification(reason); return; }
+        UIManager.Instance?.ShowBandPanelForBand(selectedBand);
+    }
 
     private void OnMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
     {

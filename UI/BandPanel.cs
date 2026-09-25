@@ -11,7 +11,7 @@ public sealed class BandPanel : MonoBehaviour
     [SerializeField] private TMP_Text titleText, ownerText, populationText, foodText, starvationText;
     [SerializeField] private TMP_Text stateText, movementText, yieldsText, structuresText, productionText, actionReasonText;
     [Header("Actions")]
-    [SerializeField] private Button packButton, encampButton, forageButton, foundSettlementButton, closeButton;
+    [SerializeField] private Button packButton, encampButton, forageButton, foundSettlementButton, splinterButton, closeButton;
     [Header("Data-driven Production")]
     [SerializeField] private RectTransform productionButtonsRoot;
     [Header("Garrison")]
@@ -39,7 +39,7 @@ public sealed class BandPanel : MonoBehaviour
     private void Awake()
     {
         Wire(packButton, Pack); Wire(encampButton, Encamp); Wire(forageButton, Forage);
-        Wire(foundSettlementButton, FoundSettlement); Wire(closeButton, Close);
+        Wire(foundSettlementButton, FoundSettlement); Wire(splinterButton, Splinter); Wire(closeButton, Close);
         Wire(selectAllButton, SelectAll); Wire(deselectAllButton, DeselectAll);
         Wire(formArmyButton, FormArmy); Wire(garrisonArmyButton, GarrisonArmy);
     }
@@ -108,6 +108,7 @@ public sealed class BandPanel : MonoBehaviour
         SetAction(forageButton, data != null && band.CurrentMovePoints >= data.forageMovementCost && band.FoodReserve < band.FoodCapacity);
         bool canFound = band.CanFoundSettlement(out string foundReason);
         SetAction(foundSettlementButton, canFound);
+        SetAction(splinterButton, band.CanSplinterNewBand(out _));
         Set(actionReasonText, GetActionReason(foundReason));
 
         RefreshProductionButtons();
@@ -229,6 +230,7 @@ public sealed class BandPanel : MonoBehaviour
     private void FormArmy() { if (!band.FormArmy(selectedGarrison.ToList(), out _)) ShowMessage("Selected units cannot form an army."); else { selectedGarrison.Clear(); ShowMessage(string.Empty); } Refresh(); }
     private void GarrisonArmy() { int index = nearbyArmyDropdown != null ? nearbyArmyDropdown.value : 0; if (index < 0 || index >= nearbyArmies.Count) { ShowMessage("No eligible army is present."); return; } if (!band.TryGarrisonArmy(nearbyArmies[index], out string reason)) ShowMessage(reason); else ShowMessage(string.Empty); Refresh(); }
     private void FoundSettlement() { City city = band.FoundSettlement(out string reason); if (city == null) { ShowMessage(reason); return; } Hide(); UIManager.Instance?.ShowPanel("CityPanel"); var panel = UIManager.Instance?.GetPanel("CityPanel"); panel?.GetComponent<CityUI>()?.ShowForCity(city); }
+    private void Splinter() { if (!band.CanSplinterNewBand(out string reason)) { ShowMessage(reason); return; } UnitSelectionManager.Instance?.BeginSplinterTargeting(); }
 
     private void Act(System.Func<bool> action, string failure) { if (band == null) return; if (!action()) ShowMessage(failure); Refresh(); }
     private void OnBandChanged(Band changed) { if (changed == band) Refresh(); }

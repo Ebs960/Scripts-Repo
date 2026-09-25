@@ -65,49 +65,53 @@ MonoBehaviour:
     policyPoints: 0
   canFoundSettlement: 1
   cityPopulationDivisor: 10
+  canSplinterNewBand: 1
+  splinterMinimumPopulation: 40
+  splinterPopulationCost: 20
+  splinterMovementCost: 1
   fireTechnology: {fileID: 11400000, guid: 4fdea5583da84344cbeedb421757bbbe, type: 2}
   packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-  encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+  encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   civilizationVisualOverrides:
   - civilization: {fileID: 11400000, guid: 07843d53afd7edb4ab65b0c1e61c2140, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: e1dc68799771f004ba736d9c23ecca7a, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 40b53e88121ea6345aaf1cead21953a0, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 0}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: d1a7bd9d5509edd4e99ce59ea636b262, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: f26bd0858db1b4649942db951f2293bc, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: aafb245f3dc21a94fa68262b40dd804d, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 89d2129ed9cca354db64ad8655e81c0d, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 35c253e6569830548918c1c8136c50a3, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: c8e126a91ef83e449b94bad32dc06bbc, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 92376482cce3093429fb6878de9eae19, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 616044bb37c77984cb61b75e569f6c1d, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: bf976d55bf40ed5479a4fa1673152a73, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: fd36916eea3132848948206c912faf09, type: 2}
     packedVisual: {fileID: 523359425593372883, guid: 0656d315cb943714fac56d12f1e9a844, type: 3}
-    encampedVisual: {fileID: 8698726721585021860, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
+    encampedVisual: {fileID: 9160562238008772598, guid: 1a1f18af5a4703444a62a11ac51a7783, type: 3}
   - civilization: {fileID: 11400000, guid: 301a6892b8ad50c4e90e5244e555991b, type: 2}
     packedVisual: {fileID: 4509998070895736879, guid: d55e99c17488582458724829be5dcf45, type: 3}
     encampedVisual: {fileID: 3517512479282768437, guid: 172be3428d96d5746b09955ea4855455, type: 3}
@@ -125,10 +129,10 @@ MonoBehaviour:
     encampedVisual: {fileID: 2170003002980985695, guid: c1312cc9ffae0164c8301317e1acd431, type: 3}
   - civilization: {fileID: 11400000, guid: b89280a654ebe92459449d6a66fe50ab, type: 2}
     packedVisual: {fileID: 8884676634760873528, guid: bde5df37df54c4f48a8531bfa86fcdaa, type: 3}
-    encampedVisual: {fileID: 7503944249307876602, guid: adc73f2c24d90ff4fa96a540fe338fbe, type: 3}
+    encampedVisual: {fileID: 5603215825609544541, guid: adc73f2c24d90ff4fa96a540fe338fbe, type: 3}
   - civilization: {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
     packedVisual: {fileID: 8884676634760873528, guid: bde5df37df54c4f48a8531bfa86fcdaa, type: 3}
-    encampedVisual: {fileID: 7503944249307876602, guid: adc73f2c24d90ff4fa96a540fe338fbe, type: 3}
+    encampedVisual: {fileID: 5603215825609544541, guid: adc73f2c24d90ff4fa96a540fe338fbe, type: 3}
   - civilization: {fileID: 11400000, guid: 92e2060b45e33304793fe94ddc5bdc8e, type: 2}
     packedVisual: {fileID: 1640297337132960801, guid: b82ca022f06f1f849b034721466c0f56, type: 3}
     encampedVisual: {fileID: 2218951077545028684, guid: 08873a7d95ca6f64c948f07320e1a45b, type: 3}

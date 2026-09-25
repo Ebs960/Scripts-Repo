@@ -759,15 +759,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 429.8204
+      value: 224.21326
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.000000072543884
+      value: 0.0000000092825445
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -161.23048
+      value: -356.58032
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -949,7 +949,7 @@ MonoBehaviour:
   - slot: 4
     anchor: {fileID: 5945480628123668892}
     priority: 0
-  fireRoot: {fileID: 0}
+  fireRoot: {fileID: 2973109861742458332}
 --- !u!1001 &4801951606853932778
 PrefabInstance:
   m_ObjectHideFlags: 0

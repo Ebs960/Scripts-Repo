@@ -59,6 +59,7 @@ public sealed class Band : MonoBehaviour
     public static event Action<Band> BandChanged;
     public static event Action<Band, int, int> BandPopulationChanged;
     public static event Action<Band, BandStructureData> BandStructureCompleted;
+    public static event Action<Band, Band> BandSplintered;
 
     public BandData Data => data;
     public string PersistentId => string.IsNullOrEmpty(persistentId) ? (persistentId = Guid.NewGuid().ToString("N")) : persistentId;
@@ -87,11 +88,12 @@ public sealed class Band : MonoBehaviour
     public int GarrisonCapacity => Mathf.Max(0, data != null ? data.baseGarrisonCapacity : 0) + builtStructures.Where(x => x != null).Sum(x => x.garrisonCapacityBonus);
 
     public void Initialize(BandData bandData, Civilization bandOwner, int startPlanet, int startTile,
-        IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride = null, bool spawnStartingGarrison = true)
+        IEnumerable<StartingBandGarrisonEntry> startingGarrisonOverride = null, bool spawnStartingGarrison = true,
+        int? startingPopulationOverride = null)
     {
         if (bandData == null) throw new ArgumentNullException(nameof(bandData));
         data = bandData; owner = bandOwner; planetIndex = startPlanet; currentTileIndex = startTile;
-        state = BandState.Packed; population = Mathf.Max(1, data.startingPopulation);
+        state = BandState.Packed; population = Mathf.Max(1, startingPopulationOverride ?? data.startingPopulation);
         foodReserve = Mathf.Clamp(data.startingFoodReserve, 0, FoodCapacity);
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
@@ -395,6 +397,62 @@ public sealed class Band : MonoBehaviour
         ReleaseSurvivingGarrisonAsArmy();
         DestroyBand(BandLossReason.ConvertedToSettlement);
         return city;
+    }
+
+    /// <summary>Tile-agnostic eligibility check, suitable for enabling a "splinter" UI action before a target tile is chosen.</summary>
+    public bool CanSplinterNewBand(out string reason)
+    {
+        reason = string.Empty;
+        if (data == null || !data.canSplinterNewBand) { reason = "This Band cannot splinter."; return false; }
+        if (owner == null) { reason = "This Band has no owner."; return false; }
+        if (population < data.splinterMinimumPopulation) { reason = $"Requires {data.splinterMinimumPopulation} population (has {population})."; return false; }
+        if (currentMovePoints < data.splinterMovementCost) { reason = "Not enough movement points."; return false; }
+        return true;
+    }
+
+    public bool CanSplinterNewBand(int targetTileIndex, out string reason)
+    {
+        if (!CanSplinterNewBand(out reason)) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tile = ts != null ? ts.GetTileData(targetTileIndex) : null;
+        if (tile == null || !tile.isPassable) { reason = "Target tile is not passable."; return false; }
+        if (currentTileIndex < 0 || ts.GetWrappedHexDistance(currentTileIndex, targetTileIndex) != 1) { reason = "Target tile must be adjacent."; return false; }
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null && occ.GetOccupantObject(targetTileIndex, TileLayer.Surface) != null) { reason = "Target tile is occupied."; return false; }
+        return true;
+    }
+
+    public Band SplinterNewBand(int targetTileIndex, out string reason)
+    {
+        if (!CanSplinterNewBand(targetTileIndex, out reason)) return null;
+
+        currentMovePoints -= data.splinterMovementCost;
+        // Guards against a misconfigured minimum/cost pair ever zeroing out the source Band.
+        population = Mathf.Max(1, population - data.splinterPopulationCost);
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Vector3 spawnPosition = ts != null ? ts.GetTileCenterFlat(targetTileIndex) : transform.position;
+        GameObject newBandObject = data.prefab != null
+            ? Instantiate(data.prefab, spawnPosition, Quaternion.identity, transform.parent)
+            : new GameObject($"{data.displayName} Band", typeof(Band));
+        if (data.prefab == null) { newBandObject.transform.position = spawnPosition; newBandObject.transform.SetParent(transform.parent, true); }
+        var newBand = newBandObject.GetComponent<Band>();
+        if (newBand == null)
+        {
+            Debug.LogWarning($"[Band] Splinter prefab for '{data.displayName}' has no Band component; using a functional runtime Band.", this);
+            Destroy(newBandObject);
+            newBandObject = new GameObject($"{data.displayName} Band", typeof(Band));
+            newBandObject.transform.position = spawnPosition;
+            newBandObject.transform.SetParent(transform.parent, true);
+            newBand = newBandObject.GetComponent<Band>();
+        }
+
+        newBand.Initialize(data, owner, planetIndex, targetTileIndex, null, false, data.splinterPopulationCost);
+        newBand.builtStructures.Clear(); // Splinters never inherit built structures; the campfire is unlocked separately via researched tech.
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(targetTileIndex, newBandObject, TileLayer.Surface);
+        BandSplintered?.Invoke(this, newBand);
+        NotifyChanged();
+        return newBand;
     }
 
     public void Capture(Civilization newOwner)
