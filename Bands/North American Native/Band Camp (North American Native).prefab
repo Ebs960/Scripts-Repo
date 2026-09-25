@@ -504,9 +504,6 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: d15d7097e517fa84682585ca622fba18, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7988012935263659309}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d15d7097e517fa84682585ca622fba18, type: 3}
       insertIndex: -1
@@ -609,6 +606,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Fire Place
       objectReference: {fileID: 0}
+    - target: {fileID: -6450133965279592807, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       propertyPath: m_Name
       value: Band Camp (North American Native)
@@ -674,6 +675,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 136573980483574449}
+    - targetCorrespondingSourceObject: {fileID: 7514387204552156476, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6539620830113103303}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
       insertIndex: -1
@@ -741,8 +745,12 @@ MonoBehaviour:
   - slot: 4
     anchor: {fileID: 7739780800270105913}
     priority: 0
-  fireRoot: {fileID: 7988012935263659309}
-  ignitionTrigger: Ignite
+  fireRoot: {fileID: 8809694771235124257}
+--- !u!4 &8809694771235124257 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7514387204552156476, guid: d5ffe8c8c14ed804ca5c7147b77599a3, type: 3}
+  m_PrefabInstance: {fileID: 1299893148646347037}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1485973842114982738
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -855,6 +863,84 @@ MonoBehaviour:
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: d7e019c0d9ecee04898c35e62b6608a1, type: 3}
   m_PrefabInstance: {fileID: 1485973842114982738}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1711025141011651519
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8809694771235124257}
+    m_Modifications:
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.066438526
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.14569615
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.05913383
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.00799
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.029
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.011653
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7397149832275494303, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+      propertyPath: m_Name
+      value: VFX_Fire_01_Big_Simple (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+--- !u!4 &6539620830113103303 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5584373600307242616, guid: 467c19993742f3f49a041750714fe44c, type: 3}
+  m_PrefabInstance: {fileID: 1711025141011651519}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3021411993950649029
 PrefabInstance:
@@ -1081,82 +1167,4 @@ MonoBehaviour:
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: f93a94f95ddc6cd4d96fe978fa477868, type: 3}
   m_PrefabInstance: {fileID: 3967212136204975841}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &6988012935263659309
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7988012935263659309}
-  m_Layer: 0
-  m_Name: Fire Root
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &7988012935263659309
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6988012935263659309}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0.01}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 5988012935263659309}
-  m_Father: {fileID: 700927275451134627}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &8988012935263659309
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 7988012935263659309}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 35
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 35
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 35
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-      propertyPath: m_Name
-      value: Campfire Stones, Firewood, Embers and Animated Flames
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
---- !u!4 &5988012935263659309 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 0ed5d6f21e9eb2f4fa2864f9fda199e5, type: 3}
-  m_PrefabInstance: {fileID: 8988012935263659309}
   m_PrefabAsset: {fileID: 0}
