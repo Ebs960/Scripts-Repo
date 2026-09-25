@@ -102,6 +102,11 @@ public class CrisisData : ScriptableObject
     [Tooltip("Missions offered directly by this crisis while it is active.")]
     public List<MissionData> crisisMissions = new List<MissionData>();
 
+    [Header("Crisis Actors")]
+    [Tooltip("Preferred combat-unit data for actors created by this crisis.")]
+    public CombatUnitData[] crisisActorUnits;
+    [Min(1)] public int initialCrisisActorCount = 1;
+
     [Header("World Overrides (active while crisis runs)")]
     public WorldOverride[] worldOverrides;
 

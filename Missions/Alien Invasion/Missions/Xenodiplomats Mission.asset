@@ -5,13 +5,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Xenodiplomats Mission
   missionName: Xenodiplomats
-  description: Crisis-specific response objective.
+  description: The arrival of an unknown civilization does not guarantee that permanent war is inevitable. Negotiate 1 peaceful settlement with the Alien expedition and establish that communication can succeed where weapons have failed.
+  flavorText: For the first time, diplomacy must cross more than a border, language, religion, or political system. We do not know what the visitors call themselves, what assumptions shape their thinking, or whether ideas as basic as territory, surrender, promise, or peace mean the same thing to them that they mean to us. Every signal must therefore be interpreted with humility, and every response may reveal as much about their intentions as their words. Soldiers will remain prepared while scientists, linguists, diplomats, mathematicians, and machines search for concepts that both sides can recognize. There is no guarantee that the beings descending from the sky want peace. But if they are capable of choosing it, history will remember the civilization that first discovered how to ask.
   participantRole: 0
   strategyTags: 8
   objectives:
   - objectiveName: Xenodiplomats
-    description: Negotiate 1 peaceful settlement with the alien expedition.
-    type: 19
+    description: Negotiate 1 peaceful settlement with the Alien expedition.
+    type: 49
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1

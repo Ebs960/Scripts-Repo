@@ -562,6 +562,17 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             fillRect.offsetMax = Vector2.zero;
         }
 
+        var civ=ResolvePlayerCivilization();
+        if (subscribedCrisisManager != null && subscribedCrisisManager.CanNegotiateAlienSettlement(civ))
+        {
+            var negotiate=CreateButton("OpenNegotiationsButton",detailObjectivesRect,"Open Negotiations");
+            negotiate.onClick.AddListener(()=>
+            {
+                if (subscribedCrisisManager.TryNegotiateAlienSettlement(civ)) RefreshAll();
+                HideMissionDetails();
+            });
+        }
+
         detailBackdrop.SetActive(true);
     }
 

@@ -5,18 +5,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Defenders of Earth Mission
   missionName: Defenders of Earth
-  description: Crisis-specific response objective.
+  description: The visitors have brought forces capable of threatening cities, armies, and the sovereignty of this world. Destroy {Objective0Target} Alien invasion units and demonstrate that technological superiority does not make Earth defenseless.
+  flavorText: They crossed distances our ancestors could scarcely imagine and arrived carrying machines more advanced than many of our own. That achievement does not grant them the right to decide the future of this world. Soldiers who once prepared to fight neighboring states now look upward at an enemy that did not originate beneath the same sky, and old rivalries suddenly seem very small beside the scale of the threat. Their technology may be formidable, but every weapon has limits, every machine can fail, and every invading force eventually discovers that unfamiliar ground belongs to the defenders who refuse to surrender it. We may not understand where they came from. We understand perfectly well what it means when armed strangers advance on our homes.
   participantRole: 0
   strategyTags: 1
   objectives:
   - objectiveName: Defenders of Earth
-    description: Destroy {Objective0Target} alien invasion units.
+    description: Destroy {Objective0Target} Alien invasion units.
     type: 21
     targetValue: 0
     targetMode: 9
     targetMultiplier: 0.5
     minimumTarget: 3
     maximumTarget: 15
+    useCrisisActorTagFilter: 1
+    targetCrisisActorTags: 1024
   constraints: []
   rewardTiers:
   - tierName: Complete

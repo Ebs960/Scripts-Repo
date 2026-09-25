@@ -26,6 +26,9 @@ MonoBehaviour:
   mustStartAtSeasonBoundary: 0
   crisisProjects:
   - {fileID: 11400000, guid: 4a24d83f564a49a39c5572126e894c66, type: 2}
+  crisisActorUnits:
+  - {fileID: 11400000, guid: 89fb328561e2dd64c8e7cf6662348750, type: 2}
+  initialCrisisActorCount: 7
   crisisMissions:
   - {fileID: 11400000, guid: 020efea13337414cb434437416450b7f, type: 2}
   - {fileID: 11400000, guid: fbd787ca4a4147f9b50d4077f9c77c4f, type: 2}

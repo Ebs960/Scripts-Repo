@@ -5,18 +5,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Mutant Exterminators Mission
   missionName: Mutant Exterminators
-  description: Crisis-specific response objective.
+  description: The mutations have produced creatures and altered fighters that now threaten ordinary settlements. Eliminate {Objective0Target} hostile Mutant crisis actors and remove the immediate biological threat by force.
+  flavorText: Whatever these beings might have become under different circumstances, the ones attacking our people have made coexistence an increasingly dangerous gamble. Soldiers will be ordered into contaminated districts, abandoned laboratories, and settlement outskirts to hunt the hostile altered wherever they gather. Their unfamiliar bodies may resist conditions that would cripple ordinary troops, but unfamiliar does not mean invincible. Every dangerous specimen destroyed reduces the chance that violence will spread beyond the regions already affected. Scientists and philosophers may argue later over whether every altered life deserved the same fate. The forces in the field have been given a narrower question: which creatures are trying to kill our people, and how quickly can they be stopped?
   participantRole: 0
   strategyTags: 129
   objectives:
   - objectiveName: Mutant Exterminators
-    description: Eliminate {Objective0Target} hostile mutants.
+    description: Eliminate {Objective0Target} hostile Mutant crisis actors.
     type: 21
     targetValue: 0
     targetMode: 9
     targetMultiplier: 0.6
     minimumTarget: 2
     maximumTarget: 12
+    useCrisisActorTagFilter: 1
+    targetCrisisActorTags: 512
   constraints: []
   rewardTiers:
   - tierName: Complete

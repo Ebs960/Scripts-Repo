@@ -313,6 +313,18 @@ public abstract class BaseUnit : MonoBehaviour
     public CrisisActorTag crisisActorTags;
     [Tooltip("Original owner before a crisis defection; -1 when not applicable.")]
     public int crisisOriginalOwnerCivIndex = -1;
+
+    /// <summary>Transfers an existing unit without reinitialising its data or erasing crisis identity.</summary>
+    public void TransferOwnership(Civilization newOwner)
+    {
+        if (owner == newOwner) return;
+        if (this is CombatUnit combat)
+        {
+            owner?.combatUnits?.Remove(combat);
+            if (newOwner != null && !newOwner.combatUnits.Contains(combat)) newOwner.combatUnits.Add(combat);
+        }
+        owner = newOwner;
+    }
     // Single source of truth for queued movement: full path and cursor.
     [System.NonSerialized] public System.Collections.Generic.List<int> moveOrderPath = null;
     [System.NonSerialized] public int moveOrderNextStep = 0;
