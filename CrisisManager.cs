@@ -133,10 +133,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        // Resources content augments (rather than replaces) scene-configured crises, so the
-        // existing Long Cold inspector reference remains compatible.
-        foreach (var crisis in Resources.LoadAll<CrisisData>("CrisisContent"))
-            if (crisis != null && !allCrises.Contains(crisis)) allCrises.Add(crisis);
+        // All crises now live under Assets/Missions/<Crisis>/ and are wired directly into
+        // the allCrises inspector list (no more Resources/CrisisContent loading).
     }
 
     void Start()

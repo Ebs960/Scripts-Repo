@@ -41,7 +41,7 @@ public class CrisisExpansionTests
 
     [Test] public void AllRegisteredCrisisAssets_HaveMissionsAndValidWindows()
     {
-        var guids=AssetDatabase.FindAssets("t:CrisisData",new[]{"Resources/CrisisContent"});
+        var guids=AssetDatabase.FindAssets("t:CrisisData",new[]{"Assets/Scripts Repo/Missions"}).Where(g=>AssetDatabase.LoadAssetAtPath<CrisisData>(AssetDatabase.GUIDToAssetPath(g)).crisisName!="The Long Cold").ToArray();
         Assert.AreEqual(17,guids.Length);
         foreach(var guid in guids)
         {
@@ -55,7 +55,7 @@ public class CrisisExpansionTests
 
     [Test] public void LocustAsset_UsesSeasonFilterAndDelayedStateModel()
     {
-        var crisis=AssetDatabase.LoadAssetAtPath<CrisisData>("Resources/CrisisContent/Locust Infestation.asset");
+        var crisis=AssetDatabase.LoadAssetAtPath<CrisisData>("Assets/Scripts Repo/Missions/Locust Infestation/Locust Infestation.asset");
         Assert.IsTrue(crisis.useSeasonFilter);
         CollectionAssert.AreEquivalent(new[]{Season.Spring,Season.Summer},crisis.allowedSeasons);
         Assert.AreEqual(CrisisData.CrisisMechanic.LocustInfestation,crisis.mechanic);
