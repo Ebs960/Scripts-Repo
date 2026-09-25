@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Engineer Corps Mission
   missionName: Engineer Corps
-  description: Crisis-specific response objective.
+  description: "The machines failed; engineers will make them work again. Restore all {Objective0Target} industrial buildings disabled by the crisis and return the lost productive capacity to operation."
+  flavorText: "Where others see cracked supports, silent engines, damaged machinery, and ruined schedules, engineers see problems with causes. Crews will move from facility to facility carrying tools, replacement parts, structural plans, and the authority to dismantle anything that cannot be trusted. Some sites will require careful repair; others may need entire systems rebuilt before a worker can safely return. Recovery will be measured one reopened facility at a time. The crisis began when failures outpaced repairs. It will end when our engineers finally catch up."
   participantRole: 0
   strategyTags: 20
   objectives:
   - objectiveName: Engineer Corps
-    description: Restore all {Objective0Target} industrial buildings disabled by the crisis.
+    description: "Restore all {Objective0Target} industrial buildings disabled by the crisis."
     type: 24
     targetValue: 0
     targetMode: 10

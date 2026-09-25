@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Rainy Day Fund Mission
   missionName: Rainy Day Fund
-  description: Crisis-specific response objective.
+  description: "A reserve exists for the moment when ordinary revenue can no longer be trusted. Finish the crisis with at least 100% of the Gold that was held in the treasury when the financial panic began."
+  flavorText: "Every ministry now has an emergency. Every commander can explain why funds must be spent immediately, and every struggling institution insists that one more payment will prevent something worse. Yet draining the treasury merely transforms a financial crisis into a fiscal one. The state will spend where survival truly requires it and refuse where panic merely demands reassurance. Reserves accumulated in prosperous years will now justify every sacrifice that created them. When the markets finally settle, there will still be something left in the vault."
   participantRole: 0
   strategyTags: 34
   objectives:
   - objectiveName: Rainy Day Fund
-    description: Finish the crisis with at least 100% of the Gold held in your treasury when the crisis began.
+    description: "Finish the crisis with at least 100% of the Gold held in your treasury when the crisis began."
     type: 29
     targetValue: 100
     targetMode: 0

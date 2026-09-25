@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Trade Lifeline Mission
   missionName: Trade Lifeline
-  description: Crisis-specific response objective.
+  description: "Commerce is wounded, but it need not collapse. Maintain at least 70% of the civilization's pre-crisis trade income for 5 consecutive turns."
+  flavorText: "A trade route is more than a line between two cities. It is a chain of merchants, ports, caravans, contracts, warehouses, and strangers willing to trust that payment will arrive after goods have already left their hands. Panic is breaking those chains one link at a time. We will protect the routes still operating, honor the contracts we can, and preserve enough commercial activity that recovery has something from which to grow. A market that bends can recover. A market that disappears must be built again from nothing."
   participantRole: 0
   strategyTags: 2
   objectives:
   - objectiveName: Trade Lifeline
-    description: Maintain at least 70% of your pre-crisis trade income for 5 consecutive turns.
+    description: "Maintain at least 70% of your pre-crisis trade income for 5 consecutive turns."
     type: 34
     targetValue: 70
     targetMode: 0

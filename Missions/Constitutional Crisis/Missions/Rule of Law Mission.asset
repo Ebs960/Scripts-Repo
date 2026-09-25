@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Rule of Law Mission
   missionName: Rule of Law
-  description: Crisis-specific response objective.
+  description: "The political system is being tested precisely because powerful people dislike what it has produced. Resolve 1 faction demand through the lawful constitutional process and preserve the principle that disputes over authority are settled by institutions rather than force."
+  flavorText: "The constitution is easiest to defend when everyone agrees with its outcome. Its real test comes when factions with genuine power believe the rules have failed them. {FactionName} now demands: {Demand}. Opponents insist that accepting the demand would itself weaken the political order, while supporters argue that refusing it would prove that ordinary institutions are incapable of responding. The government will not settle the dispute through soldiers, intimidation, or a permanent suspension of procedure. Courts, legislatures, elections, councils, or other lawful institutions must produce an answer that even the disappointed can recognize as legitimate."
   participantRole: 0
   strategyTags: 80
   objectives:
   - objectiveName: Rule of Law
-    description: Resolve 1 faction demand through the constitutional political system.
+    description: "Resolve 1 faction demand through the constitutional political system."
     type: 37
     targetValue: 1
     targetMode: 0

@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Appeasement Mission
   missionName: Appeasement
-  description: Crisis-specific response objective.
+  description: "The revolution feeds upon cities where faith in the government has collapsed. Raise average Order to at least 70 and make stability more attractive than continued uprising."
+  flavorText: "A revolution cannot survive on slogans alone. It requires neighborhoods willing to shelter organizers, workers willing to stop production, citizens willing to fill the streets, and ordinary people convinced that the existing government offers them nothing worth defending. The present unrest has drawn strength from {PrimaryGrievance}. The government will answer that instability before answering every protest with force. Restore services, reduce the pressure driving people into the streets, and give the undecided a reason to abandon the revolutionaries. A crowd that believes tomorrow may improve is much harder to turn into an army."
   participantRole: 0
   strategyTags: 80
   objectives:
   - objectiveName: Appeasement
-    description: Raise average Order to at least 70.
+    description: "Raise average Order to at least 70."
     type: 36
     targetValue: 70
     targetMode: 0

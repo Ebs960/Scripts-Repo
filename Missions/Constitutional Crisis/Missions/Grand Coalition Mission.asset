@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Grand Coalition Mission
   missionName: Grand Coalition
-  description: Crisis-specific response objective.
+  description: "No single faction can govern effectively while the constitutional order remains deadlocked. Resolve 2 genuine faction demands and assemble enough political cooperation to make government possible again."
+  flavorText: "{FactionDemandSummary} Neither side is likely to receive everything it wants, and that may be the foundation on which a settlement can actually stand. Rivals who disagree on policy, leadership, and perhaps even the meaning of the constitution must now decide whether preserving the state matters more than defeating one another today. Offices may be shared, reforms exchanged, and compromises written carefully enough that each faction can claim it protected something essential. A coalition formed under pressure may be inelegant. Government does not always require elegance; sometimes it requires enough people to stop saying no at the same time."
   participantRole: 0
   strategyTags: 88
   objectives:
   - objectiveName: Grand Coalition
-    description: Resolve 2 faction demands and assemble a workable governing coalition.
+    description: "Resolve 2 faction demands during the constitutional crisis."
     type: 37
     targetValue: 2
     targetMode: 0

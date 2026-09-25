@@ -5,12 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Financial Genius Mission
   missionName: Financial Genius
-  description: Crisis-specific response objective.
+  description: "A collapsing market does not excuse an empty treasury. Maintain positive net Gold income for 5 consecutive turns and prove that the state can still meet its obligations while the wider economy contracts."
+  flavorText: "When everyone fears tomorrow, money stops moving today. Merchants hoard coin, lenders retreat from risk, and revenues shrink even while soldiers, officials, creditors, and institutions continue expecting payment. The treasury will examine every expense, defend whatever reliable income remains, and resist the temptation to answer temporary panic with permanent insolvency. There is no hidden reserve large enough to make discipline unnecessary. Recovery begins with something simpler and harder: earning more than we spend, not once, but again and again until confidence has time to return."
   participantRole: 0
   strategyTags: 2
   objectives:
   - objectiveName: Financial Genius
-    description: Maintain positive net Gold income for 5 consecutive turns.
+    description: "Maintain positive net Gold income for 5 consecutive turns."
     type: 27
     targetValue: 5
     targetMode: 0

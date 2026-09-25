@@ -38,6 +38,14 @@ public enum CrisisActorTag
     public List<CrisisBaselineSnapshot> baselines = new List<CrisisBaselineSnapshot>();
     public List<CrisisProjectProgress> projectProgress = new List<CrisisProjectProgress>();
     public List<CrisisAttributedLoss> attributedLosses = new List<CrisisAttributedLoss>();
+    public List<CrisisNarrativeSnapshot> narrativeSnapshots = new List<CrisisNarrativeSnapshot>();
+}
+
+[Serializable] public class CrisisNarrativeSnapshot
+{
+    public int civilizationIndex;
+    public string factionName, demand, factionDemandSummary, primaryGrievance;
+    public int distinctDemandCount;
 }
 
 [Serializable] public class CrisisInfrastructureRecord
