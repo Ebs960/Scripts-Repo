@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Mass Mobilization
-    description: Complete the named crisis response.
-    type: 13
-    targetValue: 0
+    description: Train {Objective0Target} new military units during the crisis.
+    type: 12
+    targetValue: 1
     targetMode: 4
     targetMultiplier: 0.25
-    minimumTarget: 1
-    maximumTarget: 8
+    minimumTarget: 2
+    maximumTarget: 6
   constraints: []
   rewardTiers:
   - tierName: Complete

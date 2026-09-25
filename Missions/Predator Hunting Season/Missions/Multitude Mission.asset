@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 33
   objectives:
   - objectiveName: Multitude
-    description: Complete the named crisis response.
+    description: Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns.
     type: 30
     targetValue: 4
     targetMode: 4
     targetMultiplier: 0.5
-    minimumTarget: 4
+    minimumTarget: 5
     maximumTarget: 12
+    requiredConsecutiveTurns: 4
   constraints: []
   rewardTiers:
   - tierName: Complete

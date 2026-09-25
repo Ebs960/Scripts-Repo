@@ -10,13 +10,15 @@ MonoBehaviour:
   strategyTags: 48
   objectives:
   - objectiveName: Quarantine
-    description: Complete the named crisis response.
-    type: 0
-    targetValue: 10
+    description: Keep the plague confined to no more than 1 infected city for 10 consecutive turns.
+    type: 47
+    targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 10
-    maximumTarget: 10
+    minimumTarget: 0
+    maximumTarget: 0
+    comparison: 1
+    requiredConsecutiveTurns: 10
   constraints: []
   rewardTiers:
   - tierName: Complete

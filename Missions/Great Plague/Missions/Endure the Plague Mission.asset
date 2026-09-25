@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 32
   objectives:
   - objectiveName: Endure the Plague
-    description: Complete the named crisis response.
+    description: Finish the plague with at least 90% of your starting population alive.
     type: 31
     targetValue: 90
-    targetMode: 7
+    targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 90
-    maximumTarget: 90
+    minimumTarget: 0
+    maximumTarget: 0
+    completionTiming: 1
   constraints: []
   rewardTiers:
   - tierName: Complete

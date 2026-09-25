@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 20
   objectives:
   - objectiveName: Counterplot
-    description: Complete the named crisis response.
+    description: Complete the Counterintelligence crisis project.
     type: 39
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
+    specificProject: {fileID: 11400000, guid: 0a020ad790e24ac1a825a63d6f2bb6cc, type: 2}
   constraints: []
   rewardTiers:
   - tierName: Complete

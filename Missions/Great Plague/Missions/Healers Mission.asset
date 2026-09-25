@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 48
   objectives:
   - objectiveName: Healers
-    description: Complete the named crisis response.
+    description: Cause 3 cities infected by the crisis plague to recover.
     type: 38
     targetValue: 3
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 3
-    maximumTarget: 3
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

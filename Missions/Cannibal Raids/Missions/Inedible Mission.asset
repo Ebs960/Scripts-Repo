@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 32
   objectives:
   - objectiveName: Inedible
-    description: Complete the named crisis response.
+    description: Survive all 15 turns of the raids without losing a unit to a crisis raider.
     type: 0
     targetValue: 15
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 15
-    maximumTarget: 15
+    minimumTarget: 0
+    maximumTarget: 0
   constraints:
   - type: 8
     activatesAfterObjectiveIndex: -1

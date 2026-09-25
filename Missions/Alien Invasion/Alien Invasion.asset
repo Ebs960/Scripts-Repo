@@ -28,6 +28,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f6b0fd86755446878965b1c3261e1d16, type: 2}
   - {fileID: 11400000, guid: d7836126975c4bb899b3119d85b2d475, type: 2}
   - {fileID: 11400000, guid: a097ed1b299f4627a6c54575efcbb642, type: 2}
+  crisisProjects:
+  - {fileID: 11400000, guid: 71c8f367e99b452dba224855f8d8431b, type: 2}
   worldOverrides: []
   escalationWorldOverrides: []
   climaxWorldOverrides: []

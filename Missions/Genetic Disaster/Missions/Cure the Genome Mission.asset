@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 4
   objectives:
   - objectiveName: Cure the Genome
-    description: Complete the named crisis response.
+    description: Complete the Genome Stabilization crisis project.
     type: 39
     targetValue: 1
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 1
-    maximumTarget: 1
+    minimumTarget: 0
+    maximumTarget: 0
+    specificProject: {fileID: 11400000, guid: 4a24d83f564a49a39c5572126e894c66, type: 2}
   constraints: []
   rewardTiers:
   - tierName: Complete

@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 129
   objectives:
   - objectiveName: Desperate Times
-    description: Complete the named crisis response.
+    description: Successfully raid or pillage 2 hostile settlements or food targets.
     type: 41
     targetValue: 2
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 2
-    maximumTarget: 2
+    minimumTarget: 0
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

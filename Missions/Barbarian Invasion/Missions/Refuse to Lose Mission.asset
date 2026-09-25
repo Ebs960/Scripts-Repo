@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 17
   objectives:
   - objectiveName: Refuse to Lose
-    description: Complete the named crisis response.
+    description: Win 3 defensive city battles and lose no cities before the invasion ends.
     type: 26
     targetValue: 3
     targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 3
-    maximumTarget: 3
+    minimumTarget: 0
+    maximumTarget: 0
+    completionTiming: 1
   constraints:
   - type: 3
     activatesAfterObjectiveIndex: -1

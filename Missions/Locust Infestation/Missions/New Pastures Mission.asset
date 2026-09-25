@@ -10,12 +10,12 @@ MonoBehaviour:
   strategyTags: 34
   objectives:
   - objectiveName: New Pastures
-    description: Complete the named crisis response.
+    description: Build {Objective0Target} new agricultural improvements outside infested areas.
     type: 43
-    targetValue: 1
+    targetValue: 0
     targetMode: 1
     targetMultiplier: 0.5
-    minimumTarget: 1
+    minimumTarget: 2
     maximumTarget: 6
   constraints: []
   rewardTiers:

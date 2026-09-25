@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 48
   objectives:
   - objectiveName: Pest Control
-    description: Complete the named crisis response.
+    description: Repair all {Objective0Target} farms infested by the swarm.
     type: 23
     targetValue: 0
     targetMode: 5
     targetMultiplier: 1
     minimumTarget: 1
-    maximumTarget: 99
+    maximumTarget: 0
   constraints: []
   rewardTiers:
   - tierName: Complete

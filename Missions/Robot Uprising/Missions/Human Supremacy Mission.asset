@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 129
   objectives:
   - objectiveName: Human Supremacy
-    description: Complete the named crisis response.
+    description: Destroy {Objective0Target} units that defected to the robot uprising.
     type: 21
-    targetValue: 1
-    targetMode: 4
-    targetMultiplier: 0.4
-    minimumTarget: 1
-    maximumTarget: 20
+    targetValue: 0
+    targetMode: 8
+    targetMultiplier: 0.75
+    minimumTarget: 2
+    maximumTarget: 15
   constraints: []
   rewardTiers:
   - tierName: Complete

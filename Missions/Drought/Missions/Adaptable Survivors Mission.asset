@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 34
   objectives:
   - objectiveName: Adaptable Survivors
-    description: Complete the named crisis response.
+    description: Complete {Objective0Target} hunting or foraging actions.
     type: 42
     targetValue: 2
     targetMode: 1
     targetMultiplier: 0.5
-    minimumTarget: 2
-    maximumTarget: 10
+    minimumTarget: 3
+    maximumTarget: 8
   constraints: []
   rewardTiers:
   - tierName: Complete

@@ -105,6 +105,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         public int[] objectiveProgress;
         public bool[] objectiveCompleted;
         public int[] resolvedTargets;
+        public int[] consecutiveTurnProgress;
         public int startTurn;
     }
 
@@ -115,6 +116,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         public int[] objectiveProgress;
         public bool[] objectiveCompleted;
         public int[] resolvedTargets;
+        public int[] consecutiveTurnProgress;
         public int startTurn;
 
         public int CompletedObjectiveCount => objectiveCompleted != null ? objectiveCompleted.Count(c => c) : 0;
@@ -354,11 +356,28 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
 
         foreach (var mission in sourceCrisis.crisisMissions)
         {
-            if (mission != null && MeetsParticipantRole(civ, mission.participantRole) && MeetsPrerequisites(civ, mission))
+            if (mission != null && MeetsParticipantRole(civ, mission.participantRole) && MeetsPrerequisites(civ, mission)
+                && HasObjectiveBasis(mission))
                 result.Add(mission);
         }
 
         return result;
+    }
+
+    private bool HasObjectiveBasis(MissionData mission)
+    {
+        if (mission?.objectives == null) return false;
+        foreach (var objective in mission.objectives)
+        {
+            if (objective == null) continue;
+            if (objective.targetMode == MissionData.ObjectiveTargetMode.PerAffectedImprovement
+                && (ActiveContext?.damagedInfrastructureIds?.Count ?? 0) == 0) return false;
+            if (objective.targetMode == MissionData.ObjectiveTargetMode.PerAffectedBuilding
+                && (ActiveContext?.infrastructureStates?.Count(r=>r.state==ImprovementManager.CrisisImprovementState.Disabled) ?? 0) == 0) return false;
+            if (objective.targetMode == MissionData.ObjectiveTargetMode.PerCrisisActorAtActivation
+                && (ActiveContext?.spawnedActorIds?.Count ?? 0) == 0) return false;
+        }
+        return true;
     }
 
     private bool MeetsParticipantRole(Civilization civ, MissionData.ParticipantRole role)
@@ -464,6 +483,18 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
+    /// <summary>Called by gameplay systems only after a qualifying operation succeeds.</summary>
+    public void ReportCrisisOutcome(Civilization civ, MissionData.ObjectiveType type, object qualifyingEntity = null, int amount = 1)
+    {
+        if (IsCrisisActive && civ != null && amount > 0) AddProgress(civ, type, amount, qualifyingEntity);
+    }
+
+    public void ReportDiseaseRecovery(City city, DiseaseData disease)
+    {
+        if (city?.owner != null && activeCrisis?.crisisDisease == disease)
+            AddProgress(city.owner, MissionData.ObjectiveType.CureInfectedCities, 1, disease);
+    }
+
     public List<MissionStateSaveData> ExportMissionStates()
     {
         var list = new List<MissionStateSaveData>();
@@ -481,6 +512,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 objectiveProgress = (int[])state.objectiveProgress.Clone(),
                 objectiveCompleted = (bool[])state.objectiveCompleted.Clone(),
                 resolvedTargets = state.resolvedTargets != null ? (int[])state.resolvedTargets.Clone() : null,
+                consecutiveTurnProgress = state.consecutiveTurnProgress != null ? (int[])state.consecutiveTurnProgress.Clone() : null,
                 startTurn = state.startTurn
             });
         }
@@ -521,6 +553,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 objectiveProgress = saveData.objectiveProgress ?? new int[mission.objectives.Count],
                 objectiveCompleted = saveData.objectiveCompleted ?? new bool[mission.objectives.Count],
                 resolvedTargets = saveData.resolvedTargets ?? mission.objectives.Select(o => Mathf.Max(0, o.targetValue)).ToArray(),
+                consecutiveTurnProgress = saveData.consecutiveTurnProgress ?? new int[mission.objectives.Count],
                 startTurn = saveData.startTurn
             };
         }
@@ -551,6 +584,9 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             {
                 LogCrisisDebug("HandleRoundStarted", $"Polling turn objectives for civ={DescribeCiv(civ)} civIdx={kvp.Key} mission={DescribeMission(kvp.Value.mission)} currentObjective={DescribeObjective(kvp.Value.CurrentObjective)}");
                 PollTurnObjectives(civ, kvp.Key, kvp.Value, round);
+                if (activeMissions.TryGetValue(kvp.Key, out var deadlineState) && deadlineState.mission.completionDeadlineTurns > 0
+                    && round - deadlineState.startTurn >= deadlineState.mission.completionDeadlineTurns)
+                    FailMission(civ, kvp.Key, deadlineState, $"Deadline of {deadlineState.mission.completionDeadlineTurns} turns expired.");
                 if (activeMissions.TryGetValue(kvp.Key, out var stillActive) && stillActive == kvp.Value)
                 {
                     LogCrisisDebug("HandleRoundStarted", $"Validating active constraints for civ={DescribeCiv(civ)} mission={DescribeMission(kvp.Value.mission)}.");
@@ -931,6 +967,14 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         var crisis = activeCrisis;
         LogCrisisDebug("EndCrisis", $"Ending {DescribeCrisis(crisis)} phase={currentPhase} activeMissionCount={activeMissions.Count}");
         Debug.Log($"[CrisisManager] Crisis '{crisis.crisisName}' has ended");
+
+        foreach (var kvp in activeMissions.ToList())
+        {
+            var civ=GetCivByIndex(kvp.Key);
+            if (civ==null) continue;
+            PollTurnObjectives(civ,kvp.Key,kvp.Value,CurrentTurn);
+            if (activeMissions.ContainsKey(kvp.Key)) CheckObjectiveCompletion(civ,kvp.Key,kvp.Value,true);
+        }
 
         LogCrisisDebug("EndCrisis", "Restoring original world state.");
         RestoreOriginalWorld();
@@ -1515,11 +1559,14 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             objectiveProgress = new int[mission.objectives.Count],
             objectiveCompleted = new bool[mission.objectives.Count],
             resolvedTargets = mission.objectives.Select(o=>ResolveObjectiveTarget(o,civ)).ToArray(),
+            consecutiveTurnProgress = new int[mission.objectives.Count],
             // Survival oaths measure the crisis, not how long the player spent reading
             // the modal. Selection is restricted to this same start turn.
             startTurn = crisisActiveTurn
         };
     }
+
+    public int PreviewObjectiveTarget(MissionData.Objective objective, Civilization civ) => ResolveObjectiveTarget(objective, civ);
 
     private int ResolveObjectiveTarget(MissionData.Objective objective, Civilization civ)
     {
@@ -1534,7 +1581,10 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             case MissionData.ObjectiveTargetMode.PerStartingMilitaryUnit: basis=baseline?.militaryUnits ?? 1; break;
             case MissionData.ObjectiveTargetMode.PerAffectedImprovement: basis=Mathf.Max(1,ActiveContext?.damagedInfrastructureIds?.Count ?? 0); break;
             case MissionData.ObjectiveTargetMode.PerStartingTradeRoute: basis=baseline?.startingTradeRoutes ?? 1; break;
-            case MissionData.ObjectiveTargetMode.PercentOfBaseline: basis=baseline?.population ?? 1; break;
+            case MissionData.ObjectiveTargetMode.PerStartingRobotUnit: basis=baseline?.robotUnits ?? 0; break;
+            case MissionData.ObjectiveTargetMode.PerCrisisActorAtActivation: basis=ActiveContext?.spawnedActorIds?.Count ?? 0; break;
+            case MissionData.ObjectiveTargetMode.PerAffectedBuilding: basis=ActiveContext?.infrastructureStates?.Count(r=>r.state==ImprovementManager.CrisisImprovementState.Disabled) ?? 0; break;
+            case MissionData.ObjectiveTargetMode.PercentOfBaseline: basis=GetBaselineMetric(baseline, objective.baselineMetric); break;
         }
         float raw = objective.targetMode==MissionData.ObjectiveTargetMode.Fixed || objective.targetMode==MissionData.ObjectiveTargetMode.PercentOfBaseline
             ? objective.targetValue : objective.targetValue + basis * objective.targetMultiplier;
@@ -1542,6 +1592,21 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         if (objective.minimumTarget > 0) value = Mathf.Max(value, objective.minimumTarget);
         if (objective.maximumTarget > 0) value = Mathf.Min(value, objective.maximumTarget);
         return Mathf.Max(0, value);
+    }
+
+    private static float GetBaselineMetric(CrisisBaselineSnapshot b, MissionData.BaselineMetric metric)
+    {
+        if (b == null) return 0;
+        switch (metric) {
+            case MissionData.BaselineMetric.Cities: return b.cityCount;
+            case MissionData.BaselineMetric.Infrastructure: return b.buildingCount + b.improvementCount;
+            case MissionData.BaselineMetric.Treasury: return b.gold;
+            case MissionData.BaselineMetric.FoodReserve: return b.food;
+            case MissionData.BaselineMetric.TradeIncome: return b.tradeIncome;
+            case MissionData.BaselineMetric.MilitaryUnits: return b.militaryUnits;
+            case MissionData.BaselineMetric.RobotUnits: return b.robotUnits;
+            default: return b.population;
+        }
     }
 
     private bool CanTriggerByHistory(CrisisData crisis, int turn)
@@ -1675,13 +1740,37 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         var cities=civ.cities?.Where(c=>c!=null).ToList() ?? new List<City>();
         context.baselines.Add(new CrisisBaselineSnapshot {
             civilizationIndex=index, population=cities.Sum(c=>c.level), cityCount=cities.Count,
-            buildingCount=cities.Sum(c=>c.builtBuildings?.Count ?? 0), militaryUnits=civ.combatUnits?.Count ?? 0,
+            buildingCount=cities.Sum(c=>c.builtBuildings?.Count ?? 0),
+            improvementCount=CountOwnedImprovements(civ, false), farms=CountOwnedImprovements(civ, true),
+            militaryUnits=civ.combatUnits?.Count ?? 0,
+            robotUnits=civ.combatUnits?.Count(u=>u?.data != null && (u.data.unitType==CombatCategory.Robot || u.data.unitType==CombatCategory.Cyborg)) ?? 0,
             gold=civ.gold, food=civ.food, goldIncome=civ.cachedGoldPerTurn,
+            startingTradeRoutes=CountTradeRoutes(civ), tradeIncome=GetTradeIncome(civ),
             averageOrder=cities.Count>0?cities.Average(c=>(float)c.orderRating):0f,
             averageHappiness=cities.Count>0?cities.Average(c=>(float)c.moraleRating):0f
         });
         if (context.targetCityId < 0 && cities.Count > 0) context.targetCityId=cities[0].gameObject.GetRuntimeId();
     }
+
+    private static int CountOwnedImprovements(Civilization civ, bool farmsOnly)
+    {
+        if (civ?.ownedTilesByPlanet == null) return 0;
+        int count=0;
+        foreach (var pair in civ.ownedTilesByPlanet) {
+            var ts=TileSystem.GetForPlanet(pair.Key) ?? TileSystem.Instance;
+            foreach (int tileIndex in pair.Value) {
+                var improvement=ts?.GetTileData(tileIndex)?.improvement;
+                if (improvement != null && (!farmsOnly || improvement.name.IndexOf("farm",StringComparison.OrdinalIgnoreCase)>=0)) count++;
+            }
+        }
+        return count;
+    }
+
+    private static int CountTradeRoutes(Civilization civ) => civ == null || TradeNetworkManager.Instance == null
+        ? 0 : TradeNetworkManager.Instance.GetRoutesForCivilization(civ).Count();
+    private static float GetTradeIncome(Civilization civ) => civ == null ? 0f
+        : civ.GetInterplanetaryTradeIncome() + (TradeNetworkManager.Instance == null ? 0f
+            : TradeNetworkManager.Instance.GetRoutesForCivilization(civ).Where(r=>r!=null && !r.suspended).Sum(r=>r.yields?.goldPerTurn ?? 0));
 
     private bool IsMissionSelectionOpen()
     {
@@ -1752,9 +1841,6 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             case MissionData.ObjectiveType.FoundCity:
                 state.objectiveProgress[state.currentObjectiveIndex] = civ.cities != null ? civ.cities.Count : 0;
                 break;
-            case MissionData.ObjectiveType.TrainUnits:
-                state.objectiveProgress[state.currentObjectiveIndex] = civ.combatUnits != null ? civ.combatUnits.Count : 0;
-                break;
             case MissionData.ObjectiveType.FoundPantheon:
                 state.objectiveProgress[state.currentObjectiveIndex] = civ.foundedPantheons != null ? civ.foundedPantheons.Count : 0;
                 break;
@@ -1766,6 +1852,22 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 break;
             case MissionData.ObjectiveType.MaintainArmySize:
                 state.objectiveProgress[state.currentObjectiveIndex] = civ.combatUnits?.Count ?? 0;
+                break;
+            case MissionData.ObjectiveType.MaintainTradeIncome:
+            {
+                var baseline=ActiveContext?.baselines?.FirstOrDefault(b=>b.civilizationIndex==civIdx);
+                state.objectiveProgress[state.currentObjectiveIndex]=baseline!=null&&baseline.tradeIncome>0f?Mathf.FloorToInt(GetTradeIncome(civ)*100f/baseline.tradeIncome):100;
+                break;
+            }
+            case MissionData.ObjectiveType.MaintainPercentOfBaseline:
+            {
+                var baseline=ActiveContext?.baselines?.FirstOrDefault(b=>b.civilizationIndex==civIdx);
+                float initial=GetBaselineMetric(baseline,objective.baselineMetric), now=GetCurrentMetric(civ,objective.baselineMetric);
+                state.objectiveProgress[state.currentObjectiveIndex]=initial>0f?Mathf.FloorToInt(now*100f/initial):100;
+                break;
+            }
+            case MissionData.ObjectiveType.CurrentInfectedCities:
+                state.objectiveProgress[state.currentObjectiveIndex]=civ.cities?.Count(c=>c!=null && activeCrisis?.crisisDisease!=null && c.HasDisease(activeCrisis.crisisDisease)) ?? 0;
                 break;
             case MissionData.ObjectiveType.PreservePopulation:
             {
@@ -1796,10 +1898,33 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         if (before != after)
             LogCrisisDebug("PollTurnObjectives", $"civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} objective={DescribeObjective(objective)} progress {before}->{after} on round={round}");
 
+        if (objective.requiredConsecutiveTurns > 0)
+        {
+            int idx=state.currentObjectiveIndex;
+            bool qualifies=MeetsComparison(state.objectiveProgress[idx],GetCurrentObjectiveTarget(state),objective.comparison);
+            state.consecutiveTurnProgress[idx]=qualifies ? state.consecutiveTurnProgress[idx]+1 : 0;
+        }
         CheckObjectiveCompletion(civ, civIdx, state);
     }
 
-    private void CheckObjectiveCompletion(Civilization civ, int civIdx, MissionState state)
+    private static float GetCurrentMetric(Civilization civ, MissionData.BaselineMetric metric)
+    {
+        switch(metric) {
+            case MissionData.BaselineMetric.Cities: return civ?.cities?.Count ?? 0;
+            case MissionData.BaselineMetric.Treasury: return civ?.gold ?? 0;
+            case MissionData.BaselineMetric.FoodReserve: return civ?.food ?? 0;
+            case MissionData.BaselineMetric.TradeIncome: return GetTradeIncome(civ);
+            case MissionData.BaselineMetric.MilitaryUnits: return civ?.combatUnits?.Count ?? 0;
+            case MissionData.BaselineMetric.RobotUnits: return civ?.combatUnits?.Count(u=>u?.data != null && (u.data.unitType==CombatCategory.Robot || u.data.unitType==CombatCategory.Cyborg)) ?? 0;
+            case MissionData.BaselineMetric.Infrastructure: return (civ?.cities?.Sum(c=>c?.builtBuildings?.Count ?? 0) ?? 0)+CountOwnedImprovements(civ,false);
+            default: return civ?.cities?.Where(c=>c!=null).Sum(c=>c.level) ?? 0;
+        }
+    }
+
+    private static bool MeetsComparison(int progress, int target, MissionData.ObjectiveComparison comparison)
+        => comparison == MissionData.ObjectiveComparison.AtMost ? progress <= target : progress >= target;
+
+    private void CheckObjectiveCompletion(Civilization civ, int civIdx, MissionState state, bool atCrisisEnd=false)
     {
         int idx = state.currentObjectiveIndex;
         if (idx >= state.mission.objectives.Count) return;
@@ -1807,7 +1932,10 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         var objective = state.mission.objectives[idx];
         int resolvedTarget=state.resolvedTargets != null && idx < state.resolvedTargets.Length ? state.resolvedTargets[idx] : objective.targetValue;
         LogCrisisDebug("CheckObjectiveCompletion", $"Checking civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} objectiveIndex={idx} progress={state.objectiveProgress[idx]} target={resolvedTarget} completed={state.objectiveCompleted[idx]}");
-        if (state.objectiveProgress[idx] >= resolvedTarget && !state.objectiveCompleted[idx])
+        bool met=MeetsComparison(state.objectiveProgress[idx],resolvedTarget,objective.comparison);
+        if (objective.requiredConsecutiveTurns > 0) met=state.consecutiveTurnProgress[idx] >= objective.requiredConsecutiveTurns;
+        if (objective.completionTiming == MissionData.ObjectiveCompletionTiming.CrisisEnd && !atCrisisEnd) met=false;
+        if (met && !state.objectiveCompleted[idx])
         {
             state.objectiveCompleted[idx] = true;
             Debug.Log($"[CrisisManager] {civ.civData?.civName} completed objective {idx}: {objective.objectiveName}");
@@ -1900,6 +2028,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
         if (filter is BuildingData building)
         {
+            if (objective.useBuildingCategoryFilter && !MatchesBuildingCategory(building,objective.buildingCategory)) return false;
             if (objective.specificBuilding != null) return building == objective.specificBuilding;
             if (objective.specificBuildings != null && objective.specificBuildings.Length > 0)
                 return Array.Exists(objective.specificBuildings, b => b == building);
@@ -1907,6 +2036,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
         if (objective.specificTech != null && filter is TechData tech) return tech == objective.specificTech;
         if (objective.specificCulture != null && filter is CultureData culture) return culture == objective.specificCulture;
+        if (filter is CrisisProjectData project) return objective.specificProject == null || objective.specificProject == project;
         if (filter is ImprovementData improvement)
         {
             if (objective.specificImprovement != null) return improvement == objective.specificImprovement;
@@ -1915,6 +2045,20 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             return true;
         }
         return true;
+    }
+
+    private static bool MatchesBuildingCategory(BuildingData b, BuildingCategory category)
+    {
+        if (b==null) return false;
+        switch(category) {
+            case BuildingCategory.Food:return b.isFoodBuilding; case BuildingCategory.Production:return b.isProductionBuilding;
+            case BuildingCategory.Gold:return b.isGoldBuilding; case BuildingCategory.Science:return b.isScienceBuilding;
+            case BuildingCategory.Culture:return b.isCultureBuilding; case BuildingCategory.Faith:return b.isFaithBuilding;
+            case BuildingCategory.Health:return b.isHealthBuilding; case BuildingCategory.Defense:return b.isDefenseBuilding;
+            case BuildingCategory.Energy:return b.isEnergyBuilding; case BuildingCategory.Harbor:return b.providesHarbor;
+            case BuildingCategory.Airport:return b.providesAirport; case BuildingCategory.Spaceport:return b.providesSpaceport;
+            case BuildingCategory.PerimeterWall:return b.isPerimeterWall; default:return false;
+        }
     }
 
     private void FailMission(Civilization civ, int civIdx, MissionState state, string reason)

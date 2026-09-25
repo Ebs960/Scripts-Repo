@@ -10,13 +10,14 @@ MonoBehaviour:
   strategyTags: 48
   objectives:
   - objectiveName: Prepare for Impact
-    description: Complete the named crisis response.
+    description: Preserve at least 80% of the threatened region's starting infrastructure through impact.
     type: 33
     targetValue: 80
-    targetMode: 7
+    targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 80
-    maximumTarget: 80
+    minimumTarget: 0
+    maximumTarget: 0
+    completionTiming: 1
   constraints: []
   rewardTiers:
   - tierName: Complete

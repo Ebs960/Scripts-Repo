@@ -10,13 +10,15 @@ MonoBehaviour:
   strategyTags: 34
   objectives:
   - objectiveName: Rainy Day Fund
-    description: Complete the named crisis response.
+    description: Finish the crisis with at least 100% of the Gold held in your treasury when the crisis began.
     type: 29
     targetValue: 100
-    targetMode: 7
+    targetMode: 0
     targetMultiplier: 1
-    minimumTarget: 100
-    maximumTarget: 100
+    minimumTarget: 0
+    maximumTarget: 0
+    baselineMetric: 4
+    completionTiming: 1
   constraints: []
   rewardTiers:
   - tierName: Complete

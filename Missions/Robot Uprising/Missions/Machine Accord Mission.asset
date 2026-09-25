@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 72
   objectives:
   - objectiveName: Machine Accord
-    description: Complete the named crisis response.
+    description: Peacefully reintegrate {Objective0Target} defected robots.
     type: 40
-    targetValue: 1
-    targetMode: 4
-    targetMultiplier: 0.5
+    targetValue: 0
+    targetMode: 8
+    targetMultiplier: 0.6
     minimumTarget: 1
-    maximumTarget: 20
+    maximumTarget: 12
   constraints: []
   rewardTiers:
   - tierName: Complete

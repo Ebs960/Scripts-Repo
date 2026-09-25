@@ -10,13 +10,13 @@ MonoBehaviour:
   strategyTags: 72
   objectives:
   - objectiveName: Acceptance
-    description: Complete the named crisis response.
+    description: Integrate {Objective0Target} altered individuals or mutant crisis units into society.
     type: 40
-    targetValue: 1
-    targetMode: 4
-    targetMultiplier: 0.25
+    targetValue: 0
+    targetMode: 9
+    targetMultiplier: 0.5
     minimumTarget: 1
-    maximumTarget: 10
+    maximumTarget: 8
   constraints: []
   rewardTiers:
   - tierName: Complete

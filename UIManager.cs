@@ -1207,7 +1207,7 @@ public class UIManager : MonoBehaviour
         if (!IsPlayerCivilization(civ) || mission == null) return;
 
         pendingSelectionCrisis = null;
-        QueueNarrative(mission.missionName, ResolveMissionStartBody(mission), mission.splashImage);
+        QueueNarrative(mission.missionName, ResolveMissionStartBody(mission, civ), mission.splashImage);
     }
 
     private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
@@ -1958,13 +1958,13 @@ public class UIManager : MonoBehaviour
         return civ != null && player != null && civ == player;
     }
 
-    private string ResolveMissionStartBody(MissionData mission)
+    private string ResolveMissionStartBody(MissionData mission, Civilization civ)
     {
         if (mission == null) return string.Empty;
 
         var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(mission.flavorText)) parts.Add(mission.flavorText.Trim());
-        if (!string.IsNullOrWhiteSpace(mission.description)) parts.Add(mission.description.Trim());
+        if (!string.IsNullOrWhiteSpace(mission.flavorText)) parts.Add(MissionNarrativeFormatter.Resolve(mission.flavorText.Trim(),mission,subscribedCrisisManager,civ));
+        if (!string.IsNullOrWhiteSpace(mission.description)) parts.Add(MissionNarrativeFormatter.Resolve(mission.description.Trim(),mission,subscribedCrisisManager,civ));
 
         return string.Join("\n\n", parts);
     }
@@ -1976,7 +1976,7 @@ public class UIManager : MonoBehaviour
         var sb = new StringBuilder();
 
         if (!string.IsNullOrWhiteSpace(mission.description))
-            sb.AppendLine(mission.description.Trim());
+            sb.AppendLine(MissionNarrativeFormatter.Resolve(mission.description.Trim(),mission,subscribedCrisisManager,GetPlayerCivilization()));
 
         if (mission.objectives != null && mission.objectives.Count > 0)
         {
@@ -1988,8 +1988,8 @@ public class UIManager : MonoBehaviour
                 var objective = mission.objectives[i];
                 if (objective == null) continue;
 
-                string label = !string.IsNullOrWhiteSpace(objective.objectiveName)
-                    ? objective.objectiveName.Trim()
+                string label = !string.IsNullOrWhiteSpace(objective.description)
+                    ? MissionNarrativeFormatter.Resolve(objective.description.Trim(),mission,subscribedCrisisManager,GetPlayerCivilization())
                     : objective.type.ToString();
                 sb.Append("• ").AppendLine(label);
             }

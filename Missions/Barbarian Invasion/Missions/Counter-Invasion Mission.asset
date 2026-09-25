@@ -10,11 +10,11 @@ MonoBehaviour:
   strategyTags: 1
   objectives:
   - objectiveName: Counter-Invasion
-    description: Complete the named crisis response.
+    description: Destroy {Objective0Target} barbarian camps.
     type: 22
-    targetValue: 2
-    targetMode: 4
-    targetMultiplier: 0.25
+    targetValue: 1
+    targetMode: 1
+    targetMultiplier: 0.5
     minimumTarget: 2
     maximumTarget: 6
   constraints: []
