@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: paleolithic-band
   displayName: Band
-  description: A mobile Paleolithic society that travels, forages, encamps, and develops
-    into a permanent settlement.
+  description: A mobile Paleolithic society that travels, forages, encamps, and eventually
+    develops into a permanent settlement.
   icon: {fileID: 21300000, guid: 3115485b89b2b064fb333507fc530884, type: 3}
   prefab: {fileID: 8373606117427327079, guid: 33514bc4f5e2a294eb717186d6140a8c, type: 3}
   startingPopulation: 25
@@ -26,7 +26,7 @@ MonoBehaviour:
   starvationGraceTurns: 1
   populationLossPctPerStarvingTurn: 0.1
   collapseAfterStarvationTurns: 5
-  movementPoints: 2
+  movementPoints: 3
   packMovementCost: 1
   encampMovementCost: 1
   forageMovementCost: 1
