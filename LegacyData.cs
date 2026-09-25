@@ -55,6 +55,7 @@ public class LegacyData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     public UnitProductionModifier[] unitProductionModifiers;
     public ImprovementYieldBonus[] improvementBonuses;
+    public ImprovementWorkBonus[] improvementWorkBonuses;
     public DiseaseModifierBonus[] diseaseBonuses;
     public AttritionModifierBonus[] attritionBonuses;
     public LegacyInstitutionModifiers institutions = new LegacyInstitutionModifiers();

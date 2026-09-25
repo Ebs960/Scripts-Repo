@@ -90,14 +90,14 @@ public class VassalContract
     /// Apply one turn of liberty desire growth from all pressure sources.
     /// Call this from SubjectManager.ProcessLibertyTick().
     /// </summary>
-    public void TickLibertyDesire(int currentTurn)
+    public void TickLibertyDesire(int currentTurn, float effectiveSubjectOpinion)
     {
         float delta = 0f;
 
         // Base decay toward stability for content subjects
         // Capitulated subjects are more suppressed — stronger passive decay
         float decayRate = isCapitulated ? 1.0f : 0.5f;
-        if (libertyDesire > 20f && subjectOpinion > 20f)
+        if (libertyDesire > 20f && effectiveSubjectOpinion > 20f)
             delta -= decayRate;
 
         // Religious pressure

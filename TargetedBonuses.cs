@@ -759,6 +759,29 @@ public class ImprovementYieldBonus
 }
 
 [System.Serializable]
+public class ImprovementWorkBonus
+{
+    public ImprovementData improvement;
+    [Tooltip("When true, matches farm/agricultural improvements without requiring one exact asset.")]
+    public bool agriculturalOnly;
+
+    [Tooltip("Percent bonus to worker work applied while constructing a matching improvement. 0.10 = +10%.")]
+    public float workPct;
+}
+
+public static class ImprovementBonusFilterUtility
+{
+    /// <summary>Shared target matching for improvement yield and construction-work bonuses.</summary>
+    public static bool Matches(ImprovementData candidate, ImprovementData exactImprovement, bool agriculturalOnly)
+    {
+        if (candidate == null) return false;
+        if (exactImprovement != null) return candidate == exactImprovement;
+        return agriculturalOnly
+            && candidate.name.IndexOf("farm", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+}
+
+[System.Serializable]
 public class BuildingYieldBonus
 {
     [Header("Building Filters")]

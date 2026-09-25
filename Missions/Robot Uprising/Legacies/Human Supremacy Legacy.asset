@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Human Supremacy Legacy
   legacyName: Human Command
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack and +5% Defense against Robot and Cyborg units."
+  flavorText: "The uprising forced human commanders to learn how synthetic and cybernetic forces perceived a battlefield differently from biological soldiers. Machines reacted faster, coordinated through networks, tolerated environments humans could not, and often possessed no instinct for self-preservation to exploit. Doctrine changed accordingly. Soldiers learned to disrupt sensors, break coordination, target control systems, and recognize the mechanical rhythms hidden beneath apparently tireless attacks. Even cyborg forces combining organic judgment with machine augmentation became less mysterious once their technological dependencies were understood. Humanity had created new forms of warfare. It also learned how to survive them."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0
@@ -22,6 +23,10 @@ MonoBehaviour:
   unitBonuses:
   - useTargetUnitCategoryFilter: 1
     targetUnitCategory: 15
+    attackPct: 0.05
+    defensePct: 0.05
+  - useTargetUnitCategoryFilter: 1
+    targetUnitCategory: 17
     attackPct: 0.05
     defensePct: 0.05
   workerBonuses: []

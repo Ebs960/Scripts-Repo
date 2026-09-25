@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Imperial Reform Legacy
   legacyName: Flexible Empire
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Subject Liberty Desire grows 10% more slowly, and subjects gain +5 Opinion."
+  flavorText: "The independence crisis taught the empire that control and uniformity were not the same thing. Provinces that could manage their own affairs, preserve local institutions, or negotiate obligations were often less interested in destroying the wider political relationship altogether. Imperial administrators therefore learned to distinguish between concessions that weakened the realm and concessions that made the realm worth remaining inside. Laws, tribute, religion, and local authority could vary without every difference becoming disloyalty. Future subjects inherited an empire more willing to negotiate the shape of obedience before testing how much rebellion it could survive."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

@@ -5,7 +5,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: No Negotiations Legacy
   legacyName: Counterterror Doctrine
-  description: Earned permanently; bonuses apply only while promoted.
+  description: "Units gain +5% Attack against Terrorist crisis units."
+  flavorText: "Terrorist cells did not fight like ordinary armies. They dispersed when confronted, relied on secrecy more than territory, and tried to make small numbers appear more powerful through surprise and fear. Security forces adapted by developing specialized intelligence, rapid-response procedures, and operational methods designed around identifying and dismantling small violent networks before they could disappear again. The doctrine never promised to solve the political causes from which terrorism might emerge. Its purpose was narrower and deliberately practical: once a cell chose violence, the state would know how to find it and destroy its capacity to strike."
   policyPointCost: 1
   attackBonus: 0
   defenseBonus: 0

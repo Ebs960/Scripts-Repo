@@ -614,13 +614,14 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Apply work points from a worker to the job on its tile.
     /// </summary>
-    public int AddWork(int tileIndex, int workPoints, int planetIndex = -1)
+    public int AddWork(int tileIndex, int workPoints, int planetIndex = -1, Civilization workerOwner = null)
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
         var job = FindBuildJob(tileIndex, planetIndex);
         if (job == null) return 0;
 
-        int applied = Mathf.Max(0, Mathf.Min(workPoints, job.remainingWork));
+        int modifiedWork = GetImprovementWorkPoints(workerOwner, job.data, workPoints);
+        int applied = Mathf.Max(0, Mathf.Min(modifiedWork, job.remainingWork));
         job.remainingWork -= applied;
         job.Clamp();
 
@@ -628,6 +629,29 @@ public class ImprovementManager : MonoBehaviour
             CompleteJob(job);
 
         return applied;
+    }
+
+    /// <summary>
+    /// Returns the work applied to an improvement job after promoted legacy modifiers.
+    /// The worker's stored points are intentionally not changed by this calculation.
+    /// </summary>
+    public static int GetImprovementWorkPoints(Civilization workerOwner, ImprovementData improvement, int baseWorkPoints)
+    {
+        if (baseWorkPoints <= 0 || workerOwner?.activeLegacies == null || improvement == null)
+            return Mathf.Max(0, baseWorkPoints);
+
+        float cumulativePct = 0f;
+        foreach (var legacy in workerOwner.activeLegacies)
+        {
+            if (legacy?.improvementWorkBonuses == null) continue;
+            foreach (var bonus in legacy.improvementWorkBonuses)
+            {
+                if (bonus != null && ImprovementBonusFilterUtility.Matches(improvement, bonus.improvement, bonus.agriculturalOnly))
+                    cumulativePct += bonus.workPct;
+            }
+        }
+
+        return Mathf.Max(0, Mathf.RoundToInt(baseWorkPoints * (1f + cumulativePct)));
     }
 
     /// <summary>

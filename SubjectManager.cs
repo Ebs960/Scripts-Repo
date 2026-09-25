@@ -151,11 +151,9 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
             EnforceSubjectReligionRule(c);
 
-            c.TickLibertyDesire(currentTurn);
+            c.TickLibertyDesire(currentTurn, GetEffectiveSubjectOpinion(c));
             float libertyModifier=GetLegacyInstitutionTotal(c.overlord,m=>m.subjectLibertyGrowthModifier);
             if (!Mathf.Approximately(libertyModifier,0f)) c.libertyDesire=Mathf.Clamp(c.libertyDesire*(1f+libertyModifier),0f,100f);
-            float opinionSupport=GetLegacyInstitutionTotal(c.overlord,m=>m.subjectOpinionModifier);
-            c.libertyDesire=Mathf.Clamp(c.libertyDesire-opinionSupport*.02f,0f,100f);
 
             // Update military confidence (rough proxy: subject unit count vs overlord)
             int subjectMilitary  = c.subject.combatUnits?.Count ?? 0;
@@ -175,6 +173,14 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         foreach (var legacy in civ.activeLegacies)
             if (legacy?.institutions != null) total+=selector(legacy.institutions);
         return total;
+    }
+
+    /// <summary>Current opinion including promoted overlord legacies, without mutating saved relationship history.</summary>
+    public float GetEffectiveSubjectOpinion(VassalContract contract)
+    {
+        if (contract == null) return 0f;
+        return Mathf.Clamp(contract.subjectOpinion
+            + GetLegacyInstitutionTotal(contract.overlord, m => m.subjectOpinionModifier), -100f, 100f);
     }
 
     // ── Behavioral Restrictions ───────────────────────────────────────────────
