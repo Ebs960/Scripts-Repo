@@ -1,0 +1,34 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Teamwork
+  legacyName: Teamwork
+  description: "Units in an Army formation gain +5% Attack and +5% Defense."
+  flavorText: "The crisis left behind a simple lesson: individually, humans were neither the fastest nor the strongest creatures in the wilderness. Together, they did not need to be. Hunting parties learned to surround stronger prey, warriors learned to protect one another's exposed sides, and frightened settlements discovered what became possible when many people acted as one body. Later armies inherited that instinct even when the enemies before them were human rather than animal. Discipline turned numbers into strength, and cooperation became a weapon in its own right."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+  unitBonuses:
+  - armyFormationRequirement: 1
+    attackPct: 0.05
+    defensePct: 0.05
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

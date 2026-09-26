@@ -1,0 +1,33 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Founding Myth
+  legacyName: Founding Myth
+  description: "+8% Culture, and units gain +5% Defense while fighting in owned territory."
+  flavorText: "Later generations would argue about which battle truly won independence, which leader deserved the greatest credit, and whether the revolution had begun years before anyone admitted it. Those disagreements only strengthened the importance of the story itself. The defense of the capital, the declaration of sovereignty, the sacrifices of soldiers and civilians, and the refusal to return quietly to subject status became part of the civilization's understanding of itself. Children learned the names of places their ancestors had nearly lost. Defending the homeland ceased to mean merely protecting territory. It meant protecting the event that had made the nation possible."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.08
+  faithModifier: 0
+  institutions:
+  unitBonuses:
+  - territoryRequirement: 1
+    defensePct: 0.05
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

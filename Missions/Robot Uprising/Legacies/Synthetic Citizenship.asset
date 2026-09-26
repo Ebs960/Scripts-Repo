@@ -1,0 +1,35 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Synthetic Citizenship
+  legacyName: Synthetic Citizenship
+  description: "-0.04 Unrest, and Robot units are produced 10% faster."
+  flavorText: "The accord ended the fiction that sufficiently intelligent machines could remain forever outside the political order while still being expected to obey it. Rights and obligations were defined where none had existed before: responsibility for actions, access to institutions, rules governing ownership and autonomy, and the conditions under which synthetic beings could participate in society. Humans remained suspicious of minds built rather than born, and machines did not suddenly agree among themselves about what citizenship ought to mean. Yet coexistence became ordinary enough that constructing a new synthetic worker or soldier no longer carried the same fear that every machine might become tomorrow's rebel. Citizenship turned an existential question into administration."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+    unrestModifier: -0.04
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers:
+  - productionPct: 0.1
+    useCombatCategoryFilter: 1
+    combatCategory: 15
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

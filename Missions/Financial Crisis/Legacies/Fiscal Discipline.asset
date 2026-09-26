@@ -1,0 +1,33 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Fiscal Discipline
+  legacyName: Fiscal Discipline
+  description: '+5% Gold and -0.03 Corruption.'
+  flavorText: 'The panic taught the treasury that prosperity and solvency were not the same thing. Revenues could rise for years while waste, favoritism, opaque accounts, and comfortable assumptions quietly weakened the state beneath the surface. In the reforms that followed, expenditures were recorded more carefully, officials were expected to justify what they spent, and missing money became harder to hide behind prosperous times. Financial discipline did not mean refusing every expense; it meant knowing where the money went and whether the state could actually afford its promises. Later generations inherited a government less easily enriched by confusion and less easily impoverished by its own habits.'
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0.05
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+    unrestModifier: 0
+    corruptionModifier: -0.03
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

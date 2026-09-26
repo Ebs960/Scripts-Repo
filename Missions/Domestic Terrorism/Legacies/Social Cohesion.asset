@@ -1,0 +1,33 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Social Cohesion
+  legacyName: Social Cohesion
+  description: "-0.05 Unrest and 10% less unhappiness from followers of non-state religions."
+  flavorText: "The campaign against political violence revealed how easily extremists could exploit communities that believed the state regarded them only as problems to be controlled. In the years that followed, public institutions became more attentive to grievances before they hardened into permanent estrangement. Religious difference, regional identity, and political dissent were increasingly separated from violence itself rather than treated as evidence of disloyalty. That did not eliminate radical movements or make every community content. It narrowed the social space in which violent organizations could plausibly claim that peaceful coexistence had already failed. A society with stronger internal bonds gave its enemies fewer fractures to widen."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+    unrestModifier: -0.05
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers:
+  - unhappinessPct: -0.1

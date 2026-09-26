@@ -1,0 +1,32 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Reform Tradition
+  legacyName: Reform Tradition
+  description: '+5% Culture and +5% Policy Point generation.'
+  flavorText: 'The crisis established a precedent that institutions could survive by changing before change had to destroy them. Reform ceased to mean admitting that every older institution had been a mistake; it became a recognized way of adapting laws and government to pressures that could no longer be ignored. Political movements learned to formulate demands that could be translated into policy, while governments became more practiced at turning agitation into legislation rather than waiting for barricades. Successful reforms entered public memory as evidence that political change could produce something other than collapse. A civilization accustomed to revision became less afraid of the idea that tomorrow''s state might not look exactly like today''s.'
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.05
+  faithModifier: 0
+  institutions:
+    policyPointGenerationModifier: 0.05
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

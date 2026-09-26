@@ -1,0 +1,35 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Frontier Legions
+  legacyName: Frontier Legions
+  description: "Units gain +5% Attack against Barbarian crisis units."
+  flavorText: "The invasion proved that a frontier defended only at its walls was already surrendering the initiative. Permanent forces emerged whose purpose was not simply to guard settlements, but to patrol beyond them, discover hostile concentrations, and strike raiding bases before they could become armies. These soldiers became accustomed to long distances, uncertain supply, rough terrain, and enemies who rarely fought according to the expectations of conventional warfare. Frontier service developed its own prestige and its own methods. Future invaders would find that crossing the border was no longer the point at which resistance began."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+  unitBonuses:
+  - useCrisisActorTagFilter: 1
+    targetCrisisActorTags: 4
+    attackPct: 0.05
+    defensePct: 0
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

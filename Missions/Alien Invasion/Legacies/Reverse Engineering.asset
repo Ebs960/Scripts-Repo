@@ -1,0 +1,31 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Reverse Engineering
+  legacyName: Reverse Engineering
+  description: "+8% Science."
+  flavorText: "The recovered alien machines were valuable not because they could simply be copied, but because every component proved that some apparently impossible engineering problem had already been solved by someone. Researchers spent years discovering why unfamiliar materials behaved as they did, reconstructing manufacturing processes from damaged fragments, and testing principles whose original purpose remained uncertain. Many attempts at imitation failed completely. Those failures were often as valuable as the successes, because they exposed assumptions human science had never realized it was making. The greatest discovery was not a single alien device. It was the realization that technology contained entire paths of development our civilization had never thought to explore."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0.08
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []

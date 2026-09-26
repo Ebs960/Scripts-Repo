@@ -1,0 +1,34 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Quarantine Protocols
+  legacyName: Quarantine Protocols
+  description: "All diseases have 10% lower spread chance and cause 10% less population loss."
+  flavorText: "During the plague, every city had improvised its own rules until experience separated useful precautions from frightened ritual. Those lessons were eventually written down. Authorities learned when to close gates, how to isolate infected households, where travelers could be examined, and how supplies could move without carrying sickness freely between communities. Quarantine remained disruptive and unpopular, but it ceased to be invented from nothing every time disease appeared. The civilization had acquired something more valuable than memory of one epidemic: a repeatable procedure for containing the next."
+  policyPointCost: 1
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  institutions:
+  unitBonuses: []
+  workerBonuses: []
+  unitProductionModifiers: []
+  improvementBonuses: []
+  diseaseBonuses:
+  - affectsAllDiseases: 1
+    spreadChancePct: -0.1
+    cityPopulationLossPct: -0.1
+  attritionBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
