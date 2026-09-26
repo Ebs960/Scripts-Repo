@@ -33,3 +33,22 @@ MonoBehaviour:
   buildingBonuses: []
   cityBonuses: []
   nonStateReligionUnhappinessModifiers: []
+  policyBiases:
+  - policy: {fileID: 11400000, guid: a9aa480d6aae4768aee8623fe3dc6339, type: 2}
+    opinionModifier: 15
+    reason: 
+  - policy: {fileID: 11400000, guid: 90fd3c7e6e384b2c83770c1841656f2a, type: 2}
+    opinionModifier: 10
+    reason: 
+  governmentBiases:
+  - government: {fileID: 11400000, guid: 6f28ffb833e14cd48f690530e4e0bb2c, type: 2}
+    opinionModifier: 10
+    reason: 
+  - government: {fileID: 11400000, guid: e3d8ae28a3ad43d68994f791488c3f30, type: 2}
+    opinionModifier: 10
+    reason: 
+  personalityMultipliers:
+  - trait: 4
+    multiplier: 1.25
+  - trait: 8
+    multiplier: 1.1

@@ -32,3 +32,22 @@ MonoBehaviour:
   - scope: 0
     happinessAdd: 1
   nonStateReligionUnhappinessModifiers: []
+  policyBiases:
+  - policy: {fileID: 11400000, guid: ab0a09d0d1c1450b83a01b8bdfc52a35, type: 2}
+    opinionModifier: 15
+    reason: 
+  - policy: {fileID: 11400000, guid: 38186cf4751d4fdd91040d3906ae2cbb, type: 2}
+    opinionModifier: 10
+    reason: 
+  governmentBiases:
+  - government: {fileID: 11400000, guid: 2c60f1206e474ccb9033e3eb66e0b2ce, type: 2}
+    opinionModifier: 15
+    reason: 
+  - government: {fileID: 11400000, guid: 4e024e9252a82664ea0d4345a1b82925, type: 2}
+    opinionModifier: 10
+    reason: 
+  personalityMultipliers:
+  - trait: 10
+    multiplier: 1.2
+  - trait: 6
+    multiplier: 1.1
