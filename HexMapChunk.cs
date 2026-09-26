@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Represents a single chunk of the hex map.
@@ -365,7 +366,10 @@ public class HexMapChunk : MonoBehaviour
     {
         if (!isDirty) return;
         
-        GenerateSubdividedMesh();
+        if (manager != null && manager.GeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+            GenerateSteppedHexMesh();
+        else
+            GenerateSubdividedMesh();
         isDirty = false;
     }
     
@@ -522,6 +526,139 @@ public class HexMapChunk : MonoBehaviour
             meshCollider.sharedMesh = null;
             meshCollider.sharedMesh = mesh;
         }
+    }
+
+    /// <summary>
+    /// Builds one faceted mesh for all stepped hexes assigned to this chunk. Heights are
+    /// visual-only and are authored directly into the CPU mesh, so the terrain shader must
+    /// not apply its heightmap displacement while this mode is active.
+    /// </summary>
+    private void GenerateSteppedHexMesh()
+    {
+        if (manager == null || manager.Grid == null || !manager.Grid.IsBuilt || mesh == null)
+            return;
+
+        HexGrid grid = manager.Grid;
+        float radius = grid.GetLookupData().s * manager.SteppedHexTopScale;
+        float fullRadius = grid.GetLookupData().s;
+        float seamDepth = manager.SteppedSeamDepth;
+        float chunkOriginX = -manager.MapWidth * 0.5f + chunkX * (manager.MapWidth / Mathf.Max(1, manager.GridChunkCountX));
+        float chunkOriginZ = -manager.MapHeight * 0.5f + chunkZ * (manager.MapHeight / Mathf.Max(1, manager.GridChunkCountZ));
+
+        var vertices = new List<Vector3>(tileIndices.Count * 31);
+        var uvs = new List<Vector2>(tileIndices.Count * 31);
+        var normals = new List<Vector3>(tileIndices.Count * 31);
+        var tangents = new List<Vector4>(tileIndices.Count * 31);
+        var triangles = new List<int>(tileIndices.Count * 54);
+
+        foreach (int tileIndex in tileIndices)
+        {
+            if (tileIndex < 0 || tileIndex >= grid.TileCount)
+                continue;
+
+            Vector3 mapCenter = grid.tileCenters[tileIndex];
+            float topY = manager.GetSteppedVisualHeight(tileIndex);
+            Vector3 localCenter = new Vector3(mapCenter.x - chunkOriginX, topY, mapCenter.z - chunkOriginZ);
+            Vector2 centerUV = MapPositionToUV(mapCenter);
+
+            int topStart = vertices.Count;
+            AddVertex(localCenter, centerUV, Vector3.up, Vector3.right, vertices, uvs, normals, tangents);
+            for (int corner = 0; corner < 6; corner++)
+            {
+                float angle = Mathf.Deg2Rad * (60f * corner - 30f);
+                Vector3 cornerOffset = new Vector3(radius * Mathf.Cos(angle), 0f, radius * Mathf.Sin(angle));
+                AddVertex(localCenter + cornerOffset, MapPositionToUV(mapCenter + cornerOffset),
+                    Vector3.up, Vector3.right, vertices, uvs, normals, tangents);
+            }
+
+            for (int corner = 0; corner < 6; corner++)
+            {
+                int next = (corner + 1) % 6;
+                // Reverse the angular order so the top face points upward in Unity's XZ plane.
+                triangles.Add(topStart);
+                triangles.Add(topStart + 1 + next);
+                triangles.Add(topStart + 1 + corner);
+            }
+
+            for (int edge = 0; edge < 6; edge++)
+            {
+                float angleA = Mathf.Deg2Rad * (60f * edge - 30f);
+                float angleB = Mathf.Deg2Rad * (60f * ((edge + 1) % 6) - 30f);
+                Vector3 offsetA = new Vector3(radius * Mathf.Cos(angleA), 0f, radius * Mathf.Sin(angleA));
+                Vector3 offsetB = new Vector3(radius * Mathf.Cos(angleB), 0f, radius * Mathf.Sin(angleB));
+                Vector3 outward = new Vector3(offsetA.x + offsetB.x, 0f, offsetA.z + offsetB.z).normalized;
+
+                int neighborIndex = grid.GetTileAtPosition(mapCenter + outward * (fullRadius * 1.05f));
+                bool hasNeighbor = neighborIndex >= 0 && neighborIndex != tileIndex;
+                float bottomY;
+                if (!hasNeighbor)
+                {
+                    bottomY = topY - Mathf.Max(10f, seamDepth);
+                }
+                else
+                {
+                    float neighborY = manager.GetSteppedVisualHeight(neighborIndex);
+                    if (topY > neighborY + 0.0001f)
+                        bottomY = neighborY;
+                    else if (manager.SteppedHexTopScale < 0.9999f && Mathf.Abs(topY - neighborY) <= 0.0001f && seamDepth > 0f)
+                        bottomY = topY - seamDepth;
+                    else
+                        continue;
+                }
+
+                Vector3 upperA = localCenter + offsetA;
+                Vector3 upperB = localCenter + offsetB;
+                Vector3 lowerA = new Vector3(upperA.x, bottomY, upperA.z);
+                Vector3 lowerB = new Vector3(upperB.x, bottomY, upperB.z);
+                Vector3 edgeTangent = (upperB - upperA).normalized;
+                int wallStart = vertices.Count;
+
+                // Wall UVs deliberately use the owning (upper) tile center for stable biome selection.
+                AddVertex(upperA, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(upperB, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(lowerA, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(lowerB, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
+
+                triangles.Add(wallStart);
+                triangles.Add(wallStart + 3);
+                triangles.Add(wallStart + 2);
+                triangles.Add(wallStart);
+                triangles.Add(wallStart + 1);
+                triangles.Add(wallStart + 3);
+            }
+        }
+
+        mesh.Clear();
+        mesh.indexFormat = vertices.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+        mesh.SetVertices(vertices);
+        mesh.SetUVs(0, uvs);
+        mesh.SetNormals(normals);
+        mesh.SetTangents(tangents);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateBounds();
+
+        if (meshCollider != null)
+        {
+            meshCollider.sharedMesh = null;
+            meshCollider.sharedMesh = mesh;
+        }
+    }
+
+    private Vector2 MapPositionToUV(Vector3 mapPosition)
+    {
+        return new Vector2(
+            (mapPosition.x + manager.MapWidth * 0.5f) / manager.MapWidth,
+            Mathf.Clamp01((mapPosition.z + manager.MapHeight * 0.5f) / manager.MapHeight));
+    }
+
+    private static void AddVertex(
+        Vector3 position, Vector2 uv, Vector3 normal, Vector3 tangent,
+        List<Vector3> vertices, List<Vector2> uvs, List<Vector3> normals, List<Vector4> tangents)
+    {
+        vertices.Add(position);
+        uvs.Add(uv);
+        normals.Add(normal);
+        tangents.Add(new Vector4(tangent.x, tangent.y, tangent.z, 1f));
     }
     
     /// <summary>

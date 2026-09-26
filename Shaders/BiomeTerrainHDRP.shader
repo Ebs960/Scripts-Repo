@@ -41,6 +41,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Displacement)]
         _ElevationScale ("Elevation Scale", Range(0.1, 20)) = 1.0
+        _UseMeshElevation ("Use Mesh Elevation", Float) = 0
         _NormalStrength ("Normal Strength", Range(0.01, 20)) = 1.0
         _NormalSampleRadius ("Normal Sample Radius (texels)", Range(1, 50)) = 4
         _BiomeNormalStrength ("Biome Normal Strength", Range(0, 5)) = 1.0
@@ -177,6 +178,7 @@ Shader "Custom/BiomeTerrainHDRP"
     // ===================== Uniforms =====================
 
     float _ElevationScale;
+    float _UseMeshElevation;
     float _NormalStrength;
     float _NormalSampleRadius;
     float _BiomeNormalStrength;
@@ -686,7 +688,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // Heightmap displacement on tessellated vertex
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 Varyings o;
                 o.positionWS = TransformObjectToWorld(posOS);
@@ -706,7 +708,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 Varyings o;
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 o.positionWS = TransformObjectToWorld(posOS);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
@@ -853,7 +855,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 float camDist = distance(_WorldSpaceCameraPos, worldPos);
 
                 // --- Displaced normal from heightmap ---
-                float3 displacedNormal = ComputeDisplacedNormal(uv);
+                float3 displacedNormal = (_UseMeshElevation > 0.5)
+                    ? normalize(input.normalWS)
+                    : ComputeDisplacedNormal(uv);
                 float3 triWeights = TriplanarWeights(displacedNormal);
 
                 // ==========================================================
@@ -957,7 +961,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     float sU = saturate((hC - hU - _CliffStepThreshold) / max(_CliffStepBlend, 1e-5));
 
                     // strongest step among neighbors
-                    float stepMask = max(max(sL, sR), max(sU, sD));
+                    float stepMask = (_UseMeshElevation > 0.5) ? 0.0 : max(max(sL, sR), max(sU, sD));
 
                     // combined blend (scale by global cliff strength)
                     float cliffBlend = max(slopeBlend, stepMask) * _CliffStrength;
@@ -1446,7 +1450,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 posOS = bary.x * patch[0].positionOS + bary.y * patch[1].positionOS + bary.z * patch[2].positionOS;
                 float2 uv = bary.x * patch[0].uv + bary.y * patch[1].uv + bary.z * patch[2].uv;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
@@ -1460,7 +1464,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 Varyings o;
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
                 return o;
             }
@@ -1572,7 +1576,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 posOS = bary.x * patch[0].positionOS + bary.y * patch[1].positionOS + bary.z * patch[2].positionOS;
                 float2 uv = bary.x * patch[0].uv + bary.y * patch[1].uv + bary.z * patch[2].uv;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
@@ -1586,7 +1590,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 Varyings o;
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
                 return o;
             }
@@ -1715,7 +1719,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 normalOS = normalize(
                     bary.x * patch[0].normalOS + bary.y * patch[1].normalOS + bary.z * patch[2].normalOS);
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 Varyings o;
                 float3 worldPos = TransformObjectToWorld(posOS);
@@ -1733,7 +1737,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 Varyings o;
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
                 float3 worldPos = TransformObjectToWorld(posOS);
                 o.positionCS = TransformWorldToHClip(worldPos);
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
@@ -1752,7 +1756,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 float camDist = distance(_WorldSpaceCameraPos, worldPos);
 
                 // Heightmap-derived displaced normal (macro terrain shape)
-                float3 displacedNormal = ComputeDisplacedNormal(uv);
+                float3 displacedNormal = (_UseMeshElevation > 0.5)
+                    ? normalize(input.normalWS)
+                    : ComputeDisplacedNormal(uv);
                 float3 triWeights = TriplanarWeights(displacedNormal);
 
                 // Look up biome slice and index from the biome index map
@@ -1889,7 +1895,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 posOS = bary.x * patch[0].positionOS + bary.y * patch[1].positionOS + bary.z * patch[2].positionOS;
                 float2 uv = bary.x * patch[0].uv + bary.y * patch[1].uv + bary.z * patch[2].uv;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
 
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
@@ -1903,7 +1909,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 Varyings o;
                 float3 posOS = input.positionOS;
                 float elevation = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, input.uv, 0).r;
-                posOS.y += elevation * _ElevationScale;
+                posOS.y += elevation * _ElevationScale * (1.0 - step(0.5, _UseMeshElevation));
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(posOS));
                 return o;
             }

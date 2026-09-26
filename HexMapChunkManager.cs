@@ -146,6 +146,12 @@ public enum TerrainRenderPath
     HdrpLitBiomeShaderGraph
 }
 
+public enum TerrainGeometryMode
+{
+    Smooth = 0,
+    SteppedHexExperimental = 1
+}
+
 public enum BakedSurfaceUVMode
 {
     GlobalMapUV,
@@ -294,6 +300,28 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private int chunksZ = 4;
     [Tooltip("Mesh subdivisions per chunk for smooth heightmap displacement.")]
     [SerializeField] private int meshSubdivisionsPerChunk = 32;
+
+    [Header("Terrain Geometry")]
+    [SerializeField]
+    private TerrainGeometryMode terrainGeometryMode = TerrainGeometryMode.Smooth;
+
+    [Header("Stepped Hex - Experimental")]
+    [Range(0.90f, 1f)]
+    [SerializeField]
+    private float steppedHexTopScale = 1f;
+
+    [SerializeField] private float steppedFlatHeight = 5.75f;
+    [SerializeField] private float steppedHillHeight = 8.5f;
+    [SerializeField] private float steppedMountainHeight = 12.5f;
+
+    [Header("Stepped Seafloor - Experimental")]
+    [SerializeField] private float steppedOceanFloorHeight = 0f;
+    [SerializeField] private float steppedAbyssalHeight = -1.5f;
+    [SerializeField] private float steppedTrenchHeight = -3.5f;
+
+    [Min(0f)]
+    [SerializeField]
+    private float steppedSeamDepth = 0.08f;
     
     [Header("Displacement Settings")]
     [Tooltip("Multiplier for terrain elevation. With world-space elevation, 1.0 means elevation values are used directly. Values >1 exaggerate terrain height for artistic effect.")]
@@ -610,6 +638,11 @@ public class HexMapChunkManager : MonoBehaviour
     public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
     public int MeshSubdivisionsPerChunk => meshSubdivisionsPerChunk;
+    internal int GridChunkCountX => chunksX;
+    internal int GridChunkCountZ => chunksZ;
+    public TerrainGeometryMode GeometryMode => terrainGeometryMode;
+    internal float SteppedHexTopScale => steppedHexTopScale;
+    internal float SteppedSeamDepth => steppedSeamDepth;
     /// <summary>
     /// The actual displacement strength used by the terrain shader (_ElevationScale).
     /// Water surfaces must use this value to match terrain vertex displacement.
@@ -624,7 +657,8 @@ public class HexMapChunkManager : MonoBehaviour
     public Material SharedMaterial => sharedMaterial;
     public TerrainRenderPath RenderPath => terrainRenderPath;
     public bool UseBakedHdrpLit => terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
-    public bool UseCpuDisplacedTerrainMesh => terrainRenderPath == TerrainRenderPath.BakedHdrpLit
+    public bool UseCpuDisplacedTerrainMesh => terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental
+        || terrainRenderPath == TerrainRenderPath.BakedHdrpLit
         || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
     public float FlatY => flatY;
     public bool WrapEnabled => enableWrap;
@@ -708,6 +742,8 @@ public class HexMapChunkManager : MonoBehaviour
     
     private void LateUpdate()
     {
+        ApplyTerrainGeometryModeIfChanged();
+
         if (debugTransformChanges)
         {
             if (transform.position != _lastTransformPos || transform.rotation != _lastTransformRot || transform.lossyScale != _lastTransformScale)
@@ -795,6 +831,23 @@ public class HexMapChunkManager : MonoBehaviour
                 && hdrpLitBiomeTerrainMaterial != null)
                 ApplyHdrpLitBiomeMaterialSettings();
         }
+    }
+
+    private TerrainGeometryMode _appliedTerrainGeometryMode = (TerrainGeometryMode)(-1);
+
+    private void ApplyTerrainGeometryModeIfChanged()
+    {
+        if (_appliedTerrainGeometryMode == terrainGeometryMode)
+            return;
+
+        _appliedTerrainGeometryMode = terrainGeometryMode;
+        if (sharedMaterial != null && sharedMaterial.HasProperty("_UseMeshElevation"))
+        {
+            sharedMaterial.SetFloat("_UseMeshElevation",
+                terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental ? 1f : 0f);
+        }
+
+        RefreshAllChunks();
     }
     
     private void UpdateTerrainSurfaceProbe()
@@ -1534,6 +1587,42 @@ public class HexMapChunkManager : MonoBehaviour
         return flatY + tile.waterElevation * displacementStrength + waterYOffset + additionalOffset;
     }
 
+    /// <summary>
+    /// Resolves the CPU-authored visual height used only by the experimental stepped mesh.
+    /// Generated elevation and classification data remain untouched.
+    /// </summary>
+    public float GetSteppedVisualHeight(int tileIndex)
+    {
+        if (planetGenerator == null || planetGenerator.data == null ||
+            !planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile))
+        {
+            return steppedOceanFloorHeight;
+        }
+
+        if (!tile.isLand)
+        {
+            switch (tile.underwaterBiome)
+            {
+                case Biome.Trench:
+                    return steppedTrenchHeight;
+                case Biome.AbyssalPlains:
+                    return steppedAbyssalHeight;
+                default:
+                    return steppedOceanFloorHeight;
+            }
+        }
+
+        switch (tile.elevationTier)
+        {
+            case ElevationTier.Mountain:
+                return steppedMountainHeight;
+            case ElevationTier.Hill:
+                return steppedHillHeight;
+            default:
+                return steppedFlatHeight;
+        }
+    }
+
     private int ResolveSurfaceSliceIndex(HexTileData tile, int stableSeed, int biomeIndex)
     {
         int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
@@ -2209,6 +2298,12 @@ public class HexMapChunkManager : MonoBehaviour
         {
             sharedMaterial.SetTexture("_Heightmap", heightmapTexture);
             sharedMaterial.SetFloat("_ElevationScale", displacementStrength);
+        }
+
+        if (sharedMaterial.HasProperty("_UseMeshElevation"))
+        {
+            sharedMaterial.SetFloat("_UseMeshElevation",
+                terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental ? 1f : 0f);
         }
 
         if (biomeAlbedoArray != null)
