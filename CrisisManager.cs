@@ -41,6 +41,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     public event Action<Civilization, MissionData, int> OnObjectiveCompleted;
     public event Action<Civilization, MissionData, MissionState> OnMissionCompleted;
     public event Action<Civilization, MissionData, string> OnMissionFailed;
+    public event Action<Civilization> OnAsteroidIntercepted;
+    public event Action<int, int> OnAsteroidImpact;
 
     // ─── Public read-only state ───
     public CrisisData ActiveCrisis => activeCrisis;
@@ -62,6 +64,14 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             int elapsed = CurrentTurn - crisisActiveTurn;
             return Mathf.Max(0, activeCrisis.durationTurns - elapsed);
         }
+    }
+
+    public string GetThreatenedRegionDisplayName()
+    {
+        if (activeCrisis?.mechanic!=CrisisData.CrisisMechanic.AsteroidCountdown || ActiveContext==null) return null;
+        var asteroid=ActiveContext.asteroidState;
+        var tile=(TileSystem.GetForPlanet(asteroid?.planetIndex ?? 0)??TileSystem.Instance)?.GetTileData(asteroid?.impactTileIndex ?? -1);
+        return !string.IsNullOrWhiteSpace(tile?.continentName) ? tile.continentName : $"Continent {ActiveContext.targetContinentId}";
     }
 
     // ─── Private state ───
@@ -412,7 +422,8 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         if (activeCrisis?.crisisProjects == null || ActiveContext == null) return Array.Empty<CrisisProjectData>();
         int index=GetCivIndex(civ);
         return ActiveContext.targetCivilizationIndices.Contains(index)
-            ? activeCrisis.crisisProjects.Where(p=>p!=null && ProjectPrerequisitesMet(civ,p)).ToList()
+            ? activeCrisis.crisisProjects.Where(p=>p!=null && ProjectPrerequisitesMet(civ,p)
+                && (p.projectEffect!=CrisisProjectData.ProjectEffect.SharedCrisisProject || !IsCrisisProjectCompleted(civ,p))).ToList()
             : (IReadOnlyList<CrisisProjectData>)Array.Empty<CrisisProjectData>();
     }
 
@@ -421,22 +432,82 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         if (civ == null || city == null || project == null || production <= 0 || activeCrisis == null || ActiveContext == null) return false;
         if (!GetAvailableCrisisProjects(civ).Contains(project)) return false;
         int civIndex=GetCivIndex(civ), cityId=city.gameObject.GetRuntimeId();
-        var state=ActiveContext.projectProgress.FirstOrDefault(p=>p.projectName==project.projectName && p.civilizationIndex==civIndex && p.cityId==cityId);
+        bool local=project.projectEffect!=CrisisProjectData.ProjectEffect.SharedCrisisProject;
+        var state=ActiveContext.projectProgress.FirstOrDefault(p=>p.projectName==project.projectName && p.civilizationIndex==civIndex && (!local || p.cityId==cityId));
         if (state == null)
         {
             if (project.goldCost > 0 && civ.gold < project.goldCost) return false;
             civ.gold -= project.goldCost;
-            state=new CrisisProjectProgress { projectName=project.projectName, civilizationIndex=civIndex, cityId=cityId };
+            state=new CrisisProjectProgress { projectName=project.projectName, civilizationIndex=civIndex, cityId=cityId,
+                resolvedProductionCost=ResolveProjectCost(civ,project) };
             ActiveContext.projectProgress.Add(state);
         }
         if (state.completed) return false;
-        state.productionInvested=Mathf.Min(project.productionCost,state.productionInvested+production);
-        if (state.productionInvested >= project.productionCost)
+        int cost=Mathf.Max(1,state.resolvedProductionCost);
+        state.productionInvested=Mathf.Min(cost,state.productionInvested+production);
+        if (state.productionInvested >= cost)
         {
             state.completed=true;
+            ApplyCrisisProjectEffect(civ,city,project);
             AddProgress(civ,MissionData.ObjectiveType.CompleteCrisisProject,1,project);
         }
         return true;
+    }
+
+    public bool CanQueueCrisisProject(Civilization civ, City city, CrisisProjectData project)
+        => civ != null && city != null && city.owner == civ && GetAvailableCrisisProjects(civ).Contains(project)
+           && (project.projectEffect==CrisisProjectData.ProjectEffect.SharedCrisisProject
+               || !(ActiveContext?.projectProgress?.Any(p=>p.civilizationIndex==GetCivIndex(civ) && p.cityId==city.gameObject.GetRuntimeId()
+                    && p.projectName==project.projectName && p.completed) ?? false));
+
+    public bool IsCrisisProjectCompleted(Civilization civ, CrisisProjectData project)
+    {
+        int index=GetCivIndex(civ);
+        return ActiveContext?.projectProgress?.Any(p=>p.civilizationIndex==index && p.projectName==project?.projectName && p.completed) == true;
+    }
+
+    public int GetResolvedProjectCost(Civilization civ, CrisisProjectData project)
+    {
+        int index=GetCivIndex(civ);
+        var progress=ActiveContext?.projectProgress?.FirstOrDefault(p=>p.civilizationIndex==index && p.projectName==project?.projectName);
+        return progress != null && progress.resolvedProductionCost > 0 ? progress.resolvedProductionCost : ResolveProjectCost(civ,project);
+    }
+
+    public int GetProjectProductionInvested(Civilization civ, City city, CrisisProjectData project)
+    {
+        int index=GetCivIndex(civ); bool local=project!=null && project.projectEffect!=CrisisProjectData.ProjectEffect.SharedCrisisProject;
+        return ActiveContext?.projectProgress?.FirstOrDefault(p=>p.civilizationIndex==index && p.projectName==project?.projectName
+            && (!local || p.cityId==city?.gameObject.GetRuntimeId()))?.productionInvested ?? 0;
+    }
+
+    private int ResolveProjectCost(Civilization civ, CrisisProjectData project)
+    {
+        if (project == null) return 1;
+        if (!project.useDynamicProductionCost) return Mathf.Max(1,project.productionCost);
+        int sum=(civ?.cities ?? new List<City>()).Where(c=>c!=null).OrderByDescending(c=>c.GetProductionPerTurn())
+            .Take(Mathf.Max(1,project.equivalentTopCityCount)).Sum(c=>Mathf.Max(0,c.GetProductionPerTurn()));
+        return Mathf.Max(project.minimumResolvedProductionCost,sum*Mathf.Max(1,project.targetProductionTurns));
+    }
+
+    private void ApplyCrisisProjectEffect(Civilization civ, City city, CrisisProjectData project)
+    {
+        var asteroid=ActiveContext?.asteroidState;
+        if (asteroid == null) return;
+        if (project.projectEffect == CrisisProjectData.ProjectEffect.EmergencyShelters || project.projectEffect == CrisisProjectData.ProjectEffect.InfrastructureHardening)
+        {
+            int id=city.gameObject.GetRuntimeId();
+            var prep=asteroid.cityPreparations.FirstOrDefault(p=>p.cityId==id);
+            if (prep==null) { prep=new AsteroidCityPreparation { cityId=id }; asteroid.cityPreparations.Add(prep); }
+            if (project.projectEffect==CrisisProjectData.ProjectEffect.EmergencyShelters) prep.sheltersCompleted=true;
+            else prep.infrastructureHardeningCompleted=true;
+            return;
+        }
+        if (!asteroid.intercepted && !asteroid.impactResolved && TurnsRemaining >= 0)
+        {
+            asteroid.intercepted=true; asteroid.interceptionTurn=CurrentTurn;
+            Debug.Log($"[AsteroidStrike] Interception successful for {civ.civData?.civName} on turn {CurrentTurn}.");
+            OnAsteroidIntercepted?.Invoke(civ);
+        }
     }
 
     private bool ProjectPrerequisitesMet(Civilization civ, CrisisProjectData project)
@@ -922,11 +993,16 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     private void AdvanceActivePhase(int round)
     {
         int elapsed = round - crisisActiveTurn;
+        if(activeCrisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown) AssignAsteroidAIProduction();
         LogCrisisDebug("AdvanceActivePhase", $"round={round} elapsed={elapsed} phase={currentPhase} duration={activeCrisis.durationTurns} escalationAt={activeCrisis.escalationAtTurn} climaxAt={activeCrisis.climaxAtTurn}");
 
         // Check duration expiry
-        if (activeCrisis.durationTurns > 0 && elapsed >= activeCrisis.durationTurns)
+        // Resolve at the following round boundary so every civilization receives the
+        // production tick while the display reads zero; interception can win on that tick.
+        if (activeCrisis.durationTurns > 0 && elapsed > activeCrisis.durationTurns)
         {
+            if (activeCrisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown)
+                ResolveAsteroidDeadline();
             LogCrisisDebug("AdvanceActivePhase", $"Duration expired for {DescribeCrisis(activeCrisis)}; entering resolution.");
             SetPhase(CrisisData.CrisisPhase.Resolution);
             EndCrisis();
@@ -966,6 +1042,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         LogCrisisDebug("ActivateCrisis", "Applying world overrides.");
         ReapplyWorldOverridesForCurrentPhase();
         ApplyCrisisMechanicOnActivation();
+        if(activeCrisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown) AssignAsteroidAIProduction();
         SnapshotCrisisActorCounts();
 
         LogCrisisDebug("ActivateCrisis", "Invoking OnCrisisStarted listeners.");
@@ -1830,10 +1907,17 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 continentCounts[id]=continentCounts.TryGetValue(id,out var count)?count+city.level:city.level;
             }
             if (continentCounts.Count==0) return null;
-            context.targetContinentId=continentCounts.OrderByDescending(k=>k.Value).First().Key;
+            // Asteroids choose once from every inhabited continent. Other continent crises retain
+            // their established highest-risk/population targeting behaviour.
+            var validContinents=continentCounts.Keys.ToList();
+            context.targetContinentId=crisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown
+                ? validContinents[UnityEngine.Random.Range(0,validContinents.Count)]
+                : continentCounts.OrderByDescending(k=>k.Value).First().Key;
             foreach(var civ in civs)
                 if(civ?.cities != null && civ.cities.Any(city=>city!=null && (TileSystem.GetForPlanet(city.planetIndex)??TileSystem.Instance)?.GetTileData(city.centerTileIndex)?.continentId==context.targetContinentId))
                     AddParticipantSnapshot(context,civ);
+            if (crisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown)
+                InitializeAsteroidContext(context,crisis,civs,turn);
             return context;
         }
 
@@ -1877,6 +1961,113 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             context.targetCityId = city != null ? city.gameObject.GetRuntimeId() : -1;
         }
         return context;
+    }
+
+    private void InitializeAsteroidContext(CrisisRuntimeContext context, CrisisData crisis, List<Civilization> civs, int turn)
+    {
+        var affectedCities=civs.Where(c=>c!=null).SelectMany(c=>c.cities ?? new List<City>()).Where(city=>city!=null)
+            .Where(city=>(TileSystem.GetForPlanet(city.planetIndex)??TileSystem.Instance)?.GetTileData(city.centerTileIndex)?.continentId==context.targetContinentId).ToList();
+        int planet=affectedCities.FirstOrDefault()?.planetIndex ?? 0;
+        var ts=TileSystem.GetForPlanet(planet) ?? TileSystem.Instance;
+        var tiles=new List<int>(); var preferred=new List<int>();
+        if(ts!=null) for(int i=0;i<ts.TileCount;i++)
+        {
+            var tile=ts.GetTileData(i); if(tile==null || tile.continentId!=context.targetContinentId || !tile.isLand) continue;
+            tiles.Add(i);
+            if(tile.owner!=null || tile.improvement!=null || tile.controllingCity!=null) preferred.Add(i);
+            if(tile.improvement!=null)
+                context.infrastructureStates.Add(new CrisisInfrastructureRecord { planetIndex=planet,tileIndex=i,state=ImprovementManager.CrisisImprovementState.Healthy });
+        }
+        var pool=preferred.Count>0?preferred:tiles;
+        int impact=pool.Count>0?pool[UnityEngine.Random.Range(0,pool.Count)]:affectedCities.FirstOrDefault()?.centerTileIndex ?? -1;
+        context.asteroidState=new AsteroidThreatState { planetIndex=planet,targetContinentId=context.targetContinentId,
+            impactTileIndex=impact,impactTurn=turn+crisis.ominousWarningTurns+crisis.obviousWarningTurns+crisis.durationTurns };
+        foreach(var project in crisis.crisisProjects ?? Array.Empty<CrisisProjectData>()) foreach(var civIndex in context.targetCivilizationIndices)
+        {
+            var civ=GetCivByIndex(civIndex); if(civ==null || project==null) continue;
+            context.projectProgress.Add(new CrisisProjectProgress { projectName=project.projectName,civilizationIndex=civIndex,
+                resolvedProductionCost=ResolveProjectCost(civ,project) });
+        }
+        Debug.Log($"[AsteroidStrike] Selected continent {context.targetContinentId} containing {affectedCities.Count} cities across {context.targetCivilizationIndices.Count} civilizations; impact tile {impact}.");
+    }
+
+    private void AssignAsteroidAIProduction()
+    {
+        if(ActiveContext?.asteroidState==null || ActiveContext.asteroidState.intercepted) return;
+        var interceptor=activeCrisis?.crisisProjects?.FirstOrDefault(p=>p!=null && p.projectEffect==CrisisProjectData.ProjectEffect.SharedCrisisProject);
+        if(interceptor==null) return;
+        foreach(int index in ActiveContext.targetCivilizationIndices)
+        {
+            var civ=GetCivByIndex(index); if(civ==null || civ.isPlayerControlled || IsCrisisProjectCompleted(civ,interceptor)) continue;
+            // Empty queues are claimed in descending industrial order. Existing crisis assignments
+            // remain at the head, so ordinary AI planning cannot overwrite them every turn.
+            foreach(var city in (civ.cities??new List<City>()).Where(c=>c!=null && (c.productionQueue==null || c.productionQueue.Count==0))
+                .OrderByDescending(c=>c.GetProductionPerTurn()).Take(Mathf.Max(1,interceptor.equivalentTopCityCount)))
+                city.QueueProduction(interceptor);
+        }
+    }
+
+    private void ResolveAsteroidDeadline()
+    {
+        var asteroid=ActiveContext?.asteroidState;
+        if(asteroid==null || asteroid.intercepted || asteroid.impactResolved) return;
+        asteroid.impactResolved=true;
+        var ts=TileSystem.GetForPlanet(asteroid.planetIndex) ?? TileSystem.Instance;
+        if(ts==null || asteroid.impactTileIndex<0) return;
+        for(int tileIndex=0;tileIndex<ts.TileCount;tileIndex++)
+        {
+            var tile=ts.GetTileData(tileIndex);
+            if(tile==null || tile.continentId!=asteroid.targetContinentId) continue;
+            int distance=ts.GetWrappedHexDistance(asteroid.impactTileIndex,tileIndex);
+            if(distance>asteroid.disruptionRadius) continue;
+            float severity=GetAsteroidSeverity(distance,asteroid.epicenterRadius,asteroid.severeRadius,asteroid.disruptionRadius);
+            var city=tile.controllingCity;
+            var prep=city!=null?asteroid.cityPreparations.FirstOrDefault(p=>p.cityId==city.gameObject.GetRuntimeId()):null;
+            if(tile.improvement!=null && UnityEngine.Random.value < ApplyAsteroidMitigation(severity,prep?.infrastructureHardeningCompleted==true,.6f))
+            {
+                ImprovementManager.Instance?.SetCrisisState(asteroid.planetIndex,tileIndex,ImprovementManager.CrisisImprovementState.Destroyed);
+                var record=ActiveContext.infrastructureStates.FirstOrDefault(r=>r.planetIndex==asteroid.planetIndex&&r.tileIndex==tileIndex);
+                if(record==null) { record=new CrisisInfrastructureRecord { planetIndex=asteroid.planetIndex,tileIndex=tileIndex }; ActiveContext.infrastructureStates.Add(record); }
+                record.state=ImprovementManager.CrisisImprovementState.Destroyed;
+                RecordAttributedLoss(tile.improvementOwner ?? tile.owner,CrisisAttributedLoss.LossKind.Improvement,1);
+            }
+        }
+        foreach(int civIndex in ActiveContext.targetCivilizationIndices) foreach(var city in GetCivByIndex(civIndex)?.cities?.Where(c=>c!=null).ToList() ?? new List<City>())
+        {
+            var cityTile=ts.GetTileData(city.centerTileIndex); if(city.planetIndex!=asteroid.planetIndex || cityTile?.continentId!=asteroid.targetContinentId) continue;
+            int distance=ts.GetWrappedHexDistance(asteroid.impactTileIndex,city.centerTileIndex); if(distance>asteroid.disruptionRadius) continue;
+            float severity=GetAsteroidSeverity(distance,asteroid.epicenterRadius,asteroid.severeRadius,asteroid.disruptionRadius);
+            var prep=asteroid.cityPreparations.FirstOrDefault(p=>p.cityId==city.gameObject.GetRuntimeId());
+            int loss=Mathf.Min(city.level-1,Mathf.Max(0,Mathf.RoundToInt(city.level*ApplyAsteroidMitigation(severity,prep?.sheltersCompleted==true,.7f))));
+            if(loss>0) { city.level-=loss; RecordAttributedLoss(city.owner,CrisisAttributedLoss.LossKind.Population,loss); }
+            int buildingLosses=0;
+            foreach(var built in city.EnumerateOperationalBuildingsWithIndex().ToList())
+                if(UnityEngine.Random.value<ApplyAsteroidMitigation(severity,prep?.infrastructureHardeningCompleted==true,.6f))
+                { city.SetBuildingDisasterDamaged(built.index,true); buildingLosses++; }
+            if(buildingLosses>0) RecordAttributedLoss(city.owner,CrisisAttributedLoss.LossKind.Building,buildingLosses);
+            city.defenseRating=Mathf.Max(0,city.defenseRating-Mathf.RoundToInt(city.maxDefense*severity));
+            city.orderRating=Mathf.Max(0,city.orderRating-Mathf.RoundToInt(40f*severity));
+            city.moraleRating=Mathf.Max(0,city.moraleRating-Mathf.RoundToInt(40f*severity));
+        }
+        Debug.Log($"[AsteroidStrike] Impact resolved once at planet {asteroid.planetIndex}, tile {asteroid.impactTileIndex}.");
+        OnAsteroidImpact?.Invoke(asteroid.planetIndex,asteroid.impactTileIndex);
+    }
+
+    public static float GetAsteroidSeverity(int distance, int epicenterRadius=1, int severeRadius=3, int disruptionRadius=6)
+    {
+        if(distance<0 || distance>disruptionRadius) return 0f;
+        if(distance<=epicenterRadius) return 1f;
+        if(distance<=severeRadius) return .6f;
+        return .25f;
+    }
+
+    public static float ApplyAsteroidMitigation(float damage, bool prepared, float reduction)
+        => Mathf.Max(0f,damage)*(prepared?1f-Mathf.Clamp01(reduction):1f);
+
+    private void RecordAttributedLoss(Civilization victim, CrisisAttributedLoss.LossKind kind, int amount)
+    {
+        if(ActiveContext==null || victim==null || amount<=0) return;
+        ActiveContext.attributedLosses.Add(new CrisisAttributedLoss { victimCivilizationIndex=GetCivIndex(victim),kind=kind,amount=amount,turn=CurrentTurn });
     }
 
     private bool IsEligiblePoliticalStructure(CrisisData crisis, Civilization civ)
@@ -2069,6 +2260,9 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
                 break;
             case MissionData.ObjectiveType.PreserveInfrastructure:
             {
+                // A successful interception leaves every snapshotted asset safe (100%). This is
+                // the intentional no-impact success path: preparedness players are not punished
+                // because another civilization completed the interceptor.
                 int total=ActiveContext?.infrastructureStates?.Count ?? 0;
                 int safe=ActiveContext?.infrastructureStates?.Count(r=>r.state!=ImprovementManager.CrisisImprovementState.Destroyed) ?? 0;
                 state.objectiveProgress[state.currentObjectiveIndex]=total>0?Mathf.RoundToInt(safe*100f/total):100;

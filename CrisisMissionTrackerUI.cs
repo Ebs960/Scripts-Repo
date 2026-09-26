@@ -614,7 +614,14 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
         int turnsRemaining = subscribedCrisisManager.GetDisplayTurnsRemaining();
         if (turnsRemaining >= 0)
-            builder.AppendLine($"Turns Remaining: {turnsRemaining}");
+        {
+            if (crisis.mechanic==CrisisData.CrisisMechanic.AsteroidCountdown)
+            {
+                builder.AppendLine($"ASTEROID IMPACT IN: {turnsRemaining} TURNS");
+                builder.AppendLine($"Threatened Region: {subscribedCrisisManager.GetThreatenedRegionDisplayName()}");
+            }
+            else builder.AppendLine($"Turns Remaining: {turnsRemaining}");
+        }
 
         string description = ResolveCrisisNarrative(crisis, subscribedCrisisManager.CurrentPhase);
         if (!string.IsNullOrWhiteSpace(description))

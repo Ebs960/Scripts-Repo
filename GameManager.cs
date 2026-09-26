@@ -3221,6 +3221,7 @@ public class GameManager : MonoBehaviour
         var equipmentLookup = BuildAssetLookup(ResourceCache.GetAllEquipment(), e => e.equipmentName);
         var projectileLookup = BuildAssetLookup(ResourceCache.GetAllProjectiles(), p => p.projectileName);
         var districtLookup = BuildAssetLookup(ResourceCache.GetAllDistricts(), d => d.districtName);
+        var crisisProjectLookup = BuildAssetLookup(Resources.FindObjectsOfTypeAll<CrisisProjectData>(), p => p.name);
 
         foreach (var civ in allCivs)
         {
@@ -3284,6 +3285,7 @@ public class GameManager : MonoBehaviour
                         City.ProdEntry.Type.District when districtLookup.TryGetValue(entryData.dataName, out var district) => district,
                         City.ProdEntry.Type.Equipment when equipmentLookup.TryGetValue(entryData.dataName, out var equipment) => equipment,
                         City.ProdEntry.Type.Projectile when projectileLookup.TryGetValue(entryData.dataName, out var projectile) => projectile,
+                        City.ProdEntry.Type.CrisisProject when crisisProjectLookup.TryGetValue(entryData.dataName, out var crisisProject) => crisisProject,
                         _ => null
                     };
 
@@ -3334,6 +3336,8 @@ public class GameManager : MonoBehaviour
                 return new City.ProdEntry(projectile, projectile.productionCost, goldCost, null, null, false, false, type, projectile.resourceCosts);
             case MissileData missile:
                 return new City.ProdEntry(missile, missile.productionCost, goldCost, null, null, false, false, type);
+            case CrisisProjectData project:
+                return new City.ProdEntry(project, project.productionCost, 0, null, null, false, false, type);
             default:
                 return null;
         }
