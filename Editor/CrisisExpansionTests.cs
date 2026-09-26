@@ -33,8 +33,6 @@ public class CrisisExpansionTests
             var civ = civilizationObject.AddComponent<Civilization>();
             civ.corruptionModifier = 0.12f;
             civ.unrestModifier = 0.07f;
-            civ.gold = legacy.goldCost;
-            civ.policyPoints = legacy.policyPointCost;
             civ.earnedLegacies.Add(legacy);
 
             Assert.IsTrue(manager.PromoteLegacy(civ, legacy));

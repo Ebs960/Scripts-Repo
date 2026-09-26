@@ -462,7 +462,7 @@ public class LegacyTrackerUI : MonoBehaviour
         detailIcon.sprite = legacy.icon;
         detailIcon.gameObject.SetActive(legacy.icon != null);
         detailTitle.text = string.IsNullOrWhiteSpace(legacy.legacyName) ? "Legacy" : legacy.legacyName;
-        detailCostText.text = $"Promote Cost: {legacy.goldCost} Gold, {legacy.policyPointCost} Policy Points";
+        detailCostText.gameObject.SetActive(false);
 
         detailDescription.text = !string.IsNullOrWhiteSpace(legacy.description) ? legacy.description : string.Empty;
         detailFlavor.text = !string.IsNullOrWhiteSpace(legacy.flavorText) ? legacy.flavorText : string.Empty;
@@ -480,8 +480,6 @@ public class LegacyTrackerUI : MonoBehaviour
             // Show why they can't promote
             if (playerCiv.activeLegacies != null && playerCiv.activeLegacies.Count >= playerCiv.maxActiveLegacies)
                 detailPromoteLabel.text = "Slots Full";
-            else if (playerCiv.gold < legacy.goldCost || playerCiv.policyPoints < legacy.policyPointCost)
-                detailPromoteLabel.text = "Can't Afford";
             else
                 detailPromoteLabel.text = "Promote";
         }

@@ -523,7 +523,7 @@ public class Civilization : MonoBehaviour
     public float ActiveLegacyHuntingForagingYieldModifier => activeLegacies == null ? 0f : activeLegacies.Where(l=>l!=null && l.institutions!=null).Sum(l=>l.institutions.huntingForagingYieldModifier);
     public float ActiveLegacyRaidYieldModifier => activeLegacies == null ? 0f : activeLegacies.Where(l=>l!=null && l.institutions!=null).Sum(l=>l.institutions.raidYieldModifier);
     [Tooltip("Maximum number of legacies that can be promoted at once")]
-    public int maxActiveLegacies = 3;
+    public int maxActiveLegacies = 4;
 
     [Header("Unrest & Famine")]
     [Tooltip("0–1 scale. Increases when at war, reduces loyalty city-wide.")]

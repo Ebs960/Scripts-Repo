@@ -71,8 +71,8 @@ public class LegacyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Promote a legacy into an active slot. Costs gold + policy points.
-    /// Returns false if the civ can't afford it or has no free slots.
+    /// Promote a legacy into an active slot. Free — only limited by available slots.
+    /// Returns false if the civ has no free slots.
     /// </summary>
     public bool PromoteLegacy(Civilization civ, LegacyData legacy)
     {
@@ -80,12 +80,6 @@ public class LegacyManager : MonoBehaviour
         if (!civ.earnedLegacies.Contains(legacy)) return false;
         if (civ.activeLegacies.Contains(legacy)) return false;
         if (civ.activeLegacies.Count >= civ.maxActiveLegacies) return false;
-        if (civ.gold < legacy.goldCost) return false;
-        if (civ.policyPoints < legacy.policyPointCost) return false;
-
-        // Deduct costs
-        civ.gold -= legacy.goldCost;
-        civ.policyPoints -= legacy.policyPointCost;
 
         // Add to active and apply bonuses
         civ.activeLegacies.Add(legacy);
@@ -114,15 +108,13 @@ public class LegacyManager : MonoBehaviour
         return true;
     }
 
-    /// <summary>Check if a civ can afford to promote a given legacy.</summary>
+    /// <summary>Check if a civ has a free slot to promote a given legacy.</summary>
     public bool CanPromote(Civilization civ, LegacyData legacy)
     {
         if (civ == null || legacy == null) return false;
         if (!civ.earnedLegacies.Contains(legacy)) return false;
         if (civ.activeLegacies.Contains(legacy)) return false;
         if (civ.activeLegacies.Count >= civ.maxActiveLegacies) return false;
-        if (civ.gold < legacy.goldCost) return false;
-        if (civ.policyPoints < legacy.policyPointCost) return false;
         return true;
     }
 

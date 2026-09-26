@@ -18,12 +18,6 @@ public class LegacyData : ScriptableObject
     public string flavorText;
     public Sprite bannerImage;
 
-    [Header("Promotion Cost")]
-    [Tooltip("Policy points required to promote this legacy into an active slot")]
-    public int policyPointCost;
-    [Tooltip("Gold required to promote this legacy into an active slot")]
-    public int goldCost;
-
     [Header("Stat Bonuses (while promoted)")]
     public float attackBonus;
     public float meleeAttackBonus;
