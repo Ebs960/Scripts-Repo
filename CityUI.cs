@@ -548,6 +548,12 @@ if (currentCity == null)
             itemName = pd.projectileName; 
             totalCost = pd.productionCost; 
         }
+        else if (currentProd.data is CrisisProjectData cpd)
+        {
+            itemName = cpd.projectName;
+            totalCost = CrisisManager.Instance != null
+                ? CrisisManager.Instance.GetResolvedProjectCost(currentCity.owner, cpd) : cpd.productionCost;
+        }
         
         // Update UI with production info
         if (currentProductionItemNameText != null)
@@ -691,6 +697,13 @@ if (currentCity == null)
         foreach (Transform t in equipmentContainer) Destroy(t.gameObject);
         if (projectilesContainer != null) 
             foreach (Transform t in projectilesContainer) Destroy(t.gameObject);
+
+        // Temporary crisis work uses the normal production choice and opportunity cost.
+        if (CrisisManager.Instance != null && currentCity?.owner != null)
+            foreach (var project in CrisisManager.Instance.GetAvailableCrisisProjects(currentCity.owner))
+                if (CrisisManager.Instance.CanQueueCrisisProject(currentCity.owner,currentCity,project))
+                    CreateBuildOptionButton(project,project.icon,project.projectName,
+                        CrisisManager.Instance.GetResolvedProjectCost(currentCity.owner,project),buildingsContainer);
 
         // Display Buildings in buildings container
         foreach (var building in availableBuildings.OrderBy(b => b.productionCost))

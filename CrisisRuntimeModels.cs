@@ -48,6 +48,24 @@ public enum CrisisActorTag
     public List<CrisisProjectProgress> projectProgress = new List<CrisisProjectProgress>();
     public List<CrisisAttributedLoss> attributedLosses = new List<CrisisAttributedLoss>();
     public List<CrisisNarrativeSnapshot> narrativeSnapshots = new List<CrisisNarrativeSnapshot>();
+    public AsteroidThreatState asteroidState;
+}
+
+[Serializable] public class AsteroidThreatState
+{
+    public int planetIndex;
+    public int targetContinentId = -1, impactTileIndex = -1, impactTurn = -1;
+    public bool intercepted;
+    public int interceptionTurn = -1;
+    public bool impactResolved;
+    public int epicenterRadius = 1, severeRadius = 3, disruptionRadius = 6;
+    public List<AsteroidCityPreparation> cityPreparations = new List<AsteroidCityPreparation>();
+}
+
+[Serializable] public class AsteroidCityPreparation
+{
+    public int cityId;
+    public bool sheltersCompleted, infrastructureHardeningCompleted;
 }
 
 [Serializable] public class CrisisNarrativeSnapshot
@@ -71,6 +89,7 @@ public enum CrisisActorTag
     public int civilizationIndex;
     public int cityId = -1;
     public int productionInvested;
+    public int resolvedProductionCost;
     public bool completed;
 }
 

@@ -5,7 +5,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b2f9bb0d7c94bdf8444ee2b7125aea6, type: 3}
   m_Name: Asteroid Interception Project
   projectName: Asteroid Interception
-  description: Temporary production option for the active crisis.
+  description: Coordinate observatories, aerospace industries, launch systems, and guidance networks to construct a planetary interceptor before the asteroid reaches the threatened continent.
   productionCost: 100
   goldCost: 0
+  projectEffect: 0
+  useDynamicProductionCost: 1
+  equivalentTopCityCount: 3
+  targetProductionTurns: 5
+  minimumResolvedProductionCost: 100
   validCrisis: {fileID: 11400000, guid: fdaca0ca584e4126909e004b1a2c636e, type: 2}
