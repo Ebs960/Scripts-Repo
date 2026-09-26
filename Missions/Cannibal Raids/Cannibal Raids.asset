@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Cannibal Raids
   crisisName: Cannibal Raids
+  resolutionSplash: {fileID: 21300000, guid: 2a05e65f6fdccff418d1e40b5f3183c5, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: 570269a7556106f4780d5e0711b40c7c, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: 8fad60ee98557244d87b91da3c43943f, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 467abaefff294fd488746d3201491784, type: 3}
   ominousWarningText: "People have begun vanishing at the edge of the wild. Tools, baskets, and unfinished work are sometimes found where they were left, but there is rarely any sign of where their owners went. At night, distant fires burn among the hills and forests where no known village or hunting camp should stand. Scouts following unfamiliar tracks have found discarded possessions belonging to the missing, along with signs that strangers have been watching the roads between our settlements. Parents call their children home before sunset, hunters now travel in groups, and rumors grow darker with every unexplained disappearance. Whatever waits beyond the fields has learned our paths and our habits."
-  obviousWarningText: "The missing have been found—or at least traces of them have. Scouts have discovered a hidden camp beyond our settlements, occupied by armed raiders whose belongings include tools, clothing, and ornaments taken from our people. More fires now appear in the wilderness each night, and watchers report groups moving deliberately toward roads, farms, and isolated homes. These are no wandering strangers looking for food or shelter; they have been studying our settlements and gathering strength. Families are abandoning the outermost dwellings, while hunters sharpen their weapons beside fires that no one allows to die. The raids that once took lone travelers are becoming organized. They are preparing to come for more."
+  obviousWarningText: "The missing have been foundâ€”or at least traces of them have. Scouts have discovered a hidden camp beyond our settlements, occupied by armed raiders whose belongings include tools, clothing, and ornaments taken from our people. More fires now appear in the wilderness each night, and watchers report groups moving deliberately toward roads, farms, and isolated homes. These are no wandering strangers looking for food or shelter; they have been studying our settlements and gathering strength. Families are abandoning the outermost dwellings, while hunters sharpen their weapons beside fires that no one allows to die. The raids that once took lone travelers are becoming organized. They are preparing to come for more."
   crisisStartText: "The hidden raiders have abandoned secrecy. Armed bands now move openly through the wilderness surrounding our settlements, striking travelers and probing the weakest approaches to our territory. Their camps provide places to gather, hide stolen supplies, and send new raiding parties against us; so long as those camps remain, more attackers may follow. Isolated units and poorly defended settlements are especially vulnerable. We can protect our people, retaliate against the raiders, or seek out the camps from which they emerge. What began with disappearances has become a struggle for survival on the frontier."
+  resolutionText: "The raiders are gone. Their hidden camps have been burned, abandoned, or overrun, and the trails that once carried the missing away into the wilderness now stand empty. Search parties recover what belongings they can, though not every family finds the answers they were hoping for. Hunters return to the old paths with new caution, and settlements that pulled back behind stronger walls slowly begin venturing into the fields and forests again. Stories of the disappearances will linger for years, told as warnings to children and travelers alike. The wild has been pushed back from our doorstep, at least for now. What waits beyond the firelight has not been forgotten."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: War of Independence
   crisisName: War of Independence
+  resolutionSplash: {fileID: 21300000, guid: 38f8bc740ddf8f740bfd0ab10a2136cf, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: a21dab0a7cfa53747bf6ef0fd790a60b, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: cfabeea836bf19243a0b86d0e8b77f91, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 974e533ff8987a9409d51361e60ae8b6, type: 3}
   ominousWarningText: "The provinces speak openly of liberty. Local assemblies and influential leaders increasingly challenge decisions imposed by the imperial government, while petitions for greater autonomy become demands that the relationship itself be reconsidered. Imperial symbols disappear from meeting halls and marketplaces, replaced by local colors, old emblems, and new banners whose meaning is unmistakable. Militias drill outside towns under the pretense of maintaining public order, but their officers increasingly answer to provincial leaders rather than imperial officials. Taxes and decrees are resisted with growing confidence. What began as anger at distant rule is becoming a belief that distant rule should end."
   obviousWarningText: "The provinces have rejected imperial authority. Local banners now fly over administrative buildings where imperial standards stood only weeks ago, while militias establish checkpoints and openly pledge loyalty to provincial governments. Officials appointed by the empire withdraw from hostile towns or find their orders ignored by populations that no longer recognize their authority. Forts, warehouses, and tax offices are being transferred into local hands, sometimes peacefully and sometimes under threat. Negotiations continue, but they now concern the terms of separation rather than whether separation should occur. The political break has already happened. War may be the only question left."
   crisisStartText: "The breakaway provinces have declared that imperial rule is finished. Local authorities now command their own militias, administer their own territory, and refuse taxes, decrees, and orders issued by the old government. The existing subject relationship has entered open crisis as liberty desire erupts into a struggle over sovereignty. An overlord may attempt to restore control or negotiate a looser relationship, while a subject may fight for complete independence or seek recognition of greater autonomy. Cities and armies may change hands before the dispute is settled. What was once an internal disagreement between ruler and subject has become a contest over whether the empire will remain whole."
+  resolutionText: "The war has ended, one way or another. Whether the provinces have won their independence, negotiated a looser union, or been returned by force to imperial authority, the fighting that spread across contested cities and armies has finally reached its conclusion. Banners are raised or lowered according to whichever side prevailed, and officials begin the difficult work of establishing a new relationship, or reestablishing an old one, between ruler and ruled. Soldiers on both sides return home to territories forever changed by the dispute over who has the right to govern them. The question of sovereignty that began with petitions and grievances has been settled, for now, in the manner such questions are often finally settled. The empire holds, or it does not. Either way, it will not be quite the same again."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

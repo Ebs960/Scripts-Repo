@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Constitutional Crisis
   crisisName: Constitutional Crisis
+  resolutionSplash: {fileID: 21300000, guid: 59b4f553e5b0c5445bbad406a2aa2680, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: d7ca3b76a3d734041833716c63c771c1, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: cc5ea262fac716647b9e557071658a6a, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: be7feba1f8ce39047a12b8117dc0d54b, type: 3}
   ominousWarningText: "The halls of government are deadlocked. Rival institutions refuse to recognize one another's authority, legislative sessions collapse into procedural disputes, and appointments remain vacant because no faction will accept the other's nominees. Political leaders increasingly speak not of compromise but of illegitimacy, accusing their opponents of violating the very rules that give government its authority. Laws pass but go unenforced; court decisions are challenged; ministries receive conflicting instructions from officials who each claim the constitution is on their side. Citizens continue their daily lives, but confidence in the state is beginning to weaken. The machinery of government still moves. Its gears are starting to grind against one another."
   obviousWarningText: "The government can no longer govern effectively. Rival institutions now openly dispute who possesses lawful authority, and officials refuse orders issued by branches of government they no longer recognize as legitimate. Legislative chambers remain paralyzed while courts, ministers, governors, and executives offer competing interpretations of the constitution. Demonstrations gather outside government buildings as citizens choose sides in a dispute that was once confined to legal arguments and parliamentary procedure. Even routine administration is beginning to stall because civil servants no longer know whose instructions will survive the week. No army has seized power and no revolution has yet overthrown the state. But unless the dispute is resolved, constitutional government may cease to function altogether."
   crisisStartText: "The constitutional order has reached its breaking point. Rival branches of government claim conflicting authority, political factions refuse compromise, and ordinary administration is beginning to freeze beneath disputes over legitimacy and law. Elections, legislatures, governors, and other institutions may become central to resolving the crisis, while prolonged deadlock can damage order and confidence throughout the civilization. Unlike a coup, there is no single army to defeat and no rebel camp to destroy. The state must find a lawful settlement, assemble a political coalition, or concentrate enough emergency authority to make government function again. The constitution still exists. Whether everyone will continue to accept it is another question."
+  resolutionText: "The deadlock has broken. Whether through a new settlement, a decisive election, or the quiet reassertion of a single authority, the rival institutions that once refused to recognize one another have finally agreed, however uneasily, on who governs. Ministries resume issuing orders that civil servants no longer hesitate to follow, and courts, legislatures, and executives return to the ordinary business of administration. Trust between factions remains fragile, and the settlement reached may satisfy no one completely, but the machinery of state is turning again. Citizens who spent months uncertain which authority to obey can once more rely on a single, functioning government. The constitution has been tested nearly to its breaking point. It has not broken."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 12

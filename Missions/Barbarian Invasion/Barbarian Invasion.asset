@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Barbarian Invasion
   crisisName: Barbarian Invasion
+  resolutionSplash: {fileID: 21300000, guid: 87d4a1c78d4d76e49ae96eb6a1e48829, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: 785424dee995ddb40ad2c5a331d3e437, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: f5fe9cc936965624090683521a299849, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 73716a6a369469a4f9caf66b9266372b, type: 3}
   ominousWarningText: "Smoke rises beyond the frontier. Refugees arrive from isolated villages carrying stories of stolen livestock, burned storehouses, and patrols that vanished after riding into the borderlands. Watchmen have seen scattered warbands moving through the hills in greater numbers than usual, sometimes traveling beneath banners that have never before appeared together. Traders returning from the frontier say old rivalries among the raiders seem to have been set aside, at least for now. Fort commanders ask for reinforcements while local farmers begin moving families and supplies behind stronger walls. No great army has yet crossed the border. But something is drawing the warbands together."
   obviousWarningText: "The warbands have united. Their camps now stretch across the frontier, marked by hundreds of fires and banners belonging to tribes that once fought one another as often as they fought us. Scouts report large formations of warriors, mounted troops, supply wagons, and siege equipment moving toward our lands along several routes. Refugees crowd the roads ahead of them, while frontier garrisons signal that they may soon be cut off. This is no season of scattered raids and stolen cattle. Someone has forged the border tribes into an army. They are marching toward our cities."
   crisisStartText: "The frontier has broken. The scattered warbands beyond our borders have gathered into a true invasion force, and their armies are now moving against our cities, roads, and outlying settlements. Large groups of hostile warriors will cross into our territory while their camps and forces continue to threaten the borderlands. Cities may be attacked or even lost if defenses collapse, but any territory taken can still be reclaimed. The invasion can be met by destroying the enemy in the field, striking back at its strongholds, or refusing to surrender a single city. The age of raids is over. This is war."
+  resolutionText: "The frontier holds. Whether through steel, diplomacy, or sheer endurance, the warbands that once threatened to overrun our lands have been broken, scattered, or turned back beyond the borders they crossed. Refugees begin the slow journey home to farms and villages left empty during the fighting, while soldiers bury their dead and tend to the wounded who carried the defense through its hardest days. Captured banners and abandoned camps stand as evidence of an invasion that very nearly succeeded. Rebuilding will take seasons, and the scars left by burned granaries and empty watchtowers will not fade quickly, but the frontier is ours again. The age of raids may return, as it always has before. For now, the fires beyond the border have gone quiet."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 10

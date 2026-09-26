@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Great Plague
   crisisName: Great Plague
+  resolutionSplash: {fileID: 21300000, guid: 91f1ee3919716d145a30ebfc7c73ee53, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: 62abc256b20d62a478c1b77f585d8d0e, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: 82c3002c4b5a9c345a97db5c361cf31d, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 7854f7cfa3f0568499f10fbd8b2cfe80, type: 3}
   ominousWarningText: "A strange sickness has begun moving quietly from house to house. It starts with fever and exhaustion, then leaves some victims too weak to rise from their beds for days. Healers disagree over its cause, and remedies that seem to help one patient fail completely on another. Markets grow quieter as families avoid crowded streets, travelers are questioned at city gates, and rumors spread faster than any physician can answer them. A few homes have already shuttered themselves entirely, refusing visitors out of fear that the illness might enter with them. No one yet knows whether this is a passing outbreak or something far worse. Every cough now carries the weight of rumor."
   obviousWarningText: "The sickness is no longer contained. Entire neighborhoods are reporting new cases, and healers who once treated a handful of patients now find lines forming outside their doors before sunrise. Families are carrying the sick from overcrowded homes while officials struggle to separate those who may be infected from those who are still healthy. Trade and travel are beginning to spread the disease beyond the first affected cities, and reports from neighboring settlements describe the same symptoms appearing there. Fear is emptying markets, disrupting work, and turning strangers away from one another. The plague is spreading faster than our cities can organize against it. What began in a few houses now threatens the entire realm."
   crisisStartText: "The sickness has become a plague. Infection now moves between cities, carried by travelers, crowded streets, and the trade routes that once bound our civilization together. Infected cities will struggle with illness, weaker growth, declining morale, and the possibility of population loss until the disease finally burns itself out or recovery takes hold. Medical knowledge and disease resistance can slow its spread, but even the strongest cities are not completely safe. Protecting healthy settlements, helping infected populations recover, and preserving as many lives as possible will define the months ahead. The enemy cannot be seen marching toward our gates; it is already among us."
+  resolutionText: "The plague has burned itself out. Markets that emptied in fear are filling again, and healers who once faced lines stretching before sunrise report fewer new cases with each passing week. Families who lost members to the sickness begin the long process of mourning and rebuilding, while cities that avoided the worst of the outbreak send aid to those still recovering. Trade routes reopen cautiously, though travelers are still watched carefully at city gates. The disease will be remembered in the empty houses it left behind and the lessons it taught about how quickly illness can move between our cities. The sickness has passed. Its scars will remain for a generation."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 10

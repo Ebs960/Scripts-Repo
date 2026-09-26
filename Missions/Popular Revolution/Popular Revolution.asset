@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Popular Revolution
   crisisName: Popular Revolution
+  resolutionSplash: {fileID: 21300000, guid: 5aee3abdce1629745becfa812fb0fda4, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: a2659cd9ab68f9441baa82172229b3e2, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: 1c2c85e82faf9cf4997db67cd917f96a, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 44e4360274233f84697a9a6846dc1f18, type: 3}
   ominousWarningText: "The streets are restless. Pamphlets pass from hand to hand in workshops, universities, taverns, and crowded tenements, while meetings forbidden by local authorities grow larger each night. Workers speak openly of injustice, students demand political change, and dissatisfied citizens increasingly argue that the existing system cannot be repaired through ordinary petitions or elections. Slogans appear on walls faster than officials can remove them, and local leaders who once urged patience are losing control of the movement to younger and angrier voices. Police patrols receive insults where they once received silence. The old loyalties have not vanished yet. But they are beginning to disappear."
   obviousWarningText: "The demonstrations have become an uprising. Crowds occupy major squares, barricades rise across important streets, and local committees begin directing food, messages, and volunteers without permission from the government. Some security forces continue following orders, while others hesitate, desert their posts, or refuse to confront neighbors and relatives among the protesters. Government offices close as officials retreat toward defensible districts, leaving entire neighborhoods effectively governed by the revolutionaries themselves. Banners and slogans that once appeared secretly now hang openly from windows and public buildings. The authorities still control the state. They are rapidly losing control of the streets."
   crisisStartText: "The unrest in the streets has become a revolution. Demonstrations have hardened into organized resistance, and rebellious forces are appearing in cities where order, happiness, and loyalty have collapsed. Affected cities may slip further from government control as revolutionary groups organize, spread their influence, and challenge local authorities. The uprising can be answered with reform, political appeasement, or overwhelming force, but each response will shape what kind of state emerges afterward. Restoring order without addressing the anger beneath it may win the immediate struggle while leaving deeper wounds behind. The people are no longer asking whether the system will change. They are fighting over who will decide what replaces it."
+  resolutionText: "The uprising has reached its resolution. Whether through reform, negotiation, or the restoration of order by force, the barricades are coming down and the committees that governed the streets are giving way to whatever settlement has finally been reached. Some cities emerge with new freedoms and new leaders; others return, uneasily, to the authority they rose against. The anger that fueled the revolution has not vanished, only quieted, and those who now hold power inherit the task of proving that change was worth the cost. Banners that hung from windows are taken down, though the memory of what they represented will not fade so easily. The revolution has ended. What it changed is still being decided."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15

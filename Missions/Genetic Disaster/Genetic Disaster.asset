@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -6,9 +6,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Genetic Disaster
   crisisName: Genetic Disaster
+  resolutionSplash: {fileID: 21300000, guid: 2623ec828712ad143a7292226d827139, type: 3}
+  crisisStartSplash: {fileID: 21300000, guid: c393e0085a8400e40b936cd8db88f73f, type: 3}
+  obviousWarningSplash: {fileID: 21300000, guid: e3df5dd0e760c1c4592d52b87e95d761, type: 3}
+  ominousWarningSplash: {fileID: 21300000, guid: 87254d71facf3ea4889b16528e26a2ab, type: 3}
   ominousWarningText: "The latest genetic trials are producing changes that no model predicted. Cell cultures alter themselves several generations after the procedures that were supposed to stabilize them, while experimental organisms develop traits that researchers never deliberately introduced. At first the anomalies are treated as extraordinary scientific discoveries, but excitement gives way to concern when separate laboratories report remarkably similar results. Genetic sequences believed to be stable begin changing again under ordinary environmental pressure, suggesting that the modifications are continuing without further intervention. Researchers disagree over whether the process represents adaptation, contamination, or an entirely new mechanism. The experiments have ended. The mutations have not."
   obviousWarningText: "Containment is failing. Multiple specimens are changing simultaneously, with new mutations appearing faster than laboratories can catalogue, isolate, or reverse them. Emergency protocols designed for ordinary biological accidents prove inadequate when altered organisms begin adapting to the very measures intended to contain them. Laboratories seal entire wings while researchers evacuate samples, destroy compromised material, and attempt to determine whether any mutations have already left controlled environments. Reports from separate facilities suggest that the phenomenon is no longer confined to a single experiment or research team. Every hour brings new traits and new uncertainties. If the altered material escapes containment, this will no longer be a laboratory problem."
   crisisStartText: "The mutations have escaped the limits of the laboratory. Genetic alterations once confined to controlled experiments are now appearing in organisms, populations, and experimental units outside their intended environments. Some mutations may create viable new forms of life, while others produce unstable or hostile creatures that threaten surrounding settlements. Advanced genetic civilizations may possess the knowledge to stabilize the outbreak, but they may also bear greater responsibility for having created the conditions that allowed it to begin. The altered can be cured, destroyed, or accepted as something fundamentally new. Biology itself has become unpredictable, and there is no guarantee that restoring the old order is still possible."
+  resolutionText: "The mutations have stabilized, been contained, or simply run their course. Laboratories that sealed entire wings in the crisis's worst days slowly reopen, cataloguing what remains of the altered specimens and organisms that escaped their control. Some of the new forms of life will be studied, some destroyed, and some quietly accepted as permanent additions to the world beyond the laboratory. Researchers responsible for the original experiments face scrutiny that will shape genetic science for a generation. Whatever answers remain about how the mutations began, our civilization has learned exactly how quickly control over life itself can slip away. The specimens are catalogued. The questions they raised are not."
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 15
