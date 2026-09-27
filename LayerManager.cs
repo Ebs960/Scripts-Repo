@@ -272,10 +272,17 @@ public class LayerManager : MonoBehaviour
         // Gas giant visuals are ONLY valid on planets that have Atmosphere and do not have Surface.
         bool enableGasGiantVisuals = IsLayerSupported(PlanetLayerType.Atmosphere) && !IsLayerSupported(PlanetLayerType.Surface);
 
-        // Legacy behavior: terrain renderer disabled for gas giant planets based on support (not current visibility).
+        // Keep the shared manager alive for LUT, wrapping, overlays, and picking helpers.
+        // Planets without physical terrain simply have no chunks to show.
         if (terrainRenderer != null)
         {
-            terrainRenderer.enabled = !enableGasGiantVisuals;
+            terrainRenderer.enabled = true;
+            PlanetLayerType primaryView = orbitVisible
+                ? PlanetLayerType.Orbit
+                : underwaterVisible
+                    ? PlanetLayerType.Underwater
+                    : PlanetLayerType.Surface;
+            terrainRenderer.ApplyViewLayer(primaryView);
         }
 
         // Visibility rule: show gas giant when Atmosphere is visible and Surface is NOT visible (Surface not supported on true gas giants).
@@ -448,4 +455,3 @@ public class LayerManager : MonoBehaviour
         return null;
     }
 }
-
