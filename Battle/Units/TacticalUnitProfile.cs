@@ -54,7 +54,6 @@ public sealed class TacticalUnitProfile : ScriptableObject
     public bool isTransport;
     public bool isCarrier;
     public int transportCapacity;
-    [Tooltip("Rounds an aircraft can remain launched; -1 means unlimited.")] public int tacticalFuelRounds = -1;
     public TacticalWeaponProfile[] weapons;
 
     public float highGroundMultiplier = 1f;
