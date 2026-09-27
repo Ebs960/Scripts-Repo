@@ -29,6 +29,8 @@ public class UIManager : MonoBehaviour
         public Action onConfirm;
         public CrisisData crisis;
         public List<MissionData> missions;
+        public List<MissionSelectionPopupUI.OptionData> customOptions;
+        public List<Action> customActions;
     }
 
     public static UIManager Instance { get; private set; }
@@ -1322,6 +1324,22 @@ public class UIManager : MonoBehaviour
         });
     }
 
+    public void ShowIndependenceDemand(IndependenceDemand demand, Action accept, Action reject)
+    {
+        if (demand == null) return;
+        EnqueueModal(new ModalRequest {
+            kind=ModalKind.Selection,
+            title="Independence Ultimatum",
+            body=$"{demand.subjectCivName} demands Full Independence. Rejecting the demand will begin a War of Independence.",
+            allowClose=false,
+            customOptions=new List<MissionSelectionPopupUI.OptionData> {
+                new MissionSelectionPopupUI.OptionData { title="ACCEPT INDEPENDENCE",body="Peacefully release the subject as an independent civilization." },
+                new MissionSelectionPopupUI.OptionData { title="REJECT DEMAND",body="Refuse separation and fight to preserve the empire." }
+            },
+            customActions=new List<Action> { accept,reject }
+        });
+    }
+
     private void EnqueueModal(ModalRequest request)
     {
         if (request == null) return;
@@ -1809,9 +1827,24 @@ public class UIManager : MonoBehaviour
         foreach (Transform child in selectionGrid)
             Destroy(child.gameObject);
 
-        var missions = request.missions ?? new List<MissionData>();
-        foreach (var mission in missions)
-            BuildMissionCrisisFallbackMissionCard(selectionGrid, mission, request.crisis);
+        if (request.customOptions != null)
+        {
+            for (int i=0;i<request.customOptions.Count;i++)
+            {
+                int optionIndex=i;
+                var option=request.customOptions[i];
+                var button=CreateMissionCrisisFallbackButton(option.title,selectionGrid,out var label);
+                label.text=$"{option.title}\n\n{option.body}";
+                button.interactable=option.interactable;
+                button.onClick.AddListener(()=>OnSelectionOptionChosen(request,optionIndex));
+            }
+        }
+        else
+        {
+            var missions = request.missions ?? new List<MissionData>();
+            foreach (var mission in missions)
+                BuildMissionCrisisFallbackMissionCard(selectionGrid, mission, request.crisis);
+        }
 
         // Selection must be chosen; hide the close/defer button.
         selectionCloseButton.gameObject.SetActive(false);
@@ -1839,6 +1872,7 @@ public class UIManager : MonoBehaviour
 
     private List<MissionSelectionPopupUI.OptionData> BuildSelectionOptions(ModalRequest request)
     {
+        if (request?.customOptions != null) return request.customOptions;
         var options = new List<MissionSelectionPopupUI.OptionData>(4);
         if (request?.missions == null) return options;
 
@@ -1860,6 +1894,14 @@ public class UIManager : MonoBehaviour
 
     private void OnSelectionOptionChosen(ModalRequest request, int index)
     {
+        if (request?.customActions != null)
+        {
+            if (index < 0 || index >= request.customActions.Count) return;
+            var action=request.customActions[index];
+            CloseCurrentMissionCrisisModal();
+            action?.Invoke();
+            return;
+        }
         if (request?.missions == null || index < 0 || index >= request.missions.Count)
         {
             ShowNotification("That mission option is not available.");
