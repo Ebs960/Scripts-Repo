@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: No Negotiations Mission
   missionName: No Negotiations
-  description: Crisis-specific response objective.
+  description: "Concessions to terror only fund the next demand. Eliminate {Objective0Target} terrorist cells or crisis units and demonstrate that political violence will be met with sustained enforcement rather than bargaining."
+  splashImage: {fileID: 21300000, guid: e90351ee4b7c6f847806b8998971e251, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 262f0eebe3219b845b7158598980ad7a, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 7e1f64e548fe5984a9b7b63950ad2cae, type: 3}
+  flavorText: "Some advisers argue that selective compromise can buy temporary calm. This mission rejects that premise. Cells that kill civilians to gain leverage are betting that fear will lower our threshold for concession faster than they lose operational capacity. Security forces will pursue the networks, couriers, and armed teams directly, reducing the threat until intimidation ceases to be a viable strategy. There will be criticism, and there will be pressure to trade principles for quiet. The state must show that murder is not an accepted negotiating instrument."
+  victoryFlavorText: "Enough cells were dismantled that coordinated terror operations collapsed. Surviving militants are fragmented, isolated, and far less able to convert attacks into political leverage. The message to imitators is clear: coercive violence produced attrition, not concessions. Deterrence is restored through demonstrated consequence."
+  failureFlavorText: "Cell elimination targets were not met, leaving enough operational capacity for continued attacks and propaganda wins. Each unresolved network preserves the belief that sustained violence can still influence policy. Public pressure for short-term deals grows as casualties continue. Refusal to negotiate failed because enforcement did not finish the job."
   participantRole: 0
   strategyTags: 129
   objectives:

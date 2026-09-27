@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Buy Their Loyalty
   description: "The conspiracy draws strength from grievance as much as ambition. Resolve 1 demand from {FactionName}—{Demand}—and separate the dissatisfied from those truly committed to overthrowing the government."
   flavorText: "Not everyone gathering behind closed doors dreams of sitting in the ruler's chair. Some have entered the conspiracy because {FactionName} believes the government ignored a grievance until ordinary politics no longer seemed capable of resolving it. Its immediate demand is clear: {Demand}. Concession may be humiliating, expensive, or bitterly opposed by factions that remained loyal, but governments occasionally survive by giving their enemies less reason to remain enemies. Satisfy enough of the dissatisfied, and the men planning a coup may discover that they no longer possess a coalition willing to carry it out."
+  splashImage: {fileID: 21300000, guid: ca2c4db1a61eea04b819815f36356da3, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: c23c8bfb9f20ec349b2990bee3a5b1a5, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: b37830fec5e67b645b25d17cce01dd86, type: 3}
+  victoryFlavorText: "The key grievance was resolved, and part of the conspiracy's support base peeled away before the coup could mature. Officers and officials who were wavering now choose caution over rebellion, leaving hardliners isolated. Loyalty purchased through concession is imperfect, but imperfect stability beats civil war. The government survives because it split its opponents before they could strike together."
+  failureFlavorText: "The concession strategy did not separate moderates from plotters in time. Either demands were unmet, mistrusted, or outweighed by the ambitions of those committed to seizure of power. Conspirators continue building capacity behind a broader coalition than expected. The state now faces a coup attempt with fewer neutral actors left to persuade."
   participantRole: 0
   strategyTags: 24
   objectives:

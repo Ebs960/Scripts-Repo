@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
   missionName: Oath of the Spear
   icon: {fileID: 0}
-  description: 
+  description: "The tribe must secure food by mastering the most dangerous hunts on the frozen plain. Bring down 8 mammoth herds and prove that discipline and courage can feed the people through the long cold."
   flavorText: 'The great beasts still walk the frozen plains. We will hunt the great
     beasts. We will prove our strength. The cold will learn to fear us. We will feed
     the little ones.

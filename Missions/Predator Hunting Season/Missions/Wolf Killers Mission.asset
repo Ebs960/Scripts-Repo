@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Wolf Killers
   description: "The packs surrounding our settlements are dangerous because they hunt together. Kill {Objective0Target} crisis predators and break the pressure they are placing on our territory."
   flavorText: "A single beast can be avoided. A pack remembers paths, tests defenses, circles camps, and returns when weakness appears. Our hunters will study the same trails, learn the same habits, and answer cooperation with cooperation of their own. No one will chase glory alone into the dark. We will meet the pack as a people and make the wilderness dangerous for them again."
+  splashImage: {fileID: 21300000, guid: 4755560782df91540926f91759a3466f, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: b049a3ac19b60594f8f994c89d1a7646, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 60b9297ff0469bf429deeed79f9b9fea, type: 3}
+  victoryFlavorText: "Pack numbers were reduced enough to ease constant pressure around settlements and travel routes. Coordinated culling broke habitual attack patterns and forced surviving wolves to disperse from high-risk corridors. Night watches still stand, but panic no longer governs every movement. The people reclaimed operational control of their own perimeter."
+  failureFlavorText: "Pack elimination goals were missed, and coordinated predator pressure remained intact. Wolves continued probing defenses, forcing escorts and reducing safe movement across key routes. Communities exhausted themselves reacting to recurring threats rather than reducing them. The packs still dictate too much of daily life."
   participantRole: 0
   strategyTags: 1
   objectives:

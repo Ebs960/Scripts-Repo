@@ -1078,7 +1078,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
         if (state.CurrentObjective?.type != MissionData.ObjectiveType.IntegrateCrisisUnits) return;
         int target=GetCurrentObjectiveTarget(state);
-        foreach(var actor in FindObjectsByType<BaseUnit>(FindObjectsSortMode.None)
+        foreach(var actor in FindObjectsByType<BaseUnit>()
             .Where(a=>CanIntegrateCrisisActor(civ,a)).Take(target).ToList())
             TryIntegrateCrisisActor(civ,actor);
     }
@@ -1824,7 +1824,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     {
         if (ActiveContext == null) return;
         ActiveContext.actorCountsAtActivation.Clear();
-        var actors=FindObjectsByType<BaseUnit>(FindObjectsSortMode.None)
+        var actors=FindObjectsByType<BaseUnit>()
             .Where(a=>a != null && ActiveContext.spawnedActorIds.Contains(a.gameObject.GetRuntimeId())).ToList();
         foreach(CrisisActorTag tag in Enum.GetValues(typeof(CrisisActorTag)))
         {
@@ -1837,7 +1837,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     private bool HasLiveCrisisActor(CrisisActorTag tag)
     {
         if (ActiveContext == null) return false;
-        return FindObjectsByType<BaseUnit>(FindObjectsSortMode.None).Any(a=>a != null
+        return FindObjectsByType<BaseUnit>().Any(a=>a != null
             && (a.crisisActorTags & tag) != 0
             && ActiveContext.spawnedActorIds.Contains(a.gameObject.GetRuntimeId())
             && !ActiveContext.integratedActorIds.Contains(a.gameObject.GetRuntimeId()));
@@ -1963,7 +1963,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         return context;
     }
 
-    private void InitializeAsteroidContext(CrisisRuntimeContext context, CrisisData crisis, List<Civilization> civs, int turn)
+    private void InitializeAsteroidContext(CrisisRuntimeContext context, CrisisData crisis, IReadOnlyList<Civilization> civs, int turn)
     {
         var affectedCities=civs.Where(c=>c!=null).SelectMany(c=>c.cities ?? new List<City>()).Where(city=>city!=null)
             .Where(city=>(TileSystem.GetForPlanet(city.planetIndex)??TileSystem.Instance)?.GetTileData(city.centerTileIndex)?.continentId==context.targetContinentId).ToList();

@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Counter-Invasion
   description: "Do not wait behind the walls for the next attack. Destroy {Objective0Target} barbarian camps and break the network sustaining the invasion."
   flavorText: "Every army that crosses a frontier leaves something behind it: camps, supplies, routes, and places from which the next wave can assemble. Our soldiers will not merely repel whatever reaches the walls. They will march toward the fires on the horizon and tear apart the machinery of invasion before it can send another army forward. The frontier will cease to be a shield behind which we hide. It will become the ground from which we strike back."
+  splashImage: {fileID: 21300000, guid: 1f8c68ebc5d8c33468320f28d8f2cea1, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 8dd27fe8599da5b4c85555f4dd6077c6, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 8f2aec61a7155b04a80490079134db81, type: 3}
+  victoryFlavorText: "The camps are burning, and the invasion has lost its backbone. Without secure staging grounds, raiders scatter into smaller bands that cannot sustain coordinated pressure on our borders. Frontier settlements finally sleep through nights without fresh alarm fires. The enemy now understands that crossing into our lands carries a cost beyond any plunder they can carry home."
+  failureFlavorText: "The camp network survived longer than our counteroffensive could break it. Fresh raiding parties continue to assemble, and each failed strike teaches the invaders where our reach is weakest. Border defenses remain trapped in reactive warfare while enemy momentum persists. The frontier stays contested on terms we did not choose."
   participantRole: 0
   strategyTags: 1
   objectives:

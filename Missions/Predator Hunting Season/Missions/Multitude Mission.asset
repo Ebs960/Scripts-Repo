@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Multitude
   description: "No single hunter needs to face the crisis alone. Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns and make numbers themselves our defense."
   flavorText: "The predators have teeth, claws, speed, and senses sharper than our own. We possess something they do not: the ability to gather deliberately in numbers greater than any pack. Hunters who once ranged alone will move beside warriors, camps will maintain watches, and every cry from the darkness will be answered by many spears rather than one. Survival does not always belong to the strongest creature. Sometimes it belongs to the multitude."
+  splashImage: {fileID: 21300000, guid: 24ea4d0e304ef9440b136a490159b0a1, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 92530026dd880a049bf0aa20d5abf285, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: ade87fe715cfe234eb6e48080aebd990, type: 3}
+  victoryFlavorText: "Unit strength stayed above the required threshold long enough to change the balance in the wild. Patrol depth improved, escort coverage expanded, and predator attacks met concentrated resistance instead of isolated victims. The settlements learned to survive as a coordinated body. Numbers became security because discipline made numbers usable."
+  failureFlavorText: "Force levels fell below the required mark before the hold period was complete. Losses, redeployment gaps, or recruitment delays left too many routes and camps under-protected. Predators exploited isolation exactly as expected. The multitude strategy failed because the multitude never held."
   participantRole: 0
   strategyTags: 33
   objectives:

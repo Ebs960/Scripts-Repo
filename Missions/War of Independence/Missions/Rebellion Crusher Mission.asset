@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Rebellion Crusher Mission
   missionName: Rebellion Crusher
-  description: Crisis-specific response objective.
+  description: "The breakaway provinces have rejected every order from the imperial government and placed their cities under rebel authority. Restore {OverlordName}'s control over {SubjectName} and demonstrate that secession cannot dismantle the empire by force."
+  flavorText: "The rebels speak of liberty, but their declaration has also seized imperial offices, arsenals, taxes, and territory. Every day their new government survives makes separation appear more permanent and encourages other subjects to imagine that imperial authority can be discarded without consequence. Negotiation has failed, and hesitation now serves only the rebellion. Loyal armies must break the separatist forces, recover the occupied cities, and return the machinery of government to those who still recognize {OverlordName}. The empire will answer a declaration of independence with a demonstration of power."
+  splashImage: {fileID: 21300000, guid: 24de77373b57c8544a72c39c48bfa791, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 321729ec887a2b14492941e7d431a722, type: 3}
+  victoryFlavorText: "The rebel government has collapsed. Its banners are pulled from administrative halls, its armies surrender or scatter, and imperial officials once again issue orders throughout {SubjectName}. Victory has preserved the empire, but it has also left a warning written across ruined fortifications and exhausted cities: authority survives only when it can be enforced. For now, the provinces submit, the tribute resumes, and those who watched the uprising from afar understand that independence is not simply declared. It must be won against an empire still capable of striking back."
+  failureSplashImage: {fileID: 21300000, guid: 1c58bb15769f8c046a439b2d53dba7b4, type: 3}
+  failureFlavorText: "The campaign has failed to restore imperial control. Rebel institutions endure, their armies still hold the field, and each unsuccessful offensive gives the breakaway government greater legitimacy at home and abroad. What began as an uprising now resembles a sovereign state that has survived the empire's attempt to destroy it. Loyalists retreat beneath lowered standards while the provinces celebrate a freedom purchased in blood. {OverlordName} may refuse to recognize the loss, but authority that cannot reach {SubjectName} is authority in name alone."
   participantRole: 1
   strategyTags: 129
   objectives:

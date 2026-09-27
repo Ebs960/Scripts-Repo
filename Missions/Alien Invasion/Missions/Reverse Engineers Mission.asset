@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Reverse Engineers
   description: The invasion has brought technologies to our world that were never intended for human hands. Complete the Alien Reverse Engineering crisis project and turn captured knowledge into an advantage of our own.
   flavorText: Every shattered vehicle, damaged weapon, abandoned device, and fragment of alien machinery is also a library written in a language of materials and engineering. Scientists will catalog components whose purpose is unclear, reproduce structures whose manufacturing methods seem impossible, and deliberately dismantle machines that others would preserve as priceless artifacts. Understanding may come slowly: one alloy, one power system, one sensor principle, one impossible mechanism at a time. We do not need to copy everything the visitors built. We need to learn enough that the technological distance between us is smaller when the next battle begins. An invasion meant to demonstrate their superiority may become the event that teaches us how that superiority works.
+  victoryFlavorText: "The project has succeeded, and alien systems are no longer sealed mysteries. Research teams can now reproduce key components, counter hostile devices more reliably, and adapt captured technology for human doctrine. The invaders still possess advantages, but they are no longer unknowable. Knowledge has become a weapon we can manufacture ourselves."
+  failureFlavorText: "The laboratories never reached a workable breakthrough before the crisis window closed. Equipment remained fragile, theories remained incomplete, and each promising lead collapsed under practical testing. Alien technology continues to intimidate because we still cannot reliably explain it. We return to the battlefield with courage, but not with the understanding we needed."
+  splashImage: {fileID: 21300000, guid: 72f171acd7c16ed4da9a4c03b581e09f, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 3e772bbd83c28fb4e9ba8569b69d554f, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 00e21211492d3244ca4c978fd796ac1b, type: 3}
   participantRole: 0
   strategyTags: 4
   objectives:

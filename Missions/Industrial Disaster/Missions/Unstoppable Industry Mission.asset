@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Unstoppable Industry
   description: "Industrial failures will not be allowed to become industrial retreat. Construct {Objective0Target} Production-category buildings and replace disrupted capacity with a stronger productive base."
   flavorText: "Broken machinery is not an argument against industry; it is an argument for better industry. While damaged works are inspected and unsafe facilities fall silent, new workshops, plants, and productive sites will rise with the lessons of failure already built into them. Engineers will redesign what proved fragile, managers will disperse capacity that was too concentrated, and workers will bring new machinery online while the old system is still being repaired. The easy response would be to fear the machines that failed us. Instead we will build more—and build them better."
+  splashImage: {fileID: 21300000, guid: c3ee1f1a9e49d9a498b3abae344f5b6e, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 238e9c20e64e13e46ae41d68c115b560, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 959105efe430696489f51461a8416243, type: 3}
+  victoryFlavorText: "New production buildings came online fast enough to offset disruption and strengthen long-term capacity. Instead of merely restoring what failed, the economy emerged with a broader and more redundant industrial base. Investors and workers now see expansion where they expected contraction. Industry did not just survive the shock; it evolved through it."
+  failureFlavorText: "Construction goals were missed, leaving disrupted capacity under-replaced and regional shortages unresolved. Financing delays, labor limits, or logistical friction slowed expansion while failures continued elsewhere. The system remained dependent on vulnerable legacy infrastructure. The opportunity to convert crisis into structural upgrade was lost."
   participantRole: 0
   strategyTags: 2
   objectives:

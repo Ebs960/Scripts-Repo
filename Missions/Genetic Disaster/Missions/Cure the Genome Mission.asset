@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Cure the Genome
   description: The mutations are advancing faster than ordinary treatment can follow. Complete the Genome Stabilization crisis project and develop a systematic means of halting the uncontrolled genetic changes.
   flavorText: What began as biological experimentation has become a problem written into the machinery of life itself. Destroying altered organisms may contain individual outbreaks, but it cannot explain why stable genomes continue changing long after the original interventions ended. Laboratories across the civilization will pool sequencing data, failed treatments, tissue samples, and every scrap of research produced since the crisis began. The objective is not to recreate the world exactly as it existed before the disaster; some changes may already be irreversible. We need something more practical: a way to stop uncontrolled mutation from producing another generation of surprises. For once, the answer will not come from stronger walls or larger armies. It will come from understanding precisely what we changed.
+  splashImage: {fileID: 21300000, guid: 43a1e9b414085914a986f1eda3d9e69a, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 0ce1d53ae123e974984f0796a929042b, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 9d79802fde3f9e44aae3659142ec37bf, type: 3}
+  victoryFlavorText: "The stabilization project delivered a viable intervention, and uncontrolled mutation rates began to fall. Medical teams can now treat at scale with shared protocols instead of improvising case by case. Fear of continual biological drift eases as outcomes become predictable again. Science has reclaimed initiative from the disaster it helped create."
+  failureFlavorText: "The project failed to produce a usable stabilization pathway in time. Mutation cascades continue without a reliable brake, forcing authorities back into reactive containment and selective culling. Research remains fragmented between promising theories and unverified trials. The genome crisis persists because the mechanism driving it was not mastered."
   participantRole: 0
   strategyTags: 4
   objectives:

@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Appeasement
   description: "The revolution feeds upon cities where faith in the government has collapsed. Raise average Order to at least 70 and make stability more attractive than continued uprising."
   flavorText: "A revolution cannot survive on slogans alone. It requires neighborhoods willing to shelter organizers, workers willing to stop production, citizens willing to fill the streets, and ordinary people convinced that the existing government offers them nothing worth defending. The present unrest has drawn strength from {PrimaryGrievance}. The government will answer that instability before answering every protest with force. Restore services, reduce the pressure driving people into the streets, and give the undecided a reason to abandon the revolutionaries. A crowd that believes tomorrow may improve is much harder to turn into an army."
+  splashImage: {fileID: 21300000, guid: 9d69862122378d149b6ba6a5f2eacc8c, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 6a86185a1d85bc6459d26649d184344b, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 6eec23e3ce98b98448aba76c679cc98d, type: 3}
+  victoryFlavorText: "Order recovered above the danger threshold, and revolutionary momentum slowed as daily life became tolerable again. Crowds that once filled barricades now weigh reform, wages, and security against perpetual upheaval. Radicals lose recruitment while moderates regain leverage. Stability was not gifted; it was rebuilt where grievance had been strongest."
+  failureFlavorText: "Order never reached the level needed to outcompete revolutionary mobilization. Services remained unreliable, policing legitimacy stayed weak, and each concession looked either too late or too shallow. The street remained a more credible arena than the institution. Appeasement without sufficient stabilization failed to close the insurgent political market."
   participantRole: 0
   strategyTags: 80
   objectives:

@@ -8,6 +8,10 @@ MonoBehaviour:
   description: "Ordinary government has become too divided to act. Resolve the principal constitutional dispute within 3 turns by concentrating enough temporary authority to force a decision before paralysis becomes collapse."
   flavorText: "Debate has become paralysis, and paralysis is beginning to threaten the state itself. Legislatures cannot agree, rival institutions reject one another's authority, and even routine administration is being swallowed by the dispute. The immediate conflict over {Demand} will not be allowed to consume the government indefinitely. Emergency authority will be used to impose a settlement quickly, bypassing procedures that have ceased to produce one on their own. Supporters will call the decision necessary. Opponents may remember it as the moment temporary power learned how useful it could be."
   failureFlavorText: "The constitutional dispute remained unresolved after 3 turns. The Emergency Mandate has failed."
+  splashImage: {fileID: 21300000, guid: d21ab9977bfe5a143a30f3d19db73251, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: e9d7c11dc8c7af54c96085859bae1aac, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 75f0acf933d0b7e4e8be0c4fc9aa435b, type: 3}
+  victoryFlavorText: "The mandate forced a decision before paralysis hardened into state failure. Ministries resume coordinated action, security forces follow a single chain of command, and the constitutional deadlock is temporarily broken. Critics warn that emergency authority leaves dangerous precedents, and they are not wrong. But for now, the government still governs."
   participantRole: 0
   completionDeadlineTurns: 3
   strategyTags: 128

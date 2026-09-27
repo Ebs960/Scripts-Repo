@@ -2,24 +2,76 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Financial Genius Mission
+  m_EditorClassIdentifier: 
   missionName: Financial Genius
-  description: "A collapsing market does not excuse an empty treasury. Maintain positive net Gold income for 5 consecutive turns and prove that the state can still meet its obligations while the wider economy contracts."
-  flavorText: "When everyone fears tomorrow, money stops moving today. Merchants hoard coin, lenders retreat from risk, and revenues shrink even while soldiers, officials, creditors, and institutions continue expecting payment. The treasury will examine every expense, defend whatever reliable income remains, and resist the temptation to answer temporary panic with permanent insolvency. There is no hidden reserve large enough to make discipline unnecessary. Recovery begins with something simpler and harder: earning more than we spend, not once, but again and again until confidence has time to return."
+  icon: {fileID: 0}
+  description: A collapsing market does not excuse an empty treasury. Maintain positive
+    net Gold income for 8 consecutive turns and prove that the state can still meet
+    its obligations while the wider economy contracts.
+  flavorText: 'When everyone fears tomorrow, money stops moving today. Merchants
+    hoard coin, lenders retreat from risk, and revenues shrink even while soldiers,
+    officials, creditors, and institutions continue expecting payment. The treasury
+    will examine every expense, defend whatever reliable income remains, and resist
+    the temptation to answer temporary panic with permanent insolvency. There is
+    no hidden reserve large enough to make discipline unnecessary. Recovery begins
+    with something simpler and harder: earning more than we spend, not once, but
+    again and again until confidence has time to return.'
+  splashImage: {fileID: 21300000, guid: 5b9f2632449e9b54fa396523d38bcd55, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: f608f719cc629ec498993a635332928b, type: 3}
+  victoryFlavorText: "The treasury remained in the black long enough to restore confidence in state solvency. Creditors resumed ordinary terms, emergency borrowing costs eased, and ministries could plan beyond immediate panic cycles. Fiscal discipline became visible policy rather than rhetoric. The market is still wounded, but the state is no longer one bad week from insolvency."
+  failureSplashImage: {fileID: 21300000, guid: eb61ae4cbb7c93547b0160df6ad4d0da, type: 3}
+  failureFlavorText: "The budget could not sustain positive net income through the required window. Repeated deficits signaled that emergency spending and shrinking revenues were outrunning corrective policy. Confidence deteriorated as creditors priced in deeper instability and administrative cuts arrived too late. The state enters the next phase of crisis with weaker fiscal credibility."
+  earliestTurn: 0
+  latestTurn: 0
+  requiredTechs: []
+  requiredCultures: []
   participantRole: 0
   strategyTags: 2
+  completionDeadlineTurns: 0
   objectives:
   - objectiveName: Financial Genius
-    description: "Maintain positive net Gold income for 5 consecutive turns."
+    description: Maintain positive net Gold income for 5 consecutive turns.
+    icon: {fileID: 0}
     type: 27
-    targetValue: 5
+    targetValue: 8
     targetMode: 0
     targetMultiplier: 1
     minimumTarget: 0
     maximumTarget: 0
+    comparison: 0
+    requiredConsecutiveTurns: 0
+    completionTiming: 0
+    baselineMetric: 0
+    biomeFilter: 
+    specificTech: {fileID: 0}
+    specificCulture: {fileID: 0}
+    specificUnit: {fileID: 0}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+    specificProject: {fileID: 0}
+    useCrisisActorTagFilter: 0
+    targetCrisisActorTags: 0
+    useBuildingCategoryFilter: 0
+    buildingCategory: 0
   constraints: []
+  narrativeBeats: []
   rewardTiers:
   - tierName: Complete
+    completionFlavorText: 
+    tierBadge: {fileID: 0}
     requiredObjectivesCompleted: 1
     rewardLegacy: {fileID: 11400000, guid: 464d30aba92848dd9dda7e304d23fbe5, type: 2}

@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Asteroid Killer Mission
   missionName: Asteroid Killer
-  description: Crisis-specific response objective.
+  description: "The impact countdown cannot be outrun, so it must be stopped at the source. Complete the Asteroid Interception project before the strike window closes and destroy the incoming body before it reaches the surface."
+  flavorText: "The sky has become a clock, and every passing turn narrows the difference between warning and catastrophe. Engineers, astronomers, and military planners are now working toward a single point in space where success means survival and failure means continental ruin. The interception system is untested at this scale, assembled under pressure, and dependent on precision that panic cannot provide. Yet no wall, bunker, or evacuation can match the protection offered by never allowing impact at all. We will meet the asteroid far from our cities, while there is still a chance to keep them standing."
+  victoryFlavorText: "The interception strike succeeded, and the asteroid was shattered before atmospheric entry. Fragments burned harmlessly overhead where a world-ending impact had been expected. Panic gives way to disbelief, then relief, as settlements realize they will see another season. Humanity has learned that preparation and science can reach beyond fear."
+  failureFlavorText: "The project was not completed in time, and the interception window closed. The asteroid enters on schedule, and every contingency designed for partial damage is suddenly inadequate. Shockwaves, firestorms, and infrastructure collapse spread faster than any relief force can respond. We endure what should have been prevented."
+  splashImage: {fileID: 21300000, guid: 68d2b755d25aa1a4499d2e109a28fc75, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 9781e4634b8e49f4bae713e4e080fb28, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 07862aadfd738654da8a5b449f6311ac, type: 3}
   participantRole: 0
   strategyTags: 4
   objectives:

@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Pest Control Mission
   missionName: Pest Control
-  description: Crisis-specific response objective.
+  description: "Infestation damage compounds each turn that fields remain unusable. Repair all {Objective0Target} farms ruined by the swarm and restore local food production before shortages become structural."
+  splashImage: {fileID: 21300000, guid: 00c035fce59efdf4aaf6bb80a9ded76e, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: ec48e92f9ed1fa14d9411b183c1c7a3b, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 8139bbca85f751b409b79023c2bb93fa, type: 3}
+  flavorText: "A damaged farm is not only lost output; it is a broken livelihood, disrupted distribution node, and warning to every neighboring settlement. Repair crews must clear egg beds, rebuild irrigation, replace seed stock, and secure field edges against renewed swarms. Delays multiply quickly when many districts wait for the same tools and labor. Restoring agriculture site by site is less dramatic than battle, but no less decisive. If fields return, communities hold."
+  victoryFlavorText: "All targeted farms were repaired and brought back into productive use. Local food output recovered in time to steady prices, reduce emergency imports, and calm rural panic. The swarm still threatens, but the agricultural base is no longer in immediate freefall. Recovery became tangible in green fields where ruin had stood."
+  failureFlavorText: "Repairs remained incomplete across too many infested farms. Labor shortages, recurring swarms, and supply bottlenecks left key districts dependent on external aid with no reliable local harvest. Each unfinished site compounded scarcity and transport strain. The infestation outpaced restoration where resilience depended on speed."
   participantRole: 0
   strategyTags: 48
   objectives:

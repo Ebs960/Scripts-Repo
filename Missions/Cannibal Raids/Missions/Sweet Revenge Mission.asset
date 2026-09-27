@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Sweet Revenge
   description: "Fear can travel in both directions. Kill {Objective0Target} crisis raiders and inflict enough losses to break their ability to terrorize our people."
   flavorText: "For too long they chose the time, the place, and the victim. Now our hunters know their trails, their camps, and the signs they leave behind when they believe no one is following. Those who vanished cannot be brought back, but their killers need not believe they acted without consequence. Our war parties will carry fear in the other direction. Revenge may not feed the living—but tonight it will taste very sweet."
+  splashImage: {fileID: 21300000, guid: 8e7b63fd41c772b469d631066445e0f8, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: c36d64cbec80f7344842c0ebb7318532, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 0a4f67a4d7aff1a48ae604db14284c96, type: 3}
+  victoryFlavorText: "Our hunters delivered the reckoning they promised. Raider bands that once descended without warning are now reduced, scattered, and reluctant to approach defended territory. Families who mourned in silence finally hear reports of justice rather than disappearance. Vengeance did not undo the loss, but it restored the balance of fear."
+  failureFlavorText: "The raiders absorbed our blows and remained dangerous in sufficient numbers. Some cells relocated, others adapted, and the casualty threshold needed to break their confidence was never reached. Survivors among our people see too many familiar signs still appearing at the forest edge. Retribution was attempted, but not completed."
   participantRole: 0
   strategyTags: 1
   objectives:

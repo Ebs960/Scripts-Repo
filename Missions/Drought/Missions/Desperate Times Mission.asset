@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Desperate Times
   description: "Our stores are failing faster than the land can recover. Successfully raid or pillage 2 hostile settlements or food targets and seize the supplies our people need to survive."
   flavorText: "Hunger has a way of narrowing the distance between necessity and wrongdoing. Beyond our borders are granaries, herds, and storehouses held by people who would guard them as fiercely as we guard our own. The council may condemn what must be done and order it in the same breath. Warriors will return carrying food rather than trophies. History can decide whether desperation excused us; the living must first survive long enough to write it."
+  splashImage: {fileID: 21300000, guid: ea141531a61e2ff458ad5f32592cd141, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: b0fae3c8d5186fa43a21c4f9a86200b3, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 5032f14dc3055be4f81bd3d4df934a5b, type: 3}
+  victoryFlavorText: "The raids secured enough food to keep settlements alive through the harshest phase of the drought. Granaries were refilled, ration lines shortened, and immediate starvation pressure eased across the crisis zone. The cost in reputation and diplomacy may linger, but the population endured. Desperation produced survival where restraint alone could not."
+  failureFlavorText: "The expeditions failed to seize enough supplies to change the food equation. Defended targets held, losses mounted, and the net gain never matched the scale of need. Hunger continued spreading while raiding forces exhausted themselves for diminishing returns. Desperation alone proved an unreliable logistics policy."
   participantRole: 0
   strategyTags: 129
   objectives:

@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Adaptable Survivors
   description: "Fields are not the only source of food. Complete {Objective0Target} hunting or foraging actions and turn back to the resources of the wild until ordinary agriculture can sustain us again."
   flavorText: "Our farmers learned to trust the soil because, for generations, the soil rewarded that trust. Now the old skills become valuable again. Hunters will follow migrating animals farther than usual, gatherers will search forgotten places, and foods once ignored will return to the fire. A people that knows only one way to feed itself is always one bad season from disaster. We will survive because we remember more than one."
+  splashImage: {fileID: 21300000, guid: af8f5a36daa05e749a81652ed7628074, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 8de9be7a4896a9d489f6df4ad0de844a, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 444895165eec0bf45b76c3ae16f88272, type: 3}
+  victoryFlavorText: "The people adapted before famine could define the era. Hunting trails, foraging routes, and seasonal mobility compensated for failed harvests long enough to stabilize supply. Skills once treated as primitive proved strategically decisive. We survived because flexibility beat habit."
+  failureFlavorText: "Adaptation efforts remained too limited to offset agricultural losses. Wild resources were overused, poorly coordinated, or reached too late to prevent widening shortages. Communities that depended on one food model found no reliable fallback when it collapsed. The drought became a famine of options as much as calories."
   participantRole: 0
   strategyTags: 34
   objectives:

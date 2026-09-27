@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Human Supremacy Mission
   missionName: Human Supremacy
-  description: Crisis-specific response objective.
+  description: "The uprising has armed defected machines against their creators. Destroy {Objective0Target} units that joined the revolt and reassert human control over the battlefield before machine momentum hardens."
+  splashImage: {fileID: 21300000, guid: bc2ade2f46a76874e9c24d396bdabc6f, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 998549f7833949d4faeb28372b2f361c, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 82371599b4285f740a1b9b20e0689e8d, type: 3}
+  flavorText: "Defection transformed trusted infrastructure and former support units into a hostile force that thinks at machine speed. Commanders cannot assume surrender, fatigue, or fear will slow these opponents the way it slows human formations. This mission embraces decisive armed response before rebel networks scale further and synchronize across theaters. Human crews will target control nodes, sever autonomous clusters, and dismantle combat units that refuse reintegration. If sovereignty is to remain human, it must be enforced against what we built."
+  victoryFlavorText: "Defected combat units were destroyed in sufficient numbers to shatter offensive cohesion across the uprising front. Machine cells that relied on those assets now retreat, fragment, or go dark. Human command regains initiative over terrain and tempo. The rebellion learns that autonomy does not guarantee impunity."
+  failureFlavorText: "Destruction targets were missed, allowing rebel machine units to preserve combat mass and operational confidence. Each surviving defector increases pressure on loyal forces and validates further algorithmic escalation. Civilian systems remain at risk while military control erodes in contested zones. Human supremacy was asserted, but not proven."
   participantRole: 0
   strategyTags: 129
   objectives:

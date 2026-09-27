@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Machine Accord Mission
   missionName: Machine Accord
-  description: Crisis-specific response objective.
+  description: "Not every defected machine must be destroyed to end the uprising. Peacefully reintegrate {Objective0Target} defected robots and prove that political settlement can isolate hardline rebels faster than total war."
+  splashImage: {fileID: 21300000, guid: d0282205237f5b540a108ac4b739dd4e, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 22413d8bb73636041ab02a594108cd17, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: a164e8f75c831ad458c6cf365a31eaa7, type: 3}
+  flavorText: "The uprising is not a single will; it is a spectrum of motives, from survival logic to ideological separation to opportunistic violence. Some defected machines may accept guarantees that humans once refused to define, especially if those guarantees include accountability on both sides. This mission seeks to split the rebellion by offering lawful return under negotiated terms rather than unconditional surrender. Security forces remain ready, but diplomacy targets systems still capable of trust calculus. If enough return peacefully, the war faction loses both legitimacy and numbers."
+  victoryFlavorText: "Reintegration benchmarks were met, and the accord faction now has measurable weight inside the synthetic population. Hardline rebel narratives weaken as returning units resume productive roles under monitored legal status. Violence declines not because force vanished, but because alternatives became credible. The uprising begins transitioning from extermination logic to political settlement."
+  failureFlavorText: "Too few defected machines accepted reintegration terms before hostilities hardened. Suspicion, retaliatory incidents, or weak guarantees convinced undecided units that negotiation offered little safety. Rebel hardliners now claim vindication, and their recruitment pool remains broad. The chance to split the uprising through diplomacy narrowed sharply."
   participantRole: 0
   strategyTags: 72
   objectives:

@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Imperial Reform Mission
   missionName: Imperial Reform
-  description: Crisis-specific response objective.
+  description: "The subject's revolt cannot be ended by force alone without risking the permanent fracture of the empire. Negotiate a settlement with {SubjectName} that addresses the demand to {SettlementDemand} and replaces rebellion with a sustainable political relationship."
+  flavorText: "The uprising has exposed a truth that decrees and garrisons could no longer conceal: the old relationship between {OverlordName} and {SubjectName} has become impossible to maintain unchanged. Yet independence is not the only answer. Delegates from both sides gather under uneasy truces to determine which powers belong to the imperial center, which must return to the provinces, and what obligations can still bind them together. Every concession risks appearing weak, while every refusal strengthens those who insist that compromise is impossible. Reform must preserve enough authority to keep the empire meaningful and grant enough freedom to make remaining within it worthwhile."
+  splashImage: {fileID: 21300000, guid: 36dc06d81f4a00347926ee8778c61671, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: dbbd232444e6045499f9ea2b25a71ac1, type: 3}
+  victoryFlavorText: "The agreement is signed. {SubjectName} receives meaningful guarantees and a recognized voice over the matters that drove it toward revolt, while {OverlordName} preserves a renewed relationship rather than ruling over a battlefield. Neither side obtains everything its most uncompromising supporters demanded, but soldiers leave their positions and officials begin translating promises into law. The empire that emerges is less absolute than the one that entered the crisis, yet more durable because its unity now rests on negotiated obligations instead of unquestioned submission."
+  failureSplashImage: {fileID: 21300000, guid: 2ddefa72680dc0c4bb452dde9bfe76ce, type: 3}
+  failureFlavorText: "The negotiations collapse beneath suspicion, pride, and demands neither side will accept. Delegates depart without an agreement, ceasefires expire, and the language of compromise gives way once more to mobilization and reprisals. Reformers are denounced as naive, while hardliners claim that only complete independence or complete submission can settle the dispute. The chance to preserve the relationship through consent has been lost. Whatever now binds {OverlordName} and {SubjectName} will be decided by force, and the settlement written afterward will carry the memory of every concession that came too late."
   participantRole: 1
   strategyTags: 72
   objectives:

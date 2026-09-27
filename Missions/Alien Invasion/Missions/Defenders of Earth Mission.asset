@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Defenders of Earth
   description: The visitors have brought forces capable of threatening cities, armies, and the sovereignty of this world. Destroy {Objective0Target} Alien invasion units and demonstrate that technological superiority does not make Earth defenseless.
   flavorText: They crossed distances our ancestors could scarcely imagine and arrived carrying machines more advanced than many of our own. That achievement does not grant them the right to decide the future of this world. Soldiers who once prepared to fight neighboring states now look upward at an enemy that did not originate beneath the same sky, and old rivalries suddenly seem very small beside the scale of the threat. Their technology may be formidable, but every weapon has limits, every machine can fail, and every invading force eventually discovers that unfamiliar ground belongs to the defenders who refuse to surrender it. We may not understand where they came from. We understand perfectly well what it means when armed strangers advance on our homes.
+  victoryFlavorText: "The invasion force has been broken in open battle. Wrecked alien craft and disabled walkers now mark the routes where they expected easy conquest. Civilians who watched the first landings in terror now watch human units reclaim the same ground with confidence. Earth remains uncertain, but no longer helpless."
+  failureFlavorText: "Our armies could not stop the invaders before they established momentum. Each battlefield loss gave them more room to deploy, consolidate, and demonstrate that their superiority was not merely technical but strategic. Populations begin adapting to occupation where resistance should have held. The war for Earth continues under far worse conditions."
+  splashImage: {fileID: 21300000, guid: b5b25059e5f47134684a1dd6747453ac, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 0220faa630fd813439a46b323e994307, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: c21ca0c86bc5e8e4e8e7d5230bf688ed, type: 3}
   participantRole: 0
   strategyTags: 1
   objectives:

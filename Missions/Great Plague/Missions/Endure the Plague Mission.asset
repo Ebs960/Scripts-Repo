@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Endure the Plague
   description: "The plague may spread, but demographic catastrophe is not inevitable. Finish the crisis with at least 90% of the population that was alive when the outbreak began."
   flavorText: "Plagues are remembered in numbers: the dead, the empty houses, the villages that never recovered. But every life spared is also a family that remains, a workshop that reopens, and a field that can be planted again. Food, care, isolation, and simple resilience must keep disease from becoming demographic collapse. We may not defeat the plague in the way an army defeats an invader. We can deny it the power to erase a generation."
+  splashImage: {fileID: 21300000, guid: cf83e1f9ac2706245bda091bcd610b4f, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 74192f5886d359e4580cc52d39156e07, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 0deb7df3b39c84c448901411d3d7df8a, type: 3}
+  victoryFlavorText: "The population endured at a level once considered impossible when the outbreak began. Mortality remained tragic, but social continuity survived: families, labor networks, and military levies were reduced rather than erased. Communities now carry scars instead of emptiness. Endurance prevented the plague from becoming civilizational amnesia."
+  failureFlavorText: "Population loss crossed the catastrophic threshold, and recovery will span generations rather than seasons. Empty districts, abandoned workshops, and missing skill chains now amplify every secondary crisis from food supply to defense. The disease did more than kill; it hollowed the structure needed to rebuild. Survival became fragmentation."
   participantRole: 0
   strategyTags: 32
   objectives:

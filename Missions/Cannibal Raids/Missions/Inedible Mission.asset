@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Inedible
   description: "The raiders expect isolated victims who cannot fight back. Survive all 15 turns of the raids without losing a single unit to a crisis raider and teach them that our people are far harder prey than they imagined."
   flavorText: "They came expecting frightened travelers and undefended camps. Instead they will find watched roads, guarded hunting parties, and people who refuse to disappear quietly into the dark. Every warrior who returns home denies the raiders the terror on which they depend. Fires will remain lit, journeys will be made in groups, and no missing patrol will simply be forgotten. If they intend to make a meal of our people, they are about to discover that we are remarkably difficult to swallow."
+  splashImage: {fileID: 21300000, guid: b7619ef61b1e8e14a9d41d982ac22408, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 5f8a3749627e7654999212b71b6bd996, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 66960e644b5c65c4ca48f546c5ed0929, type: 3}
+  victoryFlavorText: "Every patrol returned, and not one unit was taken by the raiders. Their hunters found escorts instead of stragglers, prepared sentries instead of sleeping camps, and coordinated resistance instead of panic. The myth of easy prey has been broken at operational scale. They now stalk more cautiously because we taught them to fear the attempt."
+  failureFlavorText: "A unit was lost to the raiders, proving that vigilance failed at least once where it needed to be absolute. One breach is enough to restore predator confidence and civilian fear across exposed routes. Escorts tighten and patrol doctrine hardens, but the psychological damage is immediate. The people are still alive, yet no longer untaken."
   participantRole: 0
   strategyTags: 32
   objectives:

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
   missionName: Oath of Blood
   icon: {fileID: 0}
-  description: 
+  description: "Predators have turned every night march into a gamble for survival. Slay the beasts stalking the tribe and kill at least 9 major predators before fear and attrition consume our people."
   flavorText: 'Eyes shine beyond the firelight. Shadows move where no wind blows.
     The predators grow bold with hunger. They circle. They wait. The cries of the
     taken echo through the night. Our people cannot keep living as prey. We must

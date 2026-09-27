@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: New Pastures Mission
   missionName: New Pastures
-  description: Crisis-specific response objective.
+  description: "Damaged fields cannot feed the population if production stays concentrated in infested zones. Build {Objective0Target} new agricultural improvements outside swarm areas and shift food output to safer ground."
+  splashImage: {fileID: 21300000, guid: c666d7ae7d69b144c9b3e3b251d95e7f, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 86946f294118afc489e90111a7e30e9b, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: fd298c3c582d11f43b08378b3d91af1c, type: 3}
+  flavorText: "Locusts punish static agriculture. Farms in the worst corridors may be planted perfectly and still fail if the swarm returns before harvest. This mission prioritizes relocation over nostalgia: new fields, pasture systems, and food improvements where exposure is lower and recovery potential higher. Moving production is costly, but rebuilding repeatedly on doomed sites is worse. We will feed the people by changing where the land is asked to carry us."
+  victoryFlavorText: "New agricultural capacity came online beyond the heaviest infestation tracks. Food systems now have geographic redundancy, reducing the swarm's ability to trigger single-point failure across the whole economy. Communities that lost old fields gain viable replacements before hunger takes hold. Adaptation, not luck, secured the harvest outlook."
+  failureFlavorText: "Expansion into safer agricultural zones lagged behind need. Old farms kept failing while replacement sites remained incomplete, underdeveloped, or poorly connected to distribution routes. The food map stayed dangerously concentrated in exposed areas. When the swarm returned, too little had been moved out of its reach."
   participantRole: 0
   strategyTags: 34
   objectives:

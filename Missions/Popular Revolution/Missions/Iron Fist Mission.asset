@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Iron Fist
   description: "The movement has crossed from protest into armed rebellion. Defeat {Objective0Target} revolutionary units and restore the state's ability to enforce its authority."
   flavorText: "The time for petitions and speeches has passed. Barricades divide the streets, public buildings have been seized, and armed revolutionaries openly deny the government's right to rule. Loyal forces will retake the districts that have slipped beyond state control and dismantle the formations sustaining the uprising. Repression may restore order without restoring trust, and memories of the crackdown may survive long after the final barricade is cleared. That reckoning can come later. A state that cannot enforce its authority soon discovers that its authority exists only on paper."
+  splashImage: {fileID: 21300000, guid: 5cefe0456470cb146822c2d47891647d, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: cf93862381a20d64eb965de9afca8ad0, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: f16c7d7a75f58bc42b73041373e8bf4a, type: 3}
+  victoryFlavorText: "Revolutionary combat formations were broken, and state forces restored control over contested districts. Command channels stabilize as holdout cells lose the mass needed for sustained urban warfare. The crackdown leaves deep resentment, but immediate regime collapse is no longer imminent. Coercive capacity has been reasserted at decisive scale."
+  failureFlavorText: "Too many revolutionary units remained active, and coercive operations failed to convert tactical battles into strategic control. Cleared zones were recontested, security fatigue mounted, and neutral civilians doubted that state authority could hold. Repression without decisive outcomes strengthened the rebellion's narrative. The iron fist closed, but not tightly enough."
   participantRole: 0
   strategyTags: 129
   objectives:

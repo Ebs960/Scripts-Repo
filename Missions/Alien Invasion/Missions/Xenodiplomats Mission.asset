@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Xenodiplomats
   description: The arrival of an unknown civilization does not guarantee that permanent war is inevitable. Negotiate 1 peaceful settlement with the Alien expedition and establish that communication can succeed where weapons have failed.
   flavorText: For the first time, diplomacy must cross more than a border, language, religion, or political system. We do not know what the visitors call themselves, what assumptions shape their thinking, or whether ideas as basic as territory, surrender, promise, or peace mean the same thing to them that they mean to us. Every signal must therefore be interpreted with humility, and every response may reveal as much about their intentions as their words. Soldiers will remain prepared while scientists, linguists, diplomats, mathematicians, and machines search for concepts that both sides can recognize. There is no guarantee that the beings descending from the sky want peace. But if they are capable of choosing it, history will remember the civilization that first discovered how to ask.
+  victoryFlavorText: "A formal settlement has been reached, and both sides have honored it long enough to make it real. Exchanges that once required armed escorts now pass through structured channels of communication. Hardliners still distrust every concession, but the first proof of coexistence now exists in practice rather than theory. Humanity has learned that first contact can end with terms instead of annihilation."
+  failureFlavorText: "Talks collapsed before a viable settlement could be secured. Misread signals, incompatible assumptions, and escalating pressure from commanders on both sides erased what little trust had formed. Diplomatic teams withdraw while military planners regain full control of the relationship. The chance to define contact through negotiation has been lost for now."
+  splashImage: {fileID: 21300000, guid: 610ccdb5950add447b9e21a5aa1c7ff1, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 22fb94a2b3184364db0db703b80408dd, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 02a3aa24a1f939640bd4488228f3f98e, type: 3}
   participantRole: 0
   strategyTags: 8
   objectives:

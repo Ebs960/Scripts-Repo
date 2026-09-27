@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Tiger Slayers
   description: "The greatest predators have grown bold enough to contest our people for the wilderness itself. Hunt down {Objective0Target} predators spawned by the crisis and prove that even the largest hunters can become prey."
   flavorText: "Some dangers cannot be frightened away with fire and noise. The great predators have learned that our trails, camps, and hunting grounds are places where food can be found, and every retreat teaches them to return more boldly. Our strongest hunters will seek them deliberately, following spoor into the places others now avoid. Their hides and teeth may become trophies, but the real victory will be fear reversed. Let the beasts learn that approaching our people means being hunted in turn."
+  splashImage: {fileID: 21300000, guid: 85d536a887a6db2448f361441dd7b80e, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: f8c4f28bb0afec540808db1a196f2744, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 59233f5ad2a4834428cbc97c742d1296, type: 3}
+  victoryFlavorText: "The largest predators were hunted down in sufficient numbers to break their dominance over frontier life. Camps once abandoned at dusk reopen, and hunting parties move with renewed confidence across former kill zones. Trophy hides tell one story, but restored movement tells the real one. Fear changed direction, and the plains noticed."
+  failureFlavorText: "Kill counts fell short, and apex predators retained enough presence to keep settlements on the defensive. Each failed pursuit consumed strength without reducing pressure where it mattered most. Frontier routines remain constrained by stalking threats that should have been neutralized. The hunters proved brave, but not yet decisive."
   participantRole: 0
   strategyTags: 1
   objectives:

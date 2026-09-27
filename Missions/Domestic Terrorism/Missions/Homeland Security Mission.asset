@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Homeland Security Mission
   missionName: Homeland Security
-  description: Crisis-specific response objective.
+  description: "One successful strike can trigger panic well beyond its physical damage. Survive all 20 turns of the crisis without losing a building or improvement to terrorist attacks by hardening vulnerable sites and preventing sabotage."
+  splashImage: {fileID: 21300000, guid: 4fac99717b1e79b46b39b3d6514bfa59, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 85a3a3df728311b4cb154816d3c88550, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: c891d56eb3bbd9c4a97781af1771a5a5, type: 3}
+  flavorText: "The enemy cannot defeat us in open battle, so it hunts symbols, logistics, and routine life. A burned warehouse, destroyed bridge, or cratered market can damage confidence far beyond its material cost. Homeland security therefore means patient prevention: tighter screening, better patrol patterns, controlled access, and rapid response rehearsed before alarm bells ring. Citizens may resent visible security at first, but they will resent preventable destruction much more. We will make every target difficult, every approach uncertain, and every cell's planning assumptions obsolete."
+  victoryFlavorText: "The crisis period passed without a successful strike on critical buildings or improvements. Attack plots were intercepted, defenses held, and rapid response teams closed vulnerabilities before they became headlines. Public routines continued under pressure, which denied terrorists the spectacle they sought. Security became credible because it was tested and held."
+  failureFlavorText: "A protected site was lost, and the symbolic effect spread quickly beyond the immediate blast radius. Copycat attempts rise as adversaries conclude that hard targets can still be breached with persistence. Confidence in preventive security drops, forcing costly emergency reallocations. The mission failed because one breakthrough was enough to change the strategic narrative."
   participantRole: 0
   strategyTags: 48
   objectives:

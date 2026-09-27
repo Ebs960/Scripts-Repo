@@ -5,7 +5,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
   m_Name: Master Hackers Mission
   missionName: Master Hackers
-  description: Crisis-specific response objective.
+  description: "Code can disable what armor cannot. Complete the Hacking crisis project and reintegrate at least {Objective1Target} defected robots to break rebel coordination through cyber dominance and targeted recovery."
+  splashImage: {fileID: 21300000, guid: c473651a1a8e44949852b48a43d2cb24, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: ac009ae4a6cbf754bb6c1da4c2169918, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: fa13f0d3128e0dd4eb80536cb218f92d, type: 3}
+  flavorText: "Frontline victories matter, but the uprising's real center of gravity lives in networks, firmware, and compromised control protocols. Master hackers will attempt what generals cannot: infiltrate command meshes, poison hostile updates, and reopen secure channels to machines that can still be persuaded to stand down. The project demands rare expertise under constant adversarial adaptation, where every exploit is temporary and every patch invites a counterpatch. If successful, cyber operations can collapse rebel coordination while creating openings for reintegration teams. We did not start this war in code, but we may end it there."
+  victoryFlavorText: "The hacking project succeeded, and enough defected units were brought back under stable control to alter the conflict map. Rebel command traffic degrades, synchronization falters, and recovered machines provide intelligence on remaining networks. Cyber superiority now complements battlefield pressure instead of lagging behind it. The uprising loses coherence where it once relied on perfect coordination."
+  failureFlavorText: "Cyber operations failed to deliver a decisive breakthrough before the crisis window closed. Intrusions were contained, exploits burned too quickly, or reintegration gains fell short of required scale. Rebel networks adapt faster than expected and retain strategic initiative in the digital domain. The war continues with our best technical option unfinished."
   participantRole: 0
   strategyTags: 4
   objectives:

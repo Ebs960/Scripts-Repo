@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Engineer Corps
   description: "The machines failed; engineers will make them work again. Restore all {Objective0Target} industrial buildings disabled by the crisis and return the lost productive capacity to operation."
   flavorText: "Where others see cracked supports, silent engines, damaged machinery, and ruined schedules, engineers see problems with causes. Crews will move from facility to facility carrying tools, replacement parts, structural plans, and the authority to dismantle anything that cannot be trusted. Some sites will require careful repair; others may need entire systems rebuilt before a worker can safely return. Recovery will be measured one reopened facility at a time. The crisis began when failures outpaced repairs. It will end when our engineers finally catch up."
+  splashImage: {fileID: 21300000, guid: 31397c424bc2f9c42bee90e7e7b161d9, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: f961d00d3ff45e4459ae2058ac45011b, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: f7ad8dfb11d79f946a1b344a47874f91, type: 3}
+  victoryFlavorText: "All targeted facilities were restored to operation, and emergency repairs matured into reliable systems. Production lines restart, safety incidents decline, and logistics planners can schedule around known capacity again. The engineer corps turned triage into reconstruction. Technical competence, not panic, now sets the tempo."
+  failureFlavorText: "Too many damaged facilities remained offline, leaving production bottlenecks unresolved and dependent sectors under-supplied. Field crews were stretched, replacement parts lagged, and temporary fixes failed under load. Recovery plans became optimistic paperwork disconnected from physical reality. The industrial system remains brittle where it needed stability."
   participantRole: 0
   strategyTags: 20
   objectives:

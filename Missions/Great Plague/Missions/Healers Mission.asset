@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Healers
   description: "The sick do not need merely to be isolated; they need to recover. Cause 3 cities infected by the crisis plague to overcome the disease."
   flavorText: "Fear teaches people to avoid the sick. Civilization requires some to walk toward them. Healers, attendants, physicians, priests, and volunteers will enter homes others refuse to approach and learn from every patient who survives. Knowledge will spread beside the disease: what helps, what fails, which symptoms come first, and what gives the body its best chance. We cannot promise that everyone will live. We can refuse to let sickness have the final word."
+  splashImage: {fileID: 21300000, guid: d1b7c42deb507484ab3cefd84c212c9a, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: aa7ac98575406e24493cf9458b9d3f63, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: effcc5ea9e51c48408a70c68014a34dd, type: 3}
+  victoryFlavorText: "Three infected cities overcame the disease, proving that recovery is possible with coordinated care rather than only quarantine and fear. Treatment practices from those victories now spread as practical doctrine to still-affected regions. Public morale rises because people can now point to cured communities, not only grave counts. Healing has become strategically credible."
+  failureFlavorText: "Too few infected cities recovered before the mission window closed. Medical capacity remained overwhelmed, best practices spread too slowly, and each new outbreak consumed resources needed elsewhere. Citizens begin to treat infection as a sentence rather than an illness, which further weakens compliance and trust. The healing effort lacked enough wins to change the trajectory."
   participantRole: 0
   strategyTags: 48
   objectives:

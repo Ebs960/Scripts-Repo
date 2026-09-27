@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Reclaimers
   description: "A captured city is not a lost city while its people still remember who they are. Retake 1 city seized by the invasion and restore it to our civilization."
   flavorText: "The enemy may raise its banners above our walls, but occupation does not make those walls theirs. Roads, homes, temples, graves, and memories bind the captured city to the people driven from it. An army will return along those roads with one purpose: not conquest, but reclamation. Every street retaken tells the invaders that taking territory and keeping it are very different achievements. What was ours will be ours again."
+  splashImage: {fileID: 21300000, guid: 3a8122c16fb459c44ac68c412c211ae5, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: e6b398f7464decd41917ac8ba591de9c, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: 201d1cfbe0a78874492847e680ed3584, type: 3}
+  victoryFlavorText: "Our banner flies over the city again, and the occupiers have been driven out. Civilians emerge from hiding to reopen markets, clear rubble, and restore institutions the invaders tried to replace. The reconquest proves to allies and enemies alike that annexation by raid can be reversed. What was taken by force has been returned by force and resolve."
+  failureFlavorText: "The occupied city remained beyond our reach for the duration of the crisis. Its garrison held, its collaborators entrenched, and every failed assault deepened the practical reality of enemy control. Refugees now fear that displacement may become permanent. The war continues with one of our own cities still lost."
   participantRole: 0
   strategyTags: 1
   objectives:

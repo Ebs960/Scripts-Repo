@@ -7,6 +7,11 @@ MonoBehaviour:
   missionName: Reform the State
   description: "The revolution has exposed a political demand that can no longer be ignored. Resolve the principal demand of {FactionName}—{Demand}—and use institutional reform rather than repression to end the crisis."
   flavorText: "Revolutions often begin because peaceful demands repeatedly fail. {FactionName} has placed one issue at the center of the present confrontation: {Demand}. Granting meaningful reform will anger those who see every concession as surrender, but continued refusal may convince thousands more that change is impossible without destroying the existing order. The government will attempt something harder than repression and more permanent than temporary appeasement: changing the institutions themselves. If the state can absorb the demand that threatened it, survival may leave it stronger rather than merely intact."
+  splashImage: {fileID: 21300000, guid: 3a76d7f5fc3b41640960efdb53f583fc, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: ada580b4ac399c6458f5818adee573bd, type: 3}
+  failureSplashImage: {fileID: 21300000, guid: b01d9ed050f23fe469dbe9933745aafc, type: 3}
+  victoryFlavorText: "The core demand was resolved through institutional reform, and the revolutionary coalition fractured between reformists and maximalists. Citizens who wanted change without civil war now have a concrete result to defend. Government legitimacy improves not because conflict disappeared, but because institutions proved capable of adapting under pressure. The state survives by changing enough to remain governable."
+  failureFlavorText: "The principal demand remained unresolved, leaving radicals free to argue that institutions cannot reform themselves in good faith. Delays and partial measures looked like stalling rather than transformation. Moderate factions lost leverage as confrontation replaced negotiation. The window for peaceful structural change narrowed further."
   participantRole: 0
   strategyTags: 80
   objectives:
