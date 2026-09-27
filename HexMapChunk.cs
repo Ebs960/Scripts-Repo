@@ -539,17 +539,21 @@ public class HexMapChunk : MonoBehaviour
             return;
 
         HexGrid grid = manager.Grid;
-        float radius = grid.GetLookupData().s * manager.SteppedHexTopScale;
         float fullRadius = grid.GetLookupData().s;
+        float outerRadius = fullRadius * manager.SteppedHexTopScale;
+        float bevelWidthWorld = Mathf.Clamp(fullRadius * manager.SteppedBevelWidth, 0f, outerRadius);
+        float innerRadius = outerRadius - bevelWidthWorld;
+        // A zero-width bevel is the reversible fallback: keep the old top and wall heights.
+        float bevelDrop = bevelWidthWorld > 0.0001f ? Mathf.Max(0f, manager.SteppedBevelDrop) : 0f;
         float seamDepth = manager.SteppedSeamDepth;
         float chunkOriginX = -manager.MapWidth * 0.5f + chunkX * (manager.MapWidth / Mathf.Max(1, manager.GridChunkCountX));
         float chunkOriginZ = -manager.MapHeight * 0.5f + chunkZ * (manager.MapHeight / Mathf.Max(1, manager.GridChunkCountZ));
 
-        var vertices = new List<Vector3>(tileIndices.Count * 31);
-        var uvs = new List<Vector2>(tileIndices.Count * 31);
-        var normals = new List<Vector3>(tileIndices.Count * 31);
-        var tangents = new List<Vector4>(tileIndices.Count * 31);
-        var triangles = new List<int>(tileIndices.Count * 54);
+        var vertices = new List<Vector3>(tileIndices.Count * 55);
+        var uvs = new List<Vector2>(tileIndices.Count * 55);
+        var normals = new List<Vector3>(tileIndices.Count * 55);
+        var tangents = new List<Vector4>(tileIndices.Count * 55);
+        var triangles = new List<int>(tileIndices.Count * 90);
 
         foreach (int tileIndex in tileIndices)
         {
@@ -558,6 +562,7 @@ public class HexMapChunk : MonoBehaviour
 
             Vector3 mapCenter = grid.tileCenters[tileIndex];
             float topY = manager.GetSteppedVisualHeight(tileIndex);
+            float shoulderY = topY - bevelDrop;
             Vector3 localCenter = new Vector3(mapCenter.x - chunkOriginX, topY, mapCenter.z - chunkOriginZ);
             Vector2 centerUV = MapPositionToUV(mapCenter);
 
@@ -566,7 +571,7 @@ public class HexMapChunk : MonoBehaviour
             for (int corner = 0; corner < 6; corner++)
             {
                 float angle = Mathf.Deg2Rad * (60f * corner - 30f);
-                Vector3 cornerOffset = new Vector3(radius * Mathf.Cos(angle), 0f, radius * Mathf.Sin(angle));
+                Vector3 cornerOffset = new Vector3(innerRadius * Mathf.Cos(angle), 0f, innerRadius * Mathf.Sin(angle));
                 AddVertex(localCenter + cornerOffset, MapPositionToUV(mapCenter + cornerOffset),
                     Vector3.up, Vector3.right, vertices, uvs, normals, tangents);
             }
@@ -580,12 +585,45 @@ public class HexMapChunk : MonoBehaviour
                 triangles.Add(topStart + 1 + corner);
             }
 
+            // Give each bevel edge its own vertices so its angled normal remains faceted.
+            if (bevelWidthWorld > 0.0001f)
+            {
+                for (int edge = 0; edge < 6; edge++)
+                {
+                    float angleA = Mathf.Deg2Rad * (60f * edge - 30f);
+                    float angleB = Mathf.Deg2Rad * (60f * ((edge + 1) % 6) - 30f);
+                    Vector3 innerA = localCenter + new Vector3(innerRadius * Mathf.Cos(angleA), 0f, innerRadius * Mathf.Sin(angleA));
+                    Vector3 innerB = localCenter + new Vector3(innerRadius * Mathf.Cos(angleB), 0f, innerRadius * Mathf.Sin(angleB));
+                    Vector3 outerA = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleA), shoulderY, localCenter.z + outerRadius * Mathf.Sin(angleA));
+                    Vector3 outerB = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleB), shoulderY, localCenter.z + outerRadius * Mathf.Sin(angleB));
+                    Vector3 outward = new Vector3(
+                        outerA.x + outerB.x - localCenter.x * 2f, 0f,
+                        outerA.z + outerB.z - localCenter.z * 2f).normalized;
+                    Vector3 bevelNormal = (Vector3.up * bevelWidthWorld + outward * bevelDrop).normalized;
+                    Vector3 edgeTangent = (innerB - innerA).normalized;
+                    int bevelStart = vertices.Count;
+
+                    // Center UV ownership prevents the rim from sampling an adjacent biome.
+                    AddVertex(innerA, centerUV, bevelNormal, edgeTangent, vertices, uvs, normals, tangents);
+                    AddVertex(innerB, centerUV, bevelNormal, edgeTangent, vertices, uvs, normals, tangents);
+                    AddVertex(outerA, centerUV, bevelNormal, edgeTangent, vertices, uvs, normals, tangents);
+                    AddVertex(outerB, centerUV, bevelNormal, edgeTangent, vertices, uvs, normals, tangents);
+
+                    triangles.Add(bevelStart);
+                    triangles.Add(bevelStart + 3);
+                    triangles.Add(bevelStart + 2);
+                    triangles.Add(bevelStart);
+                    triangles.Add(bevelStart + 1);
+                    triangles.Add(bevelStart + 3);
+                }
+            }
+
             for (int edge = 0; edge < 6; edge++)
             {
                 float angleA = Mathf.Deg2Rad * (60f * edge - 30f);
                 float angleB = Mathf.Deg2Rad * (60f * ((edge + 1) % 6) - 30f);
-                Vector3 offsetA = new Vector3(radius * Mathf.Cos(angleA), 0f, radius * Mathf.Sin(angleA));
-                Vector3 offsetB = new Vector3(radius * Mathf.Cos(angleB), 0f, radius * Mathf.Sin(angleB));
+                Vector3 offsetA = new Vector3(outerRadius * Mathf.Cos(angleA), 0f, outerRadius * Mathf.Sin(angleA));
+                Vector3 offsetB = new Vector3(outerRadius * Mathf.Cos(angleB), 0f, outerRadius * Mathf.Sin(angleB));
                 Vector3 outward = new Vector3(offsetA.x + offsetB.x, 0f, offsetA.z + offsetB.z).normalized;
 
                 int neighborIndex = grid.GetTileAtPosition(mapCenter + outward * (fullRadius * 1.05f));
@@ -599,15 +637,15 @@ public class HexMapChunk : MonoBehaviour
                 {
                     float neighborY = manager.GetSteppedVisualHeight(neighborIndex);
                     if (topY > neighborY + 0.0001f)
-                        bottomY = neighborY;
+                        bottomY = neighborY - bevelDrop;
                     else if (manager.SteppedHexTopScale < 0.9999f && Mathf.Abs(topY - neighborY) <= 0.0001f && seamDepth > 0f)
-                        bottomY = topY - seamDepth;
+                        bottomY = topY - Mathf.Max(seamDepth, bevelDrop);
                     else
                         continue;
                 }
 
-                Vector3 upperA = localCenter + offsetA;
-                Vector3 upperB = localCenter + offsetB;
+                Vector3 upperA = new Vector3(localCenter.x + offsetA.x, shoulderY, localCenter.z + offsetA.z);
+                Vector3 upperB = new Vector3(localCenter.x + offsetB.x, shoulderY, localCenter.z + offsetB.z);
                 Vector3 lowerA = new Vector3(upperA.x, bottomY, upperA.z);
                 Vector3 lowerB = new Vector3(upperB.x, bottomY, upperB.z);
                 Vector3 edgeTangent = (upperB - upperA).normalized;
