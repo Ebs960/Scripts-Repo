@@ -89,14 +89,12 @@ MonoBehaviour:
   meshSubdivisionsPerChunk: 22
   terrainGeometryMode: 1
   steppedHexTopScale: 1
-  steppedBevelWidth: 0.04
-  steppedBevelDrop: 0.05
-  steppedFlatHeight: 35
-  steppedHillHeight: 38
-  steppedMountainHeight: 12.5
-  steppedOceanFloorHeight: 0
-  steppedAbyssalHeight: -1.5
-  steppedTrenchHeight: -3.5
+  steppedFlatHeightAboveSea: 0.75
+  steppedHillHeightAboveSea: 3.5
+  steppedMountainHeightAboveSea: 7.5
+  steppedOceanDepthBelowSea: 2
+  steppedAbyssalDepthBelowSea: 3.5
+  steppedTrenchDepthBelowSea: 5.5
   steppedSeamDepth: 0.08
   displacementStrength: 1
   flatY: 0
