@@ -55,6 +55,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
     private readonly Dictionary<string, CrisisOccurrenceRecord> occurrenceHistory = new Dictionary<string, CrisisOccurrenceRecord>();
     public IReadOnlyDictionary<string, CrisisOccurrenceRecord> OccurrenceHistory => occurrenceHistory;
     public CrisisRuntimeContext ActiveContext { get; private set; }
+    public bool? LastWarOfIndependenceOverlordSuccess { get; private set; }
 
     public int TurnsRemaining
     {
@@ -263,6 +264,45 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         }
 
         LogCrisisDebug("TriggerCrisis", $"Completed trigger request for {DescribeCrisis(crisis)}. Current phase={currentPhase}.");
+        return true;
+    }
+
+    /// <summary>Starts this relationship crisis only after an overlord rejects an ultimatum.</summary>
+    public bool TriggerWarOfIndependence(Civilization overlord, Civilization subject)
+    {
+        if (overlord == null || subject == null || activeCrisis != null) return false;
+        var crisis=allCrises.FirstOrDefault(c=>c != null && c.crisisName=="War of Independence");
+        if (crisis == null) return false;
+        int turn=CurrentTurn;
+        activeCrisis=crisis;
+        crisisTriggerTurn=turn;
+        ActiveContext=new CrisisRuntimeContext {
+            crisisIdentity=crisis.crisisName, triggerTurn=turn,
+            overlordIndex=GetCivIndex(overlord), subjectIndex=GetCivIndex(subject),
+            resolvedRisk=100f, riskExplanation="Full independence demand rejected"
+        };
+        AddParticipantSnapshot(ActiveContext,overlord);
+        AddParticipantSnapshot(ActiveContext,subject);
+        if (!occurrenceHistory.TryGetValue(crisis.crisisName,out var occurrence))
+            occurrenceHistory[crisis.crisisName]=occurrence=new CrisisOccurrenceRecord { crisisIdentity=crisis.crisisName };
+        occurrence.occurrenceCount++;
+        occurrence.lastTriggerTurn=turn;
+        ActivateCrisis();
+        return true;
+    }
+
+    /// <summary>Records a rebel victory as failure for the empire; the rebel earns no mission reward.</summary>
+    public bool ResolveWarOfIndependenceAsOverlordFailure(Civilization subject)
+    {
+        if (activeCrisis?.crisisName!="War of Independence" || ActiveContext==null
+            || GetCivIndex(subject)!=ActiveContext.subjectIndex) return false;
+        int overlordIndex=ActiveContext.overlordIndex;
+        var overlord=GetCivByIndex(overlordIndex);
+        if (activeMissions.TryGetValue(overlordIndex,out var mission))
+            FailMission(overlord,overlordIndex,mission,"The breakaway civilization secured its independence. The empire has failed to preserve the subject relationship.");
+        LastWarOfIndependenceOverlordSuccess=false;
+        SetPhase(CrisisData.CrisisPhase.Resolution);
+        EndCrisis();
         return true;
     }
 
@@ -2370,6 +2410,12 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         OnMissionCompleted?.Invoke(civ, state.mission, state);
         activeMissions.Remove(civIdx);
         LogCrisisDebug("CompleteMission", $"Mission removed from active mission map for civIdx={civIdx}");
+        if (activeCrisis?.crisisName=="War of Independence" && ActiveContext?.overlordIndex==civIdx)
+        {
+            LastWarOfIndependenceOverlordSuccess=true;
+            SetPhase(CrisisData.CrisisPhase.Resolution);
+            EndCrisis();
+        }
     }
 
     private LegacyData ResolveRepeatableLegacyReward(Civilization civ, LegacyData preferred)

@@ -19,6 +19,21 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
     // ── State ─────────────────────────────────────────────────────────────────
     private List<VassalContract> _contracts = new List<VassalContract>();
+    private List<IndependenceDemand> _independenceDemands = new List<IndependenceDemand>();
+    private List<DiplomaticOpinionModifier> _diplomaticOpinionModifiers = new List<DiplomaticOpinionModifier>();
+
+    [System.Serializable]
+    public class DiplomaticOpinionModifier
+    {
+        [System.NonSerialized] public Civilization holder;
+        [System.NonSerialized] public Civilization toward;
+        public string holderCivName, towardCivName, reason;
+        public float value;
+        public int expiresOnTurn;
+    }
+
+    public IReadOnlyList<IndependenceDemand> IndependenceDemands => _independenceDemands;
+    public IReadOnlyList<DiplomaticOpinionModifier> DiplomaticOpinionModifiers => _diplomaticOpinionModifiers;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -53,6 +68,9 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     /// <summary>Get the contract where this civ is the subject, or null.</summary>
     public VassalContract GetOverlordContract(Civilization subject)
         => _contracts.FirstOrDefault(c => c.subject == subject);
+
+    public IndependenceDemand GetPendingIndependenceDemand(Civilization overlord, Civilization subject)
+        => _independenceDemands.FirstOrDefault(d => !d.resolved && d.overlord == overlord && d.subject == subject);
 
     /// <summary>
     /// Create a new vassal contract. Sets the DiplomaticState to Vassal on both civs.
@@ -144,6 +162,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     /// </summary>
     public void ProcessLibertyTick(int currentTurn)
     {
+        _diplomaticOpinionModifiers.RemoveAll(m => currentTurn >= m.expiresOnTurn);
         for (int i = _contracts.Count - 1; i >= 0; i--)
         {
             var c = _contracts[i];
@@ -378,28 +397,92 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
     private void AttemptIndependence(VassalContract contract, int currentTurn)
     {
+        if (contract == null || GetPendingIndependenceDemand(contract.overlord, contract.subject) != null) return;
         // Simple probability gate: confident, resentful subjects break away
         float breakawayChance = (contract.libertyDesire - contract.EffectiveBreakawayThreshold) * 0.02f
                               + contract.militaryConfidence * 0.005f;
 
         if (Random.value < breakawayChance)
         {
-            var breakawayLeader = TryCreateIndependenceRebel(contract.subject, contract.overlord) ?? contract.subject;
-            string breakawayName = breakawayLeader.civData?.civName ?? breakawayLeader.name;
-
-            Debug.Log($"[SubjectManager] {breakawayName} declares independence from {contract.overlordCivName}!");
-
-            // Notify both civs
-            UIManager.Instance?.ShowNotification(
-                $"{breakawayName} has declared independence from {contract.overlordCivName}!");
-
-            // Set to war
-            contract.overlord.SetRelation(breakawayLeader, DiplomaticState.War);
-            breakawayLeader.SetRelation(contract.overlord, DiplomaticState.War);
-
-            _contracts.Remove(contract);
+            IssueIndependenceDemand(contract, currentTurn);
         }
     }
+
+    public IndependenceDemand IssueIndependenceDemand(VassalContract contract, int currentTurn, bool resolveImmediately = true)
+    {
+        if (contract == null || contract.overlord == null || contract.subject == null) return null;
+        var existing = GetPendingIndependenceDemand(contract.overlord, contract.subject);
+        if (existing != null) return existing;
+        var demand = new IndependenceDemand {
+            overlord=contract.overlord, subject=contract.subject,
+            overlordCivName=contract.overlordCivName, subjectCivName=contract.subjectCivName,
+            turnIssued=currentTurn, demandType=SubjectDemandType.FullIndependence
+        };
+        _independenceDemands.Add(demand);
+        Debug.Log($"[SubjectManager] {demand.subjectCivName} demands full independence from {demand.overlordCivName}.");
+        if (!resolveImmediately) return demand;
+        if (contract.overlord == CivilizationManager.Instance?.playerCiv)
+            UIManager.Instance?.ShowIndependenceDemand(demand, () => AcceptIndependenceDemand(demand, CurrentTurn), () => RejectIndependenceDemand(demand));
+        else
+            ResolveAiIndependenceDemand(demand, contract);
+        return demand;
+    }
+
+    public bool AcceptIndependenceDemand(IndependenceDemand demand, int currentTurn)
+    {
+        if (!CanResolve(demand)) return false;
+        demand.resolved=true;
+        if (!DissolveContract(demand.overlord,demand.subject)) return false;
+        _diplomaticOpinionModifiers.Add(new DiplomaticOpinionModifier {
+            holder=demand.subject, toward=demand.overlord, holderCivName=demand.subjectCivName,
+            towardCivName=demand.overlordCivName, reason="Peaceful Independence", value=15f,
+            expiresOnTurn=currentTurn+30
+        });
+        UIManager.Instance?.ShowNotification($"{demand.subjectCivName} peacefully gained full independence.");
+        return true;
+    }
+
+    public bool RejectIndependenceDemand(IndependenceDemand demand)
+    {
+        if (!CanResolve(demand)) return false;
+        demand.resolved=true;
+        var overlord=demand.overlord; var subject=demand.subject;
+        if (!DissolveContract(overlord,subject)) return false;
+        overlord.SetRelation(subject,DiplomaticState.War);
+        subject.SetRelation(overlord,DiplomaticState.War);
+        bool started=CrisisManager.Instance != null && CrisisManager.Instance.TriggerWarOfIndependence(overlord,subject);
+        UIManager.Instance?.ShowNotification($"{demand.overlordCivName} rejected {demand.subjectCivName}'s demand. The War of Independence has begun!");
+        return started;
+    }
+
+    private bool CanResolve(IndependenceDemand demand) => demand != null && !demand.resolved
+        && demand.overlord != null && demand.subject != null
+        && GetContract(demand.overlord,demand.subject) != null;
+
+    public float GetDiplomaticOpinionModifier(Civilization holder, Civilization toward, int currentTurn)
+        => _diplomaticOpinionModifiers.Where(m=>m.holder==holder && m.toward==toward && currentTurn<m.expiresOnTurn).Sum(m=>m.value);
+
+    public float ScoreIndependenceDemandRejection(VassalContract contract)
+    {
+        if (contract == null) return float.MinValue;
+        float overlordStrength=contract.overlord?.combatUnits?.Count ?? 0;
+        float subjectStrength=contract.subject?.combatUnits?.Count ?? 0;
+        int otherWars=contract.overlord?.relations?.Count(r=>r.Value==DiplomaticState.War) ?? 0;
+        // Positive rejects: strength and valuable tribute. Negative accepts: overextension,
+        // confident rebels, hostile opinion, and extreme liberty desire.
+        return (overlordStrength-subjectStrength)*8f
+            +(contract.goldTributePct+contract.scienceTributePct+contract.foodTributePct)*100f
+            -otherWars*18f-contract.militaryConfidence*.25f-contract.libertyDesire*.15f
+            +contract.subjectOpinion*.10f;
+    }
+
+    private void ResolveAiIndependenceDemand(IndependenceDemand demand, VassalContract contract)
+    {
+        if (ScoreIndependenceDemandRejection(contract)>=0f) RejectIndependenceDemand(demand);
+        else AcceptIndependenceDemand(demand,CurrentTurn);
+    }
+
+    private int CurrentTurn => TurnManager.Instance != null ? TurnManager.Instance.round : GameManager.Instance?.currentTurn ?? 0;
 
     private void EnforceSubjectReligionRule(VassalContract contract)
     {
@@ -437,103 +520,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
-    private Civilization TryCreateIndependenceRebel(Civilization subject, Civilization overlord)
-    {
-        if (subject == null || overlord == null) return null;
-        if (subject == CivilizationManager.Instance?.playerCiv) return null;
-        if (subject.cities == null || subject.cities.Count == 0) return null;
-
-        var anchorCity = subject.CapitalCity
-            ?? subject.cities.OrderByDescending(c => c?.level ?? 0).FirstOrDefault(c => c != null);
-        if (anchorCity == null) return null;
-
-        string rebelName = BuildIndependenceRebelName(anchorCity);
-        var rebelCiv = CivilizationManager.Instance?.CreateRebelFaction(anchorCity, rebelName);
-        if (rebelCiv == null || rebelCiv == subject) return null;
-
-        TransferSubjectRealmToRebel(subject, rebelCiv);
-        CivilizationManager.Instance?.UnregisterCiv(subject);
-        Destroy(subject.gameObject);
-        return rebelCiv;
-    }
-
-    private string BuildIndependenceRebelName(City anchorCity)
-    {
-        string cityName = !string.IsNullOrWhiteSpace(anchorCity?.cityName) ? anchorCity.cityName : "Free Cities";
-        return $"{cityName} Liberation Front";
-    }
-
-    private void TransferSubjectRealmToRebel(Civilization subject, Civilization rebelCiv)
-    {
-        var subjectCities = subject.cities?.Where(c => c != null).ToList() ?? new List<City>();
-        foreach (var city in subjectCities)
-        {
-            subject.RemoveCity(city);
-            rebelCiv.AddCity(city);
-        }
-
-        if (rebelCiv.cities.Count > 0)
-        {
-            var newCapital = rebelCiv.cities.OrderByDescending(c => c?.level ?? 0).FirstOrDefault(c => c != null);
-            if (newCapital != null)
-                rebelCiv.SetCapitalCity(newCapital);
-        }
-
-        var subjectCombatUnits = subject.combatUnits?.Where(u => u != null).ToList() ?? new List<CombatUnit>();
-        foreach (var unit in subjectCombatUnits)
-        {
-            subject.combatUnits.Remove(unit);
-            rebelCiv.combatUnits.Add(unit);
-            unit.Initialize(unit.data, rebelCiv);
-        }
-
-        var subjectWorkerUnits = subject.workerUnits?.Where(w => w != null).ToList() ?? new List<WorkerUnit>();
-        foreach (var worker in subjectWorkerUnits)
-        {
-            subject.workerUnits.Remove(worker);
-            rebelCiv.workerUnits.Add(worker);
-            worker.Initialize(worker.data, rebelCiv, worker.currentTileIndex);
-        }
-
-        if (subject.herds != null)
-        {
-            foreach (var herd in subject.herds.Where(h => h != null).ToList())
-            {
-                subject.herds.Remove(herd);
-                if (!rebelCiv.herds.Contains(herd))
-                    rebelCiv.herds.Add(herd);
-                herd.owner = rebelCiv;
-            }
-        }
-
-        if (subject.governors != null)
-        {
-            rebelCiv.governorsEnabled = subject.governorsEnabled;
-            rebelCiv.governorCount = Mathf.Max(rebelCiv.governorCount, subject.governorCount);
-
-            foreach (var governor in subject.governors.Where(g => g != null).ToList())
-            {
-                subject.governors.Remove(governor);
-                if (!rebelCiv.governors.Contains(governor))
-                    rebelCiv.governors.Add(governor);
-                governor.Faction = null;
-                governor.IsOnCouncil = false;
-            }
-        }
-
-        rebelCiv.hasFoundedReligion = subject.hasFoundedReligion;
-        rebelCiv.foundedReligion = subject.foundedReligion;
-        ReligionPoliticsService.TrySetStateReligion(rebelCiv, subject.StateReligion, StateReligionChangeReason.Event, false, out _);
-        rebelCiv.gold += subject.gold;
-        rebelCiv.science += subject.science;
-        rebelCiv.food += subject.food;
-        subject.gold = 0;
-        subject.science = 0;
-        subject.food = 0;
-        subject.royalCouncil?.Clear();
-        subject.nobleFactions?.Clear();
-    }
-
     // ── Save / Load ───────────────────────────────────────────────────────────
 
     [System.Serializable]
@@ -558,8 +544,11 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         public int contractStartTurn;
     }
 
+    [System.Serializable] private class DemandSaveData { public string overlordCivName,subjectCivName,demandType; public int turnIssued; public bool resolved; }
+    [System.Serializable] private class OpinionSaveData { public string holderCivName,towardCivName,reason; public float value; public int expiresOnTurn; }
+
     [System.Serializable]
-    private class SavePayload { public List<ContractSaveData> contracts = new(); }
+    private class SavePayload { public List<ContractSaveData> contracts = new(); public List<DemandSaveData> demands = new(); public List<OpinionSaveData> opinions = new(); }
 
     public string CaptureStateJson()
     {
@@ -587,12 +576,16 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 contractStartTurn     = c.contractStartTurn,
             });
         }
+        foreach(var d in _independenceDemands) payload.demands.Add(new DemandSaveData { overlordCivName=d.overlordCivName,subjectCivName=d.subjectCivName,turnIssued=d.turnIssued,demandType=d.demandType.ToString(),resolved=d.resolved });
+        foreach(var m in _diplomaticOpinionModifiers) payload.opinions.Add(new OpinionSaveData { holderCivName=m.holderCivName,towardCivName=m.towardCivName,reason=m.reason,value=m.value,expiresOnTurn=m.expiresOnTurn });
         return JsonUtility.ToJson(payload);
     }
 
     public void RestoreStateJson(string json)
     {
         _contracts.Clear();
+        _independenceDemands.Clear();
+        _diplomaticOpinionModifiers.Clear();
         if (string.IsNullOrEmpty(json)) return;
 
         var payload = JsonUtility.FromJson<SavePayload>(json);
@@ -635,6 +628,17 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 contractStartTurn     = cd.contractStartTurn,
             };
             _contracts.Add(contract);
+        }
+
+        Civilization FindCiv(string name) => allCivs.FirstOrDefault(c=>(c.civData?.civName ?? c.name)==name);
+        foreach(var dd in payload.demands ?? new List<DemandSaveData>()) {
+            var overlord=FindCiv(dd.overlordCivName); var subject=FindCiv(dd.subjectCivName);
+            if(overlord==null||subject==null) continue;
+            _independenceDemands.Add(new IndependenceDemand { overlord=overlord,subject=subject,overlordCivName=dd.overlordCivName,subjectCivName=dd.subjectCivName,turnIssued=dd.turnIssued,resolved=dd.resolved,demandType=System.Enum.TryParse(dd.demandType,out SubjectDemandType type)?type:SubjectDemandType.FullIndependence });
+        }
+        foreach(var od in payload.opinions ?? new List<OpinionSaveData>()) {
+            var holder=FindCiv(od.holderCivName); var toward=FindCiv(od.towardCivName);
+            if(holder!=null&&toward!=null) _diplomaticOpinionModifiers.Add(new DiplomaticOpinionModifier { holder=holder,toward=toward,holderCivName=od.holderCivName,towardCivName=od.towardCivName,reason=od.reason,value=od.value,expiresOnTurn=od.expiresOnTurn });
         }
 
         Debug.Log($"[SubjectManager] Restored {_contracts.Count} vassal contracts.");

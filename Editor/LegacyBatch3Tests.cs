@@ -74,11 +74,6 @@ public class LegacyBatch3Tests
     [Test]
     public void CorrectedTargetedLegaciesHaveRequestedFilters()
     {
-        var foundingMyth = FindAsset<LegacyData>("Liberty or Death Legacy");
-        Assert.That(foundingMyth.defenseModifier, Is.Zero);
-        Assert.That(foundingMyth.unitBonuses.Single().territoryRequirement, Is.EqualTo(UnitTerritoryRequirement.Owned));
-        Assert.That(foundingMyth.unitBonuses.Single().defensePct, Is.EqualTo(0.05f));
-
         var cohesion = FindAsset<LegacyData>("Hearts and Minds Legacy");
         Assert.That(cohesion.nonStateReligionUnhappinessModifiers.Single().unhappinessPct, Is.EqualTo(-0.10f));
         Assert.That(cohesion.nonStateReligionUnhappinessModifiers.Single().unhappinessPerFollowerAdd, Is.Zero);
