@@ -31,6 +31,8 @@ MonoBehaviour:
   mustStartAtSeasonBoundary: 0
   crisisProjects:
   - {fileID: 11400000, guid: b5953098a3294ad48d93e12bcce7e207, type: 2}
+  - {fileID: 11400000, guid: a31d231c8c9a4a939af115203787da01, type: 2}
+  - {fileID: 11400000, guid: a31d231c8c9a4a939af115203787da02, type: 2}
   crisisMissions:
   - {fileID: 11400000, guid: fdc2e31a81734121b423b92b5e779303, type: 2}
   - {fileID: 11400000, guid: 2455a4c042d241ae9078ee7534fb7048, type: 2}

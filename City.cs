@@ -27,7 +27,7 @@ public class City : MonoBehaviour
 
     // Production Queue Entry Definition
     public class ProdEntry {
-        public enum Type { Unit, Worker, Building, District, Equipment, Projectile, Missile }
+        public enum Type { Unit, Worker, Building, District, Equipment, Projectile, Missile, CrisisProject }
         public Type       type;
         public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, DistrictData, EquipmentData, ProjectileData, or MissileData
         public int        remainingPts;    // turns left in production
@@ -1289,7 +1289,22 @@ if (UIManager.Instance != null)
         
         // Apply production points from this turn. Unit entries can receive separate
         // training-speed modifiers from techs, cultures, and local buildings.
-        prodEntry.remainingPts -= GetProductionPerTurn(prodEntry);
+        int productionApplied = Mathf.Max(0, GetProductionPerTurn(prodEntry));
+        if (prodEntry.type == ProdEntry.Type.CrisisProject && prodEntry.data is CrisisProjectData crisisProject)
+        {
+            if (CrisisManager.Instance == null || !CrisisManager.Instance.ContributeCrisisProject(owner, this, crisisProject, productionApplied))
+            {
+                productionQueue.RemoveAt(0); // stale after completion/crisis resolution
+                return;
+            }
+            prodEntry.remainingPts=Mathf.Max(0,CrisisManager.Instance.GetResolvedProjectCost(owner,crisisProject)
+                - CrisisManager.Instance.GetProjectProductionInvested(owner,this,crisisProject));
+            // Shared progress is authoritative; each contributing city remains assigned until completion.
+            if (CrisisManager.Instance.IsCrisisProjectCompleted(owner, crisisProject)) productionQueue.RemoveAt(0);
+            resourceSurplusProductionBonusThisTurn = 0;
+            return;
+        }
+        prodEntry.remainingPts -= productionApplied;
         resourceSurplusProductionBonusThisTurn = 0;
         
         // Check if completed
@@ -1452,6 +1467,13 @@ if (UIManager.Instance != null)
     /// </summary>
     public bool QueueProduction(ScriptableObject d) {
         // Extract info based on type
+        if (d is CrisisProjectData crisisProject) {
+            var manager = CrisisManager.Instance;
+            if (manager == null || !manager.CanQueueCrisisProject(owner, this, crisisProject)) return false;
+            productionQueue.Add(new ProdEntry(crisisProject, manager.GetResolvedProjectCost(owner, crisisProject), 0,
+                                              null, null, false, false, ProdEntry.Type.CrisisProject));
+            return true;
+        }
         if (d is CombatUnitData u) {
             var resolvedUnit = ResolveCombatUnitForProduction(u);
             if (resolvedUnit == null || !IsCombatUnitAvailableForProduction(resolvedUnit)) return false;
