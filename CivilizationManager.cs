@@ -36,8 +36,6 @@ public class CivilizationManager : MonoBehaviour
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
-    [Tooltip("Normal expansion settler data. This is no longer spawned at civilization creation; retained for settler production and legacy-save compatibility.")]
-    public WorkerUnitData pioneerData;
     [Tooltip("Default new-game Band rules/content. Individual CivData assets may override this, and every new civilization now requires a Band configuration.")]
     public BandData startingBandData;
     [Tooltip("Prefab with a City component for founding new cities")]
@@ -1915,33 +1913,17 @@ public class CivilizationManager : MonoBehaviour
             return; // Tribes can't expand beyond 3 cities
         }
         
-        // Pioneer production uses the global data asset; civ-specific visuals come from WorkerUnitData overrides.
-        WorkerUnitData resolvedPioneerData = pioneerData;
-        
-        if (resolvedPioneerData == null)
+        foreach (var band in (civ.bands ?? new List<Band>()).Where(b => b != null))
         {
-            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: no pioneerData configured on CivilizationManager");
-            return;
-        }
-        
-        // Check if pioneer can be produced
-        if (!resolvedPioneerData.IsBuildableFor(civ)) return;
-        
-        // Find cities that can produce pioneers
-        var citiesByProduction = civ.cities
-            .Where(c => c != null && c.GetProductionPerTurn() > 0)
-            .OrderByDescending(c => c.GetProductionPerTurn())
-            .ToList();
-        
-        // Queue pioneer in the best production city that doesn't already have production
-        foreach (var city in citiesByProduction)
-        {
-            if (city == null) continue;
-            if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
-            
-            if (city.QueueProduction(resolvedPioneerData))
+            if (!band.CanSplinterNewBand(out _)) continue;
+            var tileSystem = TileSystem.GetForPlanet(band.PlanetIndex) ?? TileSystem.Instance;
+            if (tileSystem == null) continue;
+
+            foreach (int tileIndex in tileSystem.GetNeighbors(band.CurrentTileIndex).OrderBy(_ => UnityEngine.Random.value))
             {
-break; // Only queue one pioneer per turn
+                if (!band.CanSplinterNewBand(tileIndex, out _)) continue;
+                band.SplinterNewBand(tileIndex, out _);
+                return;
             }
         }
     }

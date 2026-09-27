@@ -62,10 +62,5 @@ MonoBehaviour:
   pantheonCapIncrease: 0
   unlocksPantheons: []
   unlocksBeliefs: []
-  unitLimitModifiers:
-  - targetCombatUnit: {fileID: 0}
-    targetWorkerUnit: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
-    targetCategory: 
-    limitIncrease: 1
-    description: 
+  unitLimitModifiers: []
   buildingLimitModifiers: []

@@ -20,15 +20,15 @@ MonoBehaviour:
   - Kent
   - Wales
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Chalk Downs Herd
+  - Hillfort Watch Herd
+  - Oak Banner Herd
+  - Channel Wind Herd
   availableLeaders:
   - {fileID: 11400000, guid: 507a015a147ad994f9d988a3e10fc55e, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: 
+  description: "Iron Age Brittonic societies combined hillfort defense, local kingship, and adaptable warfare across varied terrain. They favor resilient communities and steady provisioning."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -43,9 +43,9 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0
+  defenseBonus: 0.1
   movementBonus: 0
-  foodModifier: 0
+  foodModifier: 0.05
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0

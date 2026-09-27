@@ -521,16 +521,39 @@ public sealed class Band : MonoBehaviour
     /// <summary>Rebuilds presentation from Band data. Runtime visuals are never persistent state.</summary>
     public void RefreshVisual()
     {
+        SuppressShellPresentation();
         ClearVisuals();
         GameObject visualPrefab = ResolveStateVisualPrefab();
         if (visualPrefab == null) return;
         stateVisual = Instantiate(visualPrefab, visualRoot != null ? visualRoot : transform, false);
+        stateVisual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+        stateVisual.transform.localScale = Vector3.one;
+        DisableNestedGameplayComponents(stateVisual);
         if (state == BandState.Packed) InitializePackedAnimators();
         else
         {
             RefreshStructureVisuals();
             RefreshFireVisual();
         }
+    }
+
+    private void SuppressShellPresentation()
+    {
+        if (visualRoot == null) return;
+        foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+            if (!renderer.transform.IsChildOf(visualRoot)) renderer.enabled = false;
+        foreach (var animator in GetComponentsInChildren<Animator>(true))
+            if (!animator.transform.IsChildOf(visualRoot)) animator.enabled = false;
+    }
+
+    private void DisableNestedGameplayComponents(GameObject visual)
+    {
+        foreach (var nestedBand in visual.GetComponentsInChildren<Band>(true))
+            nestedBand.enabled = false;
+        foreach (var nestedCollider in visual.GetComponentsInChildren<Collider>(true))
+            nestedCollider.enabled = false;
+        foreach (var nestedWorldUi in visual.GetComponentsInChildren<BandWorldUI>(true))
+            nestedWorldUi.gameObject.SetActive(false);
     }
 
     /// <summary>Updates only the existing campfire presentation from the owner's Fire research.</summary>

@@ -21,16 +21,15 @@ MonoBehaviour:
   - Eswatini
   - Lesotho
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Isibaya Thunder Herd
+  - Buffalo Horn Herd
+  - Drakensberg Herd
+  - Umfolozi Field Herd
   availableLeaders:
   - {fileID: 11400000, guid: c23fbb17349e6594fa70f442ecc9ec59, type: 2}
   cultureGroup: 3
   cultureBonuses: []
-  description: The Zulu are the most powerful tribe in the South  Africa. They are
-    NOT to be trifled with.
+  description: "The Zulu kingdom became a major regional power through regimental organization, mobility, and command discipline in southern Africa. It rewards aggressive operations sustained by reliable local supply."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -41,15 +40,15 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 030000000600000004000000
-  attackBonus: 0.02
+  attackBonus: 0.1
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.17
+  foodModifier: 0.05
   productionModifier: 0
-  goldModifier: 0.17
+  goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

@@ -19,16 +19,16 @@ MonoBehaviour:
   - Berlin
   - Aachen
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Danube Rider Herd
+  - Foederati Herd
+  - Timber Shield Herd
+  - Migration Trail Herd
   availableLeaders:
   - {fileID: 11400000, guid: 507a015a147ad994f9d988a3e10fc55e, type: 2}
   - {fileID: 11400000, guid: 87aaf74be5956394597b7914028b7dc0, type: 2}
   cultureGroup: 1
   cultureBonuses: []
-  description: Very angry and very strong. Great horsemen and powerful axes.
+  description: "Gothic groups played major roles in late Roman and post-Roman military history through mobile warfare and confederated leadership. They emphasize decisive offensives sustained by practical field organization."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -39,14 +39,14 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 0800000005000000
-  attackBonus: 0
+  attackBonus: 0.1
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: 0.05
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0

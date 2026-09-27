@@ -17,7 +17,7 @@ MonoBehaviour:
   description: A mobile Paleolithic society that travels, forages, encamps, and eventually
     develops into a permanent settlement.
   icon: {fileID: 21300000, guid: 3115485b89b2b064fb333507fc530884, type: 3}
-  prefab: {fileID: 8373606117427327079, guid: 33514bc4f5e2a294eb717186d6140a8c, type: 3}
+  prefab: {fileID: 0}
   startingPopulation: 25
   startingFoodReserve: 7
   foodStorageCapacity: 30

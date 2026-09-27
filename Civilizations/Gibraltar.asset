@@ -17,16 +17,16 @@ MonoBehaviour:
   cityNames:
   - Gibraltar
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Rock Sentinel Herd
+  - Strait Watch Herd
+  - Pillars Passage Herd
+  - Harbor Signal Herd
   availableLeaders:
   - {fileID: 11400000, guid: 507a015a147ad994f9d988a3e10fc55e, type: 2}
   - {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: A shining city state on the sea.
+  description: "Gibraltar occupies a strategic strait that has long served as a naval lookout and fortified gateway between sea zones. It favors secure defense paired with transit revenues."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -41,11 +41,11 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0
+  defenseBonus: 0.1
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0
+  goldModifier: 0.05
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

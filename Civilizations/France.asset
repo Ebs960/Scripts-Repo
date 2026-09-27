@@ -20,16 +20,16 @@ MonoBehaviour:
   - Nice
   - Marseille
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Loire Meadow Herd
+  - Fleur Banner Herd
+  - Cathedral Plain Herd
+  - Gaul Orchard Herd
   availableLeaders:
   - {fileID: 11400000, guid: 7a76036a90a2556459993a5b67c15dbc, type: 2}
   - {fileID: 11400000, guid: fd6f6a835eb312548bd0511a31edce58, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: Viva la France
+  description: "France developed strong court culture, urban life, and major centers of learning and administration. It thrives by converting cultural prestige into practical knowledge."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -46,12 +46,12 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.17
+  foodModifier: 0
   productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0
-  cultureModifier: 0.25
-  faithModifier: 0.13
+  scienceModifier: 0.05
+  cultureModifier: 0.1
+  faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

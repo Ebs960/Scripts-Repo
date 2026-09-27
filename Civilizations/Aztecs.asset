@@ -21,17 +21,16 @@ MonoBehaviour:
   - Xochimilco
   - Cempoala
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Lake Causeway Herd
+  - Eagle Standard Herd
+  - Sunstone March Herd
+  - Chinampa Field Herd
   availableLeaders:
   - {fileID: 11400000, guid: ec349cea732fe184aa3ecaf48e3b1143, type: 2}
   - {fileID: 11400000, guid: 510e963779829434cb14f0d16aa6e1c6, type: 2}
   cultureGroup: 9
   cultureBonuses: []
-  description: The Aztec Empire must continue the sacrifices. We cannot let the world
-    end.
+  description: "The Mexica-led Triple Alliance built an influential urban empire centered on Tenochtitlan, engineering, and tribute administration. Its momentum comes from coordinated military campaigns and civic tradition."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -42,18 +41,18 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 030000000600000009000000
-  attackBonus: 0.01
+  attackBonus: 0.1
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0.01
+  defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.25
+  goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0
-  faithModifier: 0.09
+  cultureModifier: 0.05
+  faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

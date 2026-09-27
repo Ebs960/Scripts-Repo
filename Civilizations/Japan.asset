@@ -21,15 +21,15 @@ MonoBehaviour:
   - Kyoto
   - Kanto
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Sakura Field Herd
+  - Island Forge Herd
+  - Tidal Banner Herd
+  - Cedar Shrine Herd
   availableLeaders:
   - {fileID: 11400000, guid: 8986ef88dd372de49812184882161303, type: 2}
   cultureGroup: 2
   cultureBonuses: []
-  description: 
+  description: "Japanese polities combined courtly culture, regional military institutions, and skilled craft traditions over many centuries. This civilization rewards disciplined tradition with battlefield precision."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -40,7 +40,7 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 050000000400000006000000
-  attackBonus: 0
+  attackBonus: 0.05
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
@@ -50,7 +50,7 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.3
+  cultureModifier: 0.1
   faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []

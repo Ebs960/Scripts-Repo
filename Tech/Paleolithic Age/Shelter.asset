@@ -46,14 +46,7 @@ MonoBehaviour:
   flatFaithBonus: 0
   unitBonuses: []
   unitYieldBonuses: []
-  workerBonuses:
-  - worker: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
-    workPointsAdd: 1
-    movePointsAdd: 0
-    healthAdd: 2
-    workPointsPct: 0
-    movePointsPct: 0
-    healthPct: 0
+  workerBonuses: []
   workerYieldBonuses: []
   allWorkersWorkPoints: 0
   equipmentBonuses: []

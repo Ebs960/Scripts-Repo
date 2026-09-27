@@ -21,17 +21,16 @@ MonoBehaviour:
   - Lagos
   - Abidjan
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Kumasi Forest Herd
+  - Pra River Herd
+  - Adinkra Trail Herd
+  - Savanna Gold Herd
   availableLeaders:
   - {fileID: 11400000, guid: 6d2746dd20c4a7a4ea2cc258e6d46298, type: 2}
   - {fileID: 11400000, guid: f3ee0c5dc9b82cb4ca09502b74c02a28, type: 2}
   cultureGroup: 3
   cultureBonuses: []
-  description: The Ashanti are the most powerful tribe in the west of Africa. They
-    are NOT to be trifled with.
+  description: "The Asante state in West Africa developed strong political institutions, military organization, and renowned gold trade networks. It represents disciplined leadership and regional integration."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -42,17 +41,17 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 030000000600000002000000
-  attackBonus: 0.04
+  attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.17
+  foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.17
+  goldModifier: 0.05
   scienceModifier: 0
-  cultureModifier: 0
+  cultureModifier: 0.1
   faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []

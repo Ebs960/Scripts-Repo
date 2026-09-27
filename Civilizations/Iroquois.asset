@@ -21,17 +21,16 @@ MonoBehaviour:
   - Canajoharie
   - Chonodote
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Longhouse Grove Herd
+  - Great Law Herd
+  - Wampum Trail Herd
+  - Five Nations Herd
   availableLeaders:
   - {fileID: 11400000, guid: 2e0541514bd2b8444967489b7b56c542, type: 2}
   - {fileID: 11400000, guid: 021b3d04bc464a94884c4b3dc01fd97e, type: 2}
   cultureGroup: 10
   cultureBonuses: []
-  description: 'A strong coalition of tribes who will never surrender their autonomy
-    to the white man! '
+  description: "The Haudenosaunee Confederacy developed sophisticated diplomacy, consensus governance, and productive woodland lifeways in northeastern North America. Its strength comes from stable food systems and civic cohesion."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -47,12 +46,12 @@ MonoBehaviour:
   rangedAttackBonus: 0
   cityAttackBonus: 0
   defenseBonus: 0
-  movementBonus: 1
-  foodModifier: 0
+  movementBonus: 0
+  foodModifier: 0.1
   productionModifier: 0
-  goldModifier: 0.09
+  goldModifier: 0
   scienceModifier: 0
-  cultureModifier: 0.17
+  cultureModifier: 0.05
   faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []

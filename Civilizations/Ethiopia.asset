@@ -21,17 +21,16 @@ MonoBehaviour:
   - Lagos
   - Abidjan
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Highland Covenant Herd
+  - Aksumite Road Herd
+  - Blue Nile Herd
+  - Simien Herd
   availableLeaders:
   - {fileID: 11400000, guid: e538a0d3b75df654fb0663be3a510c2d, type: 2}
   - {fileID: 11400000, guid: 25c8049437cd5a246aeee67d2d92dc61, type: 2}
   cultureGroup: 4
   cultureBonuses: []
-  description: The Ethiopians are the most powerful kingdom in the east of Africa.
-    They are NOT to be trifled with.
+  description: "Ethiopian highland kingdoms preserved durable institutions, defensive depth, and long cultural continuity in the Horn of Africa. Their power reflects steadfast governance and spiritual tradition."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -42,18 +41,18 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 03000000060000000a000000
-  attackBonus: 0.04
+  attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0
+  defenseBonus: 0.05
   movementBonus: 0
-  foodModifier: 0.17
+  foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.17
+  goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0
+  faithModifier: 0.1
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

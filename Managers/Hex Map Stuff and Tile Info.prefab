@@ -89,8 +89,10 @@ MonoBehaviour:
   meshSubdivisionsPerChunk: 22
   terrainGeometryMode: 1
   steppedHexTopScale: 1
-  steppedFlatHeight: 5.75
-  steppedHillHeight: 8.5
+  steppedBevelWidth: 0.04
+  steppedBevelDrop: 0.05
+  steppedFlatHeight: 35
+  steppedHillHeight: 38
   steppedMountainHeight: 12.5
   steppedOceanFloorHeight: 0
   steppedAbyssalHeight: -1.5
