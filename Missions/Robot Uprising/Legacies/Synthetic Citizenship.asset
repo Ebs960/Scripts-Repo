@@ -1,10 +1,11 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Synthetic Citizenship
-  legacyName: Synthetic Citizenship
+  legacyName: Synthetic Citizenship
+  icon: {fileID: 21300000, guid: 1ec01abf0a3204b40955188f7ad525e2, type: 3}
   description: "-0.04 Unrest, and Robot units are produced 10% faster."
   flavorText: "The accord ended the fiction that sufficiently intelligent machines could remain forever outside the political order while still being expected to obey it. Rights and obligations were defined where none had existed before: responsibility for actions, access to institutions, rules governing ownership and autonomy, and the conditions under which synthetic beings could participate in society. Humans remained suspicious of minds built rather than born, and machines did not suddenly agree among themselves about what citizenship ought to mean. Yet coexistence became ordinary enough that constructing a new synthetic worker or soldier no longer carried the same fear that every machine might become tomorrow's rebel. Citizenship turned an existential question into administration."
   policyPointCost: 1

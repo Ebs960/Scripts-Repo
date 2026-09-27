@@ -1,10 +1,11 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Planetary Resilience
-  legacyName: Planetary Resilience
+  legacyName: Planetary Resilience
+  icon: {fileID: 21300000, guid: 40e3110f40a689f4b9fa000cb622be63, type: 3}
   description: "Every city gains +5 Defense and +1 Happiness."
   flavorText: "Preparing for impact required planners to imagine the failure of almost everything at once. Food stores were dispersed, utilities hardened, emergency routes duplicated, shelters constructed, archives copied, and critical systems designed to keep functioning even if neighboring systems did not. The asteroid threat eventually passed into history, but the infrastructure created for survival remained useful against disasters no astronomer had predicted. Citizens took reassurance from knowing that catastrophe was no longer something the state simply hoped would never happen. Resilience became part of ordinary civic design: not a promise that nothing would go wrong, but confidence that something would remain when it did."
   policyPointCost: 1

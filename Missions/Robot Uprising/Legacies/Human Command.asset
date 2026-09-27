@@ -1,10 +1,11 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Human Command
-  legacyName: Human Command
+  legacyName: Human Command
+  icon: {fileID: 21300000, guid: a162ae1f6e14ecc4d886eecccbdc94a8, type: 3}
   description: "Units gain +5% Attack and +5% Defense against Robot and Cyborg units."
   flavorText: "The uprising forced human commanders to learn how synthetic and cybernetic forces perceived a battlefield differently from biological soldiers. Machines reacted faster, coordinated through networks, tolerated environments humans could not, and often possessed no instinct for self-preservation to exploit. Doctrine changed accordingly. Soldiers learned to disrupt sensors, break coordination, target control systems, and recognize the mechanical rhythms hidden beneath apparently tireless attacks. Even cyborg forces combining organic judgment with machine augmentation became less mysterious once their technological dependencies were understood. Humanity had created new forms of warfare. It also learned how to survive them."
   policyPointCost: 1

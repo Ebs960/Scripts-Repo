@@ -1,10 +1,11 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Hard to Kill
-  legacyName: Hard to Kill
+  legacyName: Hard to Kill
+  icon: {fileID: 21300000, guid: 6741ab693c195fa4b8be8a3e3e86adde, type: 3}
   description: "Units gain +5% Defense against Cannibal and Barbarian crisis units."
   flavorText: "The raiders had depended on easy victims: lone travelers, scattered hunters, and people who disappeared before anyone knew they were in danger. Our people responded by becoming inconvenient prey. Journeys were planned together, camps became harder to approach unseen, and anyone traveling beyond settled ground learned to watch the tree line as carefully as the road ahead. The old joke that our people were simply 'hard to eat' survived because humor made an ugly lesson easier to remember. Beneath the joke was a serious tradition: make every ambush costly enough that the next raider looks elsewhere."
   policyPointCost: 1

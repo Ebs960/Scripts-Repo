@@ -1,10 +1,11 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
   m_Name: Retribution
-  legacyName: Retribution
+  legacyName: Retribution
+  icon: {fileID: 21300000, guid: 5b66e643b59c751458aee10c66708cba, type: 3}
   description: "Units gain +5% Attack against Cannibal and Barbarian crisis units."
   flavorText: "The raids ended the day fear stopped moving in only one direction. War parties learned not merely to drive attackers away, but to track retreating bands, discover their routes, and pursue them into places once considered too dangerous to enter. Stories of the missing became obligations carried by those who survived them. Later generations romanticized that vengeance, but the military lesson beneath the stories remained practical: enemies who rely on raiding must never assume retreat means safety. Strike back quickly enough, and the hunter becomes the hunted."
   policyPointCost: 1
