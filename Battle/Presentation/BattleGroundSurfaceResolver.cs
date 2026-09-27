@@ -23,7 +23,7 @@ public static class BattleGroundSurfaceResolver
         SurfaceFamilyData family=visual?.surfaceFamily;
         bool mountain=cell.ElevationLevel>=3&&family!=null&&family.HasMountainVariants;
         int count=family==null?0:(mountain?family.MountainVariantCount:family.VariantCount);int variant=0;
-        if(count>0)variant=visual.forcedVariant>=0?Mathf.Clamp(visual.forcedVariant,0,count-1):PositiveMod(BattleEnvironmentLayout.Hash(battleSeed,cell.CampaignTileIndex,(int)cell.Biome,cell.ElevationLevel),count);
+        if(count>0)variant=visual.forcedVariant>=0?Mathf.Clamp(visual.forcedVariant,0,count-1):PositiveMod(BattleEnvironmentLayout.Hash(battleSeed,cell.BattleIndex,cell.LocalQ,cell.LocalR),count);
         return new BattleGroundSurface(visual,family,variant,mountain);
     }
     private static int PositiveMod(int value,int count)=>(value&int.MaxValue)%count;

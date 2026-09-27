@@ -34,25 +34,24 @@ public static class BattleDeploymentBuilder
             return;
         }
 
-        var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
-        if (ts == null)
-            return;
-
-        Vector3 center = ts.GetTileCenterFlat(preview.AnchorTile);
         var scores = new List<(int cellIndex, float score)>(map.CellCount);
 
         for (int i = 0; i < map.Cells.Count; i++)
         {
             var c = map.Cells[i];
-            Vector3 p = ts.GetTileCenterFlat(c.CampaignTileIndex);
-            Vector2 delta = new Vector2(p.x - center.x, p.z - center.z);
+            Vector2 delta = new Vector2(Mathf.Sqrt(3f)*(c.LocalQ+c.LocalR*.5f), 1.5f*c.LocalR);
             float score = Vector2.Dot(delta, preview.ApproachDirectionXZ);
             scores.Add((i, score));
         }
 
         scores.Sort((a, b) => a.score.CompareTo(b.score));
 
-        int zoneCount = Mathf.Max(1, depth * 3);
+        // Select complete local edge bands rather than an arbitrary number of campaign tiles.
+        int maxDistance=0;
+        foreach(var c in map.Cells) maxDistance=Mathf.Max(maxDistance,Mathf.Max(Mathf.Abs(c.LocalQ),Mathf.Max(Mathf.Abs(c.LocalR),Mathf.Abs(c.LocalS))));
+        float edgeCutoff=scores[Mathf.Min(scores.Count-1, Mathf.Max(0, depth*2))].score;
+        float oppositeCutoff=scores[Mathf.Max(0, scores.Count-1-Mathf.Max(0, depth*2))].score;
+        int zoneCount = map.CellCount;
         int assignedA = 0;
         int assignedD = 0;
 
@@ -62,7 +61,7 @@ public static class BattleDeploymentBuilder
             if (!SupportsAnyDomain(cell))
                 continue;
 
-            if (assignedA < zoneCount)
+            if (assignedA < zoneCount && scores[i].score <= edgeCutoff)
             {
                 cell.DeploymentOwner = BattleSide.Attacker;
                 cell.IsReinforcementEntry = true;
@@ -79,7 +78,7 @@ public static class BattleDeploymentBuilder
             if (!SupportsAnyDomain(cell) || cell.DeploymentOwner.HasValue)
                 continue;
 
-            if (assignedD < zoneCount)
+            if (assignedD < zoneCount && scores[i].score >= oppositeCutoff)
             {
                 cell.DeploymentOwner = BattleSide.Defender;
                 cell.IsReinforcementEntry = true;
@@ -121,8 +120,12 @@ public static class BattleDeploymentBuilder
                 if (degree == minimumDegree) candidates.Add(cell);
             }
             candidates.Sort((a, b) => a.BattleIndex.CompareTo(b.BattleIndex));
-            int exits = Mathf.Min(2, candidates.Count);
-            for (int i = 0; i < exits; i++) candidates[i].RetreatExitForSide = side;
+            int exits = Mathf.Min(3, candidates.Count);
+            for (int i = 0; i < exits; i++)
+            {
+                candidates[i].RetreatExitForSide = side;
+                candidates[i].StrategicExitTile = candidates[i].CampaignTileIndex;
+            }
         }
     }
 

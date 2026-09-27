@@ -56,7 +56,6 @@ public static class BattleUnitFactory
             HasEnteredBattle = true,
             DepthBand = snap.Domain == BattleDomain.Underwater ? BattleDepthBand.Shallow : BattleDepthBand.Surface,
             OccupancyBand = snap.Domain == BattleDomain.Underwater ? 1 : 0,
-            FuelOrEndurance = snap.TacticalProfile != null ? snap.TacticalProfile.tacticalFuelRounds : -1,
         };
         for (int i = 0; i < snap.Weapons.Count; i++)
         {

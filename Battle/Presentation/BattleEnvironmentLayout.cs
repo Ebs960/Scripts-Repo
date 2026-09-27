@@ -15,7 +15,7 @@ public static class BattleEnvironmentLayout
     public static List<BattleDecorationPlacement> Generate(BattleCell cell,BattleBiomeVisualProfile profile,int battleSeed,float radius,Vector2 riverDirection=default,Vector2 coastNormal=default)
     {
         var result=new List<BattleDecorationPlacement>();if(cell==null||profile==null||cell.IsWater)return result;
-        bool reserved=cell.IsObjective||cell.HasPort||cell.DeploymentOwner.HasValue||cell.RetreatExitForSide.HasValue||cell.IsReinforcementEntry||cell.HasHardCover;
+        bool reserved=cell.HasPort||cell.HasHardCover;
         float vegetation=Mathf.Max(0f,profile.vegetationByElevation?.Evaluate(cell.ElevationLevel)??1f);if(cell.ElevationLevel>=2)vegetation*=profile.mountainVegetationMultiplier;
         float rocks=Mathf.Max(0f,profile.rockByElevation?.Evaluate(cell.ElevationLevel)??1f);if(cell.ElevationLevel>=2)rocks*=profile.mountainRockMultiplier;
         Add(result,cell,profile,battleSeed,radius,BattleDecorationKind.Tree,profile.treePrefabs,reserved?0:Count(profile.treeDensity*vegetation*(cell.IsForest?profile.forestTreeMultiplier:1f),profile.maximumTrees),profile.treeScaleRange,true,riverDirection,coastNormal);
@@ -34,7 +34,7 @@ public static class BattleEnvironmentLayout
         int valid=ValidPrefabCount(prefabs);if(valid==0&&!profile.allowProceduralFallback)return;float outer=radius*(1f-profile.edgePadding);
         for(int i=0;i<count;i++)for(int attempt=0;attempt<12;attempt++)
         {
-            var rng=new LocalRng(Hash(seed,cell.CampaignTileIndex,(int)kind,i*17+attempt));float angle=rng.Value()*Mathf.PI*2f;float minimum=clearCenter?profile.unitClearRadius:0f;float distance=Mathf.Sqrt(Mathf.Lerp(minimum*minimum,outer*outer,rng.Value()));Vector3 p=new(Mathf.Cos(angle)*distance,.03f,Mathf.Sin(angle)*distance);
+            var rng=new LocalRng(Hash(seed,cell.BattleIndex+cell.LocalQ*31+cell.LocalR*101,(int)kind,i*17+attempt));float angle=rng.Value()*Mathf.PI*2f;float minimum=clearCenter?profile.unitClearRadius:0f;float distance=Mathf.Sqrt(Mathf.Lerp(minimum*minimum,outer*outer,rng.Value()));Vector3 p=new(Mathf.Cos(angle)*distance,.03f,Mathf.Sin(angle)*distance);
             Vector2 point=new(p.x,p.z);Vector2 river=riverDirection.sqrMagnitude>.001f?riverDirection.normalized:Vector2.up;if(cell.HasRiver&&Mathf.Abs(Vector2.Dot(point,new Vector2(-river.y,river.x)))<profile.riverClearHalfWidth)continue;
             if(cell.HasBeach&&coastNormal.sqrMagnitude>.001f&&Vector2.Dot(point,coastNormal.normalized)>0f&&kind!=BattleDecorationKind.Grass)continue;
             int selected=valid>0?SelectValidPrefab(prefabs,rng.Range(valid)):-1;float scale=Mathf.Lerp(scaleRange.x,scaleRange.y,rng.Value());output.Add(new BattleDecorationPlacement(kind,selected,p,rng.Value()*360f,scale));break;

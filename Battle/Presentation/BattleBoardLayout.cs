@@ -31,39 +31,13 @@ public sealed class BattleBoardLayout
     {
         var map = session.Map;
         var result = new BattleBoardLayout(map.CellCount);
-        var source = new Vector3[map.CellCount];
-        bool sourced = false;
-        if (session.Theater == BattleTheater.DeepSpace)
-        {
-            var grid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid :
-                (SpaceCombatManager.Instance != null ? SpaceCombatManager.Instance.spaceGrid : null);
-            if (grid != null)
-            {
-                for (int i = 0; i < map.CellCount; i++) source[i] = grid.GetWorldPosition(map.Cells[i].CampaignTileIndex);
-                sourced = true;
-            }
-        }
-        else
-        {
-            var tiles = TileSystem.GetForPlanet(session.PlanetIndex) ?? TileSystem.Instance;
-            if (tiles != null)
-            {
-                for (int i = 0; i < map.CellCount; i++) source[i] = tiles.GetTileCenterFromPlanet(map.Cells[i].CampaignTileIndex, session.PlanetIndex);
-                sourced = true;
-            }
-        }
-
-        if (!sourced) EmbedTopology(map, source);
-        Vector3 anchor = source.Length > 0 ? source[0] : Vector3.zero;
-        float nearest = float.MaxValue;
-        for (int i = 0; i < map.CellCount; i++)
-            foreach (int n in map.Cells[i].NeighborIndices ?? System.Array.Empty<int>())
-                nearest = Mathf.Min(nearest, Vector2.Distance(new Vector2(source[i].x, source[i].z), new Vector2(source[n].x, source[n].z)));
-        float scale = nearest < float.MaxValue && nearest > .001f ? HexRadius * 1.75f / nearest : 1f;
         for (int i = 0; i < map.CellCount; i++)
         {
-            Vector3 flat = (source[i] - anchor) * scale;
-            result.centers[i] = new Vector3(flat.x, map.Cells[i].ElevationLevel * ElevationStep, flat.z);
+            var cell = map.Cells[i];
+            // Pointy-top axial layout. Campaign coordinates deliberately play no part.
+            float x = HexRadius * Mathf.Sqrt(3f) * (cell.LocalQ + cell.LocalR * .5f);
+            float z = HexRadius * 1.5f * cell.LocalR;
+            result.centers[i] = new Vector3(x, cell.ElevationLevel * ElevationStep, z);
         }
         result.CalculateBounds();
         return result;

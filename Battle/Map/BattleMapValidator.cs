@@ -44,21 +44,13 @@ public static class BattleMapValidator
             return false;
         }
 
-        bool hasObjective = false;
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            if (map.Cells[i].IsObjective)
-            {
-                hasObjective = true;
-                break;
-            }
-        }
+        var coordinates = new HashSet<(int,int)>();
+        for(int i=0;i<map.Cells.Count;i++)
+            if(!coordinates.Add((map.Cells[i].LocalQ,map.Cells[i].LocalR))) { reason="duplicate local axial coordinate"; return false; }
 
-        if (!hasObjective)
-        {
-            reason = "no objective";
-            return false;
-        }
+        int anchor=map.Cells[0].CampaignTileIndex;
+        for(int i=1;i<map.Cells.Count;i++)
+            if(map.Cells[i].CampaignTileIndex!=anchor) { reason="tactical map spans multiple strategic tiles"; return false; }
 
         return true;
     }

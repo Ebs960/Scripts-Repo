@@ -363,7 +363,7 @@ public sealed class BattleCommandExecutor
         occupancy.Remove(unit);
         unit.HasRetreated = true;
         unit.WithdrawalTacticalExit = retreat.ExitCell;
-        unit.WithdrawalCampaignTile = cell.CampaignTileIndex;
+        unit.WithdrawalCampaignTile = cell.StrategicExitTile >= 0 ? cell.StrategicExitTile : session.StrategicAnchorTile;
         unit.RetreatFailureReason = string.Empty;
         unit.HasActed = true;
         unit.CurrentActionPoints = 0;

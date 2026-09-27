@@ -10,7 +10,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     [Serializable]
     private sealed class BattleSaveMarker
     {
-        public int version = 4;
+        public int version = 5;
         public bool hasActiveBattle;
         public bool hasPreview;
         public bool hasResult;
@@ -36,7 +36,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     }
     [Serializable] private sealed class UnitSave
     {
-        public int id, runtimeId, side, health, cell, move, actions, reinforcementGroup, occupancyBand, depth, fuel, carrier, withdrawal, tacticalExit;
+        public int id, runtimeId, side, health, cell, move, actions, reinforcementGroup, occupancyBand, depth, carrier, withdrawal, tacticalExit;
         public int startingTile, startingLayer, startingSlot;
         public string formation;
         public bool moved, acted, defending, waiting, waited, reserve, retreated, dead, attacked, entered, embarked, countered, revealed;
@@ -968,7 +968,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 var winner = TryResolveWinner(ActiveBattle, allowObjectiveVictory: true);
                 if (winner.HasValue)
                 {
-                    FinishActiveBattle(BuildResult(ActiveBattle, winner.Value, false, BattleResolutionType.ObjectiveCaptured));
+                    FinishActiveBattle(BuildResult(ActiveBattle, winner.Value, false, BattleResolutionType.Elimination));
                     return;
                 }
 
@@ -1187,7 +1187,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
             var roundEndWinner = TryResolveWinner(session, allowObjectiveVictory: true);
             if (roundEndWinner.HasValue)
-                return BuildResult(session, roundEndWinner.Value, wasAutoResolved, BattleResolutionType.ObjectiveCaptured);
+                return BuildResult(session, roundEndWinner.Value, wasAutoResolved, BattleResolutionType.Elimination);
 
             reinforcements.DeployRoundReinforcements(session, state.Occupancy, session.CurrentRound + 1);
 
@@ -1223,22 +1223,6 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         if (!attackerAlive && !defenderAlive)
             return BattleSide.Defender;
-
-        bool attackerOnObjective = false;
-        for (int i = 0; i < session.Units.Count; i++)
-        {
-            var u = session.Units[i];
-            if (u.IsAliveAndActive && u.Side == BattleSide.Attacker
-                && u.CellIndex == session.Objective.CellIndex
-                && CanCaptureObjective(u, session.Objective.Type, session.Theater))
-            {
-                attackerOnObjective = true;
-                break;
-            }
-        }
-
-        if (allowObjectiveVictory && attackerOnObjective && session.Phase == BattlePhase.RoundEnd)
-            return BattleSide.Attacker;
 
         return null;
     }
@@ -1493,7 +1477,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 var d = new UnitSave { id=u.UnitId, runtimeId=u.Snapshot.CampaignRuntimeId, side=(int)u.Side, health=u.CurrentHealth,
                     formation=u.Snapshot.FormationId, startingTile=u.Snapshot.StartingCampaignTile, startingLayer=(int)u.Snapshot.StartingLayer, startingSlot=u.Snapshot.StartingStackSlot,
                     cell=u.CellIndex, move=u.CurrentMovePoints, actions=u.CurrentActionPoints, reinforcementGroup=u.ReinforcementGroupId,
-                    occupancyBand=u.OccupancyBand, depth=(int)u.DepthBand, fuel=u.FuelOrEndurance, carrier=u.CarrierOrTransportBattleUnitId,
+                    occupancyBand=u.OccupancyBand, depth=(int)u.DepthBand, carrier=u.CarrierOrTransportBattleUnitId,
                     withdrawal=u.WithdrawalCampaignTile, tacticalExit=u.WithdrawalTacticalExit, moved=u.HasMoved, acted=u.HasActed, defending=u.IsDefending, waiting=u.IsWaiting,
                     waited=u.HasWaitedThisTurn, reserve=u.IsReserve, retreated=u.HasRetreated, dead=u.IsDead, attacked=u.HasAttackedThisTurn,
                     entered=u.HasEnteredBattle, embarked=u.IsEmbarked, countered=u.CounterAttackedThisActivation, revealed=u.RevealedByAttack,
@@ -1528,7 +1512,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         BattleSaveMarker marker;
         try { marker = JsonUtility.FromJson<BattleSaveMarker>(json); }
         catch (Exception ex) { throw new InvalidOperationException("Battle save data is corrupt.", ex); }
-        if (marker == null || marker.version < 1 || marker.version > 4)
+        if (marker == null || marker.version < 5 || marker.version > 5)
             throw new InvalidOperationException($"Unsupported tactical battle save version {marker?.version ?? 0}.");
         int restoredNextBattleId = Mathf.Max(1, marker.nextBattleId);
         pendingPreview = marker.hasPreview ? BattlePreviewSaveCodec.Restore(marker.preview) : null;
@@ -1582,7 +1566,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             }
             ActiveBattleState.Occupancy.Remove(u);
             u.CurrentHealth=d.health; u.CurrentMovePoints=d.move; u.CurrentActionPoints=d.actions; u.ReinforcementGroupId=d.reinforcementGroup;
-            u.OccupancyBand=d.occupancyBand; u.DepthBand=(BattleDepthBand)d.depth; u.FuelOrEndurance=d.fuel; u.CarrierOrTransportBattleUnitId=d.carrier;
+            u.OccupancyBand=d.occupancyBand; u.DepthBand=(BattleDepthBand)d.depth; u.CarrierOrTransportBattleUnitId=d.carrier;
             u.WithdrawalCampaignTile=d.withdrawal; u.WithdrawalTacticalExit=d.tacticalExit; u.HasMoved=d.moved; u.HasActed=d.acted; u.IsDefending=d.defending; u.IsWaiting=d.waiting;
             u.HasWaitedThisTurn=d.waited; u.IsReserve=d.reserve; u.HasRetreated=d.retreated; u.IsDead=d.dead; u.HasAttackedThisTurn=d.attacked;
             u.HasEnteredBattle=d.entered; u.IsEmbarked=d.embarked; u.CounterAttackedThisActivation=d.countered; u.RevealedByAttack=d.revealed;

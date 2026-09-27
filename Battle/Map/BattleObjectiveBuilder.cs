@@ -4,63 +4,11 @@ public static class BattleObjectiveBuilder
 {
     public static BattleObjective BuildObjective(BattleMap map)
     {
-        int candidate = -1;
-        BattleObjectiveType type = BattleObjectiveType.Elimination;
-
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            var c = map.Cells[i];
-            if (!SupportsAnyDomain(c))
-                continue;
-
-            if (c.DeploymentOwner == BattleSide.Defender && c.HasPort)
-            {
-                candidate = i;
-                type = BattleObjectiveType.PortCapture;
-                break;
-            }
-            if (c.DeploymentOwner == BattleSide.Defender && c.HasBeach)
-            {
-                candidate = i;
-                type = BattleObjectiveType.Beachhead;
-                break;
-            }
-            if (c.DeploymentOwner == BattleSide.Defender)
-            {
-                candidate = i;
-                if (c.SupportsSpace && !c.SupportsLand && !c.SupportsNavalSurface)
-                    type = BattleObjectiveType.RegionControl;
-                else if (c.SupportsUnderwater && !c.SupportsLand && !c.SupportsNavalSurface)
-                    type = BattleObjectiveType.RegionControl;
-                else
-                    type = c.SupportsNavalSurface && !c.SupportsLand
-                        ? BattleObjectiveType.NavalControl
-                        : BattleObjectiveType.LandControl;
-                break;
-            }
-        }
-
-        if (candidate < 0)
-        {
-            for (int i = 0; i < map.Cells.Count; i++)
-            {
-                var c = map.Cells[i];
-                if (SupportsAnyDomain(c))
-                {
-                    candidate = i;
-                    break;
-                }
-            }
-        }
-
-        if (candidate >= 0)
-            map.Cells[candidate].IsObjective = true;
-
         return new BattleObjective
         {
-            CellIndex = candidate,
+            CellIndex = -1,
             Owner = BattleSide.Defender,
-            Type = type,
+            Type = BattleObjectiveType.Elimination,
         };
     }
 

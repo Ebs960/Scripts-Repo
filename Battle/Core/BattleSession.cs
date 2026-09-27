@@ -52,6 +52,9 @@ public sealed class BattleSession
     public BattleFortificationState GetBlockingFortification(int cellIndex, BattleSide mover)
         => mover != BattleSide.Attacker ? null : fortifications.Find(x => x.CellIndex == cellIndex && x.BlocksMovement);
 
+    public BattleFortificationState GetBlockingFortification(int fromCell, int toCell, BattleSide mover)
+        => mover != BattleSide.Attacker ? null : fortifications.Find(x => x.ProtectsEdge(fromCell, toCell));
+
     // Preserve the original planetary-battle API for callers that do not need to
     // select a theater explicitly, including existing battle tests.
     public BattleSession(
@@ -139,34 +142,6 @@ public sealed class BattleSession
 
     public int MapDistance(int fromCell, int toCell)
     {
-        if (fromCell == toCell)
-            return 0;
-
-        var visited = new HashSet<int>();
-        var queue = new Queue<(int cell, int dist)>();
-        visited.Add(fromCell);
-        queue.Enqueue((fromCell, 0));
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            var cell = Map.GetCell(current.cell);
-            if (cell?.NeighborIndices == null)
-                continue;
-
-            for (int i = 0; i < cell.NeighborIndices.Length; i++)
-            {
-                int n = cell.NeighborIndices[i];
-                if (!visited.Add(n))
-                    continue;
-
-                if (n == toCell)
-                    return current.dist + 1;
-
-                queue.Enqueue((n, current.dist + 1));
-            }
-        }
-
-        return int.MaxValue;
+        return BattleMap.AxialDistance(Map.GetCell(fromCell), Map.GetCell(toCell));
     }
 }
