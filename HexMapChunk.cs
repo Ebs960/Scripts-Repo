@@ -109,6 +109,29 @@ public class HexMapChunk : MonoBehaviour
             meshRenderer.allowOcclusionWhenDynamic = false;
         }
     }
+
+    /// <summary>
+    /// Controls only the visible terrain surface. The chunk object and its collider,
+    /// data, children, and wrapping references remain available.
+    /// </summary>
+    public void SetTerrainVisible(bool visible)
+    {
+        if (meshRenderer != null)
+            meshRenderer.enabled = visible;
+    }
+
+    /// <summary>
+    /// Controls the existing per-chunk liquid-water renderer without rebuilding it.
+    /// </summary>
+    public void SetWaterVisible(bool visible)
+    {
+        Transform water = transform.Find("Water");
+        if (water == null) return;
+
+        var renderer = water.GetComponent<MeshRenderer>();
+        if (renderer != null)
+            renderer.enabled = visible;
+    }
     
     /// <summary>
     /// Set the mesh-local bounds this chunk covers.

@@ -527,6 +527,7 @@ public class HexMapChunkManager : MonoBehaviour
     
     // Chunk storage
     private HexMapChunk[,] chunks;
+    private GameManager.PlanetLayerType currentViewLayer = GameManager.PlanetLayerType.Surface;
     private Transform[] columnParents;
     
     // Baked texture data (shared across all chunks)
@@ -694,6 +695,81 @@ public class HexMapChunkManager : MonoBehaviour
     private GameObject waterSurfaceOverlayObj;
     private Material waterSurfaceOverlayMaterial;
     public Material WaterSurfaceOverlayMaterial => waterSurfaceOverlayMaterial;
+
+    /// <summary>
+    /// Applies the active view's inexpensive terrain/water presentation and picking state.
+    /// This never rebuilds geometry or changes map/gameplay data.
+    /// </summary>
+    public void ApplyViewLayer(GameManager.PlanetLayerType layer)
+    {
+        currentViewLayer = layer;
+
+        bool terrainVisible = layer != GameManager.PlanetLayerType.Orbit;
+        bool surfaceWaterVisible = layer == GameManager.PlanetLayerType.Surface;
+        bool orbitPickingEnabled = layer == GameManager.PlanetLayerType.Orbit;
+
+        if (chunks != null)
+        {
+            for (int x = 0; x < chunks.GetLength(0); x++)
+            {
+                for (int z = 0; z < chunks.GetLength(1); z++)
+                {
+                    var chunk = chunks[x, z];
+                    if (chunk == null) continue;
+                    chunk.SetTerrainVisible(terrainVisible);
+                    chunk.SetWaterVisible(surfaceWaterVisible);
+                }
+            }
+        }
+
+        SetGhostColumnVisibility(ghostColumnsLeft, terrainVisible, surfaceWaterVisible);
+        SetGhostColumnVisibility(ghostColumnsRight, terrainVisible, surfaceWaterVisible);
+
+        SetRendererEnabled(_riverSurfaceObj, surfaceWaterVisible);
+        SetRendererEnabled(_riverSurfaceGhostL, surfaceWaterVisible);
+        SetRendererEnabled(_riverSurfaceGhostR, surfaceWaterVisible);
+        SetRendererEnabled(_oceanPlaneObj, surfaceWaterVisible);
+        SetRendererEnabled(_oceanPlaneGhostL, surfaceWaterVisible);
+        SetRendererEnabled(_oceanPlaneGhostR, surfaceWaterVisible);
+        SetRendererEnabled(waterSurfaceOverlayObj, surfaceWaterVisible);
+
+        if (pickingCollider != null)
+            pickingCollider.enabled = !orbitPickingEnabled;
+        if (waterPickingCollider != null)
+            waterPickingCollider.enabled = surfaceWaterVisible;
+        if (orbitPickingCollider != null)
+            orbitPickingCollider.enabled = orbitPickingEnabled;
+    }
+
+    private static void SetRendererEnabled(GameObject obj, bool visible)
+    {
+        if (obj == null) return;
+        var renderer = obj.GetComponent<MeshRenderer>();
+        if (renderer != null)
+            renderer.enabled = visible;
+    }
+
+    private static void SetGhostColumnVisibility(Transform[] columns, bool terrainVisible, bool waterVisible)
+    {
+        if (columns == null) return;
+        foreach (var column in columns)
+        {
+            if (column == null) continue;
+            for (int i = 0; i < column.childCount; i++)
+            {
+                Transform ghostChunk = column.GetChild(i);
+                var terrainRenderer = ghostChunk.GetComponent<MeshRenderer>();
+                if (terrainRenderer != null)
+                    terrainRenderer.enabled = terrainVisible;
+
+                Transform water = ghostChunk.Find("Water");
+                if (water == null) continue;
+                var waterRenderer = water.GetComponent<MeshRenderer>();
+                if (waterRenderer != null)
+                    waterRenderer.enabled = waterVisible;
+            }
+        }
+    }
     
     /// <summary>
     /// API-compatible method matching FlatMapTextureRenderer.Rebuild().
@@ -1252,6 +1328,9 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.Log($"[HexMapChunkManager][Profile] Total BuildChunks: {(now - buildStartTime) * 1000f:F2} ms");
         }
 
+        // A layer switch can happen while the batched build is running. Reapply the
+        // last requested state after every terrain/water/picking helper now exists.
+        ApplyViewLayer(currentViewLayer);
         _buildCoroutine = null;
     }
     
@@ -4271,6 +4350,7 @@ public class HexMapChunkManager : MonoBehaviour
                 chunk.SetBounds(0f, chunkWidth, 0f, chunkHeight);
                 chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
                 chunk.SetMaterial(sharedMaterial);
+                chunk.SetTerrainVisible(currentViewLayer != GameManager.PlanetLayerType.Orbit);
                 
                 chunks[x, z] = chunk;
             }
@@ -4320,6 +4400,7 @@ public class HexMapChunkManager : MonoBehaviour
                 chunk.SetBounds(0f, chunkWidth, 0f, chunkHeight);
                 chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
                 chunk.SetMaterial(sharedMaterial);
+                chunk.SetTerrainVisible(currentViewLayer != GameManager.PlanetLayerType.Orbit);
                 
                 chunks[x, z] = chunk;
 
@@ -4601,6 +4682,7 @@ public class HexMapChunkManager : MonoBehaviour
         var meshCollider = colliderObj.AddComponent<MeshCollider>();
         meshCollider.sharedMesh = pickMesh;
         pickingCollider = meshCollider;
+        pickingCollider.enabled = currentViewLayer != GameManager.PlanetLayerType.Orbit;
         
         // Set layer for filtered raycasting (WorldPicker uses this layer mask)
         int terrainLayer = LayerMask.NameToLayer("Terrain");
@@ -4642,6 +4724,7 @@ public class HexMapChunkManager : MonoBehaviour
             var mc = obj.AddComponent<MeshCollider>();
             mc.sharedMesh = mesh;
             waterPickingCollider = mc;
+            waterPickingCollider.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
         }
 
         // --- Orbit picking collider ---
@@ -4669,6 +4752,7 @@ public class HexMapChunkManager : MonoBehaviour
             var mc = obj.AddComponent<MeshCollider>();
             mc.sharedMesh = mesh;
             orbitPickingCollider = mc;
+            orbitPickingCollider.enabled = currentViewLayer == GameManager.PlanetLayerType.Orbit;
         }
     }
     
@@ -4804,6 +4888,7 @@ public class HexMapChunkManager : MonoBehaviour
         mr.sharedMaterial = waterSurfaceOverlayMaterial;
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
+        mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
     }
 
     /// <summary>
@@ -5262,6 +5347,7 @@ public class HexMapChunkManager : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mr.allowOcclusionWhenDynamic = false;
+        mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
     }
 
     /// <summary>
@@ -6156,6 +6242,8 @@ public class HexMapChunkManager : MonoBehaviour
         // Ensure ghosts are updated immediately after rebuild.
         if (enableWrap)
             UpdateGlobalWaterGhostPositions(_riverSurfaceObj.transform.localPosition.x);
+
+        ApplyViewLayer(currentViewLayer);
     }
 
     private void EnsureRiverSurfaceObject()
@@ -6177,12 +6265,17 @@ public class HexMapChunkManager : MonoBehaviour
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mr.allowOcclusionWhenDynamic = false;
+            mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
         }
         else
         {
             if (_riverSurfaceObj.name != objName) _riverSurfaceObj.name = objName;
             var mr = _riverSurfaceObj.GetComponent<MeshRenderer>();
-            if (mr != null) mr.sharedMaterial = waterMaterial;
+            if (mr != null)
+            {
+                mr.sharedMaterial = waterMaterial;
+                mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
+            }
         }
     }
 
@@ -6213,7 +6306,7 @@ public class HexMapChunkManager : MonoBehaviour
     private GameObject _riverSurfaceGhostL;
     private GameObject _riverSurfaceGhostR;
 
-    private static GameObject EnsureGhostMeshObject(GameObject source, ref GameObject ghostObj, string ghostName, Transform parent, int layer)
+    private GameObject EnsureGhostMeshObject(GameObject source, ref GameObject ghostObj, string ghostName, Transform parent, int layer)
     {
         if (source == null) return null;
         if (ghostObj == null)
@@ -6240,6 +6333,7 @@ public class HexMapChunkManager : MonoBehaviour
             dstMR.shadowCastingMode = srcMR.shadowCastingMode;
             dstMR.receiveShadows = srcMR.receiveShadows;
             dstMR.allowOcclusionWhenDynamic = srcMR.allowOcclusionWhenDynamic;
+            dstMR.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
         }
 
         return ghostObj;
@@ -6330,6 +6424,7 @@ public class HexMapChunkManager : MonoBehaviour
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mr.allowOcclusionWhenDynamic = false;
+            mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
         }
 
         if (_oceanPlaneMesh == null) _oceanPlaneMesh = new Mesh();
@@ -6361,6 +6456,8 @@ public class HexMapChunkManager : MonoBehaviour
         // Ensure ghosts are updated immediately after build.
         if (enableWrap)
             UpdateGlobalWaterGhostPositions(_oceanPlaneObj.transform.localPosition.x);
+
+        ApplyViewLayer(currentViewLayer);
     }
 
     private void DestroyOceanPlane()
@@ -6407,6 +6504,7 @@ public class HexMapChunkManager : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mr.allowOcclusionWhenDynamic = false;
+        mr.enabled = currentViewLayer == GameManager.PlanetLayerType.Surface;
     }
 
     #endregion
@@ -6455,6 +6553,7 @@ public class HexMapChunkManager : MonoBehaviour
         CreateGhostObjectsForAllRegistered();
 
         UpdateGhostSeasonMasks();
+        ApplyViewLayer(currentViewLayer);
 
         if (debugWrap)
         {
@@ -6502,6 +6601,7 @@ public class HexMapChunkManager : MonoBehaviour
                 ghostMR.sharedMaterial = sharedMaterial;
                 ghostMR.shadowCastingMode = sourceMR.shadowCastingMode;
                 ghostMR.receiveShadows = sourceMR.receiveShadows;
+                ghostMR.enabled = currentViewLayer != GameManager.PlanetLayerType.Orbit;
             }
 
             // Match the source chunk's LOCAL offset within the column (typically Z placement)

@@ -215,11 +215,18 @@ public class WorldPicker : MonoBehaviour
             var oc = cachedChunkManager.OrbitPickingCollider;
             if (oc != null)
                 return oc.Raycast(ray, out hit, maxRaycastDistance);
-            return cachedChunkManager.PickingCollider != null
-                && cachedChunkManager.PickingCollider.Raycast(ray, out hit, maxRaycastDistance);
+            return false;
         }
 
-        // Surface / Underwater: try BOTH terrain and water colliders, keep nearest.
+        // Underwater interaction is directly against the shared physical seafloor.
+        // The (hidden) liquid surface must never intercept the ray.
+        if (layer == GameManager.PlanetLayerType.Underwater)
+        {
+            Collider seafloor = cachedChunkManager.PickingCollider;
+            return seafloor != null && seafloor.Raycast(ray, out hit, maxRaycastDistance);
+        }
+
+        // Surface: try BOTH terrain and water colliders, keep nearest.
         // Land tiles: terrain collider is above water → closer hit wins.
         // Water tiles: water collider is above seafloor → closer hit wins.
         Collider terrainCol = cachedChunkManager.PickingCollider;
