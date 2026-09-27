@@ -5,6 +5,8 @@ using UnityEngine;
 [Serializable]
 public sealed class BattlePreviewSaveData
 {
+    public const int CurrentFormatVersion = 2;
+    public int formatVersion = CurrentFormatVersion;
     public bool isValid, allowsManual, allowsRetreat, allowsCancel;
     public string rejection;
     public int planet, anchor, attackerRuntimeId, defenderRuntimeId, mode, theater, environment, spaceRegion, seed;
@@ -28,7 +30,9 @@ public sealed class BattleUnitReferenceSaveData
 [Serializable]
 public sealed class BattleMapCellSaveData
 {
-    public int index, campaignTile, elevation, waterDepth, deploymentOwner = -1, retreatSide = -1;
+    public int index, campaignTile, localQ, localR, elevation, waterDepth, deploymentOwner = -1, retreatSide = -1;
+    public int features, boundaryDirection = -1, strategicExitTile = -1;
+    public bool boundary;
     public int[] neighbors;
     public List<int> cliffs = new();
     public bool passable, water, land, naval, underwater, air, orbit, space, port, beach, forest, river, hardCover, softCover, objective, reinforcementEntry, fortifiedInterior;
@@ -37,7 +41,7 @@ public sealed class BattleMapCellSaveData
 [Serializable]
 public sealed class BattleFortificationSaveData
 {
-    public int id, kind, cell, currentHitPoints, maxHitPoints, defense;
+    public int id, kind, cell, cellA = -1, cellB = -1, currentHitPoints, maxHitPoints, defense;
     public bool breached;
 }
 
@@ -64,12 +68,14 @@ public static class BattlePreviewSaveCodec
             approachX=preview.ApproachDirectionXZ.x, approachY=preview.ApproachDirectionXZ.y,
             siegeType=(int)preview.SiegeType, fortificationProfileId=preview.FortificationProfile?.Identity };
         foreach (var f in preview.Fortifications) save.fortifications.Add(new BattleFortificationSaveData
-            { id=f.StructureId, kind=(int)f.Kind, cell=f.CellIndex, currentHitPoints=f.CurrentHitPoints,
+            { id=f.StructureId, kind=(int)f.Kind, cell=f.CellIndex, cellA=f.CellA, cellB=f.CellB, currentHitPoints=f.CurrentHitPoints,
               maxHitPoints=f.MaxHitPoints, defense=f.Defense, breached=f.IsBreached });
         AddSnapshotIds(preview.AttackerUnits, save.attackerUnits); AddSnapshotIds(preview.DefenderUnits, save.defenderUnits);
         if (preview.Map != null) foreach (var cell in preview.Map.Cells)
         {
-            var c = new BattleMapCellSaveData { index=cell.BattleIndex, campaignTile=cell.CampaignTileIndex, neighbors=cell.NeighborIndices,
+            var c = new BattleMapCellSaveData { index=cell.BattleIndex, campaignTile=cell.CampaignTileIndex, localQ=cell.LocalQ, localR=cell.LocalR,
+                features=(int)cell.Features, boundary=cell.IsBoundary, boundaryDirection=cell.BoundaryDirection,
+                strategicExitTile=cell.StrategicExitTile, neighbors=cell.NeighborIndices,
                 elevation=cell.ElevationLevel, waterDepth=cell.WaterDepthLevel, deploymentOwner=cell.DeploymentOwner.HasValue?(int)cell.DeploymentOwner.Value:-1,
                 retreatSide=cell.RetreatExitForSide.HasValue?(int)cell.RetreatExitForSide.Value:-1, passable=cell.IsPassable, water=cell.IsWater,
                 land=cell.SupportsLand, naval=cell.SupportsNavalSurface, underwater=cell.SupportsUnderwater, air=cell.SupportsAir,
@@ -95,6 +101,8 @@ public static class BattlePreviewSaveCodec
     public static EngagementPreview Restore(BattlePreviewSaveData save)
     {
         if (save == null) return null;
+        if (save.formatVersion != BattlePreviewSaveData.CurrentFormatVersion)
+            throw new InvalidOperationException($"Active tactical battle save format {save.formatVersion} is incompatible with local-board format {BattlePreviewSaveData.CurrentFormatVersion}.");
         var preview = new EngagementPreview { IsValid=save.isValid, RejectionReason=save.rejection, PlanetIndex=save.planet,
             AnchorTile=save.anchor, Attacker=FindUnit(save.attackerRuntimeId), Defender=FindUnit(save.defenderRuntimeId),
             Mode=(EngagementMode)save.mode, Theater=(BattleTheater)save.theater, PlanetaryEnvironment=(PlanetaryBattleEnvironment)save.environment,
@@ -103,7 +111,7 @@ public static class BattlePreviewSaveCodec
             ApproachDirectionXZ=new Vector2(save.approachX, save.approachY), Map=new BattleMap(),
             SiegeType=(BattleSiegeType)save.siegeType, FortificationProfile=FindProfile(save.fortificationProfileId) };
         if (save.fortifications != null) foreach (var f in save.fortifications) preview.Fortifications.Add(new BattleFortificationState
-            { StructureId=f.id, Kind=(BattleFortificationKind)f.kind, CellIndex=f.cell, CurrentHitPoints=f.currentHitPoints,
+            { StructureId=f.id, Kind=(BattleFortificationKind)f.kind, CellIndex=f.cell, CellA=f.cellA, CellB=f.cellB, CurrentHitPoints=f.currentHitPoints,
               MaxHitPoints=f.maxHitPoints, Defense=f.defense, IsBreached=f.breached });
         RestoreSnapshots(save.attackerUnits, preview.AttackerUnits); RestoreSnapshots(save.defenderUnits, preview.DefenderUnits);
         if (preview.Attacker==null && preview.AttackerUnits.Count>0) preview.Attacker=preview.AttackerUnits[0].SourceUnit;
@@ -114,7 +122,9 @@ public static class BattlePreviewSaveCodec
         save.cells.Sort((a,b)=>a.index.CompareTo(b.index));
         foreach (var c in save.cells)
         {
-            var cell = new BattleCell { BattleIndex=c.index, CampaignTileIndex=c.campaignTile, NeighborIndices=c.neighbors,
+            var cell = new BattleCell { BattleIndex=c.index, CampaignTileIndex=c.campaignTile, LocalQ=c.localQ, LocalR=c.localR,
+                Features=(BattleTerrainFeature)c.features, IsBoundary=c.boundary, BoundaryDirection=c.boundaryDirection,
+                StrategicExitTile=c.strategicExitTile, NeighborIndices=c.neighbors,
                 ElevationLevel=c.elevation, WaterDepthLevel=c.waterDepth, IsPassable=c.passable, IsWater=c.water,
                 SupportsLand=c.land, SupportsNavalSurface=c.naval, SupportsUnderwater=c.underwater, SupportsAir=c.air,
                 SupportsOrbit=c.orbit, SupportsSpace=c.space, HasPort=c.port, HasBeach=c.beach, IsForest=c.forest,

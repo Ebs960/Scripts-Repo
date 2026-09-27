@@ -1,69 +1,30 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public static class BattleElevationResolver
 {
-    public static void QuantizeElevations(BattleMap map, TileSystem tileSystem)
+    public static void GenerateLocalElevations(BattleMap map, HexTileData anchor, int seed)
     {
-        if (map == null || tileSystem == null || map.CellCount == 0)
-            return;
-
-        float min = float.MaxValue;
-        float max = float.MinValue;
-
-        for (int i = 0; i < map.Cells.Count; i++)
+        if(map==null||anchor==null)return;
+        foreach(var cell in map.Cells)
         {
-            var td = tileSystem.GetTileData(map.Cells[i].CampaignTileIndex);
-            if (td == null)
-                continue;
-
-            min = Mathf.Min(min, td.elevation);
-            max = Mathf.Max(max, td.elevation);
+            int radial=Mathf.Max(Mathf.Abs(cell.LocalQ),Mathf.Max(Mathf.Abs(cell.LocalR),Mathf.Abs(cell.LocalS)));
+            int noise=Positive(seed*31+cell.LocalQ*73856093+cell.LocalR*19349663)%7;
+            int level=1;
+            if(anchor.isMountain||anchor.elevationTier==ElevationTier.Mountain)
+                level=radial<=1?3:(radial<=3?2:1);
+            else if(anchor.isHill||anchor.elevationTier==ElevationTier.Hill)
+                level=(radial<=2||noise==0)?2:1;
+            else if(noise==0) level=0; // flat terrain can contain depressions, never peaks
+            if(cell.HasRiver||cell.IsWater)level=0;
+            cell.ElevationLevel=Mathf.Clamp(level,0,3);
         }
-
-        float span = Mathf.Max(0.01f, max - min);
-
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            var cell = map.Cells[i];
-            var td = tileSystem.GetTileData(cell.CampaignTileIndex);
-            if (td == null)
-            {
-                cell.ElevationLevel = (int)BattleElevationLevel.Level;
-                continue;
-            }
-
-            float norm = (td.elevation - min) / span;
-            int level = norm < 0.2f ? 0 : norm < 0.5f ? 1 : norm < 0.8f ? 2 : 3;
-            if (td.isMountain)
-                level = 3;
-            else if (td.isHill)
-                level = Mathf.Max(level, 2);
-
-            cell.ElevationLevel = Mathf.Clamp(level, 0, 3);
-        }
-
         ApplyCliffEdges(map);
     }
 
+    private static int Positive(int value)=>value==int.MinValue?0:Mathf.Abs(value);
     private static void ApplyCliffEdges(BattleMap map)
     {
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            var cell = map.Cells[i];
-            if (cell.NeighborIndices == null)
-                continue;
-
-            for (int n = 0; n < cell.NeighborIndices.Length; n++)
-            {
-                int neighIdx = cell.NeighborIndices[n];
-                var neigh = map.GetCell(neighIdx);
-                if (neigh == null)
-                    continue;
-
-                int delta = Mathf.Abs(cell.ElevationLevel - neigh.ElevationLevel);
-                cell.SetCliffTowardNeighbor(neighIdx, delta >= 2);
-            }
-        }
+        foreach(var cell in map.Cells) foreach(int n in cell.NeighborIndices??System.Array.Empty<int>())
+            cell.SetCliffTowardNeighbor(n,Mathf.Abs(cell.ElevationLevel-map.Cells[n].ElevationLevel)>=2);
     }
 }

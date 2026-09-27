@@ -45,17 +45,6 @@ public sealed class BattleAIEvaluator
             return candidates;
         }
 
-        // Recover aircraft before fuel/endurance expires.
-        if ((unit.Domain == BattleDomain.Air || unit.Domain == BattleDomain.Space) && unit.FuelOrEndurance >= 0 && unit.FuelOrEndurance <= 1)
-            for (int i = 0; i < session.Units.Count; i++)
-            {
-                var carrier = session.Units[i];
-                if (carrier == null || carrier.Side != unit.Side || carrier.IsDead || carrier.IsEmbarked) continue;
-                if (session.MapDistance(unit.CellIndex, carrier.CellIndex) > 1) continue;
-                candidates.Add(new BattleAICandidate(new BattleRecoverAircraftCommand
-                { UnitId = unit.UnitId, CommandType = BattleCommandType.RecoverAircraft, CarrierUnitId = carrier.UnitId }, 50f));
-            }
-
         // Land and air units can board a compatible adjacent transport.
         for (int i = 0; i < session.Units.Count; i++)
         {

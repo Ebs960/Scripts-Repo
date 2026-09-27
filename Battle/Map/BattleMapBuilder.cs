@@ -1,175 +1,115 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>Builds a local tactical board contained wholly within one strategic anchor.</summary>
 public sealed class BattleMapBuilder
 {
+    private static readonly (int q, int r)[] Directions =
+    { (1,0), (1,-1), (0,-1), (-1,0), (-1,1), (0,1) };
     private readonly BattleRuleset ruleset;
 
-    public BattleMapBuilder(BattleRuleset ruleset)
-    {
-        this.ruleset = ruleset;
-    }
+    public BattleMapBuilder(BattleRuleset ruleset) { this.ruleset = ruleset; }
 
     public BattleMap Build(EngagementPreview preview)
     {
-        if (preview.Theater == BattleTheater.DeepSpace)
-            return BuildSpaceMap(preview);
+        if (preview == null) return null;
+        int radius = ruleset.GetBattleRadius(preview.TotalUnits);
+        if (preview.Theater == BattleTheater.DeepSpace) return BuildLocalMap(preview, radius, null);
         var ts = TileSystem.GetForPlanet(preview.PlanetIndex) ?? TileSystem.Instance;
-        if (ts == null)
-            return null;
-
-        int targetCells = ruleset.GetTargetCellCount(preview.TotalUnits, new System.Random(preview.RandomSeed));
-        var selected = SelectConnectedTiles(ts, preview.AnchorTile, targetCells);
-        if (selected.Count == 0)
-            return null;
-
-        var map = new BattleMap();
-        var indexByCampaign = new Dictionary<int, int>(selected.Count);
-
-        for (int i = 0; i < selected.Count; i++)
-        {
-            int campaignTile = selected[i];
-            indexByCampaign[campaignTile] = i;
-            var td = ts.GetTileData(campaignTile);
-
-            var cell = new BattleCell
-            {
-                BattleIndex = i,
-                CampaignTileIndex = campaignTile,
-                Biome = td != null ? td.biome : Biome.Plains,
-                IsPassable = td != null && td.isPassable,
-                IsWater = td != null && td.IsWaterTile,
-                SupportsLand = td != null && td.isPassable && !td.IsWaterTile,
-                SupportsNavalSurface = td != null && td.IsWaterTile,
-                SupportsUnderwater = td != null && td.IsWaterTile,
-                SupportsAir = true,
-                SupportsOrbit = true,
-                WaterDepthLevel = td != null && td.IsWaterTile ? 1 : 0,
-                IsForest = td != null && (td.biome == Biome.Temperate || td.biome == Biome.Tropical),
-                HasRiver = td != null && td.isRiver,
-                HasSoftCover = td != null && (td.biome == Biome.Temperate || td.biome == Biome.Tropical),
-                HasHardCover = td != null && td.improvementDefenseAdd > 0,
-                HasPort = td != null && ((td.improvement != null && td.improvement.isPort)
-                    || (td.district != null && td.district.isPort)),
-            };
-
-            map.AddCell(cell);
-        }
-
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            var cell = map.Cells[i];
-            var neighCampaign = ts.GetNeighbors(cell.CampaignTileIndex);
-            var neigh = new List<int>(6);
-            for (int n = 0; n < neighCampaign.Length; n++)
-            {
-                if (indexByCampaign.TryGetValue(neighCampaign[n], out int mapped))
-                    neigh.Add(mapped);
-            }
-
-            cell.NeighborIndices = neigh.ToArray();
-        }
-
-        // Beaches belong to passable coastal land cells, never arbitrary water.
-        // Deep water requires a water cell surrounded predominantly by water.
-        for (int i = 0; i < map.Cells.Count; i++)
-        {
-            var cell = map.Cells[i];
-            int waterNeighbors = 0;
-            for (int n = 0; n < cell.NeighborIndices.Length; n++)
-                if (map.GetCell(cell.NeighborIndices[n])?.IsWater == true) waterNeighbors++;
-            cell.HasBeach = cell.SupportsLand && waterNeighbors > 0;
-            if (cell.IsWater)
-                cell.WaterDepthLevel = waterNeighbors >= Mathf.Max(3, cell.NeighborIndices.Length - 1) ? 2 : 1;
-            // A port must have actual navigable coastal access.
-            if (cell.HasPort && waterNeighbors == 0) cell.HasPort = false;
-        }
-
-        BattleElevationResolver.QuantizeElevations(map, ts);
+        if (ts == null) return null;
+        var anchor = ts.GetTileData(preview.AnchorTile);
+        if (anchor == null) return null;
+        var map = BuildLocalMap(preview, radius, anchor);
+        BattleElevationResolver.GenerateLocalElevations(map, anchor, preview.RandomSeed);
         preview.PlanetaryEnvironment = ClassifyPlanetaryEnvironment(map);
         return map;
     }
 
-    private static PlanetaryBattleEnvironment ClassifyPlanetaryEnvironment(BattleMap map)
+    private BattleMap BuildLocalMap(EngagementPreview preview, int radius, HexTileData anchor)
     {
-        int water = 0;
-        int land = 0;
-        bool hasPort = false;
-        bool hasBeach = false;
-        for (int i = 0; i < map.Cells.Count; i++)
+        var map = new BattleMap();
+        for (int q = -radius; q <= radius; q++)
+        for (int r = Mathf.Max(-radius, -q-radius); r <= Mathf.Min(radius, -q+radius); r++)
         {
-            var cell = map.Cells[i];
-            if (cell.IsWater) water++; else land++;
-            hasPort |= cell.HasPort;
-            hasBeach |= cell.HasBeach;
+            int distance = (Mathf.Abs(q)+Mathf.Abs(r)+Mathf.Abs(-q-r))/2;
+            var cell = new BattleCell {
+                BattleIndex=map.CellCount, CampaignTileIndex=preview.AnchorTile, LocalQ=q, LocalR=r,
+                IsBoundary=distance==radius, Biome=anchor != null ? anchor.biome : Biome.Plains,
+                IsPassable=anchor == null || anchor.isPassable, SupportsAir=anchor != null, SupportsOrbit=anchor != null,
+                SupportsSpace=anchor == null
+            };
+            if (cell.IsBoundary) cell.BoundaryDirection = ClosestBoundaryDirection(q, r);
+            ConfigureBaseTerrain(cell, anchor);
+            map.AddCell(cell);
         }
-        if (hasPort) return PlanetaryBattleEnvironment.Port;
-        if (hasBeach && water > 0 && land > 0) return PlanetaryBattleEnvironment.Amphibious;
-        if (water == 0) return PlanetaryBattleEnvironment.Inland;
-        if (land == 0) return PlanetaryBattleEnvironment.OpenOcean;
-        if (water > land * 2) return PlanetaryBattleEnvironment.Archipelago;
-        if (land > water * 2) return PlanetaryBattleEnvironment.Coastal;
-        return PlanetaryBattleEnvironment.Mixed;
-    }
-
-    private BattleMap BuildSpaceMap(EngagementPreview preview)
-    {
-        var grid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid
-            : (SpaceCombatManager.Instance != null ? SpaceCombatManager.Instance.spaceGrid : null);
-        if (grid == null || grid.GetTile(preview.AnchorTile) == null) return null;
-        int target = ruleset.GetTargetCellCount(preview.TotalUnits, new System.Random(preview.RandomSeed));
-        var selected = new List<int>(); var seen = new HashSet<int>(); var queue = new Queue<int>();
-        seen.Add(preview.AnchorTile); queue.Enqueue(preview.AnchorTile);
-        while (queue.Count > 0 && selected.Count < target)
+        foreach (var cell in map.Cells)
         {
-            int tile = queue.Dequeue(); selected.Add(tile);
-            foreach (int n in grid.GetNeighbors(tile)) if (seen.Add(n)) queue.Enqueue(n);
+            var neighbors = new List<int>(6);
+            for (int d=0; d<Directions.Length; d++)
+                if (map.TryGetBattleIndex(cell.LocalQ+Directions[d].q, cell.LocalR+Directions[d].r, out int index)) neighbors.Add(index);
+            cell.NeighborIndices=neighbors.ToArray();
         }
-        var map = new BattleMap(); var indices = new Dictionary<int, int>();
-        for (int i = 0; i < selected.Count; i++)
-        {
-            indices[selected[i]] = i; var source = grid.GetTile(selected[i]);
-            map.AddCell(new BattleCell { BattleIndex = i, CampaignTileIndex = selected[i], IsPassable = !source.blocksMovement,
-                SupportsSpace = !source.blocksMovement, SupportsAir = false, SupportsOrbit = false });
-        }
-        for (int i = 0; i < selected.Count; i++)
-        {
-            var neighbors = new List<int>(); foreach (int n in grid.GetNeighbors(selected[i])) if (indices.TryGetValue(n, out int mapped)) neighbors.Add(mapped);
-            map.Cells[i].NeighborIndices = neighbors.ToArray();
-        }
+        if (anchor != null) GenerateFeatures(map, anchor, preview.RandomSeed);
         return map;
     }
 
-    private static List<int> SelectConnectedTiles(TileSystem ts, int anchorTile, int targetCells)
+    private static void ConfigureBaseTerrain(BattleCell cell, HexTileData anchor)
     {
-        var selected = new List<int>(targetCells);
-        var visited = new HashSet<int>();
-        var queue = new Queue<int>();
+        if (anchor == null) { cell.IsPassable=true; cell.SupportsSpace=true; return; }
+        bool openWater=anchor.IsWaterTile && !anchor.isRiver && anchor.biome != Biome.River && anchor.biome != Biome.Coast;
+        cell.IsWater=openWater; cell.SupportsLand=!openWater; cell.SupportsNavalSurface=openWater;
+        cell.SupportsUnderwater=openWater; cell.WaterDepthLevel=openWater?2:0;
+        if (openWater) cell.Features|=BattleTerrainFeature.DeepWater;
+        cell.HasPort=anchor.improvement != null && anchor.improvement.isPort;
+    }
 
-        visited.Add(anchorTile);
-        queue.Enqueue(anchorTile);
-
-        while (queue.Count > 0 && selected.Count < targetCells)
+    private static void GenerateFeatures(BattleMap map, HexTileData anchor, int seed)
+    {
+        bool road=anchor.improvement != null && anchor.improvement.isRoad;
+        bool river=anchor.isRiver || anchor.biome==Biome.River;
+        foreach (var c in map.Cells)
         {
-            int tile = queue.Dequeue();
-            selected.Add(tile);
-
-            var neigh = ts.GetNeighbors(tile);
-            for (int i = 0; i < neigh.Length; i++)
+            int hash=StableHash(seed,c.LocalQ,c.LocalR);
+            int roll=(hash&0x7fffffff)%100;
+            bool forest=(anchor.biome==Biome.Tropical && roll<55) || (anchor.biome==Biome.Temperate && roll<30);
+            bool marsh=anchor.biome==Biome.Swamp && roll<60;
+            bool rough=(anchor.biome==Biome.Desert || anchor.isHill || anchor.isMountain) && roll<25;
+            if (forest) { c.Features|=BattleTerrainFeature.Forest|BattleTerrainFeature.SoftCover; c.IsForest=true; c.HasSoftCover=true; }
+            if (marsh) { c.Features|=BattleTerrainFeature.Marsh|BattleTerrainFeature.SoftCover; c.HasSoftCover=true; }
+            if (rough) c.Features|=BattleTerrainFeature.RoughGround;
+            // Straight axial corridors are coherent, deterministic, and always cross both board edges.
+            if (road && c.LocalR==0) c.Features|=BattleTerrainFeature.Road;
+            if (river && c.LocalQ==0)
             {
-                int n = neigh[i];
-                if (visited.Contains(n))
-                    continue;
-
-                var td = ts.GetTileData(n);
-                if (td == null)
-                    continue;
-
-                visited.Add(n);
-                queue.Enqueue(n);
+                c.Features|=BattleTerrainFeature.River|BattleTerrainFeature.ShallowWater; c.HasRiver=true;
+                c.IsWater=true; c.WaterDepthLevel=1; c.SupportsNavalSurface=true; c.SupportsUnderwater=true;
+                c.SupportsLand=false;
             }
+            if (road && river && c.LocalQ==0 && c.LocalR==0)
+            {
+                c.Features|=BattleTerrainFeature.Bridge; c.SupportsLand=true; c.IsWater=false;
+            }
+            c.HasHardCover=c.HasFeature(BattleTerrainFeature.HardCover);
         }
+    }
 
-        return selected;
+    private static int StableHash(int seed,int q,int r) { unchecked { int h=seed; h=h*397^q; return h*397^r; } }
+    private static int ClosestBoundaryDirection(int q,int r)
+    {
+        int best=0, score=int.MinValue;
+        for(int i=0;i<Directions.Length;i++) { int s=q*Directions[i].q+r*Directions[i].r; if(s>score){score=s;best=i;} }
+        return best;
+    }
+
+    private static PlanetaryBattleEnvironment ClassifyPlanetaryEnvironment(BattleMap map)
+    {
+        int water=0,land=0; bool port=false,beach=false;
+        foreach(var c in map.Cells){if(c.IsWater)water++;else land++;port|=c.HasPort;beach|=c.HasBeach;}
+        if(port)return PlanetaryBattleEnvironment.Port;
+        if(beach&&water>0&&land>0)return PlanetaryBattleEnvironment.Amphibious;
+        if(water==0)return PlanetaryBattleEnvironment.Inland;
+        if(land==0)return PlanetaryBattleEnvironment.OpenOcean;
+        return water>land*2?PlanetaryBattleEnvironment.Archipelago:land>water*2?PlanetaryBattleEnvironment.Coastal:PlanetaryBattleEnvironment.Mixed;
     }
 }

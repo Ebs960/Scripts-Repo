@@ -4,6 +4,16 @@ public sealed class BattleCell
 {
     public int BattleIndex;
     public int CampaignTileIndex;
+    /// <summary>Spatial identity inside the strategic anchor tile.</summary>
+    public int LocalQ;
+    public int LocalR;
+    public int LocalS => -LocalQ - LocalR;
+    public bool IsBoundary;
+    public int BoundaryDirection = -1;
+    /// <summary>Campaign tile reached when a unit leaves through this boundary.</summary>
+    public int StrategicExitTile = -1;
+
+    public BattleTerrainFeature Features;
 
     public int[] NeighborIndices;
 
@@ -25,6 +35,8 @@ public sealed class BattleCell
     public bool HasRiver;
     public bool HasHardCover;
     public bool HasSoftCover;
+
+    public bool HasFeature(BattleTerrainFeature feature) => (Features & feature) != 0;
 
     public BattleSide? DeploymentOwner;
     public BattleSide? RetreatExitForSide;

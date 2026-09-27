@@ -97,7 +97,7 @@ public sealed class BattlePreviewUI : MonoBehaviour
         summary.text = $"{preview.Theater}\n\n{preview.Attacker?.UnitName ?? "Attacker"} vs {preview.Defender?.UnitName ?? "Defender"}\n" +
             $"Attacker units: {preview.AttackerUnits.Count}\nDefender units: {preview.DefenderUnits.Count}\n" +
             $"Reinforcement formations: {preview.Reinforcements.Count}\nEnvironment: {preview.PlanetaryEnvironment}\n" +
-            $"Objective: {preview.Objective.Type} at cell {preview.Objective.CellIndex}";
+            "Objective: Rout or destroy the enemy";
         manualButton.interactable = preview.AllowsManualBattle;
         autoResolveButton.interactable = true;
         retreatButton.interactable = preview.AllowsRetreat && preview.Theater != BattleTheater.DeepSpace;

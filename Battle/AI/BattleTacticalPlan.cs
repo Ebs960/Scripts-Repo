@@ -47,7 +47,6 @@ public sealed class BattleTacticalPlan
     private static int ActivationScore(BattleSession session, BattleUnitState unit, BattleTacticalPlan plan)
     {
         int score = unit.Snapshot?.Weapons?.Count > 0 ? 10 : 0;
-        if (unit.Domain == BattleDomain.Air || unit.Domain == BattleDomain.Space) score += unit.FuelOrEndurance <= 1 && unit.FuelOrEndurance >= 0 ? 30 : 0;
         int distance = unit.CellIndex >= 0 ? session.MapDistance(unit.CellIndex, plan.ObjectiveCell) : int.MaxValue;
         if (distance != int.MaxValue) score += System.Math.Max(0, 12 - distance);
         if (unit.CurrentHealth * 3 <= unit.Snapshot.MaximumHealth) score -= 10;

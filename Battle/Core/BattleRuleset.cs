@@ -12,6 +12,9 @@ public sealed class BattleRuleset : ScriptableObject
     public int deploymentDepthCells = 3;
 
     [Header("Map Size")]
+    [Min(1)] public int smallBattleRadius = 3;
+    [Min(1)] public int mediumBattleRadius = 4;
+    [Min(1)] public int largeBattleRadius = 5;
     public int smallMapMinCells = 19;
     public int smallMapMaxCells = 25;
     public int mediumMapMinCells = 30;
@@ -60,4 +63,8 @@ public sealed class BattleRuleset : ScriptableObject
             return rng.Next(largeMapMinCells, largeMapMaxCells + 1);
         return rng.Next(hugeMapMinCells, hugeMapMaxCells + 1);
     }
+
+    public int GetBattleRadius(int participantCount) => participantCount <= 4
+        ? Mathf.Max(1, smallBattleRadius)
+        : participantCount <= 10 ? Mathf.Max(1, mediumBattleRadius) : Mathf.Max(1, largeBattleRadius);
 }

@@ -56,7 +56,7 @@ public sealed class BattlePathfinder
                 var targetCell = session.Map.GetCell(n);
                 if (targetCell == null || !targetCell.Supports(unit.Domain))
                     continue;
-                if (unit.Domain == BattleDomain.Land && session.GetBlockingFortification(n, unit.Side) != null)
+                if (unit.Domain == BattleDomain.Land && session.GetBlockingFortification(current, n, unit.Side) != null)
                     continue;
 
                 if (occupancy.IsOccupied(n, unit.Domain, unit.OccupancyBand) && n != destination)
@@ -157,14 +157,6 @@ public sealed class BattlePathfinder
         if (from == null || to == null)
             return Mathf.Abs(a - b);
 
-        var ts = TileSystem.GetForPlanet(session.PlanetIndex) ?? TileSystem.Instance;
-        if (ts == null || !ts.IsReady())
-            return Mathf.Abs(a - b);
-
-        int wrapped = ts.GetWrappedHexDistance(from.CampaignTileIndex, to.CampaignTileIndex);
-        if (wrapped < 0)
-            return Mathf.Abs(a - b);
-
-        return wrapped;
+        return BattleMap.AxialDistance(from, to);
     }
 }

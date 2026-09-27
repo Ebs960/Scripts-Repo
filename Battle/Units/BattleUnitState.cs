@@ -37,7 +37,6 @@ public sealed class BattleUnitState
     public readonly List<int> EmbarkedBattleUnitIds = new();
     public readonly List<int> WeaponAmmo = new();
     public readonly List<int> WeaponCooldowns = new();
-    public int FuelOrEndurance = -1;
     public BattleDepthBand DepthBand;
     public float CommanderAttackMultiplier = 1f;
     public float CommanderDefenseMultiplier = 1f;
