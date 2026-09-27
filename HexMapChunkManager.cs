@@ -310,6 +310,16 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     private float steppedHexTopScale = 1f;
 
+    [Range(0f, 0.15f)]
+    [SerializeField]
+    [Tooltip("Width of the visual stepped-hex bevel as a fraction of the full gameplay hex radius.")]
+    private float steppedBevelWidth = 0.04f;
+
+    [Min(0f)]
+    [SerializeField]
+    [Tooltip("Vertical drop from the flat top to the outer edge of the stepped-hex bevel.")]
+    private float steppedBevelDrop = 0.05f;
+
     [SerializeField] private float steppedFlatHeight = 5.75f;
     [SerializeField] private float steppedHillHeight = 8.5f;
     [SerializeField] private float steppedMountainHeight = 12.5f;
@@ -642,6 +652,8 @@ public class HexMapChunkManager : MonoBehaviour
     internal int GridChunkCountZ => chunksZ;
     public TerrainGeometryMode GeometryMode => terrainGeometryMode;
     internal float SteppedHexTopScale => steppedHexTopScale;
+    internal float SteppedBevelWidth => steppedBevelWidth;
+    internal float SteppedBevelDrop => steppedBevelDrop;
     internal float SteppedSeamDepth => steppedSeamDepth;
     /// <summary>
     /// The actual displacement strength used by the terrain shader (_ElevationScale).
