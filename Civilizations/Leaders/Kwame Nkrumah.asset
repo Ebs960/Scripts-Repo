@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Kwame Nkrumah
   portrait: {fileID: 21300000, guid: b69dc7fe03a72064fbe35682c5754d6a, type: 3}
   historicalEra: 
-  biography: 'A cunning statesman and one of the great modern African leaders. '
+  biography: A visionary statesman who sought modern African unity, independence, and national renewal.
   aggressiveness: 3
   diplomacy: 8
   science: 4

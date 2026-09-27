@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Shaka
   portrait: {fileID: 21300000, guid: b69dc7fe03a72064fbe35682c5754d6a, type: 3}
   historicalEra: 
-  biography: King of the Zulu and a proud warrior
+  biography: The formidable Zulu king whose military innovations transformed a kingdom into a feared power.
   aggressiveness: 8
   diplomacy: 5
   science: 5

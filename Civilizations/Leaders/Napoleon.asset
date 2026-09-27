@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Napoleon
   portrait: {fileID: 21300000, guid: 9c41a5d8757408d46a04ab738d93a222, type: 3}
   historicalEra: 
-  biography: He WILL kick your ass
+  biography: A relentless French commander who redefined warfare and nearly remade Europe.
   aggressiveness: 7
   diplomacy: 5
   science: 5

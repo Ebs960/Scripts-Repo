@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Julius Caesar
   portrait: {fileID: 0}
   historicalEra: Ancient
-  biography: Conquer the world
+  biography: A Roman statesman and conqueror who transformed political ambition into world-shaking power.
   aggressiveness: 7
   diplomacy: 5
   science: 5

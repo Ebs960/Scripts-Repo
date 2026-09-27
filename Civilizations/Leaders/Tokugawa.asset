@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Tokugawa
   portrait: {fileID: 21300000, guid: 25a58584c48e5af4893e4fec0acf7ce3, type: 3}
   historicalEra: 
-  biography: He will kick your ass for Japan
+  biography: A calculating statesman who secured order by binding Japan under strict, enduring control.
   aggressiveness: 10
   diplomacy: 5
   science: 5

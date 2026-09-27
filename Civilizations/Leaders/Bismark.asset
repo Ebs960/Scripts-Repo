@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Bismark
   portrait: {fileID: 21300000, guid: f61f18083110a224181d7de933940ea1, type: 3}
   historicalEra: 
-  biography: The German
+  biography: The Iron Chancellor who united Germany through strategy, steel, and unwavering statecraft.
   aggressiveness: 5
   diplomacy: 8
   science: 5

@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Hiawatha
   portrait: {fileID: 0}
   historicalEra: Colonial
-  biography: He's just a cool guy
+  biography: A wise peacemaker and warrior whose diplomacy helped bind rival peoples into a stronger confederacy.
   aggressiveness: 5
   diplomacy: 5
   science: 5

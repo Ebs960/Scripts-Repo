@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Queen Victoria
   portrait: {fileID: 21300000, guid: b3f5fc2af1bdc9347916bc5326af9c30, type: 3}
   historicalEra: 
-  biography: Long live the British Empire
+  biography: The empress who presided over the height of the British Empire and its global reach.
   aggressiveness: 5
   diplomacy: 5
   science: 7

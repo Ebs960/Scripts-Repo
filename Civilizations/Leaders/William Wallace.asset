@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: William Wallace
   portrait: {fileID: 21300000, guid: a280ebdf8e8bc024dba82223c0d7ce6f, type: 3}
   historicalEra: Medieval
-  biography: The freedom fighter of Scotland.
+  biography: A fearless Scottish patriot whose resistance became the symbol of freedom.
   aggressiveness: 8
   diplomacy: 4
   science: 5

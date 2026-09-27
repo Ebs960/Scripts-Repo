@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Germanicus
   portrait: {fileID: 0}
   historicalEra: Ancient
-  biography: He is not a fan of Germans
+  biography: A celebrated Roman commander whose campaigns were marked by brilliance, discipline, and relentless ambition.
   aggressiveness: 10
   diplomacy: 3
   science: 4

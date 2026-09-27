@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Richard the Lionheart
   portrait: {fileID: 21300000, guid: a280ebdf8e8bc024dba82223c0d7ce6f, type: 3}
   historicalEra: 
-  biography: A strong English warrior king
+  biography: A valiant crusader king whose courage became the stuff of legend.
   aggressiveness: 6
   diplomacy: 6
   science: 5

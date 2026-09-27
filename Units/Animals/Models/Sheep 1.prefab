@@ -181,6 +181,8 @@ MonoBehaviour:
   healthPopupFontSize: 7
   takesWeatherDamage: 0
   attackPointsPerTurn: 1
+  crisisActorTags: 0
+  crisisOriginalOwnerCivIndex: -1
   currentTileIndex: 0
   currentLayer: 0
   spaceLocation:

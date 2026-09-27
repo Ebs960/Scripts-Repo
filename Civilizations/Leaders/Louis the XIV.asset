@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: King Louis the XIV
   portrait: {fileID: 21300000, guid: e30e415b679ed594a9aa35d1a2359450, type: 3}
   historicalEra: 
-  biography: A french gentleman
+  biography: The Sun King, whose absolutist grandeur sought to center all power in his crown.
   aggressiveness: 2
   diplomacy: 8
   science: 6

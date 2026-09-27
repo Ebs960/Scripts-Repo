@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Moctezuma
   portrait: {fileID: 0}
   historicalEra: Colonial
-  biography: The last emperor of the Aztecs. A strong man but often too forgiving.
+  biography: The last Aztec emperor, wise in ritual and burdened by the weight of empire.
   aggressiveness: 7
   diplomacy: 7
   science: 5

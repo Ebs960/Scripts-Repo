@@ -15,7 +15,7 @@ MonoBehaviour:
   leaderName: Mansa Musa
   portrait: {fileID: 21300000, guid: 305cadcc3926fdf46a0eb91b11b489fa, type: 3}
   historicalEra: 
-  biography: A rich black dude
+  biography: The richest and most renowned ruler of Mali, famed for wealth, pilgrimage, and imperial prestige.
   aggressiveness: 5
   diplomacy: 7
   science: 5
