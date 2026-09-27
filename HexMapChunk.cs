@@ -53,6 +53,7 @@ public class HexMapChunk : MonoBehaviour
     public bool IsDirty => isDirty;
     public Vector2 UVMin => uvMin;
     public Vector2 UVMax => uvMax;
+    internal Mesh GeneratedMesh => mesh;
     
     public void Initialize(HexMapChunkManager manager, int chunkX, int chunkZ, int columnIndex)
     {
@@ -584,7 +585,9 @@ public class HexMapChunk : MonoBehaviour
                 continue;
 
             Vector3 mapCenter = grid.tileCenters[tileIndex];
-            float topY = manager.GetSteppedVisualHeight(tileIndex);
+            // Chunk parents already contribute flatY. Convert the authoritative world Y
+            // exactly once to local mesh space rather than adding either baseline twice.
+            float topY = manager.GetRenderedTerrainWorldY(tileIndex) - manager.FlatY;
             float shoulderY = topY - bevelDrop;
             Vector3 localCenter = new Vector3(mapCenter.x - chunkOriginX, topY, mapCenter.z - chunkOriginZ);
             Vector2 centerUV = MapPositionToUV(mapCenter);
@@ -658,7 +661,7 @@ public class HexMapChunk : MonoBehaviour
                 }
                 else
                 {
-                    float neighborY = manager.GetSteppedVisualHeight(neighborIndex);
+                    float neighborY = manager.GetRenderedTerrainWorldY(neighborIndex) - manager.FlatY;
                     if (topY > neighborY + 0.0001f)
                         bottomY = neighborY - bevelDrop;
                     else if (manager.SteppedHexTopScale < 0.9999f && Mathf.Abs(topY - neighborY) <= 0.0001f && seamDepth > 0f)

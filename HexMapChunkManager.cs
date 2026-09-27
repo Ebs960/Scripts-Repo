@@ -320,14 +320,14 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Vertical drop from the flat top to the outer edge of the stepped-hex bevel.")]
     private float steppedBevelDrop = 0.05f;
 
-    [SerializeField] private float steppedFlatHeight = 5.75f;
-    [SerializeField] private float steppedHillHeight = 8.5f;
-    [SerializeField] private float steppedMountainHeight = 12.5f;
+    [SerializeField] private float steppedFlatHeightAboveSea = 0.75f;
+    [SerializeField] private float steppedHillHeightAboveSea = 3.5f;
+    [SerializeField] private float steppedMountainHeightAboveSea = 7.5f;
 
     [Header("Stepped Seafloor - Experimental")]
-    [SerializeField] private float steppedOceanFloorHeight = 0f;
-    [SerializeField] private float steppedAbyssalHeight = -1.5f;
-    [SerializeField] private float steppedTrenchHeight = -3.5f;
+    [Min(0f)] [SerializeField] private float steppedOceanDepthBelowSea = 2f;
+    [Min(0f)] [SerializeField] private float steppedAbyssalDepthBelowSea = 3.5f;
+    [Min(0f)] [SerializeField] private float steppedTrenchDepthBelowSea = 5.5f;
 
     [Min(0f)]
     [SerializeField]
@@ -1679,15 +1679,20 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Resolves the CPU-authored visual height used only by the experimental stepped mesh.
-    /// Generated elevation and classification data remain untouched.
+    /// Returns the authoritative rendered terrain surface Y in world space. Stepped
+    /// heights are offsets from the planet's authoritative sea level; smooth heights
+    /// retain the existing flatY/elevation/displacement rendering calculation.
     /// </summary>
-    public float GetSteppedVisualHeight(int tileIndex)
+    public float GetRenderedTerrainWorldY(int tileIndex)
     {
+        if (terrainGeometryMode != TerrainGeometryMode.SteppedHexExperimental)
+            return flatY + GetRenderedElevation(tileIndex) * displacementStrength;
+
+        float seaLevelWorldY = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
         if (planetGenerator == null || planetGenerator.data == null ||
             !planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile))
         {
-            return steppedOceanFloorHeight;
+            return seaLevelWorldY - steppedOceanDepthBelowSea;
         }
 
         if (!tile.isLand)
@@ -1695,22 +1700,22 @@ public class HexMapChunkManager : MonoBehaviour
             switch (tile.underwaterBiome)
             {
                 case Biome.Trench:
-                    return steppedTrenchHeight;
+                    return seaLevelWorldY - steppedTrenchDepthBelowSea;
                 case Biome.AbyssalPlains:
-                    return steppedAbyssalHeight;
+                    return seaLevelWorldY - steppedAbyssalDepthBelowSea;
                 default:
-                    return steppedOceanFloorHeight;
+                    return seaLevelWorldY - steppedOceanDepthBelowSea;
             }
         }
 
         switch (tile.elevationTier)
         {
             case ElevationTier.Mountain:
-                return steppedMountainHeight;
+                return seaLevelWorldY + steppedMountainHeightAboveSea;
             case ElevationTier.Hill:
-                return steppedHillHeight;
+                return seaLevelWorldY + steppedHillHeightAboveSea;
             default:
-                return steppedFlatHeight;
+                return seaLevelWorldY + steppedFlatHeightAboveSea;
         }
     }
 
@@ -4573,122 +4578,137 @@ public class HexMapChunkManager : MonoBehaviour
     /// </summary>
     private void CreatePickingCollider()
     {
-        // Destroy old collider if exists
         if (pickingCollider != null)
-        {
             DestroyImmediate(pickingCollider.gameObject);
-        }
-        
-        // Create a dedicated GameObject for the picking collider
-        GameObject colliderObj = new GameObject("ChunkMapCollider");
-        colliderObj.transform.SetParent(transform);
-        colliderObj.transform.localPosition = new Vector3(0f, flatY, 0f);
-        colliderObj.transform.localRotation = Quaternion.identity;
-        
-        // Subdivision resolution — match chunk mesh density, capped for performance
-        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
-        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
-        int vX = subX + 1;
-        int vZ = subZ + 1;
-        int vertCount = vX * vZ;
-        
-        float halfW = mapWidth * 0.5f;
-        float halfH = mapHeight * 0.5f;
-        
-        // CPU-displaced visible chunks use SampleTerrainSurfaceYAtUV; use the same source here so picking matches.
-        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit
-            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
 
-        // Check if the heightmap is available for CPU-side displacement in the custom shader path.
-        bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
-        int hmW = hasHeightmap ? heightmapTexture.width : 0;
-        int hmH = hasHeightmap ? heightmapTexture.height : 0;
-        
-        var vertices = new Vector3[vertCount];
-        var uvs = new Vector2[vertCount];
-        
-        for (int z = 0; z < vZ; z++)
+        GameObject colliderObj = new GameObject("ChunkMapCollider");
+        colliderObj.transform.SetParent(transform, false);
+        colliderObj.transform.localPosition = Vector3.zero;
+        colliderObj.transform.localRotation = Quaternion.identity;
+
+        Mesh pickMesh;
+        string pickingMode;
+        if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
         {
-            for (int x = 0; x < vX; x++)
+            // Reuse the actual, already-built stepped chunk meshes. This makes the dedicated
+            // UV-capable picking surface reproduce tops, bevels, and walls with no parallel
+            // implementation of stepped geometry or height rules.
+            var combines = new List<CombineInstance>(chunksX * chunksZ);
+            for (int x = 0; x < chunksX; x++)
             {
-                int idx = z * vX + x;
-                float u = (float)x / subX;
-                float v = (float)z / subZ;
-                
-                float posX = -halfW + u * mapWidth;
-                float posZ = -halfH + v * mapHeight;
-                
-                // Sample the same surface height as the visible terrain. The collider object already sits at flatY,
-                // so convert the world-space sampled terrain Y back into collider-local Y.
-                float posY = 0f;
-                if (useBakedHeightSampler)
+                for (int z = 0; z < chunksZ; z++)
                 {
-                    posY = SampleTerrainSurfaceYAtUV(new Vector2(u, v)) - flatY;
+                    HexMapChunk chunk = chunks[x, z];
+                    if (chunk == null || chunk.GeneratedMesh == null)
+                        continue;
+                    combines.Add(new CombineInstance
+                    {
+                        mesh = chunk.GeneratedMesh,
+                        transform = transform.worldToLocalMatrix * chunk.transform.localToWorldMatrix
+                    });
                 }
-                else if (hasHeightmap)
-                {
-                    int px = Mathf.Clamp(Mathf.FloorToInt(u * hmW), 0, hmW - 1);
-                    int py = Mathf.Clamp(Mathf.FloorToInt(v * hmH), 0, hmH - 1);
-                    posY = heightmapTexture.GetPixel(px, py).r * displacementStrength;
-                }
-                
-                vertices[idx] = new Vector3(posX, posY, posZ);
-                uvs[idx] = new Vector2(u, v);
             }
+
+            pickMesh = new Mesh { name = "PickingMesh_SteppedExact", indexFormat = IndexFormat.UInt32 };
+            pickMesh.CombineMeshes(combines.ToArray(), true, true, false);
+            pickingMode = "SteppedExact";
         }
-        
-        // Build triangle indices
-        int triCount = subX * subZ * 6;
-        var triangles = new int[triCount];
-        int triIdx = 0;
-        for (int z = 0; z < subZ; z++)
+        else
         {
-            for (int x = 0; x < subX; x++)
-            {
-                int bl = z * vX + x;
-                int br = bl + 1;
-                int tl = bl + vX;
-                int tr = tl + 1;
-                
-                triangles[triIdx++] = bl;
-                triangles[triIdx++] = tl;
-                triangles[triIdx++] = tr;
-                
-                triangles[triIdx++] = bl;
-                triangles[triIdx++] = tr;
-                triangles[triIdx++] = br;
-            }
+            pickMesh = BuildSmoothPickingMesh();
+            pickingMode = "Heightmap";
         }
-        
-        Mesh pickMesh = new Mesh();
-        pickMesh.name = "PickingMesh_Displaced";
-        if (vertCount > 65535)
-            pickMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        pickMesh.vertices = vertices;
-        pickMesh.uv = uvs;
-        pickMesh.triangles = triangles;
-        pickMesh.RecalculateNormals();
-        pickMesh.RecalculateBounds();
-        
-        // MeshFilter is required for hit.textureCoord to work with MeshCollider
+
         MeshFilter mf = colliderObj.AddComponent<MeshFilter>();
-        mf.mesh = pickMesh;
-        
-        // Invisible renderer (required for hit.textureCoord on some Unity versions)
+        mf.sharedMesh = pickMesh;
         MeshRenderer mr = colliderObj.AddComponent<MeshRenderer>();
         mr.enabled = false;
-        
-        // MeshCollider for physics raycasts with proper UV interpolation
         var meshCollider = colliderObj.AddComponent<MeshCollider>();
         meshCollider.sharedMesh = pickMesh;
         pickingCollider = meshCollider;
         pickingCollider.enabled = currentViewLayer != GameManager.PlanetLayerType.Orbit;
-        
-        // Set layer for filtered raycasting (WorldPicker uses this layer mask)
+
         int terrainLayer = LayerMask.NameToLayer("Terrain");
         colliderObj.layer = terrainLayer >= 0 ? terrainLayer : 0;
-        
-        Debug.Log($"[HexMapChunkManager] Created displaced picking collider: {subX}x{subZ} subdivisions, {vertCount} verts, heightmap={hasHeightmap}, displacement={displacementStrength}");
+        Debug.Log($"[HexMapChunkManager] Created {pickingMode} picking collider: {pickMesh.vertexCount} verts");
+        LogTerrainHeightSync(pickingMode);
+    }
+
+    private Mesh BuildSmoothPickingMesh()
+    {
+        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
+        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
+        int vX = subX + 1;
+        int vZ = subZ + 1;
+        float halfW = mapWidth * 0.5f;
+        float halfH = mapHeight * 0.5f;
+        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit
+            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
+        bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
+        int hmW = hasHeightmap ? heightmapTexture.width : 0;
+        int hmH = hasHeightmap ? heightmapTexture.height : 0;
+        var vertices = new Vector3[vX * vZ];
+        var uvs = new Vector2[vertices.Length];
+
+        for (int z = 0; z < vZ; z++)
+        for (int x = 0; x < vX; x++)
+        {
+            int idx = z * vX + x;
+            float u = (float)x / subX;
+            float v = (float)z / subZ;
+            float posY = flatY;
+            if (useBakedHeightSampler)
+                posY = SampleTerrainSurfaceYAtUV(new Vector2(u, v));
+            else if (hasHeightmap)
+            {
+                int px = Mathf.Clamp(Mathf.FloorToInt(u * hmW), 0, hmW - 1);
+                int py = Mathf.Clamp(Mathf.FloorToInt(v * hmH), 0, hmH - 1);
+                posY += heightmapTexture.GetPixel(px, py).r * displacementStrength;
+            }
+            vertices[idx] = new Vector3(-halfW + u * mapWidth, posY, -halfH + v * mapHeight);
+            uvs[idx] = new Vector2(u, v);
+        }
+
+        var triangles = new int[subX * subZ * 6];
+        int ti = 0;
+        for (int z = 0; z < subZ; z++)
+        for (int x = 0; x < subX; x++)
+        {
+            int bl = z * vX + x;
+            int br = bl + 1;
+            int tl = bl + vX;
+            int tr = tl + 1;
+            triangles[ti++] = bl; triangles[ti++] = tl; triangles[ti++] = tr;
+            triangles[ti++] = bl; triangles[ti++] = tr; triangles[ti++] = br;
+        }
+
+        var mesh = new Mesh { name = "PickingMesh_Displaced" };
+        if (vertices.Length > 65535) mesh.indexFormat = IndexFormat.UInt32;
+        mesh.vertices = vertices;
+        mesh.uv = uvs;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    private void LogTerrainHeightSync(string pickingMode)
+    {
+        if (terrainGeometryMode != TerrainGeometryMode.SteppedHexExperimental)
+            return;
+
+        float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
+        float water = GetOceanWaterSurfaceY();
+        float flat = sea + steppedFlatHeightAboveSea;
+        float hill = sea + steppedHillHeightAboveSea;
+        float mountain = sea + steppedMountainHeightAboveSea;
+        float ocean = sea - steppedOceanDepthBelowSea;
+        float abyssal = sea - steppedAbyssalDepthBelowSea;
+        float trench = sea - steppedTrenchDepthBelowSea;
+        Debug.Log($"[TerrainHeightSync]\nMode={terrainGeometryMode}\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHill={hill:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
+
+        if (flat <= water || hill <= flat || mountain <= hill || ocean >= water || abyssal >= ocean || trench >= abyssal)
+            Debug.LogWarning($"[TerrainHeightSync] Invalid stepped terrain/water ordering. Mode={terrainGeometryMode}, Picking={pickingMode}");
     }
 
     /// <summary>

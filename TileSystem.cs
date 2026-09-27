@@ -1164,6 +1164,16 @@ public class TileSystem : MonoBehaviour
     {
         // Get flat center position
         var c = GetTileCenterFlat(tile);
+
+        if (cachedChunkManager == null)
+            cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
+
+        if (cachedChunkManager != null && cachedChunkManager.IsBuilt &&
+            cachedChunkManager.PlanetGenerator != null &&
+            cachedChunkManager.PlanetGenerator.planetIndex == planetIndex)
+        {
+            return new Vector3(c.x, cachedChunkManager.GetRenderedTerrainWorldY(tile) + unitOffset, c.z);
+        }
         
         // Get terrain elevation to calculate actual Y position
         float terrainY = c.y;
