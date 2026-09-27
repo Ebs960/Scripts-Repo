@@ -20,16 +20,16 @@ MonoBehaviour:
   - York
   - Cambridge
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep  Boys
+  - Longbow Pasture Herd
+  - Channel Fleet Herd
+  - Crown Meadow Herd
+  - Albion Forge Herd
   availableLeaders:
   - {fileID: 11400000, guid: 94b09ab2381784c458b260bd64dedc58, type: 2}
   - {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: 
+  description: "Medieval and early modern England expanded administrative capacity, maritime reach, and commercial institutions. It excels at turning workshop output into wider economic reach."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -47,8 +47,8 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
-  goldModifier: 0
+  productionModifier: 0.1
+  goldModifier: 0.05
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

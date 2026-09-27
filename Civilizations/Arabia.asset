@@ -19,15 +19,15 @@ MonoBehaviour:
   - Medina
   - Riyadh
   herdNames:
-  - Sheep of Allah
-  - Cows of Allah
-  - The Great Umayyad Horde Herd
+  - Dune Caravan Herd
+  - Incense Route Herd
+  - Crescent Oasis Herd
+  - Red Sand Wayfarers
   availableLeaders:
   - {fileID: 11400000, guid: dc4cb2a7cd971d64d9da2b8d25c72e60, type: 2}
   cultureGroup: 12
   cultureBonuses: []
-  description: The desert sands make trade and travel essential to survival. All
-    praise Allah
+  description: "Arabian polities linked oasis towns and major cities through caravan routes, scholarship, and long-distance exchange across deserts and seas. Their strength lies in connecting distant regions through commerce and institutions."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -46,10 +46,10 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.3
+  goldModifier: 0.1
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0
+  faithModifier: 0.05
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

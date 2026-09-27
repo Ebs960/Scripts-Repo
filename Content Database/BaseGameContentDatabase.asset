@@ -292,7 +292,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0f155475f79a27a46bbffe04e66aec58, type: 2}
   workerUnits:
   - {fileID: 11400000, guid: a83eacc820cf181418632e535929d399, type: 2}
-  - {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
   buildings:
   - {fileID: 11400000, guid: e545bb4b0c1c96f4b9601991f58fd79b, type: 2}
   - {fileID: 11400000, guid: 7a4a03ba081c22547b1f8b4a7f807c26, type: 2}

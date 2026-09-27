@@ -24,15 +24,15 @@ MonoBehaviour:
   - Iverness
   - Dunfermline
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Highland Glen Herd
+  - Thistle Banner Herd
+  - Firth Wind Herd
+  - Caledon Watch Herd
   availableLeaders:
   - {fileID: 11400000, guid: 1714416d521229a4bbc9c12bd083f7e7, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: We will fight for our independence from the oppressors.
+  description: "Scotland developed resilient institutions, a strong literary tradition, and major contributions to science and philosophy. It favors intellectual momentum reinforced by cultural cohesion."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -50,10 +50,10 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0.17
+  productionModifier: 0
   goldModifier: 0
-  scienceModifier: 0.21
-  cultureModifier: 0
+  scienceModifier: 0.1
+  cultureModifier: 0.05
   faithModifier: 0
   tileYieldBonuses: []
   buildingBonuses: []

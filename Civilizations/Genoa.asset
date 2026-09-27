@@ -17,16 +17,16 @@ MonoBehaviour:
   cityNames:
   - Genoa
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Ligurian Harbor Herd
+  - Ledger Wind Herd
+  - Crossbow Wharf Herd
+  - Lantern Sea Herd
   availableLeaders:
   - {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
   - {fileID: 11400000, guid: 7a76036a90a2556459993a5b67c15dbc, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: A good city for trade.
+  description: "The Republic of Genoa built influence through maritime finance, contracts, and strategic ports. Its strength is disciplined commercial organization backed by productive shipyards."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -44,8 +44,8 @@ MonoBehaviour:
   defenseBonus: 0
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
-  goldModifier: 0.25
+  productionModifier: 0.05
+  goldModifier: 0.1
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

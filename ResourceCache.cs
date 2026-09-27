@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using GameCombat;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 /// <summary>
 /// Static cache for all Resources.LoadAll calls to avoid repeated expensive I/O operations.
 /// Uses lazy loading - only loads resources when first accessed, not all at once.
@@ -584,6 +588,11 @@ public static class ResourceCache
         if (_baseGameDatabaseLoadAttempted) return;
         _baseGameDatabaseLoadAttempted = true;
         _baseGameDatabase = Resources.Load<BaseGameContentDatabase>("BaseGameContentDatabase");
+#if UNITY_EDITOR
+        if (_baseGameDatabase == null)
+            _baseGameDatabase = AssetDatabase.LoadAssetAtPath<BaseGameContentDatabase>(
+                "Assets/Scripts Repo/Content Database/BaseGameContentDatabase.asset");
+#endif
         if (_baseGameDatabase == null)
         {
             Debug.LogError("[ResourceCache] BaseGameContentDatabase could not be loaded. Dynamic units, buildings, improvements, governments, and civilizations may be unavailable. Rebuild it with 'Populate From Project'.");

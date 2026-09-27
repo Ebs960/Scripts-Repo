@@ -22,14 +22,15 @@ MonoBehaviour:
   - Kayes
   - Mopti
   herdNames:
-  - The Great Herd
-  - The Camel Herds
-  - The Moving Pasture
+  - Niger Caravan Herd
+  - Timbuktu Script Herd
+  - Sahel Gold Herd
+  - Mande Wayfarers
   availableLeaders:
   - {fileID: 11400000, guid: 8733f293cf2f7c143885ef88b97bf47e, type: 2}
   cultureGroup: 3
   cultureBonuses: []
-  description: A land of gold and horses.
+  description: "The Mali Empire connected trans-Saharan trade with renowned centers of learning and manuscript culture. It converts wealth into enduring scholarship and influence."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -48,8 +49,8 @@ MonoBehaviour:
   movementBonus: 0
   foodModifier: 0
   productionModifier: 0
-  goldModifier: 0.3
-  scienceModifier: 0
+  goldModifier: 0.1
+  scienceModifier: 0.05
   cultureModifier: 0
   faithModifier: 0
   tileYieldBonuses: []

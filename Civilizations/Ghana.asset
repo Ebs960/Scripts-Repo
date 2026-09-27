@@ -21,16 +21,16 @@ MonoBehaviour:
   - Lagos
   - Abidjan
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Sahel Route Herd
+  - Niger Grass Herd
+  - Soninke Drum Herd
+  - Savanna Gate Herd
   availableLeaders:
   - {fileID: 11400000, guid: 18a9aee08bf003745829a6bec5350d27, type: 2}
   - {fileID: 11400000, guid: 07d588cc890c82b4ba62aaa3a25425de, type: 2}
   cultureGroup: 3
   cultureBonuses: []
-  description: A strong and modern African nation.
+  description: "The historic Ghana Empire prospered through Sahel trade corridors, taxation systems, and agricultural support zones. It balances strong subsistence with profitable exchange."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -45,11 +45,11 @@ MonoBehaviour:
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0.03
+  defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0
-  productionModifier: 0.17
-  goldModifier: 0.17
+  foodModifier: 0.1
+  productionModifier: 0
+  goldModifier: 0.05
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0

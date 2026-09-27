@@ -151,14 +151,14 @@ public class GovernmentPanel : MonoBehaviour
                 else
                 {
                     // Create a minimal runtime close button if none provided
-                    autoCloseButton = new GameObject("CloseButton");
+                    autoCloseButton = new GameObject("CloseButton", typeof(RectTransform));
                     autoCloseButton.transform.SetParent(panelRoot.transform, false);
                     var btn = autoCloseButton.AddComponent<Button>();
                     var txt = autoCloseButton.AddComponent<TextMeshProUGUI>();
                     txt.text = "X";
                     txt.fontSize = 20;
                     txt.color = Color.white;
-                    var rt = autoCloseButton.AddComponent<RectTransform>();
+                    var rt = autoCloseButton.GetComponent<RectTransform>();
                     rt.anchorMin = new Vector2(1f, 1f);
                     rt.anchorMax = new Vector2(1f, 1f);
                     rt.pivot = new Vector2(1f, 1f);
@@ -182,9 +182,9 @@ public class GovernmentPanel : MonoBehaviour
             else
             {
                 // Build a minimal runtime confirm dialog (keeps text + OK/Cancel) so functionality works without inspector wiring
-                confirmDialog = new GameObject("ConfirmDialog");
+                confirmDialog = new GameObject("ConfirmDialog", typeof(RectTransform));
                 confirmDialog.transform.SetParent(panelRoot.transform, false);
-                var rt = confirmDialog.AddComponent<RectTransform>();
+                var rt = confirmDialog.GetComponent<RectTransform>();
                 rt.anchorMin = new Vector2(0.5f, 0.5f);
                 rt.anchorMax = new Vector2(0.5f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
@@ -194,7 +194,7 @@ public class GovernmentPanel : MonoBehaviour
                 image.color = new Color(0f, 0f, 0f, 0.85f);
 
                 // Message text
-                var msgGO = new GameObject("Message");
+                var msgGO = new GameObject("Message", typeof(RectTransform));
                 msgGO.transform.SetParent(confirmDialog.transform, false);
                 var msg = msgGO.AddComponent<TextMeshProUGUI>();
                 msg.text = "Confirm?";
@@ -207,46 +207,46 @@ public class GovernmentPanel : MonoBehaviour
                 msgRt.offsetMax = new Vector2(-8, -8);
 
                 // Effects container placeholder
-                var effectsGO = new GameObject("EffectsContainer");
+                var effectsGO = new GameObject("EffectsContainer", typeof(RectTransform));
                 effectsGO.transform.SetParent(confirmDialog.transform, false);
-                var effectsRt = effectsGO.AddComponent<RectTransform>();
+                var effectsRt = effectsGO.GetComponent<RectTransform>();
                 effectsRt.anchorMin = new Vector2(0f, 0.35f);
                 effectsRt.anchorMax = new Vector2(1f, 0.7f);
                 effectsRt.offsetMin = new Vector2(8, 4);
                 effectsRt.offsetMax = new Vector2(-8, -4);
 
                 // Buttons container
-                var btnContainer = new GameObject("Buttons");
+                var btnContainer = new GameObject("Buttons", typeof(RectTransform));
                 btnContainer.transform.SetParent(confirmDialog.transform, false);
-                var btnRt = btnContainer.AddComponent<RectTransform>();
+                var btnRt = btnContainer.GetComponent<RectTransform>();
                 btnRt.anchorMin = new Vector2(0f, 0f);
                 btnRt.anchorMax = new Vector2(1f, 0.3f);
                 btnRt.offsetMin = new Vector2(8, 8);
                 btnRt.offsetMax = new Vector2(-8, -8);
 
                 // Confirm (OK) button
-                var okGO = new GameObject("OK");
+                var okGO = new GameObject("OK", typeof(RectTransform));
                 okGO.transform.SetParent(btnContainer.transform, false);
                 var okBtn = okGO.AddComponent<Button>();
                 var okTxt = okGO.AddComponent<TextMeshProUGUI>();
                 okTxt.text = "Confirm";
                 okTxt.alignment = TextAlignmentOptions.Center;
                 okTxt.color = Color.white;
-                var okRt = okGO.AddComponent<RectTransform>();
+                var okRt = okGO.GetComponent<RectTransform>();
                 okRt.anchorMin = new Vector2(0f, 0f);
                 okRt.anchorMax = new Vector2(0.5f, 1f);
                 okRt.offsetMin = new Vector2(4, 4);
                 okRt.offsetMax = new Vector2(-4, -4);
 
                 // Cancel button
-                var cancelGO = new GameObject("Cancel");
+                var cancelGO = new GameObject("Cancel", typeof(RectTransform));
                 cancelGO.transform.SetParent(btnContainer.transform, false);
                 var cancelBtn = cancelGO.AddComponent<Button>();
                 var cancelTxt = cancelGO.AddComponent<TextMeshProUGUI>();
                 cancelTxt.text = "Cancel";
                 cancelTxt.alignment = TextAlignmentOptions.Center;
                 cancelTxt.color = Color.white;
-                var cancelRt = cancelGO.AddComponent<RectTransform>();
+                var cancelRt = cancelGO.GetComponent<RectTransform>();
                 cancelRt.anchorMin = new Vector2(0.5f, 0f);
                 cancelRt.anchorMax = new Vector2(1f, 1f);
                 cancelRt.offsetMin = new Vector2(4, 4);

@@ -21,16 +21,16 @@ MonoBehaviour:
   - Guangdong
   - Wuhan
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Yellow River Herd
+  - Jade Workshop Herd
+  - Silk Road Herd
+  - Celestial Granary Herd
   availableLeaders:
   - {fileID: 11400000, guid: e7fb8d24be69d3e46a75ef2913c8f3e4, type: 2}
   - {fileID: 11400000, guid: 861a7decee288b04d9137fe62d5111e5, type: 2}
   cultureGroup: 2
   cultureBonuses: []
-  description: Ching chang chong. Wo shi Zhongguoren
+  description: "Successive Chinese dynasties advanced statecraft, infrastructure, and technical innovation on a continental scale. Their advantage comes from organized production supporting sustained discovery."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -47,10 +47,10 @@ MonoBehaviour:
   cityAttackBonus: 0
   defenseBonus: 0
   movementBonus: 0
-  foodModifier: 0.09
-  productionModifier: 0
+  foodModifier: 0
+  productionModifier: 0.05
   goldModifier: 0
-  scienceModifier: 0.13
+  scienceModifier: 0.1
   cultureModifier: 0
   faithModifier: 0
   tileYieldBonuses: []

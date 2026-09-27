@@ -20,15 +20,15 @@ MonoBehaviour:
   - Kill
   - Burglary
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Toledo Crown Herd
+  - Iberian March Herd
+  - Pyrenean Route Herd
+  - Gothic Code Herd
   availableLeaders:
   - {fileID: 11400000, guid: 507a015a147ad994f9d988a3e10fc55e, type: 2}
   cultureGroup: 1
   cultureBonuses: []
-  description: A fierce tribe of raiders and thieves
+  description: "The Visigoths established lasting kingdoms in Iberia while adapting Roman legal and administrative forms. Their profile centers on ideological cohesion and assertive campaigning."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -39,7 +39,7 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 0500000004000000
-  attackBonus: 0.04
+  attackBonus: 0.05
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
@@ -50,7 +50,7 @@ MonoBehaviour:
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
-  faithModifier: 0
+  faithModifier: 0.1
   tileYieldBonuses: []
   buildingBonuses: []
   cityBonuses: []

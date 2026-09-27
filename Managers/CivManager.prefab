@@ -46,7 +46,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   aiDifficulty: 2
   civilizationPrefab: {fileID: 4861414517550174292, guid: 7b8c76687c8a8414ebc1f7dbb1f090a1, type: 3}
-  pioneerData: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
   startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
   cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
   allCivDatas:

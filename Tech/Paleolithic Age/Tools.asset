@@ -48,20 +48,7 @@ MonoBehaviour:
   unitBonuses: []
   unitYieldBonuses: []
   workerBonuses: []
-  workerYieldBonuses:
-  - worker: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
-    foodAdd: 0
-    goldAdd: 1
-    scienceAdd: 0
-    cultureAdd: 1
-    faithAdd: 0
-    policyPointsAdd: 0
-    foodPct: 0
-    goldPct: 0
-    sciencePct: 0
-    culturePct: 0
-    faithPct: 0
-    policyPointsPct: 0
+  workerYieldBonuses: []
   allWorkersWorkPoints: 2
   equipmentBonuses: []
   equipmentYieldBonuses: []

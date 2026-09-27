@@ -20,15 +20,15 @@ MonoBehaviour:
   - Knife Town
   - Killville
   herdNames:
-  - The Pasture Boys
-  - Shepherd Bosses
-  - The Sheep Gods
-  - Sheep Nigga Boys
+  - Wild Steppe Herd
+  - Iron Spur Herd
+  - Raven Standard Herd
+  - Stormplain Herd
   availableLeaders:
   - {fileID: 11400000, guid: 507a015a147ad994f9d988a3e10fc55e, type: 2}
   cultureGroup: 1
   cultureBonuses: []
-  description: Vicious psycho animals
+  description: "A fragmented Gothic warband culture defined by aggressive migration and survival beyond settled frontiers. This faction favors sudden force backed by hardiness."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -39,12 +39,12 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 090000000800000005000000
-  attackBonus: 0.09
+  attackBonus: 0.1
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0
-  movementBonus: 1
+  defenseBonus: 0.05
+  movementBonus: 0
   foodModifier: 0
   productionModifier: 0
   goldModifier: 0

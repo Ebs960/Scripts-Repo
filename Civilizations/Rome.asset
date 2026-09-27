@@ -21,15 +21,16 @@ MonoBehaviour:
   - Constantinople
   - Mediolanum
   herdNames:
-  - Caesars Flock
-  - Africanus' Flock
-  - Germanicus' Flock
+  - Legion Road Herd
+  - Tiber Granary Herd
+  - Eagle Standard Herd
+  - Seven Hills Herd
   availableLeaders:
   - {fileID: 11400000, guid: dc3a8818a91544645a55444c54ca1c7f, type: 2}
   - {fileID: 11400000, guid: caaba88b1624e204f9f39b0aa8fd806d, type: 2}
   cultureGroup: 0
   cultureBonuses: []
-  description: The Roman Empire will never stop expanding. Ave Roma
+  description: "Rome built roads, logistics, law, and urban institutions that enabled durable expansion across the Mediterranean. It is strongest when production and fortification advance together."
   startingTechs: []
   startingCultures: []
   startingPolicies: []
@@ -40,14 +41,14 @@ MonoBehaviour:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
     count: 2
   climatePreferences: 0500000004000000
-  attackBonus: 0.01
+  attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0
   cityAttackBonus: 0
-  defenseBonus: 0.01
+  defenseBonus: 0.05
   movementBonus: 0
   foodModifier: 0
-  productionModifier: 0
+  productionModifier: 0.1
   goldModifier: 0
   scienceModifier: 0
   cultureModifier: 0
