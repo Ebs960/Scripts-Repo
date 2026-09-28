@@ -140,9 +140,9 @@ Shader "Custom/BiomeTerrainHDRP"
         [Header(Campaign Lighting)]
         _CampaignLightDirectionWS ("Campaign Light Direction WS", Vector) = (0,1,0,0)
         _CampaignLightColor ("Campaign Light Color", Color) = (1,1,1,1)
-        _CampaignAmbientFloor ("Campaign Ambient Floor", Range(0,1)) = 0.72
-        _CampaignDirectionalStrength ("Campaign Directional Strength", Range(0,1)) = 0.28
-        _CampaignAOStrength ("Campaign AO Strength", Range(0,1)) = 0.20
+        _CampaignAmbientFloor ("Campaign Ambient Floor", Range(0,1)) = 0.64
+        _CampaignDirectionalStrength ("Campaign Directional Strength", Range(0,1)) = 0.36
+        _CampaignAOStrength ("Campaign AO Strength", Range(0,1)) = 0.30
 
         [Header(Debug)]
         _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
@@ -407,10 +407,13 @@ Shader "Custom/BiomeTerrainHDRP"
         tnY.xy *= _BiomeNormalStrength;
         tnZ.xy *= _BiomeNormalStrength;
 
-        // Reorient sampled tangent-space normals into projection-space using worldNormal as bias
-        float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
-        float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
-        float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
+        // Whiteout-reorient each projection around the signed geometric normal.
+        // Keeping the projected axis signed is essential: abs(worldNormal.axis)
+        // folds negative-facing walls onto the opposite hemisphere and makes their
+        // sampled normals shade as if they were upward/right-facing surfaces.
+        float3 nX = float3(tnX.xy + worldNormal.zy, tnX.z * worldNormal.x);
+        float3 nY = float3(tnY.xy + worldNormal.xz, tnY.z * worldNormal.y);
+        float3 nZ = float3(tnZ.xy + worldNormal.xy, tnZ.z * worldNormal.z);
 
         // Blend and renormalize
         float3 blended = nX.zyx * weights.x + nY.xzy * weights.y + nZ.xyz * weights.z;
@@ -470,7 +473,7 @@ Shader "Custom/BiomeTerrainHDRP"
         float2 uvY = worldPos.xz * tiling;
         float3 tnYBase = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
         tnYBase.xy *= _BiomeNormalStrength;
-        float3 nYBase = float3(tnYBase.xy + worldNormal.xz, abs(worldNormal.y));
+        float3 nYBase = float3(tnYBase.xy + worldNormal.xz, tnYBase.z * worldNormal.y);
         float3 result = normalize(nYBase.xzy);
 
         // If triplanar disabled, always use Y-only planar normal
@@ -490,9 +493,11 @@ Shader "Custom/BiomeTerrainHDRP"
         float3 tnY = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY + tileHash, sliceIndex);
         float3 tnZ = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling + tileHash, sliceIndex);
 
-        float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
-        float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
-        float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
+        // Preserve the sign of every projection axis so the result remains in the
+        // same hemisphere as the authored top, bevel, or wall normal.
+        float3 nX = float3(tnX.xy + worldNormal.zy, tnX.z * worldNormal.x);
+        float3 nY = float3(tnY.xy + worldNormal.xz, tnY.z * worldNormal.y);
+        float3 nZ = float3(tnZ.xy + worldNormal.xy, tnZ.z * worldNormal.z);
         float3 fullResult = normalize(nX.zyx * triWeights.x + nY.xzy * triWeights.y + nZ.xyz * triWeights.z);
 
         result = fullResult;
@@ -501,7 +506,7 @@ Shader "Custom/BiomeTerrainHDRP"
         {
             float3 tnYFar = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
             tnYFar.xy *= _BiomeNormalStrength;
-            float3 nYFar = float3(tnYFar.xy + worldNormal.xz, abs(worldNormal.y));
+            float3 nYFar = float3(tnYFar.xy + worldNormal.xz, tnYFar.z * worldNormal.y);
             float3 yResult = normalize(nYFar.xzy);
             result = normalize(lerp(fullResult, yResult, lodBlend));
         }
@@ -872,21 +877,28 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // ==========================================================
                 // GEOMETRY LAYER: cliffs belong only to mesh-authored sides.
-                // top >= .70, wall <= .25, with a controlled bevel transition.
+                // Use the configured geometric slope band (never the perturbed normal),
+                // so vertical walls and bevels keep their intended cliff material.
                 // ==========================================================
-                float sideBlend = 1.0 - smoothstep(0.25, 0.70, meshNormal.y);
+                float cliffBlendWidth = max(_CliffSlopeBlend, 0.001);
+                float sideBlend = 1.0 - smoothstep(
+                    _CliffSlopeThreshold - cliffBlendWidth,
+                    _CliffSlopeThreshold + cliffBlendWidth,
+                    meshNormal.y);
                 float3 materialAlbedo = baseAlbedo;
                 if (sideBlend > 0.001 && _CliffStrength > 0.001 && _CliffSliceCount > 0.5)
                 {
                     float hash = frac(sin(dot(worldPos.xz, float2(12.9898, 78.233))) * 43758.5453);
-                    float cliffSlice = floor(hash * max(1.0, _CliffSliceCount - 1.0) + 0.5);
+                    // floor(hash * count) covers [0, count-1] and remains valid for
+                    // a one-slice array (the previous rounding could select slice 1).
+                    float cliffSlice = min(floor(hash * _CliffSliceCount), _CliffSliceCount - 1.0);
                     float cliffAmount = saturate(sideBlend * _CliffStrength);
                     float3 cliffAlbedo = SampleBiomeTexture(
                         TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray),
                         worldPos, triWeights, cliffSlice, _CliffTiling, camDist, uv).rgb;
                     float3 cliffNormal = SampleBiomeNormal(
                         TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray),
-                        worldPos, normalWS, triWeights, cliffSlice, _CliffTiling, camDist, uv);
+                        worldPos, meshNormal, triWeights, cliffSlice, _CliffTiling, camDist, uv);
                     materialAlbedo = lerp(materialAlbedo, cliffAlbedo, cliffAmount);
                     normalWS = normalize(lerp(normalWS, cliffNormal, cliffAmount));
                     mask.a = lerp(mask.a, max(0.05, mask.a * 0.3), cliffAmount);
@@ -1088,17 +1100,27 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (terrainDebugMode == 7)
                     return float4(saturate(mask.rgb), 1.0);
 
-                float3 normalizedNormalWS = normalize(normalWS);
+                // All biome, cliff, snow, wetness, and ice perturbations are complete.
+                // Simple Campaign must use this final surface normal; meshNormal remains
+                // reserved for geometry/material classification such as the cliff overlay.
+                float3 finalSurfaceNormalWS = normalize(normalWS);
 
                 // Texture-authoritative production lighting. Both shade and light tint are
                 // bounded to one, so ordinary lighting can darken authored terrain but can
                 // never wash it brighter than its material color.
                 float3 campaignLightDir = normalize(_CampaignLightDirectionWS.xyz);
-                float campaignNdotL = saturate(dot(normalizedNormalWS, campaignLightDir));
-                float campaignShade = lerp(saturate(_CampaignAmbientFloor), 1.0,
-                    campaignNdotL * saturate(_CampaignDirectionalStrength));
+                float campaignNdotL = saturate(dot(finalSurfaceNormalWS, campaignLightDir));
+                // Ambient and directional terms are complementary controls. The previous
+                // nested lerp applied directional strength twice in practice, compressing
+                // the full normal response into a very narrow, flat-looking value range.
+                float campaignShade = saturate(_CampaignAmbientFloor)
+                    + campaignNdotL * saturate(_CampaignDirectionalStrength);
                 campaignShade = clamp(campaignShade, saturate(_CampaignAmbientFloor), 1.0);
-                float campaignAO = lerp(1.0, saturate(ao), saturate(_CampaignAOStrength));
+                // Add restrained geometry occlusion to the authored AO. This makes stepped
+                // bevels and walls readable even when a surface family's AO map is white.
+                float geometryAO = lerp(0.82, 1.0, saturate(meshNormal.y));
+                float campaignAO = lerp(1.0, min(saturate(ao), geometryAO),
+                    saturate(_CampaignAOStrength));
                 float3 campaignTint = lerp(1.0.xxx, saturate(_CampaignLightColor.rgb),
                     saturate(_CampaignDirectionalStrength));
                 float3 simpleCampaignLit = materialColor * campaignShade * campaignAO * campaignTint;

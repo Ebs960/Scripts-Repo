@@ -174,9 +174,9 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Development-only: display the owning SurfaceFamily albedo slice without lighting or overlays.")]
     [SerializeField] private bool forceRawTerrainAlbedo = false;
     [Header("Campaign Terrain Lighting")]
-    [Range(0f, 1f)] [SerializeField] private float campaignAmbientFloor = 0.72f;
-    [Range(0f, 1f)] [SerializeField] private float campaignDirectionalStrength = 0.28f;
-    [Range(0f, 1f)] [SerializeField] private float campaignAOStrength = 0.20f;
+    [Range(0f, 1f)] [SerializeField] private float campaignAmbientFloor = 0.64f;
+    [Range(0f, 1f)] [SerializeField] private float campaignDirectionalStrength = 0.36f;
+    [Range(0f, 1f)] [SerializeField] private float campaignAOStrength = 0.30f;
     [Tooltip("Optional campaign sun. RenderSettings.sun, then the brightest enabled directional light, are used when this is unset.")]
     [SerializeField] private Light campaignDirectionalLight;
     private bool terrainLightingAuditLogged;
