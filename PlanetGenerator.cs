@@ -2705,6 +2705,19 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             if (!mountainPass[i] && isMountain) elevTier = ElevationTier.Mountain;
             else if (isHill) elevTier = ElevationTier.Hill;
 
+            // Preserve simulation detail before the campaign renderer intentionally replaces
+            // absolute simulation elevation with its categorical world-space tier contract.
+            float actualTierRelief = elevTier == ElevationTier.Mountain
+                ? Mathf.InverseLerp(mountainElevationMin, mountainElevationMax, finalElevation)
+                : elevTier == ElevationTier.Hill
+                    ? Mathf.InverseLerp(hillElevationMin, hillElevationMax, finalElevation)
+                    : 0.5f;
+            // A compact, neighbor-filtered hash gives range cores local peaks/shoulders without
+            // touching UnityEngine.Random or producing one-tile television-static spikes.
+            float localRelief = DeterministicRelief(i);
+            float broadRelief = Mathf.Clamp01(shapedNoisePerTile[i]);
+            float visualRelief = Mathf.Clamp01(actualTierRelief * 0.70f + localRelief * 0.20f + broadRelief * 0.10f);
+
             #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
             var td = new HexTileData
             {
@@ -2719,6 +2732,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 elevation = finalElevation,
                 originalElevation = finalElevation,
                 elevationTier = elevTier,
+                visualRelief01 = visualRelief,
                 temperature = temperature,
                 moisture = moisture,
                 movementCost = moveCost,
@@ -6670,6 +6684,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     td.elevation = td.waterElevation - margin;
                     tileData[ri] = td;
                 }
+                // Store an explicit render-space input while retaining waterElevation in
+                // simulation units. Monotonic hydrology therefore survives tier rendering.
+                td.renderedRiverSurface01 = Mathf.Clamp01(Mathf.InverseLerp(
+                    coastElevation, Mathf.Max(coastElevation + 0.001f, mountainElevationMax), td.waterElevation));
+                tileData[ri] = td;
             }
         }
 
@@ -6838,6 +6857,33 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - flat: {flatElevationMin}-{flatElevationMax}, hills: {hillElevationMin}-{hillElevationMax}, mountains: {mountainElevationMin}-{mountainElevationMax}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - hillNoiseCutoff: {hillNoiseCutoff}, mountainNoiseCutoff: {mountainNoiseCutoff}, exponent: {elevationExponent}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
+    }
+
+    private float DeterministicRelief(int tileIndex)
+    {
+        float sum = ReliefHash(tileIndex, Seed) * 2f;
+        int count = 2;
+        if (grid != null && grid.neighbors != null && tileIndex >= 0 && tileIndex < grid.neighbors.Length)
+        {
+            foreach (int neighbor in grid.neighbors[tileIndex])
+            {
+                if (neighbor < 0) continue;
+                sum += ReliefHash(neighbor, Seed);
+                count++;
+            }
+        }
+        return sum / Mathf.Max(1, count);
+    }
+
+    private static float ReliefHash(int tileIndex, int seed)
+    {
+        unchecked
+        {
+            uint h = (uint)(tileIndex * 374761393 + seed * 668265263);
+            h = (h ^ (h >> 13)) * 1274126177u;
+            h ^= h >> 16;
+            return (h & 0x00ffffffu) / 16777215f;
+        }
     }
 
     private void OnDrawGizmosSelected()

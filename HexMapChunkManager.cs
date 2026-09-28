@@ -139,7 +139,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Hill Height Variation")]
     [SerializeField] private bool enableHillHeightVariation = true;
-    [SerializeField, Range(0f, 2f)] private float hillHeightVariation = 0.65f;
+    [SerializeField, Range(0f, 2f)] private float hillHeightVariation = 1.15f;
     [SerializeField, Min(1f)] private float hillHeightVariationWorldScale = 12f;
     [SerializeField, Range(0f, 1f)] private float hillHeightVariationSecondaryStrength = 0.25f;
     [SerializeField, Min(1f)] private float hillHeightVariationSecondaryScale = 5f;
@@ -150,7 +150,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Mountain Height Variation")]
     [SerializeField] private bool enableMountainHeightVariation = true;
-    [SerializeField, Range(0f, 3f)] private float mountainHeightVariation = 1.1f;
+    [SerializeField, Range(0f, 3f)] private float mountainHeightVariation = 1.75f;
     [SerializeField, Min(1f)] private float mountainHeightVariationWorldScale = 14f;
     [SerializeField, Range(0f, 1f)] private float mountainHeightVariationSecondaryStrength = 0.25f;
     [SerializeField, Min(1f)] private float mountainHeightVariationSecondaryScale = 6f;
@@ -322,6 +322,8 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool debugTransformChanges = false;
     [Tooltip("When enabled, logs detailed water/SDF diagnostics: pre-build tile counts, SDF seed counts, per-chunk mesh stats, post-build summary. Helps diagnose gaps or missing water.")]
     [SerializeField] private bool debugWaterVerbose = false;
+    [Tooltip("Logs actual rendered center-height and visual-relief distributions after a build.")]
+    [SerializeField] private bool debugTerrainRelief = false;
     private Vector3 _lastTransformPos;
     private Quaternion _lastTransformRot;
     private Vector3 _lastTransformScale;
@@ -343,7 +345,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Ocean Plane (Fast, Water Everywhere)")]
     [Tooltip("When enabled, renders the ocean as one cheap plane mesh at sea level (low memory). Disable this if you want SDF-only water.")]
-    [SerializeField] private bool enableOceanPlane = false;
+    [SerializeField] private bool enableOceanPlane = true;
     [Tooltip("Extra padding (in hex radii) beyond the grid extents for the ocean plane.")]
     [SerializeField] private float oceanPlanePaddingHex = 2f;
 
@@ -363,7 +365,7 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Legacy toggle — kept for compatibility. When false, lakes fall back to per-tile hex fans.")]
     [SerializeField] private bool continuousWaterIncludesLakes = true;
     [Tooltip("When enabled, ocean tiles are also included in the unified SDF water mesh (gap-free ocean).\nWARNING: This can create a massive mesh (and memory spikes) on big maps. Prefer OceanPlane unless you explicitly want SDF-only water.")]
-    [SerializeField] private bool continuousWaterIncludesOcean = true;
+    [SerializeField] private bool continuousWaterIncludesOcean = false;
     [Tooltip("Resolution of the SDF field (higher = smoother edges, more CPU time).")]
     [SerializeField] private int riverSdfWidth = 512;
     [Tooltip("Resolution of the SDF field (higher = smoother edges, more CPU time).")]
@@ -382,7 +384,11 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Inland Water Volume (3D Fill)")]
     [Tooltip("When enabled, the continuous inland water surface is extruded downward into a closed 3D mesh (top + walls + bottom) so rivers/lakes look filled in 3D space.")]
-    [SerializeField] private bool extrudeInlandWaterToVolume = true;
+    [SerializeField] private bool extrudeInlandWaterToVolume = false;
+    [Header("River Terrain Channel")]
+    [SerializeField, Min(0f)] private float riverChannelCarveDepth = 0.45f;
+    [SerializeField, Min(1f)] private float riverBankWidthMultiplier = 1.45f;
+    [SerializeField, Range(0.05f, 1f)] private float riverBankSoftness = 0.55f;
     [Tooltip("How far downward (world units) to extrude the inland water mesh to create a filled volume.")]
     [SerializeField] private float inlandWaterVolumeDepth = 12f;
 
@@ -1112,6 +1118,9 @@ public class HexMapChunkManager : MonoBehaviour
         // Update WorldPicker with our LUT and collider
         UpdateWorldPicker();
 
+        if (debugTerrainRelief || ShouldRunDiagnostics())
+            LogTerrainReliefDiagnostics();
+
         // Create orbit highlight overlay (flat transparent mesh at orbit height)
         CreateOrbitOverlayMesh();
 
@@ -1515,6 +1524,13 @@ public class HexMapChunkManager : MonoBehaviour
         if (tile.waterType == TileWaterType.Ocean)
             return GetOceanWaterSurfaceY(additionalOffset);
 
+        if (tile.waterType == TileWaterType.River)
+        {
+            float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
+            // Explicitly translate the normalized hydrology contract into campaign world Y.
+            float riverY = Mathf.Lerp(sea, sea + mountainHeightAboveSea, Mathf.Clamp01(tile.renderedRiverSurface01));
+            return riverY + steppedInlandWaterSurfaceOffset + additionalOffset;
+        }
         return GetRenderedTerrainWorldY(tileIndex) + steppedInlandWaterSurfaceOffset + additionalOffset;
     }
 
@@ -1550,21 +1566,27 @@ public class HexMapChunkManager : MonoBehaviour
         {
             case ElevationTier.Mountain:
                 float nominalMountainY = seaLevelWorldY + mountainHeightAboveSea;
-                float highestPermittedHillY = nominalMountainY - minimumHillToMountainStep;
-                float minimumMountainY = highestPermittedHillY + minimumHillToMountainStep + 0.01f;
-                // Variation is biased upward, keeping the full categorical safety gap even
-                // when inspector values are poorly configured.
-                return Mathf.Max(minimumMountainY, nominalMountainY + GetMountainMacroHeightOffset(tileIndex));
+                float highestPossibleHillY = seaLevelWorldY + mountainHeightAboveSea - minimumHillToMountainStep;
+                float minimumMountainY = highestPossibleHillY + 0.01f;
+                float mountainSignal = Mathf.Clamp01(tile.visualRelief01 + GetMountainMacroHeightOffset(tileIndex));
+                float mountainLow = Mathf.Max(minimumMountainY, nominalMountainY - mountainHeightVariation);
+                float mountainHigh = nominalMountainY + mountainHeightVariation;
+                return enableMountainHeightVariation ? Mathf.Lerp(mountainLow, mountainHigh, mountainSignal) : nominalMountainY;
             case ElevationTier.Hill:
                 float nominalHillY = seaLevelWorldY + hillHeightAboveSea;
-                float variedHillY = nominalHillY + GetHillMacroHeightOffset(tileIndex);
                 float minimumHillY = seaLevelWorldY + flatHeightAboveSea + minimumFlatToHillStep;
                 float maximumHillY = seaLevelWorldY + mountainHeightAboveSea - minimumHillToMountainStep;
                 // Misconfigured tier distances collapse safely to their midpoint rather than
                 // allowing a visual Hill to cross either categorical neighbour.
                 if (minimumHillY > maximumHillY)
                     return (minimumHillY + maximumHillY) * 0.5f;
-                return Mathf.Clamp(variedHillY, minimumHillY, maximumHillY);
+                if (!enableHillHeightVariation) return Mathf.Clamp(nominalHillY, minimumHillY, maximumHillY);
+                // Shrink the requested interval before mapping into it. Unlike a final hard
+                // clamp, this keeps the whole relief distribution rather than making plateaus.
+                float hillLow = Mathf.Max(minimumHillY, nominalHillY - hillHeightVariation);
+                float hillHigh = Mathf.Min(maximumHillY, nominalHillY + hillHeightVariation);
+                float hillSignal = Mathf.Clamp01(tile.visualRelief01 + GetHillMacroHeightOffset(tileIndex));
+                return Mathf.Lerp(hillLow, hillHigh, hillSignal);
             default:
                 return seaLevelWorldY + flatHeightAboveSea;
         }
@@ -1585,6 +1607,37 @@ public class HexMapChunkManager : MonoBehaviour
         return sea + flatHeightAboveSea;
     }
 
+    private void LogTerrainReliefDiagnostics()
+    {
+        if (planetGenerator == null || planetGenerator.data == null) return;
+        var groups = new Dictionary<ElevationTier, List<Vector2>>();
+        groups[ElevationTier.Flat] = new List<Vector2>();
+        groups[ElevationTier.Hill] = new List<Vector2>();
+        groups[ElevationTier.Mountain] = new List<Vector2>();
+        foreach (var pair in planetGenerator.data)
+        {
+            HexTileData tile = pair.Value;
+            if (!tile.isLand || !groups.TryGetValue(tile.elevationTier, out var samples)) continue;
+            samples.Add(new Vector2(GetRenderedTerrainWorldY(pair.Key), Mathf.Clamp01(tile.visualRelief01)));
+        }
+        foreach (var pair in groups)
+        {
+            List<Vector2> values = pair.Value;
+            if (values.Count == 0) { Debug.Log($"[TerrainRelief] {pair.Key} count=0"); continue; }
+            float minY = float.MaxValue, maxY = float.MinValue, sumY = 0f, sumSq = 0f;
+            float minR = 1f, maxR = 0f, sumR = 0f;
+            foreach (Vector2 value in values)
+            {
+                minY = Mathf.Min(minY, value.x); maxY = Mathf.Max(maxY, value.x);
+                sumY += value.x; sumSq += value.x * value.x;
+                minR = Mathf.Min(minR, value.y); maxR = Mathf.Max(maxR, value.y); sumR += value.y;
+            }
+            float mean = sumY / values.Count;
+            float stdDev = Mathf.Sqrt(Mathf.Max(0f, sumSq / values.Count - mean * mean));
+            Debug.Log($"[TerrainRelief] {pair.Key} count={values.Count} renderedY={minY:F2}..{maxY:F2} mean={mean:F2} stdDev={stdDev:F2} visualRelief={minR:F2}..{maxR:F2} mean={sumR / values.Count:F2}");
+        }
+    }
+
     /// <summary>
     /// Samples one deterministic, wrap-periodic macro offset at the Hill tile center. It is
     /// deliberately tile-stable: top vertices only receive the separate surface undulation.
@@ -1602,7 +1655,7 @@ public class HexMapChunkManager : MonoBehaviour
         float secondary = PeriodicRollingNoise(center.x, center.z, hillHeightVariationSecondaryScale, seed ^ 0x6d2b79f5);
         float normalizedSignal = (primary + secondary * hillHeightVariationSecondaryStrength) /
                                  (1f + hillHeightVariationSecondaryStrength);
-        return normalizedSignal * hillHeightVariation;
+        return normalizedSignal * 0.10f;
     }
 
     /// <summary>
@@ -1622,16 +1675,7 @@ public class HexMapChunkManager : MonoBehaviour
         float secondary = PeriodicRollingNoise(center.x, center.z, mountainHeightVariationSecondaryScale, seed ^ 0x27d4eb2d);
         float signal = (primary + secondary * mountainHeightVariationSecondaryStrength) /
                        (1f + mountainHeightVariationSecondaryStrength);
-        return Mathf.Clamp01(signal * 0.5f + 0.5f) * mountainHeightVariation;
-    }
-
-    internal bool IsShallowHillTerrace(int tileIndex, int neighborIndex, float heightDifference)
-    {
-        if (heightDifference > shallowTerraceThreshold || planetGenerator == null || planetGenerator.data == null)
-            return false;
-        return planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile) &&
-               planetGenerator.data.TryGetValue(neighborIndex, out HexTileData neighbor) &&
-               tile.elevationTier == ElevationTier.Hill && neighbor.elevationTier == ElevationTier.Hill;
+        return signal * 0.10f;
     }
 
     /// <summary>
@@ -1641,7 +1685,7 @@ public class HexMapChunkManager : MonoBehaviour
     public float SampleRenderedTerrainSurfaceY(int tileIndex, float worldX, float worldZ)
     {
         float baseY = GetRenderedTerrainWorldY(tileIndex);
-        if (!enableSurfaceUndulation || grid == null || tileIndex < 0 || tileIndex >= grid.TileCount)
+        if (grid == null || tileIndex < 0 || tileIndex >= grid.TileCount)
             return baseY;
 
         float radius = grid.GetLookupData().s * hexTopScale;
@@ -1650,7 +1694,94 @@ public class HexMapChunkManager : MonoBehaviour
         float radial01 = new Vector2(worldX - center.x, worldZ - center.z).magnitude / innerRadius;
         float edgeStart = 1f - Mathf.Clamp01(surfaceEdgeFalloff);
         float edgeMask = 1f - SmoothStep(edgeStart, 1f, radial01);
-        return baseY + SampleSurfaceUndulation(worldX, worldZ) * edgeMask;
+        // Blend the center toward deterministic shared corner heights. Along an edge both
+        // tiles interpolate the same two corners, so same-tier land is watertight and sloped.
+        float angle = Mathf.Atan2(worldZ - center.z, worldX - center.x) * Mathf.Rad2Deg + 30f;
+        if (angle < 0f) angle += 360f;
+        int sector = Mathf.FloorToInt(angle / 60f) % 6;
+        float edgeT = (angle - sector * 60f) / 60f;
+        float cornerA = GetSharedCornerWorldY(tileIndex, sector);
+        float cornerB = GetSharedCornerWorldY(tileIndex, (sector + 1) % 6);
+        float stitchedY = Mathf.Lerp(baseY, Mathf.Lerp(cornerA, cornerB, edgeT), Mathf.Clamp01(radial01));
+        float micro = enableSurfaceUndulation ? SampleSurfaceUndulation(worldX, worldZ) * edgeMask : 0f;
+        return stitchedY + micro - SampleRiverCarveDepth(tileIndex, worldX, worldZ, stitchedY);
+    }
+
+    internal bool IsSameTerrainTier(int a, int b)
+    {
+        return planetGenerator != null && planetGenerator.data != null &&
+               planetGenerator.data.TryGetValue(a, out HexTileData ta) &&
+               planetGenerator.data.TryGetValue(b, out HexTileData tb) && ta.isLand && tb.isLand &&
+               ta.elevationTier == tb.elevationTier;
+    }
+
+    internal float GetSharedCornerWorldY(int tileIndex, int corner)
+    {
+        float sum = GetRenderedTerrainWorldY(tileIndex);
+        int count = 1;
+        Vector3 center = grid.tileCenters[tileIndex];
+        float radius = grid.GetLookupData().s;
+        for (int side = 0; side < 2; side++)
+        {
+            int edge = (corner - 1 + side + 6) % 6;
+            float angle = Mathf.Deg2Rad * (edge * 60f);
+            int neighbor = grid.GetTileAtPosition(center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius * 1.05f);
+            if (neighbor >= 0 && neighbor != tileIndex && IsSameTerrainTier(tileIndex, neighbor))
+            { sum += GetRenderedTerrainWorldY(neighbor); count++; }
+        }
+        return sum / count;
+    }
+
+    internal float GetRenderedCornerSurfaceY(int tileIndex, int corner)
+    {
+        float shared = GetSharedCornerWorldY(tileIndex, corner);
+        Vector3 center = grid.tileCenters[tileIndex];
+        float radius = grid.GetLookupData().s;
+        float angle = Mathf.Deg2Rad * (corner * 60f - 30f);
+        Vector3 p = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (radius * hexTopScale);
+        return shared - SampleRiverCarveDepth(tileIndex, p.x, p.z, shared);
+    }
+
+    public float SampleRiverCarveInfluence(int tileIndex, float worldX, float worldZ)
+    {
+        if (planetGenerator == null || planetGenerator.data == null || grid == null) return 0f;
+        float radius = grid.GetLookupData().s * Mathf.Max(0.01f, riverHalfWidthMultiplier) * riverBankWidthMultiplier;
+        float best = float.MaxValue;
+        void Consider(int index)
+        {
+            if (!planetGenerator.data.TryGetValue(index, out HexTileData td) || !td.isRiver) return;
+            Vector3 c = grid.tileCenters[index];
+            float dx = Mathf.Abs(worldX - c.x);
+            if (enableWrap && mapWidth > 0f) dx = Mathf.Min(dx, mapWidth - dx);
+            best = Mathf.Min(best, Mathf.Sqrt(dx * dx + (worldZ - c.z) * (worldZ - c.z)));
+        }
+        int owner = grid.GetTileAtPosition(new Vector3(worldX, 0f, worldZ));
+        if (owner < 0) owner = tileIndex;
+        Consider(owner);
+        if (owner >= 0 && grid.neighbors[owner] != null)
+            foreach (int neighbor in grid.neighbors[owner]) if (neighbor >= 0) Consider(neighbor);
+        if (best == float.MaxValue) return 0f;
+        float inner = radius * (1f - riverBankSoftness);
+        return 1f - SmoothStep(inner, radius, best);
+    }
+
+    private float SampleRiverCarveDepth(int tileIndex, float worldX, float worldZ, float landY)
+    {
+        float influence = SampleRiverCarveInfluence(tileIndex, worldX, worldZ);
+        if (influence <= 0f || !planetGenerator.data.TryGetValue(tileIndex, out HexTileData td)) return 0f;
+        float waterY = landY - riverChannelCarveDepth;
+        int owner = grid.GetTileAtPosition(new Vector3(worldX, 0f, worldZ));
+        if (owner >= 0)
+        {
+            if (planetGenerator.data.TryGetValue(owner, out HexTileData ownerTile) && ownerTile.isRiver)
+                waterY = GetTileWaterSurfaceY(owner, ownerTile);
+            else if (grid.neighbors[owner] != null)
+                foreach (int neighbor in grid.neighbors[owner])
+                    if (neighbor >= 0 && planetGenerator.data.TryGetValue(neighbor, out HexTileData river) && river.isRiver)
+                    { waterY = GetTileWaterSurfaceY(neighbor, river); break; }
+        }
+        float required = Mathf.Max(riverChannelCarveDepth, landY - waterY + 0.08f);
+        return required * influence;
     }
 
     public Vector3 GetRenderedSurfacePosition(int tileIndex, Vector3 worldPosition, float verticalOffset = 0f)
@@ -3922,9 +4053,15 @@ public class HexMapChunkManager : MonoBehaviour
                 ? ownerLake[idx]
                 : ownerRiver != null ? ownerRiver[idx] : -1;
 
-            return tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile)
+            Vector4 result = tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile)
                 ? GetWaterFreezeVertexData(tile, tileIndex)
                 : Vector4.zero;
+            float distance = wType == 1 && distLake != null ? distLake[idx] : distRiver[idx];
+            float halfWidth = wType == 1 ? isoLake : isoRiver;
+            // W is cached water depth/shore distance: zero at the SDF bank and one at
+            // the center of a sufficiently broad body. It costs nothing per frame.
+            result.w = 1f - Mathf.Clamp01(distance / Mathf.Max(0.001f, halfWidth));
+            return result;
         }
 
         // Resolve a water vertex from its owning tile and the rendered terrain contract.
@@ -4306,7 +4443,7 @@ public class HexMapChunkManager : MonoBehaviour
         mf.sharedMesh = _riverSurfaceMesh;
 
         if (ShouldRunDiagnostics() || debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][SDF] Unified water mesh built: verts={verts.Count}, tris={tris.Count / 3}, extruded={extrudeInlandWaterToVolume}, iso: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, cells={wCells}x{hCells}, seeds: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
+            Debug.Log($"[WaterBuild] OceanMode={(enableOceanPlane ? "Plane" : (continuousWaterIncludesOcean ? "SDF" : "Tile"))} InlandMode=SDF InlandVerts={verts.Count} InlandTris={tris.Count / 3} RiverSeeds={seedRiverCount} LakeSeeds={seedLakeCount} OceanSeeds={seedOceanCount} extruded={extrudeInlandWaterToVolume} cells={wCells}x{hCells}");
 
         // Ensure ghosts are updated immediately after rebuild.
         if (enableWrap)

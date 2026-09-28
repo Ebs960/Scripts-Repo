@@ -34,6 +34,11 @@ public class HexTileData
     /// </summary>
     public float originalElevation = 0f;
     public ElevationTier elevationTier = ElevationTier.Flat;
+    /// <summary>
+    /// Rendering-only, deterministic within-tier relief in the normalized 0..1 range.
+    /// This never changes the gameplay elevation tier, movement, yields, or simulation elevation.
+    /// </summary>
+    [Range(0f, 1f)] public float visualRelief01 = 0.5f;
     public bool isLand;
     public bool isLake;
     public bool isRiver;
@@ -63,6 +68,11 @@ public class HexTileData
     public int lakeId = -1;
     /// <summary>Pre-displacement water surface elevation (world units above flat plane). Used by water mesh builder.</summary>
     public float waterElevation = 0f;
+    /// <summary>
+    /// Hydrology-derived river surface position normalized from coast to the generated
+    /// mountain ceiling. The campaign renderer explicitly maps this into its world-Y contract.
+    /// </summary>
+    [Range(0f, 1f)] public float renderedRiverSurface01 = 0f;
     /// <summary>Normalized XZ flow direction for rivers (used by water shader for UV scrolling).</summary>
     public Vector2 riverFlowDirXZ = Vector2.zero;
 

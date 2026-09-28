@@ -6,6 +6,17 @@ Shader "Custom/SG_WaterTile"
         _ShallowColor ("Shallow Color", Color) = (0.2, 0.5, 0.7, 0.8)
         _DeepColor ("Deep Color", Color) = (0.05, 0.15, 0.35, 0.95)
         _FresnelPower ("Fresnel Power", Range(0.5, 10)) = 3.0
+        _ReflectionTint ("Sky Reflection Tint", Color) = (0.42, 0.67, 0.82, 1)
+        _ReflectionStrength ("Reflection Strength", Range(0, 1)) = 0.28
+        _Smoothness ("Stylized Smoothness", Range(0, 1)) = 0.72
+        _SunDirection ("Sun Direction", Vector) = (0.35, 0.8, 0.25, 0)
+        _SunSpecularColor ("Sun Specular Color", Color) = (1, 0.94, 0.78, 1)
+
+        [Header(Shoreline)]
+        _ShoreColor ("Shore Color", Color) = (0.68, 0.91, 0.92, 1)
+        _ShoreWidth ("Shore Width", Range(0.01, 1)) = 0.22
+        _ShoreStrength ("Shore Strength", Range(0, 1)) = 0.22
+        [Toggle] _DebugWaterDepth ("Debug Water Depth", Float) = 0
 
         [Header(Normal Maps)]
         _NormalMapA ("Normal Map A", 2D) = "bump" {}
@@ -109,6 +120,15 @@ Shader "Custom/SG_WaterTile"
             float4 _ShallowColor;
             float4 _DeepColor;
             float _FresnelPower;
+            float4 _ReflectionTint;
+            float _ReflectionStrength;
+            float _Smoothness;
+            float4 _SunDirection;
+            float4 _SunSpecularColor;
+            float4 _ShoreColor;
+            float _ShoreWidth;
+            float _ShoreStrength;
+            float _DebugWaterDepth;
             float _NormalStrength;
             float4 _ScrollSpeedA;
             float4 _ScrollSpeedB;
@@ -194,8 +214,8 @@ Shader "Custom/SG_WaterTile"
 
                 // Scroll UVs for two normal maps
                 float2 worldUV = input.positionWS.xz * 0.1; // world-space tiling
-                float2 stillScrollA = float2(0.0, 0.0);
-                float2 stillScrollB = float2(0.0, 0.0);
+                float2 stillScrollA = _ScrollSpeedA.xy * _Time.y;
+                float2 stillScrollB = _ScrollSpeedB.xy * _Time.y;
                 float2 uvA = worldUV + stillScrollA + (isRiver ? flowOffset : float2(0.0, 0.0));
                 float2 uvB = worldUV + stillScrollB + (isRiver ? flowOffset * 0.5 : float2(0.0, 0.0));
 
@@ -222,10 +242,11 @@ Shader "Custom/SG_WaterTile"
                     deepColor = lerp(_DeepColor.rgb, stillTint * 0.42, 0.92);
                 }
 
-                // All non-lava water should render as exactly one color.
-                float4 color = isLava
-                    ? float4(shallowColor, 1.0)
-                    : float4(_ShallowColor.rgb, 1.0);
+                // SDF water stores center-to-bank depth in TEXCOORD1.w. The cheap ocean
+                // plane defaults to deep water, while inland bank proximity is geometric SDF data.
+                float depth01 = (isRiver || isLake) ? saturate(input.freezeData.w) : 0.82;
+                float shallow01 = 1.0 - depth01;
+                float4 color = float4(lerp(shallowColor, deepColor, depth01), 1.0);
 
                 float3 viewDir = normalize(input.viewDirWS);
                 float3 worldNormal = normalize(input.normalWS + float3(blendedNormal.x, 0, blendedNormal.y));
@@ -251,6 +272,18 @@ Shader "Custom/SG_WaterTile"
                 float fresnel = pow(1.0 - saturate(dot(viewDir, worldNormal)), _FresnelPower);
                 if (isLava)
                     color.rgb = lerp(shallowColor, deepColor, fresnel);
+                else
+                {
+                    color.rgb = lerp(color.rgb, _ReflectionTint.rgb, fresnel * _ReflectionStrength);
+                    float3 lightDir = normalize(_SunDirection.xyz);
+                    float3 halfDir = normalize(lightDir + viewDir);
+                    float specPower = lerp(18.0, 120.0, _Smoothness);
+                    float specular = pow(saturate(dot(worldNormal, halfDir)), specPower) * lerp(0.08, 0.45, _Smoothness);
+                    color.rgb += _SunSpecularColor.rgb * specular;
+                    float shore = 1.0 - smoothstep(0.0, max(_ShoreWidth, 0.001), depth01);
+                    shore *= isRiver ? 0.18 : (isLake ? 0.45 : 1.0);
+                    color.rgb = lerp(color.rgb, _ShoreColor.rgb, shore * _ShoreStrength);
+                }
 
                 // --- Caustics ---
                 // Two layers scrolling at different speeds/angles for a shimmering effect.
@@ -275,10 +308,14 @@ Shader "Custom/SG_WaterTile"
                 float causticsAtten = (1.0 - fresnel * 0.7);
                 if (isLava)
                     color.rgb += caustics * _CausticsIntensity * causticsAtten * shallowColor;
+                else
+                    color.rgb += caustics * (_CausticsIntensity * 0.12) * causticsAtten * shallow01 * shallowColor;
 
                 // Lava should render fully opaque while frozen water becomes opaque as it solidifies.
                 color.a = isLava ? 1.0 : lerp(saturate(max(_AlphaBase, 0.70)), 1.0, solidIceBlend);
 
+                if (_DebugWaterDepth > 0.5 && !isLava)
+                    color.rgb = depth01.xxx;
                 return color;
             }
             ENDHLSL
