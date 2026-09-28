@@ -176,6 +176,9 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField, Range(1, 4)]
     [Tooltip("Geometry density used only for curved tile tops.")]
     private int topSubdivision = 2;
+    [SerializeField, Range(2, 4)]
+    [Tooltip("Geometry density used only for Mountain tile tops.")]
+    private int mountainTopSubdivision = 3;
 
 #if UNITY_EDITOR
     private void OnValidate()
@@ -189,6 +192,7 @@ public class HexMapChunkManager : MonoBehaviour
         surfaceUndulationWorldScale = Mathf.Max(0.1f, surfaceUndulationWorldScale);
         surfaceUndulationSecondaryWorldScale = Mathf.Max(0.1f, surfaceUndulationSecondaryWorldScale);
         topSubdivision = Mathf.Clamp(topSubdivision, 1, 4);
+        mountainTopSubdivision = Mathf.Clamp(mountainTopSubdivision, 2, 4);
         if (!Application.isPlaying || chunks == null || grid == null || !grid.IsBuilt)
             return;
 
@@ -520,6 +524,14 @@ public class HexMapChunkManager : MonoBehaviour
     internal float BevelDrop => bevelDrop;
     internal float SeamDepth => seamDepth;
     internal int TopSubdivision => Mathf.Clamp(topSubdivision, 1, 4);
+    internal int MaximumTopSubdivision => Mathf.Max(TopSubdivision, Mathf.Clamp(mountainTopSubdivision, 2, 4));
+    internal int GetTopSubdivision(int tileIndex)
+    {
+        if (planetGenerator != null && planetGenerator.data != null &&
+            planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile) && tile.elevationTier == ElevationTier.Mountain)
+            return Mathf.Clamp(mountainTopSubdivision, 2, 4);
+        return TopSubdivision;
+    }
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
     public Texture MapTexture => bakeResult.texture;
@@ -1567,7 +1579,11 @@ public class HexMapChunkManager : MonoBehaviour
                 float nominalMountainY = seaLevelWorldY + mountainHeightAboveSea;
                 float highestPossibleHillY = seaLevelWorldY + mountainHeightAboveSea - minimumHillToMountainStep;
                 float minimumMountainY = highestPossibleHillY + 0.01f;
-                float mountainSignal = Mathf.Clamp01(tile.visualRelief01 + GetMountainMacroHeightOffset(tileIndex));
+                // Generated ranges are governed by their coherent macro envelope. Per-tile relief
+                // and broad noise remain deliberately secondary; isolated peaks retain the old signal.
+                float mountainSignal = tile.mountainRangeId >= 0
+                    ? Mathf.Clamp01(tile.mountainRangeProfile01 + (tile.visualRelief01 - 0.5f) * 0.16f + GetMountainMacroHeightOffset(tileIndex) * 0.45f)
+                    : Mathf.Clamp01(tile.visualRelief01 + GetMountainMacroHeightOffset(tileIndex));
                 float mountainLow = Mathf.Max(minimumMountainY, nominalMountainY - mountainHeightVariation);
                 float mountainHigh = nominalMountainY + mountainHeightVariation;
                 return enableMountainHeightVariation ? Mathf.Lerp(mountainLow, mountainHigh, mountainSignal) : nominalMountainY;
@@ -1633,7 +1649,8 @@ public class HexMapChunkManager : MonoBehaviour
             }
             float mean = sumY / values.Count;
             float stdDev = Mathf.Sqrt(Mathf.Max(0f, sumSq / values.Count - mean * mean));
-            Debug.Log($"[TerrainRelief] {pair.Key} count={values.Count} renderedY={minY:F2}..{maxY:F2} mean={mean:F2} stdDev={stdDev:F2} visualRelief={minR:F2}..{maxR:F2} mean={sumR / values.Count:F2}");
+            string heightLabel = pair.Key == ElevationTier.Mountain ? "renderedCenterY" : "renderedY";
+            Debug.Log($"[TerrainRelief] {pair.Key} count={values.Count} {heightLabel}={minY:F2}..{maxY:F2} mean={mean:F2} stdDev={stdDev:F2} visualRelief={minR:F2}..{maxR:F2} mean={sumR / values.Count:F2}");
         }
     }
 
@@ -1690,7 +1707,15 @@ public class HexMapChunkManager : MonoBehaviour
         float radius = grid.GetLookupData().s * hexTopScale;
         float innerRadius = Mathf.Max(0.0001f, radius - grid.GetLookupData().s * bevelWidth);
         Vector3 center = grid.tileCenters[tileIndex];
-        float radial01 = new Vector2(worldX - center.x, worldZ - center.z).magnitude / innerRadius;
+        Vector2 local = new Vector2(worldX - center.x, worldZ - center.z);
+        // Exact regular-hex boundary coordinate: 1 on every side (not just at corners).
+        float apothem = innerRadius * 0.8660254f;
+        float radial01 = 0f;
+        for (int axis = 0; axis < 3; axis++)
+        {
+            float axisAngle = axis * 60f * Mathf.Deg2Rad;
+            radial01 = Mathf.Max(radial01, Mathf.Abs(Vector2.Dot(local, new Vector2(Mathf.Cos(axisAngle), Mathf.Sin(axisAngle)))) / apothem);
+        }
         float edgeStart = 1f - Mathf.Clamp01(surfaceEdgeFalloff);
         float edgeMask = 1f - SmoothStep(edgeStart, 1f, radial01);
         // Blend the center toward deterministic shared corner heights. Along an edge both
@@ -1703,7 +1728,24 @@ public class HexMapChunkManager : MonoBehaviour
         float cornerB = GetSharedCornerWorldY(tileIndex, (sector + 1) % 6);
         float stitchedY = Mathf.Lerp(baseY, Mathf.Lerp(cornerA, cornerB, edgeT), Mathf.Clamp01(radial01));
         float micro = enableSurfaceUndulation ? SampleSurfaceUndulation(worldX, worldZ) * edgeMask : 0f;
-        return stitchedY + micro - SampleRiverCarveDepth(tileIndex, worldX, worldZ, stitchedY);
+        float mountainPeak = 0f;
+        if (planetGenerator != null && planetGenerator.data != null &&
+            planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile) && tile.elevationTier == ElevationTier.Mountain)
+        {
+            float prominence = tile.mountainRangeId >= 0 ? Mathf.Clamp01(tile.mountainRangeProfile01) : Mathf.Clamp01(tile.visualRelief01);
+            Vector2 ridge = tile.mountainRidgeDirectionXZ.sqrMagnitude > 0.001f ? tile.mountainRidgeDirectionXZ.normalized : Vector2.right;
+            Vector2 across = new Vector2(-ridge.y, ridge.x);
+            float along = Vector2.Dot(local, ridge) / innerRadius;
+            float perpendicular = Vector2.Dot(local, across) / innerRadius;
+            float alongScale = Mathf.Lerp(0.72f, 0.50f, prominence);
+            float acrossScale = Mathf.Lerp(0.42f, 0.24f, prominence);
+            float elliptical = along * along / (alongScale * alongScale) + perpendicular * perpendicular / (acrossScale * acrossScale);
+            float crest = Mathf.Pow(Mathf.Clamp01(1f - elliptical), Mathf.Lerp(1.35f, 0.72f, prominence));
+            float asymmetry = 1f + 0.08f * Mathf.Sin((along * 2.1f + perpendicular * 3.7f) + tileIndex * 0.618f);
+            float boundaryFalloff = 1f - SmoothStep(0.72f, 1f, radial01);
+            mountainPeak = crest * asymmetry * boundaryFalloff * Mathf.Lerp(0.22f, 1.05f, prominence);
+        }
+        return stitchedY + micro + mountainPeak - SampleRiverCarveDepth(tileIndex, worldX, worldZ, stitchedY);
     }
 
     internal bool IsSameTerrainTier(int a, int b)
@@ -2870,12 +2912,15 @@ public class HexMapChunkManager : MonoBehaviour
 
         int terrainLayer = LayerMask.NameToLayer("Terrain");
         colliderObj.layer = terrainLayer >= 0 ? terrainLayer : 0;
-        int curvedTopVerticesPerTile = 1 + 3 * TopSubdivision * (TopSubdivision + 1);
+        int regularTopVerticesPerTile = 1 + 3 * TopSubdivision * (TopSubdivision + 1);
+        int mountainTopVerticesPerTile = 1 + 3 * GetTopSubdivisionForDiagnostics() * (GetTopSubdivisionForDiagnostics() + 1);
         Debug.Log($"[HexMapChunkManager] Created {pickingMode} picking collider: " +
-                  $"oldTopVertsPerTile=7 newTopVertsPerTile={curvedTopVerticesPerTile} " +
+                  $"oldTopVertsPerTile=7 regularTopVertsPerTile={regularTopVerticesPerTile} mountainTopVertsPerTile={mountainTopVerticesPerTile} " +
                   $"totalMeshVertices={pickMesh.vertexCount} pickingMeshVertices={pickMesh.vertexCount}");
         LogTerrainHeightSync(pickingMode);
     }
+
+    private int GetTopSubdivisionForDiagnostics() => Mathf.Clamp(mountainTopSubdivision, 2, 4);
 
 
 

@@ -39,6 +39,16 @@ public class HexTileData
     /// This never changes the gameplay elevation tier, movement, yields, or simulation elevation.
     /// </summary>
     [Range(0f, 1f)] public float visualRelief01 = 0.5f;
+    /// <summary>
+    /// Deterministic rendering metadata describing this tile's macro prominence within a
+    /// generated mountain range. It does not affect gameplay classification or elevation tier.
+    /// Zero also identifies Mountains which were generated as isolated peaks.
+    /// </summary>
+    [Range(0f, 1f)] public float mountainRangeProfile01 = 0f;
+    /// <summary>Normalized local XZ direction of the mountain chain; rendering-only.</summary>
+    public Vector2 mountainRidgeDirectionXZ = Vector2.zero;
+    /// <summary>Generated range identifier used only for rendering diagnostics; -1 means no range.</summary>
+    public int mountainRangeId = -1;
     public bool isLand;
     public bool isLake;
     public bool isRiver;
