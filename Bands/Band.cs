@@ -431,7 +431,7 @@ public sealed class Band : MonoBehaviour
         population = Mathf.Max(1, population - data.splinterPopulationCost);
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 spawnPosition = ts != null ? ts.GetTileCenterFlat(targetTileIndex) : transform.position;
+        Vector3 spawnPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : transform.position;
         GameObject newBandObject = data.prefab != null
             ? Instantiate(data.prefab, spawnPosition, Quaternion.identity, transform.parent)
             : new GameObject($"{data.displayName} Band", typeof(Band));
@@ -512,7 +512,7 @@ public sealed class Band : MonoBehaviour
         if (owner != null && !owner.combatUnits.Contains(unit)) owner.combatUnits.Add(unit);
         return TryAddToGarrison(unit);
     }
-    private void PositionVisual() { var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (ts != null && currentTileIndex >= 0) transform.position = ts.GetTileCenterFlat(currentTileIndex); }
+    private void PositionVisual() { var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (ts != null && currentTileIndex >= 0) transform.position = ts.GetTileSurfacePosition(currentTileIndex); }
     private static void RefreshOwnerVision(Civilization civilization)
     {
         if (civilization != null && UnitVisionManager.Instance != null)

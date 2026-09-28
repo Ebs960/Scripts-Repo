@@ -10,6 +10,8 @@ public class ResourceManager : MonoBehaviour
 
     [Header("All resource types")]
     public ResourceData[] resourceTypes;
+    [Header("Diagnostics")]
+    [SerializeField] private bool debugResourceGrounding;
 
     // all spawned nodes in the world
     private readonly List<ResourceInstance> spawnedResources = new List<ResourceInstance>();
@@ -619,6 +621,8 @@ public class ResourceManager : MonoBehaviour
                 ? SimpleObjectPool.Instance.Get(newResource.prefab, surfacePos, Quaternion.identity)
                 : Instantiate(newResource.prefab, surfacePos, Quaternion.identity);
 
+            var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
+
             // Parent and align
             try
             {
@@ -634,21 +638,18 @@ public class ResourceManager : MonoBehaviour
                 }
                 if (parent != null) go.transform.SetParent(parent, true);
 
-                float surfaceY = surfacePos.y;
-                float lowest = float.MaxValue;
-                var rends = go.GetComponentsInChildren<Renderer>(true);
-                foreach (var r in rends) if (r != null) lowest = Mathf.Min(lowest, r.bounds.min.y);
-                var cols = go.GetComponentsInChildren<Collider>(true);
-                foreach (var c in cols) if (c != null) lowest = Mathf.Min(lowest, c.bounds.min.y);
-                if (lowest != float.MaxValue)
+                if (!newResource.isOrbitalResource)
                 {
-                    float delta = surfaceY - lowest;
-                    if (Mathf.Abs(delta) > 0.0001f) go.transform.position = go.transform.position + new Vector3(0f, delta, 0f);
+                    float spawnY = go.transform.position.y;
+                    float correction = inst.GroundToSurface(surfacePos.y, newResource.visualGroundOffset);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    if (debugResourceGrounding)
+                        Debug.Log($"[ResourceGrounding] resource={newResource.resourceName} planet={planetIndex} tile={tileIndex} surfaceY={surfacePos.y:F3} spawnY={spawnY:F3} correction={correction:F3} finalY={go.transform.position.y:F3}", go);
+#endif
                 }
             }
-            catch { }
+            catch (System.Exception ex) { Debug.LogWarning($"[ResourceGrounding] Failed to ground {newResource.resourceName}: {ex.Message}", go); }
 
-            var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
             inst.data = newResource;
             inst.tileIndex = tileIndex;
             inst.planetIndex = planetIndex;

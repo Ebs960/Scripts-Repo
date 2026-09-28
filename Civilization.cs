@@ -4300,7 +4300,7 @@ return false;
         var grid = planetGenerator != null ? planetGenerator.Grid : null;
         if (grid != null)
         {
-            Vector3 pos = tsMS != null ? tsMS.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
+            Vector3 pos = tsMS != null ? tsMS.GetTileSurfacePosition(city.centerTileIndex) : Vector3.zero;
             var missionaryPrefab = missionaryData.GetPrefab(this);
             if (missionaryPrefab == null)
             {

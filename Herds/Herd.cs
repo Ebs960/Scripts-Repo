@@ -427,7 +427,7 @@ public class Herd : MonoBehaviour
 
         if (ts != null)
         {
-            Vector3 pos = ts.GetTileCenterFlat(tile);
+            Vector3 pos = ts.GetTileSurfacePosition(tile);
             unit.transform.position = pos;
         }
 
@@ -490,7 +490,7 @@ public class Herd : MonoBehaviour
         if (selected.Count > (owner != null ? owner.GetMaxArmySize() : CampaignArmyService.DefaultArmySize)) return false;
         string formationId = Guid.NewGuid().ToString("N");
         for (int i = 0; i < selected.Count; i++) { var u = selected[i]; militaryGarrison.Remove(u); u.isStored = false; u.storedInHerd = null; u.planetIndex = planetIndex; u.currentTileIndex = currentTileIndex; u.AssignMilitaryFormation(formationId, MilitaryFormationType.Army); u.stackSlot = i; u.gameObject.SetActive(i == 0); if (i == 0) representative = u; }
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (representative != null && ts != null) representative.transform.position = ts.GetTileCenterFlat(currentTileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance; if (representative != null && ts != null) representative.transform.position = ts.GetTileSurfacePosition(currentTileIndex);
         (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.TryAddToStack(currentTileIndex, TileLayer.Surface, representative.gameObject, 1);
         CampaignArmyService.RefreshPresentation(representative); worldUI?.MarkDirty(); return true;
     }
@@ -731,7 +731,7 @@ public class Herd : MonoBehaviour
         try { (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupant(currentTileIndex, TileLayer.Surface); } catch { }
 
         // Move transform to tile center
-        try { transform.position = ts.GetTileCenterFlat(tileIndex); } catch { }
+        try { transform.position = ts.GetTileSurfacePosition(tileIndex); } catch { }
 
         currentTileIndex = tileIndex;
         movementPoints--;

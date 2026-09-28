@@ -109,7 +109,7 @@ public static class CivilianAttachmentService
             civilian.currentLayer = representative.currentLayer;
             civilian.currentTileIndex = tile;
             civilian.stackSlot = slot;
-            civilian.transform.position = tiles.GetTileCenterFlat(tile);
+            civilian.transform.position = tiles.GetTileSurfacePosition(tile);
             return true;
         }
         reason = "No legal tile is available to detach the civilian.";

@@ -2643,7 +2643,7 @@ break; // Only propose one alliance per turn
             return;
         }
         var bandTs = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 bandPosition = bandTs != null ? bandTs.GetTileCenterFlat(tile) : Vector3.zero;
+        Vector3 bandPosition = bandTs != null ? bandTs.GetTileSurfacePosition(tile) : Vector3.zero;
         var bandObject = startingBandPrefab != null
             ? Instantiate(startingBandPrefab, bandPosition, Quaternion.identity)
             : new GameObject($"{data.civName} Band", typeof(Band));
