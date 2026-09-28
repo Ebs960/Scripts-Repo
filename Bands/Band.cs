@@ -18,7 +18,8 @@ public sealed class Band : MonoBehaviour
     private Transform visualRoot;
 
     [Header("Packed Visual Animation")]
-    [SerializeField] private string packedMovingParameter = "Moving";
+    [SerializeField] private string packedMovingParameter = "IsWalking";
+    [SerializeField] private string packedIdleParameter = "IdleYoung";
     [SerializeField] private string packedIdleVariantParameter = "IdleVariant";
     [SerializeField] private string packedWalkVariantParameter = "WalkVariant";
     [Min(1), SerializeField] private int packedIdleVariantCount = 1;
@@ -208,6 +209,8 @@ public sealed class Band : MonoBehaviour
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null && occ.GetOccupantObject(tileIndex, TileLayer.Surface) != null) return false;
         Vector3 visualStartWorldPosition = GetPackedVisualWorldPosition();
+        Vector3 destinationWorldPosition = ts.GetTileSurfacePosition(tileIndex);
+        FacePackedVisualTowards(destinationWorldPosition - visualStartWorldPosition);
         if (occ != null && currentTileIndex >= 0) occ.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
         currentTileIndex = tileIndex; currentMovePoints -= cost; PositionVisual();
         BeginPackedVisualMovement(visualStartWorldPosition);
@@ -626,7 +629,7 @@ public sealed class Band : MonoBehaviour
                 UnityEngine.Random.Range(0, Mathf.Max(1, packedIdleVariantCount)));
             SetAnimatorIntegerIfPresent(animator, packedWalkVariantParameter,
                 UnityEngine.Random.Range(0, Mathf.Max(1, packedWalkVariantCount)));
-            SetAnimatorBoolIfPresent(animator, packedMovingParameter, false);
+            SetPackedAnimatorState(animator, false);
 
             if (!animator.isActiveAndEnabled || animator.runtimeAnimatorController == null) continue;
             animator.Update(0f);
@@ -638,19 +641,51 @@ public sealed class Band : MonoBehaviour
     private void SetPackedAnimatorsMoving(bool moving)
     {
         foreach (var animator in packedAnimators)
-            SetAnimatorBoolIfPresent(animator, packedMovingParameter, moving);
+        {
+            if (!SetPackedAnimatorState(animator, moving))
+                PlayFallbackMovementClip(animator, moving);
+        }
     }
 
-    private static void SetAnimatorBoolIfPresent(Animator animator, string parameterName, bool value)
+    private bool SetPackedAnimatorState(Animator animator, bool moving)
     {
-        if (animator == null || string.IsNullOrEmpty(parameterName)) return;
+        bool hasWalkingParameter = SetAnimatorBoolIfPresent(animator, packedMovingParameter, moving);
+        SetAnimatorBoolIfPresent(animator, packedIdleParameter, !moving);
+        return hasWalkingParameter;
+    }
+
+    private static bool SetAnimatorBoolIfPresent(Animator animator, string parameterName, bool value)
+    {
+        if (animator == null || string.IsNullOrEmpty(parameterName)) return false;
         int hash = Animator.StringToHash(parameterName);
         foreach (var parameter in animator.parameters)
             if (parameter.nameHash == hash && parameter.type == AnimatorControllerParameterType.Bool)
             {
                 animator.SetBool(hash, value);
-                return;
+                return true;
             }
+        return false;
+    }
+
+    private static void PlayFallbackMovementClip(Animator animator, bool moving)
+    {
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        string[] preferredTerms = moving
+            ? new[] { "walk", "run", "move", "locomotion" }
+            : new[] { "idle", "stand", "breath" };
+        var clip = animator.runtimeAnimatorController.animationClips
+            .Where(candidate => candidate != null && preferredTerms.Any(term => candidate.name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
+            .OrderBy(candidate => candidate.name.Length)
+            .FirstOrDefault();
+        if (clip == null) return;
+        animator.CrossFadeInFixedTime(clip.name, 0.08f, 0, 0f);
+    }
+
+    private void FacePackedVisualTowards(Vector3 direction)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f) return;
+        transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
     }
 
     private static void SetAnimatorIntegerIfPresent(Animator animator, string parameterName, int value)

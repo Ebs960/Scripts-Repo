@@ -51,7 +51,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Band
   visualRoot: {fileID: 9094206880842304683}
-  packedMovingParameter: Moving
+  packedMovingParameter: IsWalking
+  packedIdleParameter: IdleYoung
   packedIdleVariantParameter: IdleVariant
   packedWalkVariantParameter: WalkVariant
   packedIdleVariantCount: 1
