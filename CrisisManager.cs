@@ -1182,7 +1182,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             var city=cities[i%cities.Count]; var ts=TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
             var data=candidates[i%candidates.Count]; var prefab=data.GetPrefab();
             if (ts == null || prefab == null) continue;
-            int tile=city.centerTileIndex; var go=Instantiate(prefab,ts.GetTileCenterFlat(tile),Quaternion.identity);
+            int tile=city.centerTileIndex; var go=Instantiate(prefab,ts.GetTileSurfacePosition(tile),Quaternion.identity);
             var unit=go.GetComponent<CombatUnit>(); if (unit == null) { Destroy(go); continue; }
             unit.Initialize(data,null); unit.planetIndex=city.planetIndex; unit.currentTileIndex=tile;
             unit.currentLayer=UnitLayerRules.GetSpawnTileLayerForUnit(unit,ts.GetTileData(tile));

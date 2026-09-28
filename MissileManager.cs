@@ -97,7 +97,7 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
             return;
         }
         var ts = TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
-        Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : city.transform.position;
+        Vector3 launchPos = ts != null ? ts.GetTileSurfacePosition(city.centerTileIndex) : city.transform.position;
         OnMissileLaunched?.Invoke(city.centerTileIndex, missile, city.planetIndex);
         if (TryInterceptMissile(city.owner, city.centerTileIndex, targetTileIndex, city.planetIndex, missile)) return;
         StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, city.planetIndex));
@@ -113,7 +113,7 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
             return;
         }
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
-        Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(unit.currentTileIndex) : unit.transform.position;
+        Vector3 launchPos = ts != null ? ts.GetTileSurfacePosition(unit.currentTileIndex) : unit.transform.position;
         OnMissileLaunched?.Invoke(unit.currentTileIndex, missile, unit.planetIndex);
         if (TryInterceptMissile(unit.owner, unit.currentTileIndex, targetTileIndex, unit.planetIndex, missile)) return;
         StartCoroutine(FlightCoroutine(missile, launchPos, targetTileIndex, unit.planetIndex));
@@ -129,7 +129,7 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
             return;
         }
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 launchPos = ts != null ? ts.GetTileCenterFlat(siloTileIndex) : Vector3.zero;
+        Vector3 launchPos = ts != null ? ts.GetTileSurfacePosition(siloTileIndex) : Vector3.zero;
         Civilization sourceOwner = ResolveTileOwner(planetIndex, siloTileIndex);
         OnMissileLaunched?.Invoke(siloTileIndex, missile, planetIndex);
         if (TryInterceptMissile(sourceOwner, siloTileIndex, targetTileIndex, planetIndex, missile)) return;
@@ -215,7 +215,7 @@ public class MissileManager : MonoBehaviour, ISaveGameParticipant
     private IEnumerator FlightCoroutine(MissileData data, Vector3 launchPos, int targetTileIndex, int planetIndex)
     {
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 targetPos = ts != null ? ts.GetTileCenterFlat(targetTileIndex) : Vector3.zero;
+        Vector3 targetPos = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : Vector3.zero;
 
         float duration = Mathf.Max(0.1f, data.flightDuration);
 

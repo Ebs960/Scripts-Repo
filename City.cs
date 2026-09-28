@@ -1916,7 +1916,7 @@ if (UIManager.Instance != null)
         // Spawn the unit
         if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
         var ts = TileSys;
-        Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
+        Vector3 pos = ts != null ? ts.GetTileSurfacePosition(centerTileIndex) : transform.position;
         
         var prefab = unitData.GetPrefab(owner);
         if (prefab == null)
@@ -2024,7 +2024,7 @@ if (UIManager.Instance != null)
     private void CompleteItem(ScriptableObject d) {
         if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
         var ts = TileSys;
-        Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
+        Vector3 pos = ts != null ? ts.GetTileSurfacePosition(centerTileIndex) : transform.position;
 
         switch (d) {
             case CombatUnitData u:
@@ -2298,7 +2298,7 @@ Destroy(oldTuple.instance);
         if (ts == null) return;
             
         // Get position for the district
-        Vector3 pos = ts.GetTileCenterFlat(tileIndex);
+        Vector3 pos = ts.GetTileSurfacePosition(tileIndex);
         
         // Instantiate the district
         GameObject districtInstance = null;

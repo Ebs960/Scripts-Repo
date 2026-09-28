@@ -2936,7 +2936,7 @@ public class GameManager : MonoBehaviour
             foreach (var immune in saved.diseaseImmunities ?? new List<PauseMenuManager.HerdImmunitySaveData>())
                 if (diseaseLookup.TryGetValue(immune.dataName ?? string.Empty, out var disease)) herd.diseaseImmunities[disease] = immune.turnsRemaining;
             var ts = TileSystem.GetForPlanet(saved.planetIndex) ?? TileSystem.Instance;
-            if (ts != null) herd.transform.position = ts.GetTileCenterFlat(saved.tileIndex);
+            if (ts != null) herd.transform.position = ts.GetTileSurfacePosition(saved.tileIndex);
             (TileOccupancyManager.GetForPlanet(saved.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(saved.tileIndex, herd.gameObject, TileLayer.Surface);
             herd.UpdateVisualRepresentation();
         }
@@ -3650,7 +3650,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 var ts = TileSystem.GetForPlanet(usd.planetIndex) ?? TileSystem.Instance;
-                Vector3 spawnPos = ts != null ? ts.GetTileCenterFlat(usd.currentTileIndex) : new Vector3(usd.posX, usd.posY, usd.posZ);
+                Vector3 spawnPos = ts != null ? ts.GetTileSurfacePosition(usd.currentTileIndex) : new Vector3(usd.posX, usd.posY, usd.posZ);
 
                 var go = Instantiate(prefab, spawnPos, Quaternion.identity);
                 var pg = GetPlanetGenerator(usd.planetIndex) ?? GetCurrentPlanetGenerator();
@@ -3732,7 +3732,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 var ts = TileSystem.GetForPlanet(wsd.planetIndex) ?? TileSystem.Instance;
-                Vector3 spawnPos = ts != null ? ts.GetTileCenterFlat(wsd.currentTileIndex) : new Vector3(wsd.posX, wsd.posY, wsd.posZ);
+                Vector3 spawnPos = ts != null ? ts.GetTileSurfacePosition(wsd.currentTileIndex) : new Vector3(wsd.posX, wsd.posY, wsd.posZ);
 
                 var go = Instantiate(workerPrefab, spawnPos, Quaternion.identity);
                 var pg = GetPlanetGenerator(wsd.planetIndex) ?? GetCurrentPlanetGenerator();

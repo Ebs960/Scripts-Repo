@@ -131,7 +131,7 @@ public class MissileLaunchMode : MonoBehaviour
         var tiles = MissileManager.GetTilesInMissileRange(ts, _sourceTile, _missile.range);
         foreach (int idx in tiles)
         {
-            var go = Instantiate(rangeOverlayPrefab, ts.GetTileCenterFlat(idx), Quaternion.identity);
+            var go = Instantiate(rangeOverlayPrefab, ts.GetTileSurfacePosition(idx, 0.02f), Quaternion.identity);
             _rangeOverlays.Add(go);
         }
     }
@@ -149,7 +149,7 @@ public class MissileLaunchMode : MonoBehaviour
         if (_targetOverlay != null) { Destroy(_targetOverlay); _targetOverlay = null; }
 
         if (hovered >= 0 && IsValidTarget(ts, hovered))
-            _targetOverlay = Instantiate(targetOverlayPrefab, ts.GetTileCenterFlat(hovered), Quaternion.identity);
+            _targetOverlay = Instantiate(targetOverlayPrefab, ts.GetTileSurfacePosition(hovered, 0.02f), Quaternion.identity);
     }
 
     // ─── Fire ────────────────────────────────────────────────────────────────

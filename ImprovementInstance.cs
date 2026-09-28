@@ -495,7 +495,7 @@ public class ImprovementInstance : MonoBehaviour
         // Place unit at tile center
         if (ts != null)
         {
-            Vector3 pos = ts.GetTileCenterFlat(tile);
+            Vector3 pos = ts.GetTileSurfacePosition(tile);
             unit.transform.position = pos;
         }
 

@@ -341,7 +341,7 @@ public class DistrictPlacementController : MonoBehaviour
                 tileHighlights[key] = highlightObj;
             }
 
-            Vector3 worldPos = ts.GetTileCenterFlat(tileIndex);
+            Vector3 worldPos = ts.GetTileSurfacePosition(tileIndex);
             highlightObj.transform.position = worldPos + Vector3.up * 0.05f;
             float tileSize = 0.2f;
             highlightObj.transform.localScale = new Vector3(tileSize, tileSize, tileSize);

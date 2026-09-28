@@ -500,6 +500,9 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float oceanHalfWidthMultiplier = 1.25f;
     [Tooltip("Extra Y lift above sampled terrain height to avoid z-fighting.")]
     [SerializeField] private float riverSurfaceLift = 0.02f;
+    [Min(0f)]
+    [Tooltip("Clearance above the authoritative stepped tile top for rivers and lakes.")]
+    [SerializeField] private float steppedInlandWaterSurfaceOffset = 0.04f;
 
     [Header("Inland Water Volume (3D Fill)")]
     [Tooltip("When enabled, the continuous inland water surface is extruded downward into a closed 3D mesh (top + walls + bottom) so rivers/lakes look filled in 3D space.")]
@@ -986,6 +989,8 @@ public class HexMapChunkManager : MonoBehaviour
         float metallicMultiplierValue = GetMaterialFloat(sharedMaterial, "_MetallicMultiplier", metallicMultiplier);
         float aoIntensityValue = GetMaterialFloat(sharedMaterial, "_AOIntensity", aoIntensity);
         float smoothnessMultiplierValue = GetMaterialFloat(sharedMaterial, "_SmoothnessMultiplier", smoothnessMultiplier);
+        var climate = GameManager.Instance != null ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex) : ClimateManager.Instance;
+        string season = climate != null ? climate.GetSeasonForPlanet(planetGenerator.planetIndex).ToString() : "Unknown";
 
         Debug.Log(
             $"[Terrain Probe] tile={tileIndex} " +
@@ -995,7 +1000,12 @@ public class HexMapChunkManager : MonoBehaviour
             $"visual.biome={(visual != null ? visual.biome.ToString() : "NULL")} " +
             $"surfaceFamily={(surfaceFamily != null ? surfaceFamily.name : "NULL")} " +
             $"slice={sliceIndex} " +
-            $"isMountain={tile.isMountain} " +
+            $"selection={(tile.isMountain ? "mountain" : "base")} " +
+            $"tint={(visual != null ? visual.tint.ToString("F3") : "NULL")} " +
+            $"tiling={(visual != null ? visual.tiling.ToString("F3") : "NULL")} " +
+            $"season={season} " +
+            $"renderedY={GetRenderedTerrainWorldY(tileIndex):F3} " +
+            $"generatedElevation={tile.elevation:F3} elevationTier={tile.elevationTier} " +
             $"isRiver={tile.isRiver} isLake={tile.isLake} " +
             $"waterType={tile.waterType} " +
             $"globalSnow={GetMaterialFloat(sharedMaterial, "_GlobalSnowAmount", globalSnowAmount):F3} " +
@@ -1331,7 +1341,37 @@ public class HexMapChunkManager : MonoBehaviour
         // A layer switch can happen while the batched build is running. Reapply the
         // last requested state after every terrain/water/picking helper now exists.
         ApplyViewLayer(currentViewLayer);
+        ReconcileTerrainBoundObjects();
         _buildCoroutine = null;
+    }
+
+    /// <summary>One-shot correction for presentation objects that may have spawned before terrain finished.</summary>
+    private void ReconcileTerrainBoundObjects()
+    {
+        if (planetGenerator == null) return;
+        int planetIndex = planetGenerator.planetIndex;
+        TileSystem tiles = TileSystem.GetForPlanet(planetIndex);
+        if (tiles == null) return;
+
+        foreach (var band in FindObjectsByType<Band>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (band.PlanetIndex == planetIndex && band.CurrentTileIndex >= 0)
+                band.transform.position = tiles.GetTileSurfacePosition(band.CurrentTileIndex);
+
+        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (unit.planetIndex == planetIndex && unit.currentLayer == TileLayer.Surface && unit.currentTileIndex >= 0)
+                unit.transform.position = tiles.GetTileSurfacePosition(unit.currentTileIndex);
+
+        foreach (var herd in FindObjectsByType<Herd>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (herd.planetIndex == planetIndex && herd.currentTileIndex >= 0)
+                herd.transform.position = tiles.GetTileSurfacePosition(herd.currentTileIndex);
+
+        foreach (var resource in FindObjectsByType<ResourceInstance>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (resource.planetIndex == planetIndex && resource.tileIndex >= 0 && resource.data != null && !resource.data.isOrbitalResource)
+                resource.GroundToSurface(GetRenderedTerrainWorldY(resource.tileIndex), resource.data.visualGroundOffset);
+
+        foreach (var improvement in FindObjectsByType<ImprovementInstance>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (improvement.PlanetIndex == planetIndex && improvement.tileIndex >= 0 && improvement.spaceTileIndex < 0)
+                improvement.transform.position = tiles.GetTileSurfacePosition(improvement.tileIndex);
     }
     
     private void BakeTexture(int[] preBuiltLUT = null)
@@ -1670,10 +1710,13 @@ public class HexMapChunkManager : MonoBehaviour
         return baseOceanY + waterYOffset + shorelineWaterOffset + additionalOffset;
     }
 
-    private float GetTileWaterSurfaceY(HexTileData tile, float additionalOffset = 0f)
+    private float GetTileWaterSurfaceY(int tileIndex, HexTileData tile, float additionalOffset = 0f)
     {
         if (tile.waterType == TileWaterType.Ocean)
             return GetOceanWaterSurfaceY(additionalOffset);
+
+        if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+            return GetRenderedTerrainWorldY(tileIndex) + steppedInlandWaterSurfaceOffset + additionalOffset;
 
         return flatY + tile.waterElevation * displacementStrength + waterYOffset + additionalOffset;
     }
@@ -5194,7 +5237,7 @@ public class HexMapChunkManager : MonoBehaviour
             var td = planetGenerator.data[tileIdx];
             Vector3 tileCenter = grid.tileCenters[tileIdx];
 
-            float waterWorldY = GetTileWaterSurfaceY(td);
+            float waterWorldY = GetTileWaterSurfaceY(tileIdx, td);
 
             // Convert to chunk-local
             Vector3 localCenter = new Vector3(
@@ -5287,7 +5330,7 @@ public class HexMapChunkManager : MonoBehaviour
                     {
                         nbrIsWater = nbrTd.waterType != TileWaterType.None;
                         if (nbrIsWater)
-                            nbrWaterY = GetTileWaterSurfaceY(nbrTd);
+                            nbrWaterY = GetTileWaterSurfaceY(nbrIdx, nbrTd);
                     }
 
                     // Build wall if bordering land/empty, or if neighbor water is significantly lower (step).
@@ -5876,7 +5919,29 @@ public class HexMapChunkManager : MonoBehaviour
                      : (ownerRiver != null) ? ownerRiver[ci] : -1;
             if (tIdx >= 0 && planetGenerator.data.TryGetValue(tIdx, out var t)
                 && (t.waterType == TileWaterType.River || t.waterType == TileWaterType.Lake))
-                return flatY + t.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
+                return GetTileWaterSurfaceY(tIdx, t, riverSurfaceLift);
+            if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+            {
+                // Ownership fields are propagated from valid seeds. If a boundary
+                // point has no owner, use the closest grid point that does rather
+                // than consulting the obsolete smooth heightmap.
+                for (int radius = 1; radius <= 3; radius++)
+                {
+                    for (int oy = -radius; oy <= radius; oy++)
+                    for (int ox = -radius; ox <= radius; ox++)
+                    {
+                        int nx = Mathf.Clamp(gx + ox, 0, wCells);
+                        int ny = Mathf.Clamp(gy + oy, 0, hCells);
+                        int ni = ny * wPts + nx;
+                        int nearTile = (wt == 1 && ownerLake != null) ? ownerLake[ni]
+                            : (ownerRiver != null ? ownerRiver[ni] : -1);
+                        if (nearTile >= 0 && planetGenerator.data.TryGetValue(nearTile, out var nearWater) &&
+                            (nearWater.waterType == TileWaterType.River || nearWater.waterType == TileWaterType.Lake))
+                            return GetTileWaterSurfaceY(nearTile, nearWater, riverSurfaceLift);
+                    }
+                }
+                return GetOceanWaterSurfaceY(riverSurfaceLift);
+            }
             float eu = Mathf.Repeat((float)gx / wCells, 1f);
             float ev = Mathf.Clamp01((float)gy / hCells);
             float el = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(eu, ev).r : 0f;
@@ -5891,6 +5956,13 @@ public class HexMapChunkManager : MonoBehaviour
 
             if (wType == 2) // ocean — flat at sea level
                 return GetOceanWaterSurfaceY(riverSurfaceLift);
+
+            if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+            {
+                int nearestX = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+                int nearestY = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+                return OwnerWaterYAt(nearestX, nearestY, wType);
+            }
 
             // Bilinear blend of water elevation from 4 nearest SDF grid corners.
             // Smooths the Y staircase that occurs at tile-ownership boundaries

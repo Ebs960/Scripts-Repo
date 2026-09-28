@@ -570,7 +570,7 @@ public class CombatUnit : BaseUnit
         currentTileIndex = tileIndex;
         gameObject.SetActive(true);
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        if (ts != null) transform.position = ts.GetTileCenterFlat(tileIndex);
+        if (ts != null) transform.position = ts.GetTileSurfacePosition(tileIndex);
         (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, gameObject, currentLayer);
     }
 

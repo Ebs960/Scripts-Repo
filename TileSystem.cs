@@ -73,6 +73,7 @@ public class TileSystem : MonoBehaviour
     // Cached references for picking (avoid per-frame FindAnyObjectByType in hot path)
     private WorldPicker cachedWorldPicker;
     private HexMapChunkManager cachedChunkManager;
+    private readonly HashSet<int> surfaceFallbackWarnings = new();
 
     // Dirty tracking
     private readonly HashSet<int> _dirtyOverlayTiles = new();
@@ -744,17 +745,14 @@ public class TileSystem : MonoBehaviour
         if (mainCamera == null) return (false, -1, Vector3.zero);
 
         // Use HexMapChunkManager (chunk-based map renderer)
-        if (cachedChunkManager == null)
+        HexMapChunkManager terrainRenderer = ResolveTerrainRenderer();
+        if (terrainRenderer != null && terrainRenderer.IsBuilt)
         {
-            cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
-        }
-        if (cachedChunkManager != null && cachedChunkManager.IsBuilt)
-        {
-            var chunkCollider = cachedChunkManager.PickingCollider;
+            var chunkCollider = terrainRenderer.PickingCollider;
             if (chunkCollider != null && chunkCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
             {
-                Vector2 uv = cachedChunkManager.GetUVFromWorldPosition(hitInfo.point);
-                int tileIndex = cachedChunkManager.GetTileIndexAtUV(uv.x, uv.y);
+                Vector2 uv = terrainRenderer.GetUVFromWorldPosition(hitInfo.point);
+                int tileIndex = terrainRenderer.GetTileIndexAtUV(uv.x, uv.y);
                 if (tileIndex >= 0)
                     return (true, tileIndex, hitInfo.point);
             }
@@ -1165,14 +1163,10 @@ public class TileSystem : MonoBehaviour
         // Get flat center position
         var c = GetTileCenterFlat(tile);
 
-        if (cachedChunkManager == null)
-            cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
-
-        if (cachedChunkManager != null && cachedChunkManager.IsBuilt &&
-            cachedChunkManager.PlanetGenerator != null &&
-            cachedChunkManager.PlanetGenerator.planetIndex == planetIndex)
+        HexMapChunkManager terrainRenderer = ResolveTerrainRenderer();
+        if (terrainRenderer != null && terrainRenderer.IsBuilt)
         {
-            return new Vector3(c.x, cachedChunkManager.GetRenderedTerrainWorldY(tile) + unitOffset, c.z);
+            return new Vector3(c.x, terrainRenderer.GetRenderedTerrainWorldY(tile) + unitOffset, c.z);
         }
         
         // Get terrain elevation to calculate actual Y position
@@ -1183,8 +1177,36 @@ public class TileSystem : MonoBehaviour
             // Elevation is already in world-space units — add directly to terrain Y
             terrainY += td.elevation;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (Application.isPlaying && surfaceFallbackWarnings.Add(tile))
+            Debug.LogWarning($"[SurfacePosition] Falling back to generated elevation for planet {planetIndex} tile {tile} because no built terrain renderer was available.", this);
+#endif
         
         return new Vector3(c.x, terrainY + unitOffset, c.z);
+    }
+
+    private HexMapChunkManager ResolveTerrainRenderer()
+    {
+        bool BelongsToThisPlanet(HexMapChunkManager manager) =>
+            manager != null && manager.PlanetGenerator != null &&
+            ((planetRef != null && manager.PlanetGenerator == planetRef) ||
+             manager.PlanetGenerator.planetIndex == planetIndex);
+
+        if (BelongsToThisPlanet(cachedChunkManager)) return cachedChunkManager;
+        cachedChunkManager = null;
+
+        if (planetRef != null && BelongsToThisPlanet(planetRef.terrainRenderer))
+            return cachedChunkManager = planetRef.terrainRenderer;
+
+        // This path is only used until the correct renderer is cached; never use an
+        // arbitrary manager in a multi-planet scene.
+        foreach (var manager in FindObjectsByType<HexMapChunkManager>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (BelongsToThisPlanet(manager))
+                return cachedChunkManager = manager;
+        }
+        return null;
     }
 
     public bool IsTileAccessible(int tile, bool mustBeLand, int unitId, TileLayer layer = TileLayer.Surface)

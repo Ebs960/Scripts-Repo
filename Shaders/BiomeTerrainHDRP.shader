@@ -726,6 +726,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
             struct BiomeSample
             {
+                float3 rawAlbedo;
                 float3 albedo;
                 float3 normalWS;
                 float4 mask; // R=metallic, G=AO, B=height, A=smoothness
@@ -777,6 +778,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     TEXTURE2D_ARRAY_ARGS(_IceHeightArray, sampler_IceHeightArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
 
+                s.rawAlbedo = albedoRaw.rgb;
                 s.albedo = albedoRaw.rgb * tint.rgb;
                 s.normalWS = normalize(lerp(displacedNormal, normalRaw, saturate(_IceNormalStrength)));
                 s.mask = maskRaw;
@@ -808,16 +810,13 @@ Shader "Custom/BiomeTerrainHDRP"
                     TEXTURE2D_ARRAY_ARGS(_BiomeMaskArray, sampler_BiomeMaskArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
 
-                // Overlay blend: preserves substrate texture contrast while applying
-                // strong biome tints (grayscale substrate × saturated color).
-                // Below 0.5 gray: 2*base*tint (darkens). Above 0.5: 1-2*(1-base)*(1-tint) (lightens).
                 float3 base = albedoRaw.rgb;
                 float3 tint = biomeTint.rgb;
                 float tintStrength = saturate(biomeTint.a);
-                float3 overlayR = (base < 0.5)
-                    ? 2.0 * base * tint
-                    : 1.0 - 2.0 * (1.0 - base) * (1.0 - tint);
-                s.albedo = lerp(base, overlayR, tintStrength);
+                // Conventional modulation makes white an identity tint while alpha
+                // remains the authored tint strength.
+                s.rawAlbedo = base;
+                s.albedo = lerp(base, base * tint, tintStrength);
 
                 // Emissive
                 float4 emissiveParams = SAMPLE_TEXTURE2D_LOD(_BiomeEmissiveMapTex, sampler_BiomeIndexMap,
@@ -899,6 +898,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 BiomeSample primary = SampleFullBiome(centerSlice, centerBiome, worldPos, displacedNormal, triWeights, camDist, uv);
 
                 float3 albedo;
+                float3 rawBiomeAlbedo;
                 float3 normalWS;
                 float4 mask;
                 float3 emission;
@@ -920,6 +920,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     float blend = saturate(spatialBlend * 0.5 + heightDiff * 0.25 + 0.25 * spatialBlend);
 
                     albedo = lerp(primary.albedo, secondary.albedo, blend);
+                    rawBiomeAlbedo = lerp(primary.rawAlbedo, secondary.rawAlbedo, blend);
                     normalWS = normalize(lerp(primary.normalWS, secondary.normalWS, blend));
                     mask = lerp(primary.mask, secondary.mask, blend);
                     emission = lerp(primary.emission, secondary.emission, blend);
@@ -929,12 +930,16 @@ Shader "Custom/BiomeTerrainHDRP"
                 else
                 {
                     albedo = primary.albedo;
+                    rawBiomeAlbedo = primary.rawAlbedo;
                     normalWS = primary.normalWS;
                     mask = primary.mask;
                     emission = primary.emission;
                     biomeParams = primary.biomeParams;
                      blendedHeight = primary.height;
                 }
+
+                // Captured before cliffs, seasons, wetness, map overlays, and lighting.
+                float3 tintedBiomeAlbedo = albedo;
 
                 // ==========================================================
                 // CLIFF OVERLAY: combine slope-based and tile-step detection
@@ -1187,6 +1192,15 @@ Shader "Custom/BiomeTerrainHDRP"
                 {
                     return float4(metallic, ao, smoothness, 1.0);
                 }
+
+                // Debug 16-18 isolate source, tint, and the complete unlit material
+                // color respectively. These return before HDRP exposure/lighting.
+                if (terrainDebugMode == 16)
+                    return float4(saturate(rawBiomeAlbedo), 1.0);
+                if (terrainDebugMode == 17)
+                    return float4(saturate(tintedBiomeAlbedo), 1.0);
+                if (terrainDebugMode == 18)
+                    return float4(saturate(albedo), 1.0);
 
                 if (terrainDebugMode == 1)
                 {

@@ -37,6 +37,8 @@ public class ResourceData : ScriptableObject
     public string resourceName;
     public Sprite icon;
     public GameObject prefab;
+    [Tooltip("Additional world-space height applied after the visual ground anchor (or visible mesh bounds) is aligned to terrain.")]
+    public float visualGroundOffset;
     [Tooltip("Category for inventory/breakdown display (Metals, Livestock, Fuel, etc.)")]
     public ResourceCategory category = ResourceCategory.Materials;
 

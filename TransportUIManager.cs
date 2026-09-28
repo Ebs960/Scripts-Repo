@@ -373,7 +373,7 @@ public class TransportUIManager : MonoBehaviour
 
             // Position at tile center, slightly above
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-            Vector3 tileCenter = ts != null ? ts.GetTileCenterFlat(tileIndex) : Vector3.zero;
+            Vector3 tileCenter = ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero;
             highlightObj.transform.position = tileCenter + Vector3.up * 0.05f;
             
             // Scale the highlight to match tile size
