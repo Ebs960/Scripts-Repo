@@ -69,7 +69,6 @@ MonoBehaviour:
   hillHeightVariationSeed: 7331
   minimumFlatToHillStep: 1.5
   minimumHillToMountainStep: 1.5
-  shallowTerraceThreshold: 0.8
   enableMountainHeightVariation: 1
   mountainHeightVariation: 1.75
   mountainHeightVariationWorldScale: 14
