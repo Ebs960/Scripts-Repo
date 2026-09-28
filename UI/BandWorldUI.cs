@@ -44,7 +44,7 @@ public sealed class BandWorldUI : MonoBehaviour
     {
         if (band == null) return;
         Sprite bandIcon = band.Data != null ? band.Data.icon : null;
-        if (band.Data != null && bandIcon == null && MissingIconWarnings.Add(band.Data.GetInstanceID()))
+        if (band.Data != null && bandIcon == null && MissingIconWarnings.Add(band.Data.GetRuntimeId()))
             Debug.LogWarning($"[BandWorldUI] BandData '{band.Data.name}' has no icon assigned.", band.Data);
         if (icon != null)
         {

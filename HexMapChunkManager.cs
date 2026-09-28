@@ -2216,7 +2216,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (sun == null || sun.type != LightType.Directional || !sun.isActiveAndEnabled)
         {
             float bestIntensity = -1f;
-            foreach (var candidate in FindObjectsOfType<Light>())
+            foreach (var candidate in FindObjectsByType<Light>(FindObjectsInactive.Exclude))
             {
                 if (candidate == null || candidate.type != LightType.Directional || !candidate.isActiveAndEnabled)
                     continue;
