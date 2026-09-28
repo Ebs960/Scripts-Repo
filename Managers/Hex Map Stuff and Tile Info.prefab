@@ -61,6 +61,15 @@ MonoBehaviour:
   flatHeightAboveSea: 0.75
   hillHeightAboveSea: 3.5
   mountainHeightAboveSea: 7.5
+  enableHillHeightVariation: 1
+  hillHeightVariation: 0.65
+  hillHeightVariationWorldScale: 12
+  hillHeightVariationSecondaryStrength: 0.25
+  hillHeightVariationSecondaryScale: 5
+  hillHeightVariationSeed: 7331
+  minimumFlatToHillStep: 1.5
+  minimumHillToMountainStep: 1.5
+  shallowTerraceThreshold: 0.8
   enableSurfaceUndulation: 1
   surfaceUndulationStrength: 0.12
   surfaceUndulationWorldScale: 10

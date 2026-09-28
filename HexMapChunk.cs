@@ -545,12 +545,17 @@ public class HexMapChunk : MonoBehaviour
                 Vector3 lowerB = new Vector3(upperB.x, bottomY, upperB.z);
                 Vector3 edgeTangent = (upperB - upperA).normalized;
                 int wallStart = vertices.Count;
+                float wallHeight = shoulderY - bottomY;
+                bool shallowHillTerrace = hasNeighbor && manager.IsShallowHillTerrace(tileIndex, neighborIndex, wallHeight);
+                // Geometry remains fully closed. A slightly upward normal gives small same-tier
+                // Hill steps a softer soil/terrace response without weakening major tier cliffs.
+                Vector3 wallNormal = shallowHillTerrace ? (outward + Vector3.up * 0.35f).normalized : outward;
 
                 // Wall UVs deliberately use the owning (upper) tile center for stable biome selection.
-                AddVertex(upperA, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
-                AddVertex(upperB, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
-                AddVertex(lowerA, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
-                AddVertex(lowerB, centerUV, outward, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(upperA, centerUV, wallNormal, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(upperB, centerUV, wallNormal, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(lowerA, centerUV, wallNormal, edgeTangent, vertices, uvs, normals, tangents);
+                AddVertex(lowerB, centerUV, wallNormal, edgeTangent, vertices, uvs, normals, tangents);
 
                 triangles.Add(wallStart);
                 triangles.Add(wallStart + 3);
