@@ -9,6 +9,7 @@ using Unity.Mathematics;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Burst job that fills a BiomeIndexMap texture (RGFloat) from pre-computed tile-to-slice
@@ -31,27 +32,6 @@ struct FillBiomeIndexMapJob : IJobParallelFor
             pixels[i] = new float2((float)tileSliceIndex[tileIndex], (float)tileBiomeIndex[tileIndex]);
         else
             pixels[i] = new float2(0f, 0f);
-    }
-}
-
-/// <summary>
-/// Burst job that fills a Heightmap texture (RHalf) from a pre-computed tile-to-elevation lookup.
-/// Writes raw half-float bits so the output can go directly to SetPixelData.
-/// </summary>
-[BurstCompile]
-struct FillHeightmapJob : IJobParallelFor
-{
-    [ReadOnly] public NativeArray<int> lut;
-    [ReadOnly] public NativeArray<float> tileElevation;
-    public NativeArray<ushort> pixels;
-
-    public void Execute(int i)
-    {
-        int tileIndex = lut[i];
-        float elevation = 0f;
-        if (tileIndex >= 0 && tileIndex < tileElevation.Length)
-            elevation = tileElevation[tileIndex];
-        pixels[i] = (ushort)math.f32tof16(elevation);
     }
 }
 
@@ -123,7 +103,16 @@ public enum TerrainDebugMode
     BakedDiffuseSH = 14,
 
     [InspectorName("15 - Exposure Multiplier")]
-    ExposureMultiplier = 15
+    ExposureMultiplier = 15,
+
+    [InspectorName("16 - Raw Surface Albedo")]
+    RawSurfaceAlbedo = 16,
+
+    [InspectorName("17 - Substrate Albedo")]
+    SubstrateAlbedo = 17,
+
+    [InspectorName("18 - Final Unlit Albedo")]
+    FinalUnlitAlbedo = 18
 }
 
 /// <summary>
@@ -164,40 +153,47 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private int chunksX = 8;
     [Tooltip("Number of chunk rows (Z axis).")]
     [SerializeField] private int chunksZ = 4;
-    [Header("Stepped Hex Terrain")]
+    [Header("Hex Terrain Geometry")]
     [Range(0.90f, 1f)]
     [SerializeField]
-    private float steppedHexTopScale = 1f;
+    [FormerlySerializedAs("steppedHexTopScale")]
+    private float hexTopScale = 1f;
 
     [Range(0f, 0.15f)]
     [SerializeField]
-    [Tooltip("Width of the visual stepped-hex bevel as a fraction of the full gameplay hex radius.")]
-    private float steppedBevelWidth = 0.04f;
+    [Tooltip("Width of the visual hex-top bevel as a fraction of the full gameplay hex radius.")]
+    [FormerlySerializedAs("steppedBevelWidth")]
+    private float bevelWidth = 0.04f;
 
     [Min(0f)]
     [SerializeField]
-    [Tooltip("Vertical drop from the flat top to the outer edge of the stepped-hex bevel.")]
-    private float steppedBevelDrop = 0.05f;
+    [Tooltip("Vertical drop from the flat top to the outer edge of the hex-top bevel.")]
+    [FormerlySerializedAs("steppedBevelDrop")]
+    private float bevelDrop = 0.05f;
 
-    [SerializeField] private float steppedFlatHeightAboveSea = 0.75f;
-    [SerializeField] private float steppedHillHeightAboveSea = 3.5f;
-    [SerializeField] private float steppedMountainHeightAboveSea = 7.5f;
+    [FormerlySerializedAs("steppedFlatHeightAboveSea")]
+    [SerializeField] private float flatHeightAboveSea = 0.75f;
+    [FormerlySerializedAs("steppedHillHeightAboveSea")]
+    [SerializeField] private float hillHeightAboveSea = 3.5f;
+    [FormerlySerializedAs("steppedMountainHeightAboveSea")]
+    [SerializeField] private float mountainHeightAboveSea = 7.5f;
 
-    [Header("Stepped Seafloor")]
-    [Min(0f)] [SerializeField] private float steppedOceanDepthBelowSea = 2f;
-    [Min(0f)] [SerializeField] private float steppedAbyssalDepthBelowSea = 3.5f;
-    [Min(0f)] [SerializeField] private float steppedTrenchDepthBelowSea = 5.5f;
+    [Header("Seafloor Heights")]
+    [FormerlySerializedAs("steppedOceanDepthBelowSea")]
+    [Min(0f)] [SerializeField] private float oceanFloorDepthBelowSea = 2f;
+    [FormerlySerializedAs("steppedAbyssalDepthBelowSea")]
+    [Min(0f)] [SerializeField] private float abyssalDepthBelowSea = 3.5f;
+    [FormerlySerializedAs("steppedTrenchDepthBelowSea")]
+    [Min(0f)] [SerializeField] private float trenchDepthBelowSea = 5.5f;
 
     [Min(0f)]
     [SerializeField]
-    private float steppedSeamDepth = 0.08f;
+    [FormerlySerializedAs("steppedSeamDepth")]
+    private float seamDepth = 0.08f;
 
     [Header("Terrain Placement")]
+    [Tooltip("Chunk-parent Y baseline in terrain-manager space. Mesh vertices store rendered world Y minus this value, so the baseline is applied exactly once.")]
     [SerializeField] private float flatY = 0f;
-
-    [Header("Rendering Options")]
-    [Tooltip("When true, preserve land tile elevations adjacent to lakes/rivers by using the original pre-water elevation for rendering.")]
-    [SerializeField] private bool preserveLandElevationNearFreshwater = true;
 
     [Header("Biome Visual Modifiers")]
     [Range(0f, 1f)]
@@ -266,7 +262,8 @@ public class HexMapChunkManager : MonoBehaviour
         "HDRP Lit Without Exposure: Shows HDRP lighting before exposure.\n" +
         "Raw Metallic/AO/Smoothness: Shows individual mask-map PBR channels.\n" +
         "Computed PBR Values: R=metallic, G=AO/spec occlusion, B=smoothness.\n" +
-        "HDRP Diffuse/Specular/Baked/Exposure: Splits HDRP lighting contributions."
+        "HDRP Diffuse/Specular/Baked/Exposure: Splits HDRP lighting contributions.\n" +
+        "Raw Surface/Substrate/Final Unlit Albedo: Shows production albedo stages without lighting."
     )]
     private TerrainDebugMode terrainDebugMode = TerrainDebugMode.Off;
 
@@ -382,21 +379,12 @@ public class HexMapChunkManager : MonoBehaviour
     private PlanetTextureBaker.BakeResult bakeResult;
     private Material sharedMaterial;
     private Texture2D biomeIndexMap;
-    // Auxiliary simulation/hydrology texture used by the SDF water builder.
-    // THIS TEXTURE DOES NOT DEFINE VISIBLE TERRAIN HEIGHT.
-    private Texture2D heightmapTexture;
     // Cached inspector-backed runtime values for change detection
     private bool _lastUseTriplanar = true;
     private float _lastCliffTiling = -1f;
     private float _lastCliffStrength = -1f;
     private float _lastCliffSlopeThreshold = -1f;
     private float _lastCliffSlopeBlend = -1f;
-    // Heightmap diagnostics (computed during BuildHeightmap)
-    private float _heightmapMin = 0f;
-    private float _heightmapMax = 0f;
-    private int _heightmapNonZero = 0;
-    private int _heightmapInvalidLut = 0;
-    private int _heightmapMissingTileData = 0;
     private Texture2D sliceToBiomeMap; // 1D texture: pixel[sliceIndex].r = biome index for dynamic parameters.
     private Texture2DArray biomeAlbedoArray;
     private Texture2DArray biomeNormalArray;
@@ -488,10 +476,10 @@ public class HexMapChunkManager : MonoBehaviour
     public PlanetGenerator PlanetGenerator => planetGenerator;
     internal int GridChunkCountX => chunksX;
     internal int GridChunkCountZ => chunksZ;
-    internal float SteppedHexTopScale => steppedHexTopScale;
-    internal float SteppedBevelWidth => steppedBevelWidth;
-    internal float SteppedBevelDrop => steppedBevelDrop;
-    internal float SteppedSeamDepth => steppedSeamDepth;
+    internal float HexTopScale => hexTopScale;
+    internal float BevelWidth => bevelWidth;
+    internal float BevelDrop => bevelDrop;
+    internal float SeamDepth => seamDepth;
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
     public Texture MapTexture => bakeResult.texture;
@@ -1091,10 +1079,6 @@ public class HexMapChunkManager : MonoBehaviour
 
         // (FlatMapTextureRenderer removed — HexMapChunkManager is the sole renderer)
 
-        // Auxiliary hydrology texture diagnostics. This texture never defines visible terrain Y.
-        if (ShouldRunDiagnostics())
-            Debug.Log($"[HexMapChunkManager] Auxiliary hydrology texture ready={heightmapTexture != null}, range={_heightmapMin:F4}..{_heightmapMax:F4}");
-
         if (enableBuildProfiling)
         {
             float now = Time.realtimeSinceStartup;
@@ -1182,12 +1166,11 @@ public class HexMapChunkManager : MonoBehaviour
         BuildBiomeLookup();
         BuildBiomeTextureArrays();
         BuildBiomeIndexMap(width, height);
-        BuildHeightmap(width, height);
     }
 
     /// <summary>
-    /// Coroutine version of BuildBiomeVisualMaps that uses Burst jobs for heavy texture generation
-    /// (BiomeIndexMap and Heightmap) instead of per-pixel coroutine strips.
+    /// Coroutine version of BuildBiomeVisualMaps that uses a Burst job for BiomeIndexMap generation
+    /// instead of per-pixel coroutine strips.
     /// </summary>
     private System.Collections.IEnumerator BuildBiomeVisualMapsCoroutine()
     {
@@ -1221,9 +1204,6 @@ public class HexMapChunkManager : MonoBehaviour
         BuildBiomeIndexMapBurst(width, height);
         yield return null;
 
-        // BURST: Build auxiliary hydrology height data (never visible terrain geometry)
-        BuildHeightmapBurst(width, height);
-        yield return null;
     }
 
     private void BuildBiomeLookup()
@@ -1461,8 +1441,10 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the authoritative rendered campaign terrain surface height in world space.
-    /// Categorical land and seafloor heights are offsets from the planet's sea level.
+    /// CAMPAIGN TERRAIN CONTRACT: HexTileData elevation is simulation data; this manager owns
+    /// categorical rendered Y. Visible Surface objects use TileSystem.GetTileSurfacePosition.
+    /// Oceans use SeaLevelWorldY, inland water uses its rendered owner tile, and picking uses
+    /// the exact stepped mesh. Never derive visible campaign Y from simulation elevation.
     /// </summary>
     public float GetRenderedTerrainWorldY(int tileIndex)
     {
@@ -1470,7 +1452,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (planetGenerator == null || planetGenerator.data == null ||
             !planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile))
         {
-            return seaLevelWorldY - steppedOceanDepthBelowSea;
+            return seaLevelWorldY - oceanFloorDepthBelowSea;
         }
 
         if (!tile.isLand)
@@ -1478,22 +1460,22 @@ public class HexMapChunkManager : MonoBehaviour
             switch (tile.underwaterBiome)
             {
                 case Biome.Trench:
-                    return seaLevelWorldY - steppedTrenchDepthBelowSea;
+                    return seaLevelWorldY - trenchDepthBelowSea;
                 case Biome.AbyssalPlains:
-                    return seaLevelWorldY - steppedAbyssalDepthBelowSea;
+                    return seaLevelWorldY - abyssalDepthBelowSea;
                 default:
-                    return seaLevelWorldY - steppedOceanDepthBelowSea;
+                    return seaLevelWorldY - oceanFloorDepthBelowSea;
             }
         }
 
         switch (tile.elevationTier)
         {
             case ElevationTier.Mountain:
-                return seaLevelWorldY + steppedMountainHeightAboveSea;
+                return seaLevelWorldY + mountainHeightAboveSea;
             case ElevationTier.Hill:
-                return seaLevelWorldY + steppedHillHeightAboveSea;
+                return seaLevelWorldY + hillHeightAboveSea;
             default:
-                return seaLevelWorldY + steppedFlatHeightAboveSea;
+                return seaLevelWorldY + flatHeightAboveSea;
         }
     }
 
@@ -1762,148 +1744,6 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
-    private void BuildHeightmap(int width, int height)
-    {
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
-
-        // Diagnostics: track min/max range as we write.
-        _heightmapMin = float.MaxValue;
-        _heightmapMax = float.MinValue;
-        _heightmapNonZero = 0;
-        _heightmapInvalidLut = 0;
-        _heightmapMissingTileData = 0;
-
-        // Use RHalf (16-bit float) instead of R8 (8-bit) for much better elevation precision.
-        // R8 only provides 256 discrete height levels which causes visible stepping/terracing
-        // on terrain slopes. RHalf provides 65536 levels, eliminating banding artifacts.
-        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
-        {
-            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
-            {
-                filterMode = FilterMode.Trilinear,
-                anisoLevel = 4,
-                wrapMode = TextureWrapMode.Repeat,
-                name = "TerrainHeightmap"
-            };
-        }
-
-        // MEMORY OPT: Process in row strips instead of one huge Color[width*height] (~67 MB for 2048x2048).
-        int rowsPerStrip = 64;
-        var stripPixels = new Color[width * rowsPerStrip];
-
-        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
-        {
-            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
-            int stripLen = width * rowsThisStrip;
-
-            for (int localIdx = 0; localIdx < stripLen; localIdx++)
-            {
-                int globalIdx = startRow * width + localIdx;
-                int tileIndex = bakeResult.lut[globalIdx];
-                float elevation = 0f;
-                if (tileIndex < 0)
-                {
-                    _heightmapInvalidLut++;
-                }
-                else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
-                {
-                    elevation = GetRenderedElevation(tileIndex); // Use rendered elevation (may preserve pre-water elevation)
-                }
-                else
-                {
-                    _heightmapMissingTileData++;
-                }
-
-                if (elevation != 0f) _heightmapNonZero++;
-                if (elevation < _heightmapMin) _heightmapMin = elevation;
-                if (elevation > _heightmapMax) _heightmapMax = elevation;
-                stripPixels[localIdx] = new Color(elevation, 0f, 0f, 1f);
-            }
-
-            heightmapTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
-        }
-
-        heightmapTexture.Apply(true, false);
-
-        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
-        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
-    }
-
-    /// <summary>
-    /// Coroutine version of BuildHeightmap that yields between row strips to avoid blocking.
-    /// Each strip processes 64 rows then yields a frame, spreading ~4M pixel iterations across ~32 frames.
-    /// The synchronous BuildHeightmap() is kept for RebakeTexture() and other immediate-use paths.
-    /// </summary>
-    private System.Collections.IEnumerator BuildHeightmapCoroutine(int width, int height)
-    {
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0) yield break;
-
-        // Diagnostics: track min/max range as we write.
-        _heightmapMin = float.MaxValue;
-        _heightmapMax = float.MinValue;
-        _heightmapNonZero = 0;
-        _heightmapInvalidLut = 0;
-        _heightmapMissingTileData = 0;
-
-        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
-        {
-            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
-            {
-                filterMode = FilterMode.Trilinear,
-                anisoLevel = 4,
-                wrapMode = TextureWrapMode.Repeat,
-                name = "TerrainHeightmap"
-            };
-        }
-
-        int rowsPerStrip = 64;
-        var stripPixels = new Color[width * rowsPerStrip];
-
-        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
-        {
-            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
-            int stripLen = width * rowsThisStrip;
-
-            for (int localIdx = 0; localIdx < stripLen; localIdx++)
-            {
-                int globalIdx = startRow * width + localIdx;
-                int tileIndex = bakeResult.lut[globalIdx];
-                float elevation = 0f;
-                if (tileIndex < 0)
-                {
-                    _heightmapInvalidLut++;
-                }
-                else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
-                {
-                    elevation = GetRenderedElevation(tileIndex); // World-space height offset — may preserve original elevation near freshwater
-                }
-                else
-                {
-                    _heightmapMissingTileData++;
-                }
-
-                if (elevation != 0f) _heightmapNonZero++;
-                if (elevation < _heightmapMin) _heightmapMin = elevation;
-                if (elevation > _heightmapMax) _heightmapMax = elevation;
-                stripPixels[localIdx] = new Color(elevation, 0f, 0f, 1f);
-            }
-
-            heightmapTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
-
-            // Yield after each strip to spread work across frames
-            yield return null;
-        }
-
-        heightmapTexture.Apply(true, false);
-
-        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
-        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
-    }
-
-    // =====================================================================================
-    //  Burst-accelerated BiomeIndexMap and Heightmap builders
-    // =====================================================================================
-
     /// <summary>
     /// Pre-compute a flat array mapping tileIndex -> surface slice index.
     /// Doing this once over ~tens of thousands of tiles eliminates millions of
@@ -1930,103 +1770,42 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Updates the biome lookup and auxiliary hydrology texture pixels touched by tiles.
-    /// The auxiliary height texture does not define visible terrain height.
-    /// </summary>
+    /// <summary>Updates current biome and surface-slice pixels touched by the supplied tiles.</summary>
     public void UpdateTerrainDataTexturesForTiles(IEnumerable<int> tileIndices)
     {
-        if (planetGenerator == null || grid == null || bakeResult.lut == null || bakeResult.lut.Length == 0)
-            return;
-        if (biomeIndexMap == null || heightmapTexture == null)
+        if (planetGenerator == null || grid == null || biomeIndexMap == null ||
+            bakeResult.lut == null || bakeResult.lut.Length == 0)
             return;
 
         var biomeTiles = new HashSet<int>();
-        var heightTiles = new HashSet<int>();
-
         foreach (int tileIndex in tileIndices)
-        {
-            if (tileIndex < 0 || tileIndex >= grid.TileCount)
-                continue;
+            if (tileIndex >= 0 && tileIndex < grid.TileCount)
+                biomeTiles.Add(tileIndex);
 
-            biomeTiles.Add(tileIndex);
-            heightTiles.Add(tileIndex);
-
-            var neighbors = grid.neighbors != null && tileIndex < grid.neighbors.Length
-                ? grid.neighbors[tileIndex]
-                : null;
-            if (neighbors == null)
-                continue;
-
-            foreach (int neighbor in neighbors)
-            {
-                if (neighbor >= 0 && neighbor < grid.TileCount)
-                    heightTiles.Add(neighbor);
-            }
-        }
-
-        if (biomeTiles.Count == 0 && heightTiles.Count == 0)
-            return;
+        if (biomeTiles.Count == 0) return;
 
         int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        bool biomeUpdated = false;
-        bool heightUpdated = false;
-
+        bool updated = false;
         for (int pixelIndex = 0; pixelIndex < bakeResult.lut.Length; pixelIndex++)
         {
             int tileIndex = bakeResult.lut[pixelIndex];
-            if (tileIndex < 0)
+            if (!biomeTiles.Contains(tileIndex) ||
+                !planetGenerator.data.TryGetValue(tileIndex, out var tile))
                 continue;
 
-            bool updateBiome = biomeTiles.Contains(tileIndex);
-            bool updateHeight = heightTiles.Contains(tileIndex);
-            if (!updateBiome && !updateHeight)
-                continue;
-
-            if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
-                continue;
-
-            int x = pixelIndex % width;
-            int y = pixelIndex / width;
-
-            if (updateBiome)
-            {
-                int biomeIndex = ResolveRenderedBiomeIndex(tile);
-                int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
-                biomeIndexMap.SetPixel(x, y, new Color(sliceIndex, biomeIndex, 0f, 1f));
-                biomeUpdated = true;
-            }
-
-            if (updateHeight)
-            {
-                float elevation = GetRenderedElevation(tileIndex);
-                heightmapTexture.SetPixel(x, y, new Color(elevation, 0f, 0f, 1f));
-                heightUpdated = true;
-            }
+            int biomeIndex = ResolveRenderedBiomeIndex(tile);
+            int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
+            biomeIndexMap.SetPixel(pixelIndex % width, pixelIndex / width,
+                new Color(sliceIndex, biomeIndex, 0f, 1f));
+            updated = true;
         }
 
-        if (biomeUpdated)
-            biomeIndexMap.Apply(false, false);
-        if (heightUpdated)
-            heightmapTexture.Apply(true, false);
+        if (updated) biomeIndexMap.Apply(false, false);
     }
 
     public void UpdateTerrainDataTexturesForTile(int tileIndex)
     {
         UpdateTerrainDataTexturesForTiles(new[] { tileIndex });
-    }
-
-    /// <summary>
-    /// Pre-compute a flat array mapping tileIndex -> rendered elevation.
-    /// Eliminates per-pixel dictionary lookups and neighbor iteration in the heightmap loop.
-    /// </summary>
-    private float[] PrecomputeTileElevations()
-    {
-        int tileCount = grid.TileCount;
-        var result = ArrayPoolUtils.RentFloat(tileCount);
-        for (int ti = 0; ti < tileCount; ti++)
-            result[ti] = GetRenderedElevation(ti);
-        return result;
     }
 
     /// <summary>
@@ -2071,66 +1850,6 @@ public class HexMapChunkManager : MonoBehaviour
         pixelsNative.Dispose();
         biomeNative.Dispose();
         sliceNative.Dispose();
-        lutNative.Dispose();
-    }
-
-    /// <summary>
-    /// Build the Heightmap texture using a Burst-compiled parallel job.
-    /// Writes half-float data directly — no intermediate Color[] allocation.
-    /// </summary>
-    private void BuildHeightmapBurst(int width, int height)
-    {
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
-
-        _heightmapMin = float.MaxValue;
-        _heightmapMax = float.MinValue;
-        _heightmapNonZero = 0;
-        _heightmapInvalidLut = 0;
-        _heightmapMissingTileData = 0;
-
-        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
-        {
-            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
-            {
-                filterMode = FilterMode.Trilinear,
-                anisoLevel = 4,
-                wrapMode = TextureWrapMode.Repeat,
-                name = "TerrainHeightmap"
-            };
-        }
-
-        int pixelCount = width * height;
-        var tileElev = PrecomputeTileElevations();
-
-        // Track min/max from the pre-computed array (avoids doing it in the Burst job)
-        int tileCount = grid.TileCount;
-        for (int ti = 0; ti < tileCount; ti++)
-        {
-            float e = tileElev[ti];
-            if (e != 0f) _heightmapNonZero++;
-            if (e < _heightmapMin) _heightmapMin = e;
-            if (e > _heightmapMax) _heightmapMax = e;
-        }
-        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
-        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
-
-        var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
-        var elevNative = new NativeArray<float>(tileElev, Allocator.TempJob);
-        ArrayPoolUtils.ReturnFloat(tileElev); // return to pool after NativeArray copy
-        var pixelsNative = new NativeArray<ushort>(pixelCount, Allocator.TempJob);
-
-        new FillHeightmapJob
-        {
-            lut = lutNative,
-            tileElevation = elevNative,
-            pixels = pixelsNative,
-        }.Schedule(pixelCount, 4096).Complete();
-
-        heightmapTexture.SetPixelData(pixelsNative, 0);
-        heightmapTexture.Apply(true, false);
-
-        pixelsNative.Dispose();
-        elevNative.Dispose();
         lutNative.Dispose();
     }
 
@@ -2309,41 +2028,6 @@ public class HexMapChunkManager : MonoBehaviour
             freezeProgress = ClimateManager.Instance.GetFreezeProgressForPlanet(planetGenerator.planetIndex);
         material.SetFloat("_FreezeProgress", freezeProgress);
     }
-
-    /// <summary>
-    /// Returns the elevation that should be used for rendering for a given tile.
-    /// When `preserveLandElevationNearFreshwater` is enabled, land tiles that are
-    /// adjacent to lakes or rivers will use their `originalElevation` instead of
-    /// the possibly-carved `elevation` value. Otherwise returns the current elevation.
-    /// </summary>
-    private float GetRenderedElevation(int tileIndex)
-    {
-        if (planetGenerator == null) return 0f;
-        if (!planetGenerator.data.TryGetValue(tileIndex, out var td)) return 0f;
-        if (!preserveLandElevationNearFreshwater) return td.elevation;
-
-        if (td.isLand)
-        {
-            var nbrs = grid.neighbors[tileIndex];
-            if (nbrs != null)
-            {
-                foreach (int n in nbrs)
-                {
-                    if (n < 0 || n >= grid.TileCount) continue;
-                    if (planetGenerator.data.TryGetValue(n, out var nt))
-                    {
-                        if (nt.isLake || nt.isRiver)
-                        {
-                            return td.originalElevation;
-                        }
-                    }
-                }
-            }
-        }
-
-        return td.elevation;
-    }
-
 
 
     private void CreateSharedMaterial()
@@ -2772,12 +2456,12 @@ public class HexMapChunkManager : MonoBehaviour
     {
         float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
         float water = GetOceanWaterSurfaceY();
-        float flat = sea + steppedFlatHeightAboveSea;
-        float hill = sea + steppedHillHeightAboveSea;
-        float mountain = sea + steppedMountainHeightAboveSea;
-        float ocean = sea - steppedOceanDepthBelowSea;
-        float abyssal = sea - steppedAbyssalDepthBelowSea;
-        float trench = sea - steppedTrenchDepthBelowSea;
+        float flat = sea + flatHeightAboveSea;
+        float hill = sea + hillHeightAboveSea;
+        float mountain = sea + mountainHeightAboveSea;
+        float ocean = sea - oceanFloorDepthBelowSea;
+        float abyssal = sea - abyssalDepthBelowSea;
+        float trench = sea - trenchDepthBelowSea;
         Debug.Log($"[TerrainHeightSync]\nMode=SteppedHex\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHill={hill:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
 
         if (flat <= water || hill <= flat || mountain <= hill || ocean >= water || abyssal >= ocean || trench >= abyssal)
@@ -3514,7 +3198,7 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (!enableContinuousRiverSurface) { DestroyRiverSurface(); if (debugWaterVerbose) Debug.Log("[HexMapChunkManager][SDF] Skipped: enableContinuousRiverSurface=false"); yield break; }
         if (planetGenerator == null || grid == null || !grid.IsBuilt) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] Skipped: missing planetGenerator, grid, or grid not built"); yield break; }
-        if (waterMaterial == null || heightmapTexture == null || bakeResult.lut == null || bakeResult.lut.Length == 0) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] Skipped: missing waterMaterial, heightmapTexture, or LUT"); yield break; }
+        if (waterMaterial == null || bakeResult.lut == null || bakeResult.lut.Length == 0) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] Skipped: missing waterMaterial or LUT"); yield break; }
 
         int wCells = Mathf.Clamp(riverSdfWidth, 64, 4096);
         int hCells = Mathf.Clamp(riverSdfHeight, 32, 4096);
@@ -3941,7 +3625,7 @@ public class HexMapChunkManager : MonoBehaviour
                 : Vector4.zero;
         }
 
-        // Helper: compute water Y for a specific SDF grid point from its owner tile's waterElevation.
+        // Resolve a water vertex from its owning tile and the rendered terrain contract.
         float OwnerWaterYAt(int gx, int gy, int wt)
         {
             int ci = gy * wPts + gx;
@@ -3951,7 +3635,7 @@ public class HexMapChunkManager : MonoBehaviour
                 && (t.waterType == TileWaterType.River || t.waterType == TileWaterType.Lake))
                 return GetTileWaterSurfaceY(tIdx, t, riverSurfaceLift);
             // Ownership fields are propagated from valid seeds. If a boundary point
-            // has no owner, search nearby owners rather than sampling the auxiliary heightmap.
+            // has no owner, search nearby valid water owners.
             for (int radius = 1; radius <= 3; radius++)
             for (int oy = -radius; oy <= radius; oy++)
             for (int ox = -radius; ox <= radius; ox++)
@@ -6041,7 +5725,6 @@ public class HexMapChunkManager : MonoBehaviour
         // We only clear the material bindings above; we do NOT destroy or null the serialized refs.
 
         if (biomeIndexMap != null) { UnityEngine.Object.DestroyImmediate(biomeIndexMap); biomeIndexMap = null; }
-        if (heightmapTexture != null) { UnityEngine.Object.DestroyImmediate(heightmapTexture); heightmapTexture = null; }
         if (biomeSurfaceMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeSurfaceMapTexture); biomeSurfaceMapTexture = null; }
         if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
         if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }

@@ -413,12 +413,12 @@ public class HexMapChunk : MonoBehaviour
 
         HexGrid grid = manager.Grid;
         float fullRadius = grid.GetLookupData().s;
-        float outerRadius = fullRadius * manager.SteppedHexTopScale;
-        float bevelWidthWorld = Mathf.Clamp(fullRadius * manager.SteppedBevelWidth, 0f, outerRadius);
+        float outerRadius = fullRadius * manager.HexTopScale;
+        float bevelWidthWorld = Mathf.Clamp(fullRadius * manager.BevelWidth, 0f, outerRadius);
         float innerRadius = outerRadius - bevelWidthWorld;
-        // A zero-width bevel is the reversible fallback: keep the old top and wall heights.
-        float bevelDrop = bevelWidthWorld > 0.0001f ? Mathf.Max(0f, manager.SteppedBevelDrop) : 0f;
-        float seamDepth = manager.SteppedSeamDepth;
+        // A zero-width bevel keeps the top and wall meeting at the same height.
+        float bevelDrop = bevelWidthWorld > 0.0001f ? Mathf.Max(0f, manager.BevelDrop) : 0f;
+        float seamDepth = manager.SeamDepth;
         float chunkOriginX = -manager.MapWidth * 0.5f + chunkX * (manager.MapWidth / Mathf.Max(1, manager.GridChunkCountX));
         float chunkOriginZ = -manager.MapHeight * 0.5f + chunkZ * (manager.MapHeight / Mathf.Max(1, manager.GridChunkCountZ));
 
@@ -513,7 +513,7 @@ public class HexMapChunk : MonoBehaviour
                     float neighborY = manager.GetRenderedTerrainWorldY(neighborIndex) - manager.FlatY;
                     if (topY > neighborY + 0.0001f)
                         bottomY = neighborY - bevelDrop;
-                    else if (manager.SteppedHexTopScale < 0.9999f && Mathf.Abs(topY - neighborY) <= 0.0001f && seamDepth > 0f)
+                    else if (manager.HexTopScale < 0.9999f && Mathf.Abs(topY - neighborY) <= 0.0001f && seamDepth > 0f)
                         bottomY = topY - Mathf.Max(seamDepth, bevelDrop);
                     else
                         continue;

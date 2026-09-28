@@ -804,8 +804,8 @@ Shader "Custom/BiomeTerrainHDRP"
                 float camDist = distance(_WorldSpaceCameraPos, worldPos);
 
                 // Mesh-authored normals are authoritative for stepped tops, bevels, and walls.
-                float3 displacedNormal = normalize(input.normalWS);
-                float3 triWeights = TriplanarWeights(displacedNormal);
+                float3 meshNormal = normalize(input.normalWS);
+                float3 triWeights = TriplanarWeights(meshNormal);
 
                 // ==========================================================
                 // BIOME INDEX & TRANSITION BLENDING (#3, #7)
@@ -1121,8 +1121,8 @@ Shader "Custom/BiomeTerrainHDRP"
                     return float4(metallic, ao, smoothness, 1.0);
                 }
 
-                // Debug 16-18 isolate source, tint, and the complete unlit material
-                // color respectively. These return before HDRP exposure/lighting.
+                // Debug 16-18 show raw surface, substrate, and final unlit albedo.
+                // These return before HDRP exposure/lighting.
                 if (terrainDebugMode == 16)
                     return float4(saturate(rawBiomeAlbedo), 1.0);
                 if (terrainDebugMode == 17)
@@ -1678,16 +1678,16 @@ Shader "Custom/BiomeTerrainHDRP"
 
             #endif
 
-            // Write combined displaced + biome normal to HDRP normal buffer for screen-space effects
+            // Write combined mesh + biome normal to the HDRP normal buffer for screen-space effects
             float4 frag(Varyings input) : SV_Target0
             {
                 float2 uv = input.uv;
                 float3 worldPos = GetAbsolutePositionWS(input.positionWS);
                 float camDist = distance(_WorldSpaceCameraPos, worldPos);
 
-                // Heightmap-derived displaced normal (macro terrain shape)
-                float3 displacedNormal = normalize(input.normalWS);
-                float3 triWeights = TriplanarWeights(displacedNormal);
+                // Exact mesh normal for the rendered stepped terrain
+                float3 meshNormal = normalize(input.normalWS);
+                float3 triWeights = TriplanarWeights(meshNormal);
 
                 // Look up biome slice and index from the biome index map
                 float4 centerSample = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0);

@@ -55,16 +55,15 @@ MonoBehaviour:
   textureHeight: 2048
   chunksX: 14
   chunksZ: 9
-  steppedHexTopScale: 1
-  steppedFlatHeightAboveSea: 0.75
-  steppedHillHeightAboveSea: 3.5
-  steppedMountainHeightAboveSea: 7.5
-  steppedOceanDepthBelowSea: 2
-  steppedAbyssalDepthBelowSea: 3.5
-  steppedTrenchDepthBelowSea: 5.5
-  steppedSeamDepth: 0.08
+  hexTopScale: 1
+  flatHeightAboveSea: 0.75
+  hillHeightAboveSea: 3.5
+  mountainHeightAboveSea: 7.5
+  oceanFloorDepthBelowSea: 2
+  abyssalDepthBelowSea: 3.5
+  trenchDepthBelowSea: 5.5
+  seamDepth: 0.08
   flatY: 0
-  preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
   globalSnowTransitionDuration: 8
   metallicMultiplier: 0
