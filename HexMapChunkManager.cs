@@ -68,7 +68,8 @@ public enum TerrainDebugMode
     [InspectorName("8 - Raw Metallic Channel")] RawMetallic = 8,
     [InspectorName("9 - Raw AO Channel")] RawAO = 9,
     [InspectorName("10 - Raw Smoothness Channel")] RawSmoothness = 10,
-    [InspectorName("11 - Computed PBR Values")] ComputedPBR = 11
+    [InspectorName("11 - Computed PBR Values")] ComputedPBR = 11,
+    [InspectorName("12 - Macro Surface Normal")] MacroSurfaceNormal = 12
 }
 
 /// <summary>
@@ -135,6 +136,44 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float hillHeightAboveSea = 3.5f;
     [FormerlySerializedAs("steppedMountainHeightAboveSea")]
     [SerializeField] private float mountainHeightAboveSea = 7.5f;
+
+    [Header("Terrain Top Shape")]
+    [SerializeField] private bool enableSurfaceUndulation = true;
+    [SerializeField, Range(0f, 1f)]
+    [Tooltip("Small vertical relief applied to the top surface of each terrain tier. Does not change gameplay elevation tier.")]
+    private float surfaceUndulationStrength = 0.12f;
+    [SerializeField, Min(0.1f)]
+    [Tooltip("Larger value = broader/slower rolling terrain.")]
+    private float surfaceUndulationWorldScale = 10f;
+    [SerializeField, Range(0f, 1f)]
+    [Tooltip("Adds subtle smaller-scale macro variation.")]
+    private float surfaceUndulationSecondaryStrength = 0.035f;
+    [SerializeField, Min(0.1f)]
+    [Tooltip("Larger value = broader/slower rolling terrain.")]
+    private float surfaceUndulationSecondaryWorldScale = 3.5f;
+    [SerializeField, Range(0f, 1f)]
+    [Tooltip("Reduces curvature near the bevel to preserve clean stepped edges.")]
+    private float surfaceEdgeFalloff = 0.25f;
+    [SerializeField] private int surfaceUndulationSeed = 1337;
+    [SerializeField, Range(1, 4)]
+    [Tooltip("Geometry density used only for curved tile tops.")]
+    private int topSubdivision = 2;
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        surfaceUndulationWorldScale = Mathf.Max(0.1f, surfaceUndulationWorldScale);
+        surfaceUndulationSecondaryWorldScale = Mathf.Max(0.1f, surfaceUndulationSecondaryWorldScale);
+        topSubdivision = Mathf.Clamp(topSubdivision, 1, 4);
+        if (!Application.isPlaying || chunks == null || grid == null || !grid.IsBuilt)
+            return;
+
+        for (int x = 0; x < chunks.GetLength(0); x++)
+        for (int z = 0; z < chunks.GetLength(1); z++)
+            chunks[x, z]?.ForceRefresh();
+        CreatePickingCollider();
+    }
+#endif
 
     [Header("Seafloor Heights")]
     [FormerlySerializedAs("steppedOceanDepthBelowSea")]
@@ -450,6 +489,7 @@ public class HexMapChunkManager : MonoBehaviour
     internal float BevelWidth => bevelWidth;
     internal float BevelDrop => bevelDrop;
     internal float SeamDepth => seamDepth;
+    internal int TopSubdivision => Mathf.Clamp(topSubdivision, 1, 4);
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
     public Texture MapTexture => bakeResult.texture;
@@ -738,6 +778,10 @@ public class HexMapChunkManager : MonoBehaviour
             $"tiling={(visual != null ? visual.tiling.ToString("F3") : "NULL")} " +
             $"season={season} " +
             $"renderedY={GetRenderedTerrainWorldY(tileIndex):F3} " +
+            $"[TerrainSurfaceProbe] baseY={GetRenderedTerrainWorldY(tileIndex):F3} " +
+            $"surfaceY={SampleRenderedTerrainSurfaceY(tileIndex, hit.point.x, hit.point.z):F3} " +
+            $"offset={(SampleRenderedTerrainSurfaceY(tileIndex, hit.point.x, hit.point.z) - GetRenderedTerrainWorldY(tileIndex)):F3} " +
+            $"worldX={hit.point.x:F3} worldZ={hit.point.z:F3} " +
             $"generatedElevation={tile.elevation:F3} elevationTier={tile.elevationTier} " +
             $"isRiver={tile.isRiver} isLake={tile.isLake} " +
             $"waterType={tile.waterType} " +
@@ -1084,7 +1128,9 @@ public class HexMapChunkManager : MonoBehaviour
 
         foreach (var resource in FindObjectsByType<ResourceInstance>(FindObjectsInactive.Include))
             if (resource.planetIndex == planetIndex && resource.tileIndex >= 0 && resource.data != null && !resource.data.isOrbitalResource)
-                resource.GroundToSurface(GetRenderedTerrainWorldY(resource.tileIndex), resource.data.visualGroundOffset);
+                resource.GroundToSurface(
+                    SampleRenderedTerrainSurfaceY(resource.tileIndex, resource.transform.position.x, resource.transform.position.z),
+                    resource.data.visualGroundOffset);
 
         foreach (var improvement in FindObjectsByType<ImprovementInstance>(FindObjectsInactive.Include))
             if (improvement.PlanetIndex == planetIndex && improvement.tileIndex >= 0 && improvement.spaceTileIndex < 0)
@@ -1479,6 +1525,81 @@ public class HexMapChunkManager : MonoBehaviour
             default:
                 return seaLevelWorldY + flatHeightAboveSea;
         }
+    }
+
+    /// <summary>
+    /// Returns the authoritative rendered surface at an XZ position. The categorical tier
+    /// remains owned by GetRenderedTerrainWorldY; this only layers subtle visual relief on it.
+    /// </summary>
+    public float SampleRenderedTerrainSurfaceY(int tileIndex, float worldX, float worldZ)
+    {
+        float baseY = GetRenderedTerrainWorldY(tileIndex);
+        if (!enableSurfaceUndulation || grid == null || tileIndex < 0 || tileIndex >= grid.TileCount)
+            return baseY;
+
+        float radius = grid.GetLookupData().s * hexTopScale;
+        float innerRadius = Mathf.Max(0.0001f, radius - grid.GetLookupData().s * bevelWidth);
+        Vector3 center = grid.tileCenters[tileIndex];
+        float radial01 = new Vector2(worldX - center.x, worldZ - center.z).magnitude / innerRadius;
+        float edgeStart = 1f - Mathf.Clamp01(surfaceEdgeFalloff);
+        float edgeMask = 1f - SmoothStep(edgeStart, 1f, radial01);
+        return baseY + SampleSurfaceUndulation(worldX, worldZ) * edgeMask;
+    }
+
+    public Vector3 GetRenderedSurfacePosition(int tileIndex, Vector3 worldPosition, float verticalOffset = 0f)
+    {
+        worldPosition.y = SampleRenderedTerrainSurfaceY(tileIndex, worldPosition.x, worldPosition.z) + verticalOffset;
+        return worldPosition;
+    }
+
+    // Periodic in map X by construction: only integer harmonics of the wrapped angle are used.
+    // Z is deliberately not wrapped. This avoids global Random state and is stable per planet.
+    private float SampleSurfaceUndulation(float worldX, float worldZ)
+    {
+        if (!enableSurfaceUndulation || mapWidth <= 0.0001f)
+            return 0f;
+
+        int planetSeed = planetGenerator != null ? planetGenerator.Seed : 0;
+        int seed = unchecked(planetSeed * 486187739 + surfaceUndulationSeed);
+        return PeriodicRollingNoise(worldX, worldZ, surfaceUndulationWorldScale, seed) * surfaceUndulationStrength
+             + PeriodicRollingNoise(worldX, worldZ, surfaceUndulationSecondaryWorldScale, seed ^ 0x5bd1e995) * surfaceUndulationSecondaryStrength;
+    }
+
+    private float PeriodicRollingNoise(float x, float z, float scale, int seed)
+    {
+        scale = Mathf.Max(0.1f, scale);
+        float angle = (x / mapWidth) * Mathf.PI * 2f;
+        int baseHarmonic = Mathf.Max(1, Mathf.RoundToInt(mapWidth / (Mathf.PI * 2f * scale)));
+        float sum = 0f;
+        float weight = 0f;
+        for (int octave = 0; octave < 3; octave++)
+        {
+            int h = baseHarmonic * (1 << octave);
+            float amplitude = 1f / (1 << octave);
+            float phaseX = HashAngle(seed + octave * 1013);
+            float phaseZ = HashAngle(seed + octave * 1619);
+            float zFrequency = (1 << octave) / scale;
+            sum += Mathf.Sin(angle * h + phaseX + Mathf.Sin(z * zFrequency + phaseZ) * 0.65f)
+                 * Mathf.Cos(z * zFrequency * 0.73f + phaseZ) * amplitude;
+            weight += amplitude;
+        }
+        return weight > 0f ? sum / weight : 0f;
+    }
+
+    private static float HashAngle(int value)
+    {
+        unchecked
+        {
+            uint h = (uint)value;
+            h ^= h >> 16; h *= 0x7feb352d; h ^= h >> 15; h *= 0x846ca68b; h ^= h >> 16;
+            return (h / (float)uint.MaxValue) * Mathf.PI * 2f;
+        }
+    }
+
+    private static float SmoothStep(float from, float to, float value)
+    {
+        float t = Mathf.Clamp01((value - from) / Mathf.Max(0.0001f, to - from));
+        return t * t * (3f - 2f * t);
     }
 
     private int ResolveSurfaceSliceIndex(HexTileData tile, int stableSeed, int biomeIndex)
@@ -2512,7 +2633,10 @@ public class HexMapChunkManager : MonoBehaviour
 
         int terrainLayer = LayerMask.NameToLayer("Terrain");
         colliderObj.layer = terrainLayer >= 0 ? terrainLayer : 0;
-        Debug.Log($"[HexMapChunkManager] Created {pickingMode} picking collider: {pickMesh.vertexCount} verts");
+        int curvedTopVerticesPerTile = 1 + 3 * TopSubdivision * (TopSubdivision + 1);
+        Debug.Log($"[HexMapChunkManager] Created {pickingMode} picking collider: " +
+                  $"oldTopVertsPerTile=7 newTopVertsPerTile={curvedTopVerticesPerTile} " +
+                  $"totalMeshVertices={pickMesh.vertexCount} pickingMeshVertices={pickMesh.vertexCount}");
         LogTerrainHeightSync(pickingMode);
     }
 

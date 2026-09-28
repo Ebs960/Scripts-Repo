@@ -59,6 +59,14 @@ MonoBehaviour:
   flatHeightAboveSea: 0.75
   hillHeightAboveSea: 3.5
   mountainHeightAboveSea: 7.5
+  enableSurfaceUndulation: 1
+  surfaceUndulationStrength: 0.12
+  surfaceUndulationWorldScale: 10
+  surfaceUndulationSecondaryStrength: 0.035
+  surfaceUndulationSecondaryWorldScale: 3.5
+  surfaceEdgeFalloff: 0.25
+  surfaceUndulationSeed: 1337
+  topSubdivision: 2
   oceanFloorDepthBelowSea: 2
   abyssalDepthBelowSea: 3.5
   trenchDepthBelowSea: 5.5
