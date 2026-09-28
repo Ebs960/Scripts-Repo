@@ -48,14 +48,16 @@ MonoBehaviour:
   textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
   terrainShader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
-  iceSurfaceDatabase: {fileID: 11400000, guid: a179395d8e066d7408edab9fd9f0e3de, type: 2}
   clearSurfaceLibraryCacheBeforeBuild: 0
+  iceSurfaceDatabase: {fileID: 11400000, guid: a179395d8e066d7408edab9fd9f0e3de, type: 2}
   orbitOverlayShader: {fileID: 0}
   textureWidth: 2048
   textureHeight: 2048
   chunksX: 14
   chunksZ: 9
   hexTopScale: 1
+  bevelWidth: 0.04
+  bevelDrop: 0.05
   flatHeightAboveSea: 0.75
   hillHeightAboveSea: 3.5
   mountainHeightAboveSea: 7.5
@@ -66,6 +68,20 @@ MonoBehaviour:
   flatY: 0
   globalSnowAmount: 0
   globalSnowTransitionDuration: 8
+  enableSeasonalSnow: 1
+  enableWetnessVisuals: 1
+  enableFreezeVisuals: 1
+  enableSeasonalColorVariation: 1
+  enableTerrainFogVisuals: 1
+  enableMapModeOverlay: 1
+  enableTerrainHighlights: 1
+  wetAlbedoDarkenMaximum: 0.1
+  seasonalColorStrength: 0.08
+  forceRawTerrainAlbedo: 0
+  campaignAmbientFloor: 0.64
+  campaignDirectionalStrength: 0.36
+  campaignAOStrength: 0.3
+  campaignDirectionalLight: {fileID: 0}
   metallicMultiplier: 0
   aoIntensity: 1
   smoothnessMultiplier: 0.5
@@ -105,6 +121,7 @@ MonoBehaviour:
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0
+  steppedInlandWaterSurfaceOffset: 0.04
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
   preBuildOnPlanetReady: 1
