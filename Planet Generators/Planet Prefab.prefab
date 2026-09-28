@@ -229,6 +229,13 @@ MonoBehaviour:
   glaciationStrength: 0.35
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
+  mountainRangeMinimumLandmassTiles: 48
+  mountainRangesPerLandmassMaximum: 4
+  mountainRangeMinimumLength: 10
+  mountainRangeMaximumLength: 38
+  mountainFoothillRadius: 3
+  mountainSpurChance: 0.28
+  isolatedMountainFrequency: 0.035
   elevationFreq: 4
   moistureFreq: 0.2
   moistureBias: 0

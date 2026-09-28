@@ -70,6 +70,12 @@ MonoBehaviour:
   minimumFlatToHillStep: 1.5
   minimumHillToMountainStep: 1.5
   shallowTerraceThreshold: 0.8
+  enableMountainHeightVariation: 1
+  mountainHeightVariation: 1.1
+  mountainHeightVariationWorldScale: 14
+  mountainHeightVariationSecondaryStrength: 0.25
+  mountainHeightVariationSecondaryScale: 6
+  mountainHeightVariationSeed: 19081
   enableSurfaceUndulation: 1
   surfaceUndulationStrength: 0.12
   surfaceUndulationWorldScale: 10

@@ -148,6 +148,14 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField, Min(0.1f)] private float minimumHillToMountainStep = 1.5f;
     [SerializeField, Range(0f, 1f)] private float shallowTerraceThreshold = 0.8f;
 
+    [Header("Mountain Height Variation")]
+    [SerializeField] private bool enableMountainHeightVariation = true;
+    [SerializeField, Range(0f, 3f)] private float mountainHeightVariation = 1.1f;
+    [SerializeField, Min(1f)] private float mountainHeightVariationWorldScale = 14f;
+    [SerializeField, Range(0f, 1f)] private float mountainHeightVariationSecondaryStrength = 0.25f;
+    [SerializeField, Min(1f)] private float mountainHeightVariationSecondaryScale = 6f;
+    [SerializeField] private int mountainHeightVariationSeed = 19081;
+
     [Header("Terrain Top Shape")]
     [SerializeField] private bool enableSurfaceUndulation = true;
     [SerializeField, Range(0f, 1f)]
@@ -175,6 +183,8 @@ public class HexMapChunkManager : MonoBehaviour
     {
         hillHeightVariationWorldScale = Mathf.Max(1f, hillHeightVariationWorldScale);
         hillHeightVariationSecondaryScale = Mathf.Max(1f, hillHeightVariationSecondaryScale);
+        mountainHeightVariationWorldScale = Mathf.Max(1f, mountainHeightVariationWorldScale);
+        mountainHeightVariationSecondaryScale = Mathf.Max(1f, mountainHeightVariationSecondaryScale);
         minimumFlatToHillStep = Mathf.Max(0.1f, minimumFlatToHillStep);
         minimumHillToMountainStep = Mathf.Max(0.1f, minimumHillToMountainStep);
         surfaceUndulationWorldScale = Mathf.Max(0.1f, surfaceUndulationWorldScale);
@@ -1539,7 +1549,12 @@ public class HexMapChunkManager : MonoBehaviour
         switch (tile.elevationTier)
         {
             case ElevationTier.Mountain:
-                return seaLevelWorldY + mountainHeightAboveSea;
+                float nominalMountainY = seaLevelWorldY + mountainHeightAboveSea;
+                float highestPermittedHillY = nominalMountainY - minimumHillToMountainStep;
+                float minimumMountainY = highestPermittedHillY + minimumHillToMountainStep + 0.01f;
+                // Variation is biased upward, keeping the full categorical safety gap even
+                // when inspector values are poorly configured.
+                return Mathf.Max(minimumMountainY, nominalMountainY + GetMountainMacroHeightOffset(tileIndex));
             case ElevationTier.Hill:
                 float nominalHillY = seaLevelWorldY + hillHeightAboveSea;
                 float variedHillY = nominalHillY + GetHillMacroHeightOffset(tileIndex);
@@ -1588,6 +1603,26 @@ public class HexMapChunkManager : MonoBehaviour
         float normalizedSignal = (primary + secondary * hillHeightVariationSecondaryStrength) /
                                  (1f + hillHeightVariationSecondaryStrength);
         return normalizedSignal * hillHeightVariation;
+    }
+
+    /// <summary>
+    /// Samples broad, deterministic and wrap-periodic visual relief for Mountain tiles.
+    /// This is rendering-only macro geometry; it never changes simulation elevation or tier.
+    /// </summary>
+    private float GetMountainMacroHeightOffset(int tileIndex)
+    {
+        if (!enableMountainHeightVariation || mountainHeightVariation <= 0f || grid == null ||
+            tileIndex < 0 || tileIndex >= grid.TileCount || mapWidth <= 0.0001f)
+            return 0f;
+
+        Vector3 center = grid.tileCenters[tileIndex];
+        int planetSeed = planetGenerator != null ? planetGenerator.Seed : 0;
+        int seed = unchecked(planetSeed * 486187739 + mountainHeightVariationSeed);
+        float primary = PeriodicRollingNoise(center.x, center.z, mountainHeightVariationWorldScale, seed);
+        float secondary = PeriodicRollingNoise(center.x, center.z, mountainHeightVariationSecondaryScale, seed ^ 0x27d4eb2d);
+        float signal = (primary + secondary * mountainHeightVariationSecondaryStrength) /
+                       (1f + mountainHeightVariationSecondaryStrength);
+        return Mathf.Clamp01(signal * 0.5f + 0.5f) * mountainHeightVariation;
     }
 
     internal bool IsShallowHillTerrace(int tileIndex, int neighborIndex, float heightDifference)
