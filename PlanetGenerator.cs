@@ -323,6 +323,22 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f, 1f)]
     [Tooltip("Normalized noise value (0-1) above which a land tile becomes a Mountain. Lower = more mountains.")]
     public float mountainNoiseCutoff = 0.7f;
+
+    [Header("Mountain Range Generation")]
+    [Min(12), Tooltip("Land tiles required before a connected landmass can receive a major mountain range.")]
+    public int mountainRangeMinimumLandmassTiles = 48;
+    [Range(1, 6), Tooltip("Upper bound on major ranges generated on one landmass.")]
+    public int mountainRangesPerLandmassMaximum = 4;
+    [Range(8, 24), Tooltip("Minimum preferred length of a major mountain spine.")]
+    public int mountainRangeMinimumLength = 10;
+    [Range(16, 64), Tooltip("Maximum preferred length of a major mountain spine.")]
+    public int mountainRangeMaximumLength = 38;
+    [Range(1, 5), Tooltip("Land-tile radius influenced by foothills around range cores.")]
+    public int mountainFoothillRadius = 3;
+    [Range(0f, 1f), Tooltip("Chance for a sufficiently long range to grow one short, non-recursive side spur.")]
+    public float mountainSpurChance = 0.28f;
+    [Range(0f, 0.25f), Tooltip("Base rarity of exceptional noise-driven peaks outside generated ranges.")]
+    public float isolatedMountainFrequency = 0.035f;
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
     public float elevationFreq = 2f, moistureFreq = 4f;
@@ -1559,6 +1575,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float[] provinceNoisePerTile = ArrayPoolUtils.RentFloat(tileCount);
         float[] hillSignalPerTile = ArrayPoolUtils.RentFloat(tileCount);
         float[] mountainSignalPerTile = ArrayPoolUtils.RentFloat(tileCount);
+        // Generation-only authority masks. These deliberately remain separate from elevation
+        // noise so range cores and passes cannot be undone by later terrain shaping.
+        bool[] mountainRangeCore = new bool[tileCount];
+        bool[] mountainPass = new bool[tileCount];
+        float[] mountainRangeStrength = new float[tileCount];
+        int mountainEligibleContinents = 0;
+        int mountainRangesGenerated = 0;
+        int mountainPassCount = 0;
+        int mountainSpurCount = 0;
+        string mountainRangesByContinent = string.Empty;
         float noiseMin = float.MaxValue;
         float noiseMax = float.MinValue;
 
@@ -1641,148 +1667,278 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             Debug.Log($"[PlanetGenerator] Noise pre-pass: raw shaped range [{noiseMin:F4}..{noiseMax:F4}], normalized to [0..1]");
 
         // --- Mountain Range Ridgeline Generation ---
-        // Trace spline-based fault lines across continents and boost noise along them
-        // to form coherent mountain chains with foothills instead of scattered peaks.
+        // Build ranges independently for each connected landmass. The masks produced here are
+        // authoritative during tier classification; noise supplies local character, not existence.
         {
-            // BFS distance from coast for this pass (reused concept from continental bias, scoped here)
-            int[] ridgeDist = new int[tileCount];
-            for (int i = 0; i < tileCount; i++) ridgeDist[i] = -1;
-            var ridgeBfsQueue = new Queue<int>();
+            int[] coastDistance = new int[tileCount];
+            Array.Fill(coastDistance, -1);
+            var coastQueue = new Queue<int>();
             for (int i = 0; i < tileCount; i++)
             {
-                if (!isLandTile[i] && !isLakeTile[i])
+                if (!isLandTile[i] || isLakeTile[i])
                 {
-                    ridgeDist[i] = 0;
-                    ridgeBfsQueue.Enqueue(i);
+                    coastDistance[i] = 0;
+                    coastQueue.Enqueue(i);
                 }
             }
-            while (ridgeBfsQueue.Count > 0)
+            while (coastQueue.Count > 0)
             {
-                int cur = ridgeBfsQueue.Dequeue();
-                int nd = ridgeDist[cur] + 1;
-                foreach (int n in grid.neighbors[cur])
+                int current = coastQueue.Dequeue();
+                foreach (int neighbor in grid.neighbors[current])
                 {
-                    if (n < 0 || n >= tileCount) continue;
-                    if (ridgeDist[n] >= 0) continue;
-                    ridgeDist[n] = nd;
-                    ridgeBfsQueue.Enqueue(n);
+                    if (neighbor < 0 || neighbor >= tileCount || coastDistance[neighbor] >= 0) continue;
+                    coastDistance[neighbor] = coastDistance[current] + 1;
+                    coastQueue.Enqueue(neighbor);
                 }
             }
 
-            int ridgeMaxDist = 0;
-            for (int i = 0; i < tileCount; i++)
-                if (ridgeDist[i] > ridgeMaxDist) ridgeMaxDist = ridgeDist[i];
-
-            // Only generate ridges if there's enough inland depth
-            if (ridgeMaxDist >= 4)
+            float GeologyRangeWeight(int tile)
             {
-                var ridgeRand = new System.Random(unchecked((int)(seed ^ 0xD15EA5E)));
-                int ridgeCount = Mathf.Max(1, continentDataList.Count); // ~1 range per continent
+                if (!enableAdvancedGeologyFramework || geologyProvinceMap == null || geologyStressMap == null)
+                    return 0f;
+                float weight = geologyStressMap[tile] * 1.25f;
+                var province = (TectonicProvinceType)geologyProvinceMap[tile];
+                if (province == TectonicProvinceType.FoldBelt) weight += 1.2f;
+                else if (province == TectonicProvinceType.VolcanicArc) weight += 1.05f;
+                else if (province == TectonicProvinceType.RiftZone) weight += 0.2f;
+                if (geologyMarginTypeMap != null && (CoastalMarginType)geologyMarginTypeMap[tile] == CoastalMarginType.Active)
+                    weight += 0.45f;
+                return weight * Mathf.Clamp01(geologyFrameworkStrength + 0.35f);
+            }
 
-                for (int r = 0; r < ridgeCount; r++)
+            List<List<int>> DiscoverLandmasses()
+            {
+                var result = new List<List<int>>();
+                var seen = new bool[tileCount];
+                var queue = new Queue<int>();
+                for (int root = 0; root < tileCount; root++)
                 {
-                    // Pick a random deep-inland seed tile (inner 40-80% of max distance)
-                    int minDist = Mathf.Max(3, (int)(ridgeMaxDist * 0.4f));
-                    int maxDistForSeed = Mathf.Max(minDist + 1, (int)(ridgeMaxDist * 0.8f));
-                    var deepCandidates = new List<int>();
-                    for (int i = 0; i < tileCount; i++)
+                    if (seen[root] || !isLandTile[root] || isLakeTile[root]) continue;
+                    var component = new List<int>();
+                    seen[root] = true;
+                    queue.Enqueue(root);
+                    while (queue.Count > 0)
                     {
-                        if (isLandTile[i] && !isLakeTile[i] && ridgeDist[i] >= minDist && ridgeDist[i] <= maxDistForSeed)
-                            deepCandidates.Add(i);
+                        int current = queue.Dequeue();
+                        component.Add(current);
+                        foreach (int neighbor in grid.neighbors[current])
+                        {
+                            if (neighbor < 0 || neighbor >= tileCount || seen[neighbor] || !isLandTile[neighbor] || isLakeTile[neighbor]) continue;
+                            seen[neighbor] = true;
+                            queue.Enqueue(neighbor);
+                        }
                     }
-                    if (deepCandidates.Count == 0) continue;
+                    result.Add(component);
+                }
+                return result;
+            }
 
-                    // Random walk to create a ridgeline path
-                    int pathSeed = deepCandidates[ridgeRand.Next(deepCandidates.Count)];
-                    int ridgeLength = Mathf.Clamp(ridgeRand.Next(8, 20), 8, tileCount / 100);
-                    var ridgePath = new List<int> { pathSeed };
-                    var ridgeVisited = new HashSet<int> { pathSeed };
-
-                    // Pick an initial walk direction using noise for consistency
-                    Vector2Int seedCoord = tileCoords[pathSeed];
-                    float dirNoise = noise.GetElevationPeriodic(
-                        new Vector2(seedCoord.x + 2000f, seedCoord.y + 2000f),
-                        mapWidth, mapHeight, elevFreqPeriodic * 0.5f);
-                    float walkAngle = dirNoise * Mathf.PI * 2f;
-                    Vector2 walkDir = new Vector2(Mathf.Cos(walkAngle), Mathf.Sin(walkAngle));
-
-                    int current = pathSeed;
-                    for (int step = 0; step < ridgeLength; step++)
+            int[] DistancesWithinLandmass(int origin, bool[] membership)
+            {
+                var distances = new int[tileCount];
+                Array.Fill(distances, -1);
+                var queue = new Queue<int>();
+                distances[origin] = 0;
+                queue.Enqueue(origin);
+                while (queue.Count > 0)
+                {
+                    int current = queue.Dequeue();
+                    foreach (int neighbor in grid.neighbors[current])
                     {
-                        int bestNext = -1;
+                        if (neighbor < 0 || neighbor >= tileCount || !membership[neighbor] || distances[neighbor] >= 0) continue;
+                        distances[neighbor] = distances[current] + 1;
+                        queue.Enqueue(neighbor);
+                    }
+                }
+                return distances;
+            }
+
+            var rangeRandom = new System.Random(unchecked((int)(seed ^ 0x4D52414E))); // "MRAN"
+            var landmasses = DiscoverLandmasses();
+            var perContinentCounts = new List<string>();
+            for (int componentIndex = 0; componentIndex < landmasses.Count; componentIndex++)
+            {
+                List<int> component = landmasses[componentIndex];
+                int deepest = 0;
+                foreach (int tile in component) deepest = Mathf.Max(deepest, coastDistance[tile]);
+                if (component.Count < mountainRangeMinimumLandmassTiles || deepest < 3) continue;
+
+                mountainEligibleContinents++;
+                var membership = new bool[tileCount];
+                foreach (int tile in component) membership[tile] = true;
+
+                float roughness = Mathf.Clamp(motifFoldedRanges * motifRuggedness, 0.7f, 1.55f);
+                int rangeCount = 1 + Mathf.FloorToInt(component.Count / Mathf.Lerp(360f, 220f, Mathf.InverseLerp(0.7f, 1.55f, roughness)));
+                if (deepest >= 9 && component.Count >= mountainRangeMinimumLandmassTiles * 3) rangeCount++;
+                rangeCount = Mathf.Clamp(rangeCount, 1, mountainRangesPerLandmassMaximum);
+                int madeHere = 0;
+
+                for (int rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++)
+                {
+                    var inland = component.FindAll(tile => coastDistance[tile] >= Mathf.Max(2, Mathf.Min(4, deepest / 3)) && !mountainRangeCore[tile]);
+                    if (inland.Count < 6) break;
+
+                    // Several deterministic candidates let geology and inland depth influence placement
+                    // without making either one an absolute prerequisite.
+                    int start = inland[rangeRandom.Next(inland.Count)];
+                    float startScore = float.NegativeInfinity;
+                    int trials = Mathf.Min(32, inland.Count);
+                    for (int trial = 0; trial < trials; trial++)
+                    {
+                        int candidate = inland[rangeRandom.Next(inland.Count)];
+                        float score = coastDistance[candidate] * 0.35f + GeologyRangeWeight(candidate) + (float)rangeRandom.NextDouble() * 0.65f;
+                        if (score > startScore) { startScore = score; start = candidate; }
+                    }
+
+                    int preferredLength = Mathf.RoundToInt(Mathf.Sqrt(component.Count) * 1.45f * roughness + deepest * 0.75f);
+                    preferredLength = Mathf.Clamp(preferredLength, mountainRangeMinimumLength, mountainRangeMaximumLength);
+                    int[] fromStart = DistancesWithinLandmass(start, membership);
+                    int anchor = -1;
+                    float anchorScore = float.NegativeInfinity;
+                    foreach (int candidate in component)
+                    {
+                        int distance = fromStart[candidate];
+                        if (distance < Mathf.Max(6, preferredLength / 2) || coastDistance[candidate] < 2) continue;
+                        float lengthFit = -Mathf.Abs(distance - preferredLength) * 0.13f;
+                        float score = lengthFit + coastDistance[candidate] * 0.18f + GeologyRangeWeight(candidate) + (float)rangeRandom.NextDouble() * 0.35f;
+                        if (score > anchorScore) { anchorScore = score; anchor = candidate; }
+                    }
+                    if (anchor < 0) continue;
+
+                    int[] toAnchor = DistancesWithinLandmass(anchor, membership);
+                    var spine = new List<int> { start };
+                    var visited = new HashSet<int> { start };
+                    int current = start;
+                    Vector2 previousDirection = Vector2.zero;
+                    int safety = mountainRangeMaximumLength * 2;
+                    while (current != anchor && spine.Count < preferredLength + 5 && safety-- > 0)
+                    {
+                        int best = -1;
                         float bestScore = float.NegativeInfinity;
-                        foreach (int n in grid.neighbors[current])
+                        foreach (int neighbor in grid.neighbors[current])
                         {
-                            if (n < 0 || n >= tileCount) continue;
-                            if (!isLandTile[n] || isLakeTile[n] || ridgeVisited.Contains(n)) continue;
-                            if (ridgeDist[n] < 2) continue; // stay inland
-
-                            Vector2Int nc = tileCoords[n];
-                            Vector2 stepDir = new Vector2(nc.x - tileCoords[current].x, nc.y - tileCoords[current].y);
-                            if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
-                            float forward = Vector2.Dot(walkDir, stepDir); // prefer continuing direction
-                            float inlandBias = ridgeDist[n] * 0.15f;
-                            float noiseBias = noise.GetElevationPeriodic(
-                                new Vector2(nc.x + 3000f, nc.y + 3000f),
-                                mapWidth, mapHeight, elevFreqPeriodic * 2f) * 0.5f;
-                            float score = forward * 2f + inlandBias + noiseBias;
-                            if (score > bestScore) { bestScore = score; bestNext = n; }
+                            if (neighbor < 0 || neighbor >= tileCount || !membership[neighbor] || visited.Contains(neighbor) || toAnchor[neighbor] < 0) continue;
+                            Vector3 delta3 = grid.tileCenters[neighbor] - grid.tileCenters[current];
+                            // Correct the horizontal seam before measuring direction.
+                            if (delta3.x > mapWidth * 0.5f) delta3.x -= mapWidth;
+                            else if (delta3.x < -mapWidth * 0.5f) delta3.x += mapWidth;
+                            Vector2 direction = new Vector2(delta3.x, delta3.z).normalized;
+                            float forward = previousDirection.sqrMagnitude > 0f ? Vector2.Dot(previousDirection, direction) : 0f;
+                            float progress = toAnchor[current] - toAnchor[neighbor];
+                            float curveNoise = noise.GetElevationPeriodic(new Vector2(tileCoords[neighbor].x + 3711f, tileCoords[neighbor].y + 1193f), mapWidth, mapHeight, elevFreqPeriodic * 0.65f);
+                            float score = progress * 2.4f + forward * 1.15f + Mathf.Min(coastDistance[neighbor], 6) * 0.12f + GeologyRangeWeight(neighbor) * 0.7f + curveNoise * 0.35f;
+                            if (score > bestScore) { bestScore = score; best = neighbor; }
                         }
-
-                        if (bestNext < 0) break;
-                        ridgePath.Add(bestNext);
-                        ridgeVisited.Add(bestNext);
-                        // Gently curve the walk direction (smooth turns)
-                        Vector2Int bc = tileCoords[bestNext];
-                        Vector2 newDir = new Vector2(bc.x - tileCoords[current].x, bc.y - tileCoords[current].y);
-                        if (newDir.sqrMagnitude > 0.001f) newDir.Normalize();
-                        walkDir = (walkDir * 0.7f + newDir * 0.3f).normalized;
-                        current = bestNext;
+                        if (best < 0) break;
+                        Vector3 chosenDelta = grid.tileCenters[best] - grid.tileCenters[current];
+                        if (chosenDelta.x > mapWidth * 0.5f) chosenDelta.x -= mapWidth;
+                        else if (chosenDelta.x < -mapWidth * 0.5f) chosenDelta.x += mapWidth;
+                        Vector2 chosenDirection = new Vector2(chosenDelta.x, chosenDelta.z).normalized;
+                        previousDirection = previousDirection.sqrMagnitude > 0f ? (previousDirection * 0.72f + chosenDirection * 0.28f).normalized : chosenDirection;
+                        current = best;
+                        visited.Add(current);
+                        spine.Add(current);
                     }
+                    if (spine.Count < 7) continue;
 
-                    if (ridgePath.Count < 4) continue;
-
-                    // BFS outward from ridgeline to create foothills falloff
-                    int foothillRadius = 3;
-                    int[] ridgeProximity = new int[tileCount];
-                    for (int i = 0; i < tileCount; i++) ridgeProximity[i] = int.MaxValue;
-
-                    var foothillQueue = new Queue<int>();
-                    foreach (int rt in ridgePath)
+                    // Mark the identifiable centerline, then widen selected sections. Neighbor choices
+                    // are seeded and local, producing irregular 1/2/occasionally 3-hex widths.
+                    foreach (int tile in spine)
                     {
-                        ridgeProximity[rt] = 0;
-                        foothillQueue.Enqueue(rt);
+                        mountainRangeCore[tile] = true;
+                        mountainRangeStrength[tile] = 1f;
                     }
-                    while (foothillQueue.Count > 0)
+                    for (int step = 1; step < spine.Count - 1; step++)
                     {
-                        int cur = foothillQueue.Dequeue();
-                        int nd2 = ridgeProximity[cur] + 1;
-                        if (nd2 > foothillRadius) continue;
-                        foreach (int n in grid.neighbors[cur])
+                        float widthRoll = (float)rangeRandom.NextDouble();
+                        int extraCore = widthRoll < 0.09f * roughness ? 2 : (widthRoll < 0.36f * roughness ? 1 : 0);
+                        var options = new List<int>();
+                        foreach (int neighbor in grid.neighbors[spine[step]])
+                            if (neighbor >= 0 && neighbor < tileCount && membership[neighbor] && coastDistance[neighbor] >= 1 && !mountainRangeCore[neighbor]) options.Add(neighbor);
+                        for (int extra = 0; extra < extraCore && options.Count > 0; extra++)
                         {
-                            if (n < 0 || n >= tileCount) continue;
-                            if (ridgeProximity[n] <= nd2) continue;
-                            if (!isLandTile[n] || isLakeTile[n]) continue;
-                            ridgeProximity[n] = nd2;
-                            foothillQueue.Enqueue(n);
+                            int pick = rangeRandom.Next(options.Count);
+                            int widened = options[pick];
+                            options.RemoveAt(pick);
+                            mountainRangeCore[widened] = true;
+                            mountainRangeStrength[widened] = Mathf.Max(mountainRangeStrength[widened], 0.82f);
                         }
                     }
 
-                    // Boost shapedNoisePerTile along the ridgeline and foothills
-                    float ridgePeakBoost = 0.35f; // center of ridge gets this much noise boost
-                    for (int i = 0; i < tileCount; i++)
+                    // Protected Hill passes occur only away from endpoints and remain authoritative.
+                    int desiredPasses = spine.Count >= 27 ? 2 : (spine.Count >= 15 && rangeRandom.NextDouble() < 0.7 ? 1 : 0);
+                    int lastPassStep = -10;
+                    for (int passIndex = 0; passIndex < desiredPasses; passIndex++)
                     {
-                        if (ridgeProximity[i] >= int.MaxValue) continue;
-                        float falloff = 1f - (float)ridgeProximity[i] / (foothillRadius + 1);
-                        falloff = falloff * falloff; // quadratic falloff for natural profile
-                        float boost = ridgePeakBoost * falloff;
-                        shapedNoisePerTile[i] = Mathf.Clamp01(shapedNoisePerTile[i] + boost);
+                        int minStep = Mathf.Max(3, lastPassStep + 5);
+                        int maxStep = spine.Count - 4;
+                        if (minStep > maxStep) break;
+                        int passStep = rangeRandom.Next(minStep, maxStep + 1);
+                        int passTile = spine[passStep];
+                        mountainPass[passTile] = true;
+                        mountainRangeCore[passTile] = false;
+                        mountainRangeStrength[passTile] = 0.72f;
+                        mountainPassCount++;
+                        lastPassStep = passStep;
                     }
+
+                    // A single short, tapered side spur may leave the middle of a long spine.
+                    if (spine.Count >= 14 && rangeRandom.NextDouble() < mountainSpurChance * Mathf.Clamp(roughness, 0.8f, 1.25f))
+                    {
+                        int spurCurrent = spine[rangeRandom.Next(spine.Count / 3, Mathf.Max(spine.Count / 3 + 1, spine.Count * 2 / 3))];
+                        int spurLength = rangeRandom.Next(2, 7);
+                        int previous = -1;
+                        for (int spurStep = 0; spurStep < spurLength; spurStep++)
+                        {
+                            var options = new List<int>();
+                            foreach (int neighbor in grid.neighbors[spurCurrent])
+                                if (neighbor >= 0 && neighbor < tileCount && membership[neighbor] && neighbor != previous && !visited.Contains(neighbor) && coastDistance[neighbor] >= 1) options.Add(neighbor);
+                            if (options.Count == 0) break;
+                            int next = options[rangeRandom.Next(options.Count)];
+                            previous = spurCurrent;
+                            spurCurrent = next;
+                            visited.Add(next);
+                            mountainRangeStrength[next] = Mathf.Max(mountainRangeStrength[next], Mathf.Lerp(0.8f, 0.38f, spurStep / (float)Mathf.Max(1, spurLength - 1)));
+                            if (spurStep < Mathf.Max(1, spurLength / 2)) mountainRangeCore[next] = true;
+                        }
+                        mountainSpurCount++;
+                    }
+
+                    mountainRangesGenerated++;
+                    madeHere++;
                 }
-
-                if (ShouldLogDiagnostics())
-                    Debug.Log($"[PlanetGenerator] Mountain ridgelines: {ridgeCount} ranges traced, foothills radius=3");
+                perContinentCounts.Add($"{componentIndex}:{madeHere}");
             }
+
+            // One multi-source BFS supplies a smooth, three-ring foothill field for all ranges.
+            var foothillDistance = new int[tileCount];
+            Array.Fill(foothillDistance, int.MaxValue);
+            var foothillQueue = new Queue<int>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!mountainRangeCore[i]) continue;
+                foothillDistance[i] = 0;
+                foothillQueue.Enqueue(i);
+            }
+            while (foothillQueue.Count > 0)
+            {
+                int current = foothillQueue.Dequeue();
+                int nextDistance = foothillDistance[current] + 1;
+                if (nextDistance > mountainFoothillRadius) continue;
+                foreach (int neighbor in grid.neighbors[current])
+                {
+                    if (neighbor < 0 || neighbor >= tileCount || !isLandTile[neighbor] || isLakeTile[neighbor] || foothillDistance[neighbor] <= nextDistance) continue;
+                    foothillDistance[neighbor] = nextDistance;
+                    foothillQueue.Enqueue(neighbor);
+                }
+            }
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (foothillDistance[i] <= 0 || foothillDistance[i] > mountainFoothillRadius) continue;
+                float influence = 1f - (foothillDistance[i] - 1f) / Mathf.Max(1f, mountainFoothillRadius);
+                mountainRangeStrength[i] = Mathf.Max(mountainRangeStrength[i], influence * 0.68f);
+            }
+            mountainRangesByContinent = string.Join(",", perContinentCounts);
         }
 
         // Convert a normalized 0-1 noise value into a world-space elevation using
@@ -2428,6 +2584,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         ApplyAdvancedGeologyClimateAdjustments(sampledTemp, sampledMoist, sampledElev, isLandTile, isLakeTile, tileCount);
         ApplyIceWorldThermals(tileCoords, isLandTile, isLakeTile, sampledTemp, sampledMoist, thermalBiomeOverride);
 
+        int isolatedMountainCount = 0;
+        var isolatedPeakRandom = new System.Random(unchecked((int)(seed ^ 0x49534F50))); // "ISOP"
+
         // Second pass: assign biomes and build HexTileData using smoothed climate
         for (int i = 0; i < tileCount; i++)
         {
@@ -2456,28 +2615,52 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 float mountainSignal = mountainSignalPerTile[i];
                 float province = provinceNoisePerTile[i];
                 float hillThreshold = Mathf.Clamp01(hillNoiseCutoff + 0.14f - (province - 0.5f) * 0.08f);
-                float mountainThreshold = Mathf.Clamp01(mountainNoiseCutoff + 0.05f - (province - 0.5f) * 0.08f);
+                // Outside ranges an exceptional peak needs both a much stronger signal and a
+                // sparse deterministic rarity roll. Roughness and favorable geology raise that
+                // rarity slightly without reverting to noise-carpet mountains.
+                float mountainThreshold = Mathf.Clamp01(mountainNoiseCutoff + 0.13f - (province - 0.5f) * 0.035f);
                 float hillSignalFloor = Mathf.Lerp(flatElevationMax, hillElevationMin, 0.55f);
-                bool separateMountainSignal = mountainSignal > mountainThreshold && finalElevation >= hillElevationMin + (hillElevationMax - hillElevationMin) * 0.8f;
+                float isolatedChance = isolatedMountainFrequency * Mathf.Clamp(motifFoldedRanges * motifRuggedness, 0.65f, 1.65f);
+                if (enableAdvancedGeologyFramework)
+                {
+                    float isolatedGeologyBias = geologyStressMap != null ? geologyStressMap[i] * 0.6f : 0f;
+                    if (geologyProvinceMap != null)
+                    {
+                        var isolatedProvince = (TectonicProvinceType)geologyProvinceMap[i];
+                        if (isolatedProvince == TectonicProvinceType.FoldBelt || isolatedProvince == TectonicProvinceType.VolcanicArc)
+                            isolatedGeologyBias += 0.65f;
+                    }
+                    isolatedChance *= 1f + isolatedGeologyBias;
+                }
+                bool separateMountainSignal = mountainSignal > mountainThreshold &&
+                    finalElevation >= hillElevationMin + (hillElevationMax - hillElevationMin) * 0.9f &&
+                    isolatedPeakRandom.NextDouble() < isolatedChance;
                 bool separateHillSignal = hillSignal > hillThreshold && finalElevation >= hillSignalFloor;
 
-                if (finalElevation >= mountainElevationMin || separateMountainSignal)
+                if (mountainPass[i])
                 {
-                    if (biome != Biome.Glacier && biome != Biome.Arctic)
-                    {
-                        isMountain = true;
-                        if (finalElevation < mountainElevationMin)
-                            finalElevation = Mathf.Lerp(finalElevation, mountainElevationMin, 0.55f);
-                    }
+                    isHill = true;
+                    finalElevation = Mathf.Clamp(finalElevation, hillElevationMin, hillElevationMax);
                 }
-                else if (finalElevation >= hillElevationMin || separateHillSignal)
+                else if (mountainRangeCore[i])
+                {
+                    isMountain = true;
+                    finalElevation = Mathf.Max(finalElevation, mountainElevationMin);
+                }
+                else if (separateMountainSignal)
+                {
+                    isMountain = true;
+                    isolatedMountainCount++;
+                    finalElevation = Mathf.Max(finalElevation, mountainElevationMin);
+                }
+                else if (mountainRangeStrength[i] > 0f || finalElevation >= hillElevationMin || separateHillSignal)
                 {
                     bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.Lava || biome == Biome.River);
                     if (!biomeIsWater)
                     {
                         isHill = true;
                         if (finalElevation < hillElevationMin)
-                            finalElevation = Mathf.Lerp(finalElevation, hillElevationMin, 0.5f);
+                            finalElevation = Mathf.Lerp(finalElevation, hillElevationMin, Mathf.Lerp(0.5f, 1f, mountainRangeStrength[i]));
                     }
                 }
                 // Track land elevation range for later normalization
@@ -2517,8 +2700,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             var y = BiomeHelper.Yields(biome);
             int moveCost = BiomeHelper.GetMovementCost(biome);
             ElevationTier elevTier = ElevationTier.Flat;
-            if (isMountain || finalElevation >= mountainElevationMin) elevTier = ElevationTier.Mountain;
-            else if (isHill || finalElevation >= hillElevationMin) elevTier = ElevationTier.Hill;
+            // Classification masks/decisions are authoritative. Do not re-promote protected
+            // passes or exceptional high-noise foothills solely from simulation elevation.
+            if (!mountainPass[i] && isMountain) elevTier = ElevationTier.Mountain;
+            else if (isHill) elevTier = ElevationTier.Hill;
 
             #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
             var td = new HexTileData
@@ -2554,6 +2739,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
                 yield return null;
             }
+        }
+
+        if (ShouldLogDiagnostics())
+        {
+            int coreTiles = 0;
+            int foothillTiles = 0;
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (mountainRangeCore[i]) coreTiles++;
+                else if (mountainRangeStrength[i] > 0f) foothillTiles++;
+            }
+            Debug.Log($"[PlanetGenerator] MountainRanges: continents={mountainEligibleContinents} ranges={mountainRangesGenerated} coreTiles={coreTiles} foothills={foothillTiles} passes={mountainPassCount} spurs={mountainSpurCount} isolatedPeaks={isolatedMountainCount} perContinent=[{mountainRangesByContinent}]");
         }
 
         if (enableDiagnostics)
