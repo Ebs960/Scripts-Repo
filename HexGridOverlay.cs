@@ -42,11 +42,6 @@ public class HexGridOverlay : MonoBehaviour
     private HexMapChunkManager chunkManager;
     private Camera mainCamera;
     
-    // Terrain height sampling
-    private float displacementStrength = 1f;
-    private float flatY = 0f;
-    private Texture2D heightmapTexture;
-    
     // Line renderer pool
     private List<LineRenderer> lineRendererPool = new List<LineRenderer>();
     private int activeLineRenderers = 0;
@@ -229,15 +224,6 @@ public class HexGridOverlay : MonoBehaviour
         if (chunkManager != null)
         {
             grid = chunkManager.Grid;
-            displacementStrength = chunkManager.DisplacementStrength;
-            // Try to pull the runtime heightmap directly from the shared terrain material.
-            // This lets the grid follow the *same bilinear-smoothed heightmap* that the shader uses.
-            // Without this, edges look "weird" because the terrain slopes at tile boundaries while
-            // the overlay lines sit at a constant height per tile.
-            if (chunkManager.SharedMaterial != null && chunkManager.SharedMaterial.HasProperty("_Heightmap"))
-            {
-                heightmapTexture = chunkManager.SharedMaterial.GetTexture("_Heightmap") as Texture2D;
-            }
             if (!silent)
             {
                 // Debug.Log — FindReferences found HexMapChunkManager (disabled to reduce console noise)
@@ -344,18 +330,8 @@ public class HexGridOverlay : MonoBehaviour
             
             tilesInRange++;
             
-            // Base height for this tile.
-            // If we can sample the runtime heightmap (preferred), do it per-point (corners).
-            // Otherwise fall back to the tile's stored elevation (center) which can mismatch at edges.
-            float tileElevation = 0f;
-            if (planetGenerator != null)
-            {
-                HexTileData tileData = planetGenerator.GetHexTileData(i);
-                if (tileData != null) tileElevation = tileData.elevation;
-            }
-            float visualYCenter = flatY + tileElevation * displacementStrength + heightOffset;
-            
-            // (old per-corner height sampling removed) We'll render simple flat hexagons per-tile below.
+            // Stepped tops are flat, so every outline corner shares the authoritative tile Y.
+            float visualYCenter = chunkManager.GetRenderedTerrainWorldY(i) + heightOffset;
             
             // Simpler rendering: draw a closed hexagon per tile using shared corner positions when available.
             LineRenderer lr = GetOrCreateLineRenderer();
@@ -417,7 +393,6 @@ public class HexGridOverlay : MonoBehaviour
                 $"  Distance from cam to tile[0]: {Vector3.Distance(camPos, sampleCenter):F1}\n" +
                 $"  lineWidth: {lineWidth}, gridColor: {gridColor}\n" +
                 $"  Material: {(lineMaterial != null ? lineMaterial.shader.name : "NULL")}\n" +
-                $"  displacementStrength: {displacementStrength}, flatY: {flatY}\n" +
                 $"  Parent active: {lineRendererParent?.gameObject.activeInHierarchy}");
             
             if (tilesInRange == 0)

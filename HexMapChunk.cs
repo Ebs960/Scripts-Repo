@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// Represents a single chunk of the hex map.
-/// Each chunk is a subdivided plane that samples from the shared baked texture.
-/// Chunks use the shared terrain shader provided by `HexMapChunkManager`.
+/// Represents one CPU-generated stepped-hex campaign terrain chunk.
+/// Chunks share the SurfaceFamily terrain material provided by `HexMapChunkManager`.
 /// Chunks can be teleported for seamless world wrapping.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -389,11 +388,8 @@ public class HexMapChunk : MonoBehaviour
     public void Refresh()
     {
         if (!isDirty) return;
-        
-        if (manager != null && manager.GeometryMode == TerrainGeometryMode.SteppedHexExperimental)
-            GenerateSteppedHexMesh();
-        else
-            GenerateSubdividedMesh();
+
+        GenerateTerrainMesh();
         isDirty = false;
     }
     
@@ -407,157 +403,10 @@ public class HexMapChunk : MonoBehaviour
     }
     
     /// <summary>
-    /// Generate a subdivided plane mesh that maps to the baked texture region.
-    /// Uses the same approach as FlatMapTextureRenderer.CreateSubdividedPlane().
-    /// GPU vertex shader does elevation displacement via heightmap.
+    /// Builds the production faceted terrain mesh for all stepped hexes assigned to this chunk.
+    /// Terrain elevation is authored directly into the CPU mesh and is never shader-displaced.
     /// </summary>
-    private void GenerateSubdividedMesh()
-    {
-        if (manager == null) return;
-        
-        int subdivisionsX = manager.MeshSubdivisionsPerChunk;
-        int subdivisionsZ = Mathf.Max(1, Mathf.RoundToInt(subdivisionsX * ((localMaxZ - localMinZ) / (localMaxX - localMinX))));
-        
-        int vertsX = subdivisionsX + 1;
-        int vertsZ = subdivisionsZ + 1;
-        int vertCount = vertsX * vertsZ;
-        
-        var vertices = new Vector3[vertCount];
-        var uvs = new Vector2[vertCount];
-        var normals = new Vector3[vertCount];
-        var tangents = new Vector4[vertCount];
-        
-        float width = localMaxX - localMinX;
-        float height = localMaxZ - localMinZ;
-        
-        // Generate vertices
-        for (int z = 0; z < vertsZ; z++)
-        {
-            for (int x = 0; x < vertsX; x++)
-            {
-                int idx = z * vertsX + x;
-                
-                float tx = (float)x / subdivisionsX;
-                float tz = (float)z / subdivisionsZ;
-                
-                // UV for main texture (interpolate within our region of the baked texture)
-                Vector2 uv = new Vector2(
-                    Mathf.Lerp(uvMin.x, uvMax.x, tx),
-                    Mathf.Lerp(uvMin.y, uvMax.y, tz)
-                );
-
-                float y = 0f;
-                if (manager != null && manager.UseCpuDisplacedTerrainMesh)
-                {
-                    // SampleTerrainSurfaceYAtUV returns world-space surface Y (flatY + elevation). This mesh is
-                    // parented under the terrain column at flatY, so store only the local offset here.
-                    y = manager.SampleTerrainSurfaceYAtUV(uv) - manager.FlatY;
-                }
-
-                vertices[idx] = new Vector3(
-                    localMinX + tx * width,
-                    y,
-                    localMinZ + tz * height
-                );
-                
-                uvs[idx] = uv;
-                
-                normals[idx] = Vector3.up;
-                tangents[idx] = new Vector4(1f, 0f, 0f, 1f);
-            }
-        }
-        
-        // Generate triangles
-        int triCount = subdivisionsX * subdivisionsZ * 6;
-        var triangles = new int[triCount];
-        int triIdx = 0;
-        
-        for (int z = 0; z < subdivisionsZ; z++)
-        {
-            for (int x = 0; x < subdivisionsX; x++)
-            {
-                int bl = z * vertsX + x;
-                int br = bl + 1;
-                int tl = bl + vertsX;
-                int tr = tl + 1;
-                
-                // First triangle
-                triangles[triIdx++] = bl;
-                triangles[triIdx++] = tl;
-                triangles[triIdx++] = tr;
-                
-                // Second triangle
-                triangles[triIdx++] = bl;
-                triangles[triIdx++] = tr;
-                triangles[triIdx++] = br;
-            }
-        }
-        
-        // Apply to mesh
-        mesh.Clear();
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.normals = normals;
-        mesh.tangents = tangents;
-        mesh.triangles = triangles;
-
-        if (manager != null && manager.UseCpuDisplacedTerrainMesh)
-        {
-            mesh.RecalculateNormals();
-            mesh.RecalculateTangents();
-            mesh.RecalculateBounds();
-        }
-        else
-        {
-            mesh.RecalculateBounds();
-        }
-
-        // IMPORTANT (HDRP / GPU displacement):
-        // This mesh is a flat plane in CPU vertex data; actual terrain relief is applied in the shader via heightmap displacement.
-        // Unity's frustum culling uses the mesh bounds. If bounds have ~0 thickness in Y, chunks can be culled incorrectly
-        // at low camera angles (looks like "terrain disappearing / see-through at the horizon").
-        //
-        // Fix: expand the bounds vertically based on the displacement strength.
-            try
-            {
-                float displacement = 1f; // Default: world-space elevation scale
-                if (manager != null && manager.SharedMaterial != null && manager.SharedMaterial.HasProperty("_ElevationScale"))
-                {
-                    displacement = manager.SharedMaterial.GetFloat("_ElevationScale");
-                }
-                else if (manager != null)
-                {
-                    displacement = manager.DisplacementStrength;
-                }
-
-                // Expand bounds significantly to prevent frustum culling at shallow camera angles.
-                // At low pitch angles (30-40°), chunks can be incorrectly culled if bounds are too thin in Y.
-                // Use: displacement + generous padding, enforced with robust minimum.
-                float halfY = Mathf.Max(displacement + 10f, 40f); // At least 80 units tall
-                var b = mesh.bounds;
-                b.center = new Vector3(b.center.x, 0f, b.center.z);
-                b.size = new Vector3(Mathf.Max(b.size.x, 0.0001f), halfY * 2f, Mathf.Max(b.size.z, 0.0001f));
-                mesh.bounds = b;
-            }
-            catch
-            {
-                // Bounds expansion is a robustness improvement; ignore failures to avoid breaking chunk generation.
-            }
-        
-        // Update collider
-        if (meshCollider != null)
-        {
-            meshCollider.sharedMesh = null;
-            meshCollider.sharedMesh = mesh;
-        }
-    }
-
-    /// <summary>
-    /// Builds one faceted mesh for all stepped hexes assigned to this chunk. Heights are
-    /// visual-only and are authored directly into the CPU mesh, so the terrain shader must
-    /// not apply its heightmap displacement while this mode is active.
-    /// </summary>
-    private void GenerateSteppedHexMesh()
+    private void GenerateTerrainMesh()
     {
         if (manager == null || manager.Grid == null || !manager.Grid.IsBuilt || mesh == null)
             return;

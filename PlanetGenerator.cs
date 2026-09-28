@@ -6663,19 +6663,5 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
     }
 
-    /// <summary>
-    /// Get the displacement scale from HexMapChunkManager (artistic multiplier, default 1.0).
-    /// With world-space elevation, this is typically 1.0 unless terrain is artistically exaggerated.
-    /// </summary>
-    private float GetActualDisplacementStrength()
-    {
-        if (terrainRenderer != null)
-            return terrainRenderer.DisplacementStrength;
 
-        var chunkManager = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        if (chunkManager != null)
-            return chunkManager.DisplacementStrength;
-
-        return 1f; // World-space elevation: default scale is 1.0
-    }
 }

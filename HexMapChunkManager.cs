@@ -127,50 +127,10 @@ public enum TerrainDebugMode
 }
 
 /// <summary>
-/// Manages all hex map chunks and handles seamless world wrapping.
-/// Replaces FlatMapTextureRenderer with a chunk-based approach that enables:
-/// - Seamless horizontal wrap via column teleportation (Civ 5 style)
-/// - Per-chunk dirty marking for dynamic tile updates
-/// - Same visual quality using PlanetTextureBaker for minimap and HDRP terrain shading
-/// 
-/// This integrates with the existing pipeline:
-/// - Uses PlanetTextureBaker.Bake() or BakeGPU() for minimap textures
-/// - Uses BiomeVisualDatabase for terrain textures
-/// - Uses HDRP terrain shader for heightmap displacement and overlays
-/// - Subscribes to OnSurfaceGenerated to wait for proper map generation
+/// Chunk-based stepped-hex campaign terrain renderer with SurfaceFamily texture-array
+/// materials, world wrapping, water integration, season masks, and exact mesh picking.
+/// PlanetTextureBaker remains responsible for minimap and tile lookup data only.
 /// </summary>
-public enum TerrainRenderPath
-{
-    CustomBiomeShader,
-    BakedHdrpLit,
-    HdrpLitBiomeShaderGraph
-}
-
-public enum TerrainGeometryMode
-{
-    Smooth = 0,
-    SteppedHexExperimental = 1
-}
-
-public enum BakedSurfaceUVMode
-{
-    GlobalMapUV,
-    WorldPlanar,
-    TileStableOffsetWorldPlanar
-}
-
-public enum BakedTerrainDebugBakeMode
-{
-    Final,
-    AlbedoOnly,
-    NormalOnlyVisualized,
-    MaskSmoothnessVisualized,
-    MaskAOVisualized,
-    SurfaceFamilyColor,
-    SurfaceSliceColor,
-    TilingVisualized
-}
-
 public class HexMapChunkManager : MonoBehaviour
 {
     [Header("References")]
@@ -178,134 +138,33 @@ public class HexMapChunkManager : MonoBehaviour
     // Keep visuals deterministic and avoid multiple competing "color provider" assets.
     [SerializeField] private ComputeShader textureBakerComputeShader;
     [SerializeField]
-    [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
+    [Tooltip("Production stepped terrain shader. Must support _BiomeIndexMap, biome texture arrays, and _BiomeCount.")]
     private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     public BiomeVisualDatabase BiomeVisuals=>biomeVisualDatabase;
+    [SerializeField]
+    [Tooltip("Clear cached SurfaceFamily texture arrays before rebuilding terrain materials.")]
+    private bool clearSurfaceLibraryCacheBeforeBuild = true;
     [SerializeField]
     [Tooltip("Ice surface texture database (albedos, normals, tints, tiling) for lake and river freeze visuals. " +
              "Must match the IceSurfaceDatabase assigned to ClimateManager.")]
     private IceSurfaceDatabase iceSurfaceDatabase;
 
-    [Header("Terrain Render Path")]
-    [SerializeField] private TerrainRenderPath terrainRenderPath = TerrainRenderPath.BakedHdrpLit;
-
-    [Header("Baked HDRP Lit Terrain")]
-    [SerializeField] private Material bakedLitTerrainMaterialTemplate;
-
-    [Header("HDRP Lit Biome Shader Graph Terrain")]
-    [SerializeField]
-    [Tooltip("Shader Graph HDRP/Lit material template for the live biome/surface-family texture-array terrain path. Required when Terrain Render Path is HdrpLitBiomeShaderGraph.")]
-    private Material hdrpLitBiomeTerrainMaterialTemplate;
-
-    [SerializeField]
-    [Tooltip("Resolution width for baked HDRP/Lit terrain maps. Use 2048 initially; can be reduced for testing.")]
-    private int bakedTerrainTextureWidth = 2048;
-
-    [SerializeField]
-    [Tooltip("Resolution height for baked HDRP/Lit terrain maps. Use 1024 or 2048 initially.")]
-    private int bakedTerrainTextureHeight = 1024;
-
-    [SerializeField]
-    [Tooltip("When true, bakes simple biome/minimap colors. Disable to bake BaseColorMap from resolved surface-family albedo texture slices.")]
-    private bool bakedTerrainUseSimpleBiomeColors = true;
-
-    [SerializeField]
-    [Tooltip("If true, keeps baked textures CPU-readable for debugging. Disable for production to save memory.")]
-    private bool keepBakedTerrainTexturesReadable = false;
-
-    [SerializeField] private bool bakedTerrainBakeMaskMap = false;
-    [SerializeField] private bool bakedTerrainBakeNormalMap = false;
-    [SerializeField] private bool bakedTerrainBakeCliffs = false;
-
-    [SerializeField] private BakedSurfaceUVMode bakedSurfaceUVMode = BakedSurfaceUVMode.TileStableOffsetWorldPlanar;
-
-    [SerializeField]
-    [Tooltip("Global multiplier applied after biome/family tiling. Keep near 1. Old hardcoded behavior was effectively 8.")]
-    private float bakedSurfaceGlobalTilingMultiplier = 1f;
-
-    [SerializeField]
-    [Tooltip("Small random UV offset per tile/variant so repeated surfaces don't line up perfectly.")]
-    private float bakedSurfaceTileUVJitter = 0.25f;
-
-    [SerializeField]
-    [Tooltip("If enabled, cliffs are only applied to mountain/steep tiles instead of broad lowland slopes.")]
-    private bool bakedCliffsPreferMountainsAndSteepSteps = true;
-
-    [SerializeField] private BakedTerrainDebugBakeMode bakedTerrainDebugBakeMode = BakedTerrainDebugBakeMode.Final;
-
-    [SerializeField]
-    [Tooltip("For natural terrain, keep metallic at zero even if source mask R contains data.")]
-    private bool bakedTerrainForceMetallicZero = true;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedTerrainDefaultSmoothness = 0.25f;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedTerrainMaxSmoothness = 0.45f;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedTerrainMinAO = 0.35f;
-
-    [SerializeField, Range(0f, 2f)]
-    private float bakedTerrainNormalStrength = 1f;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedCliffAlbedoStrength = 0.8f;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedCliffNormalStrength = 0.8f;
-
-    [SerializeField, Range(0f, 1f)]
-    private float bakedCliffMaskStrength = 0.5f;
-
-    [SerializeField] private bool forceRebakeBakedLitTerrain;
-
-    [Header("Baked HDRP Lit Terrain Diagnostics")]
-    [SerializeField] private bool debugBakedTerrainResolution = false;
-    [SerializeField] private bool debugBakedTerrainOnlyProblemBiomes = true;
-    [SerializeField] private int debugBakedTerrainSamplesPerBiome = 10;
-    [SerializeField] private bool exportBakedTerrainDebugPng = false;
-    [SerializeField] private string bakedTerrainDebugExportFolder = "Assets/TerrainDebug";
-    [SerializeField] private bool exportProblemBiomeSlices = false;
-    [SerializeField] private bool clearSurfaceLibraryCacheBeforeBuild = true;
-
-    private Material bakedLitTerrainMaterial;
-    private Material hdrpLitBiomeTerrainMaterial;
-    private Texture2D bakedTerrainBaseColor;
-    private Texture2D bakedTerrainMaskMap;
-    private Texture2D bakedTerrainNormalMap;
-    private Color[] bakedTerrainLastCliffMaskPixels;
-    private int bakedTerrainLastCliffMaskWidth;
-    private int bakedTerrainLastCliffMaskHeight;
-
     [Header("Orbit Overlay")]
     [Tooltip("Shader used for the transparent orbit highlight overlay mesh (auto-found if null).")]
     [SerializeField] private Shader orbitOverlayShader;
-    
+
     [Header("Texture Settings")]
     [Tooltip("Width of biome texture arrays (used for shader arrays and baking).")]
     [SerializeField] private int textureWidth = 2048;
     [Tooltip("Height of biome texture arrays (used for shader arrays and baking). Use 2048 for 2048x2048 RGBA32 arrays.")]
     [SerializeField] private int textureHeight = 2048;
-    [Tooltip("Anisotropic level to apply to the runtime generated heightmap texture.")]
-    [SerializeField]
-    [Range(0,16)]
-    private int heightmapAnisoLevel = 4;
-    
     [Header("Chunk Settings")]
     [Tooltip("Number of chunk columns (X axis). More columns = finer wrap granularity.")]
     [SerializeField] private int chunksX = 8;
     [Tooltip("Number of chunk rows (Z axis).")]
     [SerializeField] private int chunksZ = 4;
-    [Tooltip("Mesh subdivisions per chunk for smooth heightmap displacement.")]
-    [SerializeField] private int meshSubdivisionsPerChunk = 32;
-
-    [Header("Terrain Geometry")]
-    [SerializeField]
-    private TerrainGeometryMode terrainGeometryMode = TerrainGeometryMode.Smooth;
-
-    [Header("Stepped Hex - Experimental")]
+    [Header("Stepped Hex Terrain")]
     [Range(0.90f, 1f)]
     [SerializeField]
     private float steppedHexTopScale = 1f;
@@ -324,7 +183,7 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float steppedHillHeightAboveSea = 3.5f;
     [SerializeField] private float steppedMountainHeightAboveSea = 7.5f;
 
-    [Header("Stepped Seafloor - Experimental")]
+    [Header("Stepped Seafloor")]
     [Min(0f)] [SerializeField] private float steppedOceanDepthBelowSea = 2f;
     [Min(0f)] [SerializeField] private float steppedAbyssalDepthBelowSea = 3.5f;
     [Min(0f)] [SerializeField] private float steppedTrenchDepthBelowSea = 5.5f;
@@ -332,13 +191,10 @@ public class HexMapChunkManager : MonoBehaviour
     [Min(0f)]
     [SerializeField]
     private float steppedSeamDepth = 0.08f;
-    
-    [Header("Displacement Settings")]
-    [Tooltip("Multiplier for terrain elevation. With world-space elevation, 1.0 means elevation values are used directly. Values >1 exaggerate terrain height for artistic effect.")]
-    [Range(0.1f, 10f)]
-    [SerializeField] private float displacementStrength = 1.0f;
+
+    [Header("Terrain Placement")]
     [SerializeField] private float flatY = 0f;
-    
+
     [Header("Rendering Options")]
     [Tooltip("When true, preserve land tile elevations adjacent to lakes/rivers by using the original pre-water elevation for rendering.")]
     [SerializeField] private bool preserveLandElevationNearFreshwater = true;
@@ -361,7 +217,7 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     [Tooltip("Multiplier applied to smoothness channel from biome mask")]
     private float smoothnessMultiplier = 1.0f;
-    
+
     [Header("Triplanar Settings")]
     [Tooltip("Triplanar tiling scale — controls how large biome textures appear on terrain. Lower = larger textures.")]
     [Range(0.01f, 5f)]
@@ -372,23 +228,14 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     [Tooltip("When true, use triplanar/hex-tiled sampling; when false, use simple Y-planar sampling.")]
     private bool useTriplanar = true;
-    
+
     [Header("Normals & Biome Blending")]
-    [Tooltip("Strength multiplier for heightmap-derived displaced normals")]
-    [Range(0.01f, 5f)]
-    [SerializeField] private float normalStrength = 1.0f;
     [Tooltip("Strength multiplier for biome normal maps (surface bump detail). Higher = more visible texture bumps.")]
     [Range(0f, 5f)]
     [SerializeField] private float biomeNormalStrength = 1.0f;
-    [Tooltip("Radius (in texels) used when sampling normals/heightmap for normal computation")]
-    [Range(1f, 12f)]
-    [SerializeField] private float normalSampleRadius = 4f;
     [Tooltip("Radius (in texels) used for biome blending between neighboring biome slices")]
     [Range(0f, 16f)]
     [SerializeField] private float biomeBlendRadius = 4f;
-    [Tooltip("Blend sharpness used when blending biome surfaces by height")]
-    [Range(0.01f, 10f)]
-    [SerializeField] private float biomeBlendSharpness = 3f;
 
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
@@ -442,17 +289,15 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool logTransformChainOnBuild = true;
     [Tooltip("Logs whenever this manager's transform changes at runtime (position/rotation/scale).")]
     [SerializeField] private bool debugTransformChanges = false;
-    [Tooltip("When enabled, dump per-biome tint values and slice->biome map samples to the Console for debugging.")]
-    [SerializeField] private bool debugBiomeDetails = false;
     [Tooltip("When enabled, logs detailed water/SDF diagnostics: pre-build tile counts, SDF seed counts, per-chunk mesh stats, post-build summary. Helps diagnose gaps or missing water.")]
     [SerializeField] private bool debugWaterVerbose = false;
     private Vector3 _lastTransformPos;
     private Quaternion _lastTransformRot;
     private Vector3 _lastTransformScale;
-    
+
     // NOTE: Hex grid overlay was removed - shader graph doesn't support it.
     // To add hex grid, create a separate HexGridOverlay script using line renderers or decals.
-    
+
     [Header("Water Mesh System")]
     [Tooltip("Material for chunk-based water tiles (lakes, ocean, rivers). Assign SG_WaterTile material.")]
     [SerializeField] private Material waterMaterial;
@@ -527,33 +372,32 @@ public class HexMapChunkManager : MonoBehaviour
 
     [Header("Season Masks")]
     [SerializeField] private bool enableSeasonMasks = false;
-    
+
     // Chunk storage
     private HexMapChunk[,] chunks;
     private GameManager.PlanetLayerType currentViewLayer = GameManager.PlanetLayerType.Surface;
     private Transform[] columnParents;
-    
-    // Baked texture data (shared across all chunks)
+
+    // Shared minimap/LUT and terrain material data.
     private PlanetTextureBaker.BakeResult bakeResult;
     private Material sharedMaterial;
     private Texture2D biomeIndexMap;
+    // Auxiliary simulation/hydrology texture used by the SDF water builder.
+    // THIS TEXTURE DOES NOT DEFINE VISIBLE TERRAIN HEIGHT.
     private Texture2D heightmapTexture;
     // Cached inspector-backed runtime values for change detection
-    private int _lastHeightmapAnisoLevel = -1;
     private bool _lastUseTriplanar = true;
     private float _lastCliffTiling = -1f;
     private float _lastCliffStrength = -1f;
     private float _lastCliffSlopeThreshold = -1f;
     private float _lastCliffSlopeBlend = -1f;
-    private float _lastCliffStepThreshold = -1f;
-    private float _lastCliffStepBlend = -1f;
     // Heightmap diagnostics (computed during BuildHeightmap)
     private float _heightmapMin = 0f;
     private float _heightmapMax = 0f;
     private int _heightmapNonZero = 0;
     private int _heightmapInvalidLut = 0;
     private int _heightmapMissingTileData = 0;
-    private Texture2D sliceToBiomeMap; // 1D texture: pixel[sliceIndex].r = biomeIndex (for shader tint/params lookup)
+    private Texture2D sliceToBiomeMap; // 1D texture: pixel[sliceIndex].r = biome index for dynamic parameters.
     private Texture2DArray biomeAlbedoArray;
     private Texture2DArray biomeNormalArray;
     private Texture2DArray biomeMaskArray;
@@ -565,7 +409,7 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     [Tooltip("Optional detail normal array for cliffs. Assign a Texture2DArray matching `cliffAlbedoArray` depth.")]
     private Texture2DArray cliffNormalArray;
-    
+
     [Header("Cliff Settings")]
     [SerializeField]
     [Range(0.1f, 200f)]
@@ -579,30 +423,21 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     [Range(0f, 1f)]
     private float cliffSlopeBlend = 0.2f;
-    [SerializeField]
-    [Range(0f, 1f)]
-    [Tooltip("Tile-step threshold (in normalized heightmap units). If center - neighbor > this, it is considered a step.")]
-    private float cliffStepThreshold = 0.15f;
-    [SerializeField]
-    [Range(0f, 1f)]
-    [Tooltip("How quickly the step mask falls off (in normalized heightmap units).")]
-    private float cliffStepBlend = 0.08f;
     // Base surface mapping: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
     private Vector4[] biomeSurfaceMapArray;
     // Mountain override mapping: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
     private Vector4[] biomeMountainSurfaceMapArray;
     private Texture2D biomeSurfaceMapTexture;
     private Texture2D biomeEmissiveMapTexture;
-    private Vector4[] biomeTintArray;
     private Vector4[] biomeParamsArray;
     private Vector4[] biomeRoughnessOffsetsArray;
     private Dictionary<Biome, int> biomeIndexLookup;
-    
+
     // Map dimensions
     private float mapWidth;
     private float mapHeight;
     private float columnWidth;
-    
+
     // References
     private HexGrid grid;
     private PlanetGenerator planetGenerator;
@@ -616,7 +451,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (!GameManager.Instance.restrictDiagnosticsToFirstPlanet) return true;
         return planetGenerator != null && planetGenerator.planetIndex == 0;
     }
-    
+
     // Tile to chunk mapping
     private Dictionary<int, HexMapChunk> tileToChunk = new Dictionary<int, HexMapChunk>();
 
@@ -639,31 +474,24 @@ public class HexMapChunkManager : MonoBehaviour
     // Seasonal mask sizing
     private int seasonMaskWidth;
     private int seasonMaskHeight;
-    
+
     // Event subscriptions
     private PlanetGenerator _surfaceEventSource;
     private bool _subscribedToPlanetReady;
-    
+
     // Coroutine tracking for async chunk building
     private Coroutine _buildCoroutine;
-    
+
     // Public accessors (API compatible with FlatMapTextureRenderer)
         public float MapWidth => mapWidth;
     public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
-    public int MeshSubdivisionsPerChunk => meshSubdivisionsPerChunk;
     internal int GridChunkCountX => chunksX;
     internal int GridChunkCountZ => chunksZ;
-    public TerrainGeometryMode GeometryMode => terrainGeometryMode;
     internal float SteppedHexTopScale => steppedHexTopScale;
     internal float SteppedBevelWidth => steppedBevelWidth;
     internal float SteppedBevelDrop => steppedBevelDrop;
     internal float SteppedSeamDepth => steppedSeamDepth;
-    /// <summary>
-    /// The actual displacement strength used by the terrain shader (_ElevationScale).
-    /// Water surfaces must use this value to match terrain vertex displacement.
-    /// </summary>
-    public float DisplacementStrength => displacementStrength;
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
     public Texture MapTexture => bakeResult.texture;
@@ -671,18 +499,13 @@ public class HexMapChunkManager : MonoBehaviour
     public int LUTWidth => bakeResult.width;
     public int LUTHeight => bakeResult.height;
     public Material SharedMaterial => sharedMaterial;
-    public TerrainRenderPath RenderPath => terrainRenderPath;
-    public bool UseBakedHdrpLit => terrainRenderPath == TerrainRenderPath.BakedHdrpLit;
-    public bool UseCpuDisplacedTerrainMesh => terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental
-        || terrainRenderPath == TerrainRenderPath.BakedHdrpLit
-        || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
     public float FlatY => flatY;
     public bool WrapEnabled => enableWrap;
-    
+
     // Collider for WorldPicker (uses MeshCollider for proper UV support)
     private Collider pickingCollider;
     public Collider PickingCollider => pickingCollider;
-    
+
     // Per-layer picking colliders (flat meshes at the correct Y for parallax-free picking)
     private Collider waterPickingCollider;
     public Collider WaterPickingCollider => waterPickingCollider;
@@ -773,7 +596,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// API-compatible method matching FlatMapTextureRenderer.Rebuild().
     /// </summary>
@@ -781,7 +604,7 @@ public class HexMapChunkManager : MonoBehaviour
     {
         BuildChunks(planetGen);
     }
-    
+
     private void OnEnable()
     {
         _subscribedToPlanetReady = false;
@@ -790,29 +613,29 @@ public class HexMapChunkManager : MonoBehaviour
             GameManager.Instance.OnPlanetReady += HandlePlanetReady;
             _subscribedToPlanetReady = true;
         }
-        
+
         ClimateManager.OnPlanetSeasonChanged         += HandlePlanetSeasonChanged;
         ClimateManager.OnPlanetFreezeTargetsReady     += HandleFreezeTargetsReady;
         ClimateManager.OnPlanetFreezeProgressChanged  += HandleFreezeProgressChanged;
     }
-    
+
     private void OnDisable()
     {
         _subscribedToPlanetReady = false;
         if (GameManager.Instance != null)
             GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
-        
+
         if (_surfaceEventSource != null)
         {
             _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
             _surfaceEventSource = null;
         }
-        
+
         ClimateManager.OnPlanetSeasonChanged         -= HandlePlanetSeasonChanged;
         ClimateManager.OnPlanetFreezeTargetsReady     -= HandleFreezeTargetsReady;
         ClimateManager.OnPlanetFreezeProgressChanged  -= HandleFreezeProgressChanged;
     }
-    
+
     private void Start()
     {
         if (cameraTransform == null)
@@ -820,7 +643,7 @@ public class HexMapChunkManager : MonoBehaviour
             var cam = Camera.main;
             if (cam != null) cameraTransform = cam.transform;
         }
-        
+
         // If GameManager wasn't available during OnEnable, try subscribing now.
         // Guard: only subscribe if OnEnable didn't already (avoids double-fire of BuildChunks).
         if (preBuildOnPlanetReady && GameManager.Instance != null && !_subscribedToPlanetReady)
@@ -830,11 +653,9 @@ public class HexMapChunkManager : MonoBehaviour
         _lastTransformRot = transform.rotation;
         _lastTransformScale = transform.lossyScale;
     }
-    
+
     private void LateUpdate()
     {
-        ApplyTerrainGeometryModeIfChanged();
-
         if (debugTransformChanges)
         {
             if (transform.position != _lastTransformPos || transform.rotation != _lastTransformRot || transform.lossyScale != _lastTransformScale)
@@ -869,28 +690,6 @@ public class HexMapChunkManager : MonoBehaviour
         UpdateSnow();
         UpdateTerrainSurfaceProbe();
 
-        if (forceRebakeBakedLitTerrain)
-        {
-            forceRebakeBakedLitTerrain = false;
-            if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
-            {
-                RebuildBakedHdrpLitMaterialMaps();
-            }
-        }
-
-        // Detect changes made in the inspector at runtime and apply them immediately.
-        bool applied = false;
-
-        if (_lastHeightmapAnisoLevel != heightmapAnisoLevel)
-        {
-            _lastHeightmapAnisoLevel = heightmapAnisoLevel;
-            if (heightmapTexture != null)
-            {
-                heightmapTexture.anisoLevel = heightmapAnisoLevel;
-            }
-            applied = true;
-        }
-
         if (_lastUseTriplanar != useTriplanar)
         {
             _lastUseTriplanar = useTriplanar;
@@ -903,44 +702,19 @@ public class HexMapChunkManager : MonoBehaviour
             applied = true;
         }
 
-        if (_lastCliffTiling != cliffTiling || _lastCliffStrength != cliffStrength || _lastCliffSlopeThreshold != cliffSlopeThreshold || _lastCliffSlopeBlend != cliffSlopeBlend || _lastCliffStepThreshold != cliffStepThreshold || _lastCliffStepBlend != cliffStepBlend)
+        if (_lastCliffTiling != cliffTiling || _lastCliffStrength != cliffStrength || _lastCliffSlopeThreshold != cliffSlopeThreshold || _lastCliffSlopeBlend != cliffSlopeBlend)
         {
             _lastCliffTiling = cliffTiling;
             _lastCliffStrength = cliffStrength;
             _lastCliffSlopeThreshold = cliffSlopeThreshold;
             _lastCliffSlopeBlend = cliffSlopeBlend;
-            _lastCliffStepThreshold = cliffStepThreshold;
-            _lastCliffStepBlend = cliffStepBlend;
             applied = true;
         }
 
         if (applied)
-        {
-            if (terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
-                ApplyBiomeMaterialSettings();
-            else if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph
-                && hdrpLitBiomeTerrainMaterial != null)
-                ApplyHdrpLitBiomeMaterialSettings();
-        }
+            ApplyBiomeMaterialSettings();
     }
 
-    private TerrainGeometryMode _appliedTerrainGeometryMode = (TerrainGeometryMode)(-1);
-
-    private void ApplyTerrainGeometryModeIfChanged()
-    {
-        if (_appliedTerrainGeometryMode == terrainGeometryMode)
-            return;
-
-        _appliedTerrainGeometryMode = terrainGeometryMode;
-        if (sharedMaterial != null && sharedMaterial.HasProperty("_UseMeshElevation"))
-        {
-            sharedMaterial.SetFloat("_UseMeshElevation",
-                terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental ? 1f : 0f);
-        }
-
-        RefreshAllChunks();
-    }
-    
     private void UpdateTerrainSurfaceProbe()
     {
         if (!enableTerrainSurfaceProbe) return;
@@ -1001,7 +775,6 @@ public class HexMapChunkManager : MonoBehaviour
             $"surfaceFamily={(surfaceFamily != null ? surfaceFamily.name : "NULL")} " +
             $"slice={sliceIndex} " +
             $"selection={(tile.isMountain ? "mountain" : "base")} " +
-            $"tint={(visual != null ? visual.tint.ToString("F3") : "NULL")} " +
             $"tiling={(visual != null ? visual.tiling.ToString("F3") : "NULL")} " +
             $"season={season} " +
             $"renderedY={GetRenderedTerrainWorldY(tileIndex):F3} " +
@@ -1092,16 +865,16 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     #region Event Handlers
-    
+
     private void HandlePlanetReady(int planetIndex)
     {
         if (GameManager.Instance == null) return;
-        
+
         var gen = GameManager.Instance.GetCurrentPlanetGenerator();
         if (gen == null) return;
-        
+
         if (GameManager.Instance.currentPlanetIndex != planetIndex) return;
-        
+
         if (gen.HasGeneratedSurface)
         {
             BuildChunks(gen);
@@ -1111,31 +884,31 @@ public class HexMapChunkManager : MonoBehaviour
             // Subscribe to surface generation completion
             if (_surfaceEventSource != null)
                 _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
-            
+
             _surfaceEventSource = gen;
             gen.OnSurfaceGenerated += HandleSurfaceGenerated;
         }
     }
-    
+
     private void HandleSurfaceGenerated()
     {
         var gen = _surfaceEventSource ?? GameManager.Instance?.GetCurrentPlanetGenerator();
-        
+
         // Unsubscribe from surface event
         if (_surfaceEventSource != null)
         {
             _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
             _surfaceEventSource = null;
         }
-        
+
         if (gen == null) return;
         BuildChunks(gen);
     }
-    
+
     #endregion
-    
+
     #region Chunk Building
-    
+
     /// <summary>
     /// Build all chunks for the given planet generator.
     /// Uses the same texture baking pipeline as FlatMapTextureRenderer.
@@ -1155,17 +928,17 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.Log("[HexMapChunkManager] Surface layer not present on planet; skipping chunk build.");
             return;
         }
-        
+
         // Stop any in-progress build coroutine to avoid overlapping builds
         if (_buildCoroutine != null)
         {
             StopCoroutine(_buildCoroutine);
             _buildCoroutine = null;
         }
-        
+
         _buildCoroutine = StartCoroutine(BuildChunksCoroutine(planetGen));
     }
-    
+
     /// <summary>
     /// Coroutine version of BuildChunks that spreads heavy work (LUT building, biome index map)
     /// across multiple frames to avoid blocking the main thread during planet generation.
@@ -1174,16 +947,16 @@ public class HexMapChunkManager : MonoBehaviour
     {
         // Clean up existing chunks
         DestroyAllChunks();
-        
+
         this.planetGenerator = planetGen;
         this.grid = planetGen.Grid;
-        
+
         // Get map dimensions — prefer the grid's own dimensions (authoritative source)
         // since the grid knows exactly how large it was built. GameManager preset values
         // can be stale/mismatched if the grid was built with different dimensions.
         float gridW = grid.MapWidth;
         float gridH = grid.MapHeight;
-        
+
         if (gridW > 0.001f && gridH > 0.001f)
         {
             mapWidth = gridW;
@@ -1200,7 +973,7 @@ public class HexMapChunkManager : MonoBehaviour
                 mapHeight = gmH;
             }
         }
-        
+
         if (mapWidth <= 0.001f || mapHeight <= 0.001f)
         {
             Debug.LogError($"[HexMapChunkManager] Map dimensions are invalid! gridW={gridW}, gridH={gridH}, mapWidth={mapWidth}, mapHeight={mapHeight}");
@@ -1209,15 +982,15 @@ public class HexMapChunkManager : MonoBehaviour
         {
             // Debug.Log — Map dimensions (disabled to reduce console noise)
         }
-        
+
         columnWidth = mapWidth / chunksX;
-        
+
         // --- BURST: Build LUT using Burst-compiled parallel job (all CPU cores) ---
         float buildStartTime = enableBuildProfiling ? Time.realtimeSinceStartup : 0f;
         float lastPhaseTime = buildStartTime;
         int[] preBuiltLUT = EquirectLUTBuilder.BuildLUTBurst(grid, textureWidth, textureHeight);
         yield return null;
-        
+
         if (preBuiltLUT == null)
         {
             Debug.LogError("[HexMapChunkManager] Failed to build LUT via Burst!");
@@ -1234,7 +1007,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Bake texture using PlanetTextureBaker with pre-built LUT (GPU bake is fast; LUT was the bottleneck)
         BakeTexture(preBuiltLUT);
-        
+
         // --- BATCHED: Build biome visual maps with yielding for heavy texture operations ---
         yield return StartCoroutine(BuildBiomeVisualMapsCoroutine());
 
@@ -1249,14 +1022,14 @@ public class HexMapChunkManager : MonoBehaviour
         int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
         seasonMaskWidth = Mathf.Max(1, lutWidth / chunksX);
         seasonMaskHeight = Mathf.Max(1, lutHeight / chunksZ);
-        
+
         if (bakeResult.texture == null)
         {
             Debug.LogError("[HexMapChunkManager] Failed to bake texture!");
             _buildCoroutine = null;
             yield break;
         }
-        
+
         // Create shared material
         CreateSharedMaterial();
 
@@ -1264,10 +1037,10 @@ public class HexMapChunkManager : MonoBehaviour
         {
             LogTransformDiagnostics();
         }
-        
+
         // Create column parents for wrap teleportation
         CreateColumnParents();
-        
+
         // Create chunks (batched)
         yield return StartCoroutine(CreateChunksCoroutine());
 
@@ -1283,7 +1056,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Initialize per-chunk season masks
         UpdateSeasonMasksForCurrentSeason();
-        
+
         // Build all chunk meshes (batched)
         yield return StartCoroutine(RefreshAllChunksCoroutine());
 
@@ -1295,43 +1068,31 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Build cheap ocean plane last (ensures "water everywhere" even if SDF is inland-only)
         BuildOceanPlane();
-        
+
         // Create picking collider for WorldPicker
         CreatePickingCollider();
-        
+
         // Create per-layer picking colliders for water surface and orbit
         CreateLayerPickingColliders();
-        
+
         // Update WorldPicker with our LUT and collider
         UpdateWorldPicker();
-        
+
         // Create orbit highlight overlay (flat transparent mesh at orbit height)
         CreateOrbitOverlayMesh();
-        
+
         // Create water surface highlight overlay (flat transparent mesh at water level)
         CreateWaterSurfaceOverlayMesh();
-        
+
         // Initialize terrain overlays
         InitializeTerrainOverlays();
-        
+
         // (FlatMapTextureRenderer removed — HexMapChunkManager is the sole renderer)
-        
-        // DIAGNOSTIC: Log heightmap and displacement settings (respect GameManager toggle)
+
+        // Auxiliary hydrology texture diagnostics. This texture never defines visible terrain Y.
         if (ShouldRunDiagnostics())
-        {
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {heightmapTexture != null}");
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] PlanetGen.HasGeneratedSurface: {(planetGenerator != null ? planetGenerator.HasGeneratedSurface : false)}  data.Count={(planetGenerator != null && planetGenerator.data != null ? planetGenerator.data.Count : 0)}");
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Height range: {_heightmapMin:F4} .. {_heightmapMax:F4} (nonZeroPixels={_heightmapNonZero}, invalidLut={_heightmapInvalidLut}, missingTileData={_heightmapMissingTileData})");
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Displacement Strength: {displacementStrength} (Inspector value)");
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Material _ElevationScale: {(sharedMaterial != null && sharedMaterial.HasProperty("_ElevationScale") ? sharedMaterial.GetFloat("_ElevationScale").ToString("F4") : "N/A")} ");
-            if (sharedMaterial != null && !sharedMaterial.HasProperty("_ElevationScale"))
-            {
-                Debug.LogWarning("Material is missing _ElevationScale property.");
-            }
-            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
-        }
-        
+            Debug.Log($"[HexMapChunkManager] Auxiliary hydrology texture ready={heightmapTexture != null}, range={_heightmapMin:F4}..{_heightmapMax:F4}");
+
         if (enableBuildProfiling)
         {
             float now = Time.realtimeSinceStartup;
@@ -1373,7 +1134,7 @@ public class HexMapChunkManager : MonoBehaviour
             if (improvement.PlanetIndex == planetIndex && improvement.tileIndex >= 0 && improvement.spaceTileIndex < 0)
                 improvement.transform.position = tiles.GetTileSurfacePosition(improvement.tileIndex);
     }
-    
+
     private void BakeTexture(int[] preBuiltLUT = null)
     {
         // GPU-only baking (CPU path removed). Requires a compute shader.
@@ -1458,7 +1219,7 @@ public class HexMapChunkManager : MonoBehaviour
         BuildBiomeIndexMapBurst(width, height);
         yield return null;
 
-        // BURST: Build heightmap via parallel job
+        // BURST: Build auxiliary hydrology height data (never visible terrain geometry)
         BuildHeightmapBurst(width, height);
         yield return null;
     }
@@ -1480,23 +1241,6 @@ public class HexMapChunkManager : MonoBehaviour
         var visuals = biomeVisualDatabase.biomes;
         int count = visuals.Count;
         if (count == 0) return;
-
-        if (debugBiomeDetails)
-        {
-            try
-            {
-                var sb = new System.Text.StringBuilder();
-                sb.Append($"[HexMapChunkManager] Building textures for {count} visual entries:\n");
-                for (int i = 0; i < count; i++)
-                {
-                    var e = visuals[i];
-                    if (e == null) sb.AppendLine($"  [{i}] <null>");
-                    else sb.AppendLine($"  [{i}] {e.name} (biome={e.biome}) tint={e.tint}");
-                }
-                Debug.Log(sb.ToString());
-            }
-            catch { }
-        }
 
         if (clearSurfaceLibraryCacheBeforeBuild)
             BiomeVisualDatabase.ClearAllCachedSurfaceLibraries();
@@ -1587,15 +1331,13 @@ public class HexMapChunkManager : MonoBehaviour
                 biomeEmissiveMapTexture = null;
             }
 
-            // Populate tint and params arrays from biome visuals
-            biomeTintArray = new Vector4[count];
+            // Populate dynamic per-biome material parameters
             biomeParamsArray = new Vector4[count];
             for (int i = 0; i < count; i++)
             {
                 var entry = visuals[i];
                     if (entry != null)
                     {
-                        biomeTintArray[i] = entry.tint;
                         // Tiling fallback: if biome.tiling is <= 0, use the SurfaceFamily defaultTiling (explicit fallback).
                         float tiling = entry.tiling;
                         if (tiling <= 0f && entry.surfaceFamily != null)
@@ -1608,7 +1350,6 @@ public class HexMapChunkManager : MonoBehaviour
                     }
                 else
                 {
-                    biomeTintArray[i] = Color.white;
                     biomeParamsArray[i] = new Vector4(1f, 0f, 0f, 0f);
                 }
             }
@@ -1629,9 +1370,9 @@ public class HexMapChunkManager : MonoBehaviour
             biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
             biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
             biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
-            
+
             // Build slice-to-biome reverse map: for each texture array slice, store which biome index owns it.
-            // This lets the shader look up per-biome tints/params from the slice index in _BiomeIndexMap.
+            // This lets the shader look up per-biome dynamic parameters from each surface slice.
             int totalSlices = biomeAlbedoArray != null ? biomeAlbedoArray.depth : 1;
             if (sliceToBiomeMap != null) DestroyImmediate(sliceToBiomeMap);
             sliceToBiomeMap = new Texture2D(totalSlices, 1, TextureFormat.RFloat, false, true)
@@ -1667,7 +1408,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
             sliceToBiomeMap.SetPixels(slicePixels);
             sliceToBiomeMap.Apply(false, false);
-            
+
             return;
         }
 
@@ -1680,7 +1421,6 @@ public class HexMapChunkManager : MonoBehaviour
         biomeNormalArray = null;
         biomeMaskArray = null;
         biomeEmissiveArray = null;
-        biomeTintArray = null;
         biomeParamsArray = null;
         biomeSurfaceMapArray = null;
         biomeMountainSurfaceMapArray = null;
@@ -1715,22 +1455,15 @@ public class HexMapChunkManager : MonoBehaviour
         if (tile.waterType == TileWaterType.Ocean)
             return GetOceanWaterSurfaceY(additionalOffset);
 
-        if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
-            return GetRenderedTerrainWorldY(tileIndex) + steppedInlandWaterSurfaceOffset + additionalOffset;
-
-        return flatY + tile.waterElevation * displacementStrength + waterYOffset + additionalOffset;
+        return GetRenderedTerrainWorldY(tileIndex) + steppedInlandWaterSurfaceOffset + additionalOffset;
     }
 
     /// <summary>
-    /// Returns the authoritative rendered terrain surface Y in world space. Stepped
-    /// heights are offsets from the planet's authoritative sea level; smooth heights
-    /// retain the existing flatY/elevation/displacement rendering calculation.
+    /// Returns the authoritative rendered campaign terrain surface height in world space.
+    /// Categorical land and seafloor heights are offsets from the planet's sea level.
     /// </summary>
     public float GetRenderedTerrainWorldY(int tileIndex)
     {
-        if (terrainGeometryMode != TerrainGeometryMode.SteppedHexExperimental)
-            return flatY + GetRenderedElevation(tileIndex) * displacementStrength;
-
         float seaLevelWorldY = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
         if (planetGenerator == null || planetGenerator.data == null ||
             !planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile))
@@ -2014,7 +1747,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
 
             biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
-            
+
             yield return null;
         }
 
@@ -2046,7 +1779,7 @@ public class HexMapChunkManager : MonoBehaviour
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
                 filterMode = FilterMode.Trilinear,
-                anisoLevel = heightmapAnisoLevel,
+                anisoLevel = 4,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -2115,7 +1848,7 @@ public class HexMapChunkManager : MonoBehaviour
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
                 filterMode = FilterMode.Trilinear,
-                anisoLevel = heightmapAnisoLevel,
+                anisoLevel = 4,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -2154,7 +1887,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
 
             heightmapTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
-            
+
             // Yield after each strip to spread work across frames
             yield return null;
         }
@@ -2196,11 +1929,10 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Rebuild only the baked terrain pixels touched by the specified tiles.
-    /// Updates the runtime BiomeIndexMap and Heightmap in place instead of rebaking
-    /// the whole planet texture.
+    /// Updates the biome lookup and auxiliary hydrology texture pixels touched by tiles.
+    /// The auxiliary height texture does not define visible terrain height.
     /// </summary>
-    public void RebakeBakedTerrainForTiles(IEnumerable<int> tileIndices)
+    public void UpdateTerrainDataTexturesForTiles(IEnumerable<int> tileIndices)
     {
         if (planetGenerator == null || grid == null || bakeResult.lut == null || bakeResult.lut.Length == 0)
             return;
@@ -2277,9 +2009,9 @@ public class HexMapChunkManager : MonoBehaviour
             heightmapTexture.Apply(true, false);
     }
 
-    public void RebakeBakedTerrainForTile(int tileIndex)
+    public void UpdateTerrainDataTexturesForTile(int tileIndex)
     {
-        RebakeBakedTerrainForTiles(new[] { tileIndex });
+        UpdateTerrainDataTexturesForTiles(new[] { tileIndex });
     }
 
     /// <summary>
@@ -2359,7 +2091,7 @@ public class HexMapChunkManager : MonoBehaviour
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
                 filterMode = FilterMode.Trilinear,
-                anisoLevel = heightmapAnisoLevel,
+                anisoLevel = 4,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -2418,10 +2150,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void ApplyActiveBiomeTerrainMaterialSettings()
     {
-        if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph)
-            ApplyHdrpLitBiomeMaterialSettings();
-        else
-            ApplyBiomeMaterialSettings();
+        ApplyBiomeMaterialSettings();
     }
 
     public void ApplyBiomeMaterialSettings()
@@ -2431,18 +2160,6 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeIndexMap != null)
         {
             sharedMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
-        }
-
-        if (heightmapTexture != null)
-        {
-            sharedMaterial.SetTexture("_Heightmap", heightmapTexture);
-            sharedMaterial.SetFloat("_ElevationScale", displacementStrength);
-        }
-
-        if (sharedMaterial.HasProperty("_UseMeshElevation"))
-        {
-            sharedMaterial.SetFloat("_UseMeshElevation",
-                terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental ? 1f : 0f);
         }
 
         if (biomeAlbedoArray != null)
@@ -2468,19 +2185,6 @@ public class HexMapChunkManager : MonoBehaviour
         {
             sharedMaterial.SetFloat("_CliffSliceCount", 0f);
         }
-        
-        if (biomeTintArray != null)
-        {
-            sharedMaterial.SetVectorArray("_BiomeTints", biomeTintArray);
-            if (debugTransformChanges)
-            {
-                try
-                {
-                    Debug.Log($"[HexMapChunkManager] Pushed _BiomeTints count={biomeTintArray.Length} first={biomeTintArray[0]}");
-                }
-                catch { }
-            }
-        }
 
         if (biomeParamsArray != null)
         {
@@ -2500,7 +2204,7 @@ public class HexMapChunkManager : MonoBehaviour
         {
             sharedMaterial.SetVectorArray("_BiomeSurfaceMap", biomeSurfaceMapArray);
         }
-        
+
         if (biomeSurfaceMapTexture != null)
         {
             sharedMaterial.SetTexture("_BiomeSurfaceMapTex", biomeSurfaceMapTexture);
@@ -2534,102 +2238,31 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_CliffStrength", cliffStrength);
         sharedMaterial.SetFloat("_CliffSlopeThreshold", cliffSlopeThreshold);
         sharedMaterial.SetFloat("_CliffSlopeBlend", cliffSlopeBlend);
-        sharedMaterial.SetFloat("_CliffStepThreshold", cliffStepThreshold);
-        sharedMaterial.SetFloat("_CliffStepBlend", cliffStepBlend);
         float cliffSlices = hasValidCliffArrays ? Mathf.Max(1, cliffAlbedoArray.depth) : 0f;
         sharedMaterial.SetFloat("_CliffSliceCount", cliffSlices);
 
         // Normal sampling and biome blending parameters
-        sharedMaterial.SetFloat("_NormalStrength", normalStrength);
         sharedMaterial.SetFloat("_BiomeNormalStrength", biomeNormalStrength);
-        sharedMaterial.SetFloat("_NormalSampleRadius", normalSampleRadius);
         sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
-        sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
 
         // Triplanar parameters
         sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
         sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
         sharedMaterial.SetFloat("_UseTriplanar", useTriplanar ? 1f : 0f);
-        // Slice-to-biome reverse map (for per-biome tint/params lookup in shader)
+        // Slice-to-biome reverse map for per-biome dynamic parameter lookup
         if (sliceToBiomeMap != null)
         {
             sharedMaterial.SetTexture("_SliceToBiomeMap", sliceToBiomeMap);
         }
 
         // Provide biome count and total slice count for shader UV-based lookups.
-        // _BiomeCount = number of biomes (indexes into _BiomeTints[] / _BiomeParams[] / _BiomeEmissiveMapTex).
+        // _BiomeCount = number of biomes (indexes into _BiomeParams[] / _BiomeEmissiveMapTex).
         // _TotalSlices = number of texture array slices (indexes into _SliceToBiomeMap).
         // These differ when multiple biomes share the same surface family.
-        int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
+        int biomeCount = (biomeParamsArray != null) ? biomeParamsArray.Length : 0;
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
         int totalSlices = (biomeAlbedoArray != null) ? biomeAlbedoArray.depth : 1;
         sharedMaterial.SetFloat("_TotalSlices", (float)totalSlices);
-
-        if (debugBiomeDetails)
-        {
-            try
-            {
-                Debug.Log($"[HexMapChunkManager] TerrainDebugMode={terrainDebugMode} ({(float)terrainDebugMode})");
-
-                // Dump first several tint entries to help diagnose why tinting appears as white
-                int dumpN = Mathf.Min(16, biomeCount);
-                var parts = new System.Text.StringBuilder();
-                parts.Append($"[HexMapChunkManager] BiomeCount={biomeCount} TotalSlices={totalSlices} Tints[:{dumpN}]=");
-                for (int i = 0; i < dumpN; i++)
-                {
-                    parts.Append(biomeTintArray[i].ToString());
-                    if (i < dumpN - 1) parts.Append(",");
-                }
-                Debug.Log(parts.ToString());
-
-                // Sample a few slice->biome mappings (first 32 slices or totalSlices)
-                int sampleSlices = Mathf.Min(32, totalSlices);
-                var sp = new System.Text.StringBuilder();
-                sp.Append($"[HexMapChunkManager] SliceToBiomeMap samples[:{sampleSlices}]=");
-                if (sliceToBiomeMap != null)
-                {
-                    for (int si = 0; si < sampleSlices; si++)
-                    {
-                        // Read pixel from texture (may be valid only in main thread during Apply)
-                        try
-                        {
-                            var c = sliceToBiomeMap.GetPixel(si, 0);
-                            sp.Append(((int)c.r).ToString());
-                        }
-                        catch { sp.Append("?"); }
-                        if (si < sampleSlices - 1) sp.Append(",");
-                    }
-                }
-                else sp.Append("<null>");
-                Debug.Log(sp.ToString());
-                // Also attempt to read back what was written to the material instance (one-shot)
-                try
-                {
-                    if (sharedMaterial != null && sharedMaterial.HasProperty("_BiomeTints"))
-                    {
-                        // GetVectorArray exists in supported Unity versions where SetVectorArray is available
-                        var matVecs = sharedMaterial.GetVectorArray("_BiomeTints");
-                        if (matVecs != null)
-                        {
-                            var mb = new System.Text.StringBuilder();
-                            mb.Append("[HexMapChunkManager] Material._BiomeTints[:" + Mathf.Min(16, matVecs.Length) + "]=");
-                            for (int i = 0; i < Mathf.Min(16, matVecs.Length); i++)
-                            {
-                                mb.Append(matVecs[i].ToString());
-                                if (i < Mathf.Min(16, matVecs.Length) - 1) mb.Append(",");
-                            }
-                            Debug.Log(mb.ToString());
-                        }
-                        else Debug.Log("[HexMapChunkManager] Material.GetVectorArray returned null");
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[HexMapChunkManager] Failed to GetVectorArray from material: {ex.Message}");
-                }
-            }
-            catch (System.Exception ex) { Debug.LogWarning($"[HexMapChunkManager] debugBiomeDetails error: {ex.Message}"); }
-        }
 
         ApplyIceSurfaceSettingsToMaterial(sharedMaterial);
         ApplyIceSurfaceSettingsToMaterial(waterMaterial);
@@ -2674,7 +2307,7 @@ public class HexMapChunkManager : MonoBehaviour
             freezeProgress = ClimateManager.Instance.GetFreezeProgressForPlanet(planetGenerator.planetIndex);
         material.SetFloat("_FreezeProgress", freezeProgress);
     }
-    
+
     /// <summary>
     /// Returns the elevation that should be used for rendering for a given tile.
     /// When `preserveLandElevationNearFreshwater` is enabled, land tiles that are
@@ -2708,1539 +2341,11 @@ public class HexMapChunkManager : MonoBehaviour
 
         return td.elevation;
     }
-    
-    // Follow-up: make TileSystem.GetTileSurfacePosition(tileIndex) consume this same rendered
-    // elevation source (or a shared terrain height provider) so units and path preview markers
-    // remain aligned with the CPU-displaced BakedHdrpLit terrain.
-    public float SampleTerrainSurfaceYAtUV(Vector2 uv)
-    {
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
-            return flatY;
 
-        int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
 
-        int x = Mathf.Clamp(Mathf.FloorToInt(Mathf.Repeat(uv.x, 1f) * width), 0, width - 1);
-        int y = Mathf.Clamp(Mathf.FloorToInt(Mathf.Clamp01(uv.y) * height), 0, height - 1);
-        int lutIndex = y * width + x;
-
-        if (lutIndex < 0 || lutIndex >= bakeResult.lut.Length)
-            return flatY;
-
-        int tileIndex = bakeResult.lut[lutIndex];
-        if (tileIndex < 0)
-            return flatY;
-
-        return flatY + GetRenderedElevation(tileIndex) * displacementStrength;
-    }
-
-    private void CreateBakedLitMaterial()
-    {
-        if (bakedLitTerrainMaterial != null)
-            DestroyImmediate(bakedLitTerrainMaterial);
-
-        if (bakedLitTerrainMaterialTemplate != null)
-        {
-            bakedLitTerrainMaterial = new Material(bakedLitTerrainMaterialTemplate);
-        }
-        else
-        {
-            Shader litShader = Shader.Find("HDRP/Lit");
-            if (litShader == null)
-            {
-                Debug.LogError("[HexMapChunkManager] Could not find HDRP/Lit shader. Assign bakedLitTerrainMaterialTemplate.");
-                return;
-            }
-
-            bakedLitTerrainMaterial = new Material(litShader);
-        }
-
-        bakedLitTerrainMaterial.name = "BakedTerrain_HDRP_Lit";
-
-        bool hasBaseColorMap = bakedLitTerrainMaterial.HasProperty("_BaseColorMap");
-        bool hasMaskMap = bakedLitTerrainMaterial.HasProperty("_MaskMap");
-        bool hasNormalMap = bakedLitTerrainMaterial.HasProperty("_NormalMap");
-        bool hasBaseColor = bakedLitTerrainMaterial.HasProperty("_BaseColor");
-        bool hasMetallic = bakedLitTerrainMaterial.HasProperty("_Metallic");
-        bool hasSmoothness = bakedLitTerrainMaterial.HasProperty("_Smoothness");
-
-        if (hasBaseColor)
-            bakedLitTerrainMaterial.SetColor("_BaseColor", Color.white);
-
-        if (hasMetallic)
-            bakedLitTerrainMaterial.SetFloat("_Metallic", 0f);
-
-        if (hasSmoothness)
-            bakedLitTerrainMaterial.SetFloat("_Smoothness", bakedTerrainDefaultSmoothness);
-
-        Debug.Log($"[HexMapChunkManager] Created baked HDRP/Lit terrain material. shader={bakedLitTerrainMaterial.shader.name}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColorMap={hasBaseColorMap}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _MaskMap={hasMaskMap}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _NormalMap={hasNormalMap}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColor={hasBaseColor}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _Metallic={hasMetallic}");
-        Debug.Log($"[HexMapChunkManager] BakedLit Has _Smoothness={hasSmoothness}");
-    }
-
-
-    private void CreateHdrpLitBiomeMaterial()
-    {
-        if (hdrpLitBiomeTerrainMaterial != null)
-            DestroyImmediate(hdrpLitBiomeTerrainMaterial);
-
-        if (hdrpLitBiomeTerrainMaterialTemplate == null)
-        {
-            Debug.LogError("[HexMapChunkManager] HdrpLitBiomeShaderGraph requires hdrpLitBiomeTerrainMaterialTemplate to be assigned to a Shader Graph material with an HDRP Lit target. Assign material 'M_HDRP_Lit_BiomeTerrain' (or a derived Shader Graph material) before selecting this render path.");
-            return;
-        }
-
-        if (hdrpLitBiomeTerrainMaterialTemplate.shader != null
-            && hdrpLitBiomeTerrainMaterialTemplate.shader.name == "Custom/BiomeTerrainHDRP")
-        {
-            Debug.LogError("[HexMapChunkManager] HdrpLitBiomeShaderGraph must use an HDRP Lit Shader Graph material, not Custom/BiomeTerrainHDRP. Assign M_HDRP_Lit_BiomeTerrain or another Shader Graph HDRP/Lit material.");
-            return;
-        }
-
-        hdrpLitBiomeTerrainMaterial = new Material(hdrpLitBiomeTerrainMaterialTemplate)
-        {
-            name = "HDRP_Lit_BiomeTerrain_Runtime"
-        };
-
-        Debug.Log($"[HexMapChunkManager] Created HDRP Lit biome Shader Graph terrain material. shader={hdrpLitBiomeTerrainMaterial.shader?.name}");
-    }
-
-    private void ApplyHdrpLitBiomeMaterialSettings()
-    {
-        Material mat = hdrpLitBiomeTerrainMaterial;
-        if (mat == null)
-        {
-            return;
-        }
-
-        Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph active terrain render path={terrainRenderPath}");
-        Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph shader={mat.shader?.name}");
-
-        void BindTexture(string propertyName, Texture texture, bool required)
-        {
-            bool hasProperty = mat.HasProperty(propertyName);
-            bool hasTexture = texture != null;
-            Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph property {propertyName}: exists={hasProperty}, textureNonNull={hasTexture}, required={required}");
-
-            if (hasProperty && hasTexture)
-                mat.SetTexture(propertyName, texture);
-            else if (required && !hasProperty)
-                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph material '{mat.name}' is missing required texture property {propertyName}.");
-            else if (required && !hasTexture)
-                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph required texture for {propertyName} is null.");
-        }
-
-        void BindFloat(string propertyName, float value, bool required = true)
-        {
-            bool hasProperty = mat.HasProperty(propertyName);
-            Debug.Log($"[HexMapChunkManager] HdrpLitBiomeShaderGraph property {propertyName}: exists={hasProperty}, scalarValue={value}, required={required}");
-
-            if (hasProperty)
-                mat.SetFloat(propertyName, value);
-            else if (required)
-                Debug.LogError($"[HexMapChunkManager] HdrpLitBiomeShaderGraph material '{mat.name}' is missing required scalar property {propertyName}.");
-        }
-
-        BindTexture("_BiomeIndexMap", biomeIndexMap, true);
-        BindTexture("_Heightmap", heightmapTexture, true);
-        BindTexture("_BiomeAlbedoArray", biomeAlbedoArray, true);
-        BindTexture("_BiomeNormalArray", biomeNormalArray, true);
-        BindTexture("_BiomeMaskArray", biomeMaskArray, true);
-        BindTexture("_BiomeSurfaceMapTex", biomeSurfaceMapTexture, true);
-        BindTexture("_BiomeEmissiveMaskTex", biomeEmissiveMapTexture, false);
-        BindTexture("_SurfaceEmissiveArray", biomeEmissiveArray, false);
-
-        BindFloat("_ElevationScale", displacementStrength);
-        BindFloat("_BiomeCount", biomeTintArray != null ? biomeTintArray.Length : 0f);
-        BindFloat("_TriTiling", triplanarTiling);
-        BindFloat("_TriBlend", triplanarBlend);
-        BindFloat("_GlobalSnowAmount", globalSnowAmount);
-    }
-
-    [ContextMenu("Validate Baked Terrain Inputs")]
-    private void ValidateBakedTerrainInputs()
-    {
-        int errors = 0;
-        int warnings = 0;
-
-        void Error(string message)
-        {
-            errors++;
-            Debug.LogError($"[BakedTerrainValidation] {message}");
-        }
-
-        void Warning(string message)
-        {
-            warnings++;
-            Debug.LogWarning($"[BakedTerrainValidation] {message}");
-        }
-
-        if (biomeVisualDatabase == null)
-        {
-            Error("BiomeVisualDatabase is not assigned.");
-            Debug.LogError("[BakedTerrainValidation] Complete: errors=1 warnings=0");
-            return;
-        }
-
-        if (biomeVisualDatabase.biomes == null || biomeVisualDatabase.biomes.Count == 0)
-        {
-            Error("BiomeVisualDatabase has no BiomeVisualData entries.");
-            Debug.LogError($"[BakedTerrainValidation] Complete: errors={errors} warnings={warnings}");
-            return;
-        }
-
-        var seen = new Dictionary<Biome, BiomeVisualData>();
-        foreach (var visual in biomeVisualDatabase.biomes)
-        {
-            if (visual == null)
-            {
-                Error("BiomeVisualDatabase contains a null BiomeVisualData entry.");
-                continue;
-            }
-
-            if (seen.TryGetValue(visual.biome, out var previous))
-                Error($"Duplicate BiomeVisualData.biome entry for {visual.biome}: '{previous.name}' and '{visual.name}'.");
-            else
-                seen[visual.biome] = visual;
-
-            SurfaceFamilyData family = visual.surfaceFamily;
-            if (family == null)
-            {
-                Error($"BiomeVisualData '{visual.name}' ({visual.biome}) has a null surfaceFamily.");
-                continue;
-            }
-
-            if (family.albedoArray == null)
-                Error($"SurfaceFamily '{family.name}' for visual '{visual.name}' ({visual.biome}) has a null albedoArray.");
-            else if (family.albedoArray.depth <= 0)
-                Error($"SurfaceFamily '{family.name}' for visual '{visual.name}' ({visual.biome}) has albedoArray depth <= 0.");
-
-            int variantCount = Mathf.Max(0, family.VariantCount);
-            if (visual.forcedVariant >= variantCount && visual.forcedVariant >= 0)
-                Error($"BiomeVisualData '{visual.name}' ({visual.biome}) forcedVariant={visual.forcedVariant} is outside variant count {variantCount} for family '{family.name}'.");
-
-            if (!visual.name.ToLowerInvariant().Contains(visual.biome.ToString().ToLowerInvariant()))
-                Warning($"BiomeVisualData asset name '{visual.name}' does not contain internal biome name '{visual.biome}'.");
-
-            if (!string.IsNullOrWhiteSpace(family.familyName) && !family.name.ToLowerInvariant().Contains(family.familyName.ToLowerInvariant()) && !family.familyName.ToLowerInvariant().Contains(family.name.ToLowerInvariant()))
-                Warning($"SurfaceFamily asset name '{family.name}' does not closely match familyName '{family.familyName}'.");
-        }
-
-        Biome[] normalEarthBiomes =
-        {
-            Biome.Ocean, Biome.Coast, Biome.Desert, Biome.Savannah, Biome.Plains,
-            Biome.Temperate, Biome.Tropical, Biome.Glacier, Biome.Tundra,
-            Biome.Swamp, Biome.Seas, Biome.River, Biome.Lake
-        };
-
-        foreach (Biome biome in normalEarthBiomes)
-        {
-            BiomeVisualData visual = biomeVisualDatabase.Get(biome);
-            if (visual == null)
-            {
-                Error($"Normal Earth biome {biome} resolves to a null visual.");
-                continue;
-            }
-
-            if (visual.surfaceFamily == null)
-                Error($"Normal Earth biome {biome} resolves to visual '{visual.name}' with a null surfaceFamily.");
-        }
-
-        void ExpectFamilyContains(Biome biome, params string[] expectedTerms)
-        {
-            BiomeVisualData visual = biomeVisualDatabase.Get(biome);
-            SurfaceFamilyData family = visual != null ? visual.surfaceFamily : null;
-            if (visual == null || family == null)
-                return;
-
-            string combined = $"{family.name} {family.familyName}".ToLowerInvariant();
-            bool matched = expectedTerms.Any(term => combined.Contains(term.ToLowerInvariant()));
-            if (!matched)
-                Warning($"Biome {biome} resolves to suspicious family asset='{family.name}' familyName='{family.familyName}', expected one of: {string.Join(", ", expectedTerms)}.");
-        }
-
-        ExpectFamilyContains(Biome.Desert, "Desert");
-        ExpectFamilyContains(Biome.Savannah, "Savannah", "Plains");
-        ExpectFamilyContains(Biome.Plains, "Savannah", "Plains");
-        ExpectFamilyContains(Biome.Temperate, "Temperate");
-        ExpectFamilyContains(Biome.Tropical, "Tropical");
-
-        string result = $"[BakedTerrainValidation] Complete: errors={errors} warnings={warnings}";
-        if (errors > 0) Debug.LogError(result);
-        else if (warnings > 0) Debug.LogWarning(result);
-        else Debug.Log(result);
-    }
-
-    private struct BakedSurfaceProfile
-    {
-        public BiomeVisualData visual;
-        public SurfaceFamilyData family;
-
-        public Biome biome;
-        public int biomeIndex;
-        public int surfaceIndex;
-        public int sliceIndex;
-        public int forcedVariant;
-
-        public float tiling;
-        public float normalStrength;
-        public float roughnessOffset;
-        public float inherentWetness;
-        public bool isWaterBiome;
-
-        public bool isMountain;
-    }
-
-    private struct ResolvedTerrainSurfaceSample
-    {
-        public int tileIndex;
-        public Biome tileBiome;
-        public Biome renderedBiome;
-        public Biome underwaterBiome;
-        public TileWaterType waterType;
-        public bool isMountain;
-        public bool isRiver;
-        public bool isLake;
-        public bool isSolidFrozenWater;
-
-        public BiomeVisualData visual;
-        public SurfaceFamilyData surfaceFamily;
-        public int biomeIndex;
-        public int surfaceIndex;
-        public int sliceIndex;
-        public int forcedVariant;
-        public BakedSurfaceProfile profile;
-
-        public Vector2 mapUV;
-        public Vector2 surfaceUV;
-        public Color sampledAlbedo;
-    }
-
-    private static readonly HashSet<Biome> BakedTerrainWatchedBiomes = new HashSet<Biome>
-    {
-        Biome.Desert,
-        Biome.Savannah,
-        Biome.Plains,
-        Biome.Temperate,
-        Biome.Coast,
-        Biome.Glacier
-    };
-
-    private static readonly HashSet<Biome> BakedTerrainSliceExportBiomes = new HashSet<Biome>
-    {
-        Biome.Desert,
-        Biome.Savannah,
-        Biome.Plains,
-        Biome.Coast,
-        Biome.Glacier
-    };
-
-    private const int BakedTerrainReadableSliceCacheLimit = 8;
-    private Dictionary<int, Color[]> bakedTerrainReadableSliceCache;
-    private Dictionary<int, string> bakedTerrainFailedSliceSampleReasons;
-    private bool lastResolvedTerrainAlbedoSampleSucceeded;
-    private string lastResolvedTerrainAlbedoSampleFailureReason;
-
-    private class BakedTerrainBiomeStats
-    {
-        public int pixelCount;
-        public int fallbackCount;
-        public double sumR;
-        public double sumG;
-        public double sumB;
-        public double sumLum;
-        public float minLum = float.PositiveInfinity;
-        public float maxLum = float.NegativeInfinity;
-        public readonly Dictionary<int, int> sliceCounts = new Dictionary<int, int>();
-
-        public void Add(ResolvedTerrainSurfaceSample sample, bool fallback)
-        {
-            pixelCount++;
-            if (fallback) fallbackCount++;
-
-            Color c = sample.sampledAlbedo;
-            sumR += c.r;
-            sumG += c.g;
-            sumB += c.b;
-            float lum = c.r * 0.2126f + c.g * 0.7152f + c.b * 0.0722f;
-            sumLum += lum;
-            if (lum < minLum) minLum = lum;
-            if (lum > maxLum) maxLum = lum;
-
-            if (!sliceCounts.ContainsKey(sample.sliceIndex))
-                sliceCounts[sample.sliceIndex] = 0;
-            sliceCounts[sample.sliceIndex]++;
-        }
-    }
-
-    private BakedSurfaceProfile BuildBakedSurfaceProfile(
-        HexTileData tile,
-        int tileIndex,
-        BiomeVisualData visual,
-        int biomeIndex,
-        int sliceIndex)
-    {
-        SurfaceFamilyData family = visual != null ? visual.surfaceFamily : null;
-        float tiling = visual != null ? visual.tiling : 1f;
-        if (tiling <= 0f && family != null)
-            tiling = family.defaultTiling;
-        if (tiling <= 0f)
-            tiling = 1f;
-
-        float familyNormalStrength = family != null ? family.normalStrength : 1f;
-
-        return new BakedSurfaceProfile
-        {
-            visual = visual,
-            family = family,
-            biome = visual != null ? visual.biome : (tile != null ? tile.biome : Biome.Plains),
-            biomeIndex = biomeIndex,
-            surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile != null && tile.isMountain),
-            sliceIndex = sliceIndex,
-            forcedVariant = GetForcedVariant(biomeIndex, tile != null && tile.isMountain),
-            tiling = tiling,
-            normalStrength = familyNormalStrength * biomeNormalStrength * bakedTerrainNormalStrength,
-            roughnessOffset = family != null ? family.roughnessOffset : 0f,
-            inherentWetness = visual != null ? visual.inherentWetness : 0f,
-            isWaterBiome = visual != null && visual.isWaterBiome,
-            isMountain = tile != null && tile.isMountain
-        };
-    }
-
-    private Vector2 ComputeBakedSurfaceUV(float u, float v, int tileIndex, BakedSurfaceProfile profile)
-    {
-        float tiling = Mathf.Max(0.001f, profile.tiling * bakedSurfaceGlobalTilingMultiplier);
-
-        Vector2 baseUV;
-
-        switch (bakedSurfaceUVMode)
-        {
-            case BakedSurfaceUVMode.WorldPlanar:
-                baseUV = new Vector2(u * mapWidth, v * mapHeight);
-                break;
-
-            case BakedSurfaceUVMode.TileStableOffsetWorldPlanar:
-                baseUV = new Vector2(u * mapWidth, v * mapHeight);
-
-                float jx = HashToUnitFloat(tileIndex * 17 + profile.sliceIndex * 31) - 0.5f;
-                float jy = HashToUnitFloat(tileIndex * 37 + profile.sliceIndex * 53) - 0.5f;
-                baseUV += new Vector2(jx, jy) * bakedSurfaceTileUVJitter;
-                break;
-
-            default:
-                baseUV = new Vector2(u, v);
-                break;
-        }
-
-        return new Vector2(
-            Mathf.Repeat(baseUV.x * tiling, 1f),
-            Mathf.Repeat(baseUV.y * tiling, 1f)
-        );
-    }
-
-    private bool TryResolveTerrainSurfaceSample(int tileIndex, float u, float v, out ResolvedTerrainSurfaceSample sample)
-    {
-        sample = new ResolvedTerrainSurfaceSample
-        {
-            tileIndex = tileIndex,
-            biomeIndex = 0,
-            surfaceIndex = -1,
-            sliceIndex = 0,
-            forcedVariant = -1,
-            mapUV = new Vector2(u, v),
-            surfaceUV = new Vector2(u, v),
-            sampledAlbedo = Color.magenta
-        };
-
-        lastResolvedTerrainAlbedoSampleSucceeded = false;
-        lastResolvedTerrainAlbedoSampleFailureReason = null;
-
-        if (tileIndex < 0 || planetGenerator == null || planetGenerator.data == null || !planetGenerator.data.TryGetValue(tileIndex, out var tile))
-        {
-            lastResolvedTerrainAlbedoSampleFailureReason = "missing tile data";
-            return false;
-        }
-
-        BiomeVisualData visual = ResolveRenderedVisual(tile);
-        int biomeIndex = ResolveRenderedBiomeIndex(tile);
-        int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
-        int surfaceIndex = ResolveSurfaceIndex(biomeIndex, tile.isMountain);
-        SurfaceFamilyData surfaceFamily = visual != null ? visual.surfaceFamily : null;
-        int forcedVariant = GetForcedVariant(biomeIndex, tile.isMountain);
-        BakedSurfaceProfile profile = BuildBakedSurfaceProfile(tile, tileIndex, visual, biomeIndex, sliceIndex);
-
-        sample.tileBiome = tile.biome;
-        sample.renderedBiome = visual != null ? visual.biome : tile.biome;
-        sample.underwaterBiome = tile.underwaterBiome;
-        sample.waterType = tile.waterType;
-        sample.isMountain = tile.isMountain;
-        sample.isRiver = tile.isRiver;
-        sample.isLake = tile.isLake;
-        sample.isSolidFrozenWater = IsSolidFrozenWater(tile);
-        sample.visual = visual;
-        sample.surfaceFamily = surfaceFamily;
-        sample.biomeIndex = biomeIndex;
-        sample.surfaceIndex = surfaceIndex;
-        sample.sliceIndex = sliceIndex;
-        sample.forcedVariant = forcedVariant;
-        sample.profile = profile;
-        sample.surfaceUV = ComputeBakedSurfaceUV(u, v, tileIndex, profile);
-
-        if (!bakedTerrainUseSimpleBiomeColors)
-        {
-            if (TrySampleRuntimeAlbedoSlice(sliceIndex, sample.surfaceUV, out var color, out var failureReason))
-            {
-                sample.sampledAlbedo = color;
-                lastResolvedTerrainAlbedoSampleSucceeded = true;
-            }
-            else
-            {
-                sample.sampledAlbedo = BiomeColorHelper.GetMinimapColor(tile.biome);
-                lastResolvedTerrainAlbedoSampleFailureReason = failureReason;
-            }
-        }
-        else
-        {
-            sample.sampledAlbedo = BiomeColorHelper.GetMinimapColor(tile.biome);
-            lastResolvedTerrainAlbedoSampleSucceeded = true;
-        }
-
-        return true;
-    }
-
-    private bool TrySampleRuntimeAlbedoSlice(int sliceIndex, Vector2 surfaceUV, out Color sampled, out string failureReason)
-    {
-        sampled = Color.magenta;
-        failureReason = null;
-
-        if (biomeAlbedoArray == null)
-        {
-            failureReason = "missing biomeAlbedoArray";
-            return false;
-        }
-
-        if (sliceIndex < 0 || sliceIndex >= biomeAlbedoArray.depth)
-        {
-            failureReason = $"slice {sliceIndex} outside albedo depth {biomeAlbedoArray.depth}";
-            return false;
-        }
-
-        if (bakedTerrainFailedSliceSampleReasons == null)
-            bakedTerrainFailedSliceSampleReasons = new Dictionary<int, string>();
-        if (bakedTerrainFailedSliceSampleReasons.TryGetValue(sliceIndex, out failureReason))
-            return false;
-
-        if (bakedTerrainReadableSliceCache == null)
-            bakedTerrainReadableSliceCache = new Dictionary<int, Color[]>();
-        if (!bakedTerrainReadableSliceCache.TryGetValue(sliceIndex, out var slicePixels))
-        {
-            try
-            {
-                slicePixels = biomeAlbedoArray.GetPixels(sliceIndex, 0);
-            }
-            catch (System.Exception ex)
-            {
-                failureReason = $"slice {sliceIndex} is not CPU-readable ({ex.GetType().Name}: {ex.Message})";
-                bakedTerrainFailedSliceSampleReasons[sliceIndex] = failureReason;
-                return false;
-            }
-
-            if (slicePixels == null || slicePixels.Length == 0)
-            {
-                failureReason = $"slice {sliceIndex} returned no pixels";
-                bakedTerrainFailedSliceSampleReasons[sliceIndex] = failureReason;
-                return false;
-            }
-
-            if (bakedTerrainReadableSliceCache.Count >= BakedTerrainReadableSliceCacheLimit)
-                bakedTerrainReadableSliceCache.Clear();
-
-            bakedTerrainReadableSliceCache[sliceIndex] = slicePixels;
-        }
-
-        int sourceWidth = Mathf.Max(1, biomeAlbedoArray.width);
-        int sourceHeight = Mathf.Max(1, biomeAlbedoArray.height);
-        float sampleX = Mathf.Repeat(surfaceUV.x, 1f) * (sourceWidth - 1);
-        float sampleY = Mathf.Repeat(surfaceUV.y, 1f) * (sourceHeight - 1);
-        int x0 = Mathf.Clamp(Mathf.FloorToInt(sampleX), 0, sourceWidth - 1);
-        int y0 = Mathf.Clamp(Mathf.FloorToInt(sampleY), 0, sourceHeight - 1);
-        int x1 = Mathf.Min(x0 + 1, sourceWidth - 1);
-        int y1 = Mathf.Min(y0 + 1, sourceHeight - 1);
-        float tx = sampleX - x0;
-        float ty = sampleY - y0;
-
-        int maxIndex = slicePixels.Length - 1;
-        Color c00 = slicePixels[Mathf.Min(y0 * sourceWidth + x0, maxIndex)];
-        Color c10 = slicePixels[Mathf.Min(y0 * sourceWidth + x1, maxIndex)];
-        Color c01 = slicePixels[Mathf.Min(y1 * sourceWidth + x0, maxIndex)];
-        Color c11 = slicePixels[Mathf.Min(y1 * sourceWidth + x1, maxIndex)];
-        sampled = Color.Lerp(Color.Lerp(c00, c10, tx), Color.Lerp(c01, c11, tx), ty);
-        sampled.a = 1f;
-        return true;
-    }
-
-    private int ResolveSurfaceIndex(int biomeIndex, bool isMountain)
-    {
-        Vector4[] sourceMapArray = biomeSurfaceMapArray;
-        if (isMountain && biomeMountainSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeMountainSurfaceMapArray.Length)
-        {
-            var mountainMap = biomeMountainSurfaceMapArray[biomeIndex];
-            if (Mathf.RoundToInt(mountainMap.y) > 0)
-                sourceMapArray = biomeMountainSurfaceMapArray;
-        }
-
-        if (sourceMapArray != null && biomeIndex >= 0 && biomeIndex < sourceMapArray.Length)
-            return Mathf.RoundToInt(sourceMapArray[biomeIndex].z);
-
-        return -1;
-    }
-
-    private int GetForcedVariant(int biomeIndex, bool isMountain)
-    {
-        Vector4[] sourceMapArray = biomeSurfaceMapArray;
-        if (isMountain && biomeMountainSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeMountainSurfaceMapArray.Length)
-        {
-            var mountainMap = biomeMountainSurfaceMapArray[biomeIndex];
-            if (Mathf.RoundToInt(mountainMap.y) > 0)
-                sourceMapArray = biomeMountainSurfaceMapArray;
-        }
-
-        if (sourceMapArray != null && biomeIndex >= 0 && biomeIndex < sourceMapArray.Length)
-            return Mathf.RoundToInt(sourceMapArray[biomeIndex].w);
-
-        return -1;
-    }
-
-    private static float HashStringToUnitFloat(string value, int salt)
-    {
-        unchecked
-        {
-            uint hash = 2166136261u ^ (uint)salt;
-            if (!string.IsNullOrEmpty(value))
-            {
-                for (int i = 0; i < value.Length; i++)
-                {
-                    hash ^= value[i];
-                    hash *= 16777619u;
-                }
-            }
-            return (hash & 0x00FFFFFFu) / 16777215f;
-        }
-    }
-
-    private static Color DeterministicDebugColor(string key, int fallbackSeed)
-    {
-        if (string.IsNullOrEmpty(key))
-            key = fallbackSeed.ToString();
-
-        return Color.HSVToRGB(
-            HashStringToUnitFloat(key, fallbackSeed),
-            0.65f + HashStringToUnitFloat(key, fallbackSeed + 101) * 0.25f,
-            0.75f + HashStringToUnitFloat(key, fallbackSeed + 211) * 0.2f);
-    }
-
-    private Color ComputeBakedTerrainDebugBaseColor(
-        ResolvedTerrainSurfaceSample sample,
-        Color baseColor,
-        Dictionary<int, Color[]> normalSliceCache,
-        Dictionary<int, Color[]> maskSliceCache)
-    {
-        switch (bakedTerrainDebugBakeMode)
-        {
-            case BakedTerrainDebugBakeMode.NormalOnlyVisualized:
-                if (TrySampleTextureArraySlice(biomeNormalArray, sample.sliceIndex, sample.surfaceUV, normalSliceCache, out var normal, out _))
-                    return new Color(normal.r, normal.g, normal.b, 1f);
-                return new Color(0.5f, 0.5f, 1f, 1f);
-
-            case BakedTerrainDebugBakeMode.MaskSmoothnessVisualized:
-                if (TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var smoothMask, out _))
-                {
-                    float rawSmoothness = Mathf.Clamp01(smoothMask.a);
-                    float smoothness = Mathf.Clamp(rawSmoothness - sample.profile.roughnessOffset, 0f, bakedTerrainMaxSmoothness);
-                    return new Color(smoothness, smoothness, smoothness, 1f);
-                }
-                return Color.black;
-
-            case BakedTerrainDebugBakeMode.MaskAOVisualized:
-                if (TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var aoMask, out _))
-                {
-                    float ao = Mathf.Clamp(aoMask.g, bakedTerrainMinAO, 1f);
-                    return new Color(ao, ao, ao, 1f);
-                }
-                return Color.black;
-
-            case BakedTerrainDebugBakeMode.SurfaceFamilyColor:
-                string familyKey = sample.profile.family != null
-                    ? (!string.IsNullOrEmpty(sample.profile.family.familyName) ? sample.profile.family.familyName : sample.profile.family.name)
-                    : $"surface-{sample.surfaceIndex}";
-                return DeterministicDebugColor(familyKey, sample.surfaceIndex);
-
-            case BakedTerrainDebugBakeMode.SurfaceSliceColor:
-                return DeterministicDebugColor($"slice-{sample.sliceIndex}", sample.sliceIndex);
-
-            case BakedTerrainDebugBakeMode.TilingVisualized:
-                float cx = Mathf.Floor(sample.surfaceUV.x * 8f);
-                float cy = Mathf.Floor(sample.surfaceUV.y * 8f);
-                bool checker = (((int)cx + (int)cy) & 1) == 0;
-                return checker ? Color.white : Color.black;
-
-            case BakedTerrainDebugBakeMode.AlbedoOnly:
-            case BakedTerrainDebugBakeMode.Final:
-            default:
-                return baseColor;
-        }
-    }
-
-    private static string FormatColorRgb(Color c)
-    {
-        return $"({c.r:F3},{c.g:F3},{c.b:F3})";
-    }
-
-    private static string FormatVector2(Vector2 v)
-    {
-        return $"({v.x:F4},{v.y:F4})";
-    }
-
-    private static string FormatResolvedTerrainSurfaceSample(ResolvedTerrainSurfaceSample sample)
-    {
-        string visualName = sample.visual != null ? sample.visual.name : "<null>";
-        string visualBiome = sample.visual != null ? sample.visual.biome.ToString() : "<null>";
-        string familyAssetName = sample.surfaceFamily != null ? sample.surfaceFamily.name : "<null>";
-        string familyName = sample.surfaceFamily != null ? sample.surfaceFamily.familyName : "<null>";
-        return $"tileIndex={sample.tileIndex} tile.biome={sample.tileBiome} renderedBiome={sample.renderedBiome} underwaterBiome={sample.underwaterBiome} " +
-               $"waterType={sample.waterType} isMountain={sample.isMountain} isRiver={sample.isRiver} isLake={sample.isLake} isSolidFrozenWater={sample.isSolidFrozenWater} " +
-               $"visual.name={visualName} visual.biome={visualBiome} surfaceFamily.asset={familyAssetName} surfaceFamily.familyName={familyName} " +
-               $"biomeIndex={sample.biomeIndex} surfaceIndex={sample.surfaceIndex} sliceIndex={sample.sliceIndex} forcedVariant={sample.forcedVariant} " +
-               $"profile.tiling={sample.profile.tiling:F3} profile.normalStrength={sample.profile.normalStrength:F3} profile.roughnessOffset={sample.profile.roughnessOffset:F3} " +
-               $"profile.inherentWetness={sample.profile.inherentWetness:F3} profile.isWaterBiome={sample.profile.isWaterBiome} " +
-               $"mapUV={FormatVector2(sample.mapUV)} surfaceUV={FormatVector2(sample.surfaceUV)} sampledAlbedo={FormatColorRgb(sample.sampledAlbedo)}";
-    }
-
-    private void ExportBakedTerrainBaseColorDebugPng()
-    {
-        if (bakedTerrainBaseColor == null) return;
-
-        try
-        {
-            Directory.CreateDirectory(bakedTerrainDebugExportFolder);
-            string path = Path.Combine(bakedTerrainDebugExportFolder, "BakedTerrain_BaseColor.png");
-            File.WriteAllBytes(path, bakedTerrainBaseColor.EncodeToPNG());
-            Debug.Log($"[HexMapChunkManager] Exported baked terrain BaseColor debug PNG: {path}");
-#if UNITY_EDITOR
-            UnityEditor.AssetDatabase.Refresh();
-#endif
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[HexMapChunkManager] Failed to export baked terrain BaseColor debug PNG: {ex.Message}");
-        }
-    }
-
-    private void ExportRuntimeAlbedoSliceDebug(int sliceIndex, string label)
-    {
-        if (biomeAlbedoArray == null)
-        {
-            Debug.LogWarning($"[HexMapChunkManager] Cannot export albedo slice {sliceIndex} ({label}): biomeAlbedoArray is null.");
-            return;
-        }
-
-        if (sliceIndex < 0 || sliceIndex >= biomeAlbedoArray.depth)
-        {
-            Debug.LogWarning($"[HexMapChunkManager] Cannot export albedo slice {sliceIndex} ({label}): outside depth {biomeAlbedoArray.depth}.");
-            return;
-        }
-
-        try
-        {
-            Color[] slicePixels;
-            if (bakedTerrainReadableSliceCache != null && bakedTerrainReadableSliceCache.TryGetValue(sliceIndex, out var cachedPixels))
-                slicePixels = cachedPixels;
-            else
-                slicePixels = biomeAlbedoArray.GetPixels(sliceIndex, 0);
-
-            var tex = new Texture2D(biomeAlbedoArray.width, biomeAlbedoArray.height, TextureFormat.RGBA32, false, false)
-            {
-                name = $"AlbedoSlice_{sliceIndex}_{label}"
-            };
-            tex.SetPixels(slicePixels);
-            tex.Apply(false, false);
-
-            Directory.CreateDirectory(bakedTerrainDebugExportFolder);
-            string safeLabel = new string((label ?? "Slice").Select(c => char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_').ToArray());
-            string path = Path.Combine(bakedTerrainDebugExportFolder, $"AlbedoSlice_{sliceIndex}_{safeLabel}.png");
-            File.WriteAllBytes(path, tex.EncodeToPNG());
-            DestroyImmediate(tex);
-            Debug.Log($"[HexMapChunkManager] Exported runtime albedo slice debug PNG: {path}");
-#if UNITY_EDITOR
-            UnityEditor.AssetDatabase.Refresh();
-#endif
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"[HexMapChunkManager] Failed to export albedo slice {sliceIndex} ({label}): {ex.Message}");
-        }
-    }
-
-    private void RebuildBakedHdrpLitMaterialMaps()
-    {
-        BuildBakedHdrpLitTerrainMaps();
-
-        if (bakedTerrainBakeMaskMap)
-            BuildBakedHdrpLitMaskMap();
-        else
-            BuildNeutralBakedMaskMap();
-
-        if (bakedTerrainBakeNormalMap)
-            BuildBakedHdrpLitNormalMap();
-        else if (bakedLitTerrainMaterial != null)
-        {
-            if (bakedLitTerrainMaterial.HasProperty("_NormalMap"))
-                bakedLitTerrainMaterial.SetTexture("_NormalMap", null);
-            bakedLitTerrainMaterial.DisableKeyword("_NORMALMAP");
-        }
-    }
-
-    private bool TrySampleTextureArraySlice(Texture2DArray array, int sliceIndex, Vector2 uv, Dictionary<int, Color[]> sliceCache, out Color sampled, out string failureReason)
-    {
-        sampled = Color.clear;
-        failureReason = null;
-
-        if (array == null)
-        {
-            failureReason = "missing texture array";
-            return false;
-        }
-
-        if (sliceIndex < 0 || sliceIndex >= array.depth)
-        {
-            failureReason = $"slice {sliceIndex} outside depth {array.depth}";
-            return false;
-        }
-
-        if (sliceCache == null)
-        {
-            failureReason = "missing slice cache";
-            return false;
-        }
-
-        if (!sliceCache.TryGetValue(sliceIndex, out var slicePixels))
-        {
-            try
-            {
-                slicePixels = array.GetPixels(sliceIndex, 0);
-            }
-            catch (System.Exception ex)
-            {
-                failureReason = $"slice {sliceIndex} is not CPU-readable ({ex.GetType().Name}: {ex.Message})";
-                return false;
-            }
-
-            if (slicePixels == null || slicePixels.Length == 0)
-            {
-                failureReason = $"slice {sliceIndex} returned no pixels";
-                return false;
-            }
-
-            if (sliceCache.Count >= BakedTerrainReadableSliceCacheLimit)
-                sliceCache.Clear();
-
-            sliceCache[sliceIndex] = slicePixels;
-        }
-
-        int sourceWidth = Mathf.Max(1, array.width);
-        int sourceHeight = Mathf.Max(1, array.height);
-        float sampleX = Mathf.Repeat(uv.x, 1f) * (sourceWidth - 1);
-        float sampleY = Mathf.Repeat(uv.y, 1f) * (sourceHeight - 1);
-        int x0 = Mathf.Clamp(Mathf.FloorToInt(sampleX), 0, sourceWidth - 1);
-        int y0 = Mathf.Clamp(Mathf.FloorToInt(sampleY), 0, sourceHeight - 1);
-        int x1 = Mathf.Min(x0 + 1, sourceWidth - 1);
-        int y1 = Mathf.Min(y0 + 1, sourceHeight - 1);
-        float tx = sampleX - x0;
-        float ty = sampleY - y0;
-
-        int maxIndex = slicePixels.Length - 1;
-        Color c00 = slicePixels[Mathf.Min(y0 * sourceWidth + x0, maxIndex)];
-        Color c10 = slicePixels[Mathf.Min(y0 * sourceWidth + x1, maxIndex)];
-        Color c01 = slicePixels[Mathf.Min(y1 * sourceWidth + x0, maxIndex)];
-        Color c11 = slicePixels[Mathf.Min(y1 * sourceWidth + x1, maxIndex)];
-        sampled = Color.Lerp(Color.Lerp(c00, c10, tx), Color.Lerp(c01, c11, tx), ty);
-        return true;
-    }
-
-    private int GetBakedTerrainTileIndexAtUV(float u, float v)
-    {
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
-            return -1;
-
-        int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-        int x = Mathf.Clamp(Mathf.FloorToInt(Mathf.Repeat(u, 1f) * width), 0, width - 1);
-        int y = Mathf.Clamp(Mathf.FloorToInt(Mathf.Clamp01(v) * height), 0, height - 1);
-        int lutIndex = y * width + x;
-        return (lutIndex >= 0 && lutIndex < bakeResult.lut.Length) ? bakeResult.lut[lutIndex] : -1;
-    }
-
-    private void EnsureBakedTerrainHeightRangeForCliffs()
-    {
-        if (_heightmapMax > _heightmapMin + 0.0001f)
-            return;
-
-        if (planetGenerator == null || planetGenerator.data == null || planetGenerator.data.Count == 0)
-            return;
-
-        float min = float.MaxValue;
-        float max = float.MinValue;
-        foreach (int tileIndex in planetGenerator.data.Keys)
-        {
-            float elevation = GetRenderedElevation(tileIndex);
-            if (elevation < min) min = elevation;
-            if (elevation > max) max = elevation;
-        }
-
-        if (min != float.MaxValue && max != float.MinValue)
-        {
-            _heightmapMin = min;
-            _heightmapMax = max;
-        }
-    }
-
-    private float SampleBakedTerrainElevation01(float u, float v)
-    {
-        int tileIndex = GetBakedTerrainTileIndexAtUV(u, v);
-        float elevation = tileIndex >= 0 ? GetRenderedElevation(tileIndex) : 0f;
-        float range = Mathf.Max(0.0001f, _heightmapMax - _heightmapMin);
-        return Mathf.Clamp01((elevation - _heightmapMin) / range);
-    }
-
-    private float ComputeBakedCliffMask(float u, float v, ResolvedTerrainSurfaceSample sample)
-    {
-        if (!bakedTerrainBakeCliffs)
-            return 0f;
-
-        int width = Mathf.Max(1, bakedTerrainTextureWidth);
-        int height = Mathf.Max(1, bakedTerrainTextureHeight);
-        float du = 1f / Mathf.Max(1, width - 1);
-        float dv = 1f / Mathf.Max(1, height - 1);
-
-        float center = SampleBakedTerrainElevation01(u, v);
-        float left = SampleBakedTerrainElevation01(u - du, v);
-        float right = SampleBakedTerrainElevation01(u + du, v);
-        float down = SampleBakedTerrainElevation01(u, v - dv);
-        float up = SampleBakedTerrainElevation01(u, v + dv);
-
-        float slope = Mathf.Max(Mathf.Abs(center - left), Mathf.Abs(center - right), Mathf.Abs(center - down), Mathf.Abs(center - up));
-        float step = Mathf.Max(center - left, center - right, center - down, center - up, 0f);
-        float slopeMask = Mathf.SmoothStep(cliffSlopeThreshold, Mathf.Clamp01(cliffSlopeThreshold + Mathf.Max(0.0001f, cliffSlopeBlend)), slope);
-        float stepMask = Mathf.SmoothStep(cliffStepThreshold, Mathf.Clamp01(cliffStepThreshold + Mathf.Max(0.0001f, cliffStepBlend)), step);
-        float cliffMask = Mathf.Clamp01(Mathf.Max(slopeMask, stepMask) * cliffStrength);
-
-        bool waterOrCoast = sample.profile.isWaterBiome
-            || sample.waterType != TileWaterType.None
-            || sample.isRiver
-            || sample.isLake
-            || sample.renderedBiome == Biome.Coast
-            || sample.tileBiome == Biome.Coast;
-
-        if (waterOrCoast)
-            cliffMask *= 0.05f;
-        else if (bakedCliffsPreferMountainsAndSteepSteps && !sample.profile.isMountain)
-            cliffMask *= 0.35f;
-        else if (sample.profile.isMountain)
-            cliffMask = Mathf.Clamp01(cliffMask * 1.15f);
-
-        return Mathf.Clamp01(cliffMask);
-    }
-
-    private void ExportBakedTerrainDebugPng(Texture2D texture, string fileName, string label)
-    {
-        if (texture == null) return;
-
-        try
-        {
-            Directory.CreateDirectory(bakedTerrainDebugExportFolder);
-            string path = Path.Combine(bakedTerrainDebugExportFolder, fileName);
-            File.WriteAllBytes(path, texture.EncodeToPNG());
-            Debug.Log($"[HexMapChunkManager] Exported baked terrain {label} debug PNG: {path}");
-#if UNITY_EDITOR
-            UnityEditor.AssetDatabase.Refresh();
-#endif
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[HexMapChunkManager] Failed to export baked terrain {label} debug PNG: {ex.Message}");
-        }
-    }
-
-    private void BuildBakedHdrpLitTerrainMaps()
-    {
-        int width = Mathf.Max(1, bakedTerrainTextureWidth);
-        int height = Mathf.Max(1, bakedTerrainTextureHeight);
-
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
-        {
-            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit terrain maps: bakeResult.lut is missing.");
-            return;
-        }
-
-        if (bakedTerrainBaseColor != null)
-            DestroyImmediate(bakedTerrainBaseColor);
-
-        bakedTerrainBaseColor = new Texture2D(width, height, TextureFormat.RGBA32, true, false);
-        bakedTerrainBaseColor.name = "BakedTerrain_BaseColor";
-        bakedTerrainBaseColor.wrapMode = TextureWrapMode.Repeat;
-        bakedTerrainBaseColor.filterMode = FilterMode.Bilinear;
-        bakedTerrainBaseColor.anisoLevel = 4;
-
-        Color[] pixels = new Color[width * height];
-
-        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-        int[] lut = bakeResult.lut;
-        bool useSimpleColors = bakedTerrainUseSimpleBiomeColors;
-
-        int successfulAlbedoSamplePixelCount = 0;
-        int fallbackPixelCount = 0;
-        var warnedFallbackKeys = new HashSet<string>();
-        var sampleLogs = new List<string>(10);
-        var targetedLogs = new Dictionary<Biome, List<string>>();
-        var exportedProblemBiomeSlices = new HashSet<Biome>();
-        var statsByBiome = new Dictionary<Biome, BakedTerrainBiomeStats>();
-        bakedTerrainReadableSliceCache = new Dictionary<int, Color[]>();
-        bakedTerrainFailedSliceSampleReasons = new Dictionary<int, string>();
-        var cliffAlbedoSliceCache = new Dictionary<int, Color[]>();
-        var debugNormalSliceCache = new Dictionary<int, Color[]>();
-        var debugMaskSliceCache = new Dictionary<int, Color[]>();
-        if (bakedTerrainBakeCliffs)
-            EnsureBakedTerrainHeightRangeForCliffs();
-        bakedTerrainLastCliffMaskPixels = bakedTerrainBakeCliffs ? new Color[width * height] : null;
-        bakedTerrainLastCliffMaskWidth = bakedTerrainBakeCliffs ? width : 0;
-        bakedTerrainLastCliffMaskHeight = bakedTerrainBakeCliffs ? height : 0;
-        double cliffMaskSum = 0d;
-        float cliffMaskMax = 0f;
-        int strongCliffMaskPixelCount = 0;
-        int cliffSampleFailureCount = 0;
-
-        for (int y = 0; y < height; y++)
-        {
-            float v = (height <= 1) ? 0f : (float)y / (height - 1);
-            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
-
-            for (int x = 0; x < width; x++)
-            {
-                float u = (width <= 1) ? 0f : (float)x / (width - 1);
-                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
-
-                int lutIndex = lutY * lutWidth + lutX;
-                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
-                Color color = Color.magenta;
-                bool resolvedSample = TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample);
-
-                if (resolvedSample)
-                {
-                    bool sampleFallback = !useSimpleColors && !lastResolvedTerrainAlbedoSampleSucceeded;
-                    color = sample.sampledAlbedo;
-
-                    if (useSimpleColors)
-                    {
-                        color = BiomeColorHelper.GetMinimapColor(sample.tileBiome);
-                    }
-                    else if (lastResolvedTerrainAlbedoSampleSucceeded)
-                    {
-                        successfulAlbedoSamplePixelCount++;
-                    }
-                    else
-                    {
-                        fallbackPixelCount++;
-                        string fallbackKey = $"surface={sample.surfaceIndex}|slice={sample.sliceIndex}|reason={lastResolvedTerrainAlbedoSampleFailureReason}";
-                        if (warnedFallbackKeys.Add(fallbackKey))
-                        {
-                            Debug.LogWarning($"[HexMapChunkManager] Baked HDRP/Lit albedo sampling failed for surface={sample.surfaceIndex}, slice={sample.sliceIndex}, biome={sample.tileBiome}; using minimap fallback. Reason: {lastResolvedTerrainAlbedoSampleFailureReason}");
-                        }
-                    }
-
-                    if (sampleLogs.Count < 10)
-                        sampleLogs.Add($"pixel=({x},{y}) {FormatResolvedTerrainSurfaceSample(sample)}");
-
-                    if (!statsByBiome.TryGetValue(sample.renderedBiome, out var stats))
-                    {
-                        stats = new BakedTerrainBiomeStats();
-                        statsByBiome[sample.renderedBiome] = stats;
-                    }
-                    stats.Add(sample, sampleFallback);
-
-                    if (debugBakedTerrainResolution)
-                    {
-                        bool shouldLogBiome = debugBakedTerrainOnlyProblemBiomes
-                            ? BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) || BakedTerrainWatchedBiomes.Contains(sample.tileBiome)
-                            : true;
-
-                        if (shouldLogBiome)
-                        {
-                            Biome key = BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) ? sample.renderedBiome : sample.tileBiome;
-                            if (!targetedLogs.TryGetValue(key, out var logs))
-                            {
-                                logs = new List<string>();
-                                targetedLogs[key] = logs;
-                            }
-
-                            if (logs.Count < Mathf.Max(1, debugBakedTerrainSamplesPerBiome))
-                                logs.Add($"pixel=({x},{y}) {FormatResolvedTerrainSurfaceSample(sample)}");
-                        }
-                    }
-
-                    if (bakedTerrainDebugBakeMode != BakedTerrainDebugBakeMode.Final)
-                        color = ComputeBakedTerrainDebugBaseColor(sample, color, debugNormalSliceCache, debugMaskSliceCache);
-
-                    if (exportProblemBiomeSlices && !useSimpleColors && BakedTerrainSliceExportBiomes.Contains(sample.renderedBiome) && exportedProblemBiomeSlices.Add(sample.renderedBiome))
-                        ExportRuntimeAlbedoSliceDebug(sample.sliceIndex, sample.renderedBiome.ToString());
-                }
-
-                float cliffMask = 0f;
-                if (bakedTerrainBakeCliffs && resolvedSample && bakedTerrainDebugBakeMode == BakedTerrainDebugBakeMode.Final)
-                {
-                    cliffMask = ComputeBakedCliffMask(u, v, sample);
-                    bakedTerrainLastCliffMaskPixels[y * width + x] = new Color(cliffMask, cliffMask, cliffMask, 1f);
-                    cliffMaskSum += cliffMask;
-                    if (cliffMask > cliffMaskMax) cliffMaskMax = cliffMask;
-                    if (cliffMask > 0.5f) strongCliffMaskPixelCount++;
-
-                    float albedoCliffMask = cliffMask * bakedCliffAlbedoStrength;
-                    if (albedoCliffMask > 0f && cliffAlbedoArray != null && cliffAlbedoArray.depth > 0)
-                    {
-                        int cliffSlice = Mathf.Abs(tileIndex) % cliffAlbedoArray.depth;
-                        Vector2 cliffUV = new Vector2(Mathf.Repeat(u * cliffTiling, 1f), Mathf.Repeat(v * cliffTiling, 1f));
-                        if (TrySampleTextureArraySlice(cliffAlbedoArray, cliffSlice, cliffUV, cliffAlbedoSliceCache, out var cliffColor, out _))
-                        {
-                            cliffColor.a = color.a;
-                            color = Color.Lerp(color, cliffColor, Mathf.Clamp01(albedoCliffMask));
-                        }
-                        else
-                        {
-                            cliffSampleFailureCount++;
-                        }
-                    }
-                }
-
-                pixels[y * width + x] = color;
-            }
-        }
-
-        bakedTerrainBaseColor.SetPixels(pixels);
-        bool keepReadableForDebugExport = keepBakedTerrainTexturesReadable || exportBakedTerrainDebugPng;
-        bakedTerrainBaseColor.Apply(true, !keepReadableForDebugExport);
-
-        if (exportBakedTerrainDebugPng)
-        {
-            ExportBakedTerrainBaseColorDebugPng();
-            if (bakedTerrainBakeCliffs && bakedTerrainLastCliffMaskPixels != null)
-            {
-                var cliffMaskTexture = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
-                {
-                    name = "BakedTerrain_CliffMask"
-                };
-                cliffMaskTexture.SetPixels(bakedTerrainLastCliffMaskPixels);
-                cliffMaskTexture.Apply(false, false);
-                ExportBakedTerrainDebugPng(cliffMaskTexture, "BakedTerrain_CliffMask.png", "CliffMask");
-                DestroyImmediate(cliffMaskTexture);
-            }
-        }
-
-        if (bakedLitTerrainMaterial != null)
-        {
-            if (bakedLitTerrainMaterial.HasProperty("_BaseColorMap"))
-                bakedLitTerrainMaterial.SetTexture("_BaseColorMap", bakedTerrainBaseColor);
-            else
-                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _BaseColorMap property.");
-        }
-
-        string bakeMode = useSimpleColors ? "simple biome colors" : "surface albedo textures";
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit BaseColor map {width}x{height}, mode={bakeMode}, bakedTerrainUseSimpleBiomeColors={useSimpleColors}, readable={keepReadableForDebugExport}");
-        Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit BaseColor bake sampledRealAlbedoPixels={successfulAlbedoSamplePixelCount}, fallbackBiomeColorPixels={fallbackPixelCount}.");
-        if (bakedTerrainBakeCliffs)
-            Debug.Log($"[HexMapChunkManager] Baked HDRP/Lit cliff BaseColor overlay avgMask={(width * height > 0 ? cliffMaskSum / (width * height) : 0d):F4}, maxMask={cliffMaskMax:F4}, pixelsMaskGt0.5={strongCliffMaskPixelCount}, cliffAlbedoArray={(cliffAlbedoArray != null ? cliffAlbedoArray.depth.ToString() : "NULL")}, sampleFailures={cliffSampleFailureCount}.");
-        if (sampleLogs.Count > 0)
-            Debug.Log($"[HexMapChunkManager] First resolved baked HDRP/Lit terrain samples:\n  {string.Join("\n  ", sampleLogs)}");
-
-        if (targetedLogs.Count > 0)
-        {
-            foreach (var kvp in targetedLogs.OrderBy(k => k.Key.ToString()))
-                Debug.Log($"[BakedTerrainResolution] {kvp.Key} examples (max {Mathf.Max(1, debugBakedTerrainSamplesPerBiome)}):\n  {string.Join("\n  ", kvp.Value)}");
-        }
-
-        foreach (var kvp in statsByBiome.OrderBy(k => k.Key.ToString()))
-        {
-            var stats = kvp.Value;
-            if (stats.pixelCount <= 0) continue;
-
-            string slices = string.Join(",", stats.sliceCounts
-                .OrderByDescending(s => s.Value)
-                .ThenBy(s => s.Key)
-                .Take(8)
-                .Select(s => $"{s.Key}:{s.Value}"));
-
-            Debug.Log($"[BakedTerrainStats] {kvp.Key} pixels={stats.pixelCount} avgRGB=({stats.sumR / stats.pixelCount:F3},{stats.sumG / stats.pixelCount:F3},{stats.sumB / stats.pixelCount:F3}) " +
-                      $"avgLum={stats.sumLum / stats.pixelCount:F3} minLum={stats.minLum:F3} maxLum={stats.maxLum:F3} slices={slices} fallbackCount={stats.fallbackCount}");
-        }
-    }
-
-    private void BuildNeutralBakedMaskMap()
-    {
-        // Keep this neutral mask tiny for the first HDRP/Lit proof path. Real per-pixel mask baking
-        // should be added only after the BaseColor-only path is validated.
-        int width = 1;
-        int height = 1;
-
-        if (bakedTerrainMaskMap != null)
-            DestroyImmediate(bakedTerrainMaskMap);
-
-        bakedTerrainMaskMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
-        bakedTerrainMaskMap.name = "BakedTerrain_NeutralMask";
-        bakedTerrainMaskMap.wrapMode = TextureWrapMode.Repeat;
-        bakedTerrainMaskMap.filterMode = FilterMode.Bilinear;
-        bakedTerrainMaskMap.anisoLevel = 4;
-
-        Color neutral = new Color(0f, 1f, 0f, bakedTerrainDefaultSmoothness);
-        Color[] pixels = new Color[width * height];
-        for (int i = 0; i < pixels.Length; i++)
-            pixels[i] = neutral;
-
-        bakedTerrainMaskMap.SetPixels(pixels);
-        bakedTerrainMaskMap.Apply(true, !keepBakedTerrainTexturesReadable);
-
-        if (bakedLitTerrainMaterial != null)
-        {
-            if (bakedLitTerrainMaterial.HasProperty("_MaskMap"))
-                bakedLitTerrainMaterial.SetTexture("_MaskMap", bakedTerrainMaskMap);
-            else
-                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _MaskMap property.");
-        }
-
-        Debug.Log($"[HexMapChunkManager] Built neutral baked HDRP/Lit MaskMap {width}x{height}, readable={keepBakedTerrainTexturesReadable}");
-    }
-
-    private class BakedTerrainMaskBiomeStats
-    {
-        public int pixelCount;
-        public double sumSmoothness;
-        public double sumAO;
-        public double sumRoughnessOffset;
-    }
-
-    private class BakedTerrainNormalBiomeStats
-    {
-        public int pixelCount;
-        public double sumNormalStrength;
-    }
-
-    private void BuildBakedHdrpLitMaskMap()
-    {
-        int width = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.width : Mathf.Max(1, bakedTerrainTextureWidth);
-        int height = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.height : Mathf.Max(1, bakedTerrainTextureHeight);
-
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
-        {
-            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit MaskMap: bakeResult.lut is missing.");
-            return;
-        }
-
-        if (bakedTerrainBakeCliffs)
-            EnsureBakedTerrainHeightRangeForCliffs();
-
-        if (bakedTerrainMaskMap != null)
-            DestroyImmediate(bakedTerrainMaskMap);
-
-        bakedTerrainMaskMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
-        bakedTerrainMaskMap.name = "BakedTerrain_MaskMap";
-        bakedTerrainMaskMap.wrapMode = TextureWrapMode.Repeat;
-        bakedTerrainMaskMap.filterMode = FilterMode.Bilinear;
-        bakedTerrainMaskMap.anisoLevel = 4;
-
-        Color[] pixels = new Color[width * height];
-        var maskSliceCache = new Dictionary<int, Color[]>();
-        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-        int[] lut = bakeResult.lut;
-        int fallbackCount = 0;
-        double metallicSum = 0d;
-        double aoSum = 0d;
-        double smoothnessSum = 0d;
-        double roughnessOffsetSum = 0d;
-        float maxSmoothness = 0f;
-        int highSmoothnessCount = 0;
-        int highMetallicCount = 0;
-        var biomeStats = new Dictionary<Biome, BakedTerrainMaskBiomeStats>();
-        var watchedBiomes = new HashSet<Biome> { Biome.Desert, Biome.Savannah, Biome.Plains, Biome.Temperate, Biome.Glacier };
-
-        for (int y = 0; y < height; y++)
-        {
-            float v = (height <= 1) ? 0f : (float)y / (height - 1);
-            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
-
-            for (int x = 0; x < width; x++)
-            {
-                float u = (width <= 1) ? 0f : (float)x / (width - 1);
-                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
-                int lutIndex = lutY * lutWidth + lutX;
-                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
-
-                float metallic = 0f;
-                float ao = 1f;
-                float smoothness = bakedTerrainDefaultSmoothness;
-                float roughnessOffset = 0f;
-                Biome renderedBiome = Biome.Plains;
-                bool resolvedSample = TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample);
-
-                if (resolvedSample && TrySampleTextureArraySlice(biomeMaskArray, sample.sliceIndex, sample.surfaceUV, maskSliceCache, out var rawMask, out _))
-                {
-                    renderedBiome = sample.renderedBiome;
-                    metallic = bakedTerrainForceMetallicZero ? 0f : Mathf.Clamp01(rawMask.r);
-                    ao = Mathf.Clamp(rawMask.g, bakedTerrainMinAO, 1f);
-                    float rawSmoothness = Mathf.Clamp01(rawMask.a);
-                    roughnessOffset = sample.profile.roughnessOffset;
-                    smoothness = Mathf.Clamp(rawSmoothness - roughnessOffset, 0f, bakedTerrainMaxSmoothness);
-                }
-                else
-                {
-                    fallbackCount++;
-                }
-
-                if (bakedTerrainBakeCliffs && resolvedSample)
-                {
-                    float cliffMask = ComputeBakedCliffMask(u, v, sample) * bakedCliffMaskStrength;
-                    if (cliffMask > 0f)
-                    {
-                        metallic = 0f;
-                        ao = Mathf.Lerp(ao, Mathf.Min(ao, 0.75f), cliffMask);
-                        smoothness = Mathf.Lerp(smoothness, Mathf.Min(smoothness, 0.35f), cliffMask);
-                    }
-                }
-
-                pixels[y * width + x] = new Color(metallic, ao, 0f, smoothness);
-                metallicSum += metallic;
-                aoSum += ao;
-                smoothnessSum += smoothness;
-                roughnessOffsetSum += roughnessOffset;
-                if (smoothness > maxSmoothness) maxSmoothness = smoothness;
-                if (smoothness > 0.5f) highSmoothnessCount++;
-                if (metallic > 0.05f) highMetallicCount++;
-
-                if (watchedBiomes.Contains(renderedBiome))
-                {
-                    if (!biomeStats.TryGetValue(renderedBiome, out var stats))
-                    {
-                        stats = new BakedTerrainMaskBiomeStats();
-                        biomeStats[renderedBiome] = stats;
-                    }
-
-                    stats.pixelCount++;
-                    stats.sumSmoothness += smoothness;
-                    stats.sumAO += ao;
-                    stats.sumRoughnessOffset += roughnessOffset;
-                }
-            }
-        }
-
-        bakedTerrainMaskMap.SetPixels(pixels);
-        bool keepReadableForDebugExport = keepBakedTerrainTexturesReadable || exportBakedTerrainDebugPng;
-        bakedTerrainMaskMap.Apply(true, !keepReadableForDebugExport);
-
-        if (exportBakedTerrainDebugPng)
-            ExportBakedTerrainDebugPng(bakedTerrainMaskMap, "BakedTerrain_MaskMap.png", "MaskMap");
-
-        if (bakedLitTerrainMaterial != null)
-        {
-            if (bakedLitTerrainMaterial.HasProperty("_MaskMap"))
-                bakedLitTerrainMaterial.SetTexture("_MaskMap", bakedTerrainMaskMap);
-            else
-                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _MaskMap property.");
-
-            if (bakedLitTerrainMaterial.HasProperty("_Metallic"))
-                bakedLitTerrainMaterial.SetFloat("_Metallic", 0f);
-
-            if (bakedLitTerrainMaterial.HasProperty("_Smoothness"))
-                bakedLitTerrainMaterial.SetFloat("_Smoothness", bakedTerrainDefaultSmoothness);
-        }
-
-        int pixelCount = Mathf.Max(1, width * height);
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit MaskMap {width}x{height}, fallbackPixels={fallbackCount}, avgMetallic={metallicSum / pixelCount:F4}, avgAO={aoSum / pixelCount:F4}, avgSmoothness={smoothnessSum / pixelCount:F4}, avgRoughnessOffset={roughnessOffsetSum / pixelCount:F4}, maxSmoothness={maxSmoothness:F4}, smoothnessGt0.5={highSmoothnessCount}, metallicGt0.05={highMetallicCount}, readable={keepReadableForDebugExport}.");
-        foreach (var kvp in biomeStats.OrderBy(k => k.Key.ToString()))
-        {
-            var stats = kvp.Value;
-            if (stats.pixelCount <= 0) continue;
-            Debug.Log($"[BakedTerrainMaskStats] {kvp.Key} pixels={stats.pixelCount} avgRoughnessOffset={stats.sumRoughnessOffset / stats.pixelCount:F4} avgSmoothness={stats.sumSmoothness / stats.pixelCount:F4} avgAO={stats.sumAO / stats.pixelCount:F4}");
-        }
-    }
-
-    private void BuildBakedHdrpLitNormalMap()
-    {
-        int width = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.width : Mathf.Max(1, bakedTerrainTextureWidth);
-        int height = bakedTerrainBaseColor != null ? bakedTerrainBaseColor.height : Mathf.Max(1, bakedTerrainTextureHeight);
-
-        if (bakeResult.lut == null || bakeResult.lut.Length == 0)
-        {
-            Debug.LogError("[HexMapChunkManager] Cannot bake HDRP/Lit NormalMap: bakeResult.lut is missing.");
-            return;
-        }
-
-        if (bakedTerrainBakeCliffs)
-            EnsureBakedTerrainHeightRangeForCliffs();
-
-        if (bakedTerrainNormalMap != null)
-            DestroyImmediate(bakedTerrainNormalMap);
-
-        bakedTerrainNormalMap = new Texture2D(width, height, TextureFormat.RGBA32, true, true);
-        bakedTerrainNormalMap.name = "BakedTerrain_NormalMap";
-        bakedTerrainNormalMap.wrapMode = TextureWrapMode.Repeat;
-        bakedTerrainNormalMap.filterMode = FilterMode.Bilinear;
-        bakedTerrainNormalMap.anisoLevel = 4;
-
-        Color[] pixels = new Color[width * height];
-        var normalSliceCache = new Dictionary<int, Color[]>();
-        var cliffNormalSliceCache = new Dictionary<int, Color[]>();
-        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-        int[] lut = bakeResult.lut;
-        int sampleCount = 0;
-        int fallbackCount = 0;
-        double sumR = 0d;
-        double sumG = 0d;
-        double sumB = 0d;
-        double normalStrengthSum = 0d;
-        int nearFlatNormalCount = 0;
-        var normalStatsByBiome = new Dictionary<Biome, BakedTerrainNormalBiomeStats>();
-        Color flatNormal = new Color(0.5f, 0.5f, 1f, 1f);
-
-        for (int y = 0; y < height; y++)
-        {
-            float v = (height <= 1) ? 0f : (float)y / (height - 1);
-            int lutY = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
-
-            for (int x = 0; x < width; x++)
-            {
-                float u = (width <= 1) ? 0f : (float)x / (width - 1);
-                int lutX = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
-                int lutIndex = lutY * lutWidth + lutX;
-                int tileIndex = (lutIndex >= 0 && lutIndex < lut.Length) ? lut[lutIndex] : -1;
-                Color packed = flatNormal;
-
-                if (TryResolveTerrainSurfaceSample(tileIndex, u, v, out var sample) &&
-                    TrySampleTextureArraySlice(biomeNormalArray, sample.sliceIndex, sample.surfaceUV, normalSliceCache, out var raw, out _))
-                {
-                    Vector3 n = new Vector3(raw.r * 2f - 1f, raw.g * 2f - 1f, raw.b * 2f - 1f);
-                    float normalStrength = Mathf.Max(0f, sample.profile.normalStrength);
-                    n.x *= normalStrength;
-                    n.y *= normalStrength;
-                    n.z = Mathf.Sqrt(Mathf.Max(0.0001f, 1f - Mathf.Clamp01(n.x * n.x + n.y * n.y)));
-                    n.Normalize();
-
-                    if (bakedTerrainBakeCliffs && cliffNormalArray != null && cliffNormalArray.depth > 0)
-                    {
-                        float cliffMask = ComputeBakedCliffMask(u, v, sample) * bakedCliffNormalStrength;
-                        int cliffSlice = Mathf.Abs(tileIndex) % cliffNormalArray.depth;
-                        Vector2 cliffUV = new Vector2(Mathf.Repeat(u * cliffTiling, 1f), Mathf.Repeat(v * cliffTiling, 1f));
-                        if (cliffMask > 0f && TrySampleTextureArraySlice(cliffNormalArray, cliffSlice, cliffUV, cliffNormalSliceCache, out var cliffRaw, out _))
-                        {
-                            Vector3 cliffN = new Vector3(cliffRaw.r * 2f - 1f, cliffRaw.g * 2f - 1f, cliffRaw.b * 2f - 1f);
-                            cliffN.Normalize();
-                            n = Vector3.Lerp(n, cliffN, Mathf.Clamp01(cliffMask));
-                            n.Normalize();
-                        }
-                    }
-
-                    packed = new Color(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f, 1f);
-                    normalStrengthSum += normalStrength;
-                    if (BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) || BakedTerrainWatchedBiomes.Contains(sample.tileBiome))
-                    {
-                        Biome key = BakedTerrainWatchedBiomes.Contains(sample.renderedBiome) ? sample.renderedBiome : sample.tileBiome;
-                        if (!normalStatsByBiome.TryGetValue(key, out var normalStats))
-                        {
-                            normalStats = new BakedTerrainNormalBiomeStats();
-                            normalStatsByBiome[key] = normalStats;
-                        }
-                        normalStats.pixelCount++;
-                        normalStats.sumNormalStrength += normalStrength;
-                    }
-                    sampleCount++;
-                }
-                else
-                {
-                    fallbackCount++;
-                }
-
-                pixels[y * width + x] = packed;
-                if (Mathf.Abs(packed.r - 0.5f) < 0.02f && Mathf.Abs(packed.g - 0.5f) < 0.02f)
-                    nearFlatNormalCount++;
-                sumR += packed.r;
-                sumG += packed.g;
-                sumB += packed.b;
-            }
-        }
-
-        bakedTerrainNormalMap.SetPixels(pixels);
-        bool keepReadableForDebugExport = keepBakedTerrainTexturesReadable || exportBakedTerrainDebugPng;
-        bakedTerrainNormalMap.Apply(true, !keepReadableForDebugExport);
-
-        if (exportBakedTerrainDebugPng)
-        {
-            ExportBakedTerrainDebugPng(bakedTerrainNormalMap, "BakedTerrain_NormalMap.png", "NormalMap");
-            ExportBakedTerrainDebugPng(bakedTerrainNormalMap, "BakedTerrain_Normal.png", "Normal");
-        }
-
-        if (bakedLitTerrainMaterial != null)
-        {
-            if (bakedLitTerrainMaterial.HasProperty("_NormalMap"))
-                bakedLitTerrainMaterial.SetTexture("_NormalMap", bakedTerrainNormalMap);
-            else
-                Debug.LogWarning("[HexMapChunkManager] Baked HDRP/Lit material has no _NormalMap property.");
-
-            if (bakedLitTerrainMaterial.HasProperty("_NormalScale"))
-                bakedLitTerrainMaterial.SetFloat("_NormalScale", 1f);
-
-            bakedLitTerrainMaterial.EnableKeyword("_NORMALMAP");
-        }
-
-        int pixelCount = Mathf.Max(1, width * height);
-        Debug.Log($"[HexMapChunkManager] Built baked HDRP/Lit NormalMap {width}x{height}, samples={sampleCount}, fallbackPixels={fallbackCount}, avgNormalStrength={(sampleCount > 0 ? normalStrengthSum / sampleCount : 0d):F4}, nearFlatNormals={nearFlatNormalCount} ({(nearFlatNormalCount * 100d / pixelCount):F2}%), avgRGB=({sumR / pixelCount:F4},{sumG / pixelCount:F4},{sumB / pixelCount:F4}), readable={keepReadableForDebugExport}.");
-        foreach (var kvp in normalStatsByBiome.OrderBy(k => k.Key.ToString()))
-        {
-            var stats = kvp.Value;
-            if (stats.pixelCount <= 0) continue;
-            Debug.Log($"[BakedTerrainNormalStats] {kvp.Key} pixels={stats.pixelCount} avgNormalStrength={stats.sumNormalStrength / stats.pixelCount:F4}");
-        }
-    }
 
     private void CreateSharedMaterial()
     {
-        Debug.Log($"[HexMapChunkManager] TerrainRenderPath={terrainRenderPath}");
-
-        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
-        {
-            CreateBakedLitMaterial();
-            RebuildBakedHdrpLitMaterialMaps();
-            sharedMaterial = bakedLitTerrainMaterial;
-            Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
-            Debug.Log($"[HexMapChunkManager] BakedBaseColor={bakedTerrainBaseColor != null} size={bakedTerrainTextureWidth}x{bakedTerrainTextureHeight}");
-            if (bakedLitTerrainMaterial != null)
-            {
-                Debug.Log($"[HexMapChunkManager] BakedLit Has _BaseColorMap={bakedLitTerrainMaterial.HasProperty("_BaseColorMap")}");
-                Debug.Log($"[HexMapChunkManager] BakedLit Has _MaskMap={bakedLitTerrainMaterial.HasProperty("_MaskMap")}");
-            }
-            return;
-        }
-
-        if (terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph)
-        {
-            CreateHdrpLitBiomeMaterial();
-            ApplyHdrpLitBiomeMaterialSettings();
-            sharedMaterial = hdrpLitBiomeTerrainMaterial;
-            Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
-            return;
-        }
-
         bool ShaderSupportsBiomeTerrain(Shader s)
         {
             if (s == null) return false;
@@ -4252,7 +2357,6 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 bool ok =
                     tmp.HasProperty("_BiomeIndexMap") &&
-                    tmp.HasProperty("_Heightmap") &&
                     tmp.HasProperty("_BiomeAlbedoArray") &&
                     tmp.HasProperty("_BiomeNormalArray") &&
                     tmp.HasProperty("_BiomeMaskArray") &&
@@ -4280,7 +2384,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (!ShaderSupportsBiomeTerrain(shader))
         {
             Debug.LogError($"[HexMapChunkManager] Selected terrain shader '{shader.name}' is missing required properties. " +
-                           "Expected: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount. " +
+                           "Expected: _BiomeIndexMap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount. " +
                            "This will render incorrectly (often solid blue).");
             return;
         }
@@ -4290,13 +2394,13 @@ public class HexMapChunkManager : MonoBehaviour
 
         // One-time diagnostic: confirms which shader we actually bound at runtime.
         ApplyBiomeMaterialSettings();
-        
+
         // Create and apply LUT texture for tile highlighting
         CreateAndApplyLUTTexture();
 
         Debug.Log($"[HexMapChunkManager] Shared material shader={sharedMaterial?.shader?.name}");
     }
-    
+
     /// <summary>
     /// Create a texture from the LUT array for shader-based tile highlighting.
     /// Uses a Burst job to encode tile indices as RGB24 bytes, then SetPixelData.
@@ -4336,10 +2440,10 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_LUT", lutTexture);
         }
     }
-    
+
     // Hex grid methods removed - shader graph doesn't support these properties.
     // To implement hex grid, create a separate HexGridOverlay component.
-    
+
     private void CreateColumnParents()
     {
         columnParents = new Transform[chunksX];
@@ -4359,14 +2463,14 @@ public class HexMapChunkManager : MonoBehaviour
             columnParents[x] = columnObj.transform;
         }
     }
-    
+
     private void CreateChunks()
     {
         chunks = new HexMapChunk[chunksX, chunksZ];
-        
+
         float chunkWidth = mapWidth / chunksX;
         float chunkHeight = mapHeight / chunksZ;
-        
+
         for (int x = 0; x < chunksX; x++)
         {
             for (int z = 0; z < chunksZ; z++)
@@ -4376,20 +2480,20 @@ public class HexMapChunkManager : MonoBehaviour
                 float maxX = minX + chunkWidth;
                 float minZ = -mapHeight * 0.5f + z * chunkHeight;
                 float maxZ = minZ + chunkHeight;
-                
+
                 // Calculate UV region for this chunk
                 float uMin = (float)x / chunksX;
                 float uMax = (float)(x + 1) / chunksX;
                 float vMin = (float)z / chunksZ;
                 float vMax = (float)(z + 1) / chunksZ;
-                
+
                 // Create chunk
                 GameObject chunkObj = new GameObject($"Chunk_{x}_{z}");
                 chunkObj.transform.SetParent(columnParents[x]);
                 chunkObj.transform.localPosition = new Vector3(0f, 0f, (-mapHeight * 0.5f) + (z * chunkHeight));
                 chunkObj.transform.localRotation = Quaternion.identity;
                 chunkObj.transform.localScale = Vector3.one;
-                
+
                 HexMapChunk chunk = chunkObj.AddComponent<HexMapChunk>();
                 chunk.Initialize(this, x, z, x);
 
@@ -4399,7 +2503,7 @@ public class HexMapChunkManager : MonoBehaviour
                 chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
                 chunk.SetMaterial(sharedMaterial);
                 chunk.SetTerrainVisible(currentViewLayer != GameManager.PlanetLayerType.Orbit);
-                
+
                 chunks[x, z] = chunk;
             }
         }
@@ -4411,12 +2515,12 @@ public class HexMapChunkManager : MonoBehaviour
     private System.Collections.IEnumerator CreateChunksCoroutine()
     {
         chunks = new HexMapChunk[chunksX, chunksZ];
-        
+
         float chunkWidth = mapWidth / chunksX;
         float chunkHeight = mapHeight / chunksZ;
         int batchSize = Mathf.Max(1, chunksPerBatch);
         int count = 0;
-        
+
         for (int x = 0; x < chunksX; x++)
         {
             for (int z = 0; z < chunksZ; z++)
@@ -4426,20 +2530,20 @@ public class HexMapChunkManager : MonoBehaviour
                 float maxX = minX + chunkWidth;
                 float minZ = -mapHeight * 0.5f + z * chunkHeight;
                 float maxZ = minZ + chunkHeight;
-                
+
                 // Calculate UV region for this chunk
                 float uMin = (float)x / chunksX;
                 float uMax = (float)(x + 1) / chunksX;
                 float vMin = (float)z / chunksZ;
                 float vMax = (float)(z + 1) / chunksZ;
-                
+
                 // Create chunk
                 GameObject chunkObj = new GameObject($"Chunk_{x}_{z}");
                 chunkObj.transform.SetParent(columnParents[x]);
                 chunkObj.transform.localPosition = new Vector3(0f, 0f, (-mapHeight * 0.5f) + (z * chunkHeight));
                 chunkObj.transform.localRotation = Quaternion.identity;
                 chunkObj.transform.localScale = Vector3.one;
-                
+
                 HexMapChunk chunk = chunkObj.AddComponent<HexMapChunk>();
                 chunk.Initialize(this, x, z, x);
 
@@ -4449,7 +2553,7 @@ public class HexMapChunkManager : MonoBehaviour
                 chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
                 chunk.SetMaterial(sharedMaterial);
                 chunk.SetTerrainVisible(currentViewLayer != GameManager.PlanetLayerType.Orbit);
-                
+
                 chunks[x, z] = chunk;
 
                 count++;
@@ -4457,40 +2561,40 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
-    
+
     private void AssignTilesToChunks()
     {
         tileToChunk.Clear();
-        
+
         if (grid == null) return;
-        
+
         float chunkWidth = mapWidth / chunksX;
         float chunkHeight = mapHeight / chunksZ;
-        
+
         // Group tiles by chunk
         var chunkTiles = new Dictionary<(int, int), List<int>>();
-        
+
         for (int i = 0; i < grid.TileCount; i++)
         {
             Vector3 tilePos = grid.tileCenters[i];
-            
+
             // Calculate which chunk this tile belongs to
             float normalizedX = (tilePos.x + mapWidth * 0.5f) / mapWidth;
             float normalizedZ = (tilePos.z + mapHeight * 0.5f) / mapHeight;
-            
+
             int chunkX = Mathf.Clamp(Mathf.FloorToInt(normalizedX * chunksX), 0, chunksX - 1);
             int chunkZ = Mathf.Clamp(Mathf.FloorToInt(normalizedZ * chunksZ), 0, chunksZ - 1);
-            
+
             var key = (chunkX, chunkZ);
             if (!chunkTiles.ContainsKey(key))
             {
                 chunkTiles[key] = new List<int>();
             }
             chunkTiles[key].Add(i);
-            
+
             tileToChunk[i] = chunks[chunkX, chunkZ];
         }
-        
+
         // Assign to chunks
         foreach (var kvp in chunkTiles)
         {
@@ -4504,12 +2608,12 @@ public class HexMapChunkManager : MonoBehaviour
     private System.Collections.IEnumerator AssignTilesToChunksCoroutine()
     {
         tileToChunk.Clear();
-        
+
         if (grid == null) yield break;
-        
+
         float chunkWidth = mapWidth / chunksX;
         float chunkHeight = mapHeight / chunksZ;
-        
+
         // Group tiles by chunk
         var chunkTiles = new Dictionary<(int, int), List<int>>();
         int batchSize = Mathf.Max(1, tilesPerBatch);
@@ -4518,21 +2622,21 @@ public class HexMapChunkManager : MonoBehaviour
         for (int i = 0; i < grid.TileCount; i++)
         {
             Vector3 tilePos = grid.tileCenters[i];
-            
+
             // Calculate which chunk this tile belongs to
             float normalizedX = (tilePos.x + mapWidth * 0.5f) / mapWidth;
             float normalizedZ = (tilePos.z + mapHeight * 0.5f) / mapHeight;
-            
+
             int chunkX = Mathf.Clamp(Mathf.FloorToInt(normalizedX * chunksX), 0, chunksX - 1);
             int chunkZ = Mathf.Clamp(Mathf.FloorToInt(normalizedZ * chunksZ), 0, chunksZ - 1);
-            
+
             var key = (chunkX, chunkZ);
             if (!chunkTiles.ContainsKey(key))
             {
                 chunkTiles[key] = new List<int>();
             }
             chunkTiles[key].Add(i);
-            
+
             tileToChunk[i] = chunks[chunkX, chunkZ];
 
             count++;
@@ -4546,7 +2650,7 @@ public class HexMapChunkManager : MonoBehaviour
             yield return null; // yield between chunk assignments to be safe
         }
     }
-    
+
     private void InitializeTerrainOverlays()
     {
         terrainOverlayGPU = FindAnyObjectByType<TerrainOverlayGPU>();
@@ -4555,7 +2659,7 @@ public class HexMapChunkManager : MonoBehaviour
             terrainOverlayGPU.OnMapModeOverlayChanged -= ApplyOverlayTexturesToMaterial;
             terrainOverlayGPU.OnMapModeOverlayChanged += ApplyOverlayTexturesToMaterial;
             terrainOverlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, textureWidth, textureHeight);
-            
+
             // Subscribe to TileSystem events
             int pIndex = planetGenerator != null ? planetGenerator.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
             overlayTileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
@@ -4564,12 +2668,12 @@ public class HexMapChunkManager : MonoBehaviour
                 overlayTileSystem.OnTileOwnerChanged += HandleTileOwnerChanged;
                 overlayTileSystem.OnFogChanged += HandleFogChanged;
             }
-            
+
             // Apply overlay textures to material
             ApplyOverlayTexturesToMaterial();
         }
     }
-    
+
     /// <summary>
     /// Apply fog and ownership overlay textures to the shared material.
     /// Binds the separate fog mask and the single reusable campaign thematic overlay.
@@ -4577,7 +2681,7 @@ public class HexMapChunkManager : MonoBehaviour
     private void ApplyOverlayTexturesToMaterial()
     {
         if (sharedMaterial == null || terrainOverlayGPU == null) return;
-        
+
         // NOTE: These properties don't exist in the current shader graph - they're set for future compatibility
         var fogMask = terrainOverlayGPU.GetFogMaskTexture();
         if (fogMask != null)
@@ -4585,7 +2689,7 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_FogMask", fogMask);
             sharedMaterial.SetFloat("_EnableFog", terrainOverlayGPU.EnableFogOverlay ? 1f : 0f);
         }
-        
+
         var mapModeTex = terrainOverlayGPU.GetMapModeOverlayTexture();
         if (mapModeTex != null)
         {
@@ -4593,7 +2697,7 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetFloat("_EnableMapMode", terrainOverlayGPU.IsMapModeOverlayActive ? 1f : 0f);
         }
     }
-    
+
     private void HandleTileOwnerChanged(int tile, int oldOwner, int newOwner)
     {
         if (terrainOverlayGPU != null)
@@ -4602,7 +2706,7 @@ public class HexMapChunkManager : MonoBehaviour
             terrainOverlayGPU.UpdateOverlays();
         }
     }
-    
+
     private void HandleFogChanged(int civId, List<int> changedTiles)
     {
         if (terrainOverlayGPU != null)
@@ -4611,13 +2715,11 @@ public class HexMapChunkManager : MonoBehaviour
             terrainOverlayGPU.UpdateOverlays();
         }
     }
-    
-    
+
+
     /// <summary>
-    /// Create a MeshCollider covering the entire map for WorldPicker raycasts.
-    /// The mesh is subdivided and CPU-displaced using the heightmap so that
-    /// raycasts land on the actual visible terrain surface at any camera angle
-    /// (including ground-level views).
+    /// Creates the WorldPicker collider by combining the generated terrain chunk meshes.
+    /// Picking therefore uses the exact visible stepped geometry at every camera angle.
     /// </summary>
     private void CreatePickingCollider()
     {
@@ -4629,38 +2731,23 @@ public class HexMapChunkManager : MonoBehaviour
         colliderObj.transform.localPosition = Vector3.zero;
         colliderObj.transform.localRotation = Quaternion.identity;
 
-        Mesh pickMesh;
-        string pickingMode;
-        if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+        // Reuse the generated chunk meshes so visible terrain and picking share the
+        // exact same tops, bevels, walls, UVs, and categorical heights.
+        var combines = new List<CombineInstance>(chunksX * chunksZ);
+        for (int x = 0; x < chunksX; x++)
+        for (int z = 0; z < chunksZ; z++)
         {
-            // Reuse the actual, already-built stepped chunk meshes. This makes the dedicated
-            // UV-capable picking surface reproduce tops, bevels, and walls with no parallel
-            // implementation of stepped geometry or height rules.
-            var combines = new List<CombineInstance>(chunksX * chunksZ);
-            for (int x = 0; x < chunksX; x++)
+            HexMapChunk chunk = chunks[x, z];
+            if (chunk == null || chunk.GeneratedMesh == null) continue;
+            combines.Add(new CombineInstance
             {
-                for (int z = 0; z < chunksZ; z++)
-                {
-                    HexMapChunk chunk = chunks[x, z];
-                    if (chunk == null || chunk.GeneratedMesh == null)
-                        continue;
-                    combines.Add(new CombineInstance
-                    {
-                        mesh = chunk.GeneratedMesh,
-                        transform = transform.worldToLocalMatrix * chunk.transform.localToWorldMatrix
-                    });
-                }
-            }
-
-            pickMesh = new Mesh { name = "PickingMesh_SteppedExact", indexFormat = IndexFormat.UInt32 };
-            pickMesh.CombineMeshes(combines.ToArray(), true, true, false);
-            pickingMode = "SteppedExact";
+                mesh = chunk.GeneratedMesh,
+                transform = transform.worldToLocalMatrix * chunk.transform.localToWorldMatrix
+            });
         }
-        else
-        {
-            pickMesh = BuildSmoothPickingMesh();
-            pickingMode = "Heightmap";
-        }
+        Mesh pickMesh = new Mesh { name = "PickingMesh_SteppedExact", indexFormat = IndexFormat.UInt32 };
+        pickMesh.CombineMeshes(combines.ToArray(), true, true, false);
+        const string pickingMode = "SteppedExact";
 
         MeshFilter mf = colliderObj.AddComponent<MeshFilter>();
         mf.sharedMesh = pickMesh;
@@ -4677,69 +2764,10 @@ public class HexMapChunkManager : MonoBehaviour
         LogTerrainHeightSync(pickingMode);
     }
 
-    private Mesh BuildSmoothPickingMesh()
-    {
-        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
-        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
-        int vX = subX + 1;
-        int vZ = subZ + 1;
-        float halfW = mapWidth * 0.5f;
-        float halfH = mapHeight * 0.5f;
-        bool useBakedHeightSampler = terrainRenderPath == TerrainRenderPath.BakedHdrpLit
-            || terrainRenderPath == TerrainRenderPath.HdrpLitBiomeShaderGraph;
-        bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
-        int hmW = hasHeightmap ? heightmapTexture.width : 0;
-        int hmH = hasHeightmap ? heightmapTexture.height : 0;
-        var vertices = new Vector3[vX * vZ];
-        var uvs = new Vector2[vertices.Length];
 
-        for (int z = 0; z < vZ; z++)
-        for (int x = 0; x < vX; x++)
-        {
-            int idx = z * vX + x;
-            float u = (float)x / subX;
-            float v = (float)z / subZ;
-            float posY = flatY;
-            if (useBakedHeightSampler)
-                posY = SampleTerrainSurfaceYAtUV(new Vector2(u, v));
-            else if (hasHeightmap)
-            {
-                int px = Mathf.Clamp(Mathf.FloorToInt(u * hmW), 0, hmW - 1);
-                int py = Mathf.Clamp(Mathf.FloorToInt(v * hmH), 0, hmH - 1);
-                posY += heightmapTexture.GetPixel(px, py).r * displacementStrength;
-            }
-            vertices[idx] = new Vector3(-halfW + u * mapWidth, posY, -halfH + v * mapHeight);
-            uvs[idx] = new Vector2(u, v);
-        }
-
-        var triangles = new int[subX * subZ * 6];
-        int ti = 0;
-        for (int z = 0; z < subZ; z++)
-        for (int x = 0; x < subX; x++)
-        {
-            int bl = z * vX + x;
-            int br = bl + 1;
-            int tl = bl + vX;
-            int tr = tl + 1;
-            triangles[ti++] = bl; triangles[ti++] = tl; triangles[ti++] = tr;
-            triangles[ti++] = bl; triangles[ti++] = tr; triangles[ti++] = br;
-        }
-
-        var mesh = new Mesh { name = "PickingMesh_Displaced" };
-        if (vertices.Length > 65535) mesh.indexFormat = IndexFormat.UInt32;
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        return mesh;
-    }
 
     private void LogTerrainHeightSync(string pickingMode)
     {
-        if (terrainGeometryMode != TerrainGeometryMode.SteppedHexExperimental)
-            return;
-
         float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
         float water = GetOceanWaterSurfaceY();
         float flat = sea + steppedFlatHeightAboveSea;
@@ -4748,10 +2776,10 @@ public class HexMapChunkManager : MonoBehaviour
         float ocean = sea - steppedOceanDepthBelowSea;
         float abyssal = sea - steppedAbyssalDepthBelowSea;
         float trench = sea - steppedTrenchDepthBelowSea;
-        Debug.Log($"[TerrainHeightSync]\nMode={terrainGeometryMode}\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHill={hill:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
+        Debug.Log($"[TerrainHeightSync]\nMode=SteppedHex\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHill={hill:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
 
         if (flat <= water || hill <= flat || mountain <= hill || ocean >= water || abyssal >= ocean || trench >= abyssal)
-            Debug.LogWarning($"[TerrainHeightSync] Invalid stepped terrain/water ordering. Mode={terrainGeometryMode}, Picking={pickingMode}");
+            Debug.LogWarning($"[TerrainHeightSync] Invalid stepped terrain/water ordering. Mode=SteppedHex, Picking={pickingMode}");
     }
 
     /// <summary>
@@ -4818,7 +2846,7 @@ public class HexMapChunkManager : MonoBehaviour
             orbitPickingCollider.enabled = currentViewLayer == GameManager.PlanetLayerType.Orbit;
         }
     }
-    
+
     /// <summary>
     /// Update WorldPicker with our LUT and collider.
     /// </summary>
@@ -4830,11 +2858,11 @@ public class HexMapChunkManager : MonoBehaviour
             worldPicker.lut = bakeResult.lut;
             worldPicker.lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
             worldPicker.lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-            
+
             // Set the picking layer mask to match the picking collider's actual layer
             int layer = pickingCollider != null ? pickingCollider.gameObject.layer : 0;
             worldPicker.pickingLayerMask = 1 << layer;
-            
+
             // Ensure a camera is assigned for picking. If the scene doesn't tag MainCamera (common in HDRP setups),
             // WorldPicker will still fall back to any available camera, but assigning here reduces ambiguity.
             if (worldPicker.targetCamera == null) worldPicker.targetCamera = Camera.main != null ? Camera.main : FindAnyObjectByType<Camera>();
@@ -4845,7 +2873,7 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.LogWarning($"[HexMapChunkManager] Could not update WorldPicker: picker={(worldPicker != null ? "found" : "null")}, lut={(bakeResult.lut != null ? "exists" : "null")}");
         }
     }
-    
+
     /// <summary>
     /// Create a flat transparent mesh at orbit height for tile highlighting in orbit view.
     /// Parents to PlanetGenerator.orbitRoot so it auto-hides with the orbit layer.
@@ -4899,7 +2927,7 @@ public class HexMapChunkManager : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
     }
-    
+
     /// <summary>
     /// Create a flat transparent mesh at the water surface level for tile highlighting
     /// when hovering over water tiles in surface view.
@@ -4962,8 +2990,8 @@ public class HexMapChunkManager : MonoBehaviour
     /// </summary>
     private Mesh BuildFlatSubdividedMesh(string meshName, float halfW, float halfH)
     {
-        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
-        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
+        int subX = Mathf.Min(chunksX * 32, 512);
+        int subZ = Mathf.Min(chunksZ * 32, 256);
         int vX = subX + 1;
         int vZ = subZ + 1;
         int vertCount = vX * vZ;
@@ -5020,11 +3048,11 @@ public class HexMapChunkManager : MonoBehaviour
         mesh.RecalculateBounds();
         return mesh;
     }
-    
+
     #endregion
-    
+
     #region Utility Methods (API compatible with FlatMapTextureRenderer)
-    
+
     /// <summary>
     /// Get world position from UV coordinates.
     /// </summary>
@@ -5034,7 +3062,7 @@ public class HexMapChunkManager : MonoBehaviour
         float z = (v - 0.5f) * mapHeight;
         return transform.TransformPoint(new Vector3(x, flatY, z));
     }
-    
+
     /// <summary>
     /// Get UV coordinate from world position.
     /// </summary>
@@ -5045,7 +3073,7 @@ public class HexMapChunkManager : MonoBehaviour
         float v = (localPos.z / mapHeight) + 0.5f;
         return new Vector2(u, v);
     }
-    
+
     /// <summary>
     /// Get tile index at a given UV coordinate using the LUT.
     /// </summary>
@@ -5053,24 +3081,24 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0)
             return -1;
-        
+
         // Clamp and wrap U (horizontal wrapping)
         u = Mathf.Repeat(u, 1f);
         v = Mathf.Clamp01(v);
-        
+
         int x = Mathf.FloorToInt(u * textureWidth);
         int y = Mathf.FloorToInt(v * textureHeight);
-        
+
         x = Mathf.Clamp(x, 0, textureWidth - 1);
         y = Mathf.Clamp(y, 0, textureHeight - 1);
-        
+
         int pixelIndex = y * textureWidth + x;
         if (pixelIndex >= 0 && pixelIndex < bakeResult.lut.Length)
             return bakeResult.lut[pixelIndex];
-        
+
         return -1;
     }
-    
+
     /// <summary>
     /// Get a downscaled version of the map texture for minimap use (GPU-accelerated).
     /// </summary>
@@ -5078,7 +3106,7 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (bakeResult.texture == null)
             return null;
-        
+
         // GPU-accelerated downscaling using Graphics.Blit
         RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
         rt.filterMode = FilterMode.Bilinear;
@@ -5091,27 +3119,27 @@ public class HexMapChunkManager : MonoBehaviour
         bakeResult.texture.wrapMode = TextureWrapMode.Clamp;
         Graphics.Blit(bakeResult.texture, rt);
         bakeResult.texture.wrapMode = prevWrap;
-        
+
         if (!returnTexture2D)
             return rt;
-        
+
         // Convert to Texture2D if explicitly requested
         RenderTexture previous = RenderTexture.active;
         RenderTexture.active = rt;
-        
+
         Texture2D downscaled = new Texture2D(targetWidth, targetHeight, TextureFormat.RGBA32, false);
         downscaled.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
         downscaled.Apply();
-        
+
         RenderTexture.active = previous;
         RenderTexture.ReleaseTemporary(rt);
-        
+
         downscaled.wrapMode = TextureWrapMode.Clamp;
         downscaled.filterMode = FilterMode.Bilinear;
-        
+
         return downscaled;
     }
-    
+
     /// <summary>
     /// Get the bake result for external systems.
     /// </summary>
@@ -5119,7 +3147,7 @@ public class HexMapChunkManager : MonoBehaviour
     {
         return bakeResult;
     }
-    
+
     #endregion
 
     #region Water Mesh System
@@ -5435,7 +3463,7 @@ public class HexMapChunkManager : MonoBehaviour
                 else if (wt == TileWaterType.Ocean) oceanTiles++;
             }
         }
-        
+
 
         int batchSize = Mathf.Max(1, chunksPerBatch);
         int count = 0;
@@ -5454,7 +3482,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
 
-        
+
 
         // Diagnostic: detect coast/seas/ocean tiles missing waterType (common cause of missing coast water)
         if (ShouldRunDiagnostics() && planetGenerator != null && planetGenerator.data != null)
@@ -5476,7 +3504,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
-    
+
     // =====================================================================================
     //  Continuous River Surface Mesh (SDF + Marching Squares) — batched coroutine
     // =====================================================================================
@@ -5529,7 +3557,7 @@ public class HexMapChunkManager : MonoBehaviour
         isoLake = Mathf.Max(isoLake, minIso);
         isoOcean = Mathf.Max(isoOcean, minIso);
 
-        
+
 
         // --- Build seed grids for rivers, lakes, and ocean ---
         var seedRiver = ArrayPoolUtils.RentBool(wPts * hPts);
@@ -5652,7 +3680,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (seedOcean != null) for (int i = 0; i < sdfLen; i++) if (seedOcean[i]) seedOceanCount++;
         bool anySeed = seedRiverCount > 0 || seedLakeCount > 0 || seedOceanCount > 0;
 
-        
+
 
         if (!anySeed)
         {
@@ -5842,7 +3870,7 @@ public class HexMapChunkManager : MonoBehaviour
         for (int i = 0; i < wCells * (hCells + 1); i++) horizEdge[i] = -1;
         for (int i = 0; i < (wCells + 1) * hCells; i++) vertEdge[i] = -1;
 
-        
+
 
         // Classify the water type at a UV using the SDF (not the LUT).
         // Returns: 0=river, 1=lake, 2=ocean
@@ -5920,73 +3948,34 @@ public class HexMapChunkManager : MonoBehaviour
             if (tIdx >= 0 && planetGenerator.data.TryGetValue(tIdx, out var t)
                 && (t.waterType == TileWaterType.River || t.waterType == TileWaterType.Lake))
                 return GetTileWaterSurfaceY(tIdx, t, riverSurfaceLift);
-            if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
+            // Ownership fields are propagated from valid seeds. If a boundary point
+            // has no owner, search nearby owners rather than sampling the auxiliary heightmap.
+            for (int radius = 1; radius <= 3; radius++)
+            for (int oy = -radius; oy <= radius; oy++)
+            for (int ox = -radius; ox <= radius; ox++)
             {
-                // Ownership fields are propagated from valid seeds. If a boundary
-                // point has no owner, use the closest grid point that does rather
-                // than consulting the obsolete smooth heightmap.
-                for (int radius = 1; radius <= 3; radius++)
-                {
-                    for (int oy = -radius; oy <= radius; oy++)
-                    for (int ox = -radius; ox <= radius; ox++)
-                    {
-                        int nx = Mathf.Clamp(gx + ox, 0, wCells);
-                        int ny = Mathf.Clamp(gy + oy, 0, hCells);
-                        int ni = ny * wPts + nx;
-                        int nearTile = (wt == 1 && ownerLake != null) ? ownerLake[ni]
-                            : (ownerRiver != null ? ownerRiver[ni] : -1);
-                        if (nearTile >= 0 && planetGenerator.data.TryGetValue(nearTile, out var nearWater) &&
-                            (nearWater.waterType == TileWaterType.River || nearWater.waterType == TileWaterType.Lake))
-                            return GetTileWaterSurfaceY(nearTile, nearWater, riverSurfaceLift);
-                    }
-                }
-                return GetOceanWaterSurfaceY(riverSurfaceLift);
+                int nx = Mathf.Clamp(gx + ox, 0, wCells);
+                int ny = Mathf.Clamp(gy + oy, 0, hCells);
+                int ni = ny * wPts + nx;
+                int nearTile = (wt == 1 && ownerLake != null) ? ownerLake[ni]
+                    : (ownerRiver != null ? ownerRiver[ni] : -1);
+                if (nearTile >= 0 && planetGenerator.data.TryGetValue(nearTile, out var nearWater) &&
+                    (nearWater.waterType == TileWaterType.River || nearWater.waterType == TileWaterType.Lake))
+                    return GetTileWaterSurfaceY(nearTile, nearWater, riverSurfaceLift);
             }
-            float eu = Mathf.Repeat((float)gx / wCells, 1f);
-            float ev = Mathf.Clamp01((float)gy / hCells);
-            float el = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(eu, ev).r : 0f;
-            return flatY + el * displacementStrength + waterYOffset + riverSurfaceLift;
+            return GetOceanWaterSurfaceY(riverSurfaceLift);
         }
 
         float SampleWaterY(float u, float v)
         {
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
-            int wType = ClassifyWaterAt(u, v);
-
-            if (wType == 2) // ocean — flat at sea level
+            int waterType = ClassifyWaterAt(u, v);
+            if (waterType == 2)
                 return GetOceanWaterSurfaceY(riverSurfaceLift);
-
-            if (terrainGeometryMode == TerrainGeometryMode.SteppedHexExperimental)
-            {
-                int nearestX = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
-                int nearestY = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
-                return OwnerWaterYAt(nearestX, nearestY, wType);
-            }
-
-            // Bilinear blend of water elevation from 4 nearest SDF grid corners.
-            // Smooths the Y staircase that occurs at tile-ownership boundaries
-            // where adjacent owner tiles have different waterElevation values.
-            float fx = u * wCells;
-            float fy = v * hCells;
-            int x0 = Mathf.Clamp((int)fx, 0, wCells - 1);
-            int y0 = Mathf.Clamp((int)fy, 0, hCells - 1);
-            int x1 = Mathf.Min(x0 + 1, wCells);
-            int y1 = Mathf.Min(y0 + 1, hCells);
-            float tx = fx - x0;
-            float ty = fy - y0;
-
-            float y00 = OwnerWaterYAt(x0, y0, wType);
-            float y10 = OwnerWaterYAt(x1, y0, wType);
-            float y01 = OwnerWaterYAt(x0, y1, wType);
-            float y11 = OwnerWaterYAt(x1, y1, wType);
-
-            float blendedY = Mathf.Lerp(
-                Mathf.Lerp(y00, y10, tx),
-                Mathf.Lerp(y01, y11, tx),
-                ty);
-
-            return blendedY;
+            int nearestX = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int nearestY = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            return OwnerWaterYAt(nearestX, nearestY, waterType);
         }
 
         int GetCorner(int x, int y)
@@ -6600,16 +4589,16 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     #endregion
-    
+
     #region Column Wrapping
-    
+
     // Ghost columns for seamless edge rendering
     private Transform[] ghostColumnsLeft;
     private Transform[] ghostColumnsRight;
     private int[] ghostColumnsLeftSourceIndices;
     private int[] ghostColumnsRightSourceIndices;
     private bool ghostColumnsCreated = false;
-    
+
     /// <summary>
     /// Create ghost columns that mirror the edges for seamless wrapping.
     /// This ensures there's always visible terrain at the map edges.
@@ -6617,29 +4606,29 @@ public class HexMapChunkManager : MonoBehaviour
     private void CreateGhostColumns()
     {
         if (ghostColumnsCreated || chunks == null || columnParents == null) return;
-        
+
         // Calculate how many columns we need to duplicate based on camera view
         // We'll duplicate enough columns to cover the maximum view distance
         int columnsToMirror = Mathf.Max(2, Mathf.CeilToInt(chunksX * 0.25f)); // Mirror 25% of columns on each side
-        
+
         ghostColumnsLeft = new Transform[columnsToMirror];
         ghostColumnsRight = new Transform[columnsToMirror];
         ghostColumnsLeftSourceIndices = new int[columnsToMirror];
         ghostColumnsRightSourceIndices = new int[columnsToMirror];
-        
+
         for (int i = 0; i < columnsToMirror; i++)
         {
             // Left ghost: mirror rightmost columns, place them to the left
             int sourceColRight = chunksX - 1 - i;
             ghostColumnsLeft[i] = CreateGhostColumn(sourceColRight, -mapWidth, $"GhostLeft_{i}");
             ghostColumnsLeftSourceIndices[i] = sourceColRight;
-            
+
             // Right ghost: mirror leftmost columns, place them to the right
             int sourceColLeft = i;
             ghostColumnsRight[i] = CreateGhostColumn(sourceColLeft, mapWidth, $"GhostRight_{i}");
             ghostColumnsRightSourceIndices[i] = sourceColLeft;
         }
-        
+
         InitializeGhostSourceColumns();
         ghostColumnsCreated = true;
         CreateGhostObjectsForAllRegistered();
@@ -6652,7 +4641,7 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.Log($"[HexMapChunkManager][WRAP] Created ghost columns: mirror={columnsToMirror}, mapWidth={mapWidth:F3}, chunksX={chunksX}, columnWidth={columnWidth:F3}, ghostObjects={_ghostObjects.Count}");
         }
 }
-    
+
     private Transform CreateGhostColumn(int sourceColumnIndex, float xOffset, string name)
     {
         GameObject ghostObj = new GameObject(name);
@@ -6666,17 +4655,17 @@ public class HexMapChunkManager : MonoBehaviour
         {
             ghostObj.transform.localPosition = columnParents[sourceColumnIndex].localPosition + new Vector3(xOffset, 0f, 0f);
         }
-        
+
         // Copy all chunks from source column
         for (int z = 0; z < chunksZ; z++)
         {
             HexMapChunk sourceChunk = chunks[sourceColumnIndex, z];
             if (sourceChunk == null) continue;
-            
+
             // Create ghost chunk as simple mesh copy
             GameObject ghostChunk = new GameObject($"{name}_Chunk_{z}");
             ghostChunk.transform.SetParent(ghostObj.transform, false);
-            
+
             // Copy mesh filter
             MeshFilter sourceMF = sourceChunk.GetComponent<MeshFilter>();
             if (sourceMF != null && sourceMF.sharedMesh != null)
@@ -6684,7 +4673,7 @@ public class HexMapChunkManager : MonoBehaviour
                 MeshFilter ghostMF = ghostChunk.AddComponent<MeshFilter>();
                 ghostMF.sharedMesh = sourceMF.sharedMesh;
             }
-            
+
             // Copy mesh renderer with shared material
             MeshRenderer sourceMR = sourceChunk.GetComponent<MeshRenderer>();
             if (sourceMR != null)
@@ -6710,17 +4699,17 @@ public class HexMapChunkManager : MonoBehaviour
         {
             Debug.Log($"[HexMapChunkManager][WRAP] Created ghost column '{name}' from sourceCol={sourceColumnIndex} xOffset={xOffset:F3} ghostPos={ghostObj.transform.position}");
         }
-        
+
         return ghostObj.transform;
     }
-    
+
     /// <summary>
     /// Update ghost column positions to always stay at the edges relative to camera.
     /// </summary>
     private void UpdateGhostColumns()
     {
         if (!ghostColumnsCreated || ghostColumnsLeft == null || ghostColumnsRight == null) return;
-        
+
         // Ghost columns track the main column positions
         for (int i = 0; i < ghostColumnsLeft.Length; i++)
         {
@@ -6732,7 +4721,7 @@ public class HexMapChunkManager : MonoBehaviour
                 ghostColumnsLeft[i].localPosition = sourceLocal + new Vector3(-mapWidth, 0f, 0f);
             }
         }
-        
+
         for (int i = 0; i < ghostColumnsRight.Length; i++)
         {
             int sourceColLeft = i;
@@ -6752,7 +4741,7 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.Log($"[HexMapChunkManager][WRAP] Ghost update: left0={left0}, right0={right0}");
         }
     }
-    
+
     /// <summary>
     /// Update column positions for seamless world wrapping.
     /// Teleports columns when camera crosses threshold.
@@ -6760,13 +4749,13 @@ public class HexMapChunkManager : MonoBehaviour
     private void UpdateColumnWrapping()
     {
         if (columnParents == null || cameraTransform == null) return;
-        
+
         // Create ghost columns on first update if not yet created
         if (!ghostColumnsCreated)
         {
             CreateGhostColumns();
         }
-        
+
         // Work in MAP-LOCAL space for stability even if the map is rotated/offset in the scene.
         float cameraX = transform.InverseTransformPoint(cameraTransform.position).x;
         float halfMap = mapWidth * 0.5f;
@@ -6775,12 +4764,12 @@ public class HexMapChunkManager : MonoBehaviour
         float buffer = columnWidth * wrapBuffer;
 
         int teleportsThisFrame = 0;
-        
+
         for (int i = 0; i < columnParents.Length; i++)
         {
             Transform col = columnParents[i];
             float colX = col.localPosition.x;
-            
+
             // Column is too far left - teleport to right
             if (colX < leftEdge - buffer)
             {
@@ -6835,7 +4824,7 @@ public class HexMapChunkManager : MonoBehaviour
         {
             Debug.Log($"[HexMapChunkManager][WRAP] Teleports this frame={teleportsThisFrame} camX={cameraX:F3} mapW={mapWidth:F3}");
         }
-        
+
         // Update ghost columns to match
         UpdateGhostColumns();
 
@@ -7339,7 +5328,7 @@ public class HexMapChunkManager : MonoBehaviour
         names.Reverse();
         return string.Join("/", names);
     }
-    
+
     /// <summary>
     /// Destroy ghost columns during cleanup.
     /// </summary>
@@ -7357,7 +5346,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
             ghostColumnsLeft = null;
         }
-        
+
         if (ghostColumnsRight != null)
         {
             foreach (var col in ghostColumnsRight)
@@ -7366,7 +5355,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
             ghostColumnsRight = null;
         }
-        
+
         ghostColumnsCreated = false;
     }
 
@@ -7420,18 +5409,18 @@ public class HexMapChunkManager : MonoBehaviour
             ghostRenderer.SetPropertyBlock(block);
         }
     }
-    
+
     #endregion
-    
+
     #region Public API
-    
+
     /// <summary>
     /// Refresh all chunks that have been marked dirty.
     /// </summary>
     public void RefreshDirtyChunks()
     {
         if (chunks == null) return;
-        
+
         for (int x = 0; x < chunksX; x++)
         {
             for (int z = 0; z < chunksZ; z++)
@@ -7443,7 +5432,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// Force refresh all chunks immediately.
     /// </summary>
@@ -7485,26 +5474,10 @@ public class HexMapChunkManager : MonoBehaviour
     private void HandlePlanetSeasonChanged(int planetIndex, Season season)
     {
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
-        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit)
-        {
-            RebuildBakedHdrpLitMaterialMaps();
-        }
-        else
-        {
-            ApplyActiveBiomeTerrainMaterialSettings();
-        }
-        // Ensure season masks are enabled when winter begins so the per-tile
-        // snow/wet/dry masks are applied by the terrain shader. This covers
-        // cases where global snow amount is already 1 and enableSeasonMasks
-        // remained false (eg. forced season change without a prior toggle).
-        if (terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
-        {
-            if (season == Season.Winter && !enableSeasonMasks)
-            {
-                enableSeasonMasks = true;
-            }
-            UpdateSeasonMasksBatched(season, chunksPerBatch);
-        }
+        ApplyBiomeMaterialSettings();
+        if (season == Season.Winter && !enableSeasonMasks)
+            enableSeasonMasks = true;
+        UpdateSeasonMasksBatched(season, chunksPerBatch);
 
         SyncFrozenWaterTerrainOverrides();
 
@@ -7606,7 +5579,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         if (changedTiles.Count > 0)
-            RebakeBakedTerrainForTiles(changedTiles);
+            UpdateTerrainDataTexturesForTiles(changedTiles);
 
         _solidFrozenWaterTiles.Clear();
         foreach (int tileIndex in solidNow)
@@ -7683,7 +5656,7 @@ public class HexMapChunkManager : MonoBehaviour
         bool targetChanged = !Mathf.Approximately(newTarget, _targetGlobalSnowAmount);
         _targetGlobalSnowAmount = newTarget;
 
-        if (targetChanged && newTarget > 0f && !enableSeasonMasks && terrainRenderPath == TerrainRenderPath.CustomBiomeShader)
+        if (targetChanged && newTarget > 0f && !enableSeasonMasks)
         {
             enableSeasonMasks = true;
             UpdateSeasonMasksBatched(season, chunksPerBatch);
@@ -7709,7 +5682,6 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void UpdateSeasonMasksForCurrentSeason()
     {
-        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null) return;
         var climateManager = GameManager.Instance != null
@@ -7722,7 +5694,6 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void UpdateSeasonMasksForSeason(Season season)
     {
-        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
         if (seasonMaskWidth <= 0 || seasonMaskHeight <= 0) return;
@@ -7762,7 +5733,6 @@ public class HexMapChunkManager : MonoBehaviour
 
     public void UpdateSeasonMasksBatched(Season season, int chunksPerFrame = 2)
     {
-        if (terrainRenderPath == TerrainRenderPath.BakedHdrpLit) return;
         if (!enableSeasonMasks) return;
         if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
 
@@ -7817,14 +5787,14 @@ public class HexMapChunkManager : MonoBehaviour
         UpdateGhostSeasonMasks();
         _seasonMaskCoroutine = null;
     }
-    
+
     /// <summary>
     /// Mark a specific tile as changed and refresh its chunk.
     /// Call this when tile data changes (biome, elevation, etc.)
     /// </summary>
     public void MarkTileDirty(int tileIndex)
     {
-        RebakeBakedTerrainForTile(tileIndex);
+        UpdateTerrainDataTexturesForTile(tileIndex);
 
         if (tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk))
         {
@@ -7882,17 +5852,17 @@ public class HexMapChunkManager : MonoBehaviour
         // NOTE: Ghost columns copy Water/Foam at creation time; if you dynamically change coast/water at runtime
         // near map edges, we may also need to refresh ghost meshes.
     }
-    
+
     /// <summary>
     /// Mark multiple tiles as changed.
     /// </summary>
     public void MarkTilesDirty(IEnumerable<int> tileIndices)
     {
         var tileList = tileIndices as IList<int> ?? tileIndices.ToList();
-        RebakeBakedTerrainForTiles(tileList);
+        UpdateTerrainDataTexturesForTiles(tileList);
 
         HashSet<HexMapChunk> affectedChunks = new HashSet<HexMapChunk>();
-        
+
         foreach (int idx in tileList)
         {
             if (tileToChunk.TryGetValue(idx, out HexMapChunk chunk))
@@ -7900,7 +5870,7 @@ public class HexMapChunkManager : MonoBehaviour
                 affectedChunks.Add(chunk);
             }
         }
-        
+
         foreach (var chunk in affectedChunks)
         {
             chunk.MarkDirty();
@@ -7936,20 +5906,20 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// Rebuild the baked texture (e.g., after terrain changes).
     /// </summary>
     public void RebakeTexture()
     {
         if (planetGenerator == null) return;
-        
+
         BakeTexture();
         BuildBiomeVisualMaps();
-        
+
         ApplyActiveBiomeTerrainMaterialSettings();
     }
-    
+
     /// <summary>
     /// Get the chunk containing a specific tile.
     /// </summary>
@@ -7958,7 +5928,7 @@ public class HexMapChunkManager : MonoBehaviour
         tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk);
         return chunk;
     }
-    
+
     /// <summary>
     /// Clean up all chunks.
     /// </summary>
@@ -7969,7 +5939,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Destroy ghost columns first
         DestroyGhostColumns();
-        
+
         if (chunks != null)
         {
             for (int x = 0; x < chunks.GetLength(0); x++)
@@ -7984,7 +5954,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
             chunks = null;
         }
-        
+
         if (columnParents != null)
         {
             foreach (var col in columnParents)
@@ -7993,37 +5963,31 @@ public class HexMapChunkManager : MonoBehaviour
             }
             columnParents = null;
         }
-        
+
         if (pickingCollider != null)
         {
             DestroyImmediate(pickingCollider.gameObject);
             pickingCollider = null;
         }
-        
+
         if (waterPickingCollider != null)
         {
             DestroyImmediate(waterPickingCollider.gameObject);
             waterPickingCollider = null;
         }
-        
+
         if (orbitPickingCollider != null)
         {
             DestroyImmediate(orbitPickingCollider.gameObject);
             orbitPickingCollider = null;
         }
-        
+
         if (sharedMaterial != null)
         {
-            bool sharedWasBakedMaterial = ReferenceEquals(bakedLitTerrainMaterial, sharedMaterial);
-            bool sharedWasHdrpLitBiomeMaterial = ReferenceEquals(hdrpLitBiomeTerrainMaterial, sharedMaterial);
             DestroyImmediate(sharedMaterial);
             sharedMaterial = null;
-            if (sharedWasBakedMaterial)
-                bakedLitTerrainMaterial = null;
-            if (sharedWasHdrpLitBiomeMaterial)
-                hdrpLitBiomeTerrainMaterial = null;
         }
-        
+
         tileToChunk.Clear();
         // Clear wrap registry
         _wrapRegistryByColumn?.Clear();
@@ -8048,7 +6012,6 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_SurfaceEmissiveArray", null);
             sharedMaterial.SetTexture("_BiomeHeightArray", null);
             sharedMaterial.SetTexture("_BiomeIndexMap", null);
-            sharedMaterial.SetTexture("_Heightmap", null);
             sharedMaterial.SetTexture("_BiomeSurfaceMapTex", null);
             sharedMaterial.SetTexture("_BiomeEmissiveMapTex", null);
             sharedMaterial.SetTexture("_LUT", null);
@@ -8073,9 +6036,6 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
         if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }
         if (sliceToBiomeMap != null) { UnityEngine.Object.DestroyImmediate(sliceToBiomeMap); sliceToBiomeMap = null; }
-        if (bakedTerrainBaseColor != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainBaseColor); bakedTerrainBaseColor = null; }
-        if (bakedTerrainMaskMap != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainMaskMap); bakedTerrainMaskMap = null; }
-        if (bakedTerrainNormalMap != null) { UnityEngine.Object.DestroyImmediate(bakedTerrainNormalMap); bakedTerrainNormalMap = null; }
         if (orbitOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayMaterial); orbitOverlayMaterial = null; }
         if (orbitOverlayObj != null) { UnityEngine.Object.DestroyImmediate(orbitOverlayObj); orbitOverlayObj = null; }
         if (waterSurfaceOverlayMaterial != null) { UnityEngine.Object.DestroyImmediate(waterSurfaceOverlayMaterial); waterSurfaceOverlayMaterial = null; }
@@ -8101,9 +6061,9 @@ public class HexMapChunkManager : MonoBehaviour
         // Clear cached GPU resources in the baker (compute buffers, cached arrays)
         try { PlanetTextureBaker.ClearAllCaches(); } catch { }
     }
-    
+
     #endregion
-    
+
     private void OnDestroy()
     {
         // OnDisable handles event unsubscription; clean up overlay and chunks here
@@ -8113,10 +6073,10 @@ public class HexMapChunkManager : MonoBehaviour
             overlayTileSystem.OnFogChanged -= HandleFogChanged;
             overlayTileSystem = null;
         }
-        
+
         DestroyAllChunks();
     }
-    
+
 #if UNITY_EDITOR
     [ContextMenu("Force Rebuild Chunks")]
     private void ForceRebuild()
