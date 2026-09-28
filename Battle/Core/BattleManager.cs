@@ -1027,6 +1027,27 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
     }
 
     private BattleState BuildBattleState(EngagementPreview preview)
+        => BuildBattleState(preview, preview.RandomSeed, true);
+
+    /// <summary>
+    /// Runs one isolated sample through the same state builder, AI and combat resolver used by
+    /// AutoResolve.  It deliberately skips commitments, events, result application and all
+    /// campaign/commander mutation.
+    /// </summary>
+    public bool TrySimulateForecastSample(EngagementPreview preview, int seed, out BattleResult result)
+    {
+        result = null;
+        if (preview == null || !preview.IsValid || !ReferenceEquals(preview, pendingPreview) || IsBattleActive)
+            return false;
+        var state = BuildBattleState(preview, seed, false);
+        if (state == null) return false;
+        result = SimulateBattle(state, true, false);
+        return result != null && result.ResolutionType != BattleResolutionType.Invalid;
+    }
+
+    public int ForecastSampleCount => Mathf.Clamp(ruleset != null ? ruleset.autoResolveForecastSamples : 50, 10, 200);
+
+    private BattleState BuildBattleState(EngagementPreview preview, int randomSeed, bool commitCampaignUnits)
     {
         var units = BattleUnitFactory.CreateStates(preview.AttackerUnits, preview.DefenderUnits);
         BattleUnitFactory.AppendReserves(units, preview.Reinforcements);
@@ -1037,26 +1058,29 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         AutoDeployUnits(preview.Map, units, occupancy, BattleSide.Attacker, ruleset.maxInitialUnitsPerSide);
         AutoDeployUnits(preview.Map, units, occupancy, BattleSide.Defender, ruleset.maxInitialUnitsPerSide);
 
+        var reinforcementCopies = CloneReinforcements(preview.Reinforcements);
         var session = new BattleSession(
-            nextBattleId++,
+            commitCampaignUnits ? nextBattleId++ : -1,
             preview.Theater,
             preview.PlanetIndex,
             preview.SpaceRegionId,
             preview.AnchorTile,
             ruleset.maxRounds,
-            preview.RandomSeed,
+            randomSeed,
             preview.Map,
             units,
             preview.Objective,
-            preview.Reinforcements);
-        session.ConfigureSiege(preview.SiegeType, preview.FortificationProfile, preview.Fortifications);
+            reinforcementCopies);
+        session.ConfigureSiege(preview.SiegeType, preview.FortificationProfile, CloneFortifications(preview.Fortifications));
 
         for (int i = 0; i < units.Count; i++)
         {
             int runtimeId = units[i].Snapshot.CampaignRuntimeId;
-            var commanderAssignments = MilitaryCommanderAssignmentService.GetOrCreate().GetAssignments(units[i].Snapshot.FormationId);
-            units[i].CommanderAttackMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetAttackMultiplier(units[i].Snapshot.FormationId, units[i].Domain);
-            units[i].CommanderDefenseMultiplier = MilitaryCommanderAssignmentService.GetOrCreate().GetDefenseMultiplier(units[i].Snapshot.FormationId, units[i].Domain);
+            var commanderService = commitCampaignUnits ? MilitaryCommanderAssignmentService.GetOrCreate() : MilitaryCommanderAssignmentService.Instance;
+            var commanderAssignments = commanderService == null ? new List<MilitaryCommanderAssignment>()
+                : commitCampaignUnits ? commanderService.GetAssignments(units[i].Snapshot.FormationId) : commanderService.PeekAssignments(units[i].Snapshot.FormationId);
+            units[i].CommanderAttackMultiplier = commanderService == null ? 1f : commitCampaignUnits ? commanderService.GetAttackMultiplier(units[i].Snapshot.FormationId, units[i].Domain) : commanderService.GetAttackMultiplierReadOnly(units[i].Snapshot.FormationId, units[i].Domain);
+            units[i].CommanderDefenseMultiplier = commanderService == null ? 1f : commitCampaignUnits ? commanderService.GetDefenseMultiplier(units[i].Snapshot.FormationId, units[i].Domain) : commanderService.GetDefenseMultiplierReadOnly(units[i].Snapshot.FormationId, units[i].Domain);
             var sourceUnit = units[i].Snapshot.SourceUnit;
             int transportRuntimeId = sourceUnit != null
                 && sourceUnit.IsTransported
@@ -1064,7 +1088,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
                 && sourceUnit.TransportingUnit.gameObject != null
                 ? sourceUnit.TransportingUnit.gameObject.GetRuntimeId()
                 : -1;
-            if (!commitments.TryCommit(new BattleCommitment
+            if (commitCampaignUnits && !commitments.TryCommit(new BattleCommitment
             {
                 CampaignRuntimeId = runtimeId,
                 FormationId = units[i].Snapshot.FormationId,
@@ -1099,6 +1123,35 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
             TurnController = new BattleTurnController(ruleset),
             AiController = new BattleAIController(detectionService),
         };
+    }
+
+    private static List<BattleReinforcementGroup> CloneReinforcements(IReadOnlyList<BattleReinforcementGroup> source)
+    {
+        var copies = new List<BattleReinforcementGroup>();
+        if (source == null) return copies;
+        for (int i = 0; i < source.Count; i++)
+        {
+            var g = source[i]; if (g == null) continue;
+            var copy = new BattleReinforcementGroup {
+                ReinforcementGroupId=g.ReinforcementGroupId, FormationId=g.FormationId, Side=g.Side,
+                Theater=g.Theater, OriginCampaignTile=g.OriginCampaignTile, EntryCellIndex=g.EntryCellIndex,
+                AvailableFromRound=g.AvailableFromRound, OriginSpaceRegion=g.OriginSpaceRegion, Domain=g.Domain,
+                EntryMethod=g.EntryMethod, IsEligible=g.IsEligible, StrategicDistance=g.StrategicDistance,
+                EligibilityReason=g.EligibilityReason, DelayReason=g.DelayReason
+            };
+            copy.EntryCellIndices.AddRange(g.EntryCellIndices); copy.Units.AddRange(g.Units); copies.Add(copy);
+        }
+        return copies;
+    }
+
+    private static List<BattleFortificationState> CloneFortifications(IReadOnlyList<BattleFortificationState> source)
+    {
+        var copies = new List<BattleFortificationState>();
+        if (source == null) return copies;
+        for (int i=0;i<source.Count;i++) { var f=source[i]; if(f==null)continue; copies.Add(new BattleFortificationState {
+            StructureId=f.StructureId, Kind=f.Kind, CellIndex=f.CellIndex, CellA=f.CellA, CellB=f.CellB,
+            CurrentHitPoints=f.CurrentHitPoints, MaxHitPoints=f.MaxHitPoints, Defense=f.Defense, IsBreached=f.IsBreached }); }
+        return copies;
     }
 
     private static void ConfigureSiege(EngagementPreview preview)
@@ -1147,7 +1200,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
-    private BattleResult SimulateBattle(BattleState state, bool wasAutoResolved)
+    private BattleResult SimulateBattle(BattleState state, bool wasAutoResolved, bool raiseEvents = true)
     {
         var session = state.Session;
         var turns = state.TurnController;
@@ -1161,10 +1214,10 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         while (true)
         {
-            RaiseBattleRoundStarted(session.CurrentRound);
+            if (raiseEvents) RaiseBattleRoundStarted(session.CurrentRound);
             for (int sideStep = 0; sideStep < 2; sideStep++)
             {
-                RaiseBattleSideTurnStarted(session.ActiveSide);
+                if (raiseEvents) RaiseBattleSideTurnStarted(session.ActiveSide);
                 ai.ExecuteSide(session, state.CommandExecutor, state.Occupancy, ruleset.maxAutoResolveCommandsPerRound, out int executed,
                     command => state.ReplayLog.Commands.Add(BattleCommandRecord.From(session, command)));
                 totalCommands += executed;

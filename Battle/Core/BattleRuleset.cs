@@ -3,6 +3,9 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Data/Battle Ruleset")]
 public sealed class BattleRuleset : ScriptableObject
 {
+    [Header("Forecast")]
+    [Range(10, 200)] public int autoResolveForecastSamples = 50;
+
     [Header("Rounds")]
     public int maxRounds = 5;
     public BattleSide firstActiveSide = BattleSide.Attacker;
