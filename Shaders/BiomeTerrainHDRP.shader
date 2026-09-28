@@ -843,7 +843,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; secondaryBiome = (int)(sampleD.g + 0.5); neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
 
                 // Sample primary biome
-                BiomeSample primary = SampleFullBiome(centerSlice, centerBiome, worldPos, displacedNormal, triWeights, camDist, uv);
+                BiomeSample primary = SampleFullBiome(centerSlice, centerBiome, worldPos, meshNormal, triWeights, camDist, uv);
 
                 float3 albedo;
                 float3 rawBiomeAlbedo;
@@ -856,7 +856,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Height-based biome blending at boundaries (#3, #7: mask.b = height)
                 if (diffCount > 0 && secondarySlice != centerSlice && _BiomeBlendRadius > 0.01)
                 {
-                    BiomeSample secondary = SampleFullBiome(secondarySlice, secondaryBiome, worldPos, displacedNormal, triWeights, camDist, uv);
+                    BiomeSample secondary = SampleFullBiome(secondarySlice, secondaryBiome, worldPos, meshNormal, triWeights, camDist, uv);
 
                     // Blend neighboring SurfaceFamily samples spatially. Mesh-authored Y is
                     // authoritative and is never sampled from a displacement texture.
@@ -893,7 +893,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (_CliffStrength > 0.001 && _CliffSliceCount > 0.5)
                 {
                     // slope-based component (existing)
-                    float slope = saturate(1.0 - displacedNormal.y);
+                    float slope = saturate(1.0 - meshNormal.y);
                     float slopeBlend = smoothstep(_CliffSlopeThreshold - _CliffSlopeBlend, _CliffSlopeThreshold + _CliffSlopeBlend, slope);
 
                     // combined blend (scale by global cliff strength)
@@ -951,8 +951,8 @@ Shader "Custom/BiomeTerrainHDRP"
                 // biome value of 0 produces no snow when other factors are zero.
                 float snowRetention = lerp(0.0, 1.0, biomeWinterSnow);
                 // Base snow mask based on slope/normal and global amount
-                float snowMask = saturate(displacedNormal.y) * _GlobalSnowAmount * snowRetention;
-                snowMask *= smoothstep(0.4, 0.7, displacedNormal.y);
+                float snowMask = saturate(meshNormal.y) * _GlobalSnowAmount * snowRetention;
+                snowMask *= smoothstep(0.4, 0.7, meshNormal.y);
                 snowMask *= (1.0 - isWaterBiome);
 
                 // Sample per-chunk season mask (if provided) to modulate snow/wet/dry per-tile.
@@ -1023,7 +1023,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     BiomeSample lakeIce = SampleIceSurface(
                         false,
                         worldPos,
-                        displacedNormal,
+                        meshNormal,
                         triWeights,
                         camDist,
                         uv);
@@ -1031,7 +1031,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     BiomeSample riverIce = SampleIceSurface(
                         true,
                         worldPos,
-                        displacedNormal,
+                        meshNormal,
                         triWeights,
                         camDist,
                         uv);
@@ -1703,10 +1703,10 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Sample biome normal (same path as ForwardOnly)
                 float3 biomeNormal = SampleBiomeNormal(
                     TEXTURE2D_ARRAY_ARGS(_BiomeNormalArray, sampler_BiomeNormalArray),
-                    worldPos, displacedNormal, triWeights, centerSlice, effectiveTiling, camDist, uv);
+                    worldPos, meshNormal, triWeights, centerSlice, effectiveTiling, camDist, uv);
 
-                // Blend displaced (macro) normal with biome (micro) normal.
-                // Use biome normal as primary, falling back to displaced normal where
+                // Blend mesh-authored macro normal with biome micro normal.
+                // Use biome normal as primary, falling back to mesh normal where
                 // biome normal strength is zero.
                 float3 finalNormal = normalize(biomeNormal);
 
