@@ -200,6 +200,21 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float globalSnowAmount = 0f;
     [Min(0.01f)]
     [SerializeField] private float globalSnowTransitionDuration = 3f;
+
+    [Header("Terrain Appearance Layers")]
+    [SerializeField] private bool enableSeasonalSnow = true;
+    [SerializeField] private bool enableWetnessVisuals = true;
+    [SerializeField] private bool enableFreezeVisuals = true;
+    [SerializeField] private bool enableSeasonalColorVariation = true;
+    [SerializeField] private bool enableTerrainFogVisuals = true;
+    [SerializeField] private bool enableMapModeOverlay = true;
+    [SerializeField] private bool enableTerrainHighlights = true;
+    [Range(0f, 0.10f)]
+    [SerializeField] private float wetAlbedoDarkenMaximum = 0.10f;
+    [Range(0f, 0.25f)]
+    [SerializeField] private float seasonalColorStrength = 0.08f;
+    [Tooltip("Development-only: display the owning SurfaceFamily albedo slice without lighting or overlays.")]
+    [SerializeField] private bool forceRawTerrainAlbedo = false;
     [Header("Material Channel Multipliers")]
     [Range(0f, 2f)]
     [SerializeField]
@@ -1391,6 +1406,8 @@ public class HexMapChunkManager : MonoBehaviour
             sliceToBiomeMap.SetPixels(slicePixels);
             sliceToBiomeMap.Apply(false, false);
 
+            ValidateAuthoredEarthSurfaceMappings(visuals);
+
             return;
         }
 
@@ -1409,6 +1426,36 @@ public class HexMapChunkManager : MonoBehaviour
         biomeSurfaceMapTexture = null;
         biomeEmissiveMapTexture = null;
         return;
+    }
+
+    /// <summary>
+    /// Development validation only. It documents authored Earth mappings without ever
+    /// remapping a biome or substituting a fallback family.
+    /// </summary>
+    private static void ValidateAuthoredEarthSurfaceMappings(IList<BiomeVisualData> visuals)
+    {
+        var expected = new Dictionary<string, string>
+        {
+            { "Temperate", "Temperate Family" },
+            { "Plains", "Savannah and Plains Family" },
+            { "Savannah", "Savannah and Plains Family" },
+            { "Desert", "Desert Family" },
+            { "Tropical", "Tropical Family" },
+            { "Tundra", "Snow Family" },
+        };
+
+        foreach (var visual in visuals)
+        {
+            if (visual == null || !expected.TryGetValue(visual.biome.ToString(), out string expectedFamily))
+                continue;
+
+            string actualFamily = visual.surfaceFamily != null ? visual.surfaceFamily.name : "NULL";
+            string message = $"[TerrainSurfaceValidation] {visual.biome} -> {actualFamily}";
+            if (actualFamily == expectedFamily)
+                Debug.Log(message + (visual.biome.ToString() == "Tundra" ? " (authored pale mapping; not a shader fallback)" : string.Empty));
+            else
+                Debug.LogWarning($"{message}; expected authored mapping '{expectedFamily}'. Mapping was not changed.");
+        }
     }
 
     private static int ChooseSurfaceVariant(int stableSeed, int variantCount, int forcedVariant)
@@ -1481,7 +1528,7 @@ public class HexMapChunkManager : MonoBehaviour
 
     private int ResolveSurfaceSliceIndex(HexTileData tile, int stableSeed, int biomeIndex)
     {
-        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
+        int arrayDepth = biomeAlbedoArray != null ? biomeAlbedoArray.depth : 0;
         int sliceIndex = 0;
 
         Vector4[] sourceMapArray = biomeSurfaceMapArray;
@@ -1502,8 +1549,19 @@ public class HexMapChunkManager : MonoBehaviour
             sliceIndex = startSlice + chosenVariant;
         }
 
-        if (maxSlice >= 0 && sliceIndex > maxSlice) sliceIndex = maxSlice;
-        if (sliceIndex < 0) sliceIndex = 0;
+        if (sliceIndex < 0 || sliceIndex >= arrayDepth)
+        {
+            BiomeVisualData visual = ResolveRenderedVisual(tile);
+            SurfaceFamilyData family = visual != null ? visual.surfaceFamily : null;
+            Debug.LogError(
+                $"[TerrainSurfaceError] planet={(planetGenerator != null ? planetGenerator.planetIndex : -1)} " +
+                $"tile={stableSeed} biome={(tile != null ? tile.biome.ToString() : "NULL")} " +
+                $"visual={(visual != null ? visual.name : "NULL")} " +
+                $"surfaceFamily={(family != null ? family.name : "NULL")} " +
+                $"requestedSlice={sliceIndex} arrayDepth={arrayDepth}");
+            // Preserve the invalid value. The shader rejects it with diagnostic magenta;
+            // silently clamping it would disguise a broken authored mapping as another surface.
+        }
         return sliceIndex;
     }
 
@@ -1947,6 +2005,16 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
+        sharedMaterial.SetFloat("_EnableSeasonalSnow", enableSeasonalSnow ? 1f : 0f);
+        sharedMaterial.SetFloat("_EnableWetnessVisuals", enableWetnessVisuals ? 1f : 0f);
+        sharedMaterial.SetFloat("_EnableFreezeVisuals", enableFreezeVisuals ? 1f : 0f);
+        sharedMaterial.SetFloat("_EnableSeasonalColorVariation", enableSeasonalColorVariation ? 1f : 0f);
+        sharedMaterial.SetFloat("_EnableTerrainHighlights", enableTerrainHighlights ? 1f : 0f);
+        sharedMaterial.SetFloat("_WetAlbedoDarkenMaximum", wetAlbedoDarkenMaximum);
+        sharedMaterial.SetFloat("_SeasonalColorStrength", seasonalColorStrength);
+        sharedMaterial.SetFloat("_ForceRawTerrainAlbedo", forceRawTerrainAlbedo ? 1f : 0f);
+        if (!enableTerrainFogVisuals) sharedMaterial.SetFloat("_EnableFog", 0f);
+        if (!enableMapModeOverlay) sharedMaterial.SetFloat("_EnableMapMode", 0f);
         sharedMaterial.SetFloat("_TerrainDebugMode", (float)terrainDebugMode);
         sharedMaterial.SetFloat("_MetallicMultiplier", metallicMultiplier);
         sharedMaterial.SetFloat("_AOIntensity", aoIntensity);
@@ -2023,10 +2091,13 @@ public class HexMapChunkManager : MonoBehaviour
             material.SetFloat("_IceSliceCount", 0f);
         }
 
+        if (material.HasProperty("_EnableFreezeVisuals"))
+            material.SetFloat("_EnableFreezeVisuals", enableFreezeVisuals ? 1f : 0f);
+
         float freezeProgress = 0f;
         if (planetGenerator != null && ClimateManager.Instance != null)
             freezeProgress = ClimateManager.Instance.GetFreezeProgressForPlanet(planetGenerator.planetIndex);
-        material.SetFloat("_FreezeProgress", freezeProgress);
+        material.SetFloat("_FreezeProgress", enableFreezeVisuals ? freezeProgress : 0f);
     }
 
 
@@ -2373,14 +2444,14 @@ public class HexMapChunkManager : MonoBehaviour
         if (fogMask != null)
         {
             sharedMaterial.SetTexture("_FogMask", fogMask);
-            sharedMaterial.SetFloat("_EnableFog", terrainOverlayGPU.EnableFogOverlay ? 1f : 0f);
+            sharedMaterial.SetFloat("_EnableFog", enableTerrainFogVisuals && terrainOverlayGPU.EnableFogOverlay ? 1f : 0f);
         }
 
         var mapModeTex = terrainOverlayGPU.GetMapModeOverlayTexture();
         if (mapModeTex != null)
         {
             sharedMaterial.SetTexture("_MapModeOverlay", mapModeTex);
-            sharedMaterial.SetFloat("_EnableMapMode", terrainOverlayGPU.IsMapModeOverlayActive ? 1f : 0f);
+            sharedMaterial.SetFloat("_EnableMapMode", enableMapModeOverlay && terrainOverlayGPU.IsMapModeOverlayActive ? 1f : 0f);
         }
     }
 
@@ -5202,9 +5273,10 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.LogWarning($"[HexMapChunkManager] HandleFreezeProgressChanged: sharedMaterial is NULL! progress={progress:F3}");
             return;
         }
-        sharedMaterial.SetFloat("_FreezeProgress", progress);
+        float visualProgress = enableFreezeVisuals ? progress : 0f;
+        sharedMaterial.SetFloat("_FreezeProgress", visualProgress);
         if (waterMaterial != null)
-            waterMaterial.SetFloat("_FreezeProgress", progress);
+            waterMaterial.SetFloat("_FreezeProgress", visualProgress);
         SyncFrozenWaterTerrainOverrides();
         // Log periodically (every ~0.25 progress increment) to avoid spam
         if (Mathf.Abs(progress % 0.25f) < Time.deltaTime / Mathf.Max(0.01f, 1f))

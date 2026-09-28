@@ -54,6 +54,14 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Global Modifiers)]
         _GlobalSnowAmount ("Global Snow Amount", Range(0, 1)) = 0
+        [Toggle] _EnableSeasonalSnow ("Enable Seasonal Snow", Float) = 1
+        [Toggle] _EnableWetnessVisuals ("Enable Wetness Visuals", Float) = 1
+        [Toggle] _EnableFreezeVisuals ("Enable Freeze Visuals", Float) = 1
+        [Toggle] _EnableSeasonalColorVariation ("Enable Seasonal Color Variation", Float) = 1
+        [Toggle] _EnableTerrainHighlights ("Enable Terrain Highlights", Float) = 1
+        [Toggle] _ForceRawTerrainAlbedo ("Force Raw Terrain Albedo (Development)", Float) = 0
+        _SeasonalColorStrength ("Seasonal Color Strength", Range(0, 0.25)) = 0.08
+        _WetAlbedoDarkenMaximum ("Maximum Wet Albedo Darkening", Range(0, 0.10)) = 0.10
         _GlobalWetness ("Global Wetness (legacy, unused)", Range(0, 1)) = 0
         _MetallicMultiplier ("Global Metallic Multiplier", Range(0, 2)) = 1.0
         _AOIntensity ("Global AO Intensity", Range(0, 2)) = 1.0
@@ -177,6 +185,14 @@ Shader "Custom/BiomeTerrainHDRP"
     float _BiomeCount;
     float _TotalSlices;
     float _GlobalSnowAmount;
+    float _EnableSeasonalSnow;
+    float _EnableWetnessVisuals;
+    float _EnableFreezeVisuals;
+    float _EnableSeasonalColorVariation;
+    float _EnableTerrainHighlights;
+    float _ForceRawTerrainAlbedo;
+    float _SeasonalColorStrength;
+    float _WetAlbedoDarkenMaximum;
     float _GlobalWetness;
     float _MetallicMultiplier;
     float _AOIntensity;
@@ -808,132 +824,80 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 triWeights = TriplanarWeights(meshNormal);
 
                 // ==========================================================
-                // BIOME INDEX & TRANSITION BLENDING (#3, #7)
-                // _BiomeIndexMap: R = surface slice index, G = biome index
+                // AUTHORITATIVE BASE SUBSTRATE
+                // Biome -> BiomeVisualData -> SurfaceFamilyData -> centerSlice.
+                // The owning tile's SurfaceFamily albedo is the only source of base color.
+                // Dynamic systems below are explicit layers and never rewrite baseAlbedo.
                 // ==========================================================
                 float4 centerSample = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0);
                 float centerSlice = round(centerSample.r);
-                int centerBiome = (int)(centerSample.g + 0.5);
+                int centerBiome = clamp((int)(centerSample.g + 0.5), 0, 63);
+                bool validCenterSlice = centerSlice >= 0.0 && centerSlice < _TotalSlices;
+                if (!validCenterSlice)
+                    return float4(1.0, 0.0, 1.0, 1.0); // conspicuous error; never silently white
 
-                // Sample neighbors to detect biome boundaries
-                float2 biomeStep = _BiomeIndexMap_TexelSize.xy * max(_BiomeBlendRadius, 0.5);
+                float4 biomeParams = _BiomeParams[centerBiome];
+                float effectiveTiling = _TriTiling * max(biomeParams.x, 0.01);
+                bool isTopFace = meshNormal.y >= 0.70;
 
-                float4 sampleR = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv + float2(biomeStep.x, 0), 0);
-                float4 sampleL = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv - float2(biomeStep.x, 0), 0);
-                float4 sampleU = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv + float2(0, biomeStep.y), 0);
-                float4 sampleD = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv - float2(0, biomeStep.y), 0);
+                // Flat stepped tops use one predictable XZ planar lookup. Bevels/walls retain
+                // triplanar sampling for projection continuity, always from centerSlice.
+                float3 baseAlbedo = isTopFace
+                    ? SAMPLE_TEXTURE2D_ARRAY(_BiomeAlbedoArray, sampler_BiomeAlbedoArray,
+                        worldPos.xz * effectiveTiling, centerSlice).rgb
+                    : SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_BiomeAlbedoArray, sampler_BiomeAlbedoArray),
+                        worldPos, triWeights, centerSlice, effectiveTiling, camDist, uv).rgb;
+                float3 rawBiomeAlbedo = baseAlbedo;
+                float3 substrateAlbedo = baseAlbedo;
 
-                float sliceR = round(sampleR.r);
-                float sliceL = round(sampleL.r);
-                float sliceU = round(sampleU.r);
-                float sliceD = round(sampleD.r);
+                // This switch proves the array content and selected slice without any other
+                // material, geometry-side, lighting, or gameplay contribution.
+                if (_ForceRawTerrainAlbedo > 0.5)
+                    return float4(saturate(baseAlbedo), 1.0);
 
-                // Find secondary biome for blending
-                float secondarySlice = centerSlice;
-                int secondaryBiome = centerBiome;
-                int diffCount = 0;
-                float2 neighborOffset = float2(0.0, 0.0);
-                if (sliceR != centerSlice) { secondarySlice = sliceR; secondaryBiome = (int)(sampleR.g + 0.5); neighborOffset = float2(biomeStep.x, 0); diffCount++; }
-                if (sliceL != centerSlice) { if (diffCount == 0) { secondarySlice = sliceL; secondaryBiome = (int)(sampleL.g + 0.5); neighborOffset = float2(-biomeStep.x, 0); } diffCount++; }
-                if (sliceU != centerSlice) { if (diffCount == 0) { secondarySlice = sliceU; secondaryBiome = (int)(sampleU.g + 0.5); neighborOffset = float2(0, biomeStep.y); } diffCount++; }
-                if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; secondaryBiome = (int)(sampleD.g + 0.5); neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
-
-                // Sample primary biome
-                BiomeSample primary = SampleFullBiome(centerSlice, centerBiome, worldPos, meshNormal, triWeights, camDist, uv);
-
-                float3 albedo;
-                float3 rawBiomeAlbedo;
-                float3 normalWS;
-                float4 mask;
-                float3 emission;
-                float4 biomeParams;
-                float blendedHeight = 0.0;
-
-                // Height-based biome blending at boundaries (#3, #7: mask.b = height)
-                if (diffCount > 0 && secondarySlice != centerSlice && _BiomeBlendRadius > 0.01)
-                {
-                    BiomeSample secondary = SampleFullBiome(secondarySlice, secondaryBiome, worldPos, meshNormal, triWeights, camDist, uv);
-
-                    // Blend neighboring SurfaceFamily samples spatially. Mesh-authored Y is
-                    // authoritative and is never sampled from a displacement texture.
-                    float spatialBlend = (float)diffCount / 4.0;
-                    float blend = saturate(spatialBlend);
-
-                    albedo = lerp(primary.albedo, secondary.albedo, blend);
-                    rawBiomeAlbedo = lerp(primary.rawAlbedo, secondary.rawAlbedo, blend);
-                    normalWS = normalize(lerp(primary.normalWS, secondary.normalWS, blend));
-                    mask = lerp(primary.mask, secondary.mask, blend);
-                    emission = lerp(primary.emission, secondary.emission, blend);
-                    biomeParams = lerp(primary.biomeParams, secondary.biomeParams, blend);
-                     blendedHeight = lerp(primary.height, secondary.height, blend);
-                }
-                else
-                {
-                    albedo = primary.albedo;
-                    rawBiomeAlbedo = primary.rawAlbedo;
-                    normalWS = primary.normalWS;
-                    mask = primary.mask;
-                    emission = primary.emission;
-                    biomeParams = primary.biomeParams;
-                     blendedHeight = primary.height;
-                }
-
-                // Captured before cliffs, seasons, wetness, map overlays, and lighting.
-                float3 substrateAlbedo = albedo;
+                BiomeSample owningSurface = SampleFullBiome(
+                    centerSlice, centerBiome, worldPos, meshNormal, triWeights, camDist, uv);
+                float3 normalWS = owningSurface.normalWS;
+                float4 mask = owningSurface.mask;
+                float3 emission = owningSurface.emission;
+                float blendedHeight = owningSurface.height;
 
                 // ==========================================================
-                // CLIFF OVERLAY: combine slope-based and tile-step detection
-                //  - slope-based: preserves previous slope behavior
-                //  - step-based: detects abrupt per-texel elevation jumps (tile sides)
+                // GEOMETRY LAYER: cliffs belong only to mesh-authored sides.
+                // top >= .70, wall <= .25, with a controlled bevel transition.
                 // ==========================================================
-                if (_CliffStrength > 0.001 && _CliffSliceCount > 0.5)
+                float sideBlend = 1.0 - smoothstep(0.25, 0.70, meshNormal.y);
+                float3 materialAlbedo = baseAlbedo;
+                if (sideBlend > 0.001 && _CliffStrength > 0.001 && _CliffSliceCount > 0.5)
                 {
-                    // slope-based component (existing)
-                    float slope = saturate(1.0 - meshNormal.y);
-                    float slopeBlend = smoothstep(_CliffSlopeThreshold - _CliffSlopeBlend, _CliffSlopeThreshold + _CliffSlopeBlend, slope);
-
-                    // combined blend (scale by global cliff strength)
-                    float cliffBlend = slopeBlend * _CliffStrength;
-
-                    if (cliffBlend > 0.001)
-                    {
-                        // pick a variant slice deterministically from worldPos
-                        float hash = frac(sin(dot(worldPos.xz, float2(12.9898,78.233))) * 43758.5453);
-                        float sliceF = floor(hash * max(1.0, _CliffSliceCount - 1.0) + 0.5);
-
-                        // Sample cliff albedo and normal using triplanar/hex helpers
-                        float4 cliffAlb = SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray), worldPos, triWeights, sliceF, _CliffTiling, camDist, uv);
-                        float3 cliffNorm = SampleBiomeNormal(TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray), worldPos, normalWS, triWeights, sliceF, _CliffTiling, camDist, uv);
-
-                        // For step edges, prefer darker, more vertical look: lerp by cliffBlend
-                        albedo = lerp(albedo, cliffAlb.rgb, cliffBlend);
-                        normalWS = normalize(lerp(normalWS, cliffNorm, cliffBlend));
-                        mask.a = lerp(mask.a, max(0.05, mask.a * 0.3), cliffBlend);
-                    }
+                    float hash = frac(sin(dot(worldPos.xz, float2(12.9898, 78.233))) * 43758.5453);
+                    float cliffSlice = floor(hash * max(1.0, _CliffSliceCount - 1.0) + 0.5);
+                    float cliffAmount = saturate(sideBlend * _CliffStrength);
+                    float3 cliffAlbedo = SampleBiomeTexture(
+                        TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray),
+                        worldPos, triWeights, cliffSlice, _CliffTiling, camDist, uv).rgb;
+                    float3 cliffNormal = SampleBiomeNormal(
+                        TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray),
+                        worldPos, normalWS, triWeights, cliffSlice, _CliffTiling, camDist, uv);
+                    materialAlbedo = lerp(materialAlbedo, cliffAlbedo, cliffAmount);
+                    normalWS = normalize(lerp(normalWS, cliffNormal, cliffAmount));
+                    mask.a = lerp(mask.a, max(0.05, mask.a * 0.3), cliffAmount);
                 }
 
-                // Unpack mask: R=Metallic, G=AO, B=Height (used above), A=Smoothness
-                // Keep the raw sampled mask channels available for debug modes even
-                // after the custom path applies snow, wetness, ice, fog, and highlight
-                // adjustments below. Mask convention: R=Metallic, G=AO, B=Height,
-                // A=Smoothness.
+                // Mask convention: R=metallic, G=AO, B=height, A=smoothness.
+                // It controls response only; no mask channel participates in substrate color.
                 float rawMetallicChannel = saturate(mask.r);
                 float rawAOChannel = saturate(mask.g);
                 float rawSmoothnessChannel = saturate(mask.a);
-
-                float metallic = saturate(rawMetallicChannel * _MetallicMultiplier);
+                float metallic = 0.0; // campaign earth is non-metallic; explicit ice may override
                 float ao = saturate(rawAOChannel * _AOIntensity);
-                // Apply per-biome roughness offset from SurfaceFamilyData
-                // (packed 4 per float4; blend between primary/secondary at boundaries)
-                int roIdxP = centerBiome >> 2;  // Bitwise shift = faster than division by 4
-                int roCompP = centerBiome & 3;  // Bitwise AND = faster than modulus 4
+                int roIdxP = centerBiome >> 2;
+                int roCompP = centerBiome & 3;
                 float roughnessOffset = _BiomeRoughnessOffsets[roIdxP][roCompP];
-                float smoothness = saturate(rawSmoothnessChannel * _SmoothnessMultiplier - roughnessOffset);
+                float smoothness = min(saturate(rawSmoothnessChannel * _SmoothnessMultiplier - roughnessOffset), 0.45);
 
+                // Seasonal material stage begins as an exact copy of the geometry material.
+                float3 seasonalAlbedo = materialAlbedo;
                 // ==========================================================
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
                 // ==========================================================
@@ -951,7 +915,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // biome value of 0 produces no snow when other factors are zero.
                 float snowRetention = lerp(0.0, 1.0, biomeWinterSnow);
                 // Base snow mask based on slope/normal and global amount
-                float snowMask = saturate(meshNormal.y) * _GlobalSnowAmount * snowRetention;
+                float snowMask = _EnableSeasonalSnow * saturate(meshNormal.y) * _GlobalSnowAmount * snowRetention;
                 snowMask *= smoothstep(0.4, 0.7, meshNormal.y);
                 snowMask *= (1.0 - isWaterBiome);
 
@@ -963,7 +927,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 if (snowMask > 0.01)
                 {
-                    albedo = lerp(albedo, _SnowColor.rgb, snowMask);
+                    seasonalAlbedo = lerp(seasonalAlbedo, _SnowColor.rgb, snowMask);
                     smoothness = lerp(smoothness, _SnowSmoothness, snowMask);
 
                     // Procedural snow normal perturbation (soft bumps)
@@ -992,11 +956,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Wet biomes (swamps, marshes) get darkened albedo + boosted smoothness.
                 // No seasonal gating — this is the texture's natural look.
                 // ==========================================================
-                float inherentWet = biomeParams.z; // 0 = dry biome, 1 = fully wet
+                float inherentWet = saturate(max(biomeParams.z, seasonMaskSample.g)) * _EnableWetnessVisuals;
                 if (inherentWet > 0.01)
                 {
                     // Darken albedo (wet surfaces absorb more light)
-                    albedo *= lerp(1.0, 1.0 - _WetAlbedoDarken, inherentWet);
+                    seasonalAlbedo *= 1.0 - inherentWet * min(_WetAlbedoDarkenMaximum, 0.10);
 
                     // Boost smoothness (wet surfaces are glossier)
                     smoothness = lerp(smoothness, min(smoothness + _WetSmoothnessBoost, 0.99), inherentWet);
@@ -1018,7 +982,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // ==========================================================
                 // FROZEN WATER BLEND
                 // ==========================================================
-                if (freezeAmount > 0.001 && (lakeMask > 0.001 || riverMask > 0.001))
+                if (_EnableFreezeVisuals > 0.5 && freezeAmount > 0.001 && (lakeMask > 0.001 || riverMask > 0.001))
                 {
                     BiomeSample lakeIce = SampleIceSurface(
                         false,
@@ -1049,7 +1013,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     float solidIceBlend = saturate((freezeAmount - _FreezeOpaqueThreshold) / max(1.0 - _FreezeOpaqueThreshold, 0.001));
                     float finalFreezeBlend = saturate(max(freezeAmount, solidIceBlend) * waterTypeWeight);
 
-                    albedo = lerp(albedo, iceAlbedo, finalFreezeBlend);
+                    seasonalAlbedo = lerp(seasonalAlbedo, iceAlbedo, finalFreezeBlend);
                     normalWS = normalize(lerp(normalWS, iceNormal, finalFreezeBlend));
                     metallic = lerp(metallic, saturate(iceMask.r), finalFreezeBlend);
                     ao = lerp(ao, saturate(iceMask.g), finalFreezeBlend);
@@ -1057,41 +1021,17 @@ Shader "Custom/BiomeTerrainHDRP"
                     blendedHeight = lerp(blendedHeight, iceHeight, finalFreezeBlend);
                 }
 
-                // ==========================================================
-                // FOG OVERLAY
-                // ==========================================================
-                if (_EnableFog > 0.5)
+                // Optional authored dry/autumn response is isolated from biome identity.
+                // It is deliberately restrained and never moves the substrate toward white.
+                if (_EnableSeasonalColorVariation > 0.5 && seasonMaskSample.b > 0.001)
                 {
-                    float4 fogSample = SAMPLE_TEXTURE2D(_FogMask, sampler_BiomeIndexMap, uv);
-                    float fogAmount = fogSample.r * _TerrainFogColor.a;
-                    albedo = lerp(albedo, _TerrainFogColor.rgb, fogAmount);
-                    emission *= (1.0 - fogAmount);
+                    float dryAmount = saturate(seasonMaskSample.b * _SeasonalColorStrength);
+                    float luminance = dot(seasonalAlbedo, float3(0.2126, 0.7152, 0.0722));
+                    float3 dryColor = lerp(seasonalAlbedo, luminance.xxx, 0.25) * 0.96;
+                    seasonalAlbedo = lerp(seasonalAlbedo, dryColor, dryAmount);
                 }
 
-                // ==========================================================
-                // UNIFIED CAMPAIGN MAP MODE OVERLAY
-                // ==========================================================
-                if (_EnableMapMode > 0.5)
-                {
-                    float4 mapModeColor = SAMPLE_TEXTURE2D(_MapModeOverlay, sampler_BiomeIndexMap, uv);
-                    albedo = lerp(albedo, mapModeColor.rgb, saturate(mapModeColor.a));
-                }
-
-
-
-                // ==========================================================
-                // TILE HIGHLIGHT
-                // ==========================================================
-                if (_HighlightTileIndex >= 0)
-                {
-                    int currentTile = DecodeTileIndex(uv);
-                    if (currentTile == (int)_HighlightTileIndex)
-                    {
-                        // Make highlight visible even in shadow: tint albedo AND add a small emissive boost.
-                        albedo = lerp(albedo, _HighlightColor.rgb, _HighlightColor.a);
-                        emission += _HighlightColor.rgb * (_HighlightColor.a * 0.35);
-                    }
-                }
+                float3 materialColor = seasonalAlbedo;
 
                 // Debug 8-11 are intentionally evaluated after the full custom
                 // surface path above so those modes are visibly connected to the
@@ -1128,11 +1068,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (terrainDebugMode == 17)
                     return float4(saturate(substrateAlbedo), 1.0);
                 if (terrainDebugMode == 18)
-                    return float4(saturate(albedo), 1.0);
+                    return float4(saturate(materialColor), 1.0);
 
                 if (terrainDebugMode == 1)
                 {
-                    return float4(saturate(albedo), 1.0);
+                    return float4(saturate(materialColor), 1.0);
                 }
 
                 if (terrainDebugMode == 2)
@@ -1157,7 +1097,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // 1. Build SurfaceData (albedo, normal, smoothness, metallic, emission)
                 SurfaceData surfaceData;
                 ZERO_INITIALIZE(SurfaceData, surfaceData);
-                surfaceData.baseColor = saturate(albedo);
+                surfaceData.baseColor = saturate(materialColor);
                 surfaceData.normalWS = normalizedNormalWS;
                 surfaceData.geomNormalWS = normalizedNormalWS;
                 surfaceData.perceptualSmoothness = saturate(smoothness);
@@ -1241,7 +1181,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 fallbackLightDir = normalize(_FallbackSunDirectionWS.xyz);
                 float fallbackNdotL = saturate(dot(normalizedNormalWS, fallbackLightDir));
                 float3 fallbackDirect = _FallbackSunColor.rgb * _FallbackSunIntensity * fallbackNdotL;
-                float3 fallbackLit = albedo * (saturate(_FallbackAmbient) + fallbackDirect);
+                float3 fallbackLit = materialColor * (saturate(_FallbackAmbient) + fallbackDirect);
 
                 if (terrainDebugMode == 6)
                 {
@@ -1250,11 +1190,30 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 float lightingMagnitude = max(max(hdrpLit.r, hdrpLit.g), hdrpLit.b);
 
-                float3 finalColor = lightingMagnitude > 1e-5
-                    ? hdrpLit * GetCurrentExposureMultiplier()
-                    : fallbackLit;
+                // HDRP's LightLoop output already participates in HDRP's exposure pipeline;
+                // multiplying GetCurrentExposureMultiplier here applied exposure twice.
+                float3 litAlbedo = lightingMagnitude > 1e-5 ? hdrpLit : fallbackLit;
+                litAlbedo += emission;
+                float3 finalColor = litAlbedo;
 
-                finalColor += emission;
+                // Gameplay presentation is applied after the terrain material and lighting.
+                if (_EnableFog > 0.5)
+                {
+                    float fogOpacity = saturate(SAMPLE_TEXTURE2D(_FogMask, sampler_BiomeIndexMap, uv).r
+                        * _TerrainFogColor.a);
+                    finalColor = lerp(finalColor, _TerrainFogColor.rgb, fogOpacity);
+                }
+                if (_EnableMapMode > 0.5)
+                {
+                    float4 mapModeColor = SAMPLE_TEXTURE2D(_MapModeOverlay, sampler_BiomeIndexMap, uv);
+                    finalColor = lerp(finalColor, mapModeColor.rgb, saturate(mapModeColor.a));
+                }
+                if (_EnableTerrainHighlights > 0.5 && _HighlightTileIndex >= 0.0)
+                {
+                    int currentTile = DecodeTileIndex(uv);
+                    if (currentTile == (int)_HighlightTileIndex)
+                        finalColor += _HighlightColor.rgb * (_HighlightColor.a * 0.35);
+                }
 
                 // ==========================================================
                 // HEX GRID OVERLAY (simple biome-edge detection)
