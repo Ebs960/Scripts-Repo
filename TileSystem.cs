@@ -1158,6 +1158,11 @@ public class TileSystem : MonoBehaviour
     #endregion
 
 		#region Surface / Accessibility / Occupancy
+    /// <summary>
+    /// Returns the position for visible Surface-layer campaign objects. Callers must use this
+    /// (or HexMapChunkManager.GetRenderedTerrainWorldY) rather than simulation elevation,
+    /// waterElevation, heightmap samples, or a flat tile center for visual Y placement.
+    /// </summary>
     public Vector3 GetTileSurfacePosition(int tile, float unitOffset = 0f)
     {
         // Get flat center position

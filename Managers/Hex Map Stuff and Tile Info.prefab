@@ -49,45 +49,12 @@ MonoBehaviour:
   terrainShader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   iceSurfaceDatabase: {fileID: 11400000, guid: a179395d8e066d7408edab9fd9f0e3de, type: 2}
-  terrainRenderPath: 0
-  bakedLitTerrainMaterialTemplate: {fileID: 0}
-  hdrpLitBiomeTerrainMaterialTemplate: {fileID: 2100000, guid: da413e1480514199b178c88074d6e624, type: 2}
-  bakedTerrainTextureWidth: 2048
-  bakedTerrainTextureHeight: 2048
-  bakedTerrainUseSimpleBiomeColors: 0
-  keepBakedTerrainTexturesReadable: 1
-  bakedTerrainBakeMaskMap: 1
-  bakedTerrainBakeNormalMap: 1
-  bakedTerrainBakeCliffs: 1
-  bakedSurfaceUVMode: 2
-  bakedSurfaceGlobalTilingMultiplier: 1
-  bakedSurfaceTileUVJitter: 0.25
-  bakedCliffsPreferMountainsAndSteepSteps: 1
-  bakedTerrainDebugBakeMode: 0
-  bakedTerrainForceMetallicZero: 1
-  bakedTerrainDefaultSmoothness: 0.25
-  bakedTerrainMaxSmoothness: 0.45
-  bakedTerrainMinAO: 0.35
-  bakedTerrainNormalStrength: 1
-  bakedCliffAlbedoStrength: 0.8
-  bakedCliffNormalStrength: 0.8
-  bakedCliffMaskStrength: 0.5
-  forceRebakeBakedLitTerrain: 0
-  debugBakedTerrainResolution: 0
-  debugBakedTerrainOnlyProblemBiomes: 1
-  debugBakedTerrainSamplesPerBiome: 10
-  exportBakedTerrainDebugPng: 0
-  bakedTerrainDebugExportFolder: Assets/TerrainDebug
-  exportProblemBiomeSlices: 0
   clearSurfaceLibraryCacheBeforeBuild: 0
   orbitOverlayShader: {fileID: 0}
   textureWidth: 2048
   textureHeight: 2048
-  heightmapAnisoLevel: 16
   chunksX: 14
   chunksZ: 9
-  meshSubdivisionsPerChunk: 22
-  terrainGeometryMode: 1
   steppedHexTopScale: 1
   steppedFlatHeightAboveSea: 0.75
   steppedHillHeightAboveSea: 3.5
@@ -96,7 +63,6 @@ MonoBehaviour:
   steppedAbyssalDepthBelowSea: 3.5
   steppedTrenchDepthBelowSea: 5.5
   steppedSeamDepth: 0.08
-  displacementStrength: 1
   flatY: 0
   preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
@@ -107,11 +73,8 @@ MonoBehaviour:
   triplanarTiling: 0.2
   triplanarBlend: 5
   useTriplanar: 1
-  normalStrength: 1.23
   biomeNormalStrength: 0.7
-  normalSampleRadius: 4.4
   biomeBlendRadius: 2.82
-  biomeBlendSharpness: 4.51
   enableWrap: 1
   wrapBuffer: 0.45
   debugWrap: 0
@@ -122,7 +85,6 @@ MonoBehaviour:
   terrainSurfaceProbeKey: 30
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
-  debugBiomeDetails: 1
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
@@ -157,8 +119,6 @@ MonoBehaviour:
   cliffStrength: 0.684
   cliffSlopeThreshold: 0.2
   cliffSlopeBlend: 0
-  cliffStepThreshold: 0.1
-  cliffStepBlend: 0
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0

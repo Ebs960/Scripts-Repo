@@ -99,11 +99,9 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel++;
 
             var biomeIndexMap = Find(properties, "_BiomeIndexMap");
-            var heightmap = Find(properties, "_Heightmap");
             var lut = Find(properties, "_LUT");
 
             DrawTextureProperty(materialEditor, biomeIndexMap, new GUIContent("Biome Index Map", "R = texture array slice index per tile/pixel"));
-            DrawTextureProperty(materialEditor, heightmap, new GUIContent("Heightmap", "R = elevation (scaled by _ElevationScale)"));
             DrawTextureProperty(materialEditor, lut, new GUIContent("Tile LUT", "Used for tile highlight / decoding"));
 
             Header("Tile Season Mask");
@@ -143,21 +141,17 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             DrawTextureProperty(materialEditor, Find(properties, "_BiomeSurfaceMapTex"), new GUIContent("Biome Surface Map"));
             DrawTextureProperty(materialEditor, Find(properties, "_BiomeEmissiveMapTex"), new GUIContent("Biome Emissive Map"));
 
-            // Note: _BiomeTints and _BiomeParams are vector arrays set from C# (HexMapChunkManager).
-            EditorGUILayout.HelpBox("Per-biome tint/params are driven by C# via SetVectorArray (_BiomeTints/_BiomeParams).", MessageType.Info);
+            EditorGUILayout.HelpBox("Dynamic per-biome parameters are driven by HexMapChunkManager.", MessageType.Info);
 
             EditorGUI.indentLevel--;
         }
 
-        // ===================== Displacement & Normals =====================
-        if (Foldout("Displacement", "Displacement & Height-Normals", true))
+        // ===================== Surface Detail & Normals =====================
+        if (Foldout("Displacement", "Surface Detail & Normals", true))
         {
             EditorGUI.indentLevel++;
-            DrawShaderProperty(materialEditor, Find(properties, "_ElevationScale"), "Elevation Scale");
             DrawShaderProperty(materialEditor, Find(properties, "_SurfaceHeightScale"), "Surface Height Scale");
-            DrawShaderProperty(materialEditor, Find(properties, "_NormalStrength"), "Heightmap Normal Strength");
             DrawShaderProperty(materialEditor, Find(properties, "_BiomeNormalStrength"), "Biome Normal Strength");
-            DrawShaderProperty(materialEditor, Find(properties, "_NormalSampleRadius"), "Normal Sample Radius (texels)");
             EditorGUI.indentLevel--;
         }
 
@@ -232,8 +226,6 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             DrawShaderProperty(materialEditor, Find(properties, "_CliffStrength"), "Cliff Strength");
             DrawShaderProperty(materialEditor, Find(properties, "_CliffSlopeThreshold"), "Slope Threshold");
             DrawShaderProperty(materialEditor, Find(properties, "_CliffSlopeBlend"), "Slope Blend");
-            DrawShaderProperty(materialEditor, Find(properties, "_CliffStepThreshold"), "Step Threshold");
-            DrawShaderProperty(materialEditor, Find(properties, "_CliffStepBlend"), "Step Blend");
             DrawShaderProperty(materialEditor, Find(properties, "_CliffSliceCount"), "Cliff Slice Count");
 
             EditorGUI.indentLevel--;
@@ -346,21 +338,19 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
     private static void DrawValidation(Material mat, MaterialProperty[] properties)
     {
         var biomeIndexMap = Find(properties, "_BiomeIndexMap");
-        var heightmap = Find(properties, "_Heightmap");
         var albedoArr = Find(properties, "_BiomeAlbedoArray");
         var normalArr = Find(properties, "_BiomeNormalArray");
         var maskArr = Find(properties, "_BiomeMaskArray");
 
         bool missing =
             (biomeIndexMap != null && biomeIndexMap.textureValue == null) ||
-            (heightmap != null && heightmap.textureValue == null) ||
             (albedoArr != null && albedoArr.textureValue == null) ||
             (normalArr != null && normalArr.textureValue == null) ||
             (maskArr != null && maskArr.textureValue == null);
 
         HelpIf(missing,
-            "One or more required textures are missing. This shader will usually render solid/incorrect if BiomeIndexMap/Heightmap or the texture arrays are not assigned.\n\n" +
-            "Required: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray.",
+            "One or more required textures are missing. Terrain requires the biome index and SurfaceFamily arrays.\n\n" +
+            "Required: _BiomeIndexMap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray.",
             MessageType.Warning);
 
         // Tessellation properties exist in the shader, but the tessellation path is currently disabled
