@@ -97,7 +97,7 @@ public sealed class Band : MonoBehaviour
         foodReserve = Mathf.Clamp(data.startingFoodReserve, 0, FoodCapacity);
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
-        PositionVisual(); RefreshVisual();
+        PositionVisual(); RegisterOccupancy(); RefreshVisual();
         GetComponentInChildren<BandWorldUI>(true)?.Initialize(this);
         if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
@@ -119,8 +119,15 @@ public sealed class Band : MonoBehaviour
         queuedStructure = savedQueuedStructure;
         queuedUnit = savedQueuedUnit;
         productionProgress = Mathf.Max(0, savedProgress);
-        PositionVisual(); RefreshVisual();
+        PositionVisual(); RegisterOccupancy(); RefreshVisual();
         NotifyChanged();
+    }
+
+    private void RegisterOccupancy()
+    {
+        if (currentTileIndex < 0) return;
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)
+            ?.SetOccupant(currentTileIndex, gameObject, TileLayer.Surface);
     }
 
     public void ResetForNewTurn()
