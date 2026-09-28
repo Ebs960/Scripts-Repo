@@ -171,6 +171,18 @@ public class TileOccupancyManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>Returns the first component of a requested gameplay type in stack order.</summary>
+    public T GetOccupantComponent<T>(int tile, TileLayer layer) where T : Component
+    {
+        foreach (var occupant in GetAllOccupantObjects(tile, layer))
+        {
+            if (occupant == null) continue;
+            var component = occupant.GetComponentInParent<T>();
+            if (component != null) return component;
+        }
+        return null;
+    }
+
     /// <summary>
     /// How many units are on this tile/layer.
     /// </summary>

@@ -52,6 +52,7 @@ public sealed class Band : MonoBehaviour
     private bool queuedTravelVisualActive;
     private Civilization owner;
     private bool lifecycleCleanedUp;
+    private BandWorldUI worldUi;
 
     public static event Action<Band> BandCreated, BandPacked, BandEncamped, BandMoved;
     public static event Action<Band, Civilization, Civilization> BandCaptured;
@@ -100,7 +101,7 @@ public sealed class Band : MonoBehaviour
         owner?.RegisterBand(this);
         UnitRegistry.Register(gameObject);
         PositionVisual(); RegisterOccupancy(); RefreshVisual();
-        EnsureWorldMarker().Initialize(this);
+        EnsureWorldUI();
         if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
         RefreshOwnerVision(owner);
@@ -488,14 +489,23 @@ public sealed class Band : MonoBehaviour
         RefreshOwnerVision(owner); BandDestroyed?.Invoke(this, reason); Destroy(gameObject);
     }
 
-    private BandWorldUI EnsureWorldMarker()
+    private void EnsureWorldUI()
     {
-        var marker = GetComponentInChildren<BandWorldUI>(true);
-        if (marker != null) return marker;
-
-        marker = BandWorldUI.CreateRuntime(this);
-        Debug.Log($"[BandPresentation] Band '{name}' had no authored world marker; created runtime fallback.", this);
-        return marker;
+        if (worldUi == null)
+        {
+            foreach (var candidate in GetComponentsInChildren<BandWorldUI>(true))
+            {
+                if (stateVisual != null && candidate.transform.IsChildOf(stateVisual.transform)) continue;
+                worldUi = candidate;
+                break;
+            }
+        }
+        if (worldUi == null)
+        {
+            worldUi = BandWorldUI.CreateRuntime(this);
+            Debug.Log($"[BandPresentation] Band '{name}' had no authored world marker; created runtime fallback.", this);
+        }
+        worldUi.Initialize(this);
     }
 
     private void CleanupLifecycle()
@@ -517,8 +527,9 @@ public sealed class Band : MonoBehaviour
 
     private void NotifyChanged()
     {
+        EnsureWorldUI();
+        worldUi.Refresh();
         BandChanged?.Invoke(this);
-        GetComponentInChildren<BandWorldUI>(true)?.Refresh();
     }
 
     private int GetProductionYield() => Mathf.Max(0, data.encampedYields.production + builtStructures.Where(x => x != null).Sum(x => x.yields.production));
@@ -558,7 +569,11 @@ public sealed class Band : MonoBehaviour
         SuppressShellPresentation();
         ClearVisuals();
         GameObject visualPrefab = ResolveStateVisualPrefab();
-        if (visualPrefab == null) return;
+        if (visualPrefab == null)
+        {
+            EnsureWorldUI();
+            return;
+        }
         stateVisual = Instantiate(visualPrefab, visualRoot != null ? visualRoot : transform, false);
         stateVisual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
         stateVisual.transform.localScale = Vector3.one;
@@ -569,6 +584,7 @@ public sealed class Band : MonoBehaviour
             RefreshStructureVisuals();
             RefreshFireVisual();
         }
+        EnsureWorldUI();
     }
 
     private void SuppressShellPresentation()
