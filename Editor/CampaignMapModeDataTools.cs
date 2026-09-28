@@ -13,7 +13,7 @@ public static class CampaignMapModeDataTools
             if (!IsMeaningful(government.mapModeColor)) { warnings++; Debug.LogWarning($"[Map Modes] Government '{government.name}' has no authored map color.", government); }
         foreach (var religion in LoadAssets<ReligionData>())
             if (!IsMeaningful(religion.mapModeColor)) { warnings++; Debug.LogWarning($"[Map Modes] Religion '{religion.name}' has no authored map color.", religion); }
-        foreach (var tileSystem in Object.FindObjectsByType<TileSystem>(FindObjectsSortMode.None))
+        foreach (var tileSystem in Object.FindObjectsByType<TileSystem>())
         {
             int count = tileSystem.GetOwnerArray()?.Length ?? 0;
             for (int i = 0; i < count; i++)

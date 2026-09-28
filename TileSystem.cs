@@ -1201,7 +1201,7 @@ public class TileSystem : MonoBehaviour
 
         // This path is only used until the correct renderer is cached; never use an
         // arbitrary manager in a multi-planet scene.
-        foreach (var manager in FindObjectsByType<HexMapChunkManager>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var manager in FindObjectsByType<HexMapChunkManager>(FindObjectsInactive.Include))
         {
             if (BelongsToThisPlanet(manager))
                 return cachedChunkManager = manager;

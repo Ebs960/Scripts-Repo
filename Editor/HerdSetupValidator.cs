@@ -9,7 +9,7 @@ public static class HerdSetupValidator
     public static void Validate()
     {
         int errors = 0, warnings = 0;
-        if (Object.FindObjectOfType<HerdManager>() == null && AssetDatabase.FindAssets("t:Prefab Herd Manager").Length == 0)
+        if (Object.FindAnyObjectByType<HerdManager>() == null && AssetDatabase.FindAssets("t:Prefab Herd Manager").Length == 0)
         { Debug.LogError("[Herd Validation] No HerdManager exists in the open scene and no manager prefab was found."); errors++; }
 
         var panelGuids = AssetDatabase.FindAssets("t:Prefab Herd UI");

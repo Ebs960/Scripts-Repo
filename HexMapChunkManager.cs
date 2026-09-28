@@ -1353,23 +1353,23 @@ public class HexMapChunkManager : MonoBehaviour
         TileSystem tiles = TileSystem.GetForPlanet(planetIndex);
         if (tiles == null) return;
 
-        foreach (var band in FindObjectsByType<Band>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var band in FindObjectsByType<Band>(FindObjectsInactive.Include))
             if (band.PlanetIndex == planetIndex && band.CurrentTileIndex >= 0)
                 band.transform.position = tiles.GetTileSurfacePosition(band.CurrentTileIndex);
 
-        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Include))
             if (unit.planetIndex == planetIndex && unit.currentLayer == TileLayer.Surface && unit.currentTileIndex >= 0)
                 unit.transform.position = tiles.GetTileSurfacePosition(unit.currentTileIndex);
 
-        foreach (var herd in FindObjectsByType<Herd>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var herd in FindObjectsByType<Herd>(FindObjectsInactive.Include))
             if (herd.planetIndex == planetIndex && herd.currentTileIndex >= 0)
                 herd.transform.position = tiles.GetTileSurfacePosition(herd.currentTileIndex);
 
-        foreach (var resource in FindObjectsByType<ResourceInstance>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var resource in FindObjectsByType<ResourceInstance>(FindObjectsInactive.Include))
             if (resource.planetIndex == planetIndex && resource.tileIndex >= 0 && resource.data != null && !resource.data.isOrbitalResource)
                 resource.GroundToSurface(GetRenderedTerrainWorldY(resource.tileIndex), resource.data.visualGroundOffset);
 
-        foreach (var improvement in FindObjectsByType<ImprovementInstance>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var improvement in FindObjectsByType<ImprovementInstance>(FindObjectsInactive.Include))
             if (improvement.PlanetIndex == planetIndex && improvement.tileIndex >= 0 && improvement.spaceTileIndex < 0)
                 improvement.transform.position = tiles.GetTileSurfacePosition(improvement.tileIndex);
     }
