@@ -122,6 +122,13 @@ public enum TerrainDebugMode
 /// </summary>
 public class HexMapChunkManager : MonoBehaviour
 {
+    public enum TerrainLightingMode
+    {
+        SimpleCampaign = 0,
+        HDRPExperimental = 1,
+        UnlitDebug = 2
+    }
+
     [Header("References")]
     // Minimap/flat-map coloring is fixed to default biome colors (BiomeColorHelper).
     // Keep visuals deterministic and avoid multiple competing "color provider" assets.
@@ -215,6 +222,14 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float seasonalColorStrength = 0.08f;
     [Tooltip("Development-only: display the owning SurfaceFamily albedo slice without lighting or overlays.")]
     [SerializeField] private bool forceRawTerrainAlbedo = false;
+    [Header("Campaign Terrain Lighting")]
+    [SerializeField] private TerrainLightingMode terrainLightingMode = TerrainLightingMode.SimpleCampaign;
+    [Range(0f, 1f)] [SerializeField] private float campaignAmbientFloor = 0.72f;
+    [Range(0f, 1f)] [SerializeField] private float campaignDirectionalStrength = 0.28f;
+    [Range(0f, 1f)] [SerializeField] private float campaignAOStrength = 0.20f;
+    [Tooltip("Optional campaign sun. RenderSettings.sun, then the brightest enabled directional light, are used when this is unset.")]
+    [SerializeField] private Light campaignDirectionalLight;
+    private bool terrainLightingAuditLogged;
     [Header("Material Channel Multipliers")]
     [Range(0f, 2f)]
     [SerializeField]
@@ -2013,6 +2028,7 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_WetAlbedoDarkenMaximum", wetAlbedoDarkenMaximum);
         sharedMaterial.SetFloat("_SeasonalColorStrength", seasonalColorStrength);
         sharedMaterial.SetFloat("_ForceRawTerrainAlbedo", forceRawTerrainAlbedo ? 1f : 0f);
+        BindCampaignLighting(sharedMaterial);
         if (!enableTerrainFogVisuals) sharedMaterial.SetFloat("_EnableFog", 0f);
         if (!enableMapModeOverlay) sharedMaterial.SetFloat("_EnableMapMode", 0f);
         sharedMaterial.SetFloat("_TerrainDebugMode", (float)terrainDebugMode);
@@ -2055,6 +2071,47 @@ public class HexMapChunkManager : MonoBehaviour
 
         ApplyIceSurfaceSettingsToMaterial(sharedMaterial);
         ApplyIceSurfaceSettingsToMaterial(waterMaterial);
+    }
+
+    private void BindCampaignLighting(Material material)
+    {
+        if (material == null) return;
+
+        Light sun = campaignDirectionalLight != null && campaignDirectionalLight.isActiveAndEnabled
+            ? campaignDirectionalLight
+            : RenderSettings.sun;
+        if (sun == null || sun.type != LightType.Directional || !sun.isActiveAndEnabled)
+        {
+            float bestIntensity = -1f;
+            foreach (var candidate in FindObjectsOfType<Light>())
+            {
+                if (candidate == null || candidate.type != LightType.Directional || !candidate.isActiveAndEnabled)
+                    continue;
+                if (candidate.intensity <= bestIntensity) continue;
+                sun = candidate;
+                bestIntensity = candidate.intensity;
+            }
+        }
+
+        // Direction is surface-to-light. With no sun, a straight-up neutral light leaves
+        // authored albedo intact and can never produce the old white-terrain failure.
+        Vector3 direction = sun != null ? -sun.transform.forward : Vector3.up;
+        Color color = sun != null ? sun.color : Color.white;
+        material.SetFloat("_TerrainLightingMode", (float)terrainLightingMode);
+        material.SetVector("_CampaignLightDirectionWS", new Vector4(direction.x, direction.y, direction.z, 0f));
+        material.SetColor("_CampaignLightColor", color);
+        material.SetFloat("_CampaignAmbientFloor", campaignAmbientFloor);
+        material.SetFloat("_CampaignDirectionalStrength", campaignDirectionalStrength);
+        material.SetFloat("_CampaignAOStrength", campaignAOStrength);
+
+        if (!terrainLightingAuditLogged)
+        {
+            terrainLightingAuditLogged = true;
+            Debug.Log($"[TerrainLightingAudit]\nrawAlbedo=Debug16\nmaterialColor=Debug18\n" +
+                      $"fallbackLit=Debug6\nhdrpDiffuse=Debug12\nhdrpSpecular=Debug13\n" +
+                      $"hdrpLit=Debug7\nexposure=Debug15\nproductionMode={terrainLightingMode}\n" +
+                      $"sun={(sun != null ? sun.name : "neutral-fallback")}", this);
+        }
     }
 
     private void ApplyIceSurfaceSettingsToMaterial(Material material)

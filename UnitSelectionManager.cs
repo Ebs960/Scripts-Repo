@@ -310,10 +310,11 @@ public class UnitSelectionManager : MonoBehaviour
                 return selectedUnit;
 
             // Return front unit (slot 0) as default selection target
-            int frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Surface, 0);
-            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Orbit, 0);
-            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Underwater, 0);
-            if (frontId == 0) frontId = occ.GetOccupantIdAtSlot(tileIndex, TileLayer.Atmosphere, 0);
+            TileLayer resolvedLayer = TileLayer.Surface;
+            int frontId = occ.GetOccupantIdAtSlot(tileIndex, resolvedLayer, 0);
+            if (frontId == 0) { resolvedLayer = TileLayer.Orbit; frontId = occ.GetOccupantIdAtSlot(tileIndex, resolvedLayer, 0); }
+            if (frontId == 0) { resolvedLayer = TileLayer.Underwater; frontId = occ.GetOccupantIdAtSlot(tileIndex, resolvedLayer, 0); }
+            if (frontId == 0) { resolvedLayer = TileLayer.Atmosphere; frontId = occ.GetOccupantIdAtSlot(tileIndex, resolvedLayer, 0); }
             if (frontId == 0)
             {
                 // Fallback to legacy single-occupant lookup
@@ -323,11 +324,22 @@ public class UnitSelectionManager : MonoBehaviour
             }
 
             var frontObj = UnitRegistry.GetObject(frontId);
-            if (frontObj != null)
+            if (frontObj == null)
             {
-                var bu = frontObj.GetComponent<BaseUnit>();
+                Debug.LogWarning($"[USM][OccupancyResolve] tile={tileIndex} layer={resolvedLayer} occupantId={frontId} registryObject=NULL");
+                return null;
+            }
+
+            var bu = frontObj.GetComponent<BaseUnit>();
+            if (bu != null)
+            {
                 if (previewDebug) Debug.Log($"[USM] GetUnitOnTile({tileIndex}) found front unit={frontObj.name} slot=0");
                 return bu;
+            }
+            if (previewDebug)
+            {
+                var component = frontObj.GetComponent<Band>();
+                Debug.Log($"[USM] tile={tileIndex} occupant={frontObj.name} type={(component != null ? nameof(Band) : "non-BaseUnit")}");
             }
         }
         catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetUnitOnTile({tileIndex}) failed: {ex.Message}"); }
@@ -357,8 +369,20 @@ public class UnitSelectionManager : MonoBehaviour
     private Band GetBandOnTile(int tileIndex)
     {
         int planet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-        var occupant = (TileOccupancyManager.GetForPlanet(planet) ?? TileOccupancyManager.Instance)?.TryGetAnyOccupantObject(tileIndex);
-        return occupant != null ? occupant.GetComponentInParent<Band>() : null;
+        var occupancy = TileOccupancyManager.GetForPlanet(planet) ?? TileOccupancyManager.Instance;
+        if (occupancy == null) return null;
+        int occupantId = occupancy.GetOccupantIdAtSlot(tileIndex, TileLayer.Surface, 0);
+        if (occupantId == 0) return null;
+        var occupant = UnitRegistry.GetObject(occupantId);
+        if (occupant == null)
+        {
+            Debug.LogWarning($"[USM][OccupancyResolve] tile={tileIndex} layer={TileLayer.Surface} occupantId={occupantId} registryObject=NULL");
+            return null;
+        }
+        var band = occupant.GetComponentInParent<Band>();
+        if (band != null && previewDebug)
+            Debug.Log($"[USM] GetBandOnTile({tileIndex}) found band={band.name}");
+        return band;
     }
 
     private static Band GetBandAtPosition(Vector3 worldPosition)
