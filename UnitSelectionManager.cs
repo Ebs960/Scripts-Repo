@@ -74,6 +74,7 @@ public class UnitSelectionManager : MonoBehaviour
     // Preview update guards (coalesce multiple events per-frame and avoid full rebuilds)
     private int _lastPreviewUpdateFrame = -1;
     private int _lastQueuedPreviewFrame = -1;
+    private int lastBandHoverDiagnosticTile = -1;
     
 
     // Runtime attack hover instance (single pooled instance)
@@ -198,6 +199,7 @@ public class UnitSelectionManager : MonoBehaviour
         cachedHoveredTileIndex = tileIndex;
         cachedHoveredWorldPos = worldPos;
         isHoveringTile = true;
+        LogBandHoverDiagnostic(tileIndex);
         UpdateAttackHover(tileIndex, worldPos);
     }
 
@@ -206,6 +208,7 @@ public class UnitSelectionManager : MonoBehaviour
         cachedHoveredTileIndex = -1;
         cachedHoveredWorldPos = Vector3.zero;
         isHoveringTile = false;
+        lastBandHoverDiagnosticTile = -1;
         ClearAttackHover();
     }
 
@@ -371,18 +374,18 @@ public class UnitSelectionManager : MonoBehaviour
         int planet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var occupancy = TileOccupancyManager.GetForPlanet(planet) ?? TileOccupancyManager.Instance;
         if (occupancy == null) return null;
-        int occupantId = occupancy.GetOccupantIdAtSlot(tileIndex, TileLayer.Surface, 0);
-        if (occupantId == 0) return null;
-        var occupant = UnitRegistry.GetObject(occupantId);
-        if (occupant == null)
-        {
-            Debug.LogWarning($"[USM][OccupancyResolve] tile={tileIndex} layer={TileLayer.Surface} occupantId={occupantId} registryObject=NULL");
-            return null;
-        }
-        var band = occupant.GetComponentInParent<Band>();
-        if (band != null && previewDebug)
-            Debug.Log($"[USM] GetBandOnTile({tileIndex}) found band={band.name}");
-        return band;
+
+        return occupancy.GetOccupantComponent<Band>(tileIndex, TileLayer.Surface);
+    }
+
+    private void LogBandHoverDiagnostic(int tileIndex)
+    {
+        if (!previewDebug || tileIndex == lastBandHoverDiagnosticTile) return;
+        lastBandHoverDiagnosticTile = tileIndex;
+        var band = GetBandOnTile(tileIndex);
+        if (band == null) return;
+        string ownerName = band.Owner?.civData?.civName ?? "None";
+        Debug.Log($"[USM] Hover Band\ntile={tileIndex}\nname={band.name}\nplanet={band.PlanetIndex}\nowner={ownerName}\nstate={band.State}", band);
     }
 
     private static Band GetBandAtPosition(Vector3 worldPosition)

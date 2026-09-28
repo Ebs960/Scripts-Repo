@@ -45,6 +45,8 @@ public class UIManager : MonoBehaviour
     public GameObject culturePanel;
     public GameObject herdPanel;
     [SerializeField] private GameObject bandPanel;
+    [Tooltip("Canonical authored Band management panel prefab.")]
+    [SerializeField] private GameObject bandPanelPrefab;
     public GameObject governmentPanel;
     public GameObject religionPanel;
     public GameObject tradePanel;
@@ -150,6 +152,12 @@ public class UIManager : MonoBehaviour
             cityPanel = Instantiate(cityPanelPrefab, transform);
             cityPanel.name = "City Panel";
             cityPanel.SetActive(false);
+        }
+        if (bandPanel == null && bandPanelPrefab != null)
+        {
+            bandPanel = Instantiate(bandPanelPrefab, transform);
+            bandPanel.name = "Band Panel";
+            bandPanel.SetActive(false);
         }
         transform.SetParent(null, true);
         DontDestroyOnLoad(gameObject);

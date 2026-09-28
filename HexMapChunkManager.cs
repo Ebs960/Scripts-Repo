@@ -57,62 +57,18 @@ struct EncodeLUTTextureJob : IJobParallelFor
 
 public enum TerrainDebugMode
 {
-    [InspectorName("Off - Normal Terrain Rendering")]
-    Off = 0,
-
-    [InspectorName("1 - Raw Albedo Before HDRP Lighting")]
-    RawAlbedo = 1,
-
-    [InspectorName("2 - Surface Slice / Biome Index")]
-    SliceAndBiomeIndex = 2,
-
-    [InspectorName("3 - World Normal")]
-    WorldNormal = 3,
-
-    [InspectorName("4 - Mask Map RGB")]
-    MaskMap = 4,
-
-    [InspectorName("5 - HDRP Lit With Exposure")]
-    HdrpLitWithExposure = 5,
-
-    [InspectorName("6 - Fallback Lit")]
-    FallbackLit = 6,
-
-    [InspectorName("7 - HDRP Lit Without Exposure")]
-    HdrpLitNoExposure = 7,
-
-    [InspectorName("8 - Raw Metallic Channel")]
-    RawMetallic = 8,
-
-    [InspectorName("9 - Raw AO Channel")]
-    RawAO = 9,
-
-    [InspectorName("10 - Raw Smoothness Channel")]
-    RawSmoothness = 10,
-
-    [InspectorName("11 - Computed PBR Values")]
-    ComputedPBR = 11,
-
-    [InspectorName("12 - HDRP Diffuse Only")]
-    HdrpDiffuseOnly = 12,
-
-    [InspectorName("13 - HDRP Specular Only")]
-    HdrpSpecularOnly = 13,
-
-    [InspectorName("14 - Baked Diffuse / SH")]
-    BakedDiffuseSH = 14,
-
-    [InspectorName("15 - Exposure Multiplier")]
-    ExposureMultiplier = 15,
-
-    [InspectorName("16 - Raw Surface Albedo")]
-    RawSurfaceAlbedo = 16,
-
-    [InspectorName("17 - Substrate Albedo")]
-    SubstrateAlbedo = 17,
-
-    [InspectorName("18 - Final Unlit Albedo")]
-    FinalUnlitAlbedo = 18
+    [InspectorName("Off - Normal Terrain Rendering")] Off = 0,
+    [InspectorName("1 - Raw Surface Albedo")] RawSurfaceAlbedo = 1,
+    [InspectorName("2 - Substrate Albedo")] SubstrateAlbedo = 2,
+    [InspectorName("3 - Final Unlit Albedo")] FinalUnlitAlbedo = 3,
+    [InspectorName("4 - Simple Campaign Lit")] SimpleCampaignLit = 4,
+    [InspectorName("5 - Surface Slice / Biome Index")] SliceAndBiomeIndex = 5,
+    [InspectorName("6 - World Normal")] WorldNormal = 6,
+    [InspectorName("7 - Mask Map RGB")] MaskMap = 7,
+    [InspectorName("8 - Raw Metallic Channel")] RawMetallic = 8,
+    [InspectorName("9 - Raw AO Channel")] RawAO = 9,
+    [InspectorName("10 - Raw Smoothness Channel")] RawSmoothness = 10,
+    [InspectorName("11 - Computed PBR Values")] ComputedPBR = 11
 }
 
 /// <summary>
@@ -122,12 +78,7 @@ public enum TerrainDebugMode
 /// </summary>
 public class HexMapChunkManager : MonoBehaviour
 {
-    public enum TerrainLightingMode
-    {
-        SimpleCampaign = 0,
-        HDRPExperimental = 1,
-        UnlitDebug = 2
-    }
+
 
     [Header("References")]
     // Minimap/flat-map coloring is fixed to default biome colors (BiomeColorHelper).
@@ -223,7 +174,6 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Development-only: display the owning SurfaceFamily albedo slice without lighting or overlays.")]
     [SerializeField] private bool forceRawTerrainAlbedo = false;
     [Header("Campaign Terrain Lighting")]
-    [SerializeField] private TerrainLightingMode terrainLightingMode = TerrainLightingMode.SimpleCampaign;
     [Range(0f, 1f)] [SerializeField] private float campaignAmbientFloor = 0.72f;
     [Range(0f, 1f)] [SerializeField] private float campaignDirectionalStrength = 0.28f;
     [Range(0f, 1f)] [SerializeField] private float campaignAOStrength = 0.20f;
@@ -281,19 +231,9 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("Terrain Shader Debug")]
     [SerializeField]
     [Tooltip(
-        "Controls _TerrainDebugMode on the runtime terrain material.\n\n" +
-        "Off: Normal terrain rendering.\n" +
-        "Raw Albedo: Shows terrain texture color before HDRP lighting/exposure.\n" +
-        "Slice/Biome Index: Shows debug colors for texture slice and biome index.\n" +
-        "World Normal: Shows world-space normals as colors.\n" +
-        "Mask Map: Shows mask map RGB channels.\n" +
-        "HDRP Lit With Exposure: Shows HDRP lighting multiplied by exposure.\n" +
-        "Fallback Lit: Shows the shader fallback lighting path.\n" +
-        "HDRP Lit Without Exposure: Shows HDRP lighting before exposure.\n" +
-        "Raw Metallic/AO/Smoothness: Shows individual mask-map PBR channels.\n" +
-        "Computed PBR Values: R=metallic, G=AO/spec occlusion, B=smoothness.\n" +
-        "HDRP Diffuse/Specular/Baked/Exposure: Splits HDRP lighting contributions.\n" +
-        "Raw Surface/Substrate/Final Unlit Albedo: Shows production albedo stages without lighting."
+        "Selects a texture-authoritative production diagnostic. Raw Surface, Substrate, and Final Unlit " +
+        "show successive albedo stages; Simple Campaign Lit adds the bounded production lighting. " +
+        "The remaining modes inspect surface indices, normals, mask channels, and computed PBR values."
     )]
     private TerrainDebugMode terrainDebugMode = TerrainDebugMode.Off;
 
@@ -2097,7 +2037,6 @@ public class HexMapChunkManager : MonoBehaviour
         // authored albedo intact and can never produce the old white-terrain failure.
         Vector3 direction = sun != null ? -sun.transform.forward : Vector3.up;
         Color color = sun != null ? sun.color : Color.white;
-        material.SetFloat("_TerrainLightingMode", (float)terrainLightingMode);
         material.SetVector("_CampaignLightDirectionWS", new Vector4(direction.x, direction.y, direction.z, 0f));
         material.SetColor("_CampaignLightColor", color);
         material.SetFloat("_CampaignAmbientFloor", campaignAmbientFloor);
@@ -2107,9 +2046,8 @@ public class HexMapChunkManager : MonoBehaviour
         if (!terrainLightingAuditLogged)
         {
             terrainLightingAuditLogged = true;
-            Debug.Log($"[TerrainLightingAudit]\nrawAlbedo=Debug16\nmaterialColor=Debug18\n" +
-                      $"fallbackLit=Debug6\nhdrpDiffuse=Debug12\nhdrpSpecular=Debug13\n" +
-                      $"hdrpLit=Debug7\nexposure=Debug15\nproductionMode={terrainLightingMode}\n" +
+            Debug.Log($"[TerrainLightingAudit]\nrawSurface=Debug1\nsubstrate=Debug2\n" +
+                      $"finalUnlit=Debug3\nsimpleCampaignLit=Debug4\nproductionMode=SimpleCampaign\n" +
                       $"sun={(sun != null ? sun.name : "neutral-fallback")}", this);
         }
     }

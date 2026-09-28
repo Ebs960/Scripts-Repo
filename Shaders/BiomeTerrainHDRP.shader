@@ -138,7 +138,6 @@ Shader "Custom/BiomeTerrainHDRP"
         _FallbackAmbient ("Fallback Ambient", Range(0, 1)) = 0.35
 
         [Header(Campaign Lighting)]
-        [Enum(Simple Campaign,0,HDRP Experimental,1,Unlit Debug,2)] _TerrainLightingMode ("Terrain Lighting Mode", Float) = 0
         _CampaignLightDirectionWS ("Campaign Light Direction WS", Vector) = (0,1,0,0)
         _CampaignLightColor ("Campaign Light Color", Color) = (1,1,1,1)
         _CampaignAmbientFloor ("Campaign Ambient Floor", Range(0,1)) = 0.72
@@ -147,7 +146,6 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Debug)]
         _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
-        _DisableHDRPBakedDiffuse ("Disable HDRP Baked Diffuse Test", Float) = 0
     }
 
     HLSLINCLUDE
@@ -244,7 +242,6 @@ Shader "Custom/BiomeTerrainHDRP"
     float _CliffSlopeBlend;
     float _CliffSliceCount;
     float _TerrainDebugMode;
-    float _DisableHDRPBakedDiffuse;
     float _SurfaceHeightScale;
     float _TessellationFactor;
     float _TessellationFadeStart;
@@ -257,7 +254,6 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _FallbackSunColor;
     float _FallbackSunIntensity;
     float _FallbackAmbient;
-    float _TerrainLightingMode;
     float4 _CampaignLightDirectionWS;
     float4 _CampaignLightColor;
     float _CampaignAmbientFloor;
@@ -573,13 +569,11 @@ Shader "Custom/BiomeTerrainHDRP"
             #define PUNCTUAL_SHADOW_MEDIUM
             #define DIRECTIONAL_SHADOW_MEDIUM
             #define AREA_SHADOW_MEDIUM
-            #define HAS_LIGHTLOOP
             #include "Packages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Material.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/LightLoopDef.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Lit/Lit.hlsl"
-            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/LightLoop.hlsl"
 
 
 
@@ -1075,126 +1069,26 @@ Shader "Custom/BiomeTerrainHDRP"
                     return float4(metallic, ao, smoothness, 1.0);
                 }
 
-                // Debug 16-18 show raw surface, substrate, and final unlit albedo.
-                // These return before HDRP exposure/lighting.
-                if (terrainDebugMode == 16)
-                    return float4(saturate(rawBiomeAlbedo), 1.0);
-                if (terrainDebugMode == 17)
-                    return float4(saturate(substrateAlbedo), 1.0);
-                if (terrainDebugMode == 18)
-                    return float4(saturate(materialColor), 1.0);
-
+                // Debug 1-3 show raw surface, substrate, and final unlit albedo.
+                // These return before production lighting.
                 if (terrainDebugMode == 1)
-                {
-                    return float4(saturate(materialColor), 1.0);
-                }
-
+                    return float4(saturate(rawBiomeAlbedo), 1.0);
                 if (terrainDebugMode == 2)
+                    return float4(saturate(substrateAlbedo), 1.0);
+                if (terrainDebugMode == 3)
+                    return float4(saturate(materialColor), 1.0);
+                if (terrainDebugMode == 5)
                 {
                     float sliceDebug = centerSlice / max(_TotalSlices, 1.0);
                     float biomeDebug = centerBiome / max(_BiomeCount, 1.0);
                     return float4(sliceDebug, biomeDebug, 0.0, 1.0);
                 }
-
-                if (terrainDebugMode == 3)
-                {
+                if (terrainDebugMode == 6)
                     return float4(normalize(normalWS) * 0.5 + 0.5, 1.0);
-                }
-
-                if (terrainDebugMode == 4)
-                {
+                if (terrainDebugMode == 7)
                     return float4(saturate(mask.rgb), 1.0);
-                }
 
                 float3 normalizedNormalWS = normalize(normalWS);
-
-                // 1. Build SurfaceData (albedo, normal, smoothness, metallic, emission)
-                SurfaceData surfaceData;
-                ZERO_INITIALIZE(SurfaceData, surfaceData);
-                surfaceData.baseColor = saturate(materialColor);
-                surfaceData.normalWS = normalizedNormalWS;
-                surfaceData.geomNormalWS = normalizedNormalWS;
-                surfaceData.perceptualSmoothness = saturate(smoothness);
-                surfaceData.metallic = saturate(metallic);
-                surfaceData.ambientOcclusion = saturate(ao);
-                surfaceData.specularOcclusion = saturate(ao);
-                surfaceData.specularColor = float3(0.04, 0.04, 0.04);
-                surfaceData.materialFeatures = MATERIALFEATUREFLAGS_LIT_STANDARD;
-                surfaceData.diffusionProfileHash = 0;
-
-                // 2. Build BuiltinData (required by HDRP)
-                BuiltinData builtinData;
-                ZERO_INITIALIZE(BuiltinData, builtinData);
-                builtinData.opacity = 1.0;
-                builtinData.emissiveColor = emission;
-                builtinData.bakeDiffuseLighting = (_DisableHDRPBakedDiffuse > 0.5)
-                    ? 0.0
-                    : SampleSH(normalizedNormalWS);
-
-                #ifdef LIGHT_LAYERS
-                    builtinData.renderingLayers = GetMeshRenderingLayer();
-                #endif
-
-                // 3. Let HDRP compute lighting
-                float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
-                uint2 pixelCoord = (uint2)input.positionCS.xy;
-                uint2 tileCoord = pixelCoord / max(GetTileSize(), 1u);
-                PositionInputs posInput = GetPositionInput(
-                    pixelCoord,
-                    _ScreenSize.zw,
-                    input.positionCS.z,
-                    input.positionCS.w,
-                    input.positionWS,
-                    tileCoord);
-                BSDFData bsdfData = ConvertSurfaceDataToBSDFData(input.positionCS.xy, surfaceData);
-                PreLightData preLightData = GetPreLightData(viewDirWS, posInput, bsdfData);
-                uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE | MATERIALFEATUREFLAGS_LIT_STANDARD;
-                LightLoopOutput lightLoopOutput;
-                ZERO_INITIALIZE(LightLoopOutput, lightLoopOutput);
-                bool needsExperimentalLightLoop = (_TerrainLightingMode > 0.5 && _TerrainLightingMode < 1.5)
-                    || terrainDebugMode == 5 || terrainDebugMode == 7
-                    || terrainDebugMode == 12 || terrainDebugMode == 13;
-                if (needsExperimentalLightLoop)
-                    LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
-
-                float3 hdrpLit =
-                    lightLoopOutput.diffuseLighting +
-                    lightLoopOutput.specularLighting;
-
-                if (terrainDebugMode == 5)
-                {
-                    return float4(saturate(hdrpLit * GetCurrentExposureMultiplier()), 1.0);
-                }
-
-                if (terrainDebugMode == 7)
-                {
-                    return float4(saturate(hdrpLit), 1.0);
-                }
-
-                // Debug 12: HDRP diffuse only
-                if (terrainDebugMode == 12)
-                {
-                    return float4(saturate(lightLoopOutput.diffuseLighting), 1.0);
-                }
-
-                // Debug 13: HDRP specular only
-                if (terrainDebugMode == 13)
-                {
-                    return float4(saturate(lightLoopOutput.specularLighting), 1.0);
-                }
-
-                // Debug 14: Baked diffuse / SH contribution
-                if (terrainDebugMode == 14)
-                {
-                    return float4(saturate(builtinData.bakeDiffuseLighting), 1.0);
-                }
-
-                // Debug 15: Exposure multiplier as grayscale
-                if (terrainDebugMode == 15)
-                {
-                    float e = saturate(GetCurrentExposureMultiplier() / 4.0);
-                    return float4(e, e, e, 1.0);
-                }
 
                 // Texture-authoritative production lighting. Both shade and light tint are
                 // bounded to one, so ordinary lighting can darken authored terrain but can
@@ -1209,19 +1103,14 @@ Shader "Custom/BiomeTerrainHDRP"
                     saturate(_CampaignDirectionalStrength));
                 float3 simpleCampaignLit = materialColor * campaignShade * campaignAO * campaignTint;
 
-                if (terrainDebugMode == 6)
+                if (terrainDebugMode == 4)
                 {
-                    return float4(saturate(simpleCampaignLit + emission), 1.0);
+                    return float4(saturate(simpleCampaignLit), 1.0);
                 }
 
-                // The hand-written HDRP LightLoop is retained only as an explicit
-                // experimental diagnostic. Production defaults to restrained campaign
-                // lighting; UnlitDebug inspects the fully layered material.
-                float3 finalColor = simpleCampaignLit + emission;
-                if (_TerrainLightingMode > 0.5 && _TerrainLightingMode < 1.5)
-                    finalColor = hdrpLit + emission;
-                else if (_TerrainLightingMode >= 1.5)
-                    finalColor = materialColor + emission;
+                // Simple Campaign is the sole production lighting model. Seasonal material
+                // treatment is complete before this point; gameplay overlays follow below.
+                float3 finalColor = simpleCampaignLit;
 
                 // Gameplay presentation is applied after the terrain material and lighting.
                 if (_EnableFog > 0.5)

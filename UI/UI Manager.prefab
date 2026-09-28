@@ -50,6 +50,8 @@ MonoBehaviour:
   techPanel: {fileID: 0}
   culturePanel: {fileID: 0}
   herdPanel: {fileID: 0}
+  bandPanel: {fileID: 0}
+  bandPanelPrefab: {fileID: 100000, guid: a84e45cc87344ab5a8bace2269edfab1, type: 3}
   governmentPanel: {fileID: 0}
   religionPanel: {fileID: 0}
   tradePanel: {fileID: 0}
