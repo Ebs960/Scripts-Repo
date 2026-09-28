@@ -487,10 +487,12 @@ public class HexMapChunk : MonoBehaviour
                 {
                     float angleA = Mathf.Deg2Rad * (60f * edge - 30f);
                     float angleB = Mathf.Deg2Rad * (60f * ((edge + 1) % 6) - 30f);
-                    Vector3 innerA = localCenter + new Vector3(innerRadius * Mathf.Cos(angleA), 0f, innerRadius * Mathf.Sin(angleA));
-                    Vector3 innerB = localCenter + new Vector3(innerRadius * Mathf.Cos(angleB), 0f, innerRadius * Mathf.Sin(angleB));
-                    Vector3 outerA = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleA), shoulderY, localCenter.z + outerRadius * Mathf.Sin(angleA));
-                    Vector3 outerB = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleB), shoulderY, localCenter.z + outerRadius * Mathf.Sin(angleB));
+                    float cornerAY = manager.GetRenderedCornerSurfaceY(tileIndex, edge) - manager.FlatY;
+                    float cornerBY = manager.GetRenderedCornerSurfaceY(tileIndex, (edge + 1) % 6) - manager.FlatY;
+                    Vector3 innerA = new Vector3(localCenter.x + innerRadius * Mathf.Cos(angleA), cornerAY, localCenter.z + innerRadius * Mathf.Sin(angleA));
+                    Vector3 innerB = new Vector3(localCenter.x + innerRadius * Mathf.Cos(angleB), cornerBY, localCenter.z + innerRadius * Mathf.Sin(angleB));
+                    Vector3 outerA = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleA), cornerAY - bevelDrop, localCenter.z + outerRadius * Mathf.Sin(angleA));
+                    Vector3 outerB = new Vector3(localCenter.x + outerRadius * Mathf.Cos(angleB), cornerBY - bevelDrop, localCenter.z + outerRadius * Mathf.Sin(angleB));
                     Vector3 outward = new Vector3(
                         outerA.x + outerB.x - localCenter.x * 2f, 0f,
                         outerA.z + outerB.z - localCenter.z * 2f).normalized;
@@ -523,6 +525,8 @@ public class HexMapChunk : MonoBehaviour
 
                 int neighborIndex = grid.GetTileAtPosition(mapCenter + outward * (fullRadius * 1.05f));
                 bool hasNeighbor = neighborIndex >= 0 && neighborIndex != tileIndex;
+                if (hasNeighbor && manager.IsSameTerrainTier(tileIndex, neighborIndex))
+                    continue;
                 float bottomY;
                 if (!hasNeighbor)
                 {
@@ -545,11 +549,7 @@ public class HexMapChunk : MonoBehaviour
                 Vector3 lowerB = new Vector3(upperB.x, bottomY, upperB.z);
                 Vector3 edgeTangent = (upperB - upperA).normalized;
                 int wallStart = vertices.Count;
-                float wallHeight = shoulderY - bottomY;
-                bool shallowHillTerrace = hasNeighbor && manager.IsShallowHillTerrace(tileIndex, neighborIndex, wallHeight);
-                // Geometry remains fully closed. A slightly upward normal gives small same-tier
-                // Hill steps a softer soil/terrace response without weakening major tier cliffs.
-                Vector3 wallNormal = shallowHillTerrace ? (outward + Vector3.up * 0.35f).normalized : outward;
+                Vector3 wallNormal = outward;
 
                 // Wall UVs deliberately use the owning (upper) tile center for stable biome selection.
                 AddVertex(upperA, centerUV, wallNormal, edgeTangent, vertices, uvs, normals, tangents);
