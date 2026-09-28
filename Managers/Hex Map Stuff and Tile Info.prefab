@@ -62,26 +62,26 @@ MonoBehaviour:
   hillHeightAboveSea: 3.5
   mountainHeightAboveSea: 7.5
   enableHillHeightVariation: 1
-  hillHeightVariation: 0.65
+  hillHeightVariation: 2
   hillHeightVariationWorldScale: 12
-  hillHeightVariationSecondaryStrength: 0.25
+  hillHeightVariationSecondaryStrength: 0.697
   hillHeightVariationSecondaryScale: 5
   hillHeightVariationSeed: 7331
   minimumFlatToHillStep: 1.5
   minimumHillToMountainStep: 1.5
   shallowTerraceThreshold: 0.8
   enableMountainHeightVariation: 1
-  mountainHeightVariation: 1.1
+  mountainHeightVariation: 3
   mountainHeightVariationWorldScale: 14
-  mountainHeightVariationSecondaryStrength: 0.25
+  mountainHeightVariationSecondaryStrength: 0.383
   mountainHeightVariationSecondaryScale: 6
   mountainHeightVariationSeed: 19081
   enableSurfaceUndulation: 1
-  surfaceUndulationStrength: 0.12
+  surfaceUndulationStrength: 0.875
   surfaceUndulationWorldScale: 10
   surfaceUndulationSecondaryStrength: 0.035
   surfaceUndulationSecondaryWorldScale: 3.5
-  surfaceEdgeFalloff: 0.25
+  surfaceEdgeFalloff: 0.186
   surfaceUndulationSeed: 1337
   topSubdivision: 2
   oceanFloorDepthBelowSea: 2
@@ -110,7 +110,7 @@ MonoBehaviour:
   smoothnessMultiplier: 0.5
   triplanarTiling: 0.2
   triplanarBlend: 5
-  useTriplanar: 1
+  useTriplanar: 0
   biomeNormalStrength: 0.7
   biomeBlendRadius: 2.82
   enableWrap: 1
