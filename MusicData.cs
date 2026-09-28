@@ -12,6 +12,8 @@ public class MusicData : ScriptableObject
         public List<AudioClip> peaceMusicTracks = new List<AudioClip>();
         [Tooltip("List of music tracks that will play during war")]
         public List<AudioClip> warMusicTracks = new List<AudioClip>();
+        [Tooltip("List of music tracks that will play during tactical battles")]
+        public List<AudioClip> battleMusicTracks = new List<AudioClip>();
     }
 
     public List<AgeMusic> ageMusicTracks = new List<AgeMusic>();

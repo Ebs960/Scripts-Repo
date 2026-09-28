@@ -183,6 +183,32 @@ PlayMusicFromList(newPlaylist);
         }
     }
 
+    public void PlayTacticalBattleMusic(Civilization civ)
+    {
+        if (civ == null || !civ.isPlayerControlled || civ.civData?.musicData == null) return;
+
+        var ageMusic = civ.civData.musicData.ageMusicTracks?
+            .FirstOrDefault(entry => entry != null && entry.age == civ.GetCurrentAge());
+        if (ageMusic == null) return;
+
+        var battleTracks = ageMusic.battleMusicTracks?.Count > 0
+            ? ageMusic.battleMusicTracks
+            : ageMusic.warMusicTracks;
+        if (battleTracks == null || battleTracks.Count == 0)
+        {
+            Debug.LogWarning($"[MusicManager] No tactical battle music for {civ.civData.civName} in {ageMusic.age}.");
+            return;
+        }
+
+        PlayMusicFromList(battleTracks);
+    }
+
+    public void RestoreCampaignMusic(Civilization civ)
+    {
+        if (civ == null || !civ.isPlayerControlled) return;
+        UpdateMusic(civ, civ.GetCurrentAge(), DiplomaticState.Peace);
+    }
+
     private bool ArePlaylistsEqual(List<AudioClip> playlist1, List<AudioClip> playlist2)
     {
         if (playlist1 == null || playlist2 == null)

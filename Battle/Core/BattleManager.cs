@@ -277,6 +277,14 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         battleCamera?.FocusBattle(ActiveBattle.Map);
         BattlePreviewClosed?.Invoke();
         RaiseBattlePreviewClosed();
+
+        var playerCiv = preview.Attacker?.owner != null && preview.Attacker.owner.isPlayerControlled
+            ? preview.Attacker.owner
+            : preview.Defender?.owner != null && preview.Defender.owner.isPlayerControlled
+                ? preview.Defender.owner
+                : null;
+        MusicManager.Instance?.PlayTacticalBattleMusic(playerCiv);
+
         BattleStarted?.Invoke(ActiveBattle);
         RaiseBattleStarted(ActiveBattle);
 
@@ -402,6 +410,12 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
         finally
         {
+            var playerCiv = pendingPreview?.Attacker?.owner != null && pendingPreview.Attacker.owner.isPlayerControlled
+                ? pendingPreview.Attacker.owner
+                : pendingPreview?.Defender?.owner != null && pendingPreview.Defender.owner.isPlayerControlled
+                    ? pendingPreview.Defender.owner
+                    : null;
+            MusicManager.Instance?.RestoreCampaignMusic(playerCiv);
             commitments.ReleaseBattle(result != null ? result.BattleId : ActiveBattle.BattleId);
             ActiveBattleState = null;
             if (resolvingAiOnlyBattle) pendingPreview = null;

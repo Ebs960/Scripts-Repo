@@ -17,6 +17,7 @@ public sealed class BattlePreviewUI : MonoBehaviour
     private readonly BattleAutoResolveEstimator estimator = new();
     private readonly List<CommanderChoice> commanderChoices = new();
     private int commanderChoiceIndex, commandRoleIndex;
+    private Civilization previewMusicCiv;
     private struct CommanderChoice { public BattleSide Side; public CommanderCharacterKind Kind; public int Id; public string Name; }
 
     public static BattlePreviewUI GetOrCreate(BattleManager manager)
@@ -28,7 +29,7 @@ public sealed class BattlePreviewUI : MonoBehaviour
         if(manager!=null){manager.BattlePreviewOpened-=Show;manager.BattlePreviewClosed-=Hide;}
         manager=battleManager;manager.BattlePreviewOpened+=Show;manager.BattlePreviewClosed+=Hide;Build();
     }
-    private void OnDestroy(){if(manager!=null){manager.BattlePreviewOpened-=Show;manager.BattlePreviewClosed-=Hide;}}
+    private void OnDestroy(){RestorePreviewMusic();if(manager!=null){manager.BattlePreviewOpened-=Show;manager.BattlePreviewClosed-=Hide;}}
 
     private void Build()
     {
@@ -56,13 +57,33 @@ public sealed class BattlePreviewUI : MonoBehaviour
     private void Show(EngagementPreview value)
     {
         Build();if(value==null)return;preview=value;
+        BeginPreviewMusic(value);
         attackerText.text=BuildSide(value,BattleSide.Attacker);defenderText.text=BuildSide(value,BattleSide.Defender);
         battlefieldText.text=BuildBattlefield(value);fightButton.interactable=value.AllowsManualBattle;autoResolveButton.interactable=true;
         retreatButton.interactable=value.AllowsRetreat;cancelButton.gameObject.SetActive(value.AllowsCancel);cancelButton.interactable=value.AllowsCancel;
         PopulateCommanderChoices(value);root.SetActive(true);RefreshForecast();
     }
     public void PresentRestored(EngagementPreview value)=>Show(value);
-    private void Hide(){if(forecastRoutine!=null)StopCoroutine(forecastRoutine);forecastRoutine=null;preview=null;if(root!=null)root.SetActive(false);}
+    private void Hide(){if(forecastRoutine!=null)StopCoroutine(forecastRoutine);forecastRoutine=null;RestorePreviewMusic();preview=null;if(root!=null)root.SetActive(false);}
+
+    private void BeginPreviewMusic(EngagementPreview value)
+    {
+        var playerCiv = value.Attacker?.owner != null && value.Attacker.owner.isPlayerControlled
+            ? value.Attacker.owner
+            : value.Defender?.owner != null && value.Defender.owner.isPlayerControlled
+                ? value.Defender.owner
+                : null;
+        if (playerCiv == null || MusicManager.Instance == null) return;
+        previewMusicCiv = playerCiv;
+        MusicManager.Instance.UpdateMusic(playerCiv, playerCiv.GetCurrentAge(), DiplomaticState.War);
+    }
+
+    private void RestorePreviewMusic()
+    {
+        if (previewMusicCiv == null || MusicManager.Instance == null) return;
+        MusicManager.Instance.UpdateMusic(previewMusicCiv, previewMusicCiv.GetCurrentAge(), DiplomaticState.Peace);
+        previewMusicCiv = null;
+    }
 
     private void RefreshForecast()
     {
