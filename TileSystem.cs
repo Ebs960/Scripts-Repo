@@ -1159,36 +1159,23 @@ public class TileSystem : MonoBehaviour
 
 		#region Surface / Accessibility / Occupancy
     /// <summary>
-    /// Returns the position for visible Surface-layer campaign objects. Callers must use this
-    /// (or HexMapChunkManager.GetRenderedTerrainWorldY) rather than simulation elevation,
-    /// waterElevation, heightmap samples, or a flat tile center for visual Y placement.
+    /// CAMPAIGN TERRAIN CONTRACT: HexTileData elevation remains simulation data. The planet's
+    /// HexMapChunkManager owns categorical rendered Y; visible Surface objects use this method.
+    /// Oceans use SeaLevelWorldY, inland water follows its rendered owner tile, and picking uses
+    /// the exact stepped mesh. Never derive visible campaign Y from simulation elevation.
     /// </summary>
     public Vector3 GetTileSurfacePosition(int tile, float unitOffset = 0f)
     {
-        // Get flat center position
         var c = GetTileCenterFlat(tile);
-
         HexMapChunkManager terrainRenderer = ResolveTerrainRenderer();
-        if (terrainRenderer != null && terrainRenderer.IsBuilt)
-        {
+        if (terrainRenderer != null)
             return new Vector3(c.x, terrainRenderer.GetRenderedTerrainWorldY(tile) + unitOffset, c.z);
-        }
-        
-        // Get terrain elevation to calculate actual Y position
-        float terrainY = c.y;
-        var td = GetTileData(tile);
-        if (td != null)
-        {
-            // Elevation is already in world-space units — add directly to terrain Y
-            terrainY += td.elevation;
-        }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (Application.isPlaying && surfaceFallbackWarnings.Add(tile))
-            Debug.LogWarning($"[SurfacePosition] Falling back to generated elevation for planet {planetIndex} tile {tile} because no built terrain renderer was available.", this);
+            Debug.LogWarning($"[SurfacePosition] Using the flat map baseline for planet {planetIndex} tile {tile} until its terrain renderer is available.", this);
 #endif
-        
-        return new Vector3(c.x, terrainY + unitOffset, c.z);
+        return new Vector3(c.x, c.y + unitOffset, c.z);
     }
 
     private HexMapChunkManager ResolveTerrainRenderer()
