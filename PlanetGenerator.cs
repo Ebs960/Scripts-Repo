@@ -1580,6 +1580,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         bool[] mountainRangeCore = new bool[tileCount];
         bool[] mountainPass = new bool[tileCount];
         float[] mountainRangeStrength = new float[tileCount];
+        // Rendering-only range metadata is authored while the ordered spine still exists.
+        // It never participates in terrain classification or range placement.
+        float[] mountainRangeProfile = new float[tileCount];
+        Vector2[] mountainRidgeDirection = new Vector2[tileCount];
+        int[] mountainRangeId = new int[tileCount];
+        Array.Fill(mountainRangeId, -1);
         int mountainEligibleContinents = 0;
         int mountainRangesGenerated = 0;
         int mountainPassCount = 0;
@@ -1848,6 +1854,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         mountainRangeCore[tile] = true;
                         mountainRangeStrength[tile] = 1f;
                     }
+                    var widenedOwners = new List<KeyValuePair<int, int>>();
                     for (int step = 1; step < spine.Count - 1; step++)
                     {
                         float widthRoll = (float)rangeRandom.NextDouble();
@@ -1862,6 +1869,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                             options.RemoveAt(pick);
                             mountainRangeCore[widened] = true;
                             mountainRangeStrength[widened] = Mathf.Max(mountainRangeStrength[widened], 0.82f);
+                            widenedOwners.Add(new KeyValuePair<int, int>(widened, step));
                         }
                     }
 
@@ -1882,12 +1890,82 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         lastPassStep = passStep;
                     }
 
+                    int rangeId = mountainRangesGenerated;
+                    int primaryPeakStep = Mathf.Clamp(Mathf.RoundToInt((0.44f + (float)rangeRandom.NextDouble() * 0.18f) * (spine.Count - 1)), 2, spine.Count - 3);
+                    int secondaryPeakStep = -1;
+                    float secondaryProminence = 0f;
+                    float secondaryChance = spine.Count >= 31 ? 0.40f : (spine.Count >= 21 ? 0.25f : 0f);
+                    if (rangeRandom.NextDouble() < secondaryChance)
+                    {
+                        var candidates = new List<int>();
+                        int separation = Mathf.Max(6, spine.Count / 3);
+                        for (int step = 3; step < spine.Count - 3; step++)
+                            if (Mathf.Abs(step - primaryPeakStep) >= separation) candidates.Add(step);
+                        if (candidates.Count > 0)
+                        {
+                            secondaryPeakStep = candidates[rangeRandom.Next(candidates.Count)];
+                            secondaryProminence = Mathf.Lerp(0.43f, 0.55f, (float)rangeRandom.NextDouble());
+                        }
+                    }
+
+                    Vector2 SpineDirection(int step)
+                    {
+                        int from = spine[Mathf.Max(0, step - 1)];
+                        int to = spine[Mathf.Min(spine.Count - 1, step + 1)];
+                        Vector3 delta = grid.tileCenters[to] - grid.tileCenters[from];
+                        if (delta.x > mapWidth * 0.5f) delta.x -= mapWidth;
+                        else if (delta.x < -mapWidth * 0.5f) delta.x += mapWidth;
+                        return new Vector2(delta.x, delta.z).normalized;
+                    }
+
+                    float profileMin = 1f, profileMax = 0f;
+                    for (int step = 0; step < spine.Count; step++)
+                    {
+                        float t = step / (float)(spine.Count - 1);
+                        float shoulder = 0.18f + 0.16f * Mathf.Sin(Mathf.PI * t);
+                        float primaryWidth = Mathf.Max(3.5f, spine.Count * 0.22f);
+                        float primaryDistance = (step - primaryPeakStep) / primaryWidth;
+                        float profile = shoulder + 0.72f * Mathf.Exp(-2f * primaryDistance * primaryDistance);
+                        if (secondaryPeakStep >= 0)
+                        {
+                            float secondaryWidth = Mathf.Max(3.5f, spine.Count * 0.18f);
+                            float secondaryDistance = (step - secondaryPeakStep) / secondaryWidth;
+                            profile += secondaryProminence * Mathf.Exp(-2f * secondaryDistance * secondaryDistance);
+                        }
+                        // Low-amplitude correlated variation avoids symmetry without producing saw teeth.
+                        profile += Mathf.Sin(step * 0.73f + rangeId * 1.91f) * 0.025f;
+                        for (int passStep = 0; passStep < spine.Count; passStep++)
+                        {
+                            if (!mountainPass[spine[passStep]]) continue;
+                            int distance = Mathf.Abs(step - passStep);
+                            if (distance == 1) profile *= 0.58f;
+                            else if (distance == 2) profile *= 0.78f;
+                        }
+                        profile = Mathf.Clamp(profile, 0.16f, 1f);
+                        int tile = spine[step];
+                        mountainRangeProfile[tile] = profile;
+                        mountainRidgeDirection[tile] = SpineDirection(step);
+                        mountainRangeId[tile] = rangeId;
+                        profileMin = Mathf.Min(profileMin, profile);
+                        profileMax = Mathf.Max(profileMax, profile);
+                    }
+                    foreach (var widenedOwner in widenedOwners)
+                    {
+                        int tile = widenedOwner.Key;
+                        int ownerStep = widenedOwner.Value;
+                        mountainRangeProfile[tile] = Mathf.Clamp01(mountainRangeProfile[spine[ownerStep]] * 0.84f);
+                        mountainRidgeDirection[tile] = mountainRidgeDirection[spine[ownerStep]];
+                        mountainRangeId[tile] = rangeId;
+                    }
+
                     // A single short, tapered side spur may leave the middle of a long spine.
                     if (spine.Count >= 14 && rangeRandom.NextDouble() < mountainSpurChance * Mathf.Clamp(roughness, 0.8f, 1.25f))
                     {
-                        int spurCurrent = spine[rangeRandom.Next(spine.Count / 3, Mathf.Max(spine.Count / 3 + 1, spine.Count * 2 / 3))];
+                        int spurRootStep = rangeRandom.Next(spine.Count / 3, Mathf.Max(spine.Count / 3 + 1, spine.Count * 2 / 3));
+                        int spurCurrent = spine[spurRootStep];
                         int spurLength = rangeRandom.Next(2, 7);
                         int previous = -1;
+                        var spurPath = new List<int> { spurCurrent };
                         for (int spurStep = 0; spurStep < spurLength; spurStep++)
                         {
                             var options = new List<int>();
@@ -1897,12 +1975,29 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                             int next = options[rangeRandom.Next(options.Count)];
                             previous = spurCurrent;
                             spurCurrent = next;
+                            spurPath.Add(next);
                             visited.Add(next);
                             mountainRangeStrength[next] = Mathf.Max(mountainRangeStrength[next], Mathf.Lerp(0.8f, 0.38f, spurStep / (float)Mathf.Max(1, spurLength - 1)));
                             if (spurStep < Mathf.Max(1, spurLength / 2)) mountainRangeCore[next] = true;
                         }
+                        for (int spurStep = 1; spurStep < spurPath.Count; spurStep++)
+                        {
+                            int from = spurPath[Mathf.Max(0, spurStep - 1)];
+                            int to = spurPath[Mathf.Min(spurPath.Count - 1, spurStep + 1)];
+                            Vector3 delta = grid.tileCenters[to] - grid.tileCenters[from];
+                            if (delta.x > mapWidth * 0.5f) delta.x -= mapWidth;
+                            else if (delta.x < -mapWidth * 0.5f) delta.x += mapWidth;
+                            float taper = Mathf.Lerp(0.86f, 0.42f, spurStep / (float)Mathf.Max(1, spurPath.Count - 1));
+                            int tile = spurPath[spurStep];
+                            mountainRangeProfile[tile] = mountainRangeProfile[spine[spurRootStep]] * taper;
+                            mountainRidgeDirection[tile] = new Vector2(delta.x, delta.z).normalized;
+                            mountainRangeId[tile] = rangeId;
+                        }
                         mountainSpurCount++;
                     }
+
+                    if (ShouldLogDiagnostics())
+                        Debug.Log($"[MountainProfile] range={rangeId} length={spine.Count} primary={primaryPeakStep} secondary={(secondaryPeakStep >= 0 ? secondaryPeakStep.ToString() : "none")} profile={profileMin:F2}..{profileMax:F2}");
 
                     mountainRangesGenerated++;
                     madeHere++;
@@ -2733,6 +2828,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 originalElevation = finalElevation,
                 elevationTier = elevTier,
                 visualRelief01 = visualRelief,
+                mountainRangeProfile01 = mountainRangeProfile[i],
+                mountainRidgeDirectionXZ = mountainRidgeDirection[i],
+                mountainRangeId = mountainRangeId[i],
                 temperature = temperature,
                 moisture = moisture,
                 movementCost = moveCost,

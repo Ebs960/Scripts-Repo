@@ -83,6 +83,7 @@ MonoBehaviour:
   surfaceEdgeFalloff: 0.186
   surfaceUndulationSeed: 1337
   topSubdivision: 2
+  mountainTopSubdivision: 3
   oceanFloorDepthBelowSea: 2
   abyssalDepthBelowSea: 3.5
   trenchDepthBelowSea: 5.5

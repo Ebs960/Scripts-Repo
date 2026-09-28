@@ -422,12 +422,13 @@ public class HexMapChunk : MonoBehaviour
         float chunkOriginX = -manager.MapWidth * 0.5f + chunkX * (manager.MapWidth / Mathf.Max(1, manager.GridChunkCountX));
         float chunkOriginZ = -manager.MapHeight * 0.5f + chunkZ * (manager.MapHeight / Mathf.Max(1, manager.GridChunkCountZ));
 
-        int topVertexEstimate = 1 + 3 * manager.TopSubdivision * (manager.TopSubdivision + 1);
+        int maximumSubdivision = manager.MaximumTopSubdivision;
+        int topVertexEstimate = 1 + 3 * maximumSubdivision * (maximumSubdivision + 1);
         var vertices = new List<Vector3>(tileIndices.Count * (topVertexEstimate + 48));
         var uvs = new List<Vector2>(tileIndices.Count * (topVertexEstimate + 48));
         var normals = new List<Vector3>(tileIndices.Count * (topVertexEstimate + 48));
         var tangents = new List<Vector4>(tileIndices.Count * (topVertexEstimate + 48));
-        var triangles = new List<int>(tileIndices.Count * (18 * manager.TopSubdivision * manager.TopSubdivision + 72));
+        var triangles = new List<int>(tileIndices.Count * (18 * maximumSubdivision * maximumSubdivision + 72));
 
         foreach (int tileIndex in tileIndices)
         {
@@ -444,7 +445,7 @@ public class HexMapChunk : MonoBehaviour
 
             int topStart = vertices.Count;
             var topLookup = new Dictionary<Vector2Int, int>();
-            int subdivisions = manager.TopSubdivision;
+            int subdivisions = manager.GetTopSubdivision(tileIndex);
             for (int sector = 0; sector < 6; sector++)
             {
                 float angleA = Mathf.Deg2Rad * (60f * sector - 30f);
