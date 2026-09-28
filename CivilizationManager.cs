@@ -2663,7 +2663,6 @@ break; // Only propose one alliance per turn
             ? data.startingBandGarrison
             : null;
         band.Initialize(resolvedStartingBandData, civ, planetIndex, tile, civGarrison);
-        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, bandObject, TileLayer.Surface);
     }
 
     /// <summary>

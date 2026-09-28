@@ -137,6 +137,14 @@ Shader "Custom/BiomeTerrainHDRP"
         _FallbackSunIntensity ("Fallback Sun Intensity", Float) = 1
         _FallbackAmbient ("Fallback Ambient", Range(0, 1)) = 0.35
 
+        [Header(Campaign Lighting)]
+        [Enum(Simple Campaign,0,HDRP Experimental,1,Unlit Debug,2)] _TerrainLightingMode ("Terrain Lighting Mode", Float) = 0
+        _CampaignLightDirectionWS ("Campaign Light Direction WS", Vector) = (0,1,0,0)
+        _CampaignLightColor ("Campaign Light Color", Color) = (1,1,1,1)
+        _CampaignAmbientFloor ("Campaign Ambient Floor", Range(0,1)) = 0.72
+        _CampaignDirectionalStrength ("Campaign Directional Strength", Range(0,1)) = 0.28
+        _CampaignAOStrength ("Campaign AO Strength", Range(0,1)) = 0.20
+
         [Header(Debug)]
         _TerrainDebugMode ("Terrain Debug Mode", Float) = 0
         _DisableHDRPBakedDiffuse ("Disable HDRP Baked Diffuse Test", Float) = 0
@@ -249,6 +257,12 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _FallbackSunColor;
     float _FallbackSunIntensity;
     float _FallbackAmbient;
+    float _TerrainLightingMode;
+    float4 _CampaignLightDirectionWS;
+    float4 _CampaignLightColor;
+    float _CampaignAmbientFloor;
+    float _CampaignDirectionalStrength;
+    float _CampaignAOStrength;
 
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeParams[64];
@@ -1137,7 +1151,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 uint featureFlags = LIGHT_FEATURE_MASK_FLAGS_OPAQUE | MATERIALFEATUREFLAGS_LIT_STANDARD;
                 LightLoopOutput lightLoopOutput;
                 ZERO_INITIALIZE(LightLoopOutput, lightLoopOutput);
-                LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
+                bool needsExperimentalLightLoop = (_TerrainLightingMode > 0.5 && _TerrainLightingMode < 1.5)
+                    || terrainDebugMode == 5 || terrainDebugMode == 7
+                    || terrainDebugMode == 12 || terrainDebugMode == 13;
+                if (needsExperimentalLightLoop)
+                    LightLoop(viewDirWS, posInput, preLightData, bsdfData, builtinData, featureFlags, lightLoopOutput);
 
                 float3 hdrpLit =
                     lightLoopOutput.diffuseLighting +
@@ -1178,23 +1196,32 @@ Shader "Custom/BiomeTerrainHDRP"
                     return float4(e, e, e, 1.0);
                 }
 
-                float3 fallbackLightDir = normalize(_FallbackSunDirectionWS.xyz);
-                float fallbackNdotL = saturate(dot(normalizedNormalWS, fallbackLightDir));
-                float3 fallbackDirect = _FallbackSunColor.rgb * _FallbackSunIntensity * fallbackNdotL;
-                float3 fallbackLit = materialColor * (saturate(_FallbackAmbient) + fallbackDirect);
+                // Texture-authoritative production lighting. Both shade and light tint are
+                // bounded to one, so ordinary lighting can darken authored terrain but can
+                // never wash it brighter than its material color.
+                float3 campaignLightDir = normalize(_CampaignLightDirectionWS.xyz);
+                float campaignNdotL = saturate(dot(normalizedNormalWS, campaignLightDir));
+                float campaignShade = lerp(saturate(_CampaignAmbientFloor), 1.0,
+                    campaignNdotL * saturate(_CampaignDirectionalStrength));
+                campaignShade = clamp(campaignShade, saturate(_CampaignAmbientFloor), 1.0);
+                float campaignAO = lerp(1.0, saturate(ao), saturate(_CampaignAOStrength));
+                float3 campaignTint = lerp(1.0.xxx, saturate(_CampaignLightColor.rgb),
+                    saturate(_CampaignDirectionalStrength));
+                float3 simpleCampaignLit = materialColor * campaignShade * campaignAO * campaignTint;
 
                 if (terrainDebugMode == 6)
                 {
-                    return float4(saturate(fallbackLit + emission), 1.0);
+                    return float4(saturate(simpleCampaignLit + emission), 1.0);
                 }
 
-                float lightingMagnitude = max(max(hdrpLit.r, hdrpLit.g), hdrpLit.b);
-
-                // HDRP's LightLoop output already participates in HDRP's exposure pipeline;
-                // multiplying GetCurrentExposureMultiplier here applied exposure twice.
-                float3 litAlbedo = lightingMagnitude > 1e-5 ? hdrpLit : fallbackLit;
-                litAlbedo += emission;
-                float3 finalColor = litAlbedo;
+                // The hand-written HDRP LightLoop is retained only as an explicit
+                // experimental diagnostic. Production defaults to restrained campaign
+                // lighting; UnlitDebug inspects the fully layered material.
+                float3 finalColor = simpleCampaignLit + emission;
+                if (_TerrainLightingMode > 0.5 && _TerrainLightingMode < 1.5)
+                    finalColor = hdrpLit + emission;
+                else if (_TerrainLightingMode >= 1.5)
+                    finalColor = materialColor + emission;
 
                 // Gameplay presentation is applied after the terrain material and lighting.
                 if (_EnableFog > 0.5)
