@@ -137,6 +137,17 @@ public class HexMapChunkManager : MonoBehaviour
     [FormerlySerializedAs("steppedMountainHeightAboveSea")]
     [SerializeField] private float mountainHeightAboveSea = 7.5f;
 
+    [Header("Hill Height Variation")]
+    [SerializeField] private bool enableHillHeightVariation = true;
+    [SerializeField, Range(0f, 2f)] private float hillHeightVariation = 0.65f;
+    [SerializeField, Min(1f)] private float hillHeightVariationWorldScale = 12f;
+    [SerializeField, Range(0f, 1f)] private float hillHeightVariationSecondaryStrength = 0.25f;
+    [SerializeField, Min(1f)] private float hillHeightVariationSecondaryScale = 5f;
+    [SerializeField] private int hillHeightVariationSeed = 7331;
+    [SerializeField, Min(0.1f)] private float minimumFlatToHillStep = 1.5f;
+    [SerializeField, Min(0.1f)] private float minimumHillToMountainStep = 1.5f;
+    [SerializeField, Range(0f, 1f)] private float shallowTerraceThreshold = 0.8f;
+
     [Header("Terrain Top Shape")]
     [SerializeField] private bool enableSurfaceUndulation = true;
     [SerializeField, Range(0f, 1f)]
@@ -162,6 +173,10 @@ public class HexMapChunkManager : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
+        hillHeightVariationWorldScale = Mathf.Max(1f, hillHeightVariationWorldScale);
+        hillHeightVariationSecondaryScale = Mathf.Max(1f, hillHeightVariationSecondaryScale);
+        minimumFlatToHillStep = Mathf.Max(0.1f, minimumFlatToHillStep);
+        minimumHillToMountainStep = Mathf.Max(0.1f, minimumHillToMountainStep);
         surfaceUndulationWorldScale = Mathf.Max(0.1f, surfaceUndulationWorldScale);
         surfaceUndulationSecondaryWorldScale = Mathf.Max(0.1f, surfaceUndulationSecondaryWorldScale);
         topSubdivision = Mathf.Clamp(topSubdivision, 1, 4);
@@ -766,6 +781,9 @@ public class HexMapChunkManager : MonoBehaviour
         var climate = GameManager.Instance != null ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex) : ClimateManager.Instance;
         string season = climate != null ? climate.GetSeasonForPlanet(planetGenerator.planetIndex).ToString() : "Unknown";
 
+        float nominalTierY = GetNominalTerrainWorldY(tile);
+        float renderedBaseY = GetRenderedTerrainWorldY(tileIndex);
+        float surfaceY = SampleRenderedTerrainSurfaceY(tileIndex, hit.point.x, hit.point.z);
         Debug.Log(
             $"[Terrain Probe] tile={tileIndex} " +
             $"uv=({u:F5},{v:F5}) " +
@@ -777,10 +795,12 @@ public class HexMapChunkManager : MonoBehaviour
             $"selection={(tile.isMountain ? "mountain" : "base")} " +
             $"tiling={(visual != null ? visual.tiling.ToString("F3") : "NULL")} " +
             $"season={season} " +
-            $"renderedY={GetRenderedTerrainWorldY(tileIndex):F3} " +
-            $"[TerrainSurfaceProbe] baseY={GetRenderedTerrainWorldY(tileIndex):F3} " +
-            $"surfaceY={SampleRenderedTerrainSurfaceY(tileIndex, hit.point.x, hit.point.z):F3} " +
-            $"offset={(SampleRenderedTerrainSurfaceY(tileIndex, hit.point.x, hit.point.z) - GetRenderedTerrainWorldY(tileIndex)):F3} " +
+            $"renderedY={renderedBaseY:F3} " +
+            $"[TerrainSurfaceProbe] tier={tile.elevationTier} nominalTierY={nominalTierY:F3} " +
+            $"hillMacroOffset={(renderedBaseY - nominalTierY):+0.000;-0.000;0.000} " +
+            $"renderedBaseY={renderedBaseY:F3} " +
+            $"surfaceUndulationOffset={(surfaceY - renderedBaseY):+0.000;-0.000;0.000} " +
+            $"finalSurfaceY={surfaceY:F3} " +
             $"worldX={hit.point.x:F3} worldZ={hit.point.z:F3} " +
             $"generatedElevation={tile.elevation:F3} elevationTier={tile.elevationTier} " +
             $"isRiver={tile.isRiver} isLake={tile.isLake} " +
@@ -1521,10 +1541,62 @@ public class HexMapChunkManager : MonoBehaviour
             case ElevationTier.Mountain:
                 return seaLevelWorldY + mountainHeightAboveSea;
             case ElevationTier.Hill:
-                return seaLevelWorldY + hillHeightAboveSea;
+                float nominalHillY = seaLevelWorldY + hillHeightAboveSea;
+                float variedHillY = nominalHillY + GetHillMacroHeightOffset(tileIndex);
+                float minimumHillY = seaLevelWorldY + flatHeightAboveSea + minimumFlatToHillStep;
+                float maximumHillY = seaLevelWorldY + mountainHeightAboveSea - minimumHillToMountainStep;
+                // Misconfigured tier distances collapse safely to their midpoint rather than
+                // allowing a visual Hill to cross either categorical neighbour.
+                if (minimumHillY > maximumHillY)
+                    return (minimumHillY + maximumHillY) * 0.5f;
+                return Mathf.Clamp(variedHillY, minimumHillY, maximumHillY);
             default:
                 return seaLevelWorldY + flatHeightAboveSea;
         }
+    }
+
+    private float GetNominalTerrainWorldY(HexTileData tile)
+    {
+        float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
+        if (!tile.isLand)
+        {
+            if (tile.underwaterBiome == Biome.Trench) return sea - trenchDepthBelowSea;
+            if (tile.underwaterBiome == Biome.AbyssalPlains) return sea - abyssalDepthBelowSea;
+            return sea - oceanFloorDepthBelowSea;
+        }
+
+        if (tile.elevationTier == ElevationTier.Mountain) return sea + mountainHeightAboveSea;
+        if (tile.elevationTier == ElevationTier.Hill) return sea + hillHeightAboveSea;
+        return sea + flatHeightAboveSea;
+    }
+
+    /// <summary>
+    /// Samples one deterministic, wrap-periodic macro offset at the Hill tile center. It is
+    /// deliberately tile-stable: top vertices only receive the separate surface undulation.
+    /// </summary>
+    private float GetHillMacroHeightOffset(int tileIndex)
+    {
+        if (!enableHillHeightVariation || hillHeightVariation <= 0f || grid == null ||
+            tileIndex < 0 || tileIndex >= grid.TileCount || mapWidth <= 0.0001f)
+            return 0f;
+
+        Vector3 center = grid.tileCenters[tileIndex];
+        int planetSeed = planetGenerator != null ? planetGenerator.Seed : 0;
+        int seed = unchecked(planetSeed * 486187739 + hillHeightVariationSeed);
+        float primary = PeriodicRollingNoise(center.x, center.z, hillHeightVariationWorldScale, seed);
+        float secondary = PeriodicRollingNoise(center.x, center.z, hillHeightVariationSecondaryScale, seed ^ 0x6d2b79f5);
+        float normalizedSignal = (primary + secondary * hillHeightVariationSecondaryStrength) /
+                                 (1f + hillHeightVariationSecondaryStrength);
+        return normalizedSignal * hillHeightVariation;
+    }
+
+    internal bool IsShallowHillTerrace(int tileIndex, int neighborIndex, float heightDifference)
+    {
+        if (heightDifference > shallowTerraceThreshold || planetGenerator == null || planetGenerator.data == null)
+            return false;
+        return planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile) &&
+               planetGenerator.data.TryGetValue(neighborIndex, out HexTileData neighbor) &&
+               tile.elevationTier == ElevationTier.Hill && neighbor.elevationTier == ElevationTier.Hill;
     }
 
     /// <summary>
@@ -2647,14 +2719,19 @@ public class HexMapChunkManager : MonoBehaviour
         float sea = planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f;
         float water = GetOceanWaterSurfaceY();
         float flat = sea + flatHeightAboveSea;
-        float hill = sea + hillHeightAboveSea;
+        float hillNominal = sea + hillHeightAboveSea;
         float mountain = sea + mountainHeightAboveSea;
+        float hillSafetyMinimum = flat + minimumFlatToHillStep;
+        float hillSafetyMaximum = mountain - minimumHillToMountainStep;
+        float configuredVariation = enableHillHeightVariation ? hillHeightVariation : 0f;
+        float hillMinimum = Mathf.Max(hillNominal - configuredVariation, hillSafetyMinimum);
+        float hillMaximum = Mathf.Min(hillNominal + configuredVariation, hillSafetyMaximum);
         float ocean = sea - oceanFloorDepthBelowSea;
         float abyssal = sea - abyssalDepthBelowSea;
         float trench = sea - trenchDepthBelowSea;
-        Debug.Log($"[TerrainHeightSync]\nMode=SteppedHex\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHill={hill:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
+        Debug.Log($"[TerrainHeightSync]\nMode=SteppedHex\nSea={sea:F3}\nWater={water:F3}\nFlat={flat:F3}\nHillNominal={hillNominal:F3}\nHillAllowedRange={hillMinimum:F3}..{hillMaximum:F3}\nMountain={mountain:F3}\nOceanFloor={ocean:F3}\nAbyssal={abyssal:F3}\nTrench={trench:F3}\nPicking={pickingMode}");
 
-        if (flat <= water || hill <= flat || mountain <= hill || ocean >= water || abyssal >= ocean || trench >= abyssal)
+        if (flat <= water || hillSafetyMinimum <= flat || hillSafetyMaximum >= mountain || hillMinimum > hillMaximum || ocean >= water || abyssal >= ocean || trench >= abyssal)
             Debug.LogWarning($"[TerrainHeightSync] Invalid stepped terrain/water ordering. Mode=SteppedHex, Picking={pickingMode}");
     }
 
