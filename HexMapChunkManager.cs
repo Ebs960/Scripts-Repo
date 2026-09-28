@@ -656,6 +656,8 @@ public class HexMapChunkManager : MonoBehaviour
 
     private void LateUpdate()
     {
+        bool applied = false;
+
         if (debugTransformChanges)
         {
             if (transform.position != _lastTransformPos || transform.rotation != _lastTransformRot || transform.lossyScale != _lastTransformScale)
@@ -5822,6 +5824,14 @@ public class HexMapChunkManager : MonoBehaviour
                 Debug.LogWarning($"[HexMapChunkManager] Failed to update season mask for chunk after tile dirty: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Compatibility entry point for callers that need to refresh baked terrain after tile data changes.
+    /// </summary>
+    public void RebakeBakedTerrainForTile(int tileIndex)
+    {
+        MarkTileDirty(tileIndex);
     }
 
     /// <summary>
