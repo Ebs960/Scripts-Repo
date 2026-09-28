@@ -62,7 +62,7 @@ MonoBehaviour:
   hillHeightAboveSea: 3.5
   mountainHeightAboveSea: 7.5
   enableHillHeightVariation: 1
-  hillHeightVariation: 2
+  hillHeightVariation: 1.15
   hillHeightVariationWorldScale: 12
   hillHeightVariationSecondaryStrength: 0.697
   hillHeightVariationSecondaryScale: 5
@@ -71,15 +71,15 @@ MonoBehaviour:
   minimumHillToMountainStep: 1.5
   shallowTerraceThreshold: 0.8
   enableMountainHeightVariation: 1
-  mountainHeightVariation: 3
+  mountainHeightVariation: 1.75
   mountainHeightVariationWorldScale: 14
   mountainHeightVariationSecondaryStrength: 0.383
   mountainHeightVariationSecondaryScale: 6
   mountainHeightVariationSeed: 19081
   enableSurfaceUndulation: 1
-  surfaceUndulationStrength: 0.875
+  surfaceUndulationStrength: 0.15
   surfaceUndulationWorldScale: 10
-  surfaceUndulationSecondaryStrength: 0.035
+  surfaceUndulationSecondaryStrength: 0.04
   surfaceUndulationSecondaryWorldScale: 3.5
   surfaceEdgeFalloff: 0.186
   surfaceUndulationSeed: 1337
@@ -124,12 +124,13 @@ MonoBehaviour:
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
   debugWaterVerbose: 0
+  debugTerrainRelief: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
   shorelineWaterOffset: 0.15
   manualOceanWaterY: 6
   useManualOceanWaterY: 0
-  enableOceanPlane: 0
+  enableOceanPlane: 1
   oceanPlanePaddingHex: 2
   enableWaterVolumeColumns: 0
   waterVolumeDepth: 3
@@ -137,16 +138,19 @@ MonoBehaviour:
   waterVolumeStepEpsilon: 0.02
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
-  continuousWaterIncludesOcean: 1
+  continuousWaterIncludesOcean: 0
   riverSdfWidth: 768
   riverSdfHeight: 384
-  riverHalfWidthMultiplier: 1.1
+  riverHalfWidthMultiplier: 0.65
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0
   steppedInlandWaterSurfaceOffset: 0.04
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
+  riverChannelCarveDepth: 0.45
+  riverBankWidthMultiplier: 1.45
+  riverBankSoftness: 0.55
   preBuildOnPlanetReady: 1
   chunksPerBatch: 4
   tilesPerBatch: 2048

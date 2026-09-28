@@ -165,7 +165,7 @@ Material:
     - _AlphaSrcBlend: 1
     - _Anisotropy: 0
     - _BlendMode: 0
-    - _CausticsIntensity: 0.6
+    - _CausticsIntensity: 0.35
     - _CausticsSpeed: 0.08
     - _CausticsTiling: 0.3
     - _CoatMask: 0
@@ -195,6 +195,10 @@ Material:
     - _EnableGeometricSpecularAA: 0
     - _EnergyConservingSpecularColor: 1
     - _FlowSpeed: 0.28
+    - _ReflectionStrength: 0.28
+    - _ShoreWidth: 0.22
+    - _ShoreStrength: 0.22
+    - _DebugWaterDepth: 0
     - _FreezeOpaqueThreshold: 0.9
     - _FreezeProgress: 0
     - _FresnelPower: 2.84
@@ -221,7 +225,7 @@ Material:
     - _MetallicRemapMin: 0
     - _NormalMapSpace: 0
     - _NormalScale: 1
-    - _NormalStrength: 0.99
+    - _NormalStrength: 0.42
     - _ObjectSpaceUVMapping: 0
     - _ObjectSpaceUVMappingEmissive: 0
     - _OpaqueCullMode: 2
@@ -236,7 +240,7 @@ Material:
     - _ReceivesSSRTransparent: 0
     - _RefractionModel: 0
     - _RiverIceTiling: 12
-    - _Smoothness: 0.5
+    - _Smoothness: 0.72
     - _SmoothnessRemapMax: 1
     - _SmoothnessRemapMin: 0
     - _SpecularAAScreenSpaceVariance: 0.1
@@ -271,7 +275,7 @@ Material:
     - _UVEmissive: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
-    - _WaveAmplitude: 0.0417
+    - _WaveAmplitude: 0.012
     - _WaveFrequency: 4.52
     - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
@@ -280,7 +284,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DeepColor: {r: 0, g: 0.5176468, b: 1, a: 1}
+    - _DeepColor: {r: 0.025, g: 0.16, b: 0.34, a: 1}
     - _DiffusionProfileAsset: {r: 0, g: 0, b: 0, a: 0}
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
@@ -292,9 +296,13 @@ Material:
     - _RiverDeepColor: {r: 0.079999976, g: 0.23999995, b: 0.35999998, a: 1}
     - _RiverIceTint: {r: 1, g: 1, b: 1, a: 1}
     - _RiverShallowColor: {r: 0.19999996, g: 0.56, b: 0.86, a: 1}
-    - _ScrollSpeedA: {r: 0.4, g: 0.1, b: 0, a: 0}
-    - _ScrollSpeedB: {r: -0.02, g: 0.1, b: 0, a: 0}
-    - _ShallowColor: {r: 0, g: 0.5176471, b: 1, a: 1}
+    - _ReflectionTint: {r: 0.42, g: 0.67, b: 0.82, a: 1}
+    - _ShoreColor: {r: 0.68, g: 0.91, b: 0.92, a: 1}
+    - _SunDirection: {r: 0.35, g: 0.8, b: 0.25, a: 0}
+    - _SunSpecularColor: {r: 1, g: 0.94, b: 0.78, a: 1}
+    - _ScrollSpeedA: {r: 0.018, g: 0.011, b: 0, a: 0}
+    - _ScrollSpeedB: {r: -0.012, g: 0.017, b: 0, a: 0}
+    - _ShallowColor: {r: 0.18, g: 0.56, b: 0.64, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _ThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
     - _TransmittanceColor: {r: 1, g: 1, b: 1, a: 1}
