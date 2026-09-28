@@ -3795,8 +3795,6 @@ public class GameManager : MonoBehaviour
             if (saved.state == BandState.Packed && saved.moveOrderPath != null &&
                 saved.moveOrderNextStep >= 0 && saved.moveOrderNextStep < saved.moveOrderPath.Count)
                 band.SetMoveOrder(saved.moveOrderDestination, saved.moveOrderPath, saved.moveOrderNextStep);
-            (TileOccupancyManager.GetForPlanet(saved.planetIndex) ?? TileOccupancyManager.Instance)
-                ?.SetOccupant(saved.tileIndex, band.gameObject, TileLayer.Surface);
             foreach (string unitId in saved.garrisonCombatUnitPersistentIds ?? new List<string>())
             {
                 var unit = UnitRegistry.GetByPersistentId(unitId)?.GetComponent<CombatUnit>();

@@ -51,6 +51,7 @@ public sealed class Band : MonoBehaviour
     private Vector3 visualMovementRestingLocalPosition;
     private bool queuedTravelVisualActive;
     private Civilization owner;
+    private bool lifecycleCleanedUp;
 
     public static event Action<Band> BandCreated, BandPacked, BandEncamped, BandMoved;
     public static event Action<Band, Civilization, Civilization> BandCaptured;
@@ -97,8 +98,9 @@ public sealed class Band : MonoBehaviour
         foodReserve = Mathf.Clamp(data.startingFoodReserve, 0, FoodCapacity);
         consecutiveStarvationTurns = 0; currentMovePoints = Mathf.Max(0, data.movementPoints);
         owner?.RegisterBand(this);
+        UnitRegistry.Register(gameObject);
         PositionVisual(); RegisterOccupancy(); RefreshVisual();
-        GetComponentInChildren<BandWorldUI>(true)?.Initialize(this);
+        EnsureWorldMarker().Initialize(this);
         if (spawnStartingGarrison) SpawnStartingGarrison(startingGarrisonOverride);
         BandCreated?.Invoke(this);
         RefreshOwnerVision(owner);
@@ -456,7 +458,6 @@ public sealed class Band : MonoBehaviour
 
         newBand.Initialize(data, owner, planetIndex, targetTileIndex, null, false, data.splinterPopulationCost);
         newBand.builtStructures.Clear(); // Splinters never inherit built structures; the campfire is unlocked separately via researched tech.
-        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(targetTileIndex, newBandObject, TileLayer.Surface);
         BandSplintered?.Invoke(this, newBand);
         NotifyChanged();
         return newBand;
@@ -483,9 +484,35 @@ public sealed class Band : MonoBehaviour
                 garrison.Remove(unit);
                 if (unit != null) { owner?.combatUnits.Remove(unit); Destroy(unit.gameObject); }
             }
-        owner?.UnregisterBand(this);
-        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
+        CleanupLifecycle();
         RefreshOwnerVision(owner); BandDestroyed?.Invoke(this, reason); Destroy(gameObject);
+    }
+
+    private BandWorldUI EnsureWorldMarker()
+    {
+        var marker = GetComponentInChildren<BandWorldUI>(true);
+        if (marker != null) return marker;
+
+        marker = BandWorldUI.CreateRuntime(this);
+        Debug.Log($"[BandPresentation] Band '{name}' had no authored world marker; created runtime fallback.", this);
+        return marker;
+    }
+
+    private void CleanupLifecycle()
+    {
+        if (lifecycleCleanedUp) return;
+        lifecycleCleanedUp = true;
+        UnitMovementController.Instance?.CancelBandMove(this, true);
+        if (currentTileIndex >= 0)
+            (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)
+                ?.ClearOccupantById(currentTileIndex, TileLayer.Surface, gameObject.GetRuntimeId());
+        UnitRegistry.Unregister(gameObject);
+        owner?.UnregisterBand(this);
+    }
+
+    private void OnDestroy()
+    {
+        CleanupLifecycle();
     }
 
     private void NotifyChanged()
