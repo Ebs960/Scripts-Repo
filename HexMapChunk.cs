@@ -422,11 +422,12 @@ public class HexMapChunk : MonoBehaviour
         float chunkOriginX = -manager.MapWidth * 0.5f + chunkX * (manager.MapWidth / Mathf.Max(1, manager.GridChunkCountX));
         float chunkOriginZ = -manager.MapHeight * 0.5f + chunkZ * (manager.MapHeight / Mathf.Max(1, manager.GridChunkCountZ));
 
-        var vertices = new List<Vector3>(tileIndices.Count * 55);
-        var uvs = new List<Vector2>(tileIndices.Count * 55);
-        var normals = new List<Vector3>(tileIndices.Count * 55);
-        var tangents = new List<Vector4>(tileIndices.Count * 55);
-        var triangles = new List<int>(tileIndices.Count * 90);
+        int topVertexEstimate = 1 + 3 * manager.TopSubdivision * (manager.TopSubdivision + 1);
+        var vertices = new List<Vector3>(tileIndices.Count * (topVertexEstimate + 48));
+        var uvs = new List<Vector2>(tileIndices.Count * (topVertexEstimate + 48));
+        var normals = new List<Vector3>(tileIndices.Count * (topVertexEstimate + 48));
+        var tangents = new List<Vector4>(tileIndices.Count * (topVertexEstimate + 48));
+        var triangles = new List<int>(tileIndices.Count * (18 * manager.TopSubdivision * manager.TopSubdivision + 72));
 
         foreach (int tileIndex in tileIndices)
         {
@@ -442,23 +443,42 @@ public class HexMapChunk : MonoBehaviour
             Vector2 centerUV = MapPositionToUV(mapCenter);
 
             int topStart = vertices.Count;
-            AddVertex(localCenter, centerUV, Vector3.up, Vector3.right, vertices, uvs, normals, tangents);
-            for (int corner = 0; corner < 6; corner++)
+            var topLookup = new Dictionary<Vector2Int, int>();
+            int subdivisions = manager.TopSubdivision;
+            for (int sector = 0; sector < 6; sector++)
             {
-                float angle = Mathf.Deg2Rad * (60f * corner - 30f);
-                Vector3 cornerOffset = new Vector3(innerRadius * Mathf.Cos(angle), 0f, innerRadius * Mathf.Sin(angle));
-                AddVertex(localCenter + cornerOffset, MapPositionToUV(mapCenter + cornerOffset),
-                    Vector3.up, Vector3.right, vertices, uvs, normals, tangents);
-            }
+                float angleA = Mathf.Deg2Rad * (60f * sector - 30f);
+                float angleB = Mathf.Deg2Rad * (60f * ((sector + 1) % 6) - 30f);
+                Vector3 cornerA = new Vector3(innerRadius * Mathf.Cos(angleA), 0f, innerRadius * Mathf.Sin(angleA));
+                Vector3 cornerB = new Vector3(innerRadius * Mathf.Cos(angleB), 0f, innerRadius * Mathf.Sin(angleB));
+                int[,] sectorVertices = new int[subdivisions + 1, subdivisions + 1];
+                for (int a = 0; a <= subdivisions; a++)
+                for (int b = 0; b <= subdivisions - a; b++)
+                {
+                    Vector3 offset = (cornerA * a + cornerB * b) / subdivisions;
+                    Vector2Int key = new Vector2Int(Mathf.RoundToInt(offset.x * 100000f), Mathf.RoundToInt(offset.z * 100000f));
+                    if (!topLookup.TryGetValue(key, out int index))
+                    {
+                        Vector3 mapPosition = mapCenter + offset;
+                        float curvedY = manager.SampleRenderedTerrainSurfaceY(tileIndex, mapPosition.x, mapPosition.z) - manager.FlatY;
+                        index = vertices.Count;
+                        topLookup.Add(key, index);
+                        AddVertex(new Vector3(localCenter.x + offset.x, curvedY, localCenter.z + offset.z),
+                            MapPositionToUV(mapPosition), Vector3.zero, Vector3.right, vertices, uvs, normals, tangents);
+                    }
+                    sectorVertices[a, b] = index;
+                }
 
-            for (int corner = 0; corner < 6; corner++)
-            {
-                int next = (corner + 1) % 6;
-                // Reverse the angular order so the top face points upward in Unity's XZ plane.
-                triangles.Add(topStart);
-                triangles.Add(topStart + 1 + next);
-                triangles.Add(topStart + 1 + corner);
+                for (int a = 0; a < subdivisions; a++)
+                for (int b = 0; b < subdivisions - a; b++)
+                {
+                    AddTopTriangle(sectorVertices[a, b], sectorVertices[a + 1, b], sectorVertices[a, b + 1], vertices, normals, triangles);
+                    if (a + b < subdivisions - 1)
+                        AddTopTriangle(sectorVertices[a + 1, b], sectorVertices[a + 1, b + 1], sectorVertices[a, b + 1], vertices, normals, triangles);
+                }
             }
+            for (int i = topStart; i < vertices.Count; i++)
+                normals[i] = normals[i].sqrMagnitude > 0.000001f ? normals[i].normalized : Vector3.up;
 
             // Give each bevel edge its own vertices so its angled normal remains faceted.
             if (bevelWidthWorld > 0.0001f)
@@ -542,7 +562,7 @@ public class HexMapChunk : MonoBehaviour
         }
 
         mesh.Clear();
-        mesh.indexFormat = vertices.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+        mesh.indexFormat = IndexFormat.UInt32;
         mesh.SetVertices(vertices);
         mesh.SetUVs(0, uvs);
         mesh.SetNormals(normals);
@@ -572,6 +592,25 @@ public class HexMapChunk : MonoBehaviour
         uvs.Add(uv);
         normals.Add(normal);
         tangents.Add(new Vector4(tangent.x, tangent.y, tangent.z, 1f));
+    }
+
+    private static void AddTopTriangle(int a, int b, int c, List<Vector3> vertices,
+        List<Vector3> normals, List<int> triangles)
+    {
+        Vector3 face = Vector3.Cross(vertices[b] - vertices[a], vertices[c] - vertices[a]);
+        if (face.y < 0f)
+        {
+            int swap = b;
+            b = c;
+            c = swap;
+            face = -face;
+        }
+        triangles.Add(a);
+        triangles.Add(b);
+        triangles.Add(c);
+        normals[a] += face;
+        normals[b] += face;
+        normals[c] += face;
     }
     
     /// <summary>

@@ -1169,13 +1169,23 @@ public class TileSystem : MonoBehaviour
         var c = GetTileCenterFlat(tile);
         HexMapChunkManager terrainRenderer = ResolveTerrainRenderer();
         if (terrainRenderer != null)
-            return new Vector3(c.x, terrainRenderer.GetRenderedTerrainWorldY(tile) + unitOffset, c.z);
+            return terrainRenderer.GetRenderedSurfacePosition(tile, c, unitOffset);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (Application.isPlaying && surfaceFallbackWarnings.Add(tile))
             Debug.LogWarning($"[SurfacePosition] Using the flat map baseline for planet {planetIndex} tile {tile} until its terrain renderer is available.", this);
 #endif
         return new Vector3(c.x, c.y + unitOffset, c.z);
+    }
+
+    /// <summary>Grounds an arbitrary XZ within a tile on the same curved mesh surface used for picking.</summary>
+    public Vector3 GetTileSurfacePosition(int tile, Vector3 worldPosition, float unitOffset = 0f)
+    {
+        HexMapChunkManager terrainRenderer = ResolveTerrainRenderer();
+        if (terrainRenderer != null)
+            return terrainRenderer.GetRenderedSurfacePosition(tile, worldPosition, unitOffset);
+        worldPosition.y += unitOffset;
+        return worldPosition;
     }
 
     private HexMapChunkManager ResolveTerrainRenderer()

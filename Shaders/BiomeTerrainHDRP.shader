@@ -1097,6 +1097,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 }
                 if (terrainDebugMode == 6)
                     return float4(normalize(normalWS) * 0.5 + 0.5, 1.0);
+                // Macro geometry only, before any SurfaceFamily normal-map detail.
+                if (terrainDebugMode == 12)
+                    return float4(normalize(meshNormal) * 0.5 + 0.5, 1.0);
                 if (terrainDebugMode == 7)
                     return float4(saturate(mask.rgb), 1.0);
 
