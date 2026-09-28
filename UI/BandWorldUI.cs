@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>Persistent, non-interactive world marker for a gameplay Band root.</summary>
 public sealed class BandWorldUI : MonoBehaviour
@@ -13,6 +14,7 @@ public sealed class BandWorldUI : MonoBehaviour
 
     private Band band;
     private Camera worldCamera;
+    private static readonly HashSet<int> MissingIconWarnings = new HashSet<int>();
 
     private void OnEnable()
     {
@@ -32,7 +34,8 @@ public sealed class BandWorldUI : MonoBehaviour
     private void LateUpdate()
     {
         if (band == null) return;
-        if (worldCamera == null) worldCamera = Camera.main;
+        Camera mainCamera = Camera.main;
+        if (worldCamera != mainCamera) worldCamera = mainCamera;
         if (worldCamera != null)
             transform.rotation = Quaternion.LookRotation(transform.position - worldCamera.transform.position);
     }
@@ -40,10 +43,13 @@ public sealed class BandWorldUI : MonoBehaviour
     public void Refresh()
     {
         if (band == null) return;
+        Sprite bandIcon = band.Data != null ? band.Data.icon : null;
+        if (band.Data != null && bandIcon == null && MissingIconWarnings.Add(band.Data.GetInstanceID()))
+            Debug.LogWarning($"[BandWorldUI] BandData '{band.Data.name}' has no icon assigned.", band.Data);
         if (icon != null)
         {
-            icon.sprite = band.Data != null ? band.Data.icon : null;
-            icon.enabled = icon.sprite != null;
+            icon.sprite = bandIcon;
+            icon.enabled = bandIcon != null;
         }
         if (label != null)
         {
@@ -60,7 +66,7 @@ public sealed class BandWorldUI : MonoBehaviour
             graphic.raycastTarget = false;
     }
 
-    /// <summary>Creates the shared minimal fallback when a culture prefab has no authored marker.</summary>
+    /// <summary>Creates a persistent shell-level fallback when a Band prefab has no authored marker.</summary>
     public static BandWorldUI CreateRuntime(Band owner)
     {
         var markerObject = new GameObject("Band World Marker", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(BandWorldUI));
