@@ -26,6 +26,8 @@ public sealed class BattleUnitSnapshot
     public readonly TacticalUnitProfile TacticalProfile;
     public readonly BattleDomain Domain;
     public readonly int TacticalFigureCount;
+    /// <summary>The authoritative campaign manpower represented by this unit.</summary>
+    public int SoldierCount => TacticalFigureCount;
     public readonly FormationType TacticalFormationType;
     public readonly float TacticalFormationSpacing;
     public readonly SoldierVariant[] TacticalSoldierVariants;

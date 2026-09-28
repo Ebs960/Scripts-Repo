@@ -154,10 +154,25 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
         return result;
     }
 
+    /// <summary>Read-only assignment view for previews/forecasts; performs no status synchronization.</summary>
+    public IReadOnlyList<MilitaryCommanderAssignment> PeekAssignments(string formationId)
+    {
+        var result = new List<MilitaryCommanderAssignment>();
+        for (int i=0;i<assignments.Count;i++)
+            if (assignments[i].IsActive && assignments[i].FormationId==formationId)
+                result.Add(assignments[i]);
+        return result;
+    }
+
     public float GetAttackMultiplier(string formationId, BattleDomain? domain = null)
+        => GetAttackMultiplier(GetAssignments(formationId), domain);
+
+    public float GetAttackMultiplierReadOnly(string formationId, BattleDomain? domain = null)
+        => GetAttackMultiplier(PeekAssignments(formationId), domain);
+
+    private float GetAttackMultiplier(IReadOnlyList<MilitaryCommanderAssignment> formationAssignments, BattleDomain? domain)
     {
         float multiplier = 1f;
-        var formationAssignments = GetAssignments(formationId);
         for (int i = 0; i < formationAssignments.Count; i++)
         {
             var assignment = formationAssignments[i];
@@ -179,6 +194,7 @@ public sealed class MilitaryCommanderAssignmentService : MonoBehaviour, ISaveGam
     }
 
     public float GetDefenseMultiplier(string formationId, BattleDomain? domain = null) => GetAttackMultiplier(formationId, domain);
+    public float GetDefenseMultiplierReadOnly(string formationId, BattleDomain? domain = null) => GetAttackMultiplierReadOnly(formationId, domain);
 
     private static bool RoleApplies(CommandRole role, BattleDomain domain) => role == CommandRole.OverallCommander || (role switch
     {
