@@ -166,8 +166,13 @@ currentCity = city;
         tabController?.ResetToDefault();
         RefreshUI();
         gameObject.SetActive(true);
-        if (autoOpenCitizenAssignmentOverlayOnCityClick)
+        // Scroll-sheet navigation owns the Citizens & Tiles overlay state.
+        // Preserve the legacy opt-in behavior only for the old tabbed prefab.
+        if (autoOpenCitizenAssignmentOverlayOnCityClick &&
+            (tabController == null || !tabController.UsesScrollNavigation))
+        {
             CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
+        }
 }
 
     public void ShowForCityTab(City city, CityUITab tab)
@@ -292,6 +297,23 @@ if (currentCity == null)
 
     private void OnCityTabChanged(CityUITab tab)
     {
+        // In the new continuous-scroll city sheet the navigation buttons no
+        // longer hide/show feature panels. Citizens & Tiles instead controls
+        // the world-map assignment overlay while the remaining sections keep
+        // the normal map view.
+        if (tabController != null && tabController.UsesScrollNavigation)
+        {
+            if (tab == CityUITab.Overview)
+            {
+                if (currentCity != null)
+                    CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
+            }
+            else if (CityTileOverlayController.Instance?.CurrentCity == currentCity)
+            {
+                CityTileOverlayController.Instance?.ExitCityAssignmentMode();
+            }
+        }
+
         if (tab == CityUITab.BuildingsAndSpecialists ||
             tab == CityUITab.CrimeAndDisease ||
             tab == CityUITab.UnitStorage)
@@ -747,6 +769,10 @@ if (currentCity == null)
                 CreateBuildOptionButton(missile, missile.icon, missile.missileName, missile.productionCost, missilesContainer);
             }
         }
+
+        // Dynamic rows can substantially change the continuous scroll sheet's
+        // height, so refresh navigation measurements after rebuilding them.
+        tabController?.RefreshScrollLayout();
 
         // Refresh launch missile button visibility
         RefreshLaunchMissileButton();
