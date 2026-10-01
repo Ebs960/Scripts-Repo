@@ -50,6 +50,8 @@ public class CouncilVoteResult
     public bool passed;
     public List<CouncilVote> individualVotes = new List<CouncilVote>();
     public string proposalDescription;
+    /// <summary>Round on which an actual (recorded) vote was held; -1 for previews.</summary>
+    public int recordedTurn = -1;
 
     public string Summary => applicable
         ? $"Council Vote: {(passed ? "PASSED" : "FAILED")} {yesVotes}\u2013{noVotes}"
@@ -78,12 +80,38 @@ public static class CouncilVoteService
             ? list
             : (IReadOnlyList<CouncilVoteResult>)System.Array.Empty<CouncilVoteResult>();
 
+    /// <summary>Raised after a real vote is recorded so open political screens can refresh.</summary>
+    public static event System.Action<Civilization> ResultRecorded;
+
     /// <summary>
-    /// Evaluate a proposal. Returns a passed result with applicable=false when
-    /// no council veto applies (no council government, domain not vetoable, or
-    /// zero seated governors). A tie fails when a vote is actually required.
+    /// Calculate a vote with no side effects: nothing is recorded in history and the player is not notified.
+    /// Use for UI outlooks; the result is identical to what EvaluateAndRecord would produce right now.
     /// </summary>
+    public static CouncilVoteResult Preview(Civilization civ, CouncilProposalContext proposal)
+        => Compute(civ, proposal);
+
+    /// <summary>
+    /// Hold the real vote: same calculation as Preview, then record it in the civ's recent vote history.
+    /// Returns a passed result with applicable=false when no council veto applies (no council government,
+    /// domain not vetoable, or zero seated governors). A tie fails when a vote is actually required.
+    /// </summary>
+    public static CouncilVoteResult EvaluateAndRecord(Civilization civ, CouncilProposalContext proposal)
+    {
+        var result = Compute(civ, proposal);
+        if (result.applicable)
+        {
+            result.recordedTurn = TurnManager.Instance != null ? TurnManager.Instance.round : 0;
+            RememberResult(civ, result);
+            ResultRecorded?.Invoke(civ);
+        }
+        return result;
+    }
+
+    [System.Obsolete("Use EvaluateAndRecord for a real vote or Preview for a UI outlook.")]
     public static CouncilVoteResult Evaluate(Civilization civ, CouncilProposalContext proposal)
+        => EvaluateAndRecord(civ, proposal);
+
+    private static CouncilVoteResult Compute(Civilization civ, CouncilProposalContext proposal)
     {
         var result = new CouncilVoteResult
         {
@@ -112,8 +140,6 @@ public static class CouncilVoteService
 
         result.requiredYesVotes = voters.Count / 2 + 1; // strict majority; ties fail
         result.passed = result.yesVotes >= result.requiredYesVotes;
-
-        RememberResult(civ, result);
         return result;
     }
 

@@ -8,6 +8,9 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
 {
     public static PoliticalEventManager Instance { get; private set; }
 
+    /// <summary>Raised when the active event list changes so open political screens can refresh.</summary>
+    public static event Action EventsChanged;
+
     public string SaveKey => "PoliticalEventManager_v1";
 
     [SerializeField] private int maxActiveEventsPerCiv = 3;
@@ -284,6 +287,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         int countForCiv = activeEvents.Count(e => e.status == PoliticalEventStatus.Pending && e.targetCivName == record.targetCivName);
         if (countForCiv >= maxActiveEventsPerCiv) return;
         activeEvents.Add(record);
+        EventsChanged?.Invoke();
     }
 
     private void TryPresentPendingPlayerEvent(Civilization civ)
@@ -348,6 +352,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         }
 
         record.status = PoliticalEventStatus.Resolved;
+        EventsChanged?.Invoke();
         TryPresentPendingPlayerEvent(civ);
     }
 
@@ -455,6 +460,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         if (civ == null) return;
         string civName = civ.civData?.civName ?? civ.name;
 
+        bool expiredAny = false;
         foreach (var record in activeEvents)
         {
             if (record.status != PoliticalEventStatus.Pending) continue;
@@ -462,6 +468,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             if (currentTurn <= record.expiryTurn) continue;
 
             record.status = PoliticalEventStatus.Expired;
+            expiredAny = true;
 
             switch (record.eventType)
             {
@@ -479,6 +486,8 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     break;
             }
         }
+
+        if (expiredAny) EventsChanged?.Invoke();
     }
 
     private void ResolveExpiredFactionDemand(PoliticalEventRecord record, Civilization civ, int currentTurn)

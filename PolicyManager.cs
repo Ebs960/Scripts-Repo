@@ -30,29 +30,12 @@ public class PolicyManager : MonoBehaviour
     public bool SatisfiesPolicyStructuralRequirements(Civilization civ, PolicyData p)
     {
         if (civ == null || p == null) return false;
-        if (p.requiredTechs != null)
-            foreach (var req in p.requiredTechs)
-                if (req != null && !civ.researchedTechs.Contains(req)) return false;
-        if (p.requiredCultures != null)
-            foreach (var req in p.requiredCultures)
-                if (req != null && !civ.researchedCultures.Contains(req)) return false;
-        if (p.requiredGovernments != null)
-        {
-            bool hasRequirement = false, matched = false;
-            foreach (var req in p.requiredGovernments)
-            {
-                if (req == null) continue;
-                hasRequirement = true;
-                if (civ.currentGovernment == req) matched = true;
-            }
-            if (hasRequirement && !matched) return false;
-        }
-        if (civ.cities == null || civ.cities.Count < p.requiredCityCount) return false;
-        if (!SatisfiesReligiousRequirements(civ, p.religiousRequirementGroups)) return false;
-        if (p.requiredPolicies != null)
-            foreach (var required in p.requiredPolicies)
-                if (required != null && (civ.activePolicies == null || !civ.activePolicies.Contains(required))) return false;
-        return true;
+        return PolicyTechsMet(civ, p, null)
+            && PolicyCulturesMet(civ, p, null)
+            && PolicyGovernmentMet(civ, p, null)
+            && PolicyCitiesMet(civ, p, null)
+            && PolicyReligionMet(civ, p, null)
+            && PolicyRequiredPoliciesMet(civ, p, null);
     }
 
     public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
@@ -61,12 +44,157 @@ public class PolicyManager : MonoBehaviour
            && !HasActiveConflict(civ, p);
 
     public bool HasActiveConflict(Civilization civ, PolicyData candidate)
+        => !PolicyConflictFree(civ, candidate, null, null);
+
+    /// <summary>
+    /// Full adoption evaluation with exact failure reasons. Built from the same rule helpers as
+    /// MeetsPolicyPrerequisites/GetAvailablePolicies/AdoptPolicy, so UI and gameplay cannot drift.
+    /// </summary>
+    public PolicyAdoptionEvaluation EvaluatePolicy(Civilization civ, PolicyData policy)
     {
-        if (civ?.activePolicies == null || candidate == null) return false;
-        foreach (var active in civ.activePolicies)
-            if (active != null && (Contains(candidate.incompatiblePolicies, active)
-                || Contains(active.incompatiblePolicies, candidate))) return true;
+        var e = new PolicyAdoptionEvaluation { policy = policy };
+        if (civ == null || policy == null)
+        {
+            e.failureReasons.Add("No policy selected.");
+            return e;
+        }
+
+        var reasons = e.failureReasons;
+        e.policyPointCost = policy.policyPointCost;
+        e.currentPolicyPoints = civ.policyPoints;
+        e.alreadyActive = civ.activePolicies != null && civ.activePolicies.Contains(policy);
+        if (e.alreadyActive) reasons.Add("This policy is already active.");
+
+        e.meetsTechRequirements = PolicyTechsMet(civ, policy, reasons);
+        e.meetsCultureRequirements = PolicyCulturesMet(civ, policy, reasons);
+        e.meetsGovernmentRequirement = PolicyGovernmentMet(civ, policy, reasons);
+        e.meetsCityRequirement = PolicyCitiesMet(civ, policy, reasons);
+        e.meetsReligionRequirement = PolicyReligionMet(civ, policy, reasons);
+        e.meetsRequiredPolicies = PolicyRequiredPoliciesMet(civ, policy, reasons);
+        e.hasConflict = !PolicyConflictFree(civ, policy, e.conflictingActivePolicies, reasons);
+        e.affordable = civ.policyPoints >= policy.policyPointCost;
+        if (!e.affordable)
+            reasons.Add($"Costs {policy.policyPointCost} policy points ({civ.policyPoints} available).");
+
+        e.canAdopt = !e.alreadyActive && e.MeetsStructuralRequirements && !e.hasConflict && e.affordable;
+        return e;
+    }
+
+    // Rule helpers: a null `reasons` list means boolean-only (short-circuits, builds no strings).
+
+    private static bool PolicyTechsMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        bool ok = true;
+        if (p.requiredTechs != null)
+            foreach (var req in p.requiredTechs)
+            {
+                if (req == null || civ.researchedTechs.Contains(req)) continue;
+                if (reasons == null) return false;
+                ok = false;
+                reasons.Add($"Requires technology: {GovernmentPresentation.NameOf(req)}.");
+            }
+        return ok;
+    }
+
+    private static bool PolicyCulturesMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        bool ok = true;
+        if (p.requiredCultures != null)
+            foreach (var req in p.requiredCultures)
+            {
+                if (req == null || civ.researchedCultures.Contains(req)) continue;
+                if (reasons == null) return false;
+                ok = false;
+                reasons.Add($"Requires culture: {GovernmentPresentation.NameOf(req)}.");
+            }
+        return ok;
+    }
+
+    private static bool PolicyGovernmentMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        if (p.requiredGovernments == null) return true;
+        bool hasRequirement = false, matched = false;
+        List<string> names = reasons != null ? new List<string>() : null;
+        foreach (var req in p.requiredGovernments)
+        {
+            if (req == null) continue;
+            hasRequirement = true;
+            names?.Add(GovernmentPresentation.NameOf(req));
+            if (civ.currentGovernment == req) matched = true;
+        }
+        if (!hasRequirement || matched) return true;
+        reasons?.Add($"Requires one of these governments: {string.Join(", ", names)}.");
         return false;
+    }
+
+    private static bool PolicyCitiesMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        if (civ.cities != null && civ.cities.Count >= p.requiredCityCount) return true;
+        reasons?.Add($"Requires {p.requiredCityCount} cities ({civ.cities?.Count ?? 0} owned).");
+        return false;
+    }
+
+    private static bool PolicyReligionMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        if (SatisfiesReligiousRequirements(civ, p.religiousRequirementGroups)) return true;
+        reasons?.Add($"Requires a religious condition: {DescribeReligiousRequirements(p.religiousRequirementGroups)}.");
+        return false;
+    }
+
+    private static bool PolicyRequiredPoliciesMet(Civilization civ, PolicyData p, List<string> reasons)
+    {
+        bool ok = true;
+        if (p.requiredPolicies != null)
+            foreach (var required in p.requiredPolicies)
+            {
+                if (required == null || (civ.activePolicies != null && civ.activePolicies.Contains(required))) continue;
+                if (reasons == null) return false;
+                ok = false;
+                reasons.Add($"Requires active policy: {GovernmentPresentation.NameOf(required)}.");
+            }
+        return ok;
+    }
+
+    private static bool PolicyConflictFree(Civilization civ, PolicyData candidate, List<PolicyData> conflicts, List<string> reasons)
+    {
+        if (civ?.activePolicies == null || candidate == null) return true;
+        bool ok = true;
+        foreach (var active in civ.activePolicies)
+        {
+            if (active == null || active == candidate) continue;
+            if (!Contains(candidate.incompatiblePolicies, active) && !Contains(active.incompatiblePolicies, candidate)) continue;
+            if (reasons == null && conflicts == null) return false;
+            ok = false;
+            conflicts?.Add(active);
+            reasons?.Add($"Conflicts with active policy: {GovernmentPresentation.NameOf(active)}.");
+        }
+        return ok;
+    }
+
+    private static string DescribeReligiousRequirements(PolicyReligiousRequirementGroup[] groups)
+    {
+        if (groups == null || groups.Length == 0) return "none";
+        var routes = new List<string>();
+        foreach (var group in groups)
+        {
+            if (group == null) continue;
+            var parts = new List<string>();
+            if (group.requiresStateReligion) parts.Add("a state religion");
+            if (HasNonNull(group.anyStateReligions))
+                parts.Add("state religion " + string.Join("/", System.Array.ConvertAll(
+                    System.Array.FindAll(group.anyStateReligions, r => r != null), r => string.IsNullOrWhiteSpace(r.religionName) ? r.name : r.religionName)));
+            if (HasNonNull(group.anyPantheons))
+                parts.Add("pantheon " + string.Join("/", System.Array.ConvertAll(
+                    System.Array.FindAll(group.anyPantheons, x => x != null), x => string.IsNullOrWhiteSpace(x.pantheonName) ? x.name : x.pantheonName)));
+            if (group.useMinimumPantheonTier) parts.Add($"a pantheon of tier {group.minimumPantheonTier} or higher");
+            if (HasNonNull(group.anyBeliefs))
+                parts.Add("belief " + string.Join("/", System.Array.ConvertAll(
+                    System.Array.FindAll(group.anyBeliefs, x => x != null), x => string.IsNullOrWhiteSpace(x.beliefName) ? x.name : x.beliefName)));
+            if (group.anyBeliefCategories != null && group.anyBeliefCategories.Length > 0)
+                parts.Add("a belief of category " + string.Join("/", group.anyBeliefCategories));
+            if (parts.Count > 0) routes.Add(string.Join(" and ", parts));
+        }
+        return routes.Count == 0 ? "none" : string.Join(" or ", routes);
     }
 
     private static bool SatisfiesReligiousRequirements(Civilization civ, PolicyReligiousRequirementGroup[] groups)
@@ -232,20 +360,43 @@ public class PolicyManager : MonoBehaviour
 
     private static CouncilVoteResult RunPolicyCouncilVote(Civilization civ, PolicyData p, bool revocation)
     {
-        // Domains implicated by this policy's mechanics.
-        var domains = VetoDomain.PolicyChange | p.additionalVetoDomains;
+        var result = CouncilVoteService.EvaluateAndRecord(civ, BuildPolicyCouncilProposal(p, revocation));
+        CouncilVoteService.NotifyPlayer(civ, result);
+        return result;
+    }
 
-        var result = CouncilVoteService.Evaluate(civ, new CouncilProposalContext
+    /// <summary>The exact proposal a real policy adoption/repeal puts to the council; previews must use it too.</summary>
+    public static CouncilProposalContext BuildPolicyCouncilProposal(PolicyData p, bool revocation)
+    {
+        return new CouncilProposalContext
         {
-            domains = domains,
+            // Domains implicated by this policy's mechanics.
+            domains = VetoDomain.PolicyChange | p.additionalVetoDomains,
             targetPolicy = p,
             policyIsRevocation = revocation,
             numericContext = -p.goldModifier,
             description = revocation ? $"Repeal {p.policyName}" : $"Adopt {p.policyName}",
-        });
-        CouncilVoteService.NotifyPlayer(civ, result);
-        return result;
+        };
     }
+
+    /// <summary>The exact proposal a real government change puts to the council; previews must use it too.</summary>
+    public static CouncilProposalContext BuildGovernmentCouncilProposal(GovernmentData g)
+    {
+        return new CouncilProposalContext
+        {
+            domains = VetoDomain.Succession | VetoDomain.GovernmentChange,
+            targetGovernment = g,
+            description = $"Adopt {g.governmentName}",
+        };
+    }
+
+    /// <summary>Side-effect-free council outlook for adopting or repealing a policy.</summary>
+    public CouncilVoteResult PreviewPolicyVote(Civilization civ, PolicyData p, bool revocation)
+        => p == null ? null : CouncilVoteService.Preview(civ, BuildPolicyCouncilProposal(p, revocation));
+
+    /// <summary>Side-effect-free council outlook for changing government.</summary>
+    public CouncilVoteResult PreviewGovernmentVote(Civilization civ, GovernmentData g)
+        => g == null ? null : CouncilVoteService.Preview(civ, BuildGovernmentCouncilProposal(g));
 
     /// <summary>
     /// Structural prerequisites for a government (unlocked, techs, cultures, city count,
@@ -254,18 +405,99 @@ public class PolicyManager : MonoBehaviour
     public bool MeetsGovernmentPrerequisites(Civilization civ, GovernmentData g)
     {
         if (civ == null || g == null) return false;
-        if (civ.unlockedGovernments == null || !civ.unlockedGovernments.Contains(g)) return false;
+        if (!GovernmentUnlocked(civ, g)) return false;
         if (civ.currentGovernment == g) return false;
+        return GovernmentTechsMet(civ, g, null)
+            && GovernmentCulturesMet(civ, g, null)
+            && GovernmentCitiesMet(civ, g, null)
+            && GovernmentReligionMet(civ, g, null)
+            && GovernmentVassalsMet(civ, g, null);
+    }
+
+    /// <summary>
+    /// Full adoption evaluation with exact failure reasons. Built from the same rule helpers as
+    /// MeetsGovernmentPrerequisites/GetAvailableGovernments/ChangeGovernment, so UI and gameplay cannot drift.
+    /// </summary>
+    public GovernmentAdoptionEvaluation EvaluateGovernment(Civilization civ, GovernmentData government)
+    {
+        var e = new GovernmentAdoptionEvaluation { government = government };
+        if (civ == null || government == null)
+        {
+            e.failureReasons.Add("No government selected.");
+            return e;
+        }
+
+        var reasons = e.failureReasons;
+        e.policyPointCost = government.policyPointCost;
+        e.currentPolicyPoints = civ.policyPoints;
+        e.isCurrentGovernment = civ.currentGovernment == government;
+        e.unlocked = GovernmentUnlocked(civ, government);
+        if (e.isCurrentGovernment) reasons.Add("This is your current government.");
+        else if (!e.unlocked) reasons.Add("This government has not been unlocked.");
+
+        e.meetsTechRequirements = GovernmentTechsMet(civ, government, reasons);
+        e.meetsCultureRequirements = GovernmentCulturesMet(civ, government, reasons);
+        e.meetsCityRequirement = GovernmentCitiesMet(civ, government, reasons);
+        e.meetsReligionRequirement = GovernmentReligionMet(civ, government, reasons);
+        e.meetsVassalRequirement = GovernmentVassalsMet(civ, government, reasons);
+        e.affordable = civ.policyPoints >= government.policyPointCost;
+        if (!e.affordable)
+            reasons.Add($"Costs {government.policyPointCost} policy points ({civ.policyPoints} available).");
+
+        e.canAdopt = e.MeetsStructuralPrerequisites && e.affordable;
+        return e;
+    }
+
+    private static bool GovernmentUnlocked(Civilization civ, GovernmentData g)
+        => civ.unlockedGovernments != null && civ.unlockedGovernments.Contains(g);
+
+    private static bool GovernmentTechsMet(Civilization civ, GovernmentData g, List<string> reasons)
+    {
+        bool ok = true;
         if (g.requiredTechs != null)
             foreach (var req in g.requiredTechs)
-                if (req != null && !civ.researchedTechs.Contains(req)) return false;
+            {
+                if (req == null || civ.researchedTechs.Contains(req)) continue;
+                if (reasons == null) return false;
+                ok = false;
+                reasons.Add($"Requires technology: {GovernmentPresentation.NameOf(req)}.");
+            }
+        return ok;
+    }
+
+    private static bool GovernmentCulturesMet(Civilization civ, GovernmentData g, List<string> reasons)
+    {
+        bool ok = true;
         if (g.requiredCultures != null)
             foreach (var req in g.requiredCultures)
-                if (req != null && !civ.researchedCultures.Contains(req)) return false;
-        if (civ.cities == null || civ.cities.Count < g.requiredCityCount) return false;
-        if (g.requiresStateReligion && civ.StateReligion == null) return false;
-        if (g.requiredVassalCount > 0 && civ.ActiveVassalCount < g.requiredVassalCount) return false;
-        return true;
+            {
+                if (req == null || civ.researchedCultures.Contains(req)) continue;
+                if (reasons == null) return false;
+                ok = false;
+                reasons.Add($"Requires culture: {GovernmentPresentation.NameOf(req)}.");
+            }
+        return ok;
+    }
+
+    private static bool GovernmentCitiesMet(Civilization civ, GovernmentData g, List<string> reasons)
+    {
+        if (civ.cities != null && civ.cities.Count >= g.requiredCityCount) return true;
+        reasons?.Add($"Requires {g.requiredCityCount} cities ({civ.cities?.Count ?? 0} owned).");
+        return false;
+    }
+
+    private static bool GovernmentReligionMet(Civilization civ, GovernmentData g, List<string> reasons)
+    {
+        if (!g.requiresStateReligion || civ.StateReligion != null) return true;
+        reasons?.Add("Requires a state religion.");
+        return false;
+    }
+
+    private static bool GovernmentVassalsMet(Civilization civ, GovernmentData g, List<string> reasons)
+    {
+        if (g.requiredVassalCount <= 0 || civ.ActiveVassalCount >= g.requiredVassalCount) return true;
+        reasons?.Add($"Requires {g.requiredVassalCount} vassals ({civ.ActiveVassalCount} held).");
+        return false;
     }
 
     /// <summary>All governments whose structural prerequisites are met, regardless of current policy points.</summary>
@@ -303,12 +535,7 @@ public class PolicyManager : MonoBehaviour
     {
         if (!GetAvailableGovernments(civ).Contains(g)) return false;
 
-        var voteResult = CouncilVoteService.Evaluate(civ, new CouncilProposalContext
-        {
-            domains = VetoDomain.Succession | VetoDomain.GovernmentChange,
-            targetGovernment = g,
-            description = $"Adopt {g.governmentName}",
-        });
+        var voteResult = CouncilVoteService.EvaluateAndRecord(civ, BuildGovernmentCouncilProposal(g));
         CouncilVoteService.NotifyPlayer(civ, voteResult);
         if (!voteResult.passed)
         {

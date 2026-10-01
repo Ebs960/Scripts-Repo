@@ -305,7 +305,7 @@ public class DiplomacyManager : MonoBehaviour
         // Council vote: war declarations must pass the proposing civ's Royal Council
         if (deal == DealType.War)
         {
-            var voteResult = CouncilVoteService.Evaluate(a, new CouncilProposalContext
+            var voteResult = CouncilVoteService.EvaluateAndRecord(a, new CouncilProposalContext
             {
                 domains = VetoDomain.WarDeclaration,
                 targetCivilization = b,

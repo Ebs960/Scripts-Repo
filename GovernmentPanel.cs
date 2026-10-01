@@ -1,99 +1,63 @@
-// (duplicate removed) - file contains a single GovernmentPanel class above
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
-/// Unified Government & Policy panel. Shows available governments and available policies for a selected civilization.
-/// Creates UI elements dynamically without prefabs.
+/// Shell and router for the unified, empire-wide Government screen (Overview, Government, Policies, Governors,
+/// Vassals, Politics). It owns tab switching, the shared confirmation dialog and event-driven refresh; each tab
+/// controller binds its own authored UI. Pre-existing serialized fields are kept so the current prefab still loads;
+/// the old runtime-built lists live in GovernmentPanel.Legacy.cs and are used only when no tab shell is wired.
 /// </summary>
-public class GovernmentPanel : MonoBehaviour
+public partial class GovernmentPanel : MonoBehaviour
 {
     public static GovernmentPanel Instance { get; private set; }
+
+    [Serializable]
+    public class TabEntry
+    {
+        public GovernmentTab tab;
+        public GovernmentNavButtonUI navButton;
+        public GameObject root;
+        public GovernmentTabBase controller;
+    }
+
     [Header("Root")]
     public GameObject panelRoot;
     public TextMeshProUGUI headerText;
-
-    [Header("Governments Section")]
-    public Transform governmentsContentRoot;
-    public TextMeshProUGUI governmentsHeaderText; // Section header for available governments
-
-    [Header("Runtime Prefabs (optional)")]
-    // Instead of prefabs we now expose Inspector-assignable UI elements for designers:
-    [Tooltip("Optional: assign a Close Button from the scene (Designer can place it in the panel). If assigned, it will be used instead of creating a runtime button.")]
+    [Tooltip("Close button authored in the panel.")]
     public Button closeButton;
 
-    [Tooltip("Optional: root GameObject for the confirm dialog (used to Show/Hide). Assign a simple dialog that contains a TextMeshProUGUI for the message and OK/Cancel Buttons.")]
-    public GameObject confirmDialogRoot;
-    [Tooltip("Optional: assign the TextMeshProUGUI that will display the confirm message (if not part of the dialog root).")]
-    public TextMeshProUGUI confirmMessageText;
-    [Tooltip("Optional: assign the OK button for the confirm dialog.")]
-    public Button confirmOkButton;
-    [Tooltip("Optional: assign the Cancel button for the confirm dialog.")]
-    public Button confirmCancelButton;
-    [Tooltip("Optional: a transform under the confirm dialog to populate effect lines into.")]
-    public Transform confirmEffectsContainer;
-    [Tooltip("Optional: an Image under the confirm dialog to show an icon for policies.")]
-    public Image confirmIconImage;
+    [Header("Tab Shell (authored)")]
+    [SerializeField] private List<TabEntry> tabs = new List<TabEntry>();
+    [SerializeField] private TMP_Text subtitleText;
+    [Tooltip("The one shared confirmation dialog used by every tab.")]
+    [SerializeField] private PoliticalConfirmDialog confirmDialogUI;
+    [SerializeField] private GovernmentTab defaultTab = GovernmentTab.Overview;
 
-    [Header("Policies Section")]
-    public Transform policiesContentRoot;
-    public TextMeshProUGUI policiesHeaderText; // Add this for section header
-
-    Civilization civ;
-    List<GameObject> spawned = new List<GameObject>();
-    // Runtime UI pieces (gameobjects we may create at runtime if inspector fields are empty)
-    private GameObject autoCloseButton; // created runtime if no closeButton assigned
+    private Civilization civ;
+    private Civilization subscribedCiv;
+    private GovernmentTab currentTab;
+    private bool isOpen;
+    private bool isShowing;
+    private bool refreshQueued;
     private bool closeButtonWired;
-    private GameObject confirmDialog; // root GameObject used at runtime (either confirmDialogRoot or created)
-    private GovernmentData pendingGovernment;
-    private PolicyData pendingPolicy;
-    // note: confirmMessageText, confirmOkButton, confirmCancelButton, confirmEffectsContainer and confirmIconImage
-    // are exposed as public inspector fields above so designers can wire them; runtime creation will assign
-    // those public fields when creating the fallback dialog if they aren't already assigned.
 
-    private void EnsureCloseButtonWired()
-    {
-        if (closeButton == null)
-            return;
+    public Civilization Civilization => civ;
+    public GovernmentTab CurrentTab => currentTab;
+    public bool IsOpen => isOpen && (panelRoot == null || panelRoot.activeInHierarchy);
+    public bool IsConfirmationVisible => (confirmDialogUI != null && confirmDialogUI.IsVisible) || IsLegacyConfirmVisible;
 
-        if (!closeButtonWired)
-        {
-            closeButton.onClick.RemoveListener(Close);
-            closeButton.onClick.AddListener(Close);
-            closeButtonWired = true;
-        }
+    /// <summary>True once the Government prefab has authored tab roots and controllers wired.</summary>
+    public bool HasTabShell => tabs != null && tabs.Any(t => t != null && t.root != null && t.controller != null);
 
-        if (UIManager.Instance != null)
-            UIManager.Instance.WireUIInteractions(closeButton.gameObject);
-    }
-
-    public void ShowForCivilization(Civilization civ)
-    {
-        this.civ = civ;
-        // Use UIManager to show panel so other panels are hidden consistently.
-        // Also explicitly hide the gameplay HUD root so the government panel is modal.
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowPanel("governmentPanel");
-            UIManager.Instance.HidePanel("gameplayHudRoot");
-        }
-        else if (panelRoot != null)
-            panelRoot.SetActive(true);
-
-        EnsureRuntimeUI();
-        EnsureCloseButtonWired();
-        if (headerText != null)
-            headerText.text = civ != null ? ( (civ.civData != null ? civ.civData.civName : civ.gameObject.name) + " - Government & Policies" ) : "Government & Policies";
-        RefreshAll();
-    }
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
     {
-        // Singleton convenience so other UIs can open the panel easily
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -101,484 +65,274 @@ public class GovernmentPanel : MonoBehaviour
         }
         Instance = this;
 
-        // Start hidden - only show when user requests via UI
         if (panelRoot != null)
             panelRoot.SetActive(false);
     }
 
-
     private void OnEnable()
     {
-        EnsureRuntimeUI();
+        Civilization.GovernorAssignmentChanged += HandleGovernorAssignmentChanged;
+        Civilization.CouncilMembershipChanged += HandleCivilizationChanged;
+        Civilization.FactionsChanged += HandleCivilizationChanged;
+        ElectionManager.ElectionStateChanged += HandleCivilizationChanged;
+        CouncilVoteService.ResultRecorded += HandleCivilizationChanged;
+        PoliticalEventManager.EventsChanged += QueueRefresh;
+        SubjectManager.ContractChanged += HandleContractChanged;
+
         EnsureCloseButtonWired();
+        if (isShowing) return;
 
-        if (civ == null)
-        {
-            civ = CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
-            if (civ == null)
-                civ = TurnManager.Instance?.GetCurrentCivilization();
-        }
-
+        // Something other than ShowForCivilization activated the panel (e.g. an inspector-wired button).
         if (panelRoot != null && panelRoot.activeInHierarchy)
-            RefreshAll();
+        {
+            var target = civ != null ? civ : PoliticalActionRules.FindPlayerCivilization();
+            if (target != null) ShowForCivilization(target, currentTab);
+        }
+    }
+
+    private void OnDisable()
+    {
+        Civilization.GovernorAssignmentChanged -= HandleGovernorAssignmentChanged;
+        Civilization.CouncilMembershipChanged -= HandleCivilizationChanged;
+        Civilization.FactionsChanged -= HandleCivilizationChanged;
+        ElectionManager.ElectionStateChanged -= HandleCivilizationChanged;
+        CouncilVoteService.ResultRecorded -= HandleCivilizationChanged;
+        PoliticalEventManager.EventsChanged -= QueueRefresh;
+        SubjectManager.ContractChanged -= HandleContractChanged;
+        closeButtonWired = false;
+    }
+
+    private void OnDestroy()
+    {
+        UnsubscribeCivilization();
+        if (Instance == this) Instance = null;
     }
 
     private void Update()
     {
-        // Close on Escape when panel is active
-        if (panelRoot != null && panelRoot.activeSelf)
+        if (!IsOpen || Keyboard.current == null || !Keyboard.current[Key.Escape].wasPressedThisFrame) return;
+        if (IsConfirmationVisible) CancelConfirmation();
+        else Close();
+    }
+
+    private void LateUpdate()
+    {
+        if (!refreshQueued) return;
+        refreshQueued = false;
+        RefreshAllVisible();
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    public void ShowForCivilization(Civilization civilization) => ShowForCivilization(civilization, defaultTab);
+
+    public void ShowForCivilization(Civilization civilization, GovernmentTab tab)
+    {
+        civilization ??= PoliticalActionRules.FindPlayerCivilization();
+        if (civilization == null) return;
+
+        isShowing = true;
+        try
         {
+            if (!OpenModal()) return;
+            SetCivilization(civilization);
             EnsureCloseButtonWired();
-
-            if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
-                Close();
+            OpenTab(tab);
+        }
+        finally
+        {
+            isShowing = false;
         }
     }
 
-    private void EnsureRuntimeUI()
+    public void OpenTab(GovernmentTab tab)
     {
-        if (panelRoot == null) return;
-
-        // Create an X close button in the top-right if missing
-        if (autoCloseButton == null)
-        {
-                if (closeButton != null)
-                {
-                    // Use the inspector-assigned close button
-                    autoCloseButton = closeButton.gameObject;
-                    EnsureCloseButtonWired();
-                }
-                else
-                {
-                    // Create a minimal runtime close button if none provided
-                    autoCloseButton = new GameObject("CloseButton", typeof(RectTransform));
-                    autoCloseButton.transform.SetParent(panelRoot.transform, false);
-                    var btn = autoCloseButton.AddComponent<Button>();
-                    var txt = autoCloseButton.AddComponent<TextMeshProUGUI>();
-                    txt.text = "X";
-                    txt.fontSize = 20;
-                    txt.color = Color.white;
-                    var rt = autoCloseButton.GetComponent<RectTransform>();
-                    rt.anchorMin = new Vector2(1f, 1f);
-                    rt.anchorMax = new Vector2(1f, 1f);
-                    rt.pivot = new Vector2(1f, 1f);
-                    rt.anchoredPosition = new Vector2(-10f, -10f);
-                    rt.sizeDelta = new Vector2(30, 30);
-                    btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(() => Close());
-                    // Wire click sounds for runtime-created close button
-                    if (UIManager.Instance != null) UIManager.Instance.WireUIInteractions(autoCloseButton);
-                }
-        }
-
-        // Create a simple confirm dialog if missing
-        if (confirmDialog == null)
-        {
-            // Prefer using an inspector-assigned dialog root when available
-            if (confirmDialogRoot != null)
-            {
-                confirmDialog = confirmDialogRoot;
-            }
-            else
-            {
-                // Build a minimal runtime confirm dialog (keeps text + OK/Cancel) so functionality works without inspector wiring
-                confirmDialog = new GameObject("ConfirmDialog", typeof(RectTransform));
-                confirmDialog.transform.SetParent(panelRoot.transform, false);
-                var rt = confirmDialog.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0.5f, 0.5f);
-                rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.sizeDelta = new Vector2(320, 200);
-                var image = confirmDialog.AddComponent<Image>();
-                image.color = new Color(0f, 0f, 0f, 0.85f);
-
-                // Message text
-                var msgGO = new GameObject("Message", typeof(RectTransform));
-                msgGO.transform.SetParent(confirmDialog.transform, false);
-                var msg = msgGO.AddComponent<TextMeshProUGUI>();
-                msg.text = "Confirm?";
-                msg.alignment = TextAlignmentOptions.Center;
-                msg.fontSize = 16;
-                var msgRt = msg.rectTransform;
-                msgRt.anchorMin = new Vector2(0f, 0.7f);
-                msgRt.anchorMax = new Vector2(1f, 1f);
-                msgRt.offsetMin = new Vector2(8, 8);
-                msgRt.offsetMax = new Vector2(-8, -8);
-
-                // Effects container placeholder
-                var effectsGO = new GameObject("EffectsContainer", typeof(RectTransform));
-                effectsGO.transform.SetParent(confirmDialog.transform, false);
-                var effectsRt = effectsGO.GetComponent<RectTransform>();
-                effectsRt.anchorMin = new Vector2(0f, 0.35f);
-                effectsRt.anchorMax = new Vector2(1f, 0.7f);
-                effectsRt.offsetMin = new Vector2(8, 4);
-                effectsRt.offsetMax = new Vector2(-8, -4);
-
-                // Buttons container
-                var btnContainer = new GameObject("Buttons", typeof(RectTransform));
-                btnContainer.transform.SetParent(confirmDialog.transform, false);
-                var btnRt = btnContainer.GetComponent<RectTransform>();
-                btnRt.anchorMin = new Vector2(0f, 0f);
-                btnRt.anchorMax = new Vector2(1f, 0.3f);
-                btnRt.offsetMin = new Vector2(8, 8);
-                btnRt.offsetMax = new Vector2(-8, -8);
-
-                // Confirm (OK) button
-                var okGO = new GameObject("OK", typeof(RectTransform));
-                okGO.transform.SetParent(btnContainer.transform, false);
-                var okBtn = okGO.AddComponent<Button>();
-                var okTxt = okGO.AddComponent<TextMeshProUGUI>();
-                okTxt.text = "Confirm";
-                okTxt.alignment = TextAlignmentOptions.Center;
-                okTxt.color = Color.white;
-                var okRt = okGO.GetComponent<RectTransform>();
-                okRt.anchorMin = new Vector2(0f, 0f);
-                okRt.anchorMax = new Vector2(0.5f, 1f);
-                okRt.offsetMin = new Vector2(4, 4);
-                okRt.offsetMax = new Vector2(-4, -4);
-
-                // Cancel button
-                var cancelGO = new GameObject("Cancel", typeof(RectTransform));
-                cancelGO.transform.SetParent(btnContainer.transform, false);
-                var cancelBtn = cancelGO.AddComponent<Button>();
-                var cancelTxt = cancelGO.AddComponent<TextMeshProUGUI>();
-                cancelTxt.text = "Cancel";
-                cancelTxt.alignment = TextAlignmentOptions.Center;
-                cancelTxt.color = Color.white;
-                var cancelRt = cancelGO.GetComponent<RectTransform>();
-                cancelRt.anchorMin = new Vector2(0.5f, 0f);
-                cancelRt.anchorMax = new Vector2(1f, 1f);
-                cancelRt.offsetMin = new Vector2(4, 4);
-                cancelRt.offsetMax = new Vector2(-4, -4);
-
-                // Default behavior (hide dialog)
-                okBtn.onClick.AddListener(() => { confirmDialog.SetActive(false); });
-                cancelBtn.onClick.AddListener(() => { pendingGovernment = null; pendingPolicy = null; confirmDialog.SetActive(false); });
-
-                // Assign runtime-created references if inspector ones weren't provided
-                if (confirmMessageText == null) confirmMessageText = msg;
-                if (confirmOkButton == null) confirmOkButton = okBtn;
-                if (confirmCancelButton == null) confirmCancelButton = cancelBtn;
-                if (confirmEffectsContainer == null) confirmEffectsContainer = effectsGO.transform;
-            }
-
-            if (confirmDialog != null)
-                confirmDialog.SetActive(false);
-            // Ensure dialog buttons have click sounds wired via UIManager
-            if (UIManager.Instance != null && confirmDialog != null)
-                UIManager.Instance.WireUIInteractions(confirmDialog);
-        }
-    }
-
-    public void Hide()
-    {
-        // Use HideAllPanels so gameplay HUD root is restored
-        // (ShowForCivilization explicitly hides it when opening)
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.HideAllPanels();
-            if (UIManager.Instance.gameplayHudRoot != null)
-                UIManager.Instance.gameplayHudRoot.SetActive(true);
-        }
-        else if (panelRoot != null)
-            panelRoot.SetActive(false);
-    }
-
-    public void RefreshAll()
-    {
-        ClearSpawned();
+        currentTab = tab;
         if (civ == null) return;
 
-        // Set section headers
-        if (governmentsHeaderText != null)
+        if (!HasTabShell)
         {
-            governmentsHeaderText.text = "Available Governments";
-            governmentsHeaderText.gameObject.SetActive(true);
-        }
-        if (policiesHeaderText != null)
-        {
-            policiesHeaderText.text = "Available Policies";
-            policiesHeaderText.gameObject.SetActive(true);
+            RefreshChrome();
+            RefreshLegacyLists();
+            return;
         }
 
-        // Governments
-    if (governmentsContentRoot != null && PolicyManager.Instance != null)
+        foreach (var entry in tabs)
+            if (entry != null) GovernmentUiUtil.SetActive(entry.root, entry.tab == tab);
+
+        RefreshChrome();
+        RefreshController(FindEntry(tab));
+    }
+
+    public void RefreshCurrentTab()
     {
-        // Show all unlocked governments in the UI, but disable the Adopt button when the civ
-        // cannot currently adopt (e.g. lacks policy points or other requirements).
-        var unlocked = civ.unlockedGovernments;
-        if (unlocked != null && unlocked.Count > 0)
-        {
-            // Compute available set once to avoid repeated calls
-            var avail = new HashSet<GovernmentData>(PolicyManager.Instance.GetAvailableGovernments(civ));
-            foreach (var g in unlocked)
-            {
-                if (g == null) continue;
-                var rowGO = new GameObject($"Government_{g.governmentName}");
-                rowGO.transform.SetParent(governmentsContentRoot, false);
-                spawned.Add(rowGO);
-
-                var layout = rowGO.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-                layout.childControlWidth = true;
-                layout.childControlHeight = true;
-                layout.childForceExpandWidth = false;
-                layout.childForceExpandHeight = false;
-
-                var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-                iconGO.transform.SetParent(rowGO.transform, false);
-                var iconImage = iconGO.GetComponent<Image>();
-                iconImage.sprite = g.icon;
-                iconImage.preserveAspect = true;
-                iconImage.enabled = g.icon != null;
-                var iconLayout = iconGO.GetComponent<LayoutElement>();
-                iconLayout.preferredWidth = 56f;
-                iconLayout.preferredHeight = 56f;
-                iconLayout.flexibleWidth = 0f;
-
-                var textGO = new GameObject("Text");
-                textGO.transform.SetParent(rowGO.transform, false);
-                var txt = textGO.AddComponent<TextMeshProUGUI>();
-                txt.text = g.governmentName + "\n" + g.description;
-                txt.fontSize = 18;
-                txt.color = Color.white;
-                var textRect = textGO.AddComponent<RectTransform>();
-                textRect.sizeDelta = new Vector2(200, 60);
-
-                var btnGO = new GameObject("Button");
-                btnGO.transform.SetParent(rowGO.transform, false);
-                var btn = btnGO.AddComponent<Button>();
-                var btnTxt = btnGO.AddComponent<TextMeshProUGUI>();
-                btnTxt.text = "Adopt";
-                btnTxt.fontSize = 16;
-                // Gray out when not currently adoptable
-                bool canAdopt = avail.Contains(g);
-                btnTxt.color = canAdopt ? Color.black : Color.gray;
-                btnTxt.alignment = TextAlignmentOptions.Center;
-                var btnRect = btnGO.AddComponent<RectTransform>();
-                btnRect.sizeDelta = new Vector2(80, 30);
-
-                // Wire button to confirmation dialog; button stays visible but disabled when unaffordable
-                btn.interactable = canAdopt;
-                btn.onClick.AddListener(() => {
-                    pendingGovernment = g;
-                    pendingPolicy = null;
-                    EnsureRuntimeUI();
-                    if (confirmMessageText != null) confirmMessageText.text = $"Adopt government '{g.governmentName}'? Cost: {g.policyPointCost} policy points.";
-                    PopulateConfirmDialogEffects(g, null);
-                    if (confirmOkButton != null)
-                    {
-                        confirmOkButton.onClick.RemoveAllListeners();
-                        confirmOkButton.onClick.AddListener(() => {
-                            TryChangeGovernment(pendingGovernment);
-                            pendingGovernment = null;
-                            confirmDialog.SetActive(false);
-                        });
-                    }
-                    if (confirmCancelButton != null)
-                    {
-                        confirmCancelButton.onClick.RemoveAllListeners();
-                        confirmCancelButton.onClick.AddListener(() => { pendingGovernment = null; confirmDialog.SetActive(false); });
-                    }
-                    confirmDialog.SetActive(true);
-                });
-            }
-        }
-        else
-        {
-            // No unlocked governments at all
-            if (governmentsHeaderText != null) governmentsHeaderText.text = "No Governments Available";
-        }
+        if (civ == null) return;
+        RefreshChrome();
+        if (HasTabShell) RefreshController(FindEntry(currentTab));
+        else RefreshLegacyLists();
     }
 
-        // Policies
-    if (policiesContentRoot != null && PolicyManager.Instance != null)
-        {
-            var policies = PolicyManager.Instance.GetAvailablePolicies(civ);
-            if (policies != null && policies.Count > 0)
-            {
-                foreach (var p in policies)
-                {
-                    // Create a simple row: Text + Button
-                    var rowGO = new GameObject($"Policy_{p.policyName}");
-                    rowGO.transform.SetParent(policiesContentRoot, false);
-                    spawned.Add(rowGO);
-
-                    // Add Horizontal Layout Group
-                    var layout = rowGO.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-                    layout.childControlWidth = true;
-                    layout.childControlHeight = true;
-                    layout.childForceExpandWidth = false;
-                    layout.childForceExpandHeight = false;
-
-                    // Add Text
-                    var textGO = new GameObject("Text");
-                    textGO.transform.SetParent(rowGO.transform, false);
-                    var txt = textGO.AddComponent<TextMeshProUGUI>();
-                    txt.text = p.policyName + "\n" + p.description;
-                    txt.fontSize = 18;
-                    txt.color = Color.white;
-                    var textRect = textGO.AddComponent<RectTransform>();
-                    textRect.sizeDelta = new Vector2(200, 60); // Increased height for description
-
-                    // Add Button
-                    var btnGO = new GameObject("Button");
-                    btnGO.transform.SetParent(rowGO.transform, false);
-                    var btn = btnGO.AddComponent<Button>();
-                    var btnTxt = btnGO.AddComponent<TextMeshProUGUI>();
-                    btnTxt.text = "Adopt";
-                    btnTxt.fontSize = 16;
-                    btnTxt.color = Color.black;
-                    btnTxt.alignment = TextAlignmentOptions.Center;
-                    var btnRect = btnGO.AddComponent<RectTransform>();
-                    btnRect.sizeDelta = new Vector2(80, 30);
-
-                    // Wire button to confirmation dialog
-                    btn.interactable = PolicyManager.Instance.GetAvailablePolicies(civ).Contains(p);
-                    btn.onClick.AddListener(() => {
-                        pendingPolicy = p;
-                        pendingGovernment = null;
-                        EnsureRuntimeUI();
-                        if (confirmMessageText != null) confirmMessageText.text = $"Adopt policy '{p.policyName}'? Cost: {p.policyPointCost} policy points.\n{p.description}";
-                        // Populate an effects breakdown in the confirm dialog when available
-                        PopulateConfirmDialogEffects(null, p);
-                        if (confirmOkButton != null)
-                        {
-                            confirmOkButton.onClick.RemoveAllListeners();
-                            confirmOkButton.onClick.AddListener(() => {
-                                TryAdoptPolicy(pendingPolicy);
-                                pendingPolicy = null;
-                                confirmDialog.SetActive(false);
-                            });
-                        }
-                        if (confirmCancelButton != null)
-                        {
-                            confirmCancelButton.onClick.RemoveAllListeners();
-                            confirmCancelButton.onClick.AddListener(() => { pendingPolicy = null; confirmDialog.SetActive(false); });
-                        }
-                        confirmDialog.SetActive(true);
-                    });
-                }
-            }
-            else
-            {
-                // No policies available
-                if (policiesHeaderText != null) policiesHeaderText.text = "No Policies Available";
-            }
-        }
-    }
-
-    private void TryChangeGovernment(GovernmentData g)
+    /// <summary>Refreshes everything currently on screen: the header/nav plus the one visible tab.</summary>
+    public void RefreshAllVisible()
     {
-        if (civ == null || g == null || PolicyManager.Instance == null) return;
-        var ok = PolicyManager.Instance.ChangeGovernment(civ, g);
-        if (ok) RefreshAll();
+        if (!IsOpen) return;
+        RefreshCurrentTab();
     }
 
-    private void TryAdoptPolicy(PolicyData p)
-    {
-        if (civ == null || p == null || PolicyManager.Instance == null) return;
-        var ok = PolicyManager.Instance.AdoptPolicy(civ, p);
-        if (ok) RefreshAll();
-    }
-
-    /// <summary>
-    /// Close/hide the government panel and clear spawned content.
-    /// </summary>
     public void Close()
     {
-        ClearSpawned();
+        confirmDialogUI?.Hide();
+        HideLegacyConfirmation();
+        ClearLegacySpawned();
+        UnsubscribeCivilization();
         civ = null;
+        isOpen = false;
+        refreshQueued = false;
 
-        // Use UIManager.HideAllPanels so gameplay HUD root is restored
-        // (ShowForCivilization explicitly hides it when opening)
         if (UIManager.Instance != null)
         {
             UIManager.Instance.HideAllPanels();
             if (UIManager.Instance.gameplayHudRoot != null)
                 UIManager.Instance.gameplayHudRoot.SetActive(true);
         }
-        else if (panelRoot != null)
+        if (panelRoot != null && panelRoot.activeSelf)
             panelRoot.SetActive(false);
     }
 
-    private void ClearSpawned()
-    {
-        for (int i = spawned.Count - 1; i >= 0; i--)
-            Destroy(spawned[i]);
-        spawned.Clear();
+    /// <summary>Kept for older callers; identical to Close().</summary>
+    public void Hide() => Close();
 
-        // Hide headers when clearing
-    if (governmentsHeaderText != null) governmentsHeaderText.gameObject.SetActive(false);
-        if (policiesHeaderText != null) policiesHeaderText.gameObject.SetActive(false);
+    /// <summary>Shows the single shared confirmation dialog. The action runs only if the player confirms.</summary>
+    public void RequestConfirmation(PoliticalConfirmRequest request)
+    {
+        if (request == null) return;
+        if (confirmDialogUI != null) confirmDialogUI.Show(request);
+        else ShowLegacyConfirmation(request);
     }
 
-    void OnDisable()
+    // ── Internals ─────────────────────────────────────────────────────────────
+
+    private bool OpenModal()
     {
-        closeButtonWired = false;
-        ClearSpawned();
+        var ui = UIManager.Instance;
+        if (ui != null)
+        {
+            if (ui.IsBlockingModalVisible) return false;
+            if (ui.GetPanel("GovernmentPanel") == null && panelRoot != null)
+                ui.RegisterPanel("GovernmentPanel", panelRoot);
+
+            ui.ShowPanel("governmentPanel");
+            ui.HidePanel("gameplayHudRoot");
+
+            // ShowPanel declines while loading or behind a modal; do not force the screen open in that case.
+            var registered = ui.GetPanel("GovernmentPanel");
+            if (registered != null && !registered.activeInHierarchy) return false;
+        }
+
+        if (panelRoot != null && !panelRoot.activeSelf)
+            panelRoot.SetActive(true);
+        isOpen = true;
+        return true;
     }
 
-    /// <summary>
-    /// Populate the confirm dialog's effects container and icon based on the pending government or policy.
-    /// If a prefab provides an EffectsContainer or Icon, those will be used; otherwise this will do nothing.
-    /// </summary>
-    private void PopulateConfirmDialogEffects(GovernmentData gov, PolicyData pol)
+    private void CancelConfirmation()
     {
-        if (confirmDialog == null) return;
+        if (confirmDialogUI != null && confirmDialogUI.IsVisible) confirmDialogUI.Cancel();
+        else CancelLegacyConfirmation();
+    }
 
-        // Clear previous effect entries
-        if (confirmEffectsContainer != null)
+    private TabEntry FindEntry(GovernmentTab tab)
+        => tabs?.FirstOrDefault(t => t != null && t.tab == tab);
+
+    private void RefreshController(TabEntry entry)
+    {
+        if (entry?.controller == null) return;
+        entry.controller.Bind(civ, this);
+        entry.controller.Refresh();
+    }
+
+    private void RefreshChrome()
+    {
+        if (civ == null) return;
+        GovernmentUiUtil.SetText(headerText, $"{GovernmentPresentation.NameOf(civ)} - Government");
+        GovernmentUiUtil.SetText(subtitleText, civ.currentGovernment != null ? GovernmentPresentation.NameOf(civ.currentGovernment) : "No government");
+
+        if (tabs == null) return;
+        foreach (var entry in tabs)
         {
-            for (int i = confirmEffectsContainer.childCount - 1; i >= 0; i--)
-                Destroy(confirmEffectsContainer.GetChild(i).gameObject);
+            if (entry == null || entry.navButton == null) continue;
+            var tab = entry.tab;
+            entry.navButton.Bind(TabLabel(tab), tab == currentTab, () => OpenTab(tab));
         }
+    }
 
-        // If an icon is available and dialog contains an image placeholder, set it
-        if (confirmIconImage != null)
+    private string TabLabel(GovernmentTab tab)
+    {
+        switch (tab)
         {
-            Sprite icon = pol != null ? pol.icon : gov != null ? gov.icon : null;
-            confirmIconImage.gameObject.SetActive(icon != null);
-            if (icon != null) confirmIconImage.sprite = icon;
+            case GovernmentTab.Overview: return "Overview";
+            case GovernmentTab.Government: return "Government";
+            case GovernmentTab.Policies: return "Policies";
+            case GovernmentTab.Governors: return GovernmentPresentation.GetGovernorTitlePlural(civ);
+            case GovernmentTab.Vassals: return "Vassals";
+            case GovernmentTab.Politics: return "Politics";
+            default: return tab.ToString();
         }
+    }
 
-        // Build a small human-readable list of bonuses
-        if (confirmEffectsContainer == null) return;
-
-        System.Action<string> addLine = (text) => {
-            var line = new GameObject("EffectLine");
-            line.transform.SetParent(confirmEffectsContainer, false);
-            var t = line.AddComponent<TextMeshProUGUI>();
-            t.text = text;
-            t.fontSize = 14;
-            t.color = Color.white;
-            var rt = line.AddComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(280, 20);
-        };
-
-        if (gov != null)
+    private void EnsureCloseButtonWired()
+    {
+        if (closeButton == null) return;
+        if (!closeButtonWired)
         {
-            addLine($"Attack Bonus: {gov.attackBonus:+0.##;-0.##;0}");
-            addLine($"Defense Bonus: {gov.defenseBonus:+0.##;-0.##;0}");
-            addLine($"Movement Bonus: {gov.movementBonus:+0.##;-0.##;0}");
-            addLine($"Food: {gov.foodModifier:+0.##;-0.##;0}%");
-            addLine($"Production: {gov.productionModifier:+0.##;-0.##;0}%");
-            addLine($"Gold: {gov.goldModifier:+0.##;-0.##;0}%");
-            addLine($"Science: {gov.scienceModifier:+0.##;-0.##;0}%");
-            addLine($"Culture: {gov.cultureModifier:+0.##;-0.##;0}%");
-            addLine($"Faith: {gov.faithModifier:+0.##;-0.##;0}%");
+            closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.AddListener(Close);
+            closeButtonWired = true;
         }
-        else if (pol != null)
+        UIManager.Instance?.WireUIInteractions(closeButton.gameObject);
+    }
+
+    // ── Event-driven refresh ──────────────────────────────────────────────────
+
+    private void SetCivilization(Civilization target)
+    {
+        if (subscribedCiv != target)
         {
-            addLine($"Attack Bonus: {pol.attackBonus:+0.##;-0.##;0}");
-            addLine($"Defense Bonus: {pol.defenseBonus:+0.##;-0.##;0}");
-            addLine($"Movement Bonus: {pol.movementBonus:+0.##;-0.##;0}");
-            addLine($"Food: {pol.foodModifier:+0.##;-0.##;0}%");
-            addLine($"Production: {pol.productionModifier:+0.##;-0.##;0}%");
-            addLine($"Gold: {pol.goldModifier:+0.##;-0.##;0}%");
-            addLine($"Science: {pol.scienceModifier:+0.##;-0.##;0}%");
-            addLine($"Culture: {pol.cultureModifier:+0.##;-0.##;0}%");
-            addLine($"Faith: {pol.faithModifier:+0.##;-0.##;0}%");
+            UnsubscribeCivilization();
+            subscribedCiv = target;
+            target.OnPolicyAdopted += HandlePolicyChanged;
+            target.OnPolicyRevoked += HandlePolicyChanged;
+            target.OnGovernmentChanged += HandleGovernmentChanged;
+            target.OnUnlocksChanged += QueueRefresh;
+            target.OnPolicyPointsChanged += HandlePolicyPointsChanged;
         }
+        civ = target;
+    }
+
+    private void UnsubscribeCivilization()
+    {
+        if (subscribedCiv == null) return;
+        subscribedCiv.OnPolicyAdopted -= HandlePolicyChanged;
+        subscribedCiv.OnPolicyRevoked -= HandlePolicyChanged;
+        subscribedCiv.OnGovernmentChanged -= HandleGovernmentChanged;
+        subscribedCiv.OnUnlocksChanged -= QueueRefresh;
+        subscribedCiv.OnPolicyPointsChanged -= HandlePolicyPointsChanged;
+        subscribedCiv = null;
+    }
+
+    // Refreshes are coalesced into one LateUpdate pass so a burst of events (e.g. a government change) rebuilds once.
+    private void QueueRefresh()
+    {
+        if (IsOpen) refreshQueued = true;
+    }
+
+    private void HandlePolicyChanged(Civilization c, PolicyData p) => QueueRefresh();
+    private void HandleGovernmentChanged(Civilization c, GovernmentData g) => QueueRefresh();
+    private void HandlePolicyPointsChanged(int total, int delta) => QueueRefresh();
+    private void HandleGovernorAssignmentChanged(Civilization c, City city) { if (c == civ) QueueRefresh(); }
+    private void HandleCivilizationChanged(Civilization c) { if (c == civ) QueueRefresh(); }
+    private void HandleContractChanged(Civilization overlord, Civilization subject)
+    {
+        if (overlord == civ || subject == civ) QueueRefresh();
     }
 }

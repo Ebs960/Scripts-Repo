@@ -14,7 +14,7 @@ public static class ReligionPoliticsService
         if (civ.StateReligion == religion) return true;
         if (requirePoliticalApproval)
         {
-            var vote = CouncilVoteService.Evaluate(civ, new CouncilProposalContext {
+            var vote = CouncilVoteService.EvaluateAndRecord(civ, new CouncilProposalContext {
                 domains = VetoDomain.Religion,
                 targetReligion = religion,
                 religionProposalType = religion == null ? ReligionProposalType.RemoveStateReligion : ReligionProposalType.AdoptStateReligion,

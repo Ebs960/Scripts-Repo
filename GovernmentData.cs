@@ -23,6 +23,15 @@ public class GovernmentData : ScriptableObject
     public string leaderTitleSuffix;    // e.g. "Emperor", "Chieftain"
     [TextArea] public string description;
 
+    [Header("UI Presentation")]
+    [Tooltip("Large picture for the Government screen detail view. Optional; the small icon is used when empty.")]
+    public Sprite governmentArtwork;
+    [Tooltip("Player-facing title for one governor under this government (e.g. Lord, Magistrate). Presentation only; never saved into Governor.Name.")]
+    public string governorTitleSingular = "Governor";
+    public string governorTitlePlural = "Governors";
+    [Tooltip("Player-facing title for a governor seated on this government's council or legislature.")]
+    public string councilMemberTitle = "Councillor";
+
     [Header("Cost & Requirements")]
     [Tooltip("Policy points to enact this government")]
     public int policyPointCost;

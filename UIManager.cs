@@ -374,6 +374,42 @@ public class UIManager : MonoBehaviour
         return panel;
     }
 
+    /// <summary>Registers a managed panel under its PascalCase and camelCase names (the keys ShowPanel looks up).</summary>
+    public void RegisterPanel(string name, GameObject panel)
+    {
+        if (string.IsNullOrEmpty(name) || panel == null || panelDict == null) return;
+        panelDict[name] = panel;
+        panelDict[char.ToLowerInvariant(name[0]) + name.Substring(1)] = panel;
+    }
+
+    /// <summary>
+    /// Opens the unified Government screen on a tab. This is the single entry point for the HUD and for the
+    /// legacy Political Affairs route.
+    /// </summary>
+    public void ShowGovernmentPanel(Civilization civ = null, GovernmentTab tab = GovernmentTab.Overview)
+    {
+        civ ??= CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
+        var panel = ResolveGovernmentPanel();
+        if (panel == null)
+        {
+            ShowPanel("GovernmentPanel");
+            return;
+        }
+        panel.ShowForCivilization(civ, tab);
+    }
+
+    private GovernmentPanel ResolveGovernmentPanel()
+    {
+        if (GovernmentPanel.Instance != null) return GovernmentPanel.Instance;
+        if (governmentPanel != null)
+        {
+            var found = governmentPanel.GetComponentInChildren<GovernmentPanel>(true)
+                        ?? governmentPanel.GetComponentInParent<GovernmentPanel>(true);
+            if (found != null) return found;
+        }
+        return FindAnyObjectByType<GovernmentPanel>(FindObjectsInactive.Include);
+    }
+
     /// <summary>
     /// Show a notification message to the player. Displays the notificationPanel and auto-hides after duration.
     /// </summary>
@@ -431,6 +467,15 @@ public class UIManager : MonoBehaviour
             return;
         }
 
+        // Political Affairs is now the Politics tab of the unified Government screen.
+        var government = ResolveGovernmentPanel();
+        if (government != null && government.HasTabShell)
+        {
+            government.ShowForCivilization(civ, GovernmentTab.Politics);
+            return;
+        }
+
+        // Compatibility fallback until the Government prefab is rewired with authored tabs.
         if (politicalAffairsPanelUI == null)
             EnsurePoliticalAffairsPanelUi();
 

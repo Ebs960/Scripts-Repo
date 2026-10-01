@@ -6,6 +6,9 @@ using UnityEngine;
 /// <summary>Data-driven national elections. CouncilElection events remain council-seat vacancies.</summary>
 public static class ElectionManager
 {
+    /// <summary>Raised when a civilization's election state changes so open political screens can refresh.</summary>
+    public static event Action<Civilization> ElectionStateChanged;
+
     public static void OnGovernmentChanged(Civilization civ, GovernmentData oldGovernment, GovernmentData newGovernment, int turn)
     {
         if (civ == null) return;
@@ -16,6 +19,7 @@ public static class ElectionManager
             civ.electionState.activeElection = null;
             civ.electionState.currentOffice = null;
             civ.electionState.nextElectionTurn = -1;
+            ElectionStateChanged?.Invoke(civ);
             return;
         }
 
@@ -24,6 +28,7 @@ public static class ElectionManager
         civ.electionState.currentOffice = null;
         civ.electionState.nextElectionTurn = turn + Mathf.Max(1, rules.campaignLeadTurns);
         civ.electionState.governmentLegitimacy = Mathf.Clamp(civ.electionState.governmentLegitimacy, 35f, 65f);
+        ElectionStateChanged?.Invoke(civ);
     }
 
     public static void ProcessTurn(Civilization civ, int turn)
@@ -39,6 +44,7 @@ public static class ElectionManager
         if (civ.electionState.activeElection != null && !civ.electionState.activeElection.resolved
             && turn >= civ.electionState.activeElection.resolutionTurn)
             Resolve(civ, rules, civ.electionState.activeElection, turn);
+        ElectionStateChanged?.Invoke(civ);
     }
 
     public static bool EndorseCandidate(Civilization civ, string candidateId, int goldSpend = 0)
@@ -51,6 +57,7 @@ public static class ElectionManager
         election.campaignGoldSpent += spend;
         // Intervention costs legitimacy; it influences support but can never directly select the winner.
         civ.electionState.governmentLegitimacy = Mathf.Clamp(civ.electionState.governmentLegitimacy - 1f - spend / 250f, 0f, 100f);
+        ElectionStateChanged?.Invoke(civ);
         return true;
     }
 

@@ -59,7 +59,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
         Debug.Log($"[HudPoliticalAffairsDropdown] Refresh civ={(currentCiv != null ? currentCiv.civData?.civName : "null")}");
 
         int governorCount = currentCiv?.governors?.Count ?? 0;
-        dropdownButton.SetLabel($"Political Affairs: {governorCount} Governors");
+        dropdownButton.SetLabel($"Political Affairs: {governorCount} {GovernmentPresentation.GetGovernorTitlePlural(currentCiv)}");
 
         dropdownButton.ClearBody();
         var bodyRoot = dropdownButton.BodyRootTransform;
@@ -75,7 +75,7 @@ public class HudPoliticalAffairsDropdown : MonoBehaviour
 
     private void BuildGovernorSection(Transform bodyRoot)
     {
-        AddSectionHeader("Governors", bodyRoot);
+        AddSectionHeader(GovernmentPresentation.GetGovernorTitlePlural(currentCiv), bodyRoot);
 
         var governors = currentCiv?.governors;
         if (governors == null || governors.Count == 0)

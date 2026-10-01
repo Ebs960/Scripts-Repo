@@ -29,7 +29,9 @@ public class HudGovernorSummaryRow : MonoBehaviour
         }
 
         if (nameText != null)
-            nameText.text = string.IsNullOrWhiteSpace(governor.Name) ? "Governor" : governor.Name;
+            nameText.text = civ != null
+                ? GovernmentPresentation.FormatGovernorName(civ, governor)
+                : (string.IsNullOrWhiteSpace(governor.Name) ? "Governor" : governor.Name);
 
         if (citiesText != null)
             citiesText.text = BuildCitySummary(governor, civ);

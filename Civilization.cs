@@ -20,6 +20,10 @@ public enum DiplomaticState
 public class Civilization : MonoBehaviour
 {
     public static event Action<Civilization, City> GovernorAssignmentChanged;
+    /// <summary>Raised when council seats change so open political screens can refresh.</summary>
+    public static event Action<Civilization> CouncilMembershipChanged;
+    /// <summary>Raised when faction membership or demands change.</summary>
+    public static event Action<Civilization> FactionsChanged;
     [Header("Static Data")]
     public CivData civData { get; private set; }
     public LeaderData leader { get; private set; } // Added to store the active leader
@@ -705,6 +709,7 @@ public class Civilization : MonoBehaviour
     public event Action OnBeliefsChanged;
     // Mission-system hooks
     public event Action<Civilization, PolicyData> OnPolicyAdopted;
+    public event Action<Civilization, PolicyData> OnPolicyRevoked;
     public event Action<Civilization, GovernmentData> OnGovernmentChanged;
     public event Action<Civilization, City> OnCityFounded;
     public event Action<Civilization, PantheonData> OnPantheonFounded;
@@ -1027,7 +1032,7 @@ public class Civilization : MonoBehaviour
 
     /// <summary>
     /// Returns true if the council currently holds a vote over the given domain.
-    /// Prefer CouncilVoteService.Evaluate for actual approval decisions.
+    /// Prefer CouncilVoteService.EvaluateAndRecord for actual approval decisions (Preview for UI outlooks).
     /// </summary>
     public bool HasCouncilVeto(VetoDomain domain)
         => (ActiveVetoDomains & domain) != VetoDomain.None;
@@ -1049,6 +1054,7 @@ public class Civilization : MonoBehaviour
 
         // If this governor was in a faction, they may leave it now
         gov.Faction?.RemoveMember(gov);
+        CouncilMembershipChanged?.Invoke(this);
         return true;
     }
 
@@ -1059,6 +1065,7 @@ public class Civilization : MonoBehaviour
         royalCouncil.Remove(gov);
         gov.IsOnCouncil = false;
         gov.AddGrievance(GrievanceSource.TitleRevoked);
+        CouncilMembershipChanged?.Invoke(this);
         return true;
     }
 
@@ -1110,6 +1117,7 @@ public class Civilization : MonoBehaviour
                     if (gov != null) gov.IsOnCouncil = false;
                 }
                 royalCouncil.Clear();
+                CouncilMembershipChanged?.Invoke(this);
             }
             return;
         }
@@ -1192,6 +1200,7 @@ public class Civilization : MonoBehaviour
             if (bloc.ActiveDemands.Count == 0 && bloc.ComputePower() > 10f)
                 bloc.GenerateDemand(this, currentTurn);
         }
+        FactionsChanged?.Invoke(this);
     }
 
     /// <summary>Outcome of resolving a faction demand, so UI can report mechanical failures.</summary>
@@ -1306,12 +1315,14 @@ public class Civilization : MonoBehaviour
                     result.success = true;
                     result.rebellionTriggered = true;
                     bloc.ResolveDemand(demand, true, this, currentTurn);
+                    FactionsChanged?.Invoke(this);
                     return result;
             }
         }
 
         result.success = true;
         result.rebellionTriggered = bloc.ResolveDemand(demand, accepted, this, currentTurn);
+        FactionsChanged?.Invoke(this);
         return result;
     }
 
@@ -3711,6 +3722,7 @@ public class Civilization : MonoBehaviour
         RemovePolicyBonuses(p);
         RecalculateCachedYieldRates();
         TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
+        OnPolicyRevoked?.Invoke(this, p);
         return true;
     }
 

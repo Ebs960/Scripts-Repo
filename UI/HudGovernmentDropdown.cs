@@ -115,7 +115,8 @@ public class HudGovernmentDropdown : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(g.leaderTitleSuffix)) lines.Add($"Leader: {g.leaderTitleSuffix}");
         if (!string.IsNullOrWhiteSpace(g.signatureMechanic)) lines.Add($"Signature: {g.signatureMechanic}");
         if (!string.IsNullOrWhiteSpace(g.majorTradeoff)) lines.Add($"Tradeoff: {g.majorTradeoff}");
-        if (g.usesRoyalCouncil) lines.Add($"{g.institutionDisplayName}: {g.councilSeatCount} seats • Vetoes: {g.councilVetoDomains}");
+        if (g.usesRoyalCouncil) lines.Add($"{GovernmentPresentation.GetInstitutionName(currentCiv)}: {g.councilSeatCount} seats • Vetoes: {g.councilVetoDomains}");
+        lines.Add(GovernmentPresentation.FormatGovernorCap(currentCiv));
         var rules = g.electionRules;
         var state = currentCiv.electionState;
         if (rules != null && rules.enabled)
@@ -155,7 +156,7 @@ public class HudGovernmentDropdown : MonoBehaviour
     private void OpenGovernmentPanel()
     {
         if (UIManager.Instance != null)
-            UIManager.Instance.ShowPanel("GovernmentPanel");
+            UIManager.Instance.ShowGovernmentPanel(currentCiv, GovernmentTab.Government);
     }
 
     private void AddEmptyRow(string text, Transform parent)

@@ -5,6 +5,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Compatibility wrapper. Political Affairs now lives in the Politics tab of the unified Government screen
+/// (<see cref="GovernmentPanel"/>), so Show/Hide route there. The legacy runtime-built content below is kept only as a
+/// fallback for scenes whose Government prefab has not been wired with authored tabs yet, and can be deleted once it is.
+/// </summary>
 public class PoliticalAffairsPanelUI : MonoBehaviour
 {
     [Header("Panel Root")]
@@ -27,6 +32,7 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
     private TMP_FontAsset inheritedEntryFont;
     private FontStyles inheritedEntryFontStyle = FontStyles.Normal;
     private Color inheritedEntryColor = Color.white;
+    private bool routedToGovernmentPanel;
 
     public void Awake()
     {
@@ -42,6 +48,19 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
     public void Show(Civilization civ)
     {
         if (civ == null) return;
+
+        var government = GovernmentPanel.Instance != null
+            ? GovernmentPanel.Instance
+            : FindAnyObjectByType<GovernmentPanel>(FindObjectsInactive.Include);
+        if (government != null && government.HasTabShell)
+        {
+            if (panelRoot != null) panelRoot.SetActive(false);
+            routedToGovernmentPanel = true;
+            government.ShowForCivilization(civ, GovernmentTab.Politics);
+            return;
+        }
+
+        routedToGovernmentPanel = false;
         if (panelRoot != null) panelRoot.SetActive(true);
 
         if (titleText != null)
@@ -77,6 +96,13 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
     {
         if (panelRoot != null)
             panelRoot.SetActive(false);
+
+        if (routedToGovernmentPanel)
+        {
+            routedToGovernmentPanel = false;
+            if (GovernmentPanel.Instance != null && GovernmentPanel.Instance.IsOpen)
+                GovernmentPanel.Instance.Close();
+        }
     }
 
     private void BuildGovernorSection(Civilization civ)

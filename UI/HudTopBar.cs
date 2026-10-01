@@ -223,7 +223,7 @@ public class HudTopBar : MonoBehaviour
     private void OpenGovernmentPanel()
     {
         if (UIManager.Instance != null)
-            UIManager.Instance.ShowPanel("GovernmentPanel");
+            UIManager.Instance.ShowGovernmentPanel(currentCiv, GovernmentTab.Policies);
     }
 
     private void OpenDiplomacyPanel()

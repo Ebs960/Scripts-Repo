@@ -2,6 +2,16 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>Outcome of a player-facing subject management action; reason explains a failure or notes a side effect.</summary>
+public struct SubjectActionResult
+{
+    public bool success;
+    public string reason;
+
+    public static SubjectActionResult Ok(string note = null) => new SubjectActionResult { success = true, reason = note };
+    public static SubjectActionResult Fail(string reason) => new SubjectActionResult { success = false, reason = reason };
+}
+
 /// <summary>
 /// Singleton that owns all active VassalContracts, processes tribute each turn,
 /// ticks liberty desire, enforces behavioral restrictions on subjects, and handles
@@ -13,6 +23,26 @@ using System.Linq;
 public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 {
     public static SubjectManager Instance { get; private set; }
+
+    /// <summary>Raised (overlord, subject) whenever a contract is created, changed, or dissolved so UI can refresh.</summary>
+    public static event System.Action<Civilization, Civilization> ContractChanged;
+
+    // Tuning for the generalized contract setters. Tribute/forced-religion/governor numbers reuse the existing interference values.
+    public const float MaxTributePct = 0.50f;
+    public const int MaxMilitaryObligation = 10;
+    private const float TributeReliefReferenceStep = 0.05f;
+    private const float TributeReliefOpinion = 8f;
+    private const float TributeReliefLiberty = 5f;
+    private const float AutonomyReductionResentmentPerPoint = 0.5f;
+    private const int AutonomyGrievanceThresholdPoints = 10;
+    private const float AutonomyGrantOpinionPerPoint = 1.8f;
+    private const float AutonomyGrantLibertyPerPoint = 1.2f;
+    private const float MilitaryObligationResentmentPerUnit = 3f;
+    private const float ReligionTighteningResentmentPerStep = 10f;
+    private const float ReligionRelaxOpinionPerStep = 6f;
+
+    private static void RaiseContractChanged(Civilization overlord, Civilization subject)
+        => ContractChanged?.Invoke(overlord, subject);
 
     // ── ISaveGameParticipant ──────────────────────────────────────────────────
     public string SaveKey => "SubjectManager_v1";
@@ -104,6 +134,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
         Debug.Log($"[SubjectManager] Vassal contract created: {contract.overlordCivName} → {contract.subjectCivName} " +
                   $"(gold {goldPct:P0}, autonomy {autonomy})");
+        RaiseContractChanged(overlord, subject);
         return contract;
     }
 
@@ -117,6 +148,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         overlord.SetRelation(subject, DiplomaticState.Peace);
         subject.SetRelation(overlord, DiplomaticState.Peace);
         Debug.Log($"[SubjectManager] Vassal contract dissolved: {contract.overlordCivName} ← {contract.subjectCivName}");
+        RaiseContractChanged(overlord, subject);
         return true;
     }
 
@@ -245,21 +277,35 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
     // ── Interference Actions ──────────────────────────────────────────────────
 
+    /// <summary>Can the overlord interfere with this subject right now (contract exists, cooldown elapsed)?</summary>
+    public SubjectActionResult CanInterfere(Civilization overlord, Civilization subject, int currentTurn)
+    {
+        var contract = GetContract(overlord, subject);
+        if (contract == null) return SubjectActionResult.Fail("No vassal contract exists with this realm.");
+        if (contract.IsInterferenceOnCooldown(currentTurn))
+        {
+            int remaining = contract.interferenceCooldown - (currentTurn - contract.lastInterferenceTurn);
+            return SubjectActionResult.Fail($"Interference is on cooldown for {Mathf.Max(1, remaining)} more turn(s).");
+        }
+        return SubjectActionResult.Ok();
+    }
+
     /// <summary>
     /// Overlord replaces a local governor in the subject civ.
     /// Angers both the replaced governor and the subject civ's governors.
     /// </summary>
-    public void InterfereReplaceGovernor(Civilization overlord, Civilization subject, Governor newGov, int currentTurn)
+    public SubjectActionResult InterfereReplaceGovernor(Civilization overlord, Civilization subject, Governor newGov, int currentTurn)
     {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
         var contract = GetContract(overlord, subject);
-        if (contract == null || contract.IsInterferenceOnCooldown(currentTurn)) return;
 
         var targetCity = subject.cities?
             .Where(c => c != null && c.owner == subject)
             .OrderByDescending(c => c.isCapital)
             .ThenByDescending(c => c.level)
             .FirstOrDefault();
-        if (targetCity == null) return;
+        if (targetCity == null) return SubjectActionResult.Fail("The subject has no city whose governor could be replaced.");
 
         var oldGov = targetCity.governor;
 
@@ -296,15 +342,18 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             gov.AddOpinionModifier("Overlord Replaced Local Governor", -12f, 20);
 
         Debug.Log($"[SubjectManager] {overlord.civData?.civName} replaced the governor of {targetCity.cityName} in {subject.civData?.civName}.");
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
     }
 
     /// <summary>
     /// Overlord forces a religion conversion on the subject civ.
     /// </summary>
-    public void InterfereForceReligion(Civilization overlord, Civilization subject, int currentTurn)
+    public SubjectActionResult InterfereForceReligion(Civilization overlord, Civilization subject, int currentTurn)
     {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
         var contract = GetContract(overlord, subject);
-        if (contract == null || contract.IsInterferenceOnCooldown(currentTurn)) return;
 
         contract.religionRule = ReligionToleranceRule.ForcedConversion;
         contract.resentment = Mathf.Min(100f, contract.resentment + 30f);
@@ -321,31 +370,183 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         }
 
         Debug.Log($"[SubjectManager] {overlord.civData?.civName} forced religion on {subject.civData?.civName}.");
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
     }
 
     /// <summary>
     /// Overlord alters tribute terms (raises them). Angers subject governors.
     /// </summary>
-    public void InterfereAlterTribute(Civilization overlord, Civilization subject, float newGoldPct, int currentTurn)
+    public SubjectActionResult InterfereAlterTribute(Civilization overlord, Civilization subject, float newGoldPct, int currentTurn)
     {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
         var contract = GetContract(overlord, subject);
-        if (contract == null || contract.IsInterferenceOnCooldown(currentTurn)) return;
 
-        float delta = newGoldPct - contract.goldTributePct;
-        contract.goldTributePct = Mathf.Clamp(newGoldPct, 0f, 0.50f);
-        contract.resentment = Mathf.Min(100f, contract.resentment + Mathf.Abs(delta) * 100f);
+        ApplyTributeChange(contract, newGoldPct, contract.scienceTributePct, contract.foodTributePct, currentTurn);
+
+        Debug.Log($"[SubjectManager] {overlord.civData?.civName} altered tribute from {subject.civData?.civName} to {newGoldPct:P0}.");
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    // Shared consequence logic: any tribute change costs resentment and starts the cooldown; a heavier burden angers governors.
+    private static void ApplyTributeChange(VassalContract contract, float newGold, float newScience, float newFood, int currentTurn)
+    {
+        newGold = Mathf.Clamp(newGold, 0f, MaxTributePct);
+        newScience = Mathf.Clamp(newScience, 0f, MaxTributePct);
+        newFood = Mathf.Clamp(newFood, 0f, MaxTributePct);
+
+        float dGold = newGold - contract.goldTributePct;
+        float dScience = newScience - contract.scienceTributePct;
+        float dFood = newFood - contract.foodTributePct;
+        float absoluteChange = Mathf.Abs(dGold) + Mathf.Abs(dScience) + Mathf.Abs(dFood);
+        float burdenChange = dGold + dScience + dFood;
+
+        contract.goldTributePct = newGold;
+        contract.scienceTributePct = newScience;
+        contract.foodTributePct = newFood;
+        contract.resentment = Mathf.Min(100f, contract.resentment + absoluteChange * 100f);
         contract.lastInterferenceTurn = currentTurn;
 
-        if (delta > 0f)
+        if (burdenChange > 0f && contract.subject?.governors != null)
         {
-            foreach (var gov in subject.governors)
+            foreach (var gov in contract.subject.governors)
             {
+                if (gov == null) continue;
                 gov.AddGrievance(GrievanceSource.TaxIncreased);
                 gov.AddOpinionModifier("Tribute Increased by Overlord", -10f, 20);
             }
         }
+    }
 
-        Debug.Log($"[SubjectManager] {overlord.civData?.civName} altered tribute from {subject.civData?.civName} to {newGoldPct:P0}.");
+    // ── Player-facing contract management ─────────────────────────────────────
+    // UI must go through these; each one shares the interference cooldown and consequences above.
+
+    public SubjectActionResult TrySetTributeTerms(Civilization overlord, Civilization subject,
+        float goldPct, float sciencePct, float foodPct, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        var contract = GetContract(overlord, subject);
+
+        goldPct = Mathf.Clamp(goldPct, 0f, MaxTributePct);
+        sciencePct = Mathf.Clamp(sciencePct, 0f, MaxTributePct);
+        foodPct = Mathf.Clamp(foodPct, 0f, MaxTributePct);
+        if (Mathf.Approximately(goldPct, contract.goldTributePct)
+            && Mathf.Approximately(sciencePct, contract.scienceTributePct)
+            && Mathf.Approximately(foodPct, contract.foodTributePct))
+            return SubjectActionResult.Fail("Tribute terms are unchanged.");
+
+        float oldTotal = contract.goldTributePct + contract.scienceTributePct + contract.foodTributePct;
+        ApplyTributeChange(contract, goldPct, sciencePct, foodPct, currentTurn);
+
+        // Relief scales with the cut (the Diplomacy screen grants the full amount for a 5-point step).
+        float reduction = oldTotal - (contract.goldTributePct + contract.scienceTributePct + contract.foodTributePct);
+        if (reduction > 0f)
+        {
+            float relief = Mathf.Clamp01(reduction / TributeReliefReferenceStep);
+            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + TributeReliefOpinion * relief, -100f, 100f);
+            contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - TributeReliefLiberty * relief, 0f, 100f);
+        }
+
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    public SubjectActionResult TrySetAutonomy(Civilization overlord, Civilization subject, int autonomy, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        var contract = GetContract(overlord, subject);
+
+        autonomy = Mathf.Clamp(autonomy, 0, 100);
+        int delta = autonomy - contract.autonomyLevel;
+        if (delta == 0) return SubjectActionResult.Fail("Autonomy is unchanged.");
+
+        contract.autonomyLevel = autonomy;
+        contract.lastInterferenceTurn = currentTurn;
+        if (delta < 0)
+        {
+            contract.resentment = Mathf.Min(100f, contract.resentment - delta * AutonomyReductionResentmentPerPoint);
+            if (-delta >= AutonomyGrievanceThresholdPoints && subject.governors != null)
+                foreach (var gov in subject.governors)
+                    gov?.AddGrievance(GrievanceSource.PrivilegeRevoked);
+        }
+        else
+        {
+            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + delta * AutonomyGrantOpinionPerPoint, -100f, 100f);
+            contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - delta * AutonomyGrantLibertyPerPoint, 0f, 100f);
+        }
+
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    public SubjectActionResult TrySetMilitaryObligation(Civilization overlord, Civilization subject, int count, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        var contract = GetContract(overlord, subject);
+
+        count = Mathf.Clamp(count, 0, MaxMilitaryObligation);
+        int delta = count - contract.militaryObligationCount;
+        if (delta == 0) return SubjectActionResult.Fail("Military obligation is unchanged.");
+
+        contract.militaryObligationCount = count;
+        contract.lastInterferenceTurn = currentTurn;
+        if (delta > 0)
+            contract.resentment = Mathf.Min(100f, contract.resentment + delta * MilitaryObligationResentmentPerUnit);
+
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    public SubjectActionResult TrySetReligionRule(Civilization overlord, Civilization subject, ReligionToleranceRule rule, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        var contract = GetContract(overlord, subject);
+        if (rule == contract.religionRule) return SubjectActionResult.Fail("This religious policy is already in force.");
+
+        // Forced conversion keeps its dedicated, harsher consequences.
+        if (rule == ReligionToleranceRule.ForcedConversion)
+            return InterfereForceReligion(overlord, subject, currentTurn);
+
+        int steps = (int)rule - (int)contract.religionRule;
+        contract.religionRule = rule;
+        contract.lastInterferenceTurn = currentTurn;
+        if (steps > 0)
+        {
+            contract.resentment = Mathf.Min(100f, contract.resentment + steps * ReligionTighteningResentmentPerStep);
+            if (subject.governors != null)
+                foreach (var gov in subject.governors)
+                    if (gov != null && gov.PersonalReligion != overlord.StateReligion)
+                        gov.AddOpinionModifier("Religious Restrictions Tightened", -8f, 20);
+        }
+        else
+        {
+            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion - steps * ReligionRelaxOpinionPerStep, -100f, 100f);
+        }
+
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    /// <summary>Peacefully ends a vassal contract. A pending independence demand is resolved as accepted.</summary>
+    public SubjectActionResult TryReleaseSubject(Civilization overlord, Civilization subject, int currentTurn)
+    {
+        if (GetContract(overlord, subject) == null) return SubjectActionResult.Fail("No vassal contract exists with this realm.");
+
+        var demand = GetPendingIndependenceDemand(overlord, subject);
+        if (demand != null)
+            return AcceptIndependenceDemand(demand, currentTurn)
+                ? SubjectActionResult.Ok()
+                : SubjectActionResult.Fail("The independence demand could not be accepted.");
+
+        if (!DissolveContract(overlord, subject)) return SubjectActionResult.Fail("The contract could not be dissolved.");
+        UIManager.Instance?.ShowNotification($"Vassalage ended with {subject.civData?.civName ?? subject.name}.");
+        return SubjectActionResult.Ok();
     }
 
     // ── Military Obligation ───────────────────────────────────────────────────
@@ -420,6 +621,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         };
         _independenceDemands.Add(demand);
         Debug.Log($"[SubjectManager] {demand.subjectCivName} demands full independence from {demand.overlordCivName}.");
+        RaiseContractChanged(contract.overlord, contract.subject);
         if (!resolveImmediately) return demand;
         if (contract.overlord == CivilizationManager.Instance?.playerCiv)
             UIManager.Instance?.ShowIndependenceDemand(demand, () => AcceptIndependenceDemand(demand, CurrentTurn), () => RejectIndependenceDemand(demand));
@@ -482,7 +684,8 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         else AcceptIndependenceDemand(demand,CurrentTurn);
     }
 
-    private int CurrentTurn => TurnManager.Instance != null ? TurnManager.Instance.round : GameManager.Instance?.currentTurn ?? 0;
+    /// <summary>Current game round, for UI callers that pass a turn into the contract setters.</summary>
+    public int CurrentTurn => TurnManager.Instance != null ? TurnManager.Instance.round : GameManager.Instance?.currentTurn ?? 0;
 
     private void EnforceSubjectReligionRule(VassalContract contract)
     {
