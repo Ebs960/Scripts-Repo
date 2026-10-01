@@ -47,8 +47,14 @@ public static class AlphaFinalizationValidator
         if (prefab == null) { Add(result, CanonicalCityPrefabPath, "Canonical prefab is missing.", MessageType.Error); return; }
         var ui = prefab.GetComponent<CityUI>();
         if (ui == null) Add(result, CanonicalCityPrefabPath, "CityUI component is missing.", MessageType.Error);
-        if (prefab.GetComponent<CityUITabController>() == null)
-            Add(result, CanonicalCityPrefabPath, "Tabbed feature navigation is missing.", MessageType.Error);
+        bool hasContinuousNavigation = prefab.GetComponentInChildren<CityUIScrollNavigator>(true) != null;
+        bool hasLegacyNavigation = prefab.GetComponentInChildren<CityUITabController>(true) != null;
+        if (!hasContinuousNavigation && !hasLegacyNavigation)
+            Add(result, CanonicalCityPrefabPath, "City feature navigation is missing.", MessageType.Error);
+        else if (!hasContinuousNavigation)
+            Add(result, CanonicalCityPrefabPath,
+                "Canonical city prefab still uses legacy tab navigation; migrate it to CityUIScrollNavigator.",
+                MessageType.Warning);
 
         var legacy = AssetDatabase.LoadAssetAtPath<GameObject>(LegacyCityPrefabPath);
         if (legacy != null)

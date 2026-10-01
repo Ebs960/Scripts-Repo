@@ -53,6 +53,9 @@ public class CityUI : MonoBehaviour
     [Header("City Feature Tabs")]
     [SerializeField] private CityUITabController tabController;
 
+    [Header("Continuous City Sheet")]
+    [SerializeField] private CityUIScrollNavigator scrollNavigator;
+
     [Header("Buildings & Specialists Tab")]
     [SerializeField] private TextMeshProUGUI buildingSlotSummaryText;
     [SerializeField] private TextMeshProUGUI specialistSlotSummaryText;
@@ -134,6 +137,11 @@ public class CityUI : MonoBehaviour
         }
         if (tabController != null)
             tabController.TabChanged += OnCityTabChanged;
+        if (scrollNavigator != null)
+        {
+            scrollNavigator.SectionChanged += OnCityTabChanged;
+            scrollNavigator.NavigationButtonClicked += OnNavigationButtonClicked;
+        }
     }
 
     private void OnMakeCapitalClicked()
@@ -148,7 +156,7 @@ public class CityUI : MonoBehaviour
 
     public void ShowForCity(City city)
     {
-currentCity = city;
+        currentCity = city;
         if (currentCity == null)
         {
             Debug.LogError("CityUI: ShowForCity called with a null city.");
@@ -162,18 +170,23 @@ currentCity = city;
             UIManager.Instance.unitInfoPanel.SetActive(false);
         }
 
-        CityCameraFocus.Instance?.FocusCity(currentCity);
-        tabController?.ResetToDefault();
-        RefreshUI();
         gameObject.SetActive(true);
-        if (autoOpenCitizenAssignmentOverlayOnCityClick)
-            CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
-}
+        CityCameraFocus.Instance?.FocusCity(currentCity);
+        RefreshUI();
+
+        if (scrollNavigator != null)
+            scrollNavigator.ResetToDefault();
+        else
+            tabController?.ResetToDefault();
+    }
 
     public void ShowForCityTab(City city, CityUITab tab)
     {
         ShowForCity(city);
-        tabController?.SelectTab(tab);
+        if (scrollNavigator != null)
+            scrollNavigator.NavigateTo(tab);
+        else
+            tabController?.SelectTab(tab);
     }
 
     private void OnOpenCitizenAssignmentClicked()
@@ -268,6 +281,7 @@ if (currentCity == null)
 
         // Populate disease list
         PopulateDiseaseList();
+        scrollNavigator?.RefreshLayout();
     }
 
     /// <summary>Refreshes every open view of a city after an authoritative ownership change.</summary>
@@ -288,6 +302,19 @@ if (currentCity == null)
     {
         if (tabController != null)
             tabController.TabChanged -= OnCityTabChanged;
+        if (scrollNavigator != null)
+        {
+            scrollNavigator.SectionChanged -= OnCityTabChanged;
+            scrollNavigator.NavigationButtonClicked -= OnNavigationButtonClicked;
+        }
+    }
+
+    private void OnNavigationButtonClicked(CityUITab tab)
+    {
+        if (tab == CityUITab.Overview && currentCity != null)
+            CityTileOverlayController.Instance?.EnterCityAssignmentMode(currentCity);
+        else
+            CityTileOverlayController.Instance?.ExitCityAssignmentMode();
     }
 
     private void OnCityTabChanged(CityUITab tab)
@@ -642,20 +669,8 @@ if (currentCity == null)
             }
         }
         
-        // NEW: Projectiles - Load all projectiles that can be produced by this civilization
+        // Projectiles are an empire-wide resource and are intentionally absent from city production.
         availableProjectiles.Clear();
-        if (ownerCiv != null)
-        {
-            // Get all projectile assets in the game
-            var allProjectiles = ResourceCache.GetAllProjectiles();
-            foreach (var projectile in allProjectiles)
-            {
-                if (projectile != null && currentCity.CanProduceProjectile(projectile))
-                {
-                    availableProjectiles.Add(projectile);
-                }
-            }
-        }
 
         // Missiles: show all missile types whose tech requirements the civ meets
         availableMissiles.Clear();
@@ -695,8 +710,11 @@ if (currentCity == null)
         foreach (Transform t in buildingsContainer) Destroy(t.gameObject);
         foreach (Transform t in unitsContainer) Destroy(t.gameObject);
         foreach (Transform t in equipmentContainer) Destroy(t.gameObject);
-        if (projectilesContainer != null) 
+        if (projectilesContainer != null)
+        {
+            projectilesContainer.gameObject.SetActive(false);
             foreach (Transform t in projectilesContainer) Destroy(t.gameObject);
+        }
 
         // Temporary crisis work uses the normal production choice and opportunity cost.
         if (CrisisManager.Instance != null && currentCity?.owner != null)
@@ -729,15 +747,6 @@ if (currentCity == null)
             CreateBuildOptionButton(eq, eq.icon, eq.equipmentName, eq.productionCost, equipmentContainer);
         }
         
-        // Projectile options
-        if (projectilesContainer != null)
-        {
-            foreach (var projectile in availableProjectiles.OrderBy(p => p.productionCost))
-            {
-                CreateBuildOptionButton(projectile, projectile.icon, projectile.projectileName, projectile.productionCost, projectilesContainer);
-            }
-        }
-
         // Missile production options
         if (missilesContainer != null)
         {
@@ -750,6 +759,7 @@ if (currentCity == null)
 
         // Refresh launch missile button visibility
         RefreshLaunchMissileButton();
+        scrollNavigator?.RefreshLayout();
     }
 
     private void RefreshLaunchMissileButton()
