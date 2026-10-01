@@ -782,10 +782,11 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         if (unstackButton != null)
         {
-            unstackButton.gameObject.SetActive(true);
-            var buttonLabel = unstackButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonLabel != null) buttonLabel.text = "Split";
-            unstackButton.interactable = unit.stackSlot > 0 && unit.currentMovePoints > 0;
+            // Campaign armies split contextually by selecting HUD cards and moving them.
+            // Keep the serialized legacy control for save/prefab compatibility, but do not
+            // expose BaseUnit.Unstack as an army action.
+            unstackButton.gameObject.SetActive(unit is not CombatUnit);
+            unstackButton.interactable = false;
         }
 
         stackOrderPanel?.Refresh(unit);

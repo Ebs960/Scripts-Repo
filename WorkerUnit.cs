@@ -517,10 +517,12 @@ public class WorkerUnit : BaseUnit
     public bool IsAdjacentOrSame(int tileIndex)
     {
         if (tileIndex < 0) return false;
-        if (tileIndex == currentTileIndex) return true;
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        int originTile = CivilianAttachmentService.GetStrategicTile(this);
+        int originPlanet = CivilianAttachmentService.GetStrategicPlanet(this);
+        if (tileIndex == originTile) return true;
+        var ts = TileSystem.GetForPlanet(originPlanet) ?? TileSystem.Instance;
         if (ts == null) return false;
-        var neighbors = ts.GetNeighbors(currentTileIndex);
+        var neighbors = ts.GetNeighbors(originTile);
         for (int i = 0; i < neighbors.Length; i++)
         {
             if (neighbors[i] == tileIndex) return true;
