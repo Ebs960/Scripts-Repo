@@ -451,6 +451,8 @@ public class Civilization : MonoBehaviour
     [Header("Equipment Inventory")]
     // Track equipment availability - each civ has stockpiles of equipment
     public Dictionary<EquipmentData, int> equipmentInventory = new Dictionary<EquipmentData, int>();
+    [SerializeField] private List<UnitLoadoutTemplate> standardLoadouts = new List<UnitLoadoutTemplate>();
+    public IReadOnlyList<UnitLoadoutTemplate> StandardLoadouts => standardLoadouts;
     // Starting equipment to spawn with
     [SerializeField] private List<EquipmentData> startingEquipment = new List<EquipmentData>();
     [Tooltip("The base prefab used to create a new city. The City script on this prefab will handle spawning the correct visual model based on tech age.")]
@@ -5000,108 +5002,141 @@ return true;
     /// Equip a unit with an item from the civilization's inventory
     /// </summary>
     public bool EquipUnit(CombatUnit unit, EquipmentData equipment)
+        => TryEquipUnit(unit, equipment, out _);
+
+    /// <summary>Inventory-aware equipment assignment shared by combat and worker units.</summary>
+    public bool TryEquipUnit(BaseUnit unit, EquipmentData equipment, out string reason)
     {
-        if (unit == null || equipment == null)
-            return false;
-            
-        // Check if the unit belongs to this civilization
-        if (!combatUnits.Contains(unit))
-        {
-            Debug.LogWarning($"Cannot equip unit: {unit.name} does not belong to {civData.civName}");
-            return false;
-        }
-        
-        // Check if we have the equipment in stock
-        if (!HasEquipment(equipment))
-        {
-            Debug.LogWarning($"Cannot equip unit: {civData.civName} does not have {equipment.equipmentName} in inventory");
-            return false;
-        }
-        
-        // Validate that the equipment is suitable for this unit
-        if (!equipment.IsValidForUnit(unit, this))
-        {
-            Debug.LogWarning($"Cannot equip unit: {equipment.equipmentName} is not valid for {unit.data.unitName}");
-            return false;
-        }
-        
-        // Get the currently equipped item of this type (if any)
-        EquipmentData currentEquipment = null;
-        
-        switch (equipment.equipmentType)
-        {
-            case EquipmentType.Weapon:
-                currentEquipment = unit.Weapon;
-                break;
-            case EquipmentType.Shield:
-                currentEquipment = unit.Shield;
-                break;
-            case EquipmentType.Armor:
-                currentEquipment = unit.Armor;
-                break;
-            case EquipmentType.Miscellaneous:
-                currentEquipment = unit.Miscellaneous;
-                break;
-        }
-        
-        // Consume the new equipment from inventory FIRST
-        if (!ConsumeEquipment(equipment))
-        {
-            Debug.LogError($"Failed to consume {equipment.equipmentName} from inventory");
-            return false;
-        }
-        
-        // Return the existing equipment to inventory if any
-        if (currentEquipment != null)
-        {
-            AddEquipment(currentEquipment);
-        }
-        
-        // Equip the unit with the new item
+        reason = null;
+        if (unit == null || equipment == null) { reason = "A unit and equipment item are required."; return false; }
+        bool owned = (unit is CombatUnit cu && combatUnits.Contains(cu)) ||
+                     (unit is WorkerUnit wu && workerUnits.Contains(wu));
+        if (!owned || unit.owner != this) { reason = "Unit does not belong to this civilization."; return false; }
+        if (!equipment.IsValidForUnit(unit, this)) { reason = "Equipment is incompatible or its requirements are not met."; return false; }
+        var currentEquipment = unit.GetEquippedItem(equipment.equipmentType);
+        if (currentEquipment == equipment) return true;
+        if (equipment.equipmentType == EquipmentType.Shield && unit.GetEquippedItem(EquipmentType.Weapon)?.isTwoHanded == true)
+        { reason = "A shield cannot be equipped with a two-handed weapon."; return false; }
+        if (!ConsumeEquipment(equipment)) { reason = "Equipment is not available in the civilization stockpile."; return false; }
+        if (currentEquipment != null) AddEquipment(currentEquipment);
+        var displacedShield = equipment.equipmentType == EquipmentType.Weapon && equipment.isTwoHanded
+            ? unit.GetEquippedItem(EquipmentType.Shield) : null;
+        if (displacedShield != null) AddEquipment(displacedShield);
         unit.EquipItem(equipment);
-return true;
+        if (unit.GetEquippedItem(equipment.equipmentType) != equipment)
+        {
+            ConsumeEquipment(currentEquipment);
+            AddEquipment(equipment);
+            reason = "The unit rejected the equipment change.";
+            return false;
+        }
+        return true;
     }
     
     /// <summary>
     /// Get equipment from the unit and return it to inventory
     /// </summary>
     public void UnequipUnit(CombatUnit unit, EquipmentType equipmentType)
+        => TryUnequipUnit(unit, equipmentType, out _);
+
+    public bool TryUnequipUnit(BaseUnit unit, EquipmentType equipmentType, out string reason)
     {
-        if (unit == null)
-            return;
-            
-        // Check if the unit belongs to this civilization
-        if (!combatUnits.Contains(unit))
+        reason = null;
+        if (unit == null) { reason = "A unit is required."; return false; }
+        bool owned = (unit is CombatUnit cu && combatUnits.Contains(cu)) ||
+                     (unit is WorkerUnit wu && workerUnits.Contains(wu));
+        if (!owned || unit.owner != this) { reason = "Unit does not belong to this civilization."; return false; }
+        var currentEquipment = unit.GetEquippedItem(equipmentType);
+        if (currentEquipment == null) return true;
+        unit.UnequipItem(equipmentType);
+        AddEquipment(currentEquipment);
+        return true;
+    }
+
+    public UnitLoadoutTemplate GetOrCreateStandardLoadout(string archetypeId, bool worker)
+    {
+        if (standardLoadouts == null) standardLoadouts = new List<UnitLoadoutTemplate>();
+        var result = standardLoadouts.FirstOrDefault(x => x != null && x.archetypeId == archetypeId && x.workerArchetype == worker);
+        if (result != null) return result;
+        result = new UnitLoadoutTemplate { archetypeId = archetypeId, workerArchetype = worker };
+        standardLoadouts.Add(result);
+        return result;
+    }
+
+    public List<PauseMenuManager.UnitLoadoutSaveData> ExportStandardLoadouts()
+    {
+        string EquipmentId(EquipmentData x) => x == null ? null : (!string.IsNullOrWhiteSpace(x.stableId) ? x.stableId : x.name);
+        string ProjectileId(GameCombat.ProjectileData x) => x == null ? null : (!string.IsNullOrWhiteSpace(x.stableId) ? x.stableId : x.name);
+        return (standardLoadouts ?? new List<UnitLoadoutTemplate>()).Where(x => x != null).Select(x => new PauseMenuManager.UnitLoadoutSaveData
         {
-            Debug.LogWarning($"Cannot unequip unit: {unit.name} does not belong to {civData.civName}");
-            return;
+            archetypeId = x.archetypeId, workerArchetype = x.workerArchetype, useForNewUnits = x.useForNewUnits, configuredSlots = (int)x.configuredSlots,
+            weaponId = EquipmentId(x.weapon), shieldId = EquipmentId(x.shield), bodyId = EquipmentId(x.body), headId = EquipmentId(x.head), toolId = EquipmentId(x.tool), miscellaneousId = EquipmentId(x.miscellaneous), projectileId = ProjectileId(x.projectile)
+        }).ToList();
+    }
+
+    public void ImportStandardLoadouts(IEnumerable<PauseMenuManager.UnitLoadoutSaveData> saved)
+    {
+        var equipment = ResourceCache.GetAllEquipment().Where(x => x != null).GroupBy(x => !string.IsNullOrWhiteSpace(x.stableId) ? x.stableId : x.name).ToDictionary(x => x.Key, x => x.First());
+        var projectiles = ResourceCache.GetAllProjectiles().Where(x => x != null).GroupBy(x => !string.IsNullOrWhiteSpace(x.stableId) ? x.stableId : x.name).ToDictionary(x => x.Key, x => x.First());
+        EquipmentData E(string id) => !string.IsNullOrEmpty(id) && equipment.TryGetValue(id, out var x) ? x : null;
+        GameCombat.ProjectileData P(string id) => !string.IsNullOrEmpty(id) && projectiles.TryGetValue(id, out var x) ? x : null;
+        standardLoadouts = (saved ?? Enumerable.Empty<PauseMenuManager.UnitLoadoutSaveData>()).Where(x => x != null).Select(x => new UnitLoadoutTemplate
+        {
+            archetypeId = x.archetypeId, workerArchetype = x.workerArchetype, useForNewUnits = x.useForNewUnits, configuredSlots = (LoadoutSlotMask)x.configuredSlots,
+            weapon = E(x.weaponId), shield = E(x.shieldId), body = E(x.bodyId), head = E(x.headId), tool = E(x.toolId), miscellaneous = E(x.miscellaneousId), projectile = P(x.projectileId)
+        }).ToList();
+    }
+
+    /// <summary>Plans and commits a complete loadout as one inventory transaction.</summary>
+    public bool TryApplyLoadout(IReadOnlyList<BaseUnit> units, UnitLoadoutTemplate loadout, out string reason)
+    {
+        reason = null;
+        if (units == null || loadout == null) { reason = "A loadout and units are required."; return false; }
+        var deltas = new Dictionary<EquipmentData, int>();
+        foreach (var unit in units)
+        {
+            if (unit == null || unit.owner != this) { reason = "The selection contains a foreign unit."; return false; }
+            foreach (var slot in UnitLoadoutTemplate.Slots)
+            {
+                if (!loadout.IsConfigured(slot)) continue;
+                var desired = loadout.Get(slot); var old = unit.GetEquippedItem(slot);
+                if (desired == old) continue;
+                if (desired != null && !desired.IsValidForUnit(unit, null)) { reason = $"{desired.equipmentName} is not valid for {unit.UnitName}."; return false; }
+                if (desired != null && desired.requiredTechs != null && desired.requiredTechs.Any(t => t != null && (researchedTechs == null || !researchedTechs.Contains(t))))
+                { reason = $"Technology requirements for {desired.equipmentName} are not met."; return false; }
+                if (desired != null && desired.requiredCultures != null && desired.requiredCultures.Any(c => c != null && (researchedCultures == null || !researchedCultures.Contains(c))))
+                { reason = $"Culture requirements for {desired.equipmentName} are not met."; return false; }
+                if (desired != null && desired.equipmentType != slot) { reason = "An item is configured in the wrong slot."; return false; }
+                if (desired != null) deltas[desired] = (deltas.TryGetValue(desired, out var take) ? take : 0) - 1;
+                if (old != null) deltas[old] = (deltas.TryGetValue(old, out var give) ? give : 0) + 1;
+            }
+            if (loadout.weapon != null && loadout.weapon.isTwoHanded && loadout.IsConfigured(EquipmentType.Shield) && loadout.shield != null)
+            { reason = "A two-handed weapon cannot be combined with a shield."; return false; }
+            if (loadout.IsConfigured(EquipmentType.Weapon) && loadout.weapon != null && loadout.weapon.isTwoHanded && !loadout.IsConfigured(EquipmentType.Shield))
+            {
+                var displacedShield = unit.GetEquippedItem(EquipmentType.Shield);
+                if (displacedShield != null) deltas[displacedShield] = (deltas.TryGetValue(displacedShield, out var returnedShield) ? returnedShield : 0) + 1;
+            }
         }
-        
-        // Get the currently equipped item of this type (if any)
-        EquipmentData currentEquipment = null;
-        
-        switch (equipmentType)
+        foreach (var change in deltas)
+            if (GetEquipmentCount(change.Key) + change.Value < 0)
+            { reason = $"Short {-(GetEquipmentCount(change.Key) + change.Value)} {change.Key.equipmentName}."; return false; }
+
+        foreach (var change in deltas) equipmentInventory[change.Key] = GetEquipmentCount(change.Key) + change.Value;
+        foreach (var unit in units)
         {
-            case EquipmentType.Weapon:
-                currentEquipment = unit.Weapon;
-                break;
-            case EquipmentType.Shield:
-                currentEquipment = unit.Shield;
-                break;
-            case EquipmentType.Armor:
-                currentEquipment = unit.Armor;
-                break;
-            case EquipmentType.Miscellaneous:
-                currentEquipment = unit.Miscellaneous;
-                break;
+            foreach (var slot in UnitLoadoutTemplate.Slots)
+            {
+                if (!loadout.IsConfigured(slot)) continue;
+                var desired = loadout.Get(slot);
+                if (unit.GetEquippedItem(slot) == desired) continue;
+                if (desired == null) unit.UnequipItem(slot); else unit.EquipItem(desired);
+            }
+            if (loadout.weapon != null && loadout.weapon.usesProjectiles) unit.TrySetActiveProjectile(loadout.projectile);
         }
-        
-        // Return the existing equipment to inventory if any
-        if (currentEquipment != null)
-        {
-            AddEquipment(currentEquipment);
-            unit.UnequipItem(equipmentType);
-}
+        _canEquipByUnitTypeCache.Clear();
+        foreach (var change in deltas) OnEquipmentChanged?.Invoke(change.Key, GetEquipmentCount(change.Key));
+        return true;
     }
 
     /// <summary>

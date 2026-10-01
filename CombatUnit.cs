@@ -3233,7 +3233,7 @@ public class CombatUnit : BaseUnit
     /// <summary>
     /// Removes equipment from a specific slot
     /// </summary>
-    public virtual void UnequipItem(EquipmentType type)
+    public override void UnequipItem(EquipmentType type)
     {
         bool changed = false;
         
@@ -3266,6 +3266,12 @@ public class CombatUnit : BaseUnit
                     equippedMiscellaneous = null;
                     changed = true;
                 }
+                break;
+            case EquipmentType.Head:
+                if (equippedHead != null) { equippedHead = null; changed = true; }
+                break;
+            case EquipmentType.Tool:
+                if (equippedTool != null) { equippedTool = null; changed = true; }
                 break;
         }
         

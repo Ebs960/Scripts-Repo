@@ -1905,6 +1905,38 @@ public abstract class BaseUnit : MonoBehaviour
         }
     }
 
+    /// <summary>Returns the item occupying a logical equipment slot.</summary>
+    public EquipmentData GetEquippedItem(EquipmentType type)
+    {
+        switch (type)
+        {
+            case EquipmentType.Weapon:
+                return _equippedProjectileWeapon != null ? _equippedProjectileWeapon : _equippedWeapon;
+            case EquipmentType.Shield: return _equippedShield;
+            case EquipmentType.Body: return _equippedArmor;
+            case EquipmentType.Head: return _equippedHead;
+            case EquipmentType.Tool: return _equippedTool;
+            case EquipmentType.Miscellaneous: return _equippedMiscellaneous;
+            default: return null;
+        }
+    }
+
+    /// <summary>Clears a logical slot. Inventory ownership is deliberately handled by Civilization.</summary>
+    public virtual void UnequipItem(EquipmentType type)
+    {
+        bool changed = GetEquippedItem(type) != null;
+        switch (type)
+        {
+            case EquipmentType.Weapon: equippedWeapon = null; equippedProjectileWeapon = null; break;
+            case EquipmentType.Shield: equippedShield = null; break;
+            case EquipmentType.Body: equippedArmor = null; break;
+            case EquipmentType.Head: equippedHead = null; break;
+            case EquipmentType.Tool: equippedTool = null; break;
+            case EquipmentType.Miscellaneous: equippedMiscellaneous = null; break;
+        }
+        if (changed) RaiseEquipmentChanged();
+    }
+
     #endregion
 
     #region Projectile System

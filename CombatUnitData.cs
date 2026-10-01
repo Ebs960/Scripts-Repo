@@ -140,6 +140,8 @@ public struct CombatUnitCultureGroupVisualOverride
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
 public class CombatUnitData : ScriptableObject
 {
+    [Tooltip("Stable save identifier. Existing assets fall back to the asset name until assigned.")]
+    public string stableId;
     [Header("Band Recruitment")]
     [Tooltip("Explicit opt-in for recruitment by an encamped Band.")]
     public bool buildableByBand;

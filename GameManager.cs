@@ -2622,6 +2622,7 @@ public class GameManager : MonoBehaviour
                 };
                 // Deep-copied by JsonUtility with the enclosing save; no election is re-simulated on load.
                 civProgress.electionState = civ.electionState;
+                civProgress.standardLoadouts = civ.ExportStandardLoadouts();
 
                 if (civ.researchedTechs != null)
                     foreach (var tech in civ.researchedTechs)
@@ -3400,6 +3401,7 @@ public class GameManager : MonoBehaviour
                 unlockedBeliefs,
                 customAssignedBeliefs);
             civ.electionState = progress.electionState ?? new ElectionState();
+            civ.ImportStandardLoadouts(progress.standardLoadouts);
 
             // Restore herd production queues saved for this civilization
             try

@@ -48,6 +48,8 @@ public struct WorkerUnitCultureGroupVisualOverride
  [CreateAssetMenu(fileName = "NewWorkerUnitData", menuName = "Data/Worker Unit Data")]
 public class WorkerUnitData : ScriptableObject
 {
+    [Tooltip("Stable save identifier. Existing assets fall back to the asset name until assigned.")]
+    public string stableId;
     [Header("Default Equipment")]
     [Tooltip("Default weapon equipped by this worker (optional)")]
     public EquipmentData defaultWeapon;
