@@ -65,12 +65,34 @@ public static class CivilianAttachmentService
 
     public static bool Detach(WorkerUnit civilian, CombatUnit army)
     {
-        if (civilian == null || army == null || civilian.AttachedArmyFormationId != army.MilitaryFormationId) return false;
+        return TryDetach(civilian, army, out _);
+    }
+
+    public static bool TryDetach(WorkerUnit civilian, CombatUnit army, out string reason)
+    {
+        reason = string.Empty;
+        if (civilian == null || army == null || civilian.AttachedArmyFormationId != army.MilitaryFormationId)
+        { reason = "Worker is not attached to that army."; return false; }
         var representative = CampaignArmyService.GetRepresentative(army);
-        if (representative == null) return false;
+        if (representative == null) { reason = "The attached army no longer exists."; return false; }
         string oldId = civilian.AttachedArmyFormationId;
-        if (!TryPlaceDetachedCivilian(civilian, representative, out _)) return false;
+        if (!TryPlaceDetachedCivilian(civilian, representative, out reason)) return false;
         CivilianDetached?.Invoke(civilian, oldId);
+        return true;
+    }
+
+    /// <summary>Moves an attachment between existing formations without placing it in occupancy.</summary>
+    public static bool TransferAttachment(WorkerUnit civilian, CombatUnit destinationArmy, out string reason)
+    {
+        reason = string.Empty;
+        var representative = CampaignArmyService.GetRepresentative(destinationArmy);
+        if (civilian == null || representative == null || civilian.owner != representative.owner)
+        { reason = "Worker and destination army must exist and have the same owner."; return false; }
+        var occupancy = TileOccupancyManager.GetForPlanet(civilian.planetIndex) ?? TileOccupancyManager.Instance;
+        occupancy?.ClearOccupantById(civilian.currentTileIndex, civilian.currentLayer, civilian.gameObject.GetRuntimeId());
+        civilian.SetCivilianAttachment(CampaignArmyService.EnsureArmyIdentity(representative));
+        civilian.planetIndex = representative.planetIndex;
+        civilian.currentLayer = representative.currentLayer;
         return true;
     }
 

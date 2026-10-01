@@ -493,6 +493,7 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
             var representative = CampaignArmyService.GetRepresentative(selectedCombat);
             if (representative != null)
                 unit = representative;
+            CampaignArmyService.ExitDefenseMode(representative ?? selectedCombat);
         }
 
         var fullPath = FindPath(unit.currentTileIndex, targetTileIndex, unit);
@@ -635,9 +636,8 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                 break;
             }
 
-            // Army-token occupancy check. Friendly armies can be entered only at the final
-            // destination and only when their combined rosters fit army capacity.
-            CombatUnit mergeTarget = null;
+            // Independent army representatives never share a tile. Friendly contact requests
+            // the transfer UI instead of silently merging complete formations.
             if (occ != null)
             {
                 var allIds = occ.GetAllOccupantIds(targetTile, unit.currentLayer);
@@ -652,16 +652,10 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                     if (other == null || other.owner != unit.owner) { blocked = true; break; }
 
                     if (combatUnit != null && other is CombatUnit otherCombat
-                        && stepIndex == path.Count - 1
+                        && otherCombat.owner == combatUnit.owner
                         && combatUnit.MilitaryFormationId != otherCombat.MilitaryFormationId)
                     {
-                        int combined = CampaignArmyService.GetMembers(combatUnit).Count
-                            + CampaignArmyService.GetMembers(otherCombat).Count;
-                        if (combined <= combatUnit.owner.GetMaxArmySize())
-                        {
-                            mergeTarget = CampaignArmyService.GetRepresentative(otherCombat);
-                            continue;
-                        }
+                        ArmyTransferService.RequestTransfer(combatUnit, otherCombat);
                     }
 
                     blocked = true;
@@ -695,12 +689,11 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
                 }
             }
 
-            // Only the army representative claims campaign occupancy. When joining another
-            // army, its existing representative already owns the destination tile.
+            // Only the army representative claims campaign occupancy.
             int claimedSlot = -1;
-            if (occ != null && mergeTarget == null)
+            if (occ != null)
                 claimedSlot = occ.TryAddToStack(targetTile, unit.currentLayer, unit.gameObject, 1);
-            bool claimed = occ == null || mergeTarget != null || claimedSlot >= 0;
+            bool claimed = occ == null || claimedSlot >= 0;
             if (claimed && claimedSlot >= 0) unit.stackSlot = claimedSlot;
             if (!claimed)
             {
@@ -725,21 +718,6 @@ public class UnitMovementController : MonoBehaviour, IUnitMovementDomain
             if (combatUnit != null)
                 CivilianAttachmentService.SynchronizeFormationLocation(combatUnit);
 
-            if (mergeTarget != null && combatUnit != null)
-            {
-                if (!CampaignArmyService.TryMerge(mergeTarget, combatUnit, out string mergeReason))
-                {
-                    breakReason = $"army merge failed: {mergeReason}";
-                    break;
-                }
-                if (combatUnit.owner == CivilizationManager.Instance?.playerCiv)
-                {
-                    int mergedCount = CampaignArmyService.GetMembers(mergeTarget).Count;
-                    int capacity = combatUnit.owner.GetMaxArmySize();
-                    UIManager.Instance?.ShowNotification($"Armies merged: {mergedCount}/{capacity} units.");
-                    UnitSelectionManager.Instance?.SelectUnit(mergeTarget);
-                }
-            }
             previousTile = targetTile;
             stepIndex++;
             committedTiles.Add(targetTile);

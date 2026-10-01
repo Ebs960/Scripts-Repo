@@ -962,16 +962,8 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         }
 
-        int movingCount = CampaignArmyService.GetMembers(selectedCombat).Count;
-        int targetCount = CampaignArmyService.GetMembers(targetArmy).Count;
-        int capacity = selectedCombat.owner != null ? selectedCombat.owner.GetMaxArmySize() : targetCount;
-        bool valid = CampaignArmyService.CanMergeMemberCounts(targetCount, movingCount, capacity);
-        mergePreviewLabel.text = valid
-            ? $"MERGE  {targetCount} + {movingCount}  >  {targetCount + movingCount}/{capacity}"
-            : $"ARMY FULL  {targetCount + movingCount}/{capacity}";
-        mergePreviewLabel.color = valid
-            ? new Color(0.2f, 0.95f, 0.65f, 1f)
-            : new Color(1f, 0.32f, 0.18f, 1f);
+        mergePreviewLabel.text = "RENDEZVOUS / TRANSFER";
+        mergePreviewLabel.color = new Color(0.2f, 0.95f, 0.65f, 1f);
         mergePreviewLabel.transform.position = tileSystem.GetTileSurfacePosition(tileIndex) + Vector3.up * 2.2f;
         var camera = mainCamera != null ? mainCamera : Camera.main;
         if (camera != null) mergePreviewLabel.transform.rotation = camera.transform.rotation;
@@ -1582,13 +1574,9 @@ public class UnitSelectionManager : MonoBehaviour
         if (selectedUnit is CombatUnit selectedCombat
             && TryGetFriendlyArmyAtTile(targetTileIndex, selectedCombat, out var friendlyArmy))
         {
-            int movingCount = CampaignArmyService.GetMembers(selectedCombat).Count;
-            int targetCount = CampaignArmyService.GetMembers(friendlyArmy).Count;
-            int capacity = selectedCombat.owner != null ? selectedCombat.owner.GetMaxArmySize() : targetCount;
-            if (!CampaignArmyService.CanMergeMemberCounts(targetCount, movingCount, capacity))
+            if (ArmyTransferService.CanTransfer(selectedCombat, friendlyArmy, out _))
             {
-                UIManager.Instance?.ShowNotification(
-                    $"Cannot merge armies: {targetCount} + {movingCount} exceeds capacity {capacity}.");
+                ArmyTransferService.RequestTransfer(selectedCombat, friendlyArmy);
                 return;
             }
         }
@@ -1697,6 +1685,34 @@ public class UnitSelectionManager : MonoBehaviour
         
         if (selectedUnit is CombatUnit combatUnit)
         {
+            var roster = ArmyRosterSelection.Active;
+            if (roster != null && roster.CurrentFormationId == combatUnit.MilitaryFormationId && roster.HasSelection)
+            {
+                var selectedCombatUnits = roster.SelectedCombatUnits;
+                var selectedWorkers = roster.SelectedWorkers;
+                if (!CampaignArmyService.TryCreateMovingDetachment(combatUnit, selectedCombatUnits,
+                    selectedWorkers, out var movingArmy, out string splitReason))
+                {
+                    UIManager.Instance?.ShowNotification(splitReason);
+                    return;
+                }
+                roster.Clear();
+                if (movingArmy != null)
+                {
+                    canMove = movingArmy.CanMoveTo(targetTileIndex);
+                    unitName = movingArmy.UnitName;
+                    if (canMove) movingArmy.MoveTo(targetTileIndex);
+                }
+                else
+                {
+                    canMove = selectedWorkers.Count > 0;
+                    unitName = "Workers";
+                    foreach (var worker in selectedWorkers)
+                        if (worker != null && worker.CanMoveTo(targetTileIndex)) worker.MoveTo(targetTileIndex);
+                }
+                if (!canMove) UIManager.Instance?.ShowNotification($"{unitName} cannot move there!");
+                return;
+            }
             canMove = combatUnit.CanMoveTo(targetTileIndex);
             unitName = combatUnit.data.unitName;
             

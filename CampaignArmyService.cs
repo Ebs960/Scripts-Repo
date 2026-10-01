@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -160,6 +161,106 @@ public static class CampaignArmyService
             && joiningCount > 0
             && capacity > 0
             && receivingCount + joiningCount <= capacity;
+    }
+
+    public static IReadOnlyList<WorkerUnit> GetArmyWorkers(CombatUnit army) => CivilianAttachmentService.GetAttachments(army);
+    public static bool HasAttachedWorker(CombatUnit army) => GetArmyWorkers(army).Count > 0;
+
+    public static void EnterDefenseMode(CombatUnit army)
+    {
+        foreach (var member in GetMembers(army))
+            if (member != null) member.Fortify();
+    }
+
+    public static void ExitDefenseMode(CombatUnit army)
+    {
+        foreach (var member in GetMembers(army))
+            if (member != null) member.ClearFortify();
+    }
+
+    public static bool IsInDefenseMode(CombatUnit army)
+    {
+        var members = GetMembers(army);
+        return members.Count > 0 && members.TrueForAll(x => x != null && x.IsFortified);
+    }
+
+    /// <summary>
+    /// Applies roster selection before a movement order. This changes no movement points and
+    /// never uses BaseUnit.Unstack. A null result with worker selections means worker-only movement.
+    /// </summary>
+    public static bool TryCreateMovingDetachment(CombatUnit sourceArmy,
+        IReadOnlyList<CombatUnit> selectedCombatUnits, IReadOnlyList<WorkerUnit> selectedWorkers,
+        out CombatUnit resultingRepresentative, out string reason)
+    {
+        resultingRepresentative = null;
+        reason = string.Empty;
+        var source = GetRepresentative(sourceArmy);
+        if (source == null) { reason = "The source army no longer exists."; return false; }
+        var members = GetMembers(source);
+        var workers = CivilianAttachmentService.GetAttachments(source);
+        var selectedCombat = selectedCombatUnits?.Where(x => x != null).Distinct().ToList() ?? new List<CombatUnit>();
+        var selectedWorkerList = selectedWorkers?.Where(x => x != null).Distinct().ToList() ?? new List<WorkerUnit>();
+        if (selectedCombat.Any(x => !members.Contains(x)) || selectedWorkerList.Any(x => !workers.Contains(x)))
+        { reason = "The roster selection is stale."; return false; }
+
+        if (selectedCombat.Count == 0)
+        {
+            if (selectedWorkerList.Count == 0) { resultingRepresentative = source; return true; }
+            // Workers remain civilians and acquire ordinary occupancy before independent moves.
+            return TryDetachWorkersAtomically(selectedWorkerList, source, out reason);
+        }
+
+        if (selectedCombat.Count == members.Count)
+        {
+            if (!TryDetachWorkersAtomically(workers.Where(x => !selectedWorkerList.Contains(x)).ToList(), source, out reason))
+                return false;
+            NormalizeSlots(members);
+            resultingRepresentative = members[0];
+            RefreshPresentation(resultingRepresentative);
+            return true;
+        }
+
+        string newId = Guid.NewGuid().ToString("N");
+        string sourceName = source.MilitaryFormationName;
+        MilitaryFormationType type = source.MilitaryFormationType;
+        for (int i = 0; i < selectedCombat.Count; i++)
+        {
+            selectedCombat[i].AssignMilitaryFormation(newId, type, sourceName);
+            selectedCombat[i].stackSlot = i;
+        }
+        var remaining = members.Where(x => !selectedCombat.Contains(x)).ToList();
+        NormalizeSlots(remaining);
+        resultingRepresentative = selectedCombat[0];
+        foreach (var worker in selectedWorkerList)
+            worker.SetCivilianAttachment(newId);
+        // The source tile remains claimed by the surviving formation. The detachment claims
+        // its first destination through UnitMovementController rather than co-occupying here.
+        var occupancy = TileOccupancyManager.GetForPlanet(source.planetIndex) ?? TileOccupancyManager.Instance;
+        occupancy?.ClearOccupantById(source.currentTileIndex, source.currentLayer, source.gameObject.GetRuntimeId());
+        occupancy?.TryAddToStack(remaining[0].currentTileIndex, remaining[0].currentLayer, remaining[0].gameObject, 1);
+        RefreshPresentation(remaining[0]);
+        RefreshPresentation(resultingRepresentative);
+        return true;
+    }
+
+    private static void NormalizeSlots(IReadOnlyList<CombatUnit> members)
+    {
+        for (int i = 0; i < members.Count; i++) members[i].stackSlot = i;
+    }
+
+    private static bool TryDetachWorkersAtomically(IEnumerable<WorkerUnit> workers, CombatUnit source, out string reason)
+    {
+        var detached = new List<WorkerUnit>();
+        foreach (var worker in workers)
+        {
+            if (CivilianAttachmentService.TryDetach(worker, source, out reason)) { detached.Add(worker); continue; }
+            // Roll back occupancy and attachment IDs if any member cannot be legally placed.
+            foreach (var rollback in detached)
+                CivilianAttachmentService.TransferAttachment(rollback, source, out _);
+            return false;
+        }
+        reason = string.Empty;
+        return true;
     }
 
     public static void RenameArmy(CombatUnit unit, string armyName)
