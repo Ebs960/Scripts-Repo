@@ -2693,8 +2693,11 @@ public abstract class BaseUnit : MonoBehaviour
                 representative.MoveTo(targetTileIndex);
                 return;
             }
+            // Army movement always leaves Defense Mode as a group. Keeping this here makes
+            // every UI, AI, and queued-order call site obey the same rule.
+            CampaignArmyService.ExitDefenseMode(representative ?? combatUnit);
         }
-        ClearFortify();
+        else ClearFortify();
         UnitMovementController.Instance.IssueMove(this, targetTileIndex);
     }
 
