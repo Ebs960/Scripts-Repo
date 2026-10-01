@@ -87,7 +87,7 @@ public sealed class ArmyTransferPanel : MonoBehaviour
     {
         if (!ArmyTransferService.ApplyTransferPlan(plan, out string reason))
         { if (validationMessage != null) validationMessage.text = reason; UIManager.Instance?.ShowNotification(reason); return; }
-        foreach (var hud in FindObjectsByType<CampaignArmyPanel>(FindObjectsSortMode.None)) hud.Refresh();
+        foreach (var hud in FindObjectsByType<CampaignArmyPanel>()) hud.Refresh();
         Cancel();
     }
 

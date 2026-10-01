@@ -48,7 +48,6 @@ public class CityUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI citizenJobsSummaryText;
     [SerializeField] private TextMeshProUGUI unemploymentWarningText;
     [SerializeField] private TextMeshProUGUI orderCrimeSummaryText;
-    [SerializeField] private bool autoOpenCitizenAssignmentOverlayOnCityClick = false;
 
     [Header("City Feature Tabs")]
     [SerializeField] private CityUITabController tabController;
