@@ -643,11 +643,16 @@ public sealed class CampaignArmyPanel : MonoBehaviour
         cardRect.GetWorldCorners(corners);
         Vector3 cardTopCenterWorld = (corners[1] + corners[2]) * 0.5f;
 
-        Vector2 screen = RectTransformUtility.WorldToScreenPoint(null, cardTopCenterWorld);
+        Canvas canvas = root.GetComponentInParent<Canvas>();
+        Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+
+        Vector2 screen = RectTransformUtility.WorldToScreenPoint(uiCamera, cardTopCenterWorld);
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
             rootRect,
             screen,
-            null,
+            uiCamera,
             out Vector2 local))
         {
             float half = tooltipRect.rect.width * 0.5f;
