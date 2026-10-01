@@ -84,6 +84,17 @@ MonoBehaviour:
   surfaceUndulationSeed: 1337
   topSubdivision: 2
   mountainTopSubdivision: 3
+  enableMountainShape: 1
+  mountainPeakHeightShoulder: 0.22
+  mountainPeakHeightSummit: 1.15
+  mountainRidgeLengthShoulder: 0.72
+  mountainRidgeLengthSummit: 0.5
+  mountainRidgeWidthShoulder: 0.42
+  mountainRidgeWidthSummit: 0.23
+  mountainPeakSharpnessShoulder: 1.15
+  mountainPeakSharpnessSummit: 1.75
+  mountainShapeAsymmetry: 0.08
+  mountainBoundaryFalloffStart: 0.7
   oceanFloorDepthBelowSea: 2
   abyssalDepthBelowSea: 3.5
   trenchDepthBelowSea: 5.5
@@ -145,11 +156,18 @@ MonoBehaviour:
   enableBuildProfiling: 0
   enableSeasonMasks: 1
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
+  enableMountainRockBlend: 1
+  mountainRockSlopeThreshold: 0.62
+  mountainRockSlopeBlend: 0.14
+  mountainRockStrength: 0.9
+  mountainRockTiling: 12
+  mountainNormalStrength: 1
+  useMountainTriplanar: 1
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
   cliffTiling: 19
   cliffStrength: 0.684
   cliffSlopeThreshold: 0.2
-  cliffSlopeBlend: 0
+  cliffSlopeBlend: 0.1
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0

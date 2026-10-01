@@ -131,6 +131,15 @@ Shader "Custom/BiomeTerrainHDRP"
         _CliffSlopeBlend ("Cliff Slope Blend", Range(0,10)) = 0.2
         _CliffSliceCount ("Cliff Slice Count", Float) = 1
 
+        [Header(Mountain Surface)]
+        _EnableMountainRockBlend ("Enable Mountain Rock Blend", Float) = 1
+        _MountainRockSlopeThreshold ("Mountain Rock Slope Threshold", Range(0,1)) = 0.62
+        _MountainRockSlopeBlend ("Mountain Rock Slope Blend", Range(0,0.4)) = 0.14
+        _MountainRockStrength ("Mountain Rock Strength", Range(0,1)) = 0.9
+        _MountainRockTiling ("Mountain Rock Tiling", Range(0.01,30)) = 12
+        _MountainNormalStrength ("Mountain Normal Strength", Range(0,2)) = 1
+        _UseMountainTriplanar ("Use Mountain Triplanar", Float) = 1
+
         [Header(Fallback Lighting)]
         _FallbackSunDirectionWS ("Fallback Sun Direction WS", Vector) = (0.35, 0.85, 0.25, 0)
         _FallbackSunColor ("Fallback Sun Color", Color) = (1, 1, 1, 1)
@@ -241,6 +250,13 @@ Shader "Custom/BiomeTerrainHDRP"
     float _CliffSlopeThreshold;
     float _CliffSlopeBlend;
     float _CliffSliceCount;
+    float _EnableMountainRockBlend;
+    float _MountainRockSlopeThreshold;
+    float _MountainRockSlopeBlend;
+    float _MountainRockStrength;
+    float _MountainRockTiling;
+    float _MountainNormalStrength;
+    float _UseMountainTriplanar;
     float _TerrainDebugMode;
     float _SurfaceHeightScale;
     float _TessellationFactor;
@@ -886,6 +902,51 @@ Shader "Custom/BiomeTerrainHDRP"
                     _CliffSlopeThreshold + cliffBlendWidth,
                     meshNormal.y);
                 float3 materialAlbedo = baseAlbedo;
+
+                // Mountain rock is an independent, Mountain-only slope response. The
+                // selected mountain override slice remains the substrate, preserving the
+                // owning biome; rock overlays only where the authored mesh becomes steep.
+                float mountainMask = saturate(centerSample.b);
+                float mountainProminence = saturate(centerSample.a);
+                float mountainSlope = 1.0 - saturate(meshNormal.y);
+                float mountainBlendWidth = max(_MountainRockSlopeBlend, 0.001);
+                float mountainRockBlend = smoothstep(
+                    _MountainRockSlopeThreshold - mountainBlendWidth,
+                    _MountainRockSlopeThreshold + mountainBlendWidth,
+                    mountainSlope);
+                mountainRockBlend *= mountainMask * saturate(_MountainRockStrength) * _EnableMountainRockBlend;
+
+                if (mountainRockBlend > 0.001 && _CliffSliceCount > 0.5)
+                {
+                    float mountainHash = frac(sin(dot(worldPos.xz, float2(12.9898, 78.233))) * 43758.5453);
+                    float mountainRockSlice = min(floor(mountainHash * _CliffSliceCount), _CliffSliceCount - 1.0);
+                    float3 mountainRockAlbedo;
+                    float3 mountainRockNormal;
+                    if (_UseMountainTriplanar > 0.5)
+                    {
+                        mountainRockAlbedo = SampleArrayTriplanar(
+                            TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray),
+                            worldPos, triWeights, mountainRockSlice, _MountainRockTiling).rgb;
+                        mountainRockNormal = SampleNormalTriplanar(
+                            TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray),
+                            worldPos, meshNormal, triWeights, mountainRockSlice, _MountainRockTiling);
+                    }
+                    else
+                    {
+                        mountainRockAlbedo = SAMPLE_TEXTURE2D_ARRAY(
+                            _CliffAlbedoArray, sampler_CliffAlbedoArray,
+                            worldPos.xz * _MountainRockTiling, mountainRockSlice).rgb;
+                        mountainRockNormal = SampleBiomeNormal(
+                            TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray),
+                            worldPos, meshNormal, triWeights, mountainRockSlice,
+                            _MountainRockTiling, camDist, uv);
+                    }
+                    materialAlbedo = lerp(materialAlbedo, mountainRockAlbedo, mountainRockBlend);
+                    normalWS = normalize(lerp(normalWS, mountainRockNormal,
+                        saturate(mountainRockBlend * _MountainNormalStrength)));
+                    mask.a = lerp(mask.a, max(0.05, mask.a * 0.3), mountainRockBlend);
+                }
+
                 if (sideBlend > 0.001 && _CliffStrength > 0.001 && _CliffSliceCount > 0.5)
                 {
                     float hash = frac(sin(dot(worldPos.xz, float2(12.9898, 78.233))) * 43758.5453);
@@ -1057,6 +1118,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 // surface path above so those modes are visibly connected to the
                 // runtime shader branch rather than bypassing it early.
                 // Debug 8: raw metallic mask channel.
+                if (terrainDebugMode == 13)
+                    return float4((mountainMask * mountainProminence).xxx, 1.0);
+                if (terrainDebugMode == 14)
+                    return float4(saturate(mountainRockBlend).xxx, 1.0);
+
                 if (terrainDebugMode == 8)
                 {
                     return float4(rawMetallicChannel.xxx, 1.0);

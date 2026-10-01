@@ -12,8 +12,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.Serialization;
 
 /// <summary>
-/// Burst job that fills a BiomeIndexMap texture (RGFloat) from pre-computed tile-to-slice
-/// and tile-to-biome lookups. R = surface slice index, G = biome index.
+/// Burst job that fills a BiomeIndexMap texture (RGBAFloat) from pre-computed tile data.
+/// R = surface slice, G = biome, B = Mountain mask, A = Mountain prominence.
 /// Storing the biome index directly avoids the lossy SliceToBiomeMap reverse lookup
 /// which fails when multiple biomes share the same surface family/slice.
 /// </summary>
@@ -23,15 +23,18 @@ struct FillBiomeIndexMapJob : IJobParallelFor
     [ReadOnly] public NativeArray<int> lut;
     [ReadOnly] public NativeArray<int> tileSliceIndex;
     [ReadOnly] public NativeArray<int> tileBiomeIndex;
-    public NativeArray<float2> pixels;
+    [ReadOnly] public NativeArray<float2> tileMountainData;
+    public NativeArray<float4> pixels;
 
     public void Execute(int i)
     {
         int tileIndex = lut[i];
         if (tileIndex >= 0 && tileIndex < tileSliceIndex.Length)
-            pixels[i] = new float2((float)tileSliceIndex[tileIndex], (float)tileBiomeIndex[tileIndex]);
+            pixels[i] = new float4(
+                tileSliceIndex[tileIndex], tileBiomeIndex[tileIndex],
+                tileMountainData[tileIndex].x, tileMountainData[tileIndex].y);
         else
-            pixels[i] = new float2(0f, 0f);
+            pixels[i] = new float4(0f, 0f, 0f, 0f);
     }
 }
 
@@ -69,7 +72,9 @@ public enum TerrainDebugMode
     [InspectorName("9 - Raw AO Channel")] RawAO = 9,
     [InspectorName("10 - Raw Smoothness Channel")] RawSmoothness = 10,
     [InspectorName("11 - Computed PBR Values")] ComputedPBR = 11,
-    [InspectorName("12 - Macro Surface Normal")] MacroSurfaceNormal = 12
+    [InspectorName("12 - Macro Surface Normal")] MacroSurfaceNormal = 12,
+    [InspectorName("13 - Mountain Profile")] MountainProfile = 13,
+    [InspectorName("14 - Mountain Rock Blend")] MountainRockBlend = 14
 }
 
 /// <summary>
@@ -180,6 +185,19 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Geometry density used only for Mountain tile tops.")]
     private int mountainTopSubdivision = 3;
 
+    [Header("Mountain Shape")]
+    [SerializeField] private bool enableMountainShape = true;
+    [SerializeField, Range(0f, 2f)] private float mountainPeakHeightShoulder = 0.22f;
+    [SerializeField, Range(0f, 2.5f)] private float mountainPeakHeightSummit = 1.15f;
+    [SerializeField, Range(0.2f, 1f)] private float mountainRidgeLengthShoulder = 0.72f;
+    [SerializeField, Range(0.2f, 1f)] private float mountainRidgeLengthSummit = 0.50f;
+    [SerializeField, Range(0.1f, 0.8f)] private float mountainRidgeWidthShoulder = 0.42f;
+    [SerializeField, Range(0.1f, 0.8f)] private float mountainRidgeWidthSummit = 0.23f;
+    [SerializeField, Range(0.3f, 3f)] private float mountainPeakSharpnessShoulder = 1.15f;
+    [SerializeField, Range(0.3f, 3f)] private float mountainPeakSharpnessSummit = 1.75f;
+    [SerializeField, Range(0f, 0.25f)] private float mountainShapeAsymmetry = 0.08f;
+    [SerializeField, Range(0.4f, 0.95f)] private float mountainBoundaryFalloffStart = 0.70f;
+
 #if UNITY_EDITOR
     private void OnValidate()
     {
@@ -199,6 +217,7 @@ public class HexMapChunkManager : MonoBehaviour
         for (int x = 0; x < chunks.GetLength(0); x++)
         for (int z = 0; z < chunks.GetLength(1); z++)
             chunks[x, z]?.ForceRefresh();
+        ApplyBiomeMaterialSettings();
         CreatePickingCollider();
     }
 #endif
@@ -440,6 +459,15 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField]
     [Tooltip("Optional detail normal array for cliffs. Assign a Texture2DArray matching `cliffAlbedoArray` depth.")]
     private Texture2DArray cliffNormalArray;
+
+    [Header("Mountain Surface")]
+    [SerializeField] private bool enableMountainRockBlend = true;
+    [SerializeField, Range(0f, 1f)] private float mountainRockSlopeThreshold = 0.62f;
+    [SerializeField, Range(0f, 0.4f)] private float mountainRockSlopeBlend = 0.14f;
+    [SerializeField, Range(0f, 1f)] private float mountainRockStrength = 0.90f;
+    [SerializeField, Range(0.01f, 30f)] private float mountainRockTiling = 12f;
+    [SerializeField, Range(0f, 2f)] private float mountainNormalStrength = 1f;
+    [SerializeField] private bool useMountainTriplanar = true;
 
     [Header("Cliff Settings")]
     [SerializeField]
@@ -1729,7 +1757,7 @@ public class HexMapChunkManager : MonoBehaviour
         float stitchedY = Mathf.Lerp(baseY, Mathf.Lerp(cornerA, cornerB, edgeT), Mathf.Clamp01(radial01));
         float micro = enableSurfaceUndulation ? SampleSurfaceUndulation(worldX, worldZ) * edgeMask : 0f;
         float mountainPeak = 0f;
-        if (planetGenerator != null && planetGenerator.data != null &&
+        if (enableMountainShape && planetGenerator != null && planetGenerator.data != null &&
             planetGenerator.data.TryGetValue(tileIndex, out HexTileData tile) && tile.elevationTier == ElevationTier.Mountain)
         {
             float prominence = tile.mountainRangeId >= 0 ? Mathf.Clamp01(tile.mountainRangeProfile01) : Mathf.Clamp01(tile.visualRelief01);
@@ -1737,13 +1765,15 @@ public class HexMapChunkManager : MonoBehaviour
             Vector2 across = new Vector2(-ridge.y, ridge.x);
             float along = Vector2.Dot(local, ridge) / innerRadius;
             float perpendicular = Vector2.Dot(local, across) / innerRadius;
-            float alongScale = Mathf.Lerp(0.72f, 0.50f, prominence);
-            float acrossScale = Mathf.Lerp(0.42f, 0.24f, prominence);
-            float elliptical = along * along / (alongScale * alongScale) + perpendicular * perpendicular / (acrossScale * acrossScale);
-            float crest = Mathf.Pow(Mathf.Clamp01(1f - elliptical), Mathf.Lerp(1.35f, 0.72f, prominence));
-            float asymmetry = 1f + 0.08f * Mathf.Sin((along * 2.1f + perpendicular * 3.7f) + tileIndex * 0.618f);
-            float boundaryFalloff = 1f - SmoothStep(0.72f, 1f, radial01);
-            mountainPeak = crest * asymmetry * boundaryFalloff * Mathf.Lerp(0.22f, 1.05f, prominence);
+            float ridgeLength = Mathf.Lerp(mountainRidgeLengthShoulder, mountainRidgeLengthSummit, prominence);
+            float ridgeWidth = Mathf.Lerp(mountainRidgeWidthShoulder, mountainRidgeWidthSummit, prominence);
+            float elliptical = along * along / (ridgeLength * ridgeLength) + perpendicular * perpendicular / (ridgeWidth * ridgeWidth);
+            float sharpness = Mathf.Lerp(mountainPeakSharpnessShoulder, mountainPeakSharpnessSummit, prominence);
+            float crest = Mathf.Pow(Mathf.Clamp01(1f - elliptical), sharpness);
+            float asymmetry = 1f + mountainShapeAsymmetry * Mathf.Sin((along * 2.1f + perpendicular * 3.7f) + tileIndex * 0.618f);
+            float boundaryFalloff = 1f - SmoothStep(mountainBoundaryFalloffStart, 1f, radial01);
+            float peakHeight = Mathf.Lerp(mountainPeakHeightShoulder, mountainPeakHeightSummit, prominence);
+            mountainPeak = crest * asymmetry * boundaryFalloff * peakHeight;
         }
         return stitchedY + micro + mountainPeak - SampleRiverCarveDepth(tileIndex, worldX, worldZ, stitchedY);
     }
@@ -1879,6 +1909,14 @@ public class HexMapChunkManager : MonoBehaviour
     {
         float t = Mathf.Clamp01((value - from) / Mathf.Max(0.0001f, to - from));
         return t * t * (3f - 2f * t);
+    }
+
+    private static float GetMountainProminence(HexTileData tile)
+    {
+        if (tile == null || !tile.isMountain) return 0f;
+        return tile.mountainRangeId >= 0
+            ? Mathf.Clamp01(tile.mountainRangeProfile01)
+            : Mathf.Clamp01(tile.visualRelief01);
     }
 
     private int ResolveSurfaceSliceIndex(HexTileData tile, int stableSeed, int biomeIndex)
@@ -2027,12 +2065,12 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
 
-        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height || biomeIndexMap.format != TextureFormat.RGBAFloat)
         {
-            // RGFloat: R = surface slice index, G = biome index.
+            // RGBAFloat: R = surface slice, G = biome, B = Mountain mask, A = prominence.
             // Storing biome index directly avoids the lossy SliceToBiomeMap reverse lookup
             // which fails when multiple biomes share the same surface family/slice.
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -2073,7 +2111,7 @@ public class HexMapChunkManager : MonoBehaviour
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
 
-                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, 0f, 1f);
+                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, tile.isMountain ? 1f : 0f, GetMountainProminence(tile));
             }
 
             biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
@@ -2084,7 +2122,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (ShouldRunDiagnostics())
         {
             if (minVal == int.MaxValue) minVal = 0;
-            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGFloat).");
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGBAFloat).");
         }
     }
 
@@ -2097,9 +2135,9 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) yield break;
 
-        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height || biomeIndexMap.format != TextureFormat.RGBAFloat)
         {
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -2140,7 +2178,7 @@ public class HexMapChunkManager : MonoBehaviour
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
 
-                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, 0f, 1f);
+                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, tile.isMountain ? 1f : 0f, GetMountainProminence(tile));
             }
 
             biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
@@ -2153,7 +2191,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (ShouldRunDiagnostics())
         {
             if (minVal == int.MaxValue) minVal = 0;
-            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGFloat) [batched].");
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGBAFloat) [batched].");
         }
     }
 
@@ -2162,11 +2200,12 @@ public class HexMapChunkManager : MonoBehaviour
     /// Doing this once over ~tens of thousands of tiles eliminates millions of
     /// Dictionary.TryGetValue + biome resolution calls in the per-pixel loop.
     /// </summary>
-    private void PrecomputeTileSliceAndBiomeIndices(out int[] sliceIndices, out int[] biomeIndices)
+    private void PrecomputeTileSliceAndBiomeIndices(out int[] sliceIndices, out int[] biomeIndices, out float2[] mountainData)
     {
         int tileCount = grid.TileCount;
         sliceIndices = ArrayPoolUtils.RentInt(tileCount);
         biomeIndices = ArrayPoolUtils.RentInt(tileCount);
+        mountainData = new float2[tileCount];
 
         for (int ti = 0; ti < tileCount; ti++)
         {
@@ -2174,12 +2213,14 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 sliceIndices[ti] = 0;
                 biomeIndices[ti] = 0;
+                mountainData[ti] = float2.zero;
                 continue;
             }
 
             int biomeIndex = ResolveRenderedBiomeIndex(tile);
             biomeIndices[ti] = biomeIndex;
             sliceIndices[ti] = ResolveSurfaceSliceIndex(tile, ti, biomeIndex);
+            mountainData[ti] = new float2(tile.isMountain ? 1f : 0f, GetMountainProminence(tile));
         }
     }
 
@@ -2209,7 +2250,7 @@ public class HexMapChunkManager : MonoBehaviour
             int biomeIndex = ResolveRenderedBiomeIndex(tile);
             int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
             biomeIndexMap.SetPixel(pixelIndex % width, pixelIndex / width,
-                new Color(sliceIndex, biomeIndex, 0f, 1f));
+                new Color(sliceIndex, biomeIndex, tile.isMountain ? 1f : 0f, GetMountainProminence(tile)));
             updated = true;
         }
 
@@ -2229,9 +2270,9 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
 
-        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height || biomeIndexMap.format != TextureFormat.RGBAFloat)
         {
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -2240,20 +2281,22 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         int pixelCount = width * height;
-        PrecomputeTileSliceAndBiomeIndices(out var tileSlice, out var tileBiome);
+        PrecomputeTileSliceAndBiomeIndices(out var tileSlice, out var tileBiome, out var tileMountain);
 
         var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
         var sliceNative = new NativeArray<int>(tileSlice, Allocator.TempJob);
         var biomeNative = new NativeArray<int>(tileBiome, Allocator.TempJob);
+        var mountainNative = new NativeArray<float2>(tileMountain, Allocator.TempJob);
         ArrayPoolUtils.ReturnInt(tileSlice);
         ArrayPoolUtils.ReturnInt(tileBiome);
-        var pixelsNative = new NativeArray<float2>(pixelCount, Allocator.TempJob);
+        var pixelsNative = new NativeArray<float4>(pixelCount, Allocator.TempJob);
 
         new FillBiomeIndexMapJob
         {
             lut = lutNative,
             tileSliceIndex = sliceNative,
             tileBiomeIndex = biomeNative,
+            tileMountainData = mountainNative,
             pixels = pixelsNative,
         }.Schedule(pixelCount, 4096).Complete();
 
@@ -2261,6 +2304,7 @@ public class HexMapChunkManager : MonoBehaviour
         biomeIndexMap.Apply(false, false);
 
         pixelsNative.Dispose();
+        mountainNative.Dispose();
         biomeNative.Dispose();
         sliceNative.Dispose();
         lutNative.Dispose();
@@ -2377,6 +2421,15 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_SmoothnessMultiplier", smoothnessMultiplier);
         sharedMaterial.SetFloat("_MapWidth", mapWidth);
         sharedMaterial.SetFloat("_MapHeight", mapHeight);
+
+        // Mountain rock is independent from the generic cliff/wall treatment.
+        sharedMaterial.SetFloat("_EnableMountainRockBlend", enableMountainRockBlend ? 1f : 0f);
+        sharedMaterial.SetFloat("_MountainRockSlopeThreshold", mountainRockSlopeThreshold);
+        sharedMaterial.SetFloat("_MountainRockSlopeBlend", mountainRockSlopeBlend);
+        sharedMaterial.SetFloat("_MountainRockStrength", mountainRockStrength);
+        sharedMaterial.SetFloat("_MountainRockTiling", mountainRockTiling);
+        sharedMaterial.SetFloat("_MountainNormalStrength", mountainNormalStrength);
+        sharedMaterial.SetFloat("_UseMountainTriplanar", useMountainTriplanar ? 1f : 0f);
 
         // Cliff params
         sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
