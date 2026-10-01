@@ -1,6 +1,7 @@
 using UnityEngine;
 using GameCombat;
 using UnityEngine.Serialization;
+using System.Linq;
 
 /// <summary>
 /// Types of equipment that can be equipped by units
@@ -247,6 +248,27 @@ public class EquipmentData : ScriptableObject
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>Shared validation for combat and worker units.</summary>
+    public bool IsValidForUnit(BaseUnit unit, Civilization civ = null)
+    {
+        if (unit == null) return false;
+        if (unit is CombatUnit combat)
+        {
+            if (targetUnit != EquipmentTarget.CombatUnit && targetUnit != EquipmentTarget.Both) return false;
+            return IsValidForUnit(combat, civ);
+        }
+        var worker = unit as WorkerUnit;
+        if (worker == null || (targetUnit != EquipmentTarget.WorkerUnit && targetUnit != EquipmentTarget.Both)) return false;
+        if (worker.level < minimumLevel) return false;
+        if (allowedUnitTypes != null && allowedUnitTypes.Length > 0) return false;
+        if (civ != null)
+        {
+            if (requiredTechs != null && requiredTechs.Any(t => t != null && (civ.researchedTechs == null || !civ.researchedTechs.Contains(t)))) return false;
+            if (requiredCultures != null && requiredCultures.Any(c => c != null && (civ.researchedCultures == null || !civ.researchedCultures.Contains(c)))) return false;
+        }
         return true;
     }
 

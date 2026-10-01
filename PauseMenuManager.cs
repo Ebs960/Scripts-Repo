@@ -173,6 +173,16 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> earnedLegacyNames = new List<string>();
         public List<string> activeLegacyNames = new List<string>();
         public ElectionState electionState = new ElectionState();
+        public List<UnitLoadoutSaveData> standardLoadouts = new List<UnitLoadoutSaveData>();
+    }
+
+    [Serializable]
+    public class UnitLoadoutSaveData
+    {
+        public string archetypeId;
+        public bool workerArchetype, useForNewUnits;
+        public int configuredSlots;
+        public string weaponId, shieldId, bodyId, headId, toolId, miscellaneousId, projectileId;
     }
 
     [Serializable]
