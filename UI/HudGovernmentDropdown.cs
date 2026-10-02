@@ -156,7 +156,7 @@ public class HudGovernmentDropdown : MonoBehaviour
     private void OpenGovernmentPanel()
     {
         if (UIManager.Instance != null)
-            UIManager.Instance.ShowGovernmentPanel(currentCiv, GovernmentTab.Government);
+            UIManager.Instance.ShowGovernmentSelection(currentCiv);
     }
 
     private void AddEmptyRow(string text, Transform parent)

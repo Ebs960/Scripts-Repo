@@ -30,7 +30,6 @@ public class GovernmentEntityActionPopup : MonoBehaviour
     [SerializeField] private Button convertButton;
     [SerializeField] private Button governorDetailsButton;
     [SerializeField] private GovernorHoldingsPanelUI holdingsPanel;
-    [SerializeField] private GovernmentGovernorsTab governorsTab;
 
     [Header("Vassal")]
     [SerializeField] private Image vassalIcon;
@@ -47,7 +46,6 @@ public class GovernmentEntityActionPopup : MonoBehaviour
     [SerializeField] private Button replaceGovernorButton;
     [SerializeField] private Button imposeReligionButton;
     [SerializeField] private Button releaseVassalButton;
-    [SerializeField] private GovernmentVassalsTab vassalsTab;
     [SerializeField] private GameObject independenceDemandRoot;
     [SerializeField] private TMP_Text independenceDemandText;
     [SerializeField] private Button acceptIndependenceButton;
@@ -215,8 +213,8 @@ public class GovernmentEntityActionPopup : MonoBehaviour
         else GovernmentUiUtil.SetText(governorStatus, failure);
     }
 
-    private void OpenGovernorDetails() { governorsTab?.FocusGovernor(governor); Hide(); panel?.OpenTab(GovernmentTab.Governors); }
-    private void OpenVassalDetails() { vassalsTab?.FocusVassal(contract); Hide(); panel?.OpenTab(GovernmentTab.Vassals); }
+    private void OpenGovernorDetails() { Hide(); panel?.ShowGovernor(governor); }
+    private void OpenVassalDetails() { Hide(); panel?.ShowVassal(contract); }
 
     private void OpenReplacement()
     {
