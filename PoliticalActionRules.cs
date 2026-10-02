@@ -3,6 +3,8 @@ using System.Linq;
 /// <summary>UI-facing rules for political actions, so enabled/disabled states and reasons come from one place.</summary>
 public static class PoliticalActionRules
 {
+    public const int GovernorGiftCost = 50;
+
     public static int CurrentTurn
         => TurnManager.Instance != null ? TurnManager.Instance.round : GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
 
@@ -41,6 +43,27 @@ public static class PoliticalActionRules
         string plural = GovernmentPresentation.GetGovernorTitlePlural(civ).ToLowerInvariant();
         if (!civ.governorsEnabled) { reason = $"{plural} have not been unlocked."; return false; }
         if (civ.governors.Count >= civ.governorCount) { reason = $"No free slot ({civ.governors.Count}/{civ.governorCount})."; return false; }
+        return true;
+    }
+
+    public static bool CanSendGovernorGift(Civilization civ, Governor governor, out string reason)
+    {
+        reason = null;
+        if (civ == null || governor == null) { reason = "No governor selected."; return false; }
+        if (governor.IsInRebellion) { reason = "Cannot send gifts during open rebellion."; return false; }
+        if (civ.gold < GovernorGiftCost) { reason = $"Requires {GovernorGiftCost} gold."; return false; }
+        if (governor.OpinionModifiers.Any(m => m.reason == "Received Gift" && m.turnsRemaining != 0))
+        { reason = "A recent gift is still influencing this governor."; return false; }
+        return true;
+    }
+
+    public static bool CanRequestGovernorConversion(Civilization civ, Governor governor, out string reason)
+    {
+        reason = null;
+        if (civ == null || governor == null) { reason = "No governor selected."; return false; }
+        if (civ.StateReligion == null) { reason = "There is no state religion."; return false; }
+        if (governor.PersonalReligion == civ.StateReligion) { reason = "Already follows the state religion."; return false; }
+        if (governor.IsInRebellion) { reason = "Cannot negotiate during open rebellion."; return false; }
         return true;
     }
 }
