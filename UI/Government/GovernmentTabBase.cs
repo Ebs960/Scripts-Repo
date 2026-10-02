@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Base for the Government screen tabs. Tabs only read state and call manager/service APIs; they never mutate
+/// Base controller for Government detail screens. Controllers only read state and call manager/service APIs; they never mutate
 /// simulation fields directly.
 /// </summary>
 public abstract class GovernmentTabBase : MonoBehaviour

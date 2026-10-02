@@ -37,13 +37,13 @@ public class PoliticalLineRowUI : MonoBehaviour
         GovernmentUiUtil.SetClick(button, null);
     }
 
-    public void BindWarning(PoliticalWarning warning, Action<GovernmentTab> onClick)
+    public void BindWarning(PoliticalWarning warning, Action<PoliticalWarningDestination> onClick)
     {
         Apply(warning.text, null);
         SetMarkers(false, false, false, false,
             warning.severity == PoliticalWarningSeverity.Caution, warning.severity == PoliticalWarningSeverity.Critical);
-        GovernmentTab tab = warning.targetTab;
-        GovernmentUiUtil.SetClick(button, onClick == null ? null : (Action)(() => onClick(tab)));
+        PoliticalWarningDestination destination = warning.destination;
+        GovernmentUiUtil.SetClick(button, onClick == null ? null : (Action)(() => onClick(destination)));
     }
 
     private void Apply(string label, string value)
