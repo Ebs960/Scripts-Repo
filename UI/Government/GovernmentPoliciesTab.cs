@@ -61,14 +61,43 @@ public class GovernmentPoliciesTab : GovernmentTabBase
     private PolicyTag? tagFilter;
     private string search = string.Empty;
     private PolicyData selected;
+    private bool hasRequestedFocus;
     private bool wired;
 
-    protected override void OnCivilizationChanged() => selected = null;
+    protected override void OnCivilizationChanged()
+    {
+        if (!hasRequestedFocus) selected = null;
+    }
+
+    public void FocusPolicy(PolicyData policy)
+    {
+        if (policy == null) return;
+        selected = policy;
+        hasRequestedFocus = true;
+        if (civ != null && gameObject.activeInHierarchy) Refresh();
+    }
 
     public override void Refresh()
     {
         if (civ == null || PolicyManager.Instance == null) return;
         EnsureWired();
+
+        if (selected != null && hasRequestedFocus)
+        {
+            var requestedEvaluation = PolicyManager.Instance.EvaluatePolicy(civ, selected);
+            filter = requestedEvaluation.State;
+            if (!MatchesTag(selected))
+            {
+                tagFilter = null;
+                if (tagFilterDropdown != null) tagFilterDropdown.SetValueWithoutNotify(0);
+            }
+            if (!MatchesSearch(selected))
+            {
+                search = string.Empty;
+                if (searchInput != null) searchInput.SetTextWithoutNotify(string.Empty);
+            }
+            hasRequestedFocus = false;
+        }
 
         var all = new List<Entry>();
         foreach (var policy in PolicyManager.Instance.allPolicies)

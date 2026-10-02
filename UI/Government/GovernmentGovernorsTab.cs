@@ -70,12 +70,23 @@ public class GovernmentGovernorsTab : GovernmentTabBase
     private readonly List<GovernorRowUI> rows = new List<GovernorRowUI>();
     private PoliticalLineList opinionModifiers, cities, herds;
     private int selectedGovernorId = -1;
+    private bool hasRequestedFocus;
     private bool wired;
 
     protected override void OnCivilizationChanged()
     {
-        selectedGovernorId = -1;
+        if (!hasRequestedFocus || civ == null || !civ.governors.Any(g => g != null && g.Id == selectedGovernorId))
+            selectedGovernorId = -1;
+        hasRequestedFocus = false;
         if (holdingsPanel != null && holdingsPanel.IsVisible) holdingsPanel.Hide();
+    }
+
+    public void FocusGovernor(Governor governor)
+    {
+        if (governor == null) return;
+        selectedGovernorId = governor.Id;
+        hasRequestedFocus = true;
+        if (civ != null && gameObject.activeInHierarchy) Refresh();
     }
 
     public override void Refresh()
@@ -89,6 +100,7 @@ public class GovernmentGovernorsTab : GovernmentTabBase
         var governors = civ.governors.Where(g => g != null).ToList();
         var selected = governors.FirstOrDefault(g => g.Id == selectedGovernorId) ?? governors.FirstOrDefault();
         selectedGovernorId = selected != null ? selected.Id : -1;
+        hasRequestedFocus = false;
 
         float scroll = GovernmentUiUtil.CaptureScroll(listScroll);
         GovernmentUiUtil.FillList(listRoot, rowPrefab, rows, governors,
