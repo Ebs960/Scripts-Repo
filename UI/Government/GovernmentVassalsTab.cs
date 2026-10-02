@@ -61,9 +61,23 @@ public class GovernmentVassalsTab : GovernmentTabBase
 
     private readonly List<VassalRowUI> rows = new List<VassalRowUI>();
     private Civilization selectedSubject;
+    private bool hasRequestedFocus;
     private bool wired;
 
-    protected override void OnCivilizationChanged() => selectedSubject = null;
+    protected override void OnCivilizationChanged()
+    {
+        if (!hasRequestedFocus || civ == null || selectedSubject == null
+            || SubjectManager.Instance == null || SubjectManager.Instance.GetContract(civ, selectedSubject) == null)
+            selectedSubject = null;
+        hasRequestedFocus = false;
+    }
+
+    public void FocusVassal(VassalContract contract)
+    {
+        selectedSubject = contract?.subject;
+        hasRequestedFocus = selectedSubject != null;
+        if (civ != null && gameObject.activeInHierarchy) Refresh();
+    }
 
     public override void Refresh()
     {
@@ -73,6 +87,7 @@ public class GovernmentVassalsTab : GovernmentTabBase
         var contracts = SubjectManager.Instance.GetSubjects(civ);
         var selected = contracts.FirstOrDefault(c => c.subject == selectedSubject) ?? contracts.FirstOrDefault();
         selectedSubject = selected?.subject;
+        hasRequestedFocus = false;
 
         float scroll = GovernmentUiUtil.CaptureScroll(listScroll);
         GovernmentUiUtil.FillList(listRoot, rowPrefab, rows, contracts,
