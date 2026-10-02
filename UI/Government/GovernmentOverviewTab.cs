@@ -20,6 +20,7 @@ public class GovernmentOverviewTab : GovernmentTabBase
     [SerializeField] private Button politicalAffairsButton;
 
     [Header("Drill-down Tabs")]
+    [SerializeField] private GovernmentEntityActionPopup actionPopup;
     [SerializeField] private GovernmentGovernorsTab governorsTab;
     [SerializeField] private GovernmentVassalsTab vassalsTab;
     [SerializeField] private GovernmentPoliciesTab policiesTab;
@@ -133,8 +134,7 @@ public class GovernmentOverviewTab : GovernmentTabBase
                 governor.IsInRebellion || governor.Opinion < 0,
                 () =>
                 {
-                    governorsTab?.FocusGovernor(governor);
-                    panel?.OpenTab(GovernmentTab.Governors);
+                    actionPopup?.ShowGovernor(civ, governor, panel);
                 });
         });
         GovernmentUiUtil.RestoreScroll(governorsScroll, scroll);
@@ -159,8 +159,7 @@ public class GovernmentOverviewTab : GovernmentTabBase
                 contract.libertyDesire >= contract.EffectiveBreakawayThreshold * 0.75f,
                 () =>
                 {
-                    vassalsTab?.FocusVassal(contract);
-                    panel?.OpenTab(GovernmentTab.Vassals);
+                    actionPopup?.ShowVassal(civ, contract, panel);
                 });
         });
         GovernmentUiUtil.RestoreScroll(vassalsScroll, scroll);
