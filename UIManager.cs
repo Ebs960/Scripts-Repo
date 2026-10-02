@@ -383,19 +383,30 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens the unified Government screen on a tab. This is the single entry point for the HUD and for the
-    /// legacy Political Affairs route.
+    /// Opens the unified Government dashboard.
     /// </summary>
-    public void ShowGovernmentPanel(Civilization civ = null, GovernmentTab tab = GovernmentTab.Overview)
+    public void ShowGovernmentPanel(Civilization civ = null)
+    {
+        OpenGovernmentFor(civ)?.ShowOverview();
+    }
+
+    public void ShowGovernmentSelection(Civilization civ = null) => OpenGovernmentFor(civ)?.ShowGovernmentSelection();
+    public void ShowGovernmentPolicies(Civilization civ = null) => OpenGovernmentFor(civ)?.ShowPolicies();
+    public void ShowGovernmentGovernors(Civilization civ = null) => OpenGovernmentFor(civ)?.ShowGovernors();
+    public void ShowGovernmentVassals(Civilization civ = null) => OpenGovernmentFor(civ)?.ShowVassals();
+    public void ShowGovernmentPolitics(Civilization civ = null) => OpenGovernmentFor(civ)?.ShowPolitics();
+
+    private GovernmentPanel OpenGovernmentFor(Civilization civ)
     {
         civ ??= CivilizationManager.Instance?.GetAllCivs()?.FirstOrDefault(c => c != null && c.isPlayerControlled);
         var panel = ResolveGovernmentPanel();
         if (panel == null)
         {
-            ShowPanel("GovernmentPanel");
-            return;
+            Debug.LogWarning("[UIManager] GovernmentPanel is missing.");
+            return null;
         }
-        panel.ShowForCivilization(civ, tab);
+        panel.ShowForCivilization(civ);
+        return panel.IsOpen ? panel : null;
     }
 
     private GovernmentPanel ResolveGovernmentPanel()
@@ -467,31 +478,7 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        // Political Affairs is now the Politics tab of the unified Government screen.
-        var government = ResolveGovernmentPanel();
-        if (government != null && government.HasTabShell)
-        {
-            government.ShowForCivilization(civ, GovernmentTab.Politics);
-            return;
-        }
-
-        // Compatibility fallback until the Government prefab is rewired with authored tabs.
-        if (politicalAffairsPanelUI == null)
-            EnsurePoliticalAffairsPanelUi();
-
-        if (politicalAffairsPanelUI == null)
-        {
-            Debug.LogWarning("[UIManager] Political Affairs panel reference is missing.");
-            return;
-        }
-
-        ShowPanel("PoliticalAffairsPanel");
-
-        var politicalAffairsUI = politicalAffairsPanelUI;
-        if (politicalAffairsUI != null)
-        {
-            politicalAffairsUI.Show(civ);
-        }
+        ShowGovernmentPolitics(civ);
     }
 
     private void EnsurePoliticalAffairsPanelUi()

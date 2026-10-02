@@ -6,9 +6,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Compatibility wrapper. Political Affairs now lives in the Politics tab of the unified Government screen
-/// (<see cref="GovernmentPanel"/>), so Show/Hide route there. The legacy runtime-built content below is kept only as a
-/// fallback for scenes whose Government prefab has not been wired with authored tabs yet, and can be deleted once it is.
+/// Compatibility wrapper for older Political Affairs entry points. Political Affairs now lives in the explicit
+/// Politics detail screen owned by <see cref="GovernmentPanel"/>.
 /// </summary>
 public class PoliticalAffairsPanelUI : MonoBehaviour
 {
@@ -49,14 +48,11 @@ public class PoliticalAffairsPanelUI : MonoBehaviour
     {
         if (civ == null) return;
 
-        var government = GovernmentPanel.Instance != null
-            ? GovernmentPanel.Instance
-            : FindAnyObjectByType<GovernmentPanel>(FindObjectsInactive.Include);
-        if (government != null && government.HasTabShell)
+        if (UIManager.Instance != null)
         {
             if (panelRoot != null) panelRoot.SetActive(false);
             routedToGovernmentPanel = true;
-            government.ShowForCivilization(civ, GovernmentTab.Politics);
+            UIManager.Instance.ShowGovernmentPolitics(civ);
             return;
         }
 

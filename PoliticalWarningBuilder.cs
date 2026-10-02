@@ -3,12 +3,22 @@ using System.Linq;
 
 public enum PoliticalWarningSeverity { Info, Caution, Critical }
 
-/// <summary>An item in the Overview "Attention" list; targetTab lets the UI jump straight to where it can be handled.</summary>
+public enum PoliticalWarningDestination
+{
+    None,
+    GovernmentSelection,
+    Policies,
+    Governors,
+    Vassals,
+    Politics
+}
+
+/// <summary>An item in the Overview "Attention" list with a warning-specific click destination.</summary>
 public struct PoliticalWarning
 {
     public PoliticalWarningSeverity severity;
     public string text;
-    public GovernmentTab targetTab;
+    public PoliticalWarningDestination destination;
 }
 
 /// <summary>Data-driven political warnings. All thresholds live here so UI code never hardcodes them.</summary>
@@ -38,9 +48,9 @@ public static class PoliticalWarningBuilder
                     if (bloc.IsInRebellion) rebelFactions++;
                 }
             if (rebelFactions > 0)
-                Add(warnings, PoliticalWarningSeverity.Critical, $"{rebelFactions} faction(s) in open rebellion.", GovernmentTab.Politics);
+                Add(warnings, PoliticalWarningSeverity.Critical, $"{rebelFactions} faction(s) in open rebellion.", PoliticalWarningDestination.Politics);
             if (demands > 0)
-                Add(warnings, PoliticalWarningSeverity.Caution, $"{demands} faction demand(s) awaiting your answer.", GovernmentTab.Politics);
+                Add(warnings, PoliticalWarningSeverity.Caution, $"{demands} faction demand(s) awaiting your answer.", PoliticalWarningDestination.Politics);
 
             int rebelGovernors = 0, discontented = 0, unseated = 0;
             if (civ.governors != null)
@@ -52,17 +62,17 @@ public static class PoliticalWarningBuilder
                     if (civ.HasRoyalCouncil && !g.IsOnCouncil && g.IsCouncilEligible) unseated++;
                 }
             if (rebelGovernors > 0)
-                Add(warnings, PoliticalWarningSeverity.Critical, $"{rebelGovernors} of your {governors} are in rebellion.", GovernmentTab.Governors);
+                Add(warnings, PoliticalWarningSeverity.Critical, $"{rebelGovernors} of your {governors} are in rebellion.", PoliticalWarningDestination.Governors);
             if (discontented > 0)
-                Add(warnings, PoliticalWarningSeverity.Caution, $"{discontented} of your {governors} are deeply discontented.", GovernmentTab.Governors);
+                Add(warnings, PoliticalWarningSeverity.Caution, $"{discontented} of your {governors} are deeply discontented.", PoliticalWarningDestination.Governors);
             if (unseated > 0)
                 Add(warnings, PoliticalWarningSeverity.Caution,
-                    $"{unseated} powerful {governors} have no seat in the {GovernmentPresentation.GetInstitutionName(civ)}.", GovernmentTab.Governors);
+                    $"{unseated} powerful {governors} have no seat in the {GovernmentPresentation.GetInstitutionName(civ)}.", PoliticalWarningDestination.Governors);
         }
 
         int events = PoliticalEventManager.Instance != null ? PoliticalEventManager.Instance.GetActiveEventsForCiv(civ).Count : 0;
         if (events > 0)
-            Add(warnings, PoliticalWarningSeverity.Info, $"{events} political event(s) need a decision.", GovernmentTab.Politics);
+            Add(warnings, PoliticalWarningSeverity.Info, $"{events} political event(s) need a decision.", PoliticalWarningDestination.Politics);
 
         if (SubjectManager.Instance != null)
             foreach (var contract in SubjectManager.Instance.GetSubjects(civ))
@@ -70,31 +80,31 @@ public static class PoliticalWarningBuilder
                 if (contract == null) continue;
                 string subject = contract.subjectCivName;
                 if (SubjectManager.Instance.GetPendingIndependenceDemand(civ, contract.subject) != null)
-                    Add(warnings, PoliticalWarningSeverity.Critical, $"{subject} demands independence.", GovernmentTab.Vassals);
+                    Add(warnings, PoliticalWarningSeverity.Critical, $"{subject} demands independence.", PoliticalWarningDestination.Vassals);
                 else if (contract.libertyDesire >= contract.EffectiveBreakawayThreshold * VassalLibertyWarningFraction)
                     Add(warnings, PoliticalWarningSeverity.Caution,
-                        $"{subject} is restless (liberty desire {contract.libertyDesire:0}/{contract.EffectiveBreakawayThreshold:0}).", GovernmentTab.Vassals);
+                        $"{subject} is restless (liberty desire {contract.libertyDesire:0}/{contract.EffectiveBreakawayThreshold:0}).", PoliticalWarningDestination.Vassals);
             }
 
         var rules = civ.currentGovernment?.electionRules;
         if (rules != null && rules.enabled && civ.electionState != null)
         {
             if (civ.electionState.governmentLegitimacy < LowLegitimacyThreshold)
-                Add(warnings, PoliticalWarningSeverity.Critical, $"Legitimacy is very low ({civ.electionState.governmentLegitimacy:0}%).", GovernmentTab.Politics);
+                Add(warnings, PoliticalWarningSeverity.Critical, $"Legitimacy is very low ({civ.electionState.governmentLegitimacy:0}%).", PoliticalWarningDestination.Politics);
             if (civ.electionState.activeElection != null && !civ.electionState.activeElection.resolved)
-                Add(warnings, PoliticalWarningSeverity.Info, "An election is underway.", GovernmentTab.Politics);
+                Add(warnings, PoliticalWarningSeverity.Info, "An election is underway.", PoliticalWarningDestination.Politics);
         }
 
         var votes = CouncilVoteService.GetRecentResults(civ);
         int round = TurnManager.Instance != null ? TurnManager.Instance.round : 0;
         var lastVote = votes.LastOrDefault(v => v != null && v.applicable);
         if (lastVote != null && !lastVote.passed && round - lastVote.recordedTurn <= RecentVoteWindowTurns)
-            Add(warnings, PoliticalWarningSeverity.Caution, $"The {GovernmentPresentation.GetInstitutionName(civ)} recently rejected: {lastVote.proposalDescription}.", GovernmentTab.Politics);
+            Add(warnings, PoliticalWarningSeverity.Caution, $"The {GovernmentPresentation.GetInstitutionName(civ)} recently rejected: {lastVote.proposalDescription}.", PoliticalWarningDestination.Politics);
 
         warnings.Sort((a, b) => b.severity.CompareTo(a.severity));
         return warnings;
     }
 
-    private static void Add(List<PoliticalWarning> list, PoliticalWarningSeverity severity, string text, GovernmentTab tab)
-        => list.Add(new PoliticalWarning { severity = severity, text = text, targetTab = tab });
+    private static void Add(List<PoliticalWarning> list, PoliticalWarningSeverity severity, string text, PoliticalWarningDestination destination)
+        => list.Add(new PoliticalWarning { severity = severity, text = text, destination = destination });
 }
