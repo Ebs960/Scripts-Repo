@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Constitutional Monarchy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.68, g: 0.55, b: 0.88, a: 1}
   governmentName: Constitutional Monarchy
-  icon: {fileID: 21300000, guid: 02cdd5e88ffb6964ba5e2db4ff284904, type: 3}
+  icon: {fileID: 21300000, guid: ff48da489602c8c42bc761390ba419b0, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: 5f8205a01b348d14cb7680544a6283fa, type: 3}
   leaderTitleSuffix: Constitutional Monarch
+  governorTitleSingular: Lord Lieutenant
+  governorTitlePlural: Lords Lieutenant
+  councilMemberTitle: Privy Councillor
   description: A limited monarchy balancing crown authority with institutional consent and loyal lords.
   policyPointCost: 120
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: 0a7a4c86c3778be458f4f9ffcf64e784, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -60,7 +66,7 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
-  institutionDisplayName: Council
+  institutionDisplayName: Privy Council
   institutions:
     administrativeEfficiencyModifier: 0.08
     distanceLoyaltyPenaltyModifier: 0

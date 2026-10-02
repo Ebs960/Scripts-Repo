@@ -600,10 +600,13 @@ public class TechUI : MonoBehaviour
                     foreach (var rt in eq.requiredTechs)
                         if (rt == tech) { AddUniqueUnlock(unlockItems, eq.equipmentName); break; }
 
+        var governments = ResourceCache.GetAllGovernmentData();
+        if (governments != null)
+            foreach (var g in governments)
+                if (g != null && g.requiredTechs != null && System.Array.IndexOf(g.requiredTechs, tech) >= 0)
+                    AddUniqueUnlock(unlockItems, g.governmentName);
+
         // Also show directly-referenced unlocks on TechData itself
-        if (tech.unlockedGovernments != null)
-            foreach (var g in tech.unlockedGovernments)
-                if (g != null) AddUniqueUnlock(unlockItems, g.governmentName);
         if (tech.unlockedReligions != null)
             foreach (var r in tech.unlockedReligions)
                 if (r != null) AddUniqueUnlock(unlockItems, r.religionName);

@@ -169,5 +169,9 @@ public sealed class CampaignMapModeDataService
     }
     private static bool IsMeaningful(Color color) => color.a > .01f && color.r + color.g + color.b > .03f;
     private static Color DeterministicColor(int id, float saturation, float value)
-    { return Color.HSVToRGB(Mathf.Repeat(id * .61803398875f, 1f), saturation, value); }
+    {
+        // Double math: large hash ids lose every fractional bit in float, collapsing all hues to 0.
+        float hue = (float)((id * 0.61803398875d) % 1d);
+        return Color.HSVToRGB(Mathf.Repeat(hue, 1f), saturation, value);
+    }
 }

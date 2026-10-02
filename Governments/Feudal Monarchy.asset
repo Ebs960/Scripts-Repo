@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Feudal Monarchy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.55, g: 0.12, b: 0.22, a: 1}
   governmentName: Feudal Monarchy
-  icon: {fileID: 21300000, guid: 68a37509b4426d64e98d7ce09a9b7292, type: 3}
+  icon: {fileID: 21300000, guid: ecb5b3710e13f134e807961ba2e446cb, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: b74c9820bee7bb344840502ca5d78473, type: 3}
   leaderTitleSuffix: King
+  governorTitleSingular: Baron
+  governorTitlePlural: Barons
+  councilMemberTitle: Peer of the Realm
   description: A vassal-based monarchy where loyal lords provide stronger tribute and cultural legitimacy.
   policyPointCost: 80
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a2e4af3c556327648b57e1e3aec07b4c, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 3
@@ -60,7 +66,7 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
-  institutionDisplayName: Council
+  institutionDisplayName: Curia Regis
   institutions:
     administrativeEfficiencyModifier: -0.12
     distanceLoyaltyPenaltyModifier: -0.2

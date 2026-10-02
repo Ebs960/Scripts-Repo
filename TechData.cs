@@ -76,7 +76,7 @@ public class TechData : ScriptableObject
     // Unit availability: CombatUnitData.requiredTechs / WorkerUnitData.requiredTechs
     // Improvement availability: ImprovementData.requiredTechs
     // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
-    public GovernmentData[] unlockedGovernments;
+    // Government availability is controlled solely by GovernmentData.requiredTechs
     public ReligionData[] unlockedReligions;
     public LeaderData[] unlockedLeaders;
     

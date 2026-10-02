@@ -12,9 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Empathic Union
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.95, g: 0.55, b: 0.75, a: 1}
   governmentName: Empathic Union
-  icon: {fileID: 21300000, guid: cdaea756f58be4444b1cc25619c9c8e6, type: 3}
+  icon: {fileID: 21300000, guid: 9e7ea604548d40048bb3d859865251da, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: c55143b155d2e2040a3b1e719250b268, type: 3}
   leaderTitleSuffix: First Mediator
+  governorTitleSingular: Harmonizer
+  governorTitlePlural: Harmonizers
   description: A psionic and diplomatic union that governs through shared feeling,
     mutual aid, and interstellar trust.
   policyPointCost: 170

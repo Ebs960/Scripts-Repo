@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Republic
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.95, g: 0.5, b: 0.15, a: 1}
   governmentName: Republic
-  icon: {fileID: 21300000, guid: 2c8073ba056694d49b5afac84cf340c3, type: 3}
+  icon: {fileID: 21300000, guid: 7035323f988e7154f96da22e8de83502, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: 3942071a8b6d01341a405b2702983bbf, type: 3}
   leaderTitleSuffix: Consul
+  governorTitleSingular: Proconsul
+  governorTitlePlural: Proconsuls
+  councilMemberTitle: Senator
   description: A representative civic order that balances productive institutions with public culture.
   policyPointCost: 55
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a8ce4713cccdf444dbaef19249b8e2be, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0

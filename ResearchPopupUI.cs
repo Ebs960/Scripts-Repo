@@ -129,8 +129,10 @@ public class ResearchPopupUI : MonoBehaviour
         if (tech.faithModifier != 0f) sb.AppendLine($"Faith: {tech.faithModifier:P0}");
 
         // Unlocks
-        if (tech.unlockedGovernments != null && tech.unlockedGovernments.Length > 0)
-            sb.AppendLine($"Unlocks Governments: {tech.unlockedGovernments.Length}");
+        int governmentUnlocks = System.Linq.Enumerable.Count(ResourceCache.GetAllGovernmentData() ?? new GovernmentData[0],
+            g => g != null && g.requiredTechs != null && System.Array.IndexOf(g.requiredTechs, tech) >= 0);
+        if (governmentUnlocks > 0)
+            sb.AppendLine($"Unlocks Governments: {governmentUnlocks}");
         if (tech.unlockedReligions != null && tech.unlockedReligions.Length > 0)
             sb.AppendLine($"Unlocks Religions: {tech.unlockedReligions.Length}");
         if (tech.unlockedLeaders != null && tech.unlockedLeaders.Length > 0)

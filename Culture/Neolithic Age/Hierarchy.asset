@@ -26,8 +26,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f14ef9a928419f94d91b43f4d1e49273, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlockedGovernments:
-  - {fileID: 11400000, guid: f0edbcbede4a85340bba0325c37d8596, type: 2}
   unlockedReligions: []
   unlockedLeaders: []
   attackBonus: 0
@@ -42,6 +40,7 @@ MonoBehaviour:
   scienceModifier: 0
   cultureModifier: 0
   faithModifier: 0
+  policyPointsModifier: 0
   unlocksPantheon: 0
   unlocksReligion: 0
   flatFoodBonus: 0
@@ -50,18 +49,23 @@ MonoBehaviour:
   flatScienceBonus: 0
   flatCultureBonus: 0
   flatFaithBonus: 0
+  flatPolicyPointsBonus: 0
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   enablesGovernors: 0
   unitBonuses: []
+  unitProductionModifiers: []
   unitYieldBonuses: []
   workerBonuses: []
   workerYieldBonuses: []
   allWorkersWorkPoints: 0
   equipmentBonuses: []
   equipmentYieldBonuses: []
+  tileYieldBonuses: []
   improvementBonuses: []
   buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
   diseaseBonuses: []
   attritionBonuses: []
   genericYieldBonuses: []
@@ -73,3 +77,4 @@ MonoBehaviour:
   unlocksBeliefs: []
   unitLimitModifiers: []
   buildingLimitModifiers: []
+  citySlotModifiers: []

@@ -36,7 +36,7 @@ public class CultureData : ScriptableObject
     [Header("Unlocks & Bonuses")]
     // REMOVED: unlocksPolicies
     // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
-    public GovernmentData[] unlockedGovernments;
+    // Government availability is controlled solely by GovernmentData.requiredCultures
     public ReligionData[] unlockedReligions;
     public LeaderData[] unlockedLeaders;
     // REMOVED: All unlocked arrays - availability now controlled ONLY by requiredCultures in the respective data classes

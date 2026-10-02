@@ -542,9 +542,11 @@ public class CultureUI : MonoBehaviour
                     foreach (var rc in eq.requiredCultures)
                         if (rc == culture) { AddUniqueUnlock(unlockItems, eq.equipmentName); break; }
 
-        if (culture.unlockedGovernments != null)
-            foreach (var g in culture.unlockedGovernments)
-                if (g != null) AddUniqueUnlock(unlockItems, g.governmentName);
+        var governments = ResourceCache.GetAllGovernmentData();
+        if (governments != null)
+            foreach (var g in governments)
+                if (g != null && g.requiredCultures != null && System.Array.IndexOf(g.requiredCultures, culture) >= 0)
+                    AddUniqueUnlock(unlockItems, g.governmentName);
         if (culture.unlockedReligions != null)
             foreach (var r in culture.unlockedReligions)
                 if (r != null) AddUniqueUnlock(unlockItems, r.religionName);

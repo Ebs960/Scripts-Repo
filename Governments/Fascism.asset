@@ -12,13 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Fascism
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.55, g: 0.25, b: 0.1, a: 1}
   governmentName: Fascism
-  icon: {fileID: 21300000, guid: 1adb58bc3cd252041aa806bbb3bf0891, type: 3}
+  icon: {fileID: 21300000, guid: e759b949cf3b7eb4bbe67ca7bb7bbabc, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: 5108aab664a20a940bf87aedde017728, type: 3}
   leaderTitleSuffix: Duce
+  governorTitleSingular: Prefect
+  governorTitlePlural: Prefects
   description: A militarized nationalist state built for rapid mobilization, internal control, and aggressive conquest.
   policyPointCost: 110
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: d35b608969488b241bae6d556281e3a6, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0

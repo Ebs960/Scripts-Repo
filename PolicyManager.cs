@@ -405,7 +405,7 @@ public class PolicyManager : MonoBehaviour
     public bool MeetsGovernmentPrerequisites(Civilization civ, GovernmentData g)
     {
         if (civ == null || g == null) return false;
-        if (!GovernmentUnlocked(civ, g)) return false;
+        if (!IsGovernmentUnlocked(civ, g)) return false;
         if (civ.currentGovernment == g) return false;
         return GovernmentTechsMet(civ, g, null)
             && GovernmentCulturesMet(civ, g, null)
@@ -431,9 +431,8 @@ public class PolicyManager : MonoBehaviour
         e.policyPointCost = government.policyPointCost;
         e.currentPolicyPoints = civ.policyPoints;
         e.isCurrentGovernment = civ.currentGovernment == government;
-        e.unlocked = GovernmentUnlocked(civ, government);
+        e.unlocked = IsGovernmentUnlocked(civ, government);
         if (e.isCurrentGovernment) reasons.Add("This is your current government.");
-        else if (!e.unlocked) reasons.Add("This government has not been unlocked.");
 
         e.meetsTechRequirements = GovernmentTechsMet(civ, government, reasons);
         e.meetsCultureRequirements = GovernmentCulturesMet(civ, government, reasons);
@@ -448,8 +447,18 @@ public class PolicyManager : MonoBehaviour
         return e;
     }
 
-    private static bool GovernmentUnlocked(Civilization civ, GovernmentData g)
-        => civ.unlockedGovernments != null && civ.unlockedGovernments.Contains(g);
+    /// <summary>A government is unlocked once its own requiredTechs and requiredCultures are all met.</summary>
+    public bool IsGovernmentUnlocked(Civilization civ, GovernmentData g)
+        => civ != null && g != null && GovernmentTechsMet(civ, g, null) && GovernmentCulturesMet(civ, g, null);
+
+    public List<GovernmentData> GetUnlockedGovernments(Civilization civ)
+    {
+        var unlocked = new List<GovernmentData>();
+        if (civ == null || allGovernments == null) return unlocked;
+        foreach (var g in allGovernments)
+            if (IsGovernmentUnlocked(civ, g)) unlocked.Add(g);
+        return unlocked;
+    }
 
     private static bool GovernmentTechsMet(Civilization civ, GovernmentData g, List<string> reasons)
     {
@@ -504,9 +513,9 @@ public class PolicyManager : MonoBehaviour
     public List<GovernmentData> GetStructurallyAvailableGovernments(Civilization civ)
     {
         var avail = new List<GovernmentData>();
-        if (civ == null || civ.unlockedGovernments == null) return avail;
-        foreach (var g in civ.unlockedGovernments)
-            if (g != null && MeetsGovernmentPrerequisites(civ, g)) avail.Add(g);
+        if (civ == null) return avail;
+        foreach (var g in GetUnlockedGovernments(civ))
+            if (MeetsGovernmentPrerequisites(civ, g)) avail.Add(g);
         return avail;
     }
 
@@ -516,11 +525,10 @@ public class PolicyManager : MonoBehaviour
     public List<GovernmentData> GetAvailableGovernments(Civilization civ)
     {
         var avail = new List<GovernmentData>();
-        if (civ == null || civ.unlockedGovernments == null) return avail;
+        if (civ == null) return avail;
 
-        foreach (var g in civ.unlockedGovernments)
+        foreach (var g in GetUnlockedGovernments(civ))
         {
-            if (g == null) continue;
             if (civ.policyPoints < g.policyPointCost) continue;
             if (MeetsGovernmentPrerequisites(civ, g)) avail.Add(g);
         }

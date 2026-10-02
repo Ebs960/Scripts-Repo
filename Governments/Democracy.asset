@@ -12,13 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Democracy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.3, g: 0.6, b: 0.95, a: 1}
   governmentName: Democracy
-  icon: {fileID: 21300000, guid: 67301331dff5dcd478961e497a573478, type: 3}
+  icon: {fileID: 21300000, guid: 80b4c9b8ec6fd0a48ae85691dc0d4249, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: c298f887ef79bcf40922e7f02615b438, type: 3}
   leaderTitleSuffix: Archon
   description: A classical citizen government favoring debate, culture, and science at the cost of wide imperial administration.
   policyPointCost: 55
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: e9afb65641f1fdc449c44df0d0e558e8, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0

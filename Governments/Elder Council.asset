@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Elder Council
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.5, g: 0.55, b: 0.25, a: 1}
   governmentName: Elder Council
-  icon: {fileID: 21300000, guid: e1b7e768a73928b4f85b45a3e5b83a29, type: 3}
+  icon: {fileID: 21300000, guid: 4764a00b3399ba24ea2e564fd4005e94, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: 59348161d81a82047bde05d51b267b55, type: 3}
   leaderTitleSuffix: Speaker
+  governorTitleSingular: Clan Elder
+  governorTitlePlural: Clan Elders
+  councilMemberTitle: High Elder
   description: A consensus council of elders that spreads early learning and tradition across every city.
   policyPointCost: 0
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a79a9d5d5d2dd2e4f91bfa7327dcaecb, type: 2}
   requiredCityCount: 0
   requiresStateReligion: 0
   requiredVassalCount: 0
@@ -83,7 +89,7 @@ MonoBehaviour:
     onlyIfReligionMismatch: 0
     onlyIfCultureMismatch: 0
     onlyIfNotOnCouncil: 0
-  institutionDisplayName: Council
+  institutionDisplayName: Circle of Elders
   institutions:
     administrativeEfficiencyModifier: 0
     distanceLoyaltyPenaltyModifier: 0

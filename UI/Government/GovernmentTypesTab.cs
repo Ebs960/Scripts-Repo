@@ -87,9 +87,8 @@ public class GovernmentTypesTab : GovernmentTabBase
     {
         var governments = new List<GovernmentData>();
         if (civ.currentGovernment != null) governments.Add(civ.currentGovernment);
-        if (civ.unlockedGovernments != null)
-            foreach (var g in civ.unlockedGovernments)
-                if (g != null && !governments.Contains(g)) governments.Add(g);
+        foreach (var g in PolicyManager.Instance.GetUnlockedGovernments(civ))
+            if (!governments.Contains(g)) governments.Add(g);
 
         return governments
             .Select(g => new Entry { government = g, evaluation = PolicyManager.Instance.EvaluateGovernment(civ, g) })

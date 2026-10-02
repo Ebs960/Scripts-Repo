@@ -141,7 +141,6 @@ public static class PoliticalEffectSummaryBuilder
             lines.Add(new PoliticalRequirementLine { label = "A state religion", met = civ != null && civ.StateReligion != null });
         if (g.requiredVassalCount > 0)
             lines.Add(new PoliticalRequirementLine { label = $"{g.requiredVassalCount} vassals", met = civ != null && civ.ActiveVassalCount >= g.requiredVassalCount });
-        lines.Add(new PoliticalRequirementLine { label = "Government unlocked", met = civ?.unlockedGovernments != null && civ.unlockedGovernments.Contains(g) });
         return lines;
     }
 

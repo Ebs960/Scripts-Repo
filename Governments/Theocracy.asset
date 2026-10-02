@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c77eb999f5fb5d34b8dc501f8824ab0f, type: 3}
   m_Name: Theocracy
   m_EditorClassIdentifier: Assembly-CSharp::GovernmentData
+  mapModeColor: {r: 0.98, g: 0.93, b: 0.7, a: 1}
   governmentName: Theocracy
-  icon: {fileID: 21300000, guid: 9b1810e8970a5e64483261debeaf5a39, type: 3}
+  icon: {fileID: 21300000, guid: 5a4b294eccabdd24dbefd00096c579a3, type: 3}
+  governmentArtwork: {fileID: 21300000, guid: d32848c8a4fa44241b7adca93d0ea930, type: 3}
   leaderTitleSuffix: Hierarch
+  governorTitleSingular: Bishop
+  governorTitlePlural: Bishops
+  councilMemberTitle: Cardinal
   description: A state directed by religious authority, highly loyal when unified by faith.
   policyPointCost: 80
   requiredTechs: []
-  requiredCultures: []
+  requiredCultures:
+  - {fileID: 11400000, guid: c336900f7002463468415a14576d258e, type: 2}
   requiredCityCount: 8
   requiresStateReligion: 1
   requiredVassalCount: 0

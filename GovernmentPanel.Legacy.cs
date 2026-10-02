@@ -64,7 +64,7 @@ public partial class GovernmentPanel
 
         if (governmentsContentRoot != null)
         {
-            foreach (var government in civ.unlockedGovernments.Where(g => g != null))
+            foreach (var government in PolicyManager.Instance.GetUnlockedGovernments(civ))
             {
                 var g = government;
                 var evaluation = PolicyManager.Instance.EvaluateGovernment(civ, g);
