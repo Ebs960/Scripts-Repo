@@ -298,8 +298,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     {
         var check = CanInterfere(overlord, subject, currentTurn);
         if (!check.success) return check;
-        var contract = GetContract(overlord, subject);
-
         var targetCity = subject.cities?
             .Where(c => c != null && c.owner == subject)
             .OrderByDescending(c => c.isCapital)
@@ -313,14 +311,34 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         {
             newGov = subject.governors?
                 .FirstOrDefault(g => g != null && g != oldGov && !g.Cities.Contains(targetCity));
-
-            if (newGov == null && subject.governorsEnabled && subject.governors.Count < subject.governorCount)
-            {
-                var specialization = oldGov != null ? oldGov.specialization : Governor.Specialization.Military;
-                newGov = subject.CreateGovernor("Imperial Appointee", specialization);
-            }
         }
 
+        return InterfereReplaceGovernor(overlord, subject, targetCity, newGov, newGov == null, currentTurn);
+    }
+
+    /// <summary>Replaces the governor of a player-selected subject city.</summary>
+    public SubjectActionResult InterfereReplaceGovernor(Civilization overlord, Civilization subject, City targetCity,
+        Governor replacement, bool appointNewIfNull, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        if (targetCity == null || targetCity.owner != subject || subject?.cities == null || !subject.cities.Contains(targetCity))
+            return SubjectActionResult.Fail("Select a city belonging to this subject.");
+
+        var oldGov = targetCity.governor;
+        if (replacement != null && (subject.governors == null || !subject.governors.Contains(replacement)))
+            return SubjectActionResult.Fail("The replacement must be one of the subject's governors.");
+        if (replacement == oldGov) return SubjectActionResult.Fail("That governor already holds this city.");
+        if (replacement == null && appointNewIfNull)
+        {
+            if (!subject.governorsEnabled || subject.governors.Count >= subject.governorCount)
+                return SubjectActionResult.Fail("The subject has no free governor slot.");
+            replacement = subject.CreateGovernor("Imperial Appointee",
+                oldGov != null ? oldGov.specialization : Governor.Specialization.Military);
+        }
+        if (replacement == null) return SubjectActionResult.Fail("Select a replacement governor.");
+
+        var contract = GetContract(overlord, subject);
         if (oldGov != null)
         {
             subject.RemoveGovernorFromCity(oldGov, targetCity);
@@ -328,10 +346,10 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             oldGov.AddOpinionModifier("Removed by Overlord", -20f, 25);
         }
 
-        if (newGov != null)
+        if (replacement != null)
         {
-            subject.AssignGovernorToCity(newGov, targetCity);
-            newGov.AddOpinionModifier("Installed by Overlord", 8f, 20);
+            subject.AssignGovernorToCity(replacement, targetCity);
+            replacement.AddOpinionModifier("Installed by Overlord", 8f, 20);
         }
 
         contract.resentment = Mathf.Min(100f, contract.resentment + 20f);
