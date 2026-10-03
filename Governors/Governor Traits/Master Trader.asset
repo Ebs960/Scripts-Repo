@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: Master Trader
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Master Trader
-  description: Years spent establishing trade routes have made this governor an
-    expert at extracting gold from commerce.
+  description: A web of dependable routes lets this governor move grain with the
+    same confidence as coin, enriching markets without neglecting provisioning.
   icon: {fileID: 0}
   triggerType: 1
-  requiredValue: 3
-  goldBonusModifier: 6
+  requiredValue: 4
+  goldBonusModifier: 8
   productionBonusModifier: 0
-  foodBonusModifier: 0
+  foodBonusModifier: 2
   scienceBonusModifier: 0
   cultureBonusModifier: 0
   faithBonusModifier: 0

@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 321b927a9552652469aa0739b14ff4f3, type: 3}
-  m_Name: Devout Steward
+  m_Name: Civic Architect
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
-  traitName: Devout Steward
-  description: This governor builds durable ties between civic ritual and local
-    congregations, giving shared belief a public language.
+  traitName: Civic Architect
+  description: This governor designs early public works as a connected civic plan,
+    making each new building strengthen identity as well as capacity.
   icon: {fileID: 0}
-  triggerType: 8
-  requiredValue: 3
+  triggerType: 3
+  requiredValue: 5
   goldBonusModifier: 0
-  productionBonusModifier: 0
+  productionBonusModifier: 4
   foodBonusModifier: 0
   scienceBonusModifier: 0
-  cultureBonusModifier: 2
-  faithBonusModifier: 7
+  cultureBonusModifier: 4
+  faithBonusModifier: 0
   combatBonusModifier: 0
-  cityDefenseBonusModifier: 0
+  cityDefenseBonusModifier: 2
   tileYieldBonuses: []
   specialEffects: []

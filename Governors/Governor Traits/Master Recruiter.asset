@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: Master Recruiter
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Master Recruiter
-  description: This governor has overseen the training of countless units and knows
-    how to get soldiers into fighting shape quickly.
+  description: A long record of mustering forces has taught this governor how to
+    expand the ranks without surrendering discipline or readiness.
   icon: {fileID: 0}
   triggerType: 2
-  requiredValue: 10
+  requiredValue: 12
   goldBonusModifier: 0
-  productionBonusModifier: 4
+  productionBonusModifier: 5
   foodBonusModifier: 0
   scienceBonusModifier: 0
   cultureBonusModifier: 0
   faithBonusModifier: 0
-  combatBonusModifier: 3
+  combatBonusModifier: 4
   cityDefenseBonusModifier: 0
   tileYieldBonuses: []
   specialEffects: []

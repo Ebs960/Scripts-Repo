@@ -80,7 +80,8 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: 22334455aabb66cc77dd8899eeff0011, type: 2}
   governorOpinionEffects:
   - reason: Supports Representative Institutions
     value: 8

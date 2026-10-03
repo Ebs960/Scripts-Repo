@@ -51,7 +51,8 @@ MonoBehaviour:
   flatCultureBonus: 0
   flatFaithBonus: 0
   additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: 77001122334455aabb66cc77dd8899ee, type: 2}
   enablesGovernors: 0
   unitBonuses: []
   unitYieldBonuses: []

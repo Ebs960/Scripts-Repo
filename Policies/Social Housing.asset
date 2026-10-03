@@ -79,7 +79,8 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: 4f19c7ab62de4380b1a5e96c3d740f28, type: 2}
   governorOpinionEffects:
   - reason: Increases Taxation
     value: -5

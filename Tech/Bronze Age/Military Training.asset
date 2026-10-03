@@ -67,6 +67,7 @@ MonoBehaviour:
   additionalGovernorSlots: 0
   unlockedGovernorTraits:
   - {fileID: 11400000, guid: 33cc44dd55ee66ff77001122334455aa, type: 2}
+  - {fileID: 11400000, guid: c841a63d96e14ac6a95f3bc8a520d117, type: 2}
   unitLimitModifiers: []
   buildingLimitModifiers: []
   cityCapIncrease: 0

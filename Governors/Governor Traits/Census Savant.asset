@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 321b927a9552652469aa0739b14ff4f3, type: 3}
-  m_Name: Devout Steward
+  m_Name: Census Savant
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
-  traitName: Devout Steward
-  description: This governor builds durable ties between civic ritual and local
-    congregations, giving shared belief a public language.
+  traitName: Census Savant
+  description: By tracking several waves of growth household by household, this governor
+    turns demographic knowledge into sound budgets and practical research.
   icon: {fileID: 0}
-  triggerType: 8
+  triggerType: 10
   requiredValue: 3
-  goldBonusModifier: 0
+  goldBonusModifier: 3
   productionBonusModifier: 0
-  foodBonusModifier: 0
-  scienceBonusModifier: 0
-  cultureBonusModifier: 2
-  faithBonusModifier: 7
+  foodBonusModifier: 2
+  scienceBonusModifier: 4
+  cultureBonusModifier: 0
+  faithBonusModifier: 0
   combatBonusModifier: 0
   cityDefenseBonusModifier: 0
   tileYieldBonuses: []

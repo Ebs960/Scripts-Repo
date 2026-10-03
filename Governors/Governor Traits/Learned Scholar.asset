@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: Learned Scholar
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Learned Scholar
-  description: This governor has sponsored numerous breakthroughs and inspires
-    researchers under their administration.
+  description: Years of sponsoring difficult research have made this governor skilled
+    at turning workshops, archives, and experiments into usable knowledge.
   icon: {fileID: 0}
   triggerType: 4
   requiredValue: 5
   goldBonusModifier: 0
-  productionBonusModifier: 0
+  productionBonusModifier: 2
   foodBonusModifier: 0
-  scienceBonusModifier: 6
+  scienceBonusModifier: 7
   cultureBonusModifier: 0
   faithBonusModifier: 0
   combatBonusModifier: 0

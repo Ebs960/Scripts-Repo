@@ -13,19 +13,18 @@ MonoBehaviour:
   m_Name: Fighter
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Fighter
-  description: He will fight hard
-  icon: {fileID: 21300000, guid: 25a58584c48e5af4893e4fec0acf7ce3, type: 3}
-  triggerType: 0
-  requiredValue: 2
+  description: After raising and drilling a dependable core of troops, this governor
+    turns mobilization into a civic discipline.
+  icon: {fileID: 0}
+  triggerType: 2
+  requiredValue: 6
   goldBonusModifier: 0
-  productionBonusModifier: 0
+  productionBonusModifier: 3
   foodBonusModifier: 0
   scienceBonusModifier: 0
   cultureBonusModifier: 0
   faithBonusModifier: 0
-  combatBonusModifier: 0
+  combatBonusModifier: 4
   cityDefenseBonusModifier: 2
-  specialEffects:
-  - effectName: Gifted
-    effectType: 6
-    value: 5
+  tileYieldBonuses: []
+  specialEffects: []

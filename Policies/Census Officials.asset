@@ -100,7 +100,8 @@ MonoBehaviour:
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
   additionalGovernorSlots: 0
-  unlockedGovernorTraits: []
+  unlockedGovernorTraits:
+  - {fileID: 11400000, guid: b5a08e62f3c24d65a4e19b730d8cf216, type: 2}
   governorOpinionEffects:
   - reason: Supports Census Officials
     value: 8

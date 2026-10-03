@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Siege Breaker
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Siege Breaker
-  description: This governor has weathered repeated sieges and hardened the city's
-    defenses as a result.
+  description: Repeated sieges have taught this governor to layer defenses, preserve
+    morale, and launch disciplined counterattacks at the decisive moment.
   icon: {fileID: 0}
   triggerType: 0
   requiredValue: 3
@@ -24,7 +24,7 @@ MonoBehaviour:
   scienceBonusModifier: 0
   cultureBonusModifier: 0
   faithBonusModifier: 0
-  combatBonusModifier: 5
-  cityDefenseBonusModifier: 10
+  combatBonusModifier: 3
+  cityDefenseBonusModifier: 12
   tileYieldBonuses: []
   specialEffects: []

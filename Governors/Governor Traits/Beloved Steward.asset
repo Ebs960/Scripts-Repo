@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: Beloved Steward
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Beloved Steward
-  description: Long years of faithful service have won this governor the trust
-    and affection of the people they govern.
+  description: A decade of visible, patient service has made this governor a trusted
+    bridge between the treasury and the households it supports.
   icon: {fileID: 0}
   triggerType: 9
   requiredValue: 10
-  goldBonusModifier: 4
+  goldBonusModifier: 2
   productionBonusModifier: 0
   foodBonusModifier: 4
   scienceBonusModifier: 0
-  cultureBonusModifier: 0
+  cultureBonusModifier: 4
   faithBonusModifier: 0
   combatBonusModifier: 0
   cityDefenseBonusModifier: 0

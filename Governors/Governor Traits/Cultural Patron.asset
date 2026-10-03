@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: Cultural Patron
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Cultural Patron
-  description: This governor has embraced foreign cultures and fostered the arts
-    throughout their tenure.
+  description: By sponsoring translators, workshops, and public performances, this
+    governor turns cultural exchange into both prestige and practical knowledge.
   icon: {fileID: 0}
   triggerType: 5
   requiredValue: 3
   goldBonusModifier: 0
   productionBonusModifier: 0
   foodBonusModifier: 0
-  scienceBonusModifier: 0
-  cultureBonusModifier: 6
+  scienceBonusModifier: 2
+  cultureBonusModifier: 7
   faithBonusModifier: 0
   combatBonusModifier: 0
   cityDefenseBonusModifier: 0

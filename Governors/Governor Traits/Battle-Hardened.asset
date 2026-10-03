@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: Battle-Hardened
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Battle-Hardened
-  description: This governor has commanded troops through countless victories and
-    knows how to press an advantage.
+  description: Repeated victories have taught this governor when to press an advantage
+    and when to make the city itself part of the battle plan.
   icon: {fileID: 0}
   triggerType: 6
-  requiredValue: 10
+  requiredValue: 12
   goldBonusModifier: 0
   productionBonusModifier: 0
   foodBonusModifier: 0
   scienceBonusModifier: 0
   cultureBonusModifier: 0
   faithBonusModifier: 0
-  combatBonusModifier: 8
-  cityDefenseBonusModifier: 0
+  combatBonusModifier: 7
+  cityDefenseBonusModifier: 4
   tileYieldBonuses: []
   specialEffects: []

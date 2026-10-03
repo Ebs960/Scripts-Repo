@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: Bountiful Harvest
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Bountiful Harvest
-  description: Under this governor's watch the population has flourished, and
-    they have learned how to keep granaries full.
+  description: Sustained growth has taught this governor to coordinate granaries,
+    seasonal labor, and emergency reserves without wasting a surplus.
   icon: {fileID: 0}
   triggerType: 10
   requiredValue: 5
   goldBonusModifier: 0
-  productionBonusModifier: 0
+  productionBonusModifier: 2
   foodBonusModifier: 8
   scienceBonusModifier: 0
   cultureBonusModifier: 0

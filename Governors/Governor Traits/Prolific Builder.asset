@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: Prolific Builder
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Prolific Builder
-  description: This governor has overseen extensive construction projects and
-    knows how to keep builders productive.
+  description: This governor coordinates crews, contracts, and material flows so
+    that ambitious construction also strengthens the local economy.
   icon: {fileID: 0}
   triggerType: 3
   requiredValue: 8
-  goldBonusModifier: 0
-  productionBonusModifier: 6
+  goldBonusModifier: 2
+  productionBonusModifier: 7
   foodBonusModifier: 0
   scienceBonusModifier: 0
   cultureBonusModifier: 0

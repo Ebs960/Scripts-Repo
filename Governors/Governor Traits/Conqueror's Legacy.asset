@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: Conqueror's Legacy
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
   traitName: Conqueror's Legacy
-  description: This governor has personally overseen the capture of enemy cities,
-    bringing home both plunder and glory.
+  description: Having absorbed captured cities, this governor knows how to turn
+    victory into revenue, legitimacy, and momentum for the next campaign.
   icon: {fileID: 0}
   triggerType: 7
   requiredValue: 2
-  goldBonusModifier: 5
+  goldBonusModifier: 4
   productionBonusModifier: 0
   foodBonusModifier: 0
   scienceBonusModifier: 0
-  cultureBonusModifier: 0
+  cultureBonusModifier: 3
   faithBonusModifier: 0
   combatBonusModifier: 5
   cityDefenseBonusModifier: 0

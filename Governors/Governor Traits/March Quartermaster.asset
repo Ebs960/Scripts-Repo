@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 321b927a9552652469aa0739b14ff4f3, type: 3}
-  m_Name: Devout Steward
+  m_Name: March Quartermaster
   m_EditorClassIdentifier: Assembly-CSharp::GovernorTrait
-  traitName: Devout Steward
-  description: This governor builds durable ties between civic ritual and local
-    congregations, giving shared belief a public language.
+  traitName: March Quartermaster
+  description: Supplying repeated musters has taught this governor to make barracks,
+    markets, and granaries serve the same marching timetable.
   icon: {fileID: 0}
-  triggerType: 8
-  requiredValue: 3
-  goldBonusModifier: 0
-  productionBonusModifier: 0
-  foodBonusModifier: 0
+  triggerType: 2
+  requiredValue: 8
+  goldBonusModifier: 3
+  productionBonusModifier: 4
+  foodBonusModifier: 3
   scienceBonusModifier: 0
-  cultureBonusModifier: 2
-  faithBonusModifier: 7
-  combatBonusModifier: 0
+  cultureBonusModifier: 0
+  faithBonusModifier: 0
+  combatBonusModifier: 2
   cityDefenseBonusModifier: 0
   tileYieldBonuses: []
   specialEffects: []
