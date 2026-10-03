@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// Overlord management of vassal contracts: tribute, autonomy, military obligation, religious policy, release, and
 /// independence demands. Every change goes through SubjectManager and is confirmed with its consequences first.
 /// </summary>
-public class GovernmentVassalsTab : GovernmentTabBase
+public class GovernmentVassalsUI : GovernmentScreenBase
 {
     [Header("List")]
     [SerializeField] private Transform listRoot;

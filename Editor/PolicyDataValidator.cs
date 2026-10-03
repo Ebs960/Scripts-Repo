@@ -26,6 +26,7 @@ public static class PolicyDataValidator
             if (!HasResearchGate(policy))
                 Error(path, "policy must require at least one technology or culture.", ref errors, policy);
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
+            if (policy.policyArea == PolicyArea.Unassigned) Error(path, "policyArea must be assigned.", ref errors, policy);
             if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
@@ -44,8 +45,12 @@ public static class PolicyDataValidator
             if (Contains(policy.supersedesPolicies, policy)) Error(path, "a policy cannot supersede itself.", ref errors, policy);
             if (policy.requiredPolicies != null)
                 foreach (var required in policy.requiredPolicies)
+                {
                     if (required != null && Contains(policy.incompatiblePolicies, required))
                         Error(path, $"'{required.name}' is both required and incompatible.", ref errors, policy);
+                    if (required != null && required.policyArea == policy.policyArea && !Contains(policy.supersedesPolicies, required))
+                        Error(path, "A policy cannot permanently require another policy in the same Policy Area, because only one policy in that area can remain active.", ref errors, policy);
+                }
             ValidateReferences(policy.unlockedGovernorTraits, "unlockedGovernorTraits", path, policy, ref errors);
             if (policy.religiousRequirementGroups == null) continue;
             for (int i = 0; i < policy.religiousRequirementGroups.Length; i++)

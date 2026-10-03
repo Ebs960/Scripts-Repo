@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Political Affairs: pending events, noble factions and their demands, recent council votes, and elections.
 /// Absorbs what the standalone Political Affairs panel used to show.
 /// </summary>
-public class GovernmentPoliticsTab : GovernmentTabBase
+public class GovernmentPoliticsUI : GovernmentScreenBase
 {
     private const int MaxVoteHistory = 8;
 

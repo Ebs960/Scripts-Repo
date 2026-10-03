@@ -29,6 +29,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 7
   policyTags:
   - 3
   additionalVetoDomains: 0

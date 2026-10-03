@@ -135,14 +135,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 72456982858661759}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7b458e312f32141499b0343831f650b1, type: 3}
+  m_Script: {fileID: 11500000, guid: 5f1ab8e09881402a8db524e8aeab7782, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GovernmentSummaryRowUI
+  m_EditorClassIdentifier: Assembly-CSharp::GovernorSummaryRowUI
   button: {fileID: 4576890004926640164}
   portraitImage: {fileID: 8426098293421777582}
   nameText: {fileID: 1571190590028535048}
-  primaryText: {fileID: 0}
-  secondaryText: {fileID: 0}
+  loyaltyText: {fileID: 0}
+  personalityText: {fileID: 0}
+  cityCountText: {fileID: 0}
   warningMarker: {fileID: 0}
 --- !u!1 &5350755572199920433
 GameObject:

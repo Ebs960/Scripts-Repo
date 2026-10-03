@@ -7,6 +7,14 @@ public enum PolicyTag
     Welfare, Digital, Synthetic, Genetics, Space
 }
 
+public enum PolicyArea
+{
+    Unassigned = 0,
+    Administration, Military, Law, CivilRights, Labor, Slavery, Economy, Trade,
+    Agriculture, Infrastructure, Education, Religion, Security, Welfare, Environment,
+    Colonial, Digital, Synthetic, Genetics, Space
+}
+
 [System.Serializable]
 public class PolicyReligiousRequirementGroup
 {
@@ -46,6 +54,10 @@ public class PolicyData : ScriptableObject
     public PolicyData[] incompatiblePolicies;
     [Tooltip("Active policies automatically repealed after a successful adoption vote.")]
     public PolicyData[] supersedesPolicies;
+
+    [Header("Policy Slot")]
+    [Tooltip("Only one policy from each Policy Area may be active at a time.")]
+    public PolicyArea policyArea = PolicyArea.Unassigned;
 
     [Header("Classification")]
     public PolicyTag[] policyTags;

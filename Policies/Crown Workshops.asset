@@ -26,6 +26,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 5
   policyTags:
   - 7
   attackBonus: 0

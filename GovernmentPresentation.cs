@@ -6,6 +6,19 @@ using UnityEngine;
 /// </summary>
 public static class GovernmentPresentation
 {
+    public static string PolicyAreaDisplayName(PolicyArea area)
+    {
+        switch (area)
+        {
+            case PolicyArea.Law: return "Law & Justice";
+            case PolicyArea.CivilRights: return "Civil Rights";
+            case PolicyArea.Digital: return "Digital Policy";
+            case PolicyArea.Synthetic: return "Synthetic Life";
+            case PolicyArea.Space: return "Space & Planetary";
+            case PolicyArea.Unassigned: return "Unassigned";
+            default: return area.ToString();
+        }
+    }
     public const string DefaultGovernorSingular = "Governor";
     public const string DefaultGovernorPlural = "Governors";
     public const string DefaultCouncilMember = "Councillor";

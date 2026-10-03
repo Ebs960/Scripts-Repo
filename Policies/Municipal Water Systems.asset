@@ -25,6 +25,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 15
   policyTags:
   - 5
   - 6

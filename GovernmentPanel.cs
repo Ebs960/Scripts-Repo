@@ -33,41 +33,26 @@ public class GovernmentPanel : MonoBehaviour
     [Header("Governors")]
     [SerializeField] private Transform governorsRoot;
     [SerializeField] private ScrollRect governorsScroll;
-    [SerializeField] private GovernmentSummaryRowUI governorEntryPrefab;
+    [SerializeField] private GovernorSummaryRowUI governorEntryPrefab;
     [SerializeField] private TMP_Text noGovernorsText;
 
     [Header("Vassals")]
     [SerializeField] private Transform vassalsRoot;
     [SerializeField] private ScrollRect vassalsScroll;
-    [SerializeField] private GovernmentSummaryRowUI vassalEntryPrefab;
+    [SerializeField] private VassalSummaryRowUI vassalEntryPrefab;
     [SerializeField] private TMP_Text noVassalsText;
 
     [Header("Policies")]
     [SerializeField] private Transform policiesRoot;
     [SerializeField] private ScrollRect policiesScroll;
-    [SerializeField] private GameObject policyCategoryHeaderPrefab;
-    [SerializeField] private PolicyNameButtonUI policyEntryPrefab;
-    [SerializeField] private TMP_Text noPoliciesText;
+    [SerializeField] private PolicyAreaDropdownUI policyAreaDropdownPrefab;
+    [SerializeField] private PolicyTooltipUI policyTooltip;
 
-    [Header("Government Selection")]
-    [SerializeField] private GameObject governmentSelectionRoot;
-    [SerializeField] private GovernmentTypesTab governmentTypesController;
-
-    [Header("Policies Detail")]
-    [SerializeField] private GameObject policiesDetailRoot;
-    [SerializeField] private GovernmentPoliciesTab policiesController;
-
-    [Header("Governors Detail")]
-    [SerializeField] private GameObject governorsDetailRoot;
-    [SerializeField] private GovernmentGovernorsTab governorsController;
-
-    [Header("Vassals Detail")]
-    [SerializeField] private GameObject vassalsDetailRoot;
-    [SerializeField] private GovernmentVassalsTab vassalsController;
-
-    [Header("Politics Detail")]
-    [SerializeField] private GameObject politicsRoot;
-    [SerializeField] private GovernmentPoliticsTab politicsController;
+    [Header("Detail Screens")]
+    [SerializeField] private GovernmentSelectionUI governmentSelectionUI;
+    [SerializeField] private GovernmentGovernorsUI governorsUI;
+    [SerializeField] private GovernmentVassalsUI vassalsUI;
+    [SerializeField] private GovernmentPoliticsUI politicsUI;
 
     [Header("Entity Popup")]
     [SerializeField] private GovernmentEntityActionPopup entityActionPopup;
@@ -80,18 +65,18 @@ public class GovernmentPanel : MonoBehaviour
     [Header("Confirmation")]
     [SerializeField] private PoliticalConfirmDialog confirmDialogUI;
 
-    private static readonly PolicyTag[] DashboardCategoryOrder =
+    private static readonly PolicyArea[] DashboardAreaOrder =
     {
-        PolicyTag.Administration, PolicyTag.Military, PolicyTag.Law, PolicyTag.Rights, PolicyTag.Labor,
-        PolicyTag.Economy, PolicyTag.Trade, PolicyTag.Agriculture, PolicyTag.Infrastructure,
-        PolicyTag.Education, PolicyTag.Religion, PolicyTag.Security, PolicyTag.Welfare,
-        PolicyTag.Environment, PolicyTag.Colonial, PolicyTag.Digital, PolicyTag.Synthetic,
-        PolicyTag.Genetics, PolicyTag.Space,
+        PolicyArea.Administration, PolicyArea.Military, PolicyArea.Law, PolicyArea.CivilRights,
+        PolicyArea.Slavery, PolicyArea.Labor, PolicyArea.Economy, PolicyArea.Trade,
+        PolicyArea.Agriculture, PolicyArea.Infrastructure, PolicyArea.Education, PolicyArea.Religion,
+        PolicyArea.Security, PolicyArea.Welfare, PolicyArea.Environment, PolicyArea.Colonial,
+        PolicyArea.Digital, PolicyArea.Synthetic, PolicyArea.Genetics, PolicyArea.Space,
     };
 
-    private readonly List<GovernmentSummaryRowUI> governorRows = new List<GovernmentSummaryRowUI>();
-    private readonly List<GovernmentSummaryRowUI> vassalRows = new List<GovernmentSummaryRowUI>();
-    private readonly List<GameObject> policyObjects = new List<GameObject>();
+    private readonly List<GovernorSummaryRowUI> governorRows = new List<GovernorSummaryRowUI>();
+    private readonly List<VassalSummaryRowUI> vassalRows = new List<VassalSummaryRowUI>();
+    private readonly List<PolicyAreaDropdownUI> policyRows = new List<PolicyAreaDropdownUI>();
     private Civilization civ;
     private Civilization subscribedCiv;
     private GameObject currentViewRoot;
@@ -191,50 +176,49 @@ public class GovernmentPanel : MonoBehaviour
 
     public void ShowGovernmentSelection()
     {
-        SetActiveView(governmentSelectionRoot);
-        RefreshController(governmentTypesController);
+        SetActiveView(governmentSelectionUI);
+        RefreshController(governmentSelectionUI);
     }
 
     public void ShowPolicies()
     {
-        SetActiveView(policiesDetailRoot);
-        RefreshController(policiesController);
+        ShowOverview();
+        if (policiesScroll != null) policiesScroll.verticalNormalizedPosition = 1f;
     }
 
     public void ShowPolicy(PolicyData policy)
     {
-        policiesController?.FocusPolicy(policy);
         ShowPolicies();
     }
 
     public void ShowGovernors()
     {
-        SetActiveView(governorsDetailRoot);
-        RefreshController(governorsController);
+        SetActiveView(governorsUI);
+        RefreshController(governorsUI);
     }
 
     public void ShowGovernor(Governor governor)
     {
-        governorsController?.FocusGovernor(governor);
+        governorsUI?.FocusGovernor(governor);
         ShowGovernors();
     }
 
     public void ShowVassals()
     {
-        SetActiveView(vassalsDetailRoot);
-        RefreshController(vassalsController);
+        SetActiveView(vassalsUI);
+        RefreshController(vassalsUI);
     }
 
     public void ShowVassal(VassalContract contract)
     {
-        vassalsController?.FocusVassal(contract);
+        vassalsUI?.FocusVassal(contract);
         ShowVassals();
     }
 
     public void ShowPolitics()
     {
-        SetActiveView(politicsRoot);
-        RefreshController(politicsController);
+        SetActiveView(politicsUI);
+        RefreshController(politicsUI);
     }
 
     public void OpenWarningDestination(PoliticalWarningDestination destination)
@@ -253,11 +237,10 @@ public class GovernmentPanel : MonoBehaviour
     {
         if (!IsOpen || civ == null) return;
         if (currentViewRoot == overviewRoot) RefreshOverview();
-        else if (currentViewRoot == governmentSelectionRoot) RefreshController(governmentTypesController);
-        else if (currentViewRoot == policiesDetailRoot) RefreshController(policiesController);
-        else if (currentViewRoot == governorsDetailRoot) RefreshController(governorsController);
-        else if (currentViewRoot == vassalsDetailRoot) RefreshController(vassalsController);
-        else if (currentViewRoot == politicsRoot) RefreshController(politicsController);
+        else if (governmentSelectionUI != null && currentViewRoot == governmentSelectionUI.gameObject) RefreshController(governmentSelectionUI);
+        else if (governorsUI != null && currentViewRoot == governorsUI.gameObject) RefreshController(governorsUI);
+        else if (vassalsUI != null && currentViewRoot == vassalsUI.gameObject) RefreshController(vassalsUI);
+        else if (politicsUI != null && currentViewRoot == politicsUI.gameObject) RefreshController(politicsUI);
     }
 
     public void Close()
@@ -292,19 +275,24 @@ public class GovernmentPanel : MonoBehaviour
         confirmDialogUI.Show(request);
     }
 
+    private void SetActiveView(GovernmentScreenBase screen) => SetActiveView(screen != null ? screen.gameObject : null);
+
     private void SetActiveView(GameObject viewRoot)
     {
         GameObject[] roots =
         {
-            overviewRoot, governmentSelectionRoot, policiesDetailRoot,
-            governorsDetailRoot, vassalsDetailRoot, politicsRoot,
+            overviewRoot,
+            governmentSelectionUI != null ? governmentSelectionUI.gameObject : null,
+            governorsUI != null ? governorsUI.gameObject : null,
+            vassalsUI != null ? vassalsUI.gameObject : null,
+            politicsUI != null ? politicsUI.gameObject : null,
         };
         foreach (var root in roots)
             if (root != null) root.SetActive(root == viewRoot);
         currentViewRoot = viewRoot;
     }
 
-    private void RefreshController(GovernmentTabBase controller)
+    private void RefreshController(GovernmentScreenBase controller)
     {
         if (controller == null || civ == null) return;
         controller.Bind(civ, this);
@@ -346,14 +334,7 @@ public class GovernmentPanel : MonoBehaviour
         float scroll = GovernmentUiUtil.CaptureScroll(governorsScroll);
         GovernmentUiUtil.FillList(governorsRoot, governorEntryPrefab, governorRows, governors, (row, governor) =>
         {
-            string traits = string.Join(", ", governor.PersonalityTraits.Take(2));
-            string faith = governor.PersonalReligion != null ? GovernmentPresentation.NameOf(governor.PersonalReligion) : "none";
-            string secondary = string.IsNullOrEmpty(traits) ? $"Faith: {faith}" : $"{traits} • Faith: {faith}";
-            row.Bind(GovernorPortraitService.GetSprite(governor.PortraitId),
-                GovernmentPresentation.FormatGovernorName(civ, governor),
-                $"Loyalty {GovernmentUiUtil.Signed(governor.Opinion)} • {governor.Cities.Count} Cities",
-                secondary, governor.IsInRebellion || governor.Opinion < 0,
-                () => OpenGovernorSummary(governor));
+            row.Bind(civ, governor, OpenGovernorSummary);
         });
         GovernmentUiUtil.RestoreScroll(governorsScroll, scroll);
         GovernmentUiUtil.SetText(noGovernorsText, governors.Count == 0 ? "No governors." : string.Empty);
@@ -372,12 +353,7 @@ public class GovernmentPanel : MonoBehaviour
         float scroll = GovernmentUiUtil.CaptureScroll(vassalsScroll);
         GovernmentUiUtil.FillList(vassalsRoot, vassalEntryPrefab, vassalRows, contracts, (row, contract) =>
         {
-            var subject = contract.subject;
-            string faith = subject?.StateReligion != null ? GovernmentPresentation.NameOf(subject.StateReligion) : "none";
-            row.Bind(subject?.civData?.icon, contract.subjectCivName,
-                $"Opinion {GovernmentUiUtil.Signed(manager.GetEffectiveSubjectOpinion(contract))} • Liberty {contract.libertyDesire:0} • {subject?.cities?.Count ?? 0} Cities",
-                $"Faith: {faith}", contract.libertyDesire >= contract.EffectiveBreakawayThreshold * 0.75f,
-                () => OpenVassalSummary(contract));
+            row.Bind(civ, contract, OpenVassalSummary);
         });
         GovernmentUiUtil.RestoreScroll(vassalsScroll, scroll);
         GovernmentUiUtil.SetText(noVassalsText, contracts.Count == 0 ? "You have no vassals." : string.Empty);
@@ -392,61 +368,69 @@ public class GovernmentPanel : MonoBehaviour
     private void RefreshPolicies()
     {
         float scroll = GovernmentUiUtil.CaptureScroll(policiesScroll);
-        foreach (var item in policyObjects)
-            if (item != null) Destroy(item);
-        policyObjects.Clear();
-
         var manager = PolicyManager.Instance;
-        var entries = manager == null || manager.allPolicies == null
-            ? new List<KeyValuePair<PolicyData, PolicyAdoptionEvaluation>>()
-            : manager.allPolicies.Where(policy => policy != null).Distinct()
-                .Select(policy => new KeyValuePair<PolicyData, PolicyAdoptionEvaluation>(policy, manager.EvaluatePolicy(civ, policy)))
-                .Where(entry => entry.Value != null &&
-                    (entry.Value.State == PolicyListState.Active || entry.Value.State == PolicyListState.Available))
-                .ToList();
-
-        foreach (var category in DashboardCategoryOrder)
+        foreach (var row in policyRows) if (row != null) Destroy(row.gameObject);
+        policyRows.Clear();
+        if (manager != null && policiesRoot != null && policyAreaDropdownPrefab != null)
         {
-            var categoryEntries = entries
-                .Where(entry => PrimaryCategory(entry.Key) == category)
-                .OrderBy(entry => entry.Value.State == PolicyListState.Active ? 0 : 1)
-                .ThenBy(entry => GovernmentPresentation.NameOf(entry.Key))
-                .ToList();
-            if (categoryEntries.Count == 0) continue;
-
-            if (policiesRoot != null && policyCategoryHeaderPrefab != null)
+            foreach (var area in DashboardAreaOrder)
             {
-                var header = Instantiate(policyCategoryHeaderPrefab, policiesRoot);
-                policyObjects.Add(header);
-                GovernmentUiUtil.SetText(header.GetComponentInChildren<TMP_Text>(true), PolicyCategoryName(category));
-            }
-            if (policiesRoot == null || policyEntryPrefab == null) continue;
-            foreach (var entry in categoryEntries)
-            {
-                var row = Instantiate(policyEntryPrefab, policiesRoot);
-                policyObjects.Add(row.gameObject);
-                row.Bind(entry.Key, entry.Value, false, ShowPolicy);
+                var row = Instantiate(policyAreaDropdownPrefab, policiesRoot);
+                policyRows.Add(row);
+                row.Bind(civ, area, manager, policyTooltip, RequestPolicyAdoption, RequestPolicyRepeal);
             }
         }
-
-        GovernmentUiUtil.SetText(noPoliciesText, entries.Count == 0 ? "No active or available policies." : string.Empty);
         GovernmentUiUtil.RestoreScroll(policiesScroll, scroll);
     }
 
-    private static PolicyTag PrimaryCategory(PolicyData policy)
-        => policy.policyTags != null && policy.policyTags.Length > 0 ? policy.policyTags[0] : PolicyTag.Administration;
-
-    private static string PolicyCategoryName(PolicyTag tag)
+    private void RequestPolicyAdoption(PolicyData target)
     {
-        switch (tag)
+        var manager = PolicyManager.Instance;
+        var evaluation = manager?.EvaluatePolicy(civ, target);
+        if (target == null || evaluation == null || !evaluation.canAdopt) return;
+        var oldName = evaluation.replacedAreaPolicy != null
+            ? GovernmentPresentation.NameOf(evaluation.replacedAreaPolicy) : "No Policy";
+        var lines = PoliticalEffectSummaryBuilder.BuildPolicyEffects(target);
+        lines.AddRange(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(target.governorOpinionEffects));
+        foreach (var requirement in PoliticalEffectSummaryBuilder.BuildPolicyRequirements(civ, target))
+            lines.Add(new PoliticalEffectLine { label = "Requirement", value = $"{(requirement.met ? "Met" : "Missing")}: {requirement.label}", harmful = !requirement.met });
+        AddPolicyRelations(lines, target);
+        RequestConfirmation(new PoliticalConfirmRequest
         {
-            case PolicyTag.Rights: return "Civil Rights";
-            case PolicyTag.Law: return "Law & Justice";
-            case PolicyTag.Digital: return "Digital Policy";
-            case PolicyTag.Synthetic: return "Synthetic Life";
-            case PolicyTag.Space: return "Space & Planetary";
-            default: return tag.ToString();
-        }
+            title = $"Adopt {GovernmentPresentation.NameOf(target)}?",
+            description = $"Replacing: {oldName}\n\nCurrent:\n{oldName}\n\nNew:\n{GovernmentPresentation.NameOf(target)}\n\nPolicy Points:\n-{target.policyPointCost}\n\nThe old policy is not refunded.",
+            icon = target.icon,
+            confirmLabel = "Adopt",
+            lines = lines,
+            onConfirm = () => { manager.AdoptPolicy(civ, target); RefreshAllVisible(); },
+        });
+    }
+
+    private void RequestPolicyRepeal(PolicyData target)
+    {
+        if (target == null || PolicyManager.Instance == null) return;
+        RequestConfirmation(new PoliticalConfirmRequest
+        {
+            title = $"Repeal {GovernmentPresentation.NameOf(target)}?",
+            description = "The area will have No Policy. Repealing does not refund policy points and requires the normal council approval.",
+            icon = target.icon,
+            confirmLabel = "Repeal",
+            onConfirm = () => { PolicyManager.Instance.RevokePolicy(civ, target); RefreshAllVisible(); },
+        });
+    }
+
+    private static void AddPolicyRelations(List<PoliticalEffectLine> lines, PolicyData policy)
+    {
+        AddPolicyRelation(lines, "Requires", policy.requiredPolicies);
+        AddPolicyRelation(lines, "Conflicts", policy.incompatiblePolicies);
+        AddPolicyRelation(lines, "Supersedes", policy.supersedesPolicies);
+    }
+
+    private static void AddPolicyRelation(List<PoliticalEffectLine> lines, string label, PolicyData[] policies)
+    {
+        var names = policies?.Where(p => p != null).Select(GovernmentPresentation.NameOf).ToList();
+        if (names != null && names.Count > 0)
+            lines.Add(new PoliticalEffectLine { label = label, value = string.Join(", ", names) });
     }
 
     private void RefreshWarnings()
@@ -512,7 +496,11 @@ public class GovernmentPanel : MonoBehaviour
 
     private void QueueRefresh() { if (IsOpen) refreshQueued = true; }
     private void HandlePolicyChanged(Civilization c, PolicyData p) => QueueRefresh();
-    private void HandleGovernmentChanged(Civilization c, GovernmentData g) => QueueRefresh();
+    private void HandleGovernmentChanged(Civilization c, GovernmentData g)
+    {
+        if (c == civ) PolicyManager.Instance?.RevalidateActivePolicies(c);
+        QueueRefresh();
+    }
     private void HandlePolicyPointsChanged(int total, int delta) => QueueRefresh();
     private void HandleGovernorAssignmentChanged(Civilization c, City city) { if (c == civ) QueueRefresh(); }
     private void HandleCivilizationChanged(Civilization c) { if (c == civ) QueueRefresh(); }

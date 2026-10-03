@@ -30,6 +30,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7ade0fc9ae9c4d12a7009acef2c0aa02, type: 2}
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 17
   policyTags:
   - 15
   additionalVetoDomains: 0

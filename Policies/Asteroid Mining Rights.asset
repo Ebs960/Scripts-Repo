@@ -25,7 +25,9 @@ MonoBehaviour:
   requiredPolicies:
   - {fileID: 11400000, guid: a3619563fd3d4abea767e464912f7ad3, type: 2}
   incompatiblePolicies: []
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: a3619563fd3d4abea767e464912f7ad3, type: 2}
+  policyArea: 20
   policyTags:
   - 11
   - 18
