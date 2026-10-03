@@ -9,10 +9,12 @@ public class PolicyNameButtonUI : MonoBehaviour
     [SerializeField] private Button button;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text costText;
-    [SerializeField] private GameObject selectedMarker;
-    [SerializeField] private GameObject activeMarker;
-    [SerializeField] private GameObject availableMarker;
-    [SerializeField] private GameObject lockedMarker;
+    [SerializeField] private Sprite selectedMarker;
+    [SerializeField] private Sprite activeMarker;
+    [SerializeField] private Sprite availableMarker;
+    [SerializeField] private Sprite lockedMarker;
+    [SerializeField] private Image selectedMarkerImage;
+    [SerializeField] private Image stateMarkerImage;
 
     public void Bind(PolicyData policy, PolicyAdoptionEvaluation evaluation, bool selected, Action<PolicyData> onClick)
     {
@@ -20,10 +22,17 @@ public class PolicyNameButtonUI : MonoBehaviour
         GovernmentUiUtil.SetText(costText, policy != null ? $"{policy.policyPointCost} PP" : string.Empty);
 
         var state = evaluation != null ? evaluation.State : PolicyListState.Locked;
-        GovernmentUiUtil.SetActive(activeMarker, state == PolicyListState.Active);
-        GovernmentUiUtil.SetActive(availableMarker, state == PolicyListState.Available);
-        GovernmentUiUtil.SetActive(lockedMarker, state == PolicyListState.Locked);
-        GovernmentUiUtil.SetActive(selectedMarker, selected);
+        Sprite stateMarker = state == PolicyListState.Active ? activeMarker
+            : state == PolicyListState.Available ? availableMarker : lockedMarker;
+        SetMarker(stateMarkerImage, stateMarker);
+        SetMarker(selectedMarkerImage, selected ? selectedMarker : null);
         GovernmentUiUtil.SetClick(button, () => onClick?.Invoke(policy));
+    }
+
+    private static void SetMarker(Image image, Sprite marker)
+    {
+        if (image == null) return;
+        image.sprite = marker;
+        image.enabled = marker != null;
     }
 }
