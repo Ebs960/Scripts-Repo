@@ -12,6 +12,7 @@ public class GovernorSummaryRowUI : MonoBehaviour
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text loyaltyText;
     [SerializeField] private TMP_Text personalityText;
+    [SerializeField] private TMP_Text religionText;
     [SerializeField] private TMP_Text cityCountText;
     [SerializeField] private Transform warningAnchor;
 
@@ -43,6 +44,8 @@ public class GovernorSummaryRowUI : MonoBehaviour
         GovernmentUiUtil.SetText(nameText, governor != null ? GovernmentPresentation.FormatGovernorName(civ, governor) : string.Empty);
         GovernmentUiUtil.SetText(loyaltyText, governor != null ? $"Loyalty {GovernmentUiUtil.Signed(governor.Opinion)}" : string.Empty);
         GovernmentUiUtil.SetText(personalityText, governor != null ? string.Join(", ", governor.PersonalityTraits.Take(2)) : string.Empty);
+        GovernmentUiUtil.SetText(religionText, governor?.PersonalReligion != null
+            ? GovernmentPresentation.NameOf(governor.PersonalReligion) : "No Religion");
         SetWarning(governor != null && (governor.IsInRebellion
             || governor.Opinion <= PoliticalWarningBuilder.GovernorDiscontentOpinion), warningPrefab);
     }

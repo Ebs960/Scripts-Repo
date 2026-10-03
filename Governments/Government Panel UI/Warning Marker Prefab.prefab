@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 1559658671448369927}
   - component: {fileID: 2249496630518761188}
   - component: {fileID: 6642986460133124591}
-  - component: {fileID: 7668130586601222891}
   m_Layer: 5
   m_Name: Warning Marker Prefab
   m_TagString: Untagged
@@ -76,59 +75,3 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &7668130586601222891
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1957880668565768073}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 760edc79bef7f7c4ab601e47b06704ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GovernmentEntityActionPopup
-  root: {fileID: 0}
-  governorRoot: {fileID: 0}
-  vassalRoot: {fileID: 0}
-  closeButton: {fileID: 0}
-  governorPortrait: {fileID: 0}
-  governorName: {fileID: 0}
-  governorOpinion: {fileID: 0}
-  governorHoldings: {fileID: 0}
-  governorTraits: {fileID: 0}
-  governorReligion: {fileID: 0}
-  governorFaction: {fileID: 0}
-  governorStatus: {fileID: 0}
-  manageHoldingsButton: {fileID: 0}
-  councilButton: {fileID: 0}
-  councilButtonLabel: {fileID: 0}
-  giftButton: {fileID: 0}
-  giftButtonLabel: {fileID: 0}
-  convertButton: {fileID: 0}
-  governorDetailsButton: {fileID: 0}
-  holdingsPanel: {fileID: 0}
-  vassalIcon: {fileID: 0}
-  vassalName: {fileID: 0}
-  vassalOpinion: {fileID: 0}
-  vassalLiberty: {fileID: 0}
-  vassalCities: {fileID: 0}
-  vassalAutonomy: {fileID: 0}
-  vassalTribute: {fileID: 0}
-  vassalReligion: {fileID: 0}
-  vassalCooldown: {fileID: 0}
-  vassalStatus: {fileID: 0}
-  manageContractButton: {fileID: 0}
-  replaceGovernorButton: {fileID: 0}
-  imposeReligionButton: {fileID: 0}
-  releaseVassalButton: {fileID: 0}
-  independenceDemandRoot: {fileID: 0}
-  independenceDemandText: {fileID: 0}
-  acceptIndependenceButton: {fileID: 0}
-  rejectIndependenceButton: {fileID: 0}
-  replaceGovernorRoot: {fileID: 0}
-  replaceCityDropdown: {fileID: 0}
-  replacementGovernorDropdown: {fileID: 0}
-  confirmReplacementButton: {fileID: 0}
-  cancelReplacementButton: {fileID: 0}
-  replacementStatus: {fileID: 0}

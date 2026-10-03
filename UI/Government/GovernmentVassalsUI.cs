@@ -26,6 +26,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text tributeExhaustionText;
     [SerializeField] private TMP_Text militaryConfidenceText;
     [SerializeField] private TMP_Text contractAgeText;
+    [SerializeField] private TMP_Text stateReligionText;
     [SerializeField] private TMP_Text cooldownText;
     [SerializeField] private TMP_Text statusText;
 
@@ -52,6 +53,19 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private TMP_Dropdown religionRuleDropdown;
     [SerializeField] private Button applyReligionButton;
 
+    [Header("Direct Interference")]
+    [SerializeField] private Button replaceGovernorButton;
+    [SerializeField] private Button imposeStateReligionButton;
+    [SerializeField] private TMP_Text interferenceStatusText;
+
+    [Header("Replace Governor")]
+    [SerializeField] private GameObject replaceGovernorRoot;
+    [SerializeField] private TMP_Dropdown replaceCityDropdown;
+    [SerializeField] private TMP_Dropdown replacementGovernorDropdown;
+    [SerializeField] private Button confirmReplacementButton;
+    [SerializeField] private Button cancelReplacementButton;
+    [SerializeField] private TMP_Text replacementStatusText;
+
     [Header("Release / independence")]
     [SerializeField] private Button releaseButton;
     [SerializeField] private GameObject demandRoot;
@@ -60,6 +74,9 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private Button rejectDemandButton;
 
     private readonly List<VassalRowUI> rows = new List<VassalRowUI>();
+    private readonly List<City> replacementCities = new List<City>();
+    private readonly List<Governor> replacementGovernors = new List<Governor>();
+    private bool includesNewGovernorOption;
     private Civilization selectedSubject;
     private bool hasRequestedFocus;
     private bool wired;
@@ -100,7 +117,8 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     }
 
     private static bool IsRestless(VassalContract contract)
-        => contract != null && contract.libertyDesire >= contract.EffectiveBreakawayThreshold * 0.75f;
+        => contract != null && contract.libertyDesire >= contract.EffectiveBreakawayThreshold
+            * PoliticalWarningBuilder.VassalLibertyWarningFraction;
 
     private void EnsureWired()
     {
@@ -132,6 +150,12 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetClick(applyAutonomyButton, OnApplyAutonomy);
         GovernmentUiUtil.SetClick(applyObligationButton, OnApplyObligation);
         GovernmentUiUtil.SetClick(applyReligionButton, OnApplyReligion);
+        GovernmentUiUtil.SetClick(replaceGovernorButton, OpenReplacement);
+        GovernmentUiUtil.SetClick(imposeStateReligionButton, OnImposeStateReligion);
+        GovernmentUiUtil.SetClick(confirmReplacementButton, OnConfirmReplacement);
+        GovernmentUiUtil.SetClick(cancelReplacementButton, () => GovernmentUiUtil.SetActive(replaceGovernorRoot, false));
+        if (replaceCityDropdown != null)
+            replaceCityDropdown.onValueChanged.AddListener(_ => PopulateReplacementGovernors());
         GovernmentUiUtil.SetClick(releaseButton, OnReleaseClicked);
         GovernmentUiUtil.SetClick(acceptDemandButton, OnAcceptDemand);
         GovernmentUiUtil.SetClick(rejectDemandButton, OnRejectDemand);
@@ -170,6 +194,9 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetText(tributeExhaustionText, $"Tribute exhaustion {contract.tributeExhaustion:0}");
         GovernmentUiUtil.SetText(militaryConfidenceText, $"Military confidence {contract.militaryConfidence:0}");
         GovernmentUiUtil.SetText(contractAgeText, $"{(contract.isCapitulated ? "Capitulated" : "Voluntary")} vassal for {Mathf.Max(0, turn - contract.contractStartTurn)} turns");
+        GovernmentUiUtil.SetText(stateReligionText, contract.subject?.StateReligion != null
+            ? $"State Religion: {GovernmentPresentation.NameOf(contract.subject.StateReligion)}"
+            : "State Religion: No Religion");
 
         var check = manager.CanInterfere(civ, contract.subject, turn);
         GovernmentUiUtil.SetText(cooldownText, check.success ? "Terms can be changed now." : check.reason);
@@ -177,6 +204,9 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetInteractable(applyAutonomyButton, check.success);
         GovernmentUiUtil.SetInteractable(applyObligationButton, check.success);
         GovernmentUiUtil.SetInteractable(applyReligionButton, check.success);
+        GovernmentUiUtil.SetInteractable(replaceGovernorButton, check.success && contract.subject?.cities?.Count > 0);
+        GovernmentUiUtil.SetInteractable(imposeStateReligionButton, check.success && civ.StateReligion != null);
+        GovernmentUiUtil.SetText(interferenceStatusText, check.success ? string.Empty : check.reason);
 
         // Reset editors to the live contract values each refresh so they never show stale proposals.
         if (goldSlider != null) goldSlider.SetValueWithoutNotify(contract.goldTributePct);
@@ -317,6 +347,103 @@ public class GovernmentVassalsUI : GovernmentScreenBase
             lines.Add(Line("Forced conversion", "Heavy liberty desire growth every turn", harmful: true));
         Confirm($"Change religious policy for {contract.subjectCivName}?", CooldownNote(contract), "Apply", lines, () =>
             Report(SubjectManager.Instance.TrySetReligionRule(civ, subject, rule, SubjectManager.Instance.CurrentTurn), "Religious policy updated."));
+    }
+
+    private void OpenReplacement()
+    {
+        var contract = SelectedContract();
+        replacementCities.Clear();
+        replacementCities.AddRange(contract?.subject?.cities?.Where(city => city != null && city.owner == contract.subject)
+            ?? Enumerable.Empty<City>());
+        replaceCityDropdown?.ClearOptions();
+        replaceCityDropdown?.AddOptions(replacementCities.Select(city => GovernmentPresentation.NameOf(city)).ToList());
+        if (replaceCityDropdown != null) replaceCityDropdown.SetValueWithoutNotify(0);
+        PopulateReplacementGovernors();
+        GovernmentUiUtil.SetText(replacementStatusText,
+            replacementCities.Count == 0 ? "This subject has no eligible city." : string.Empty);
+        GovernmentUiUtil.SetActive(replaceGovernorRoot, true);
+    }
+
+    private void PopulateReplacementGovernors()
+    {
+        replacementGovernors.Clear();
+        var contract = SelectedContract();
+        var city = SelectedReplacementCity();
+        if (contract != null && city != null)
+            replacementGovernors.AddRange(contract.subject.governors.Where(governor => governor != null && governor != city.governor));
+        var labels = replacementGovernors
+            .Select(governor => GovernmentPresentation.FormatGovernorName(contract.subject, governor)).ToList();
+        includesNewGovernorOption = PoliticalActionRules.CanCreateGovernor(contract?.subject, out _);
+        if (includesNewGovernorOption) labels.Add("Appoint New Governor");
+        replacementGovernorDropdown?.ClearOptions();
+        replacementGovernorDropdown?.AddOptions(labels);
+        GovernmentUiUtil.SetInteractable(confirmReplacementButton, city != null && labels.Count > 0);
+    }
+
+    private City SelectedReplacementCity()
+        => replaceCityDropdown != null && replaceCityDropdown.value >= 0 && replaceCityDropdown.value < replacementCities.Count
+            ? replacementCities[replaceCityDropdown.value] : null;
+
+    private void OnConfirmReplacement()
+    {
+        var contract = SelectedContract();
+        var city = SelectedReplacementCity();
+        int index = replacementGovernorDropdown != null ? replacementGovernorDropdown.value : -1;
+        Governor replacement = index >= 0 && index < replacementGovernors.Count ? replacementGovernors[index] : null;
+        bool appoint = includesNewGovernorOption && index == replacementGovernors.Count;
+        if (contract == null || city == null || (replacement == null && !appoint)) return;
+        string oldName = city.governor != null
+            ? GovernmentPresentation.FormatGovernorName(contract.subject, city.governor) : "None";
+        string newName = appoint ? "Appoint New Governor"
+            : GovernmentPresentation.FormatGovernorName(contract.subject, replacement);
+        Confirm("Replace subject governor?",
+            $"City: {GovernmentPresentation.NameOf(city)}\nCurrent: {oldName}\nReplacement: {newName}\n\nDirect interference increases subject resentment, angers local governors, and begins the interference cooldown.",
+            "Replace",
+            new List<PoliticalEffectLine>
+            {
+                Line("Subject resentment", "+20", harmful: true),
+                Line("Local governors", "Become angry", harmful: true),
+                Line("Interference cooldown", "Begins", harmful: true),
+            },
+            () => ReportReplacement(SubjectManager.Instance.InterfereReplaceGovernor(civ, contract.subject, city,
+                replacement, appoint, SubjectManager.Instance.CurrentTurn)));
+    }
+
+    private void ReportReplacement(SubjectActionResult result)
+    {
+        GovernmentUiUtil.SetText(replacementStatusText, result.success ? "Governor replaced." : result.reason);
+        GovernmentUiUtil.SetText(interferenceStatusText, result.success ? "Governor replaced." : result.reason);
+        if (result.success)
+        {
+            GovernmentUiUtil.SetActive(replaceGovernorRoot, false);
+            UIManager.Instance?.ShowNotification("Governor replaced.");
+        }
+        panel?.RefreshAllVisible();
+    }
+
+    private void OnImposeStateReligion()
+    {
+        var contract = SelectedContract();
+        if (contract == null) return;
+        var check = SubjectManager.Instance.CanInterfere(civ, contract.subject, SubjectManager.Instance.CurrentTurn);
+        if (!check.success || civ.StateReligion == null)
+        {
+            GovernmentUiUtil.SetText(interferenceStatusText,
+                civ.StateReligion == null ? "Your civilization has no state religion to impose." : check.reason);
+            return;
+        }
+        Confirm("Impose state religion?",
+            "Forces your state religion on the subject, increases resentment, angers subject governors (with a strong reaction from zealous governors), and begins the interference cooldown.",
+            "Impose",
+            new List<PoliticalEffectLine>
+            {
+                Line("State religion", GovernmentPresentation.NameOf(civ.StateReligion), harmful: true),
+                Line("Subject resentment", "Increases", harmful: true),
+                Line("Subject governors", "Become angry; zealous governors react strongly", harmful: true),
+                Line("Interference cooldown", "Begins", harmful: true),
+            },
+            () => Report(SubjectManager.Instance.InterfereForceReligion(civ, contract.subject,
+                SubjectManager.Instance.CurrentTurn), "State religion imposed."));
     }
 
     private void OnReleaseClicked()
