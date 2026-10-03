@@ -45,11 +45,16 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text rebellionText;
     [SerializeField] private TMP_Text grievancesText;
 
-    [Header("Detail lists (rows come from the line prefab)")]
+    [Header("Political Status")]
     [SerializeField] private PoliticalLineRowUI lineRowPrefab;
     [SerializeField] private Transform opinionModifiersRoot;
+
+    [Header("Holdings")]
+    [SerializeField] private ScrollRect citiesScroll;
     [SerializeField] private Transform citiesRoot;
+    [SerializeField] private ScrollRect herdsScroll;
     [SerializeField] private Transform herdsRoot;
+    [SerializeField] private GovernorHoldingRowUI holdingRowPrefab;
 
     [Header("Council actions")]
     [SerializeField] private GameObject councilActionsRoot;
@@ -59,17 +64,24 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text removeSeatLabel;
     [SerializeField] private TMP_Text councilReasonText;
 
-    [Header("Holdings")]
-    [SerializeField] private Button manageHoldingsButton;
+    [Header("Personal Actions")]
+    [SerializeField] private Button giftButton;
+    [SerializeField] private TMP_Text giftButtonLabel;
+    [SerializeField] private Button convertButton;
+    [SerializeField] private TMP_Text convertButtonLabel;
+    [SerializeField] private TMP_Text personalActionStatusText;
 
     [Header("Suppressed politics")]
     [SerializeField] private GameObject suppressedNoticeRoot;
     [SerializeField] private TMP_Text suppressedNoticeText;
 
     private readonly List<GovernorRowUI> rows = new List<GovernorRowUI>();
-    private PoliticalLineList opinionModifiers, cities, herds;
+    private readonly List<GovernorHoldingRowUI> cityHoldingRows = new List<GovernorHoldingRowUI>();
+    private readonly List<GovernorHoldingRowUI> herdHoldingRows = new List<GovernorHoldingRowUI>();
+    private PoliticalLineList opinionModifiers;
     private int selectedGovernorId = -1;
     private bool hasRequestedFocus;
+    private bool resetHoldingScroll;
     private bool wired;
 
     protected override void OnCivilizationChanged()
@@ -84,6 +96,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         if (governor == null) return;
         selectedGovernorId = governor.Id;
         hasRequestedFocus = true;
+        resetHoldingScroll = true;
         if (civ != null && gameObject.activeInHierarchy) Refresh();
     }
 
@@ -115,6 +128,11 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
 
         RefreshCreate();
         RefreshDetail(selected);
+        if (resetHoldingScroll)
+        {
+            ResetHoldingScrolls();
+            resetHoldingScroll = false;
+        }
     }
 
     private void EnsureWired()
@@ -131,14 +149,17 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         GovernmentUiUtil.SetClick(createButton, OnCreateClicked);
         GovernmentUiUtil.SetClick(grantSeatButton, OnGrantSeatClicked);
         GovernmentUiUtil.SetClick(removeSeatButton, OnRemoveSeatClicked);
-        GovernmentUiUtil.SetClick(manageHoldingsButton, OnManageHoldingsClicked);
+        GovernmentUiUtil.SetClick(giftButton, OnGiftClicked);
+        GovernmentUiUtil.SetClick(convertButton, OnConvertClicked);
     }
 
     private Governor SelectedGovernor() => civ?.governors.FirstOrDefault(g => g != null && g.Id == selectedGovernorId);
 
     private void SelectGovernor(Governor governor)
     {
+        bool changed = governor != null && governor.Id != selectedGovernorId;
         selectedGovernorId = governor != null ? governor.Id : -1;
+        resetHoldingScroll = changed;
         Refresh();
     }
 
@@ -179,11 +200,8 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
             : string.Join("\n", governor.Grievances.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} x{kv.Value}")));
 
         opinionModifiers ??= new PoliticalLineList(opinionModifiersRoot, lineRowPrefab);
-        cities ??= new PoliticalLineList(citiesRoot, lineRowPrefab);
-        herds ??= new PoliticalLineList(herdsRoot, lineRowPrefab);
         opinionModifiers.Show(governor.OpinionModifiers, (row, m) => row.BindText(m.reason, GovernmentUiUtil.Signed(m.value)));
-        cities.ShowTexts(governor.Cities.Where(c => c != null).Select(c => GovernmentPresentation.NameOf(c)).ToList());
-        herds.ShowTexts(governor.Herds.Where(h => h != null).Select(h => GovernmentPresentation.NameOf(h)).ToList());
+        RefreshHoldings(governor);
 
         GovernmentUiUtil.SetActive(councilActionsRoot, civ.HasRoyalCouncil);
         GovernmentUiUtil.SetText(grantSeatLabel, $"Grant {institution} Seat");
@@ -196,7 +214,13 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         GovernmentUiUtil.SetActive(removeSeatButton != null ? removeSeatButton.gameObject : null, governor.IsOnCouncil);
         GovernmentUiUtil.SetText(councilReasonText, governor.IsOnCouncil ? (canRemove ? string.Empty : removeReason) : (canGrant ? string.Empty : grantReason));
 
-        GovernmentUiUtil.SetInteractable(manageHoldingsButton, civ.governorsEnabled);
+        bool canGift = PoliticalActionRules.CanSendGovernorGift(civ, governor, out string giftReason);
+        bool canConvert = PoliticalActionRules.CanRequestGovernorConversion(civ, governor, out string convertReason);
+        GovernmentUiUtil.SetText(giftButtonLabel, $"Send Gift — {PoliticalActionRules.GovernorGiftCost} Gold");
+        GovernmentUiUtil.SetText(convertButtonLabel, "Ask to Convert");
+        GovernmentUiUtil.SetInteractable(giftButton, canGift);
+        GovernmentUiUtil.SetInteractable(convertButton, canConvert);
+        GovernmentUiUtil.SetText(personalActionStatusText, !canGift ? giftReason : !canConvert ? convertReason : string.Empty);
     }
 
     private void OnCreateClicked()
@@ -272,10 +296,117 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         });
     }
 
-    private void OnManageHoldingsClicked()
+    private void RefreshHoldings(Governor governor)
+    {
+        float cityScroll = GovernmentUiUtil.CaptureScroll(citiesScroll);
+        float herdScroll = GovernmentUiUtil.CaptureScroll(herdsScroll);
+        var cities = (civ.cities ?? new List<City>()).Where(c => c != null)
+            .OrderBy(c => HoldingGroup(c.governor, governor)).ThenBy(GovernmentPresentation.NameOf).ToList();
+        var herds = (civ.herds ?? new List<Herd>()).Where(h => h != null)
+            .OrderBy(h => HoldingGroup(h.governor, governor)).ThenBy(GovernmentPresentation.NameOf).ToList();
+        GovernmentUiUtil.FillList(citiesRoot, holdingRowPrefab, cityHoldingRows, cities,
+            (row, city) => BindCity(row, city, governor));
+        GovernmentUiUtil.FillList(herdsRoot, holdingRowPrefab, herdHoldingRows, herds,
+            (row, herd) => BindHerd(row, herd, governor));
+        GovernmentUiUtil.RestoreScroll(citiesScroll, cityScroll);
+        GovernmentUiUtil.RestoreScroll(herdsScroll, herdScroll);
+    }
+
+    private static int HoldingGroup(Governor owner, Governor selected)
+        => owner == selected ? 0 : owner == null ? 1 : 2;
+
+    private string OwnerLabel(Governor owner) => owner == null
+        ? "Unassigned" : $"Controlled by {GovernmentPresentation.FormatGovernorName(civ, owner)}";
+
+    private void BindCity(GovernorHoldingRowUI row, City city, Governor selected)
+    {
+        Governor owner = city.governor;
+        string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
+        row.Bind(null, GovernmentPresentation.NameOf(city), $"Population {city.Population} • Level {city.level}",
+            OwnerLabel(owner), action, owner != null, civ.governorsEnabled, () => ActOnCity(city, owner, selected));
+    }
+
+    private void BindHerd(GovernorHoldingRowUI row, Herd herd, Governor selected)
+    {
+        Governor owner = herd.governor;
+        string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
+        row.Bind(null, GovernmentPresentation.NameOf(herd), $"Level {herd.level}", OwnerLabel(owner), action,
+            owner != null, civ.governorsEnabled, () => ActOnHerd(herd, owner, selected));
+    }
+
+    private void ActOnCity(City city, Governor owner, Governor selected)
+    {
+        if (owner == null) { ApplyHoldingChange(civ.AssignGovernorToCity(selected, city)); return; }
+        bool remove = owner == selected;
+        var preview = Civilization.PreviewHoldingChange(owner, remove ? null : selected, true);
+        var request = HoldingConfirmation(remove ? "Revoke City?" : $"Transfer {GovernmentPresentation.NameOf(city)}?",
+            remove ? $"Removing {GovernmentPresentation.NameOf(city)} from {GovernmentPresentation.FormatGovernorName(civ, owner)} will leave the city unassigned."
+                : $"Transfer {GovernmentPresentation.NameOf(city)} from {GovernmentPresentation.FormatGovernorName(civ, owner)} to {GovernmentPresentation.FormatGovernorName(civ, selected)}?",
+            remove, owner, remove ? null : selected, preview,
+            () => ApplyHoldingChange(remove ? civ.RemoveGovernorFromCity(selected, city) : civ.AssignGovernorToCity(selected, city)));
+        panel?.RequestConfirmation(request);
+    }
+
+    private void ActOnHerd(Herd herd, Governor owner, Governor selected)
+    {
+        if (owner == null) { ApplyHoldingChange(civ.AssignGovernorToHerd(selected, herd)); return; }
+        bool remove = owner == selected;
+        var preview = Civilization.PreviewHoldingChange(owner, remove ? null : selected, false);
+        var request = HoldingConfirmation(remove ? "Revoke Herd?" : $"Transfer {GovernmentPresentation.NameOf(herd)}?",
+            remove ? $"Removing {GovernmentPresentation.NameOf(herd)} from {GovernmentPresentation.FormatGovernorName(civ, owner)} will leave it unassigned."
+                : $"Transfer {GovernmentPresentation.NameOf(herd)} from {GovernmentPresentation.FormatGovernorName(civ, owner)} to {GovernmentPresentation.FormatGovernorName(civ, selected)}?",
+            remove, owner, remove ? null : selected, preview,
+            () => ApplyHoldingChange(remove ? civ.RemoveGovernorFromHerd(selected, herd) : civ.AssignGovernorToHerd(selected, herd)));
+        panel?.RequestConfirmation(request);
+    }
+
+    private PoliticalConfirmRequest HoldingConfirmation(string title, string description, bool remove, Governor oldOwner,
+        Governor recipient, Civilization.HoldingOpinionPreview preview, Action action)
+    {
+        var request = new PoliticalConfirmRequest { title = title, description = description,
+            confirmLabel = remove ? "REMOVE" : "TRANSFER", onConfirm = action };
+        request.lines.Add(new PoliticalEffectLine { label = GovernmentPresentation.FormatGovernorName(civ, oldOwner),
+            value = $"{Mathf.RoundToInt(preview.oldGovernorChange):+0;-0;0} Loyalty", harmful = true });
+        if (preview.addsGrievance)
+            request.lines.Add(new PoliticalEffectLine { label = "Political grievance", value = "City Reassigned", harmful = true });
+        if (recipient != null)
+            request.lines.Add(new PoliticalEffectLine { label = GovernmentPresentation.FormatGovernorName(civ, recipient),
+                value = $"{Mathf.RoundToInt(preview.newGovernorChange):+0;-0;0} Loyalty", beneficial = true });
+        return request;
+    }
+
+    private void ApplyHoldingChange(bool succeeded)
+    {
+        if (!succeeded) GovernmentUiUtil.SetText(personalActionStatusText, "That assignment could not be made.");
+        panel?.RefreshAllVisible();
+    }
+
+    private void ResetHoldingScrolls()
+    {
+        if (citiesScroll != null) citiesScroll.verticalNormalizedPosition = 1f;
+        if (herdsScroll != null) herdsScroll.verticalNormalizedPosition = 1f;
+    }
+
+    private void OnGiftClicked()
     {
         var governor = SelectedGovernor();
-        if (governor == null) return;
-        panel?.ShowGovernorHoldings(governor);
+        if (!PoliticalActionRules.CanSendGovernorGift(civ, governor, out string reason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, reason); return; }
+        civ.AddGold(-PoliticalActionRules.GovernorGiftCost);
+        governor.AddOpinionModifier("Received Gift", 15f, 15);
+        governor.ClearGrievance(GrievanceSource.PublicInsult);
+        UIManager.Instance?.ShowNotification($"Gifts were sent to {GovernmentPresentation.FormatGovernorName(civ, governor)}.");
+        panel?.RefreshAllVisible();
+    }
+
+    private void OnConvertClicked()
+    {
+        var governor = SelectedGovernor();
+        if (!PoliticalActionRules.CanRequestGovernorConversion(civ, governor, out string reason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, reason); return; }
+        if (!governor.TryConvertReligion(civ.StateReligion, forced: false, out string failureReason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, failureReason); return; }
+        UIManager.Instance?.ShowNotification($"{GovernmentPresentation.FormatGovernorName(civ, governor)} converted to the state religion.");
+        panel?.RefreshAllVisible();
     }
 }

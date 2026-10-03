@@ -11,6 +11,7 @@ public class VassalSummaryRowUI : MonoBehaviour
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text opinionText;
     [SerializeField] private TMP_Text libertyText;
+    [SerializeField] private TMP_Text religionText;
     [SerializeField] private TMP_Text cityCountText;
     [SerializeField] private Transform warningAnchor;
 
@@ -25,6 +26,8 @@ public class VassalSummaryRowUI : MonoBehaviour
         GovernmentUiUtil.SetText(nameText, contract?.subjectCivName ?? string.Empty);
         GovernmentUiUtil.SetText(opinionText, contract != null && manager != null ? $"Opinion {GovernmentUiUtil.Signed(manager.GetEffectiveSubjectOpinion(contract))}" : string.Empty);
         GovernmentUiUtil.SetText(libertyText, contract != null ? $"Liberty {contract.libertyDesire:0}/{threshold:0}" : string.Empty);
+        GovernmentUiUtil.SetText(religionText, subject?.StateReligion != null
+            ? GovernmentPresentation.NameOf(subject.StateReligion) : "No Religion");
         int cities = subject?.cities?.Count ?? 0;
         GovernmentUiUtil.SetText(cityCountText, $"{cities} {(cities == 1 ? "City" : "Cities")}");
         bool warning = contract != null && (contract.libertyDesire >= threshold * PoliticalWarningBuilder.VassalLibertyWarningFraction

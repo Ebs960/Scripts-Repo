@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Owns the authored Government dashboard, its explicit detail screens, shared popups, confirmation dialog,
+/// Owns the authored Government dashboard, its explicit detail screens, confirmation dialog,
 /// and event-driven refresh lifecycle.
 /// </summary>
 public class GovernmentPanel : MonoBehaviour
@@ -53,12 +53,6 @@ public class GovernmentPanel : MonoBehaviour
 
     [Header("Warning Marker")]
     [SerializeField] private GameObject warningMarkerPrefab;
-
-    [Header("Entity Popup")]
-    [SerializeField] private GovernmentEntityActionPopup entityActionPopup;
-
-    [Header("Governor Holdings")]
-    [SerializeField] private GovernorHoldingsPanelUI governorHoldingsPanel;
 
     [Header("Confirmation")]
     [SerializeField] private PoliticalConfirmDialog confirmDialogUI;
@@ -219,12 +213,6 @@ public class GovernmentPanel : MonoBehaviour
         RefreshController(politicsUI);
     }
 
-    public void ShowGovernorHoldings(Governor governor)
-    {
-        if (civ == null || governor == null || governorHoldingsPanel == null) return;
-        governorHoldingsPanel.Show(civ, governor, RefreshAllVisible);
-    }
-
     public void RefreshAllVisible()
     {
         if (!IsOpen || civ == null) return;
@@ -238,8 +226,6 @@ public class GovernmentPanel : MonoBehaviour
     public void Close()
     {
         confirmDialogUI?.Hide();
-        entityActionPopup?.Hide();
-        governorHoldingsPanel?.Hide();
         UnsubscribeCivilization();
         civ = null;
         currentViewRoot = null;
@@ -332,8 +318,7 @@ public class GovernmentPanel : MonoBehaviour
 
     private void OpenGovernorSummary(Governor governor)
     {
-        if (entityActionPopup != null) entityActionPopup.ShowGovernor(civ, governor, this);
-        else ShowGovernor(governor);
+        ShowGovernor(governor);
     }
 
     private void RefreshVassals()
@@ -350,8 +335,7 @@ public class GovernmentPanel : MonoBehaviour
 
     private void OpenVassalSummary(VassalContract contract)
     {
-        if (entityActionPopup != null) entityActionPopup.ShowVassal(civ, contract, this);
-        else ShowVassal(contract);
+        ShowVassal(contract);
     }
 
     private void RefreshPolicies()
