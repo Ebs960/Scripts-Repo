@@ -11,10 +11,10 @@ public class GovernorRowUI : MonoBehaviour
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text opinionText;
     [SerializeField] private TMP_Text powerText;
-    [SerializeField] private Image selectedMarker;
-    [SerializeField] private Image councilMarker;
-    [SerializeField] private Image rebellionMarker;
-    [SerializeField] private Image warningMarker;
+    [SerializeField] private GameObject selectedMarker;
+    [SerializeField] private GameObject councilMarker;
+    [SerializeField] private GameObject warningMarker;
+    [SerializeField] private GameObject rebellionMarker;
 
     public void Bind(Civilization civ, Governor governor, bool selected, Action<Governor> onClick)
     {
@@ -22,15 +22,19 @@ public class GovernorRowUI : MonoBehaviour
         GovernmentUiUtil.SetText(opinionText, governor != null ? $"Opinion {GovernmentUiUtil.Signed(governor.Opinion)}" : string.Empty);
         GovernmentUiUtil.SetText(powerText, governor != null ? $"Power {governor.PowerRank}" : string.Empty);
         GovernmentUiUtil.SetImage(portraitImage, governor != null ? GovernorPortraitService.GetSprite(governor.PortraitId) : null);
-        SetMarker(councilMarker, governor != null && governor.IsOnCouncil);
-        SetMarker(rebellionMarker, governor != null && governor.IsInRebellion);
-        SetMarker(selectedMarker, selected);
-        SetMarker(warningMarker, governor != null && governor.Opinion <= PoliticalWarningBuilder.GovernorDiscontentOpinion);
-        GovernmentUiUtil.SetClick(button, () => onClick?.Invoke(governor));
-    }
+        bool inRebellion =
+            governor != null &&
+            governor.IsInRebellion;
 
-    private static void SetMarker(Image marker, bool visible)
-    {
-        if (marker != null) marker.enabled = visible;
+        bool politicallyDangerous =
+            governor != null &&
+            !inRebellion &&
+            governor.Opinion <= PoliticalWarningBuilder.GovernorDiscontentOpinion;
+
+        GovernmentUiUtil.SetActive(selectedMarker, selected);
+        GovernmentUiUtil.SetActive(councilMarker, governor != null && governor.IsOnCouncil);
+        GovernmentUiUtil.SetActive(warningMarker, politicallyDangerous);
+        GovernmentUiUtil.SetActive(rebellionMarker, inRebellion);
+        GovernmentUiUtil.SetClick(button, () => onClick?.Invoke(governor));
     }
 }
