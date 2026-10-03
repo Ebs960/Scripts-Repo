@@ -11,10 +11,8 @@ public class PolicyAreaDropdownUI : MonoBehaviour
     [SerializeField] private TMP_Text areaNameText;
     [SerializeField] private Button dropdownButton;
     [SerializeField] private TMP_Text currentPolicyText;
-    [SerializeField] private GameObject optionsRoot;
-    [SerializeField] private Transform optionsContent;
+    [SerializeField] private Transform optionsRoot;
     [SerializeField] private PolicyDropdownOptionUI optionPrefab;
-    [SerializeField] private GameObject warningMarker;
 
     private readonly List<PolicyDropdownOptionUI> options = new List<PolicyDropdownOptionUI>();
     private Civilization civ;
@@ -33,7 +31,6 @@ public class PolicyAreaDropdownUI : MonoBehaviour
         active = manager?.GetActivePolicyInArea(civ, area);
         GovernmentUiUtil.SetText(areaNameText, GovernmentPresentation.PolicyAreaDisplayName(area));
         GovernmentUiUtil.SetText(currentPolicyText, active != null ? GovernmentPresentation.NameOf(active) : "No Policy");
-        GovernmentUiUtil.SetActive(warningMarker, active != null && !manager.SatisfiesPolicyStructuralRequirements(civ, active));
         GovernmentUiUtil.SetClick(dropdownButton, Toggle);
         Close();
     }
@@ -41,30 +38,30 @@ public class PolicyAreaDropdownUI : MonoBehaviour
     public void Close()
     {
         tooltip?.Hide();
-        GovernmentUiUtil.SetActive(optionsRoot, false);
+        if (optionsRoot != null) optionsRoot.gameObject.SetActive(false);
     }
 
     private void Toggle()
     {
-        bool open = optionsRoot != null && !optionsRoot.activeSelf;
+        bool open = optionsRoot != null && !optionsRoot.gameObject.activeSelf;
         if (!open) { Close(); return; }
         RebuildOptions();
-        optionsRoot.SetActive(true);
+        optionsRoot.gameObject.SetActive(true);
     }
 
     private void RebuildOptions()
     {
         foreach (var option in options) if (option != null) Destroy(option.gameObject);
         options.Clear();
-        if (optionsContent == null || optionPrefab == null || manager == null) return;
+        if (optionsRoot == null || optionPrefab == null || manager == null) return;
         if (active != null)
         {
-            var none = Instantiate(optionPrefab, optionsContent); options.Add(none);
+            var none = Instantiate(optionPrefab, optionsRoot); options.Add(none);
             none.BindNone(() => { Close(); onRepealRequested?.Invoke(active); });
         }
         foreach (var policy in manager.GetPoliciesInArea(area).OrderBy(GovernmentPresentation.NameOf))
         {
-            var option = Instantiate(optionPrefab, optionsContent); options.Add(option);
+            var option = Instantiate(optionPrefab, optionsRoot); options.Add(option);
             option.Bind(civ, policy, manager.EvaluatePolicy(civ, policy), tooltip,
                 value => { Close(); onPolicySelected?.Invoke(value); }, Close);
         }
