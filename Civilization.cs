@@ -19,6 +19,13 @@ public enum DiplomaticState
 /// </summary>
 public class Civilization : MonoBehaviour
 {
+    public struct HoldingOpinionPreview
+    {
+        public float oldGovernorChange;
+        public float newGovernorChange;
+        public bool addsGrievance;
+    }
+
     public static event Action<Civilization, City> GovernorAssignmentChanged;
     /// <summary>Raised when council seats change so open political screens can refresh.</summary>
     public static event Action<Civilization> CouncilMembershipChanged;
@@ -918,11 +925,17 @@ public class Civilization : MonoBehaviour
     if (!governorsEnabled) return false;
         if (governor == null || city == null) return false;
 
+        Governor oldGovernor = city.governor;
+        if (oldGovernor == governor) return true;
+        HoldingOpinionPreview reaction = PreviewHoldingChange(oldGovernor, governor, true);
+
         // If the city already has a governor, anger them for the reassignment
-        if (city.governor != null && city.governor != governor)
+        if (oldGovernor != null)
         {
-            city.governor.AddGrievance(GrievanceSource.CityReassigned);
-            city.governor.Cities.Remove(city);
+            oldGovernor.AddGrievance(GrievanceSource.CityReassigned);
+            oldGovernor.SetOpinionModifier("City Transferred", reaction.oldGovernorChange, 25);
+            oldGovernor.Cities.Remove(city);
+            oldGovernor.RefreshCouncilEligibility();
         }
 
         // Remove this city from any other governor who has it listed
@@ -939,6 +952,7 @@ public class Civilization : MonoBehaviour
         city.governor = governor;
         if (!governor.Cities.Contains(city))
             governor.Cities.Add(city);
+        governor.SetOpinionModifier("Granted City", reaction.newGovernorChange, 20);
         if (governor.PersonalReligion == null)
             governor.PersonalReligion = ReligionManager.Instance?.GetCityMajorityReligion(city) ?? StateReligion;
 
@@ -955,8 +969,12 @@ public class Civilization : MonoBehaviour
         if (governor == null || city == null) return false;
         if (city.governor == governor)
         {
+            HoldingOpinionPreview reaction = PreviewHoldingChange(governor, null, true);
             city.governor = null;
             governor.Cities.Remove(city);
+            governor.SetOpinionModifier("Revoked Holding", reaction.oldGovernorChange, 25);
+            governor.AddGrievance(GrievanceSource.CityReassigned);
+            governor.RefreshCouncilEligibility();
             TileSystem.GetForPlanet(city.planetIndex)?.NotifyAdministrationChanged(city.GetTerritoryTiles(city.TerritoryRadius));
             GovernorAssignmentChanged?.Invoke(this, city);
             return true;
@@ -969,6 +987,9 @@ public class Civilization : MonoBehaviour
     {
         if (!governorsEnabled) return false;
         if (governor == null || herd == null) return false;
+        Governor oldGovernor = herd.governor;
+        if (oldGovernor == governor) return true;
+        HoldingOpinionPreview reaction = PreviewHoldingChange(oldGovernor, governor, false);
         // Remove from any previous herd assignments
         // Remove this herd from any governor that currently references it
         foreach (var g in governors)
@@ -983,6 +1004,13 @@ public class Civilization : MonoBehaviour
         // Assign
         herd.governor = governor;
         if (!governor.Herds.Contains(herd)) governor.Herds.Add(herd);
+        if (oldGovernor != null)
+        {
+            oldGovernor.SetOpinionModifier("Herd Transferred", reaction.oldGovernorChange, 15);
+            oldGovernor.RefreshCouncilEligibility();
+        }
+        governor.SetOpinionModifier("Granted Herd", reaction.newGovernorChange, 15);
+        governor.RefreshCouncilEligibility();
         // Notify the herd to apply governor bonuses
         try { herd.RefreshGovernorBonuses(); } catch { }
         return true;
@@ -994,12 +1022,37 @@ public class Civilization : MonoBehaviour
         if (governor == null || herd == null) return false;
         if (herd.governor == governor)
         {
+            HoldingOpinionPreview reaction = PreviewHoldingChange(governor, null, false);
             herd.governor = null;
             governor.Herds.Remove(herd);
+            governor.SetOpinionModifier("Revoked Herd", reaction.oldGovernorChange, 15);
+            governor.RefreshCouncilEligibility();
             try { herd.RefreshGovernorBonuses(); } catch { }
             return true;
         }
         return false;
+    }
+
+    /// <summary>Side-effect-free political result used by both assignment execution and UI previews.</summary>
+    public static HoldingOpinionPreview PreviewHoldingChange(Governor oldGovernor, Governor newGovernor, bool isCity)
+    {
+        bool transfer = oldGovernor != null && newGovernor != null && oldGovernor != newGovernor;
+        return new HoldingOpinionPreview
+        {
+            oldGovernorChange = oldGovernor == null ? 0f : ModifyHoldingOpinion(oldGovernor, isCity ? (transfer ? -20f : -15f) : (transfer ? -8f : -6f), false),
+            newGovernorChange = newGovernor == null ? 0f : ModifyHoldingOpinion(newGovernor, isCity ? 10f : 4f, true),
+            addsGrievance = isCity && oldGovernor != null
+        };
+    }
+
+    private static float ModifyHoldingOpinion(Governor governor, float baseValue, bool receiving)
+    {
+        float multiplier = 1f;
+        if (governor.HasPersonality(PersonalityTrait.Ambitious)) multiplier *= 1.5f;
+        if (!receiving && governor.HasPersonality(PersonalityTrait.Content)) multiplier *= 0.5f;
+        if (!receiving && governor.HasPersonality(PersonalityTrait.Loyal)) multiplier *= 0.75f;
+        if (governor.HasPersonality(PersonalityTrait.Greedy)) multiplier *= 1.25f;
+        return baseValue * multiplier;
     }
 
     // Get all cities in a province (all cities assigned to a governor)

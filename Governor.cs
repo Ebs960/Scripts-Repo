@@ -363,6 +363,20 @@ public class Governor
         OpinionModifiers.Add(new OpinionModifier(reason, value, duration));
     }
 
+    /// <summary>Replaces a modifier from the same cause, preventing repeatable actions from stacking it.</summary>
+    public void SetOpinionModifier(string reason, float value, int duration)
+    {
+        float replacedValue = 0f;
+        for (int i = OpinionModifiers.Count - 1; i >= 0; i--)
+        {
+            if (!string.Equals(OpinionModifiers[i].reason, reason, System.StringComparison.Ordinal)) continue;
+            replacedValue += OpinionModifiers[i].value;
+            OpinionModifiers.RemoveAt(i);
+        }
+        AddOpinionModifier(reason, value, duration);
+        Opinion = Mathf.Clamp(Opinion - replacedValue + value, LoyaltyFloor, LoyaltyCeiling);
+    }
+
     /// <summary>
     /// Round-aware opinion tick. Call once per civilization turn from
     /// Civilization.TickGovernorPolitics. A repeated call in the same round is a
