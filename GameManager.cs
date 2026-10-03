@@ -87,6 +87,8 @@ public class GameManager : MonoBehaviour
     public DiplomacyManager diplomacyManager;
     [Tooltip("Governor portrait pools and fallback sprite used by the centralized portrait service")]
     [SerializeField] private GovernorPortraitLibrary governorPortraitLibrary;
+    [Tooltip("Shared authored candidate names by culture group")]
+    [SerializeField] private GovernorCandidateNameLibrary governorCandidateNameLibrary;
 
     [Tooltip("Maximum number of planets to generate")]
     public int maxPlanets = 8;
@@ -524,6 +526,7 @@ public class GameManager : MonoBehaviour
 
         if (governorPortraitLibrary != null)
             GovernorPortraitService.Configure(governorPortraitLibrary);
+        GovernorCandidateNameService.Configure(governorCandidateNameLibrary);
 
         // Initialize ResourceCache early (before any Resources.LoadAll calls)
         ResourceCache.Initialize();
@@ -2658,6 +2661,21 @@ public class GameManager : MonoBehaviour
                         var gsd = GovernorSaveUtility.Capture(gov, civ);
                         if (gsd != null) civProgress.governors.Add(gsd);
                     }
+                    civProgress.nextGovernorCandidateId = civ.NextGovernorCandidateIdForSave;
+                    if (civ.governorCandidates != null)
+                        foreach (var candidate in civ.governorCandidates)
+                            if (candidate != null)
+                                civProgress.governorCandidates.Add(new PauseMenuManager.GovernorCandidateSaveData
+                                {
+                                    candidateId = candidate.candidateId,
+                                    name = candidate.name,
+                                    portraitId = candidate.portraitId,
+                                    specialization = candidate.specialization,
+                                    personalityTraits = candidate.personalityTraits != null ? new List<PersonalityTrait>(candidate.personalityTraits) : new List<PersonalityTrait>(),
+                                    personalReligionName = candidate.personalReligion != null ? candidate.personalReligion.name : null,
+                                    personalCultureName = candidate.personalCulture != null ? candidate.personalCulture.name : null,
+                                    createdRound = candidate.createdRound
+                                });
                 }
 
                 try
@@ -3479,6 +3497,27 @@ public class GameManager : MonoBehaviour
                 // Lookups keyed by asset name for stable identifier resolution
                 var religionAssetLookup = GovernorSaveUtility.BuildLookup(ResourceCache.GetAllReligionData(), r => r.name);
                 var cultureAssetLookup = GovernorSaveUtility.BuildLookup(ResourceCache.GetAllCultureData(), c => c.name);
+
+                var restoredCandidates = new List<GovernorCandidate>();
+                if (progress.governorCandidates != null)
+                    foreach (var saved in progress.governorCandidates)
+                    {
+                        if (saved == null) continue;
+                        religionAssetLookup.TryGetValue(saved.personalReligionName ?? string.Empty, out var religion);
+                        cultureAssetLookup.TryGetValue(saved.personalCultureName ?? string.Empty, out var culture);
+                        restoredCandidates.Add(new GovernorCandidate
+                        {
+                            candidateId = saved.candidateId,
+                            name = saved.name,
+                            portraitId = saved.portraitId,
+                            specialization = saved.specialization,
+                            personalityTraits = saved.personalityTraits != null ? new List<PersonalityTrait>(saved.personalityTraits) : new List<PersonalityTrait>(),
+                            personalReligion = religion,
+                            personalCulture = culture,
+                            createdRound = saved.createdRound
+                        });
+                    }
+                civ.RestoreGovernorCandidates(restoredCandidates, progress.nextGovernorCandidateId, currentTurn);
 
                 // Clear any existing governors and recreate from saved entries
                 civ.governors = civ.governors ?? new System.Collections.Generic.List<Governor>();

@@ -1720,9 +1720,6 @@ MonoBehaviour:
   governorTraitsText: {fileID: 8689173912264875822}
   governorBonusesText: {fileID: 8689173912264875822}
   assignmentPanel: {fileID: 754725452253572829}
-  governorNameInput: {fileID: 3720997205902459354}
-  specializationDropdown: {fileID: 1897612546239772515}
-  createGovernorButton: {fileID: 5560037983867290954}
   removeGovernorButton: {fileID: 9185755694304775648}
   existingGovernorsContainer: {fileID: 7489048593372045952}
   governorEntryPrefab: {fileID: 1000000000000101, guid: 9a1b2c3d4e5f60718293a4b5c6d7e8f1, type: 3}

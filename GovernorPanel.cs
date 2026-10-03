@@ -22,9 +22,6 @@ public class GovernorPanel : MonoBehaviour
 
     [Header("Assignment UI")]
     [SerializeField] private GameObject assignmentPanel;
-    [SerializeField] private TMP_InputField governorNameInput;
-    [SerializeField] private TMP_Dropdown specializationDropdown;
-    [SerializeField] private Button createGovernorButton;
     [SerializeField] private Button removeGovernorButton;
     [SerializeField] private Transform existingGovernorsContainer;
     [SerializeField] private GameObject governorEntryPrefab;
@@ -37,12 +34,6 @@ public class GovernorPanel : MonoBehaviour
 
     private void Awake()
     {
-        if (createGovernorButton != null)
-        {
-            createGovernorButton.onClick.RemoveAllListeners();
-            createGovernorButton.onClick.AddListener(OnCreateGovernorClicked);
-        }
-
         if (removeGovernorButton != null)
         {
             removeGovernorButton.onClick.RemoveAllListeners();
@@ -225,42 +216,6 @@ public class GovernorPanel : MonoBehaviour
         currentCity.RefreshGovernorBonuses();
         RefreshDisplay();
         if (traitPanel != null) PopulateTraitList();
-    }
-
-    private void OnCreateGovernorClicked()
-    {
-        if (currentCity == null || currentCity.owner == null) return;
-
-        if (!currentCity.owner.governorsEnabled)
-        {
-            Debug.LogWarning($"{currentCity.owner.civData.civName} has not unlocked governors.");
-            return;
-        }
-
-        string name = governorNameInput != null ? governorNameInput.text.Trim() : "Governor";
-        if (string.IsNullOrEmpty(name)) return;
-
-        Governor.Specialization spec = Governor.Specialization.Military;
-        if (specializationDropdown != null)
-        {
-            int idx = Mathf.Clamp(specializationDropdown.value, 0, Enum.GetNames(typeof(Governor.Specialization)).Length - 1);
-            spec = (Governor.Specialization)idx;
-        }
-
-        // Use civilization API to create and assign (honors governor limits)
-        var civ = currentCity.owner;
-        var gov = civ.CreateGovernor(name, spec);
-        if (gov != null)
-        {
-            // Use centralized helper to assign so logic is consistent
-            TryAssignGovernor(gov);
-            if (assignmentPanel != null) assignmentPanel.SetActive(false);
-            RefreshDisplay();
-        }
-        else
-        {
-            Debug.LogWarning($"{civ.civData.civName} cannot create a new governor (limit reached).");
-        }
     }
 
     private void OnRemoveGovernorClicked()

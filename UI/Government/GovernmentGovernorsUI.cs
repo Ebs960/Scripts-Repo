@@ -18,31 +18,22 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text rosterHeaderText;
     [SerializeField] private TMP_Text emptyText;
 
-    [Header("Create")]
-    [SerializeField] private GameObject createRoot;
-    [SerializeField] private TMP_InputField nameInput;
-    [SerializeField] private TMP_Dropdown specializationDropdown;
-    [SerializeField] private Button createButton;
-    [SerializeField] private TMP_Text createButtonLabel;
-    [SerializeField] private TMP_Text createStatusText;
+    [Header("Candidates")]
+    [SerializeField] private GameObject candidatesRoot;
+    [SerializeField] private Transform candidatesListRoot;
+    [SerializeField] private ScrollRect candidatesScroll;
+    [SerializeField] private GovernorCandidateRowUI candidateRowPrefab;
+    [SerializeField] private TMP_Text candidateStatusText;
 
     [Header("Detail")]
     [SerializeField] private GameObject detailRoot;
     [SerializeField] private Image portraitImage;
     [SerializeField] private TMP_Text nameText;
-    [SerializeField] private TMP_Text titleText;
-    [SerializeField] private TMP_Text specializationText;
-    [SerializeField] private TMP_Text levelText;
-    [SerializeField] private TMP_Text opinionText;
-    [SerializeField] private TMP_Text ambitionText;
-    [SerializeField] private TMP_Text powerText;
-    [SerializeField] private TMP_Text personalityText;
-    [SerializeField] private TMP_Text traitsText;
-    [SerializeField] private TMP_Text religionText;
-    [SerializeField] private TMP_Text cultureText;
-    [SerializeField] private TMP_Text factionText;
-    [SerializeField] private TMP_Text councilStatusText;
-    [SerializeField] private TMP_Text rebellionText;
+    [SerializeField] private TMP_Text identityText;
+    [SerializeField] private TMP_Text statsText;
+    [SerializeField] private TMP_Text characterText;
+    [SerializeField] private TMP_Text politicalIdentityText;
+    [SerializeField] private TMP_Text politicalStatusText;
     [SerializeField] private TMP_Text grievancesText;
 
     [Header("Political Status")]
@@ -76,6 +67,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text suppressedNoticeText;
 
     private readonly List<GovernorRowUI> rows = new List<GovernorRowUI>();
+    private readonly List<GovernorCandidateRowUI> candidateRows = new List<GovernorCandidateRowUI>();
     private readonly List<GovernorHoldingRowUI> cityHoldingRows = new List<GovernorHoldingRowUI>();
     private readonly List<GovernorHoldingRowUI> herdHoldingRows = new List<GovernorHoldingRowUI>();
     private PoliticalLineList opinionModifiers;
@@ -126,7 +118,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         if (suppressed)
             GovernmentUiUtil.SetText(suppressedNoticeText, $"{GovernmentPresentation.NameOf(civ.currentGovernment)} suppresses conventional politics; factions and councils are inactive.");
 
-        RefreshCreate();
+        RefreshCandidates();
         RefreshDetail(selected);
         if (resetHoldingScroll)
         {
@@ -140,13 +132,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         if (wired) return;
         wired = true;
 
-        if (specializationDropdown != null)
-        {
-            specializationDropdown.ClearOptions();
-            specializationDropdown.AddOptions(Enum.GetNames(typeof(Governor.Specialization)).ToList());
-            specializationDropdown.SetValueWithoutNotify(0);
-        }
-        GovernmentUiUtil.SetClick(createButton, OnCreateClicked);
         GovernmentUiUtil.SetClick(grantSeatButton, OnGrantSeatClicked);
         GovernmentUiUtil.SetClick(removeSeatButton, OnRemoveSeatClicked);
         GovernmentUiUtil.SetClick(giftButton, OnGiftClicked);
@@ -163,13 +148,49 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         Refresh();
     }
 
-    private void RefreshCreate()
+    private void RefreshCandidates()
     {
-        GovernmentUiUtil.SetActive(createRoot, civ.governorsEnabled);
-        GovernmentUiUtil.SetText(createButtonLabel, GovernmentPresentation.FormatCreateGovernorLabel(civ));
-        bool can = PoliticalActionRules.CanCreateGovernor(civ, out string reason);
-        GovernmentUiUtil.SetInteractable(createButton, can);
-        GovernmentUiUtil.SetText(createStatusText, can ? string.Empty : reason);
+        bool visible = civ.governorsEnabled;
+        GovernmentUiUtil.SetActive(candidatesRoot, visible);
+        if (!visible) return;
+        var candidates = (civ.governorCandidates ?? new List<GovernorCandidate>()).Where(c => c != null).ToList();
+        bool canAppoint = civ.governors.Count < civ.governorCount;
+        float scroll = GovernmentUiUtil.CaptureScroll(candidatesScroll);
+        GovernmentUiUtil.FillList(candidatesListRoot, candidateRowPrefab, candidateRows, candidates,
+            (row, candidate) => row.Bind(civ, candidate, canAppoint, RequestAppointment));
+        GovernmentUiUtil.RestoreScroll(candidatesScroll, scroll);
+        GovernmentUiUtil.SetText(candidateStatusText, canAppoint ? (candidates.Count == 0 ? "No candidates are currently available." : string.Empty)
+            : $"Governor capacity reached ({civ.governors.Count}/{civ.governorCount})");
+    }
+
+    private void RequestAppointment(GovernorCandidate candidate)
+    {
+        if (candidate == null || panel == null) return;
+        string personality = candidate.personalityTraits != null && candidate.personalityTraits.Count > 0
+            ? string.Join(" • ", candidate.personalityTraits) : "No notable personality";
+        panel.RequestConfirmation(new PoliticalConfirmRequest
+        {
+            title = $"Appoint {candidate.name}?",
+            description = $"Appoint {candidate.name} as a Governor of your civilization?",
+            confirmLabel = "APPOINT",
+            lines = new List<PoliticalEffectLine>
+            {
+                new PoliticalEffectLine { label = "Specialization", value = candidate.specialization.ToString() },
+                new PoliticalEffectLine { label = "Starting Loyalty", value = GovernmentUiUtil.Signed(candidate.StartingOpinion), beneficial = candidate.StartingOpinion >= 0f },
+                new PoliticalEffectLine { label = "Personality", value = personality },
+                new PoliticalEffectLine { label = "Religion", value = candidate.personalReligion != null ? GovernmentPresentation.NameOf(candidate.personalReligion) : "No Religion" },
+                new PoliticalEffectLine { label = "Culture", value = candidate.personalCulture != null ? GovernmentPresentation.NameOf(candidate.personalCulture) : "No Culture" }
+            },
+            onConfirm = () =>
+            {
+                if (civ != null && civ.TryAppointGovernorCandidate(candidate.candidateId, out var governor, out var reason))
+                {
+                    selectedGovernorId = governor.Id;
+                    panel.RefreshAllVisible();
+                }
+                else GovernmentUiUtil.SetText(candidateStatusText, reason);
+            }
+        });
     }
 
     private void RefreshDetail(Governor governor)
@@ -180,21 +201,14 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         string institution = GovernmentPresentation.GetInstitutionName(civ);
         GovernmentUiUtil.SetImage(portraitImage, GovernorPortraitService.GetSprite(governor.PortraitId));
         GovernmentUiUtil.SetText(nameText, GovernmentPresentation.FormatGovernorName(civ, governor));
-        GovernmentUiUtil.SetText(titleText, GovernmentPresentation.GetGovernorTitleSingular(civ));
-        GovernmentUiUtil.SetText(specializationText, governor.specialization.ToString());
-        GovernmentUiUtil.SetText(levelText, $"Level {governor.Level} (XP {governor.Experience})");
-        GovernmentUiUtil.SetText(opinionText, $"Opinion {GovernmentUiUtil.Signed(governor.Opinion)}");
-        GovernmentUiUtil.SetText(ambitionText, $"Ambition {governor.AmbitionScore}");
-        GovernmentUiUtil.SetText(powerText, $"Power {governor.PowerRank}");
-        GovernmentUiUtil.SetText(personalityText, governor.PersonalityTraits.Count > 0 ? string.Join(", ", governor.PersonalityTraits) : "No notable personality");
-        GovernmentUiUtil.SetText(traitsText, governor.Traits.Count > 0
-            ? string.Join(", ", governor.Traits.Where(t => t != null).Select(t => t.name)) : "No traits");
-        GovernmentUiUtil.SetText(religionText, governor.PersonalReligion != null ? $"Faith: {GovernmentPresentation.NameOf(governor.PersonalReligion)}" : "Faith: none");
-        GovernmentUiUtil.SetText(cultureText, governor.PersonalCulture != null ? $"Culture: {GovernmentPresentation.NameOf(governor.PersonalCulture)}" : "Culture: none");
-        GovernmentUiUtil.SetText(factionText, governor.Faction != null ? $"Faction: {governor.Faction.FactionName}" : "Faction: unaffiliated");
-        GovernmentUiUtil.SetText(councilStatusText, governor.IsOnCouncil ? $"Seated on the {institution}"
-            : governor.IsCouncilEligible ? $"Eligible for a seat on the {institution}" : $"Not eligible for the {institution}");
-        GovernmentUiUtil.SetText(rebellionText, governor.IsInRebellion ? "IN OPEN REBELLION" : string.Empty);
+        string personalities = governor.PersonalityTraits.Count > 0 ? string.Join(" • ", governor.PersonalityTraits) : "No notable personality";
+        string traits = governor.Traits.Any(t => t != null) ? string.Join(" • ", governor.Traits.Where(t => t != null).Select(t => t.name)) : "No acquired traits";
+        GovernmentUiUtil.SetText(identityText, $"{GovernmentPresentation.GetGovernorTitleSingular(civ)} • {governor.specialization} • Level {governor.Level}\nXP {governor.Experience}");
+        GovernmentUiUtil.SetText(statsText, $"Loyalty {GovernmentUiUtil.Signed(governor.Opinion)}  •  Ambition {governor.AmbitionScore}  •  Power {governor.PowerRank}");
+        GovernmentUiUtil.SetText(characterText, $"<b>Personality</b>\n{personalities}\n\n<b>Traits</b>\n{traits}");
+        GovernmentUiUtil.SetText(politicalIdentityText, $"<b>Religion</b> {(governor.PersonalReligion != null ? GovernmentPresentation.NameOf(governor.PersonalReligion) : "None")}\n<b>Culture</b> {(governor.PersonalCulture != null ? GovernmentPresentation.NameOf(governor.PersonalCulture) : "None")}\n<b>Faction</b> {(governor.Faction != null ? governor.Faction.FactionName : "Unaffiliated")}");
+        string councilStatus = governor.IsOnCouncil ? $"Seated on the {institution}" : governor.IsCouncilEligible ? $"Eligible for a seat on the {institution}" : $"Not eligible for the {institution}";
+        GovernmentUiUtil.SetText(politicalStatusText, governor.IsInRebellion ? $"{councilStatus}\n<color=#D95C5C>IN OPEN REBELLION</color>" : councilStatus);
         GovernmentUiUtil.SetText(grievancesText, governor.Grievances.Count == 0
             ? "No grievances"
             : string.Join("\n", governor.Grievances.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} x{kv.Value}")));
@@ -221,41 +235,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         GovernmentUiUtil.SetInteractable(giftButton, canGift);
         GovernmentUiUtil.SetInteractable(convertButton, canConvert);
         GovernmentUiUtil.SetText(personalActionStatusText, !canGift ? giftReason : !canConvert ? convertReason : string.Empty);
-    }
-
-    private void OnCreateClicked()
-    {
-        if (civ == null) return;
-        if (!PoliticalActionRules.CanCreateGovernor(civ, out string reason))
-        {
-            GovernmentUiUtil.SetText(createStatusText, reason);
-            return;
-        }
-
-        string governorName = nameInput != null ? nameInput.text.Trim() : string.Empty;
-        if (string.IsNullOrEmpty(governorName))
-        {
-            GovernmentUiUtil.SetText(createStatusText, $"Enter a name for the new {GovernmentPresentation.GetGovernorTitleSingular(civ).ToLowerInvariant()}.");
-            return;
-        }
-
-        var specialization = Governor.Specialization.Military;
-        if (specializationDropdown != null)
-        {
-            int count = Enum.GetNames(typeof(Governor.Specialization)).Length;
-            specialization = (Governor.Specialization)Mathf.Clamp(specializationDropdown.value, 0, count - 1);
-        }
-
-        var created = civ.CreateGovernor(governorName, specialization);
-        if (created == null)
-        {
-            GovernmentUiUtil.SetText(createStatusText, "Could not create a new governor.");
-            return;
-        }
-
-        if (nameInput != null) nameInput.text = string.Empty;
-        selectedGovernorId = created.Id;
-        panel?.RefreshAllVisible();
     }
 
     private void OnGrantSeatClicked()
