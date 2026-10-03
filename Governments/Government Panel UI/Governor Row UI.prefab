@@ -498,12 +498,12 @@ GameObject:
   - component: {fileID: 152518537951176420}
   - component: {fileID: 6347233464171758859}
   m_Layer: 5
-  m_Name: Rebellion Marker Icon
+  m_Name: Rebellion Active
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &8745900804797464597
 RectTransform:
   m_ObjectHideFlags: 0
@@ -573,12 +573,12 @@ GameObject:
   - component: {fileID: 412342431616800305}
   - component: {fileID: 2493724615130916722}
   m_Layer: 5
-  m_Name: Council Marker Icon
+  m_Name: Council Active
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6852199858152842671
 RectTransform:
   m_ObjectHideFlags: 0
@@ -924,10 +924,10 @@ MonoBehaviour:
   nameText: {fileID: 1940449012125380192}
   opinionText: {fileID: 4678955127868952824}
   powerText: {fileID: 2518450130391981694}
-  selectedMarker: {fileID: 239935351180654934}
-  councilMarker: {fileID: 2493724615130916722}
-  rebellionMarker: {fileID: 6347233464171758859}
-  warningMarker: {fileID: 6392015125512231087}
+  selectedMarker: {fileID: 9117121024978772539}
+  councilMarker: {fileID: 7350190378334576918}
+  warningMarker: {fileID: 8787386865043009226}
+  rebellionMarker: {fileID: 6398916487728009912}
 --- !u!1 &8709229870562047786
 GameObject:
   m_ObjectHideFlags: 0
@@ -1079,12 +1079,12 @@ GameObject:
   - component: {fileID: 2356080805221492192}
   - component: {fileID: 6392015125512231087}
   m_Layer: 5
-  m_Name: Warning Marker Icon
+  m_Name: Warning Active
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &8248734578562189237
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1291,12 +1291,12 @@ GameObject:
   - component: {fileID: 4485836591504867925}
   - component: {fileID: 239935351180654934}
   m_Layer: 5
-  m_Name: Selected Marker Icon
+  m_Name: Selected Active
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &9048406813605028857
 RectTransform:
   m_ObjectHideFlags: 0
