@@ -35,16 +35,22 @@ public class PolicyManager : MonoBehaviour
             && PolicyGovernmentMet(civ, p, null)
             && PolicyCitiesMet(civ, p, null)
             && PolicyReligionMet(civ, p, null)
-            && PolicyRequiredPoliciesMet(civ, p, null);
+            && PolicyRequiredPoliciesMet(civ, p, null, ongoing: true);
     }
 
     public bool MeetsPolicyPrerequisites(Civilization civ, PolicyData p)
-        => SatisfiesPolicyStructuralRequirements(civ, p)
+        => civ != null && p != null
+           && PolicyTechsMet(civ, p, null)
+           && PolicyCulturesMet(civ, p, null)
+           && PolicyGovernmentMet(civ, p, null)
+           && PolicyCitiesMet(civ, p, null)
+           && PolicyReligionMet(civ, p, null)
+           && PolicyRequiredPoliciesMet(civ, p, null, ongoing: false)
            && (civ.activePolicies == null || !civ.activePolicies.Contains(p))
            && !HasActiveConflict(civ, p);
 
     public bool HasActiveConflict(Civilization civ, PolicyData candidate)
-        => !PolicyConflictFree(civ, candidate, null, null);
+        => !PolicyConflictFree(civ, candidate, GetActivePolicyInArea(civ, candidate != null ? candidate.policyArea : PolicyArea.Unassigned, candidate), null, null);
 
     /// <summary>
     /// Full adoption evaluation with exact failure reasons. Built from the same rule helpers as
@@ -52,7 +58,7 @@ public class PolicyManager : MonoBehaviour
     /// </summary>
     public PolicyAdoptionEvaluation EvaluatePolicy(Civilization civ, PolicyData policy)
     {
-        var e = new PolicyAdoptionEvaluation { policy = policy };
+        var e = new PolicyAdoptionEvaluation { policy = policy, policyArea = policy != null ? policy.policyArea : PolicyArea.Unassigned };
         if (civ == null || policy == null)
         {
             e.failureReasons.Add("No policy selected.");
@@ -63,6 +69,7 @@ public class PolicyManager : MonoBehaviour
         e.policyPointCost = policy.policyPointCost;
         e.currentPolicyPoints = civ.policyPoints;
         e.alreadyActive = civ.activePolicies != null && civ.activePolicies.Contains(policy);
+        e.replacedAreaPolicy = GetActivePolicyInArea(civ, policy.policyArea, policy);
         if (e.alreadyActive) reasons.Add("This policy is already active.");
 
         e.meetsTechRequirements = PolicyTechsMet(civ, policy, reasons);
@@ -70,8 +77,8 @@ public class PolicyManager : MonoBehaviour
         e.meetsGovernmentRequirement = PolicyGovernmentMet(civ, policy, reasons);
         e.meetsCityRequirement = PolicyCitiesMet(civ, policy, reasons);
         e.meetsReligionRequirement = PolicyReligionMet(civ, policy, reasons);
-        e.meetsRequiredPolicies = PolicyRequiredPoliciesMet(civ, policy, reasons);
-        e.hasConflict = !PolicyConflictFree(civ, policy, e.conflictingActivePolicies, reasons);
+        e.meetsRequiredPolicies = PolicyRequiredPoliciesMet(civ, policy, reasons, ongoing: false);
+        e.hasConflict = !PolicyConflictFree(civ, policy, e.replacedAreaPolicy, e.conflictingActivePolicies, reasons);
         e.affordable = civ.policyPoints >= policy.policyPointCost;
         if (!e.affordable)
             reasons.Add($"Costs {policy.policyPointCost} policy points ({civ.policyPoints} available).");
@@ -141,12 +148,14 @@ public class PolicyManager : MonoBehaviour
         return false;
     }
 
-    private static bool PolicyRequiredPoliciesMet(Civilization civ, PolicyData p, List<string> reasons)
+    private static bool PolicyRequiredPoliciesMet(Civilization civ, PolicyData p, List<string> reasons, bool ongoing)
     {
         bool ok = true;
         if (p.requiredPolicies != null)
             foreach (var required in p.requiredPolicies)
             {
+                if (ongoing && required != null && required.policyArea == p.policyArea && Contains(p.supersedesPolicies, required))
+                    continue;
                 if (required == null || (civ.activePolicies != null && civ.activePolicies.Contains(required))) continue;
                 if (reasons == null) return false;
                 ok = false;
@@ -155,13 +164,13 @@ public class PolicyManager : MonoBehaviour
         return ok;
     }
 
-    private static bool PolicyConflictFree(Civilization civ, PolicyData candidate, List<PolicyData> conflicts, List<string> reasons)
+    private static bool PolicyConflictFree(Civilization civ, PolicyData candidate, PolicyData replacing, List<PolicyData> conflicts, List<string> reasons)
     {
         if (civ?.activePolicies == null || candidate == null) return true;
         bool ok = true;
         foreach (var active in civ.activePolicies)
         {
-            if (active == null || active == candidate) continue;
+            if (active == null || active == candidate || active == replacing) continue;
             if (!Contains(candidate.incompatiblePolicies, active) && !Contains(active.incompatiblePolicies, candidate)) continue;
             if (reasons == null && conflicts == null) return false;
             ok = false;
@@ -262,6 +271,7 @@ public class PolicyManager : MonoBehaviour
     public void RevalidateActivePolicies(Civilization civ)
     {
         if (civ?.activePolicies == null) return;
+        NormalizeLegacyPolicyAreas(civ);
         // Repeat because removing one prerequisite can invalidate a policy that was
         // visited earlier in the list. This is event-driven, never a per-frame search.
         bool removed;
@@ -278,6 +288,40 @@ public class PolicyManager : MonoBehaviour
             }
         } while (removed);
     }
+
+    private void NormalizeLegacyPolicyAreas(Civilization civ)
+    {
+        var newestByArea = new Dictionary<PolicyArea, PolicyData>();
+        for (int i = civ.activePolicies.Count - 1; i >= 0; i--)
+        {
+            var policy = civ.activePolicies[i];
+            if (policy == null || policy.policyArea == PolicyArea.Unassigned) continue;
+            if (!newestByArea.TryGetValue(policy.policyArea, out var newest))
+            {
+                newestByArea.Add(policy.policyArea, policy);
+                continue;
+            }
+            Debug.Log($"[PolicyManager] Legacy save contained multiple policies in {GovernmentPresentation.PolicyAreaDisplayName(policy.policyArea)}; keeping {GovernmentPresentation.NameOf(newest)} and removing {GovernmentPresentation.NameOf(policy)}.");
+            civ.RevokePolicy(policy);
+        }
+    }
+
+    public PolicyData GetActivePolicyInArea(Civilization civ, PolicyArea area)
+        => GetActivePolicyInArea(civ, area, null);
+
+    private static PolicyData GetActivePolicyInArea(Civilization civ, PolicyArea area, PolicyData excluding)
+    {
+        if (civ?.activePolicies == null || area == PolicyArea.Unassigned) return null;
+        for (int i = civ.activePolicies.Count - 1; i >= 0; i--)
+        {
+            var policy = civ.activePolicies[i];
+            if (policy != null && policy != excluding && policy.policyArea == area) return policy;
+        }
+        return null;
+    }
+
+    public List<PolicyData> GetPoliciesInArea(PolicyArea area)
+        => allPolicies == null ? new List<PolicyData>() : allPolicies.Where(p => p != null && p.policyArea == area).Distinct().ToList();
 
     /// <summary>All policies whose structural prerequisites are met, regardless of current policy points.</summary>
     public List<PolicyData> GetStructurallyAvailablePolicies(Civilization civ)
@@ -310,7 +354,8 @@ public class PolicyManager : MonoBehaviour
     /// </summary>
     public bool AdoptPolicy(Civilization civ, PolicyData p)
     {
-        if (!GetAvailablePolicies(civ).Contains(p)) return false;
+        var evaluation = EvaluatePolicy(civ, p);
+        if (!evaluation.canAdopt) return false;
 
         var voteResult = RunPolicyCouncilVote(civ, p, revocation: false);
         if (!voteResult.passed)
@@ -320,7 +365,9 @@ public class PolicyManager : MonoBehaviour
             return false;
         }
 
-        // Supersession occurs only after approval, without another vote or refund.
+        // The approved switch is one atomic political action. Automatic removals neither vote nor refund.
+        if (evaluation.replacedAreaPolicy != null)
+            civ.RevokePolicy(evaluation.replacedAreaPolicy);
         if (p.supersedesPolicies != null)
             foreach (var superseded in p.supersedesPolicies)
                 if (superseded != null && civ.activePolicies != null && civ.activePolicies.Contains(superseded))
@@ -328,8 +375,7 @@ public class PolicyManager : MonoBehaviour
 
         // Adopt first, then charge: Civilization.AdoptPolicy re-validates availability,
         // so deducting points up-front could silently charge without adopting.
-        civ.AdoptPolicy(p);
-        if (civ.activePolicies == null || !civ.activePolicies.Contains(p)) return false;
+        if (!civ.ActivatePolicyAfterValidation(p)) return false;
 
         civ.policyPoints -= p.policyPointCost;
         ApplyGovernorPoliticalReactions(civ, p.governorOpinionEffects);

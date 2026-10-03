@@ -29,7 +29,9 @@ MonoBehaviour:
   requiredPolicies:
   - {fileID: 11400000, guid: 7459222debcd425eb7f2b021fb1f917f, type: 2}
   incompatiblePolicies: []
-  supersedesPolicies: []
+  supersedesPolicies:
+  - {fileID: 11400000, guid: 7459222debcd425eb7f2b021fb1f917f, type: 2}
+  policyArea: 7
   policyTags:
   - 3
   additionalVetoDomains: 0

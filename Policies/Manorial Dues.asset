@@ -26,6 +26,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 9
   policyTags:
   - 1
   additionalVetoDomains: 4

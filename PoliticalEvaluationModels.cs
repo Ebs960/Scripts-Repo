@@ -30,6 +30,8 @@ public enum PolicyListState { Active, Available, Locked }
 public class PolicyAdoptionEvaluation
 {
     public PolicyData policy;
+    public PolicyArea policyArea;
+    public PolicyData replacedAreaPolicy;
 
     public bool alreadyActive;
     public bool affordable;

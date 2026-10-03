@@ -3610,9 +3610,13 @@ public class Civilization : MonoBehaviour
 
     public void AdoptPolicy(PolicyData p)
     {
-        // PolicyManager.Instance.AdoptPolicy(this, p); // This would typically handle adding to activePolicies
-        if (p == null || !CanAdoptPolicy(p)) return;
+        PolicyManager.Instance?.AdoptPolicy(this, p);
+    }
 
+    /// <summary>Completes a PolicyManager-validated replacement without re-checking an upgrade prerequisite that was just superseded.</summary>
+    internal bool ActivatePolicyAfterValidation(PolicyData p)
+    {
+        if (p == null || activePolicies == null || activePolicies.Contains(p)) return false;
         if (!activePolicies.Contains(p))
         {
             activePolicies.Add(p);
@@ -3621,7 +3625,9 @@ public class Civilization : MonoBehaviour
             OnPolicyAdopted?.Invoke(this, p);
             TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
             // TODO: UI update, notifications
+            return true;
         }
+        return false;
     }
 
     // New method to apply bonuses from a single policy

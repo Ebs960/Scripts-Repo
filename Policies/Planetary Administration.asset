@@ -31,6 +31,7 @@ MonoBehaviour:
   incompatiblePolicies: []
   supersedesPolicies:
   - {fileID: 11400000, guid: 37c75758104f4dbc81ff46677413a2f1, type: 2}
+  policyArea: 1
   policyTags:
   - 0
   - 18

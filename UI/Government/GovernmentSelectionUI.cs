@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Government choices plus a detail view (large artwork, effects, requirements with exact failure reasons, council
 /// outlook). Selecting a government only previews it; adoption is confirmed and routed through PolicyManager.
 /// </summary>
-public class GovernmentTypesTab : GovernmentTabBase
+public class GovernmentSelectionUI : GovernmentScreenBase
 {
     [Header("List")]
     [SerializeField] private Transform listRoot;

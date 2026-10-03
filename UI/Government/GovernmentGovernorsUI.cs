@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// Governor roster and detail view. Titles come from the current government; council actions use
 /// PoliticalActionRules so button state and disabled reasons share one source of truth.
 /// </summary>
-public class GovernmentGovernorsTab : GovernmentTabBase
+public class GovernmentGovernorsUI : GovernmentScreenBase
 {
     [Header("Roster")]
     [SerializeField] private Transform listRoot;

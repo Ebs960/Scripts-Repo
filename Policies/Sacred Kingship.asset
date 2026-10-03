@@ -43,6 +43,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 12
   policyTags:
   - 10
   additionalVetoDomains: 8

@@ -52,6 +52,7 @@ MonoBehaviour:
   requiredPolicies: []
   incompatiblePolicies: []
   supersedesPolicies: []
+  policyArea: 7
   policyTags: 03000000
   additionalVetoDomains: 8
   attackBonus: 0
