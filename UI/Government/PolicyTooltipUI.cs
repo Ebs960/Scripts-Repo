@@ -16,11 +16,6 @@ public class PolicyTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text statusText;
     [SerializeField] private TMP_Text descriptionText;
     [SerializeField] private TMP_Text costText;
-    [SerializeField] private TMP_Text effectsText;
-    [SerializeField] private TMP_Text requirementsText;
-    [SerializeField] private TMP_Text relationshipsText;
-    [SerializeField] private TMP_Text governorReactionsText;
-    [SerializeField] private TMP_Text councilOutlookText;
     [SerializeField] private float hoverDelay = 0.3f;
 
     private Coroutine pending;
@@ -52,15 +47,38 @@ public class PolicyTooltipUI : MonoBehaviour
         GovernmentUiUtil.SetText(policyNameText, GovernmentPresentation.NameOf(policy));
         GovernmentUiUtil.SetText(areaText, GovernmentPresentation.PolicyAreaDisplayName(policy.policyArea));
         GovernmentUiUtil.SetText(statusText, evaluation != null ? evaluation.State.ToString() : "Locked");
-        GovernmentUiUtil.SetText(descriptionText, policy.description);
+        GovernmentUiUtil.SetText(descriptionText, BuildDescription(civ, policy, evaluation));
         GovernmentUiUtil.SetText(costText, $"Policy Points: -{policy.policyPointCost}");
-        GovernmentUiUtil.SetText(effectsText, FormatEffects(PoliticalEffectSummaryBuilder.BuildPolicyEffects(policy)));
-        GovernmentUiUtil.SetText(requirementsText, FormatRequirements(PoliticalEffectSummaryBuilder.BuildPolicyRequirements(civ, policy), evaluation));
-        GovernmentUiUtil.SetText(relationshipsText, FormatRelationships(policy, evaluation));
-        GovernmentUiUtil.SetText(governorReactionsText, FormatEffects(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(policy.governorOpinionEffects)));
-        GovernmentUiUtil.SetText(councilOutlookText, FormatCouncil(PolicyManager.Instance?.PreviewPolicyVote(civ, policy, false)));
         Root.SetActive(true);
         PositionAndClamp(position);
+    }
+
+    private static string BuildDescription(
+        Civilization civ,
+        PolicyData policy,
+        PolicyAdoptionEvaluation evaluation)
+    {
+        var sections = new List<string>();
+        if (!string.IsNullOrWhiteSpace(policy.description))
+            sections.Add(policy.description.Trim());
+
+        AddSection(sections, "EFFECTS",
+            FormatEffects(PoliticalEffectSummaryBuilder.BuildPolicyEffects(policy)));
+        AddSection(sections, "REQUIREMENTS",
+            FormatRequirements(PoliticalEffectSummaryBuilder.BuildPolicyRequirements(civ, policy), evaluation));
+        AddSection(sections, "RELATIONSHIPS", FormatRelationships(policy, evaluation));
+        AddSection(sections, "GOVERNOR REACTIONS",
+            FormatEffects(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(policy.governorOpinionEffects)));
+        AddSection(sections, "COUNCIL OUTLOOK",
+            FormatCouncil(PolicyManager.Instance?.PreviewPolicyVote(civ, policy, false)));
+
+        return string.Join("\n\n", sections);
+    }
+
+    private static void AddSection(List<string> sections, string heading, string content)
+    {
+        if (!string.IsNullOrWhiteSpace(content))
+            sections.Add($"<b>{heading}</b>\n{content.Trim()}");
     }
 
     private void PositionAndClamp(Vector2 screenPosition)
@@ -87,7 +105,7 @@ public class PolicyTooltipUI : MonoBehaviour
     {
         var result = lines.Select(x => $"{(x.met ? "✓" : "✕")} {x.label}").ToList();
         if (evaluation != null) result.AddRange(evaluation.failureReasons);
-        return result.Count == 0 ? "None" : string.Join("\n", result.Distinct());
+        return string.Join("\n", result.Distinct());
     }
 
     private static string FormatRelationships(PolicyData policy, PolicyAdoptionEvaluation evaluation)
@@ -95,7 +113,7 @@ public class PolicyTooltipUI : MonoBehaviour
         var lines = new List<string>();
         if (evaluation?.replacedAreaPolicy != null) lines.Add($"Would replace: {GovernmentPresentation.NameOf(evaluation.replacedAreaPolicy)}");
         Add(lines, "Requires", policy.requiredPolicies); Add(lines, "Conflicts", policy.incompatiblePolicies); Add(lines, "Supersedes", policy.supersedesPolicies);
-        return lines.Count == 0 ? "None" : string.Join("\n", lines);
+        return string.Join("\n", lines);
     }
 
     private static void Add(List<string> lines, string label, PolicyData[] values)
@@ -105,5 +123,7 @@ public class PolicyTooltipUI : MonoBehaviour
     }
 
     private static string FormatCouncil(CouncilVoteResult vote)
-        => vote == null ? "No council vote required" : $"{(vote.passed ? "Likely to pass" : "Likely to fail")} ({vote.yesVotes}–{vote.noVotes})";
+        => vote == null || !vote.applicable
+            ? string.Empty
+            : $"{(vote.passed ? "Likely to pass" : "Likely to fail")} ({vote.yesVotes}–{vote.noVotes})";
 }

@@ -104,11 +104,6 @@ MonoBehaviour:
   statusText: {fileID: 7884172703653831989}
   descriptionText: {fileID: 6518523595775586201}
   costText: {fileID: 4623327902644079043}
-  effectsText: {fileID: 0}
-  requirementsText: {fileID: 0}
-  relationshipsText: {fileID: 0}
-  governorReactionsText: {fileID: 0}
-  councilOutlookText: {fileID: 0}
   hoverDelay: 0.3
 --- !u!223 &6303893046279640577
 Canvas:
