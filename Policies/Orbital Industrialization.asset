@@ -27,8 +27,6 @@ MonoBehaviour:
   incompatiblePolicies: []
   supersedesPolicies: []
   policyArea: 20
-  policyTags:
-  - 18
   additionalVetoDomains: 0
   attackBonus: 0
   meleeAttackBonus: 0

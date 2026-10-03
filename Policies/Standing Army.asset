@@ -29,8 +29,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a465862d847c40d298be6a8e2efa11d1, type: 2}
   - {fileID: 11400000, guid: 420b61dd47674c6a8c29b482985f48c7, type: 2}
   policyArea: 2
-  policyTags:
-  - 9
   additionalVetoDomains: 128
   attackBonus: 0
   meleeAttackBonus: 0

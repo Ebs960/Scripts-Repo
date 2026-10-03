@@ -31,9 +31,7 @@ MonoBehaviour:
   incompatiblePolicies:
   - {fileID: 11400000, guid: ab0a09d0d1c1450b83a01b8bdfc52a35, type: 2}
   supersedesPolicies: []
-  policyArea: 7
-  policyTags:
-  - 3
+  policyArea: 8
   additionalVetoDomains: 4
   attackBonus: 0
   meleeAttackBonus: 0

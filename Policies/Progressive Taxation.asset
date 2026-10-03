@@ -32,8 +32,6 @@ MonoBehaviour:
   supersedesPolicies:
   - {fileID: 11400000, guid: a9bd33ffcb9a4f2eb2c7448e8182ecf4, type: 2}
   policyArea: 7
-  policyTags:
-  - 3
   additionalVetoDomains: 4
   attackBonus: 0
   meleeAttackBonus: 0

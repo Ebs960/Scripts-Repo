@@ -27,9 +27,7 @@ MonoBehaviour:
   incompatiblePolicies:
   - {fileID: 11400000, guid: cc1df82246834f2c8012c5f11ead14d9, type: 2}
   supersedesPolicies: []
-  policyArea: 7
-  policyTags:
-  - 3
+  policyArea: 1
   attackBonus: 0
   meleeAttackBonus: 0
   rangedAttackBonus: 0

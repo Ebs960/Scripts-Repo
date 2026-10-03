@@ -1,12 +1,5 @@
 using UnityEngine;
 
-public enum PolicyTag
-{
-    Administration, Agriculture, Colonial, Economy, Education, Environment,
-    Infrastructure, Labor, Law, Military, Religion, Rights, Security, Trade,
-    Welfare, Digital, Synthetic, Genetics, Space
-}
-
 public enum PolicyArea
 {
     Unassigned = 0,
@@ -55,12 +48,9 @@ public class PolicyData : ScriptableObject
     [Tooltip("Active policies automatically repealed after a successful adoption vote.")]
     public PolicyData[] supersedesPolicies;
 
-    [Header("Policy Slot")]
-    [Tooltip("Only one policy from each Policy Area may be active at a time.")]
+    [Header("Policy Area")]
+    [Tooltip("The single policy area this policy belongs to. Only one policy in an area may be active at a time.")]
     public PolicyArea policyArea = PolicyArea.Unassigned;
-
-    [Header("Classification")]
-    public PolicyTag[] policyTags;
 
     [Header("Council")]
     [Tooltip("Council veto domains implicated in addition to Policy Change.")]

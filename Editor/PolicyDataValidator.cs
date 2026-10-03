@@ -27,7 +27,6 @@ public static class PolicyDataValidator
                 Error(path, "policy must require at least one technology or culture.", ref errors, policy);
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyArea == PolicyArea.Unassigned) Error(path, "policyArea must be assigned.", ref errors, policy);
-            if (policy.policyTags == null || policy.policyTags.Length == 0) Error(path, "policyTags is empty.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
             else names[identity] = path;
@@ -39,7 +38,6 @@ public static class PolicyDataValidator
             ValidatePolicyReferences(policy.requiredPolicies, "requiredPolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.incompatiblePolicies, "incompatiblePolicies", path, policy, ref errors);
             ValidatePolicyReferences(policy.supersedesPolicies, "supersedesPolicies", path, policy, ref errors);
-            ValidateDuplicates(policy.policyTags, "policyTags", path, policy, ref errors);
             if (Contains(policy.requiredPolicies, policy)) Error(path, "a policy cannot require itself.", ref errors, policy);
             if (Contains(policy.incompatiblePolicies, policy)) Error(path, "a policy cannot conflict with itself.", ref errors, policy);
             if (Contains(policy.supersedesPolicies, policy)) Error(path, "a policy cannot supersede itself.", ref errors, policy);

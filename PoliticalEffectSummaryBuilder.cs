@@ -199,9 +199,6 @@ public static class PoliticalEffectSummaryBuilder
         return string.Join(", ", values);
     }
 
-    public static string FormatPolicyTags(PolicyData p)
-        => p?.policyTags == null || p.policyTags.Length == 0 ? string.Empty : string.Join(", ", p.policyTags);
-
     private static int CountTargeted(GovernmentData g)
         => Len(g.tileYieldBonuses) + Len(g.buildingBonuses) + Len(g.unitYieldBonuses) + Len(g.unitBonuses)
          + Len(g.equipmentYieldBonuses) + Len(g.workerYieldBonuses) + Len(g.workerBonuses) + Len(g.diseaseBonuses)
