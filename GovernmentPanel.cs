@@ -27,20 +27,17 @@ public class GovernmentPanel : MonoBehaviour
     [SerializeField] private Image governmentIconImage;
     [SerializeField] private Button governmentButton;
     [SerializeField] private TMP_Text leaderTitleText;
-    [SerializeField] private TMP_Text institutionText;
     [SerializeField] private TMP_Text policyPointsText;
 
     [Header("Governors")]
     [SerializeField] private Transform governorsRoot;
     [SerializeField] private ScrollRect governorsScroll;
     [SerializeField] private GovernorSummaryRowUI governorEntryPrefab;
-    [SerializeField] private TMP_Text noGovernorsText;
 
     [Header("Vassals")]
     [SerializeField] private Transform vassalsRoot;
     [SerializeField] private ScrollRect vassalsScroll;
     [SerializeField] private VassalSummaryRowUI vassalEntryPrefab;
-    [SerializeField] private TMP_Text noVassalsText;
 
     [Header("Policies")]
     [SerializeField] private Transform policiesRoot;
@@ -54,13 +51,14 @@ public class GovernmentPanel : MonoBehaviour
     [SerializeField] private GovernmentVassalsUI vassalsUI;
     [SerializeField] private GovernmentPoliticsUI politicsUI;
 
+    [Header("Warning Marker")]
+    [SerializeField] private GameObject warningMarkerPrefab;
+
     [Header("Entity Popup")]
     [SerializeField] private GovernmentEntityActionPopup entityActionPopup;
 
-    [Header("Attention / Political Warnings (optional)")]
-    [SerializeField] private Transform warningsRoot;
-    [SerializeField] private PoliticalLineRowUI warningRowPrefab;
-    [SerializeField] private GameObject noWarningsRoot;
+    [Header("Governor Holdings")]
+    [SerializeField] private GovernorHoldingsPanelUI governorHoldingsPanel;
 
     [Header("Confirmation")]
     [SerializeField] private PoliticalConfirmDialog confirmDialogUI;
@@ -80,7 +78,6 @@ public class GovernmentPanel : MonoBehaviour
     private Civilization civ;
     private Civilization subscribedCiv;
     private GameObject currentViewRoot;
-    private PoliticalLineList warnings;
     private bool isOpen;
     private bool isShowing;
     private bool refreshQueued;
@@ -88,6 +85,7 @@ public class GovernmentPanel : MonoBehaviour
     private bool dashboardWired;
 
     public Civilization Civilization => civ;
+    public GameObject WarningMarkerPrefab => warningMarkerPrefab;
     public bool IsOpen => isOpen && (panelRoot == null || panelRoot.activeInHierarchy);
     public bool IsConfirmationVisible => confirmDialogUI != null && confirmDialogUI.IsVisible;
 
@@ -221,16 +219,10 @@ public class GovernmentPanel : MonoBehaviour
         RefreshController(politicsUI);
     }
 
-    public void OpenWarningDestination(PoliticalWarningDestination destination)
+    public void ShowGovernorHoldings(Governor governor)
     {
-        switch (destination)
-        {
-            case PoliticalWarningDestination.GovernmentSelection: ShowGovernmentSelection(); break;
-            case PoliticalWarningDestination.Policies: ShowPolicies(); break;
-            case PoliticalWarningDestination.Governors: ShowGovernors(); break;
-            case PoliticalWarningDestination.Vassals: ShowVassals(); break;
-            case PoliticalWarningDestination.Politics: ShowPolitics(); break;
-        }
+        if (civ == null || governor == null || governorHoldingsPanel == null) return;
+        governorHoldingsPanel.Show(civ, governor, RefreshAllVisible);
     }
 
     public void RefreshAllVisible()
@@ -247,6 +239,7 @@ public class GovernmentPanel : MonoBehaviour
     {
         confirmDialogUI?.Hide();
         entityActionPopup?.Hide();
+        governorHoldingsPanel?.Hide();
         UnsubscribeCivilization();
         civ = null;
         currentViewRoot = null;
@@ -310,12 +303,10 @@ public class GovernmentPanel : MonoBehaviour
         GovernmentUiUtil.SetImage(governmentArtworkImage, government != null ? government.governmentArtwork : null);
         GovernmentUiUtil.SetImage(governmentIconImage, government != null ? government.icon : null);
         GovernmentUiUtil.SetText(leaderTitleText, GovernmentPresentation.GetLeaderTitle(civ));
-        GovernmentUiUtil.SetText(institutionText, GovernmentPresentation.GetInstitutionName(civ));
         GovernmentUiUtil.SetText(policyPointsText, $"Policy Points: {civ.policyPoints}");
         RefreshGovernors();
         RefreshVassals();
         RefreshPolicies();
-        RefreshWarnings();
     }
 
     private void EnsureDashboardWired()
@@ -334,10 +325,9 @@ public class GovernmentPanel : MonoBehaviour
         float scroll = GovernmentUiUtil.CaptureScroll(governorsScroll);
         GovernmentUiUtil.FillList(governorsRoot, governorEntryPrefab, governorRows, governors, (row, governor) =>
         {
-            row.Bind(civ, governor, OpenGovernorSummary);
+            row.Bind(civ, governor, OpenGovernorSummary, warningMarkerPrefab);
         });
         GovernmentUiUtil.RestoreScroll(governorsScroll, scroll);
-        GovernmentUiUtil.SetText(noGovernorsText, governors.Count == 0 ? "No governors." : string.Empty);
     }
 
     private void OpenGovernorSummary(Governor governor)
@@ -353,10 +343,9 @@ public class GovernmentPanel : MonoBehaviour
         float scroll = GovernmentUiUtil.CaptureScroll(vassalsScroll);
         GovernmentUiUtil.FillList(vassalsRoot, vassalEntryPrefab, vassalRows, contracts, (row, contract) =>
         {
-            row.Bind(civ, contract, OpenVassalSummary);
+            row.Bind(civ, contract, OpenVassalSummary, warningMarkerPrefab);
         });
         GovernmentUiUtil.RestoreScroll(vassalsScroll, scroll);
-        GovernmentUiUtil.SetText(noVassalsText, contracts.Count == 0 ? "You have no vassals." : string.Empty);
     }
 
     private void OpenVassalSummary(VassalContract contract)
@@ -431,15 +420,6 @@ public class GovernmentPanel : MonoBehaviour
         var names = policies?.Where(p => p != null).Select(GovernmentPresentation.NameOf).ToList();
         if (names != null && names.Count > 0)
             lines.Add(new PoliticalEffectLine { label = label, value = string.Join(", ", names) });
-    }
-
-    private void RefreshWarnings()
-    {
-        if (warningsRoot == null || warningRowPrefab == null) return;
-        warnings ??= new PoliticalLineList(warningsRoot, warningRowPrefab);
-        var list = PoliticalWarningBuilder.Build(civ);
-        warnings.Show(list, (row, warning) => row.BindWarning(warning, OpenWarningDestination));
-        GovernmentUiUtil.SetActive(noWarningsRoot, list.Count == 0);
     }
 
     private bool OpenModal()
