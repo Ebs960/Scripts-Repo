@@ -96,6 +96,7 @@ MonoBehaviour:
   civilizationManager: {fileID: 0}
   climateManager: {fileID: 0}
   diplomacyManager: {fileID: 0}
+  governorCandidateNameLibrary: {fileID: 11400000, guid: c45811e6ea004bb1b23745ae9cf96968, type: 2}
   maxPlanets: 12
   useRealSolarSystem: 1
   restrictDiagnosticsToFirstPlanet: 1

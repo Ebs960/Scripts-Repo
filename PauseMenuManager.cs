@@ -167,6 +167,8 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> customAssignedBeliefNames = new List<string>();
         // Per-civ governor state
         public List<GovernorSaveData> governors = new List<GovernorSaveData>();
+        public List<GovernorCandidateSaveData> governorCandidates = new List<GovernorCandidateSaveData>();
+        public int nextGovernorCandidateId = 1;
         // Herd queues owned by this civilization (per-herd, identified by planet & tile)
         public List<HerdQueueSaveData> herdQueues = new List<HerdQueueSaveData>();
         // Legacy state
@@ -232,6 +234,19 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> storedCivilianUnitIds = new List<string>();
         public List<HerdDiseaseSaveData> activeDiseases = new List<HerdDiseaseSaveData>();
         public List<HerdImmunitySaveData> diseaseImmunities = new List<HerdImmunitySaveData>();
+    }
+
+    [Serializable]
+    public class GovernorCandidateSaveData
+    {
+        public int candidateId;
+        public string name;
+        public string portraitId;
+        public Governor.Specialization specialization;
+        public List<PersonalityTrait> personalityTraits = new List<PersonalityTrait>();
+        public string personalReligionName;
+        public string personalCultureName;
+        public int createdRound;
     }
 
     [Serializable]

@@ -31,6 +31,7 @@ public class Civilization : MonoBehaviour
     public static event Action<Civilization> CouncilMembershipChanged;
     /// <summary>Raised when faction membership or demands change.</summary>
     public static event Action<Civilization> FactionsChanged;
+    public static event Action<Civilization> GovernorCandidatesChanged;
     [Header("Static Data")]
     public CivData civData { get; private set; }
     public LeaderData leader { get; private set; } // Added to store the active leader
@@ -726,6 +727,10 @@ public class Civilization : MonoBehaviour
     // --- Governor System ---
     public int governorCount = 1; // Number of governors this civ can create (modifiable by events, policies, etc.)
     public List<Governor> governors = new List<Governor>(); // All created governors
+    public List<GovernorCandidate> governorCandidates = new List<GovernorCandidate>();
+    private int nextGovernorCandidateId = 1;
+    private const int GovernorCandidatePoolSize = 3;
+    private const int GovernorCandidateLifetimeTurns = 12;
     // Whether this civilization has the governor feature unlocked (via cultures/policies/tech)
     [Tooltip("If true this civilization may create and assign governors.")]
     public bool governorsEnabled = false;
@@ -817,6 +822,7 @@ public class Civilization : MonoBehaviour
         customAssignedBeliefs = restoredCustomBeliefs ?? new List<BeliefData>();
 
         RecalculateCivilizationModifiers();
+        MaintainGovernorCandidates(turnCount);
         RefreshUnlockedContentLists();
 
         InvalidateAvailabilityCache();
@@ -905,7 +911,114 @@ public class Civilization : MonoBehaviour
         governorCount += amount;
     }
 
-    // Create a new governor if there is an available slot
+    public int NextGovernorCandidateIdForSave => nextGovernorCandidateId;
+
+    public void RestoreGovernorCandidates(IEnumerable<GovernorCandidate> candidates, int nextId, int currentRound)
+    {
+        governorCandidates = candidates != null ? candidates.Where(c => c != null).ToList() : new List<GovernorCandidate>();
+        int minimumNext = governorCandidates.Count > 0 ? governorCandidates.Max(c => c.candidateId) + 1 : 1;
+        nextGovernorCandidateId = Mathf.Max(minimumNext, nextId > 0 ? nextId : 1);
+        MaintainGovernorCandidates(currentRound);
+    }
+
+    public void MaintainGovernorCandidates(int currentRound)
+    {
+        governorCandidates ??= new List<GovernorCandidate>();
+        if (!governorsEnabled)
+        {
+            if (governorCandidates.Count > 0) { governorCandidates.Clear(); GovernorCandidatesChanged?.Invoke(this); }
+            return;
+        }
+
+        int removed = governorCandidates.RemoveAll(c => c == null || currentRound - c.createdRound > GovernorCandidateLifetimeTurns);
+        int added = 0;
+        while (governorCandidates.Count < GovernorCandidatePoolSize)
+        {
+            governorCandidates.Add(GenerateGovernorCandidate(currentRound));
+            added++;
+        }
+        if (removed > 0 || added > 0) GovernorCandidatesChanged?.Invoke(this);
+    }
+
+    private GovernorCandidate GenerateGovernorCandidate(int currentRound)
+    {
+        var usedPortraits = new List<string>();
+        if (governors != null) usedPortraits.AddRange(governors.Where(g => g != null).Select(g => g.PortraitId));
+        usedPortraits.AddRange(governorCandidates.Where(c => c != null).Select(c => c.portraitId));
+        CultureGroup group = civData != null ? civData.cultureGroup : default;
+        return new GovernorCandidate
+        {
+            candidateId = nextGovernorCandidateId++,
+            name = GovernorCandidateNameService.GetRandomName(group),
+            portraitId = GovernorPortraitService.SelectPortraitIdForCandidate(this, usedPortraits),
+            specialization = SelectGovernorCandidateSpecialization(),
+            personalityTraits = Governor.GenerateRandomPersonalityTraits(),
+            personalReligion = SelectGovernorCandidateReligion(),
+            personalCulture = SelectGovernorCandidateCulture(),
+            createdRound = currentRound
+        };
+    }
+
+    private Governor.Specialization SelectGovernorCandidateSpecialization()
+    {
+        var weights = currentGovernment != null ? currentGovernment.governorCandidateSpecializationWeights : null;
+        if (weights == null || weights.Length == 0)
+        {
+            var values = (Governor.Specialization[])Enum.GetValues(typeof(Governor.Specialization));
+            return values[UnityEngine.Random.Range(0, values.Length)];
+        }
+        float total = weights.Where(w => w != null).Sum(w => Mathf.Max(0f, w.weight));
+        if (total <= 0f)
+        {
+            var values = (Governor.Specialization[])Enum.GetValues(typeof(Governor.Specialization));
+            return values[UnityEngine.Random.Range(0, values.Length)];
+        }
+        float roll = UnityEngine.Random.value * total;
+        foreach (var entry in weights)
+        {
+            if (entry == null) continue;
+            roll -= Mathf.Max(0f, entry.weight);
+            if (roll <= 0f) return entry.specialization;
+        }
+        return weights.Last(w => w != null).specialization;
+    }
+
+    private CultureData SelectGovernorCandidateCulture()
+    {
+        if (currentCulture != null) return currentCulture;
+        if (researchedCultures != null)
+            for (int i = researchedCultures.Count - 1; i >= 0; i--)
+                if (researchedCultures[i] != null) return researchedCultures[i];
+        return civData?.startingCultures?.FirstOrDefault(c => c != null);
+    }
+
+    private ReligionData SelectGovernorCandidateReligion()
+    {
+        if (StateReligion == null) return null;
+        if (UnityEngine.Random.value < 0.75f) return StateReligion;
+        var alternatives = ReligionManager.Instance?.GetFoundedReligions()?.Where(r => r != null && r != StateReligion).ToList();
+        return alternatives != null && alternatives.Count > 0 ? alternatives[UnityEngine.Random.Range(0, alternatives.Count)] : StateReligion;
+    }
+
+    public bool TryAppointGovernorCandidate(int candidateId, out Governor governor, out string reason)
+    {
+        governor = null;
+        reason = null;
+        if (!governorsEnabled) { reason = "Governors have not been unlocked."; return false; }
+        var candidate = governorCandidates?.FirstOrDefault(c => c != null && c.candidateId == candidateId);
+        if (candidate == null) { reason = "That candidate is no longer available."; return false; }
+        if (governors == null) governors = new List<Governor>();
+        if (governors.Count >= governorCount) { reason = $"Governor capacity reached ({governors.Count}/{governorCount})."; return false; }
+        int id = governors.Count == 0 ? 1 : governors.Where(g => g != null).Select(g => g.Id).DefaultIfEmpty(0).Max() + 1;
+        governor = new Governor(id, candidate.name, candidate.specialization);
+        governor.InitializeFromCandidate(candidate.portraitId, candidate.personalityTraits, candidate.personalReligion, candidate.personalCulture);
+        governors.Add(governor);
+        governorCandidates.Remove(candidate);
+        GovernorCandidatesChanged?.Invoke(this);
+        return true;
+    }
+
+    /// <summary>System-level governor creation. Player UI should use candidate appointment.</summary>
     public Governor CreateGovernor(string name, Governor.Specialization specialization)
     {
     if (!governorsEnabled) return null;
@@ -1186,6 +1299,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void TickGovernorPolitics(int round)
     {
+        MaintainGovernorCandidates(round);
         if (currentGovernment != null && currentGovernment.suppressConventionalPolitics) return;
         if (governors == null) return;
         foreach (var gov in governors)
@@ -4836,6 +4950,7 @@ return true;
         if (cult.enablesGovernors)
         {
             governorsEnabled = true;
+            MaintainGovernorCandidates(turnCount);
             UIManager.Instance?.ShowNotification($"{civData.civName} has unlocked Governors!");
         }
         // Apply pantheon cap increase from culture

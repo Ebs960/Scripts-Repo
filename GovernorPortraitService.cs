@@ -37,6 +37,13 @@ public static class GovernorPortraitService
         return governor.AssignPortrait(ChoosePortraitId(pool, used));
     }
 
+    public static string SelectPortraitIdForCandidate(Civilization civ, IEnumerable<string> alreadyUsedIds)
+    {
+        if (civ?.civData == null) return null;
+        var pool = GetPool(civ.civData.cultureGroup, GovernorPortraitEraUtility.GetPortraitEra(civ.GetCurrentAge()));
+        return ChoosePortraitId(pool, alreadyUsedIds);
+    }
+
     /// <summary>Selection core exposed for deterministic validation/tests without coupling UI to selection.</summary>
     public static string ChoosePortraitId(GovernorPortraitPool pool, IEnumerable<string> usedPortraitIds)
     {

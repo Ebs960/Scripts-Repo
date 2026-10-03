@@ -965,28 +965,19 @@ MonoBehaviour:
   listScroll: {fileID: 5167931015609047845}
   rosterHeaderText: {fileID: 6375158647792682410}
   emptyText: {fileID: 8841397310266814987}
-  createRoot: {fileID: 0}
-  nameInput: {fileID: 0}
-  specializationDropdown: {fileID: 0}
-  createButton: {fileID: 0}
-  createButtonLabel: {fileID: 0}
-  createStatusText: {fileID: 0}
+  candidatesRoot: {fileID: 0}
+  candidatesListRoot: {fileID: 0}
+  candidatesScroll: {fileID: 0}
+  candidateRowPrefab: {fileID: 0}
+  candidateStatusText: {fileID: 0}
   detailRoot: {fileID: 0}
   portraitImage: {fileID: 0}
   nameText: {fileID: 0}
-  titleText: {fileID: 0}
-  specializationText: {fileID: 0}
-  levelText: {fileID: 0}
-  opinionText: {fileID: 0}
-  ambitionText: {fileID: 0}
-  powerText: {fileID: 0}
-  personalityText: {fileID: 0}
-  traitsText: {fileID: 0}
-  religionText: {fileID: 0}
-  cultureText: {fileID: 0}
-  factionText: {fileID: 0}
-  councilStatusText: {fileID: 0}
-  rebellionText: {fileID: 0}
+  identityText: {fileID: 0}
+  statsText: {fileID: 0}
+  characterText: {fileID: 0}
+  politicalIdentityText: {fileID: 0}
+  politicalStatusText: {fileID: 0}
   grievancesText: {fileID: 0}
   lineRowPrefab: {fileID: 0}
   opinionModifiersRoot: {fileID: 0}

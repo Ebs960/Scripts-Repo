@@ -9,6 +9,13 @@ public enum GovernmentArchetypeFlags
     Militarized=256, MachineRule=512, ConsensusRule=1024, CollectiveMind=2048
 }
 
+[System.Serializable]
+public class GovernorSpecializationWeight
+{
+    public Governor.Specialization specialization;
+    [Min(0f)] public float weight = 1f;
+}
+
 [CreateAssetMenu(fileName = "NewGovernmentData", menuName = "Data/Government Data")]
 public class GovernmentData : ScriptableObject
 {
@@ -95,6 +102,9 @@ public class GovernmentData : ScriptableObject
     public float herdStarvationPercentReduction = 0f;
     [Tooltip("Per-herd per-turn yield bonuses granted by this government (can filter by animal species).")]
     public HerdYieldBonus[] herdYieldBonuses;
+
+    [Header("Governor Candidates")]
+    public GovernorSpecializationWeight[] governorCandidateSpecializationWeights;
 
     [Header("Council & Political Structure")]
     [Tooltip("Structural classification used by elections and political crises; never infer this from display names at runtime.")]

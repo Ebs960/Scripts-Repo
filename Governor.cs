@@ -291,56 +291,67 @@ public class Governor
     /// </summary>
     public void AssignRandomPersonality()
     {
-        var pool = new List<PersonalityTrait>((PersonalityTrait[])System.Enum.GetValues(typeof(PersonalityTrait)));
-        int count = Random.Range(2, 4); // 2 or 3 traits
-        PersonalityTraits.Clear();
+        PersonalityTraits = GenerateRandomPersonalityTraits();
+        Opinion = GetPersonalityBaselineOpinion();
+    }
 
+    /// <summary>Generates the shared, contradiction-safe personality used by governors and candidates.</summary>
+    public static List<PersonalityTrait> GenerateRandomPersonalityTraits()
+    {
+        var result = new List<PersonalityTrait>();
+        var pool = new List<PersonalityTrait>((PersonalityTrait[])System.Enum.GetValues(typeof(PersonalityTrait)));
+        int count = Random.Range(2, 4);
         for (int i = 0; i < count && pool.Count > 0; i++)
         {
             int idx = Random.Range(0, pool.Count);
             var picked = pool[idx];
-            PersonalityTraits.Add(picked);
+            result.Add(picked);
             pool.RemoveAt(idx);
-
-            // Remove contradictions
             switch (picked)
             {
-                case PersonalityTrait.Loyal:     pool.Remove(PersonalityTrait.Ambitious); break;
-                case PersonalityTrait.Ambitious:  pool.Remove(PersonalityTrait.Loyal); pool.Remove(PersonalityTrait.Content); break;
-                case PersonalityTrait.Generous:   pool.Remove(PersonalityTrait.Greedy); break;
-                case PersonalityTrait.Greedy:     pool.Remove(PersonalityTrait.Generous); break;
-                case PersonalityTrait.Brave:      pool.Remove(PersonalityTrait.Craven); break;
-                case PersonalityTrait.Craven:     pool.Remove(PersonalityTrait.Brave); break;
-                case PersonalityTrait.Honest:     pool.Remove(PersonalityTrait.Deceitful); break;
-                case PersonalityTrait.Deceitful:  pool.Remove(PersonalityTrait.Honest); break;
-                case PersonalityTrait.Zealous:    pool.Remove(PersonalityTrait.Cynical); break;
-                case PersonalityTrait.Cynical:    pool.Remove(PersonalityTrait.Zealous); break;
-                case PersonalityTrait.Content:    pool.Remove(PersonalityTrait.Ambitious); break;
+                case PersonalityTrait.Loyal: pool.Remove(PersonalityTrait.Ambitious); break;
+                case PersonalityTrait.Ambitious: pool.Remove(PersonalityTrait.Loyal); pool.Remove(PersonalityTrait.Content); break;
+                case PersonalityTrait.Generous: pool.Remove(PersonalityTrait.Greedy); break;
+                case PersonalityTrait.Greedy: pool.Remove(PersonalityTrait.Generous); break;
+                case PersonalityTrait.Brave: pool.Remove(PersonalityTrait.Craven); break;
+                case PersonalityTrait.Craven: pool.Remove(PersonalityTrait.Brave); break;
+                case PersonalityTrait.Honest: pool.Remove(PersonalityTrait.Deceitful); break;
+                case PersonalityTrait.Deceitful: pool.Remove(PersonalityTrait.Honest); break;
+                case PersonalityTrait.Zealous: pool.Remove(PersonalityTrait.Cynical); break;
+                case PersonalityTrait.Cynical: pool.Remove(PersonalityTrait.Zealous); break;
+                case PersonalityTrait.Content: pool.Remove(PersonalityTrait.Ambitious); break;
             }
         }
-
-        // Set initial opinion from personality baseline
-        Opinion = GetPersonalityBaselineOpinion();
+        return result;
     }
 
-    /// <summary>
-    /// Permanent opinion baseline from personality traits.
-    /// </summary>
-    public float GetPersonalityBaselineOpinion()
+    public static float CalculatePersonalityBaselineOpinion(IEnumerable<PersonalityTrait> traits)
     {
         float baseline = 50f;
-        foreach (var t in PersonalityTraits)
-        {
-            switch (t)
-            {
-                case PersonalityTrait.Loyal:     baseline += 20f; break;
-                case PersonalityTrait.Ambitious:  baseline -= 10f; break;
-                case PersonalityTrait.Content:    baseline += 15f; break;
-                case PersonalityTrait.Greedy:     baseline -= 5f;  break;
-                case PersonalityTrait.Cruel:      baseline -= 8f;  break;
-            }
-        }
+        if (traits != null)
+            foreach (var t in traits)
+                switch (t)
+                {
+                    case PersonalityTrait.Loyal: baseline += 20f; break;
+                    case PersonalityTrait.Ambitious: baseline -= 10f; break;
+                    case PersonalityTrait.Content: baseline += 15f; break;
+                    case PersonalityTrait.Greedy: baseline -= 5f; break;
+                    case PersonalityTrait.Cruel: baseline -= 8f; break;
+                }
         return Mathf.Clamp(baseline, -100f, 100f);
+    }
+
+    public float GetPersonalityBaselineOpinion() => CalculatePersonalityBaselineOpinion(PersonalityTraits);
+
+    /// <summary>Initializes only the intrinsic identity carried by a candidate.</summary>
+    internal void InitializeFromCandidate(string portraitId, IEnumerable<PersonalityTrait> personality,
+        ReligionData religion, CultureData culture)
+    {
+        AssignPortrait(portraitId);
+        PersonalityTraits = personality != null ? new List<PersonalityTrait>(personality) : new List<PersonalityTrait>();
+        PersonalReligion = religion;
+        PersonalCulture = culture;
+        Opinion = GetPersonalityBaselineOpinion();
     }
 
     /// <summary>
