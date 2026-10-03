@@ -16,12 +16,8 @@ public class GovernorHoldingsPanelUI : MonoBehaviour
 
     [Header("Governor Navigation")]
     [SerializeField] private Button previousGovernorButton;
+    [SerializeField] private GovernorSummaryRowUI governorSummaryRow;
     [SerializeField] private Button nextGovernorButton;
-    [SerializeField] private Image governorPortraitImage;
-    [SerializeField] private TMP_Text governorNameText;
-    [SerializeField] private TMP_Text loyaltyText;
-    [SerializeField] private TMP_Text personalityText;
-    [SerializeField] private TMP_Text holdingsCountText;
 
     [Header("Cities")]
     [SerializeField] private ScrollRect citiesScroll;
@@ -94,23 +90,18 @@ public class GovernorHoldingsPanelUI : MonoBehaviour
 
         if (governor == null)
         {
-            GovernmentUiUtil.SetImage(governorPortraitImage, null);
-            GovernmentUiUtil.SetText(governorNameText, "No governors");
-            GovernmentUiUtil.SetText(loyaltyText, string.Empty);
-            GovernmentUiUtil.SetText(personalityText, string.Empty);
-            GovernmentUiUtil.SetText(holdingsCountText, "0 Cities • 0 Herds");
+            if (governorSummaryRow != null) governorSummaryRow.gameObject.SetActive(false);
             GovernmentUiUtil.FillList(citiesRoot, rowPrefab, cityRows, Array.Empty<City>(), (row, city) => { });
             GovernmentUiUtil.FillList(herdsRoot, rowPrefab, herdRows, Array.Empty<Herd>(), (row, herd) => { });
             return;
         }
 
-        string governorName = GovernmentPresentation.FormatGovernorName(civ, governor);
-        GovernmentUiUtil.SetImage(governorPortraitImage, GovernorPortraitService.GetSprite(governor.PortraitId));
-        GovernmentUiUtil.SetText(governorNameText, governorName);
-        GovernmentUiUtil.SetText(loyaltyText, $"Loyalty {governor.Opinion:+0;-0;0}");
-        GovernmentUiUtil.SetText(personalityText, string.Join(" • ", governor.PersonalityTraits.Take(2)));
-        GovernmentUiUtil.SetText(holdingsCountText,
-            $"{governor.Cities.Count} {(governor.Cities.Count == 1 ? "City" : "Cities")} • {governor.Herds.Count} {(governor.Herds.Count == 1 ? "Herd" : "Herds")}");
+        if (governorSummaryRow != null)
+        {
+            governorSummaryRow.gameObject.SetActive(true);
+            governorSummaryRow.BindHoldingsHeader(civ, governor,
+                governmentPanel != null ? governmentPanel.WarningMarkerPrefab : null);
+        }
 
         var cities = civ.cities.Where(c => c != null).OrderBy(HoldingGroup).ThenBy(GovernmentPresentation.NameOf).ToList();
         GovernmentUiUtil.FillList(citiesRoot, rowPrefab, cityRows, cities, BindCity);

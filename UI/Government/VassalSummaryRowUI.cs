@@ -12,9 +12,11 @@ public class VassalSummaryRowUI : MonoBehaviour
     [SerializeField] private TMP_Text opinionText;
     [SerializeField] private TMP_Text libertyText;
     [SerializeField] private TMP_Text cityCountText;
-    [SerializeField] private GameObject warningMarker;
+    [SerializeField] private Transform warningAnchor;
 
-    public void Bind(Civilization overlord, VassalContract contract, Action<VassalContract> onClick)
+    private GameObject warningInstance;
+
+    public void Bind(Civilization overlord, VassalContract contract, Action<VassalContract> onClick, GameObject warningPrefab)
     {
         var manager = SubjectManager.Instance;
         var subject = contract?.subject;
@@ -25,9 +27,24 @@ public class VassalSummaryRowUI : MonoBehaviour
         GovernmentUiUtil.SetText(libertyText, contract != null ? $"Liberty {contract.libertyDesire:0}/{threshold:0}" : string.Empty);
         int cities = subject?.cities?.Count ?? 0;
         GovernmentUiUtil.SetText(cityCountText, $"{cities} {(cities == 1 ? "City" : "Cities")}");
-        bool warning = contract != null && (contract.libertyDesire >= threshold * 0.75f
+        bool warning = contract != null && (contract.libertyDesire >= threshold * PoliticalWarningBuilder.VassalLibertyWarningFraction
             || manager != null && manager.GetPendingIndependenceDemand(overlord, subject) != null);
-        GovernmentUiUtil.SetActive(warningMarker, warning);
+        SetWarning(warning, warningPrefab);
         GovernmentUiUtil.SetClick(button, () => onClick?.Invoke(contract));
+    }
+
+    private void SetWarning(bool visible, GameObject warningPrefab)
+    {
+        if (visible && warningInstance == null && warningPrefab != null && warningAnchor != null)
+        {
+            warningInstance = Instantiate(warningPrefab, warningAnchor);
+            if (warningInstance.transform is RectTransform rt)
+            {
+                rt.anchorMin = new Vector2(.5f, .5f);
+                rt.anchorMax = new Vector2(.5f, .5f);
+                rt.anchoredPosition = Vector2.zero;
+            }
+        }
+        if (warningInstance != null) warningInstance.SetActive(visible);
     }
 }

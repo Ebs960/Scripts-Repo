@@ -61,7 +61,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
 
     [Header("Holdings")]
     [SerializeField] private Button manageHoldingsButton;
-    [SerializeField] private GovernorHoldingsPanelUI holdingsPanel;
 
     [Header("Suppressed politics")]
     [SerializeField] private GameObject suppressedNoticeRoot;
@@ -78,7 +77,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         if (!hasRequestedFocus || civ == null || !civ.governors.Any(g => g != null && g.Id == selectedGovernorId))
             selectedGovernorId = -1;
         hasRequestedFocus = false;
-        if (holdingsPanel != null && holdingsPanel.IsVisible) holdingsPanel.Hide();
     }
 
     public void FocusGovernor(Governor governor)
@@ -141,7 +139,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     private void SelectGovernor(Governor governor)
     {
         selectedGovernorId = governor != null ? governor.Id : -1;
-        if (holdingsPanel != null && holdingsPanel.IsVisible) holdingsPanel.Hide();
         Refresh();
     }
 
@@ -278,7 +275,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     private void OnManageHoldingsClicked()
     {
         var governor = SelectedGovernor();
-        if (governor == null || holdingsPanel == null) return;
-        holdingsPanel.Show(civ, governor, () => panel?.RefreshAllVisible());
+        if (governor == null) return;
+        panel?.ShowGovernorHoldings(governor);
     }
 }

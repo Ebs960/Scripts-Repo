@@ -29,7 +29,6 @@ public class GovernmentEntityActionPopup : MonoBehaviour
     [SerializeField] private TMP_Text giftButtonLabel;
     [SerializeField] private Button convertButton;
     [SerializeField] private Button governorDetailsButton;
-    [SerializeField] private GovernorHoldingsPanelUI holdingsPanel;
 
     [Header("Vassal")]
     [SerializeField] private Image vassalIcon;
@@ -175,7 +174,7 @@ public class GovernmentEntityActionPopup : MonoBehaviour
         if (demand != null) GovernmentUiUtil.SetText(independenceDemandText, $"{contract.subjectCivName} demands full independence (since turn {demand.turnIssued}).");
     }
 
-    private void ManageHoldings() => holdingsPanel?.Show(civ, governor, () => { panel?.RefreshAllVisible(); RefreshGovernor(); });
+    private void ManageHoldings() => panel?.ShowGovernorHoldings(governor);
 
     private void ChangeCouncilSeat()
     {
