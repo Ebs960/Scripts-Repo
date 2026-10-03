@@ -10,9 +10,9 @@ public class PolicyDropdownOptionUI : MonoBehaviour, IPointerEnterHandler, IPoin
     [SerializeField] private Button button;
     [SerializeField] private TMP_Text policyNameText;
     [SerializeField] private TMP_Text statusText;
-    [SerializeField] private GameObject activeMarker;
-    [SerializeField] private GameObject availableMarker;
-    [SerializeField] private GameObject lockedMarker;
+    [SerializeField] private Image activeMarker;
+    [SerializeField] private Image availableMarker;
+    [SerializeField] private Image lockedMarker;
 
     private Civilization civ;
     private PolicyData policy;
@@ -26,9 +26,9 @@ public class PolicyDropdownOptionUI : MonoBehaviour, IPointerEnterHandler, IPoin
         var state = result != null ? result.State : PolicyListState.Locked;
         GovernmentUiUtil.SetText(policyNameText, GovernmentPresentation.NameOf(value));
         GovernmentUiUtil.SetText(statusText, state == PolicyListState.Locked ? "Requirements not met" : state.ToString());
-        GovernmentUiUtil.SetActive(activeMarker, state == PolicyListState.Active);
-        GovernmentUiUtil.SetActive(availableMarker, state == PolicyListState.Available);
-        GovernmentUiUtil.SetActive(lockedMarker, state == PolicyListState.Locked);
+        SetMarkerVisible(activeMarker, state == PolicyListState.Active);
+        SetMarkerVisible(availableMarker, state == PolicyListState.Available);
+        SetMarkerVisible(lockedMarker, state == PolicyListState.Locked);
         GovernmentUiUtil.SetInteractable(button, state != PolicyListState.Locked);
         GovernmentUiUtil.SetClick(button, () =>
         {
@@ -41,8 +41,13 @@ public class PolicyDropdownOptionUI : MonoBehaviour, IPointerEnterHandler, IPoin
     {
         civ = null; policy = null; evaluation = null; tooltip = null;
         GovernmentUiUtil.SetText(policyNameText, "None"); GovernmentUiUtil.SetText(statusText, "Repeal current policy");
-        GovernmentUiUtil.SetActive(activeMarker, false); GovernmentUiUtil.SetActive(availableMarker, true); GovernmentUiUtil.SetActive(lockedMarker, false);
+        SetMarkerVisible(activeMarker, false); SetMarkerVisible(availableMarker, true); SetMarkerVisible(lockedMarker, false);
         GovernmentUiUtil.SetInteractable(button, true); GovernmentUiUtil.SetClick(button, onSelected);
+    }
+
+    private static void SetMarkerVisible(Image marker, bool visible)
+    {
+        if (marker != null) marker.enabled = visible;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
