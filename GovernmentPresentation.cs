@@ -6,6 +6,27 @@ using UnityEngine;
 /// </summary>
 public static class GovernmentPresentation
 {
+    public static string GrievanceDisplayName(GrievanceSource source)
+    {
+        switch (source)
+        {
+            case GrievanceSource.CityReassigned: return "City Reassigned";
+            case GrievanceSource.CouncilSeatDenied: return "Council Seat Denied";
+            case GrievanceSource.ReligionForced: return "Religion Forced";
+            case GrievanceSource.PublicInsult: return "Public Insult";
+            case GrievanceSource.OverruledDecision: return "Overruled Decision";
+            case GrievanceSource.TaxIncreased: return "Tax Increased";
+            case GrievanceSource.TitleRevoked: return "Title Revoked";
+            case GrievanceSource.PrivilegeRevoked: return "Privilege Revoked";
+            case GrievanceSource.AllianceBrokenWithAlly: return "Alliance Broken With Ally";
+            case GrievanceSource.WarLosses: return "War Losses";
+            default: return source.ToString();
+        }
+    }
+
+    public static string DismissalRiskLabel(float percent)
+        => percent < 20f ? "LOW" : percent < 40f ? "MODERATE" : percent < 60f ? "HIGH"
+            : percent < 80f ? "VERY HIGH" : "EXTREME";
     public static string PolicyAreaDisplayName(PolicyArea area)
     {
         switch (area)

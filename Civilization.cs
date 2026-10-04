@@ -14,6 +14,16 @@ public enum DiplomaticState
     Trade
 }
 
+public enum GovernorDismissalOutcome { Submitted, Rebelled }
+
+public struct GovernorDismissalResult
+{
+    public bool succeeded;
+    public GovernorDismissalOutcome outcome;
+    public float rebellionRiskPercent;
+    public string reason;
+}
+
 /// <summary>
 /// Represents one civilization's full runtime state: data, units, cities, research, culture, policies, government, yields, and relations.
 /// </summary>
@@ -1030,6 +1040,62 @@ public class Civilization : MonoBehaviour
         GovernorPortraitService.AssignPortrait(this, gov);
         governors.Add(gov);
         return gov;
+    }
+
+    /// <summary>Executes a paid dismissal attempt and resolves it through the existing faction rebellion path.</summary>
+    public bool TryDismissGovernor(Governor governor, out GovernorDismissalResult result)
+    {
+        result = new GovernorDismissalResult();
+        if (!PoliticalActionRules.CanDismissGovernor(this, governor, out string reason))
+        { result.reason = reason; return false; }
+
+        var preview = PoliticalActionRules.PreviewGovernorDismissalRisk(this, governor);
+        result.rebellionRiskPercent = preview.riskPercent;
+        AddPolicyPoints(-PoliticalActionRules.GovernorDismissPolicyCost);
+        if (UnityEngine.Random.value * 100f < preview.riskPercent)
+        {
+            governor.AddGrievance(GrievanceSource.TitleRevoked);
+            governor.SetOpinionModifier("Attempted Dismissal", -30f, 30);
+            EnsureDismissalRebellionFaction(governor).TriggerRebellion(this);
+            result.succeeded = true;
+            result.outcome = GovernorDismissalOutcome.Rebelled;
+            return true;
+        }
+
+        // Dedicated cleanup: unlike ordinary reassignment this creates no grievance or opinion modifier.
+        royalCouncil?.Remove(governor);
+        governor.IsOnCouncil = false;
+        var faction = governor.Faction;
+        faction?.RemoveMember(governor);
+        if (faction != null && faction.Members.Count == 0) nobleFactions?.Remove(faction);
+        foreach (var city in governor.Cities.Where(c => c != null).ToList())
+        {
+            if (city.governor == governor) city.governor = null;
+            governor.Cities.Remove(city);
+            city.RefreshGovernorBonuses();
+            TileSystem.GetForPlanet(city.planetIndex)?.NotifyAdministrationChanged(city.GetTerritoryTiles(city.TerritoryRadius));
+            GovernorAssignmentChanged?.Invoke(this, city);
+        }
+        foreach (var herd in governor.Herds.Where(h => h != null).ToList())
+        {
+            if (herd.governor == governor) herd.governor = null;
+            governor.Herds.Remove(herd);
+            herd.RefreshGovernorBonuses();
+        }
+        governors.Remove(governor);
+        result.succeeded = true;
+        result.outcome = GovernorDismissalOutcome.Submitted;
+        return true;
+    }
+
+    public FactionBloc EnsureDismissalRebellionFaction(Governor governor)
+    {
+        if (governor?.Faction != null) return governor.Faction;
+        if (governor == null) return null;
+        var bloc = new FactionBloc($"The {governor.Name} Faction", FactionAlignment.Separatist, governor);
+        if (nobleFactions == null) nobleFactions = new List<FactionBloc>();
+        nobleFactions.Add(bloc);
+        return bloc;
     }
 
     // Assign a governor to a city (removes from previous city if needed)

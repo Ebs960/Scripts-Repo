@@ -60,7 +60,20 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text giftButtonLabel;
     [SerializeField] private Button convertButton;
     [SerializeField] private TMP_Text convertButtonLabel;
+    [SerializeField] private Button pressureButton;
+    [SerializeField] private TMP_Text pressureButtonLabel;
+    [SerializeField] private Button pardonButton;
+    [SerializeField] private TMP_Text pardonButtonLabel;
+    [SerializeField] private Button dismissButton;
+    [SerializeField] private TMP_Text dismissButtonLabel;
     [SerializeField] private TMP_Text personalActionStatusText;
+
+    [Header("Pardon Selection")]
+    [SerializeField] private GameObject pardonSelectionRoot;
+    [SerializeField] private TMP_Dropdown pardonGrievanceDropdown;
+    [SerializeField] private Button pardonConfirmButton;
+    [SerializeField] private Button pardonCancelButton;
+    [SerializeField] private TMP_Text pardonSelectionStatusText;
 
     [Header("Suppressed politics")]
     [SerializeField] private GameObject suppressedNoticeRoot;
@@ -75,6 +88,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     private bool hasRequestedFocus;
     private bool resetHoldingScroll;
     private bool wired;
+    private readonly List<GrievanceSource> pardonSources = new List<GrievanceSource>();
 
     protected override void OnCivilizationChanged()
     {
@@ -136,6 +150,11 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         GovernmentUiUtil.SetClick(removeSeatButton, OnRemoveSeatClicked);
         GovernmentUiUtil.SetClick(giftButton, OnGiftClicked);
         GovernmentUiUtil.SetClick(convertButton, OnConvertClicked);
+        GovernmentUiUtil.SetClick(pressureButton, OnPressureClicked);
+        GovernmentUiUtil.SetClick(pardonButton, OnPardonClicked);
+        GovernmentUiUtil.SetClick(dismissButton, OnDismissClicked);
+        GovernmentUiUtil.SetClick(pardonConfirmButton, OnPardonConfirmClicked);
+        GovernmentUiUtil.SetClick(pardonCancelButton, HidePardonSelection);
     }
 
     private Governor SelectedGovernor() => civ?.governors.FirstOrDefault(g => g != null && g.Id == selectedGovernorId);
@@ -145,6 +164,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         bool changed = governor != null && governor.Id != selectedGovernorId;
         selectedGovernorId = governor != null ? governor.Id : -1;
         resetHoldingScroll = changed;
+        HidePardonSelection();
         Refresh();
     }
 
@@ -231,11 +251,19 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
 
         bool canGift = PoliticalActionRules.CanSendGovernorGift(civ, governor, out string giftReason);
         bool canConvert = PoliticalActionRules.CanRequestGovernorConversion(civ, governor, out string convertReason);
+        bool canPressure = PoliticalActionRules.CanPressureGovernor(civ, governor, out _);
+        bool canPardon = PoliticalActionRules.CanPardonGovernor(civ, governor, out _);
+        bool canDismiss = PoliticalActionRules.CanDismissGovernor(civ, governor, out _);
         GovernmentUiUtil.SetText(giftButtonLabel, $"Send Gift — {PoliticalActionRules.GovernorGiftCost} Gold");
         GovernmentUiUtil.SetText(convertButtonLabel, "Ask to Convert");
+        GovernmentUiUtil.SetText(pressureButtonLabel, $"Pressure — {PoliticalActionRules.GovernorPressurePolicyCost} Policy");
+        GovernmentUiUtil.SetText(pardonButtonLabel, $"Pardon — {PoliticalActionRules.GovernorPardonFaithCost} Faith");
+        GovernmentUiUtil.SetText(dismissButtonLabel, $"Dismiss — {PoliticalActionRules.GovernorDismissPolicyCost} Policy");
         GovernmentUiUtil.SetInteractable(giftButton, canGift);
         GovernmentUiUtil.SetInteractable(convertButton, canConvert);
-        GovernmentUiUtil.SetText(personalActionStatusText, !canGift ? giftReason : !canConvert ? convertReason : string.Empty);
+        GovernmentUiUtil.SetInteractable(pressureButton, canPressure);
+        GovernmentUiUtil.SetInteractable(pardonButton, canPardon);
+        GovernmentUiUtil.SetInteractable(dismissButton, canDismiss);
     }
 
     private void OnGrantSeatClicked()
@@ -422,5 +450,120 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         { GovernmentUiUtil.SetText(personalActionStatusText, failureReason); return; }
         UIManager.Instance?.ShowNotification($"{GovernmentPresentation.FormatGovernorName(civ, governor)} converted to the state religion.");
         panel?.RefreshAllVisible();
+    }
+
+    private void OnPressureClicked()
+    {
+        var governor = SelectedGovernor();
+        if (!PoliticalActionRules.CanPressureGovernor(civ, governor, out string reason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, reason); return; }
+        float change = PoliticalActionRules.GetPressureOpinionChange(governor);
+        panel?.RequestConfirmation(new PoliticalConfirmRequest
+        {
+            title = $"Pressure {governor.Name}?",
+            description = "Use political pressure to suppress open defiance temporarily. The governor will resent the coercion.",
+            confirmLabel = "PRESSURE",
+            lines = new List<PoliticalEffectLine>
+            {
+                new PoliticalEffectLine { label = "Policy Points", value = $"-{PoliticalActionRules.GovernorPressurePolicyCost}", harmful = true },
+                new PoliticalEffectLine { label = "Loyalty", value = GovernmentUiUtil.Signed(change), harmful = true },
+                new PoliticalEffectLine { label = "Duration", value = $"{PoliticalActionRules.GovernorPressureDuration} turns" }
+            },
+            onConfirm = () =>
+            {
+                bool ok = PoliticalActionRules.TryPressureGovernor(civ, governor, out string resultReason);
+                GovernmentUiUtil.SetText(personalActionStatusText, ok ? $"{governor.Name} is under political pressure." : resultReason);
+                panel?.RefreshAllVisible();
+            }
+        });
+    }
+
+    private void OnPardonClicked()
+    {
+        var governor = SelectedGovernor();
+        if (!PoliticalActionRules.CanPardonGovernor(civ, governor, out string reason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, reason); return; }
+        pardonSources.Clear();
+        pardonSources.AddRange(governor.Grievances.Where(kv => kv.Value > 0).Select(kv => kv.Key));
+        if (pardonGrievanceDropdown != null)
+        {
+            pardonGrievanceDropdown.ClearOptions();
+            pardonGrievanceDropdown.AddOptions(pardonSources.Select(s => $"{GovernmentPresentation.GrievanceDisplayName(s)} ×{governor.Grievances[s]}").ToList());
+            pardonGrievanceDropdown.value = 0;
+        }
+        GovernmentUiUtil.SetText(pardonSelectionStatusText, string.Empty);
+        GovernmentUiUtil.SetActive(pardonSelectionRoot, true);
+    }
+
+    private void HidePardonSelection()
+    {
+        pardonSources.Clear();
+        if (pardonGrievanceDropdown != null) pardonGrievanceDropdown.ClearOptions();
+        GovernmentUiUtil.SetActive(pardonSelectionRoot, false);
+    }
+
+    private void OnPardonConfirmClicked()
+    {
+        var governor = SelectedGovernor();
+        int index = pardonGrievanceDropdown != null ? pardonGrievanceDropdown.value : -1;
+        if (governor == null || index < 0 || index >= pardonSources.Count)
+        { GovernmentUiUtil.SetText(pardonSelectionStatusText, "Select a grievance to pardon."); return; }
+        GrievanceSource source = pardonSources[index];
+        panel?.RequestConfirmation(new PoliticalConfirmRequest
+        {
+            title = $"Pardon {governor.Name}?", description = "Reconcile one political grievance.", confirmLabel = "PARDON",
+            lines = new List<PoliticalEffectLine>
+            {
+                new PoliticalEffectLine { label = "Faith", value = $"-{PoliticalActionRules.GovernorPardonFaithCost}", harmful = true },
+                new PoliticalEffectLine { label = "Grievance", value = $"{GovernmentPresentation.GrievanceDisplayName(source)} −1", beneficial = true },
+                new PoliticalEffectLine { label = "Loyalty", value = $"+{PoliticalActionRules.GovernorPardonOpinionBonus:0}", beneficial = true }
+            },
+            onConfirm = () =>
+            {
+                bool ok = PoliticalActionRules.TryPardonGovernor(civ, governor, source, out string reason);
+                GovernmentUiUtil.SetText(personalActionStatusText, ok ? $"{governor.Name} accepted the pardon." : reason);
+                HidePardonSelection();
+                panel?.RefreshAllVisible();
+            }
+        });
+    }
+
+    private void OnDismissClicked()
+    {
+        var governor = SelectedGovernor();
+        if (!PoliticalActionRules.CanDismissGovernor(civ, governor, out string reason))
+        { GovernmentUiUtil.SetText(personalActionStatusText, reason); return; }
+        var risk = PoliticalActionRules.PreviewGovernorDismissalRisk(civ, governor);
+        var lines = new List<PoliticalEffectLine>
+        {
+            new PoliticalEffectLine { label = "Policy Points", value = $"-{PoliticalActionRules.GovernorDismissPolicyCost}", harmful = true },
+            new PoliticalEffectLine { label = "Rebellion Risk", value = $"{GovernmentPresentation.DismissalRiskLabel(risk.riskPercent)} — {Mathf.RoundToInt(risk.riskPercent)}%", harmful = true }
+        };
+        AddRiskLine(lines, "Low Loyalty", risk.loyaltyRisk); AddRiskLine(lines, "Ambition", risk.ambitionRisk);
+        AddRiskLine(lines, "Political Power", risk.powerRisk); AddRiskLine(lines, "Grievances", risk.grievanceRisk);
+        AddRiskLine(lines, "Personality", risk.personalityRisk); AddRiskLine(lines, "Local Garrison", risk.localMilitaryRisk);
+        AddRiskLine(lines, "Nearby Royal Army", risk.stateDeterrence); AddRiskLine(lines, "Under Pressure", risk.pressureReduction);
+        string name = governor.Name;
+        panel?.RequestConfirmation(new PoliticalConfirmRequest
+        {
+            title = $"Dismiss {name} from office?",
+            description = "Removing this governor will leave their holdings unassigned. They may refuse the order and rise in rebellion.",
+            confirmLabel = "DISMISS", lines = lines,
+            onConfirm = () =>
+            {
+                bool ok = civ.TryDismissGovernor(governor, out var result);
+                if (!ok) GovernmentUiUtil.SetText(personalActionStatusText, result.reason);
+                else if (result.outcome == GovernorDismissalOutcome.Submitted)
+                { GovernmentUiUtil.SetText(personalActionStatusText, $"{name} submitted and has been removed from office."); selectedGovernorId = -1; }
+                else GovernmentUiUtil.SetText(personalActionStatusText, $"{name} refused dismissal and has risen in rebellion.");
+                panel?.RefreshAllVisible();
+            }
+        });
+    }
+
+    private static void AddRiskLine(List<PoliticalEffectLine> lines, string label, float value)
+    {
+        if (Mathf.Abs(value) < 0.5f) return;
+        lines.Add(new PoliticalEffectLine { label = label, value = $"{value:+0;-0}%", harmful = value > 0f, beneficial = value < 0f });
     }
 }
