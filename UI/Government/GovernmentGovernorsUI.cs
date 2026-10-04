@@ -298,10 +298,21 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     private string OwnerLabel(Governor owner) => owner == null
         ? "Unassigned" : $"Controlled by {GovernmentPresentation.FormatGovernorName(civ, owner)}";
 
+    private static GovernorHoldingAction GetHoldingAction(Governor owner, Governor selected)
+    {
+        if (owner == null)
+            return GovernorHoldingAction.Assign;
+
+        if (owner == selected)
+            return GovernorHoldingAction.Remove;
+
+        return GovernorHoldingAction.Transfer;
+    }
+
     private void BindCity(GovernorHoldingRowUI row, City city, Governor selected)
     {
         Governor owner = city.governor;
-        string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
+        GovernorHoldingAction action = GetHoldingAction(owner, selected);
         row.Bind(GovernmentPresentation.NameOf(city), FormatCityHoldingDetails(civ, city),
             FormatCityHoldingYields(city), OwnerLabel(owner), action, owner != null, civ.governorsEnabled,
             () => ActOnCity(city, owner, selected));
@@ -310,7 +321,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     private void BindHerd(GovernorHoldingRowUI row, Herd herd, Governor selected)
     {
         Governor owner = herd.governor;
-        string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
+        GovernorHoldingAction action = GetHoldingAction(owner, selected);
         row.Bind(GovernmentPresentation.NameOf(herd), FormatHerdHoldingDetails(herd),
             FormatHerdHoldingYields(herd), OwnerLabel(owner), action, owner != null, civ.governorsEnabled,
             () => ActOnHerd(herd, owner, selected));
