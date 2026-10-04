@@ -477,6 +477,23 @@ public class Governor
         Grievances.Remove(source);
     }
 
+    /// <summary>Removes only the requested number of stacks without undoing historical opinion effects.</summary>
+    public bool RemoveGrievanceStack(GrievanceSource source, int stacks = 1)
+    {
+        if (!Grievances.TryGetValue(source, out int current) || current <= 0) return false;
+        int remaining = current - Mathf.Max(1, stacks);
+        if (remaining <= 0) Grievances.Remove(source);
+        else Grievances[source] = remaining;
+        return true;
+    }
+
+    public bool HasActiveOpinionModifier(string reason)
+        => OpinionModifiers.Any(m => string.Equals(m.reason, reason, System.StringComparison.Ordinal)
+                                     && m.turnsRemaining != 0);
+
+    public bool IsUnderPressure
+        => HasActiveOpinionModifier(PoliticalActionRules.GovernorPressureModifierReason);
+
     /// <summary>Returns total grievance stack count across all sources.</summary>
     public int TotalGrievances()
     {
@@ -489,7 +506,12 @@ public class Governor
     /// How many total grievance stacks does this governor have that could justify rebellion?
     /// Rebellion is plausible when score exceeds PowerRank * 2.
     /// </summary>
-    public bool IsRebellionReady() => TotalGrievances() >= PowerRank * 2 && Opinion < -20f;
+    public bool IsRebellionReady()
+    {
+        if (IsInRebellion) return true;
+        if (IsUnderPressure) return false;
+        return TotalGrievances() >= PowerRank * 2 && Opinion < -20f;
+    }
 
     private static float GetGrievanceOpinionHit(GrievanceSource source)
     {
