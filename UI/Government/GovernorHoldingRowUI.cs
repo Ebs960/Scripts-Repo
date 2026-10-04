@@ -3,23 +3,26 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Authored row shared by city and herd holdings.</summary>
+/// <summary>
+/// Compact assignment row for a City or Herd shown in the Governor Holdings section. Displays
+/// basic holding information, yields, current controller, assignment action, and political warning state.
+/// </summary>
 public class GovernorHoldingRowUI : MonoBehaviour
 {
-    [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text detailText;
+    [SerializeField] private TMP_Text yieldsText;
     [SerializeField] private TMP_Text ownerText;
     [SerializeField] private Button actionButton;
     [SerializeField] private TMP_Text actionLabel;
     [SerializeField] private GameObject warningMarker;
 
-    public void Bind(Sprite icon, string holdingName, string detail, string owner, string actionText,
+    public void Bind(string holdingName, string detail, string yields, string owner, string actionText,
         bool dangerous, bool interactable, Action onClick)
     {
-        if (iconImage != null) { iconImage.sprite = icon; iconImage.gameObject.SetActive(icon != null); }
         GovernmentUiUtil.SetText(nameText, holdingName);
         GovernmentUiUtil.SetText(detailText, detail);
+        GovernmentUiUtil.SetText(yieldsText, yields);
         GovernmentUiUtil.SetText(ownerText, owner);
         GovernmentUiUtil.SetText(actionLabel, actionText);
         if (warningMarker != null) warningMarker.SetActive(dangerous);
