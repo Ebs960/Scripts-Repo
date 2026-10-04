@@ -183,7 +183,8 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
             },
             onConfirm = () =>
             {
-                if (civ != null && civ.TryAppointGovernorCandidate(candidate.candidateId, out var governor, out var reason))
+                string reason = "Civilization is unavailable.";
+                if (civ != null && civ.TryAppointGovernorCandidate(candidate.candidateId, out var governor, out reason))
                 {
                     selectedGovernorId = governor.Id;
                     panel.RefreshAllVisible();
