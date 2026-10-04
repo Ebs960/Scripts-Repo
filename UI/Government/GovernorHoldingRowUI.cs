@@ -24,7 +24,6 @@ public class GovernorHoldingRowUI : MonoBehaviour
     [Header("Action")]
     [SerializeField] private Button actionButton;
     [SerializeField] private Image actionButtonImage;
-    [SerializeField] private TMP_Text actionLabel;
     [SerializeField] private Sprite assignButtonSprite;
     [SerializeField] private Sprite removeButtonSprite;
     [SerializeField] private Sprite transferButtonSprite;
@@ -36,6 +35,9 @@ public class GovernorHoldingRowUI : MonoBehaviour
     {
         if (actionButtonImage == null && actionButton != null)
             actionButtonImage = actionButton.image;
+
+        if (warningMarker != null)
+            warningMarker.raycastTarget = false;
     }
 
     public void Bind(string holdingName, string detail, string yields, string owner, GovernorHoldingAction action,
@@ -53,28 +55,22 @@ public class GovernorHoldingRowUI : MonoBehaviour
 
     private void ApplyActionVisual(GovernorHoldingAction action)
     {
-        string label = string.Empty;
         Sprite sprite = null;
 
         switch (action)
         {
             case GovernorHoldingAction.Assign:
-                label = "ASSIGN";
                 sprite = assignButtonSprite;
                 break;
             case GovernorHoldingAction.Remove:
-                label = "REMOVE";
                 sprite = removeButtonSprite;
                 break;
             case GovernorHoldingAction.Transfer:
-                label = "TRANSFER";
                 sprite = transferButtonSprite;
                 break;
         }
 
-        GovernmentUiUtil.SetText(actionLabel, label);
-
-        if (actionButtonImage != null && sprite != null)
+        if (actionButtonImage != null)
             actionButtonImage.sprite = sprite;
     }
 }
