@@ -302,16 +302,39 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     {
         Governor owner = city.governor;
         string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
-        row.Bind(null, GovernmentPresentation.NameOf(city), $"Population {city.Population} • Level {city.level}",
-            OwnerLabel(owner), action, owner != null, civ.governorsEnabled, () => ActOnCity(city, owner, selected));
+        row.Bind(GovernmentPresentation.NameOf(city), FormatCityHoldingDetails(civ, city),
+            FormatCityHoldingYields(city), OwnerLabel(owner), action, owner != null, civ.governorsEnabled,
+            () => ActOnCity(city, owner, selected));
     }
 
     private void BindHerd(GovernorHoldingRowUI row, Herd herd, Governor selected)
     {
         Governor owner = herd.governor;
         string action = owner == null ? "ASSIGN" : owner == selected ? "REMOVE" : "TRANSFER";
-        row.Bind(null, GovernmentPresentation.NameOf(herd), $"Level {herd.level}", OwnerLabel(owner), action,
-            owner != null, civ.governorsEnabled, () => ActOnHerd(herd, owner, selected));
+        row.Bind(GovernmentPresentation.NameOf(herd), FormatHerdHoldingDetails(herd),
+            FormatHerdHoldingYields(herd), OwnerLabel(owner), action, owner != null, civ.governorsEnabled,
+            () => ActOnHerd(herd, owner, selected));
+    }
+
+    private static string FormatCityHoldingDetails(Civilization civilization, City city)
+    {
+        string details = $"Population {city.Population} • Level {city.level}";
+        return civilization != null && civilization.CapitalCity == city ? $"{details} • Capital" : details;
+    }
+
+    private static string FormatCityHoldingYields(City city)
+        => $"Food {city.GetFoodPerTurn()} • Prod {city.GetProductionPerTurn()} • Gold {city.GetGoldPerTurn()}" +
+           $" • Science {city.GetSciencePerTurn()} • Culture {city.GetCulturePerTurn()}" +
+           $" • Faith {city.GetFaithPerTurn()} • Policy {city.GetPolicyPointPerTurn()}";
+
+    private static string FormatHerdHoldingDetails(Herd herd)
+        => $"{herd.GetTotalAnimalCount()} Livestock • Level {herd.level}";
+
+    private static string FormatHerdHoldingYields(Herd herd)
+    {
+        var yields = herd.GetAnimalYields();
+        return $"Food {yields.Food} • Prod {yields.Production} • Gold {yields.Gold}" +
+               $" • Science {yields.Science} • Culture {yields.Culture} • Faith {yields.Faith}";
     }
 
     private void ActOnCity(City city, Governor owner, Governor selected)
