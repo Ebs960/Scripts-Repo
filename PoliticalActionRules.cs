@@ -194,7 +194,7 @@ public static class PoliticalActionRules
     private static IEnumerable<CombatUnit> LocalGarrisonUnits(Civilization civ, Governor governor)
     {
         foreach (var u in civ.combatUnits.Where(IsHealthyUnit))
-            if (u.owner == civ && u.isGarrisonedInCity && governor.Cities.Any(c => c != null && c.planetIndex == u.planetIndex && c.currentTileIndex == u.currentTileIndex)) yield return u;
+            if (u.owner == civ && u.isGarrisonedInCity && governor.Cities.Any(c => c != null && c.planetIndex == u.planetIndex && c.centerTileIndex == u.currentTileIndex)) yield return u;
         foreach (var herd in governor.Herds.Where(h => h != null))
             foreach (var u in herd.MilitaryGarrison)
                 if (IsHealthyUnit(u) && u.owner == civ) yield return u;
@@ -203,7 +203,7 @@ public static class PoliticalActionRules
     private static bool IsNearHolding(CombatUnit unit, Governor governor)
     {
         foreach (var city in governor.Cities.Where(c => c != null))
-            if (Near(unit, city.planetIndex, city.currentTileIndex)) return true;
+            if (Near(unit, city.planetIndex, city.centerTileIndex)) return true;
         foreach (var herd in governor.Herds.Where(h => h != null))
             if (Near(unit, herd.planetIndex, herd.currentTileIndex)) return true;
         return false;
