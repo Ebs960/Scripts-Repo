@@ -3,45 +3,48 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Authored one-line row: label + value with optional good/bad/met markers. Reused for effects, requirements, warnings and plain text.</summary>
+/// <summary>Authored one-line row: label + value with one optional status marker. Reused for effects, requirements, warnings and plain text.</summary>
 public class PoliticalLineRowUI : MonoBehaviour
 {
     [SerializeField] private TMP_Text labelText;
     [SerializeField] private TMP_Text valueText;
-    [SerializeField] private GameObject beneficialMarker;
-    [SerializeField] private GameObject harmfulMarker;
-    [SerializeField] private GameObject metMarker;
-    [SerializeField] private GameObject unmetMarker;
-    [SerializeField] private GameObject cautionMarker;
-    [SerializeField] private GameObject criticalMarker;
     [SerializeField] private Button button;
+
+    [Header("Marker")]
+    [SerializeField] private Image markerImage;
+    [SerializeField] private Sprite beneficialSprite;
+    [SerializeField] private Sprite harmfulSprite;
+    [SerializeField] private Sprite metSprite;
+    [SerializeField] private Sprite unmetSprite;
+    [SerializeField] private Sprite cautionSprite;
+    [SerializeField] private Sprite criticalSprite;
 
     public void BindText(string label, string value = null)
     {
         Apply(label, value);
-        SetMarkers(false, false, false, false, false, false);
+        GovernmentUiUtil.SetImage(markerImage, null);
         GovernmentUiUtil.SetClick(button, null);
     }
 
     public void BindEffect(PoliticalEffectLine line)
     {
         Apply(line.label, line.value);
-        SetMarkers(line.beneficial, line.harmful, false, false, false, false);
+        GovernmentUiUtil.SetImage(markerImage, line.harmful ? harmfulSprite : line.beneficial ? beneficialSprite : null);
         GovernmentUiUtil.SetClick(button, null);
     }
 
     public void BindRequirement(PoliticalRequirementLine line)
     {
         Apply(line.label, line.met ? "Met" : "Not met");
-        SetMarkers(false, false, line.met, !line.met, false, false);
+        GovernmentUiUtil.SetImage(markerImage, line.met ? metSprite : unmetSprite);
         GovernmentUiUtil.SetClick(button, null);
     }
 
     public void BindWarning(PoliticalWarning warning, Action<PoliticalWarningDestination> onClick)
     {
         Apply(warning.text, null);
-        SetMarkers(false, false, false, false,
-            warning.severity == PoliticalWarningSeverity.Caution, warning.severity == PoliticalWarningSeverity.Critical);
+        GovernmentUiUtil.SetImage(markerImage, warning.severity == PoliticalWarningSeverity.Critical ? criticalSprite
+            : warning.severity == PoliticalWarningSeverity.Caution ? cautionSprite : null);
         PoliticalWarningDestination destination = warning.destination;
         GovernmentUiUtil.SetClick(button, onClick == null ? null : (Action)(() => onClick(destination)));
     }
@@ -50,15 +53,5 @@ public class PoliticalLineRowUI : MonoBehaviour
     {
         GovernmentUiUtil.SetText(labelText, label);
         GovernmentUiUtil.SetText(valueText, value);
-    }
-
-    private void SetMarkers(bool beneficial, bool harmful, bool met, bool unmet, bool caution, bool critical)
-    {
-        GovernmentUiUtil.SetActive(beneficialMarker, beneficial);
-        GovernmentUiUtil.SetActive(harmfulMarker, harmful);
-        GovernmentUiUtil.SetActive(metMarker, met);
-        GovernmentUiUtil.SetActive(unmetMarker, unmet);
-        GovernmentUiUtil.SetActive(cautionMarker, caution);
-        GovernmentUiUtil.SetActive(criticalMarker, critical);
     }
 }

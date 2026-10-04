@@ -212,14 +212,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PoliticalLineRowUI
   labelText: {fileID: 8861910862139502853}
-  valueText: {fileID: 0}
-  beneficialMarker: {fileID: 0}
-  harmfulMarker: {fileID: 0}
-  metMarker: {fileID: 0}
-  unmetMarker: {fileID: 0}
-  cautionMarker: {fileID: 0}
-  criticalMarker: {fileID: 0}
+  valueText: {fileID: 5020066330437069754}
   button: {fileID: 8065184425355743214}
+  markerImage: {fileID: 2218514638664059980}
+  beneficialSprite: {fileID: 21300000, guid: 1f78614a48ceeb74bb78036f95079f9a, type: 3}
+  harmfulSprite: {fileID: 21300000, guid: 2cc02891daf44864aa6d56ffae4f2364, type: 3}
+  metSprite: {fileID: 21300000, guid: c77464370e9684e4eb7bd8a732fb5e69, type: 3}
+  unmetSprite: {fileID: 21300000, guid: 5690b9181476e9147a66888be9060611, type: 3}
+  cautionSprite: {fileID: 21300000, guid: 3c58221dee7014b49b1dcafad0849a98, type: 3}
+  criticalSprite: {fileID: 21300000, guid: a1e38282036518f48953f45ec31d5dec, type: 3}
 --- !u!1 &3415964052846464304
 GameObject:
   m_ObjectHideFlags: 0
@@ -232,7 +233,7 @@ GameObject:
   - component: {fileID: 2588638791088925507}
   - component: {fileID: 5020066330437069754}
   m_Layer: 5
-  m_Name: Loyalty
+  m_Name: Value Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -285,7 +286,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Loyalty
+  m_text: Value Text
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 237f6ed9e4c0cbe408256cc3e579f440, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: 93cd6d65e28d2964584290eee9ee36fa, type: 2}
