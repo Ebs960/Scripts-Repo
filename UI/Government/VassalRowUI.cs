@@ -8,6 +8,7 @@ public class VassalRowUI : MonoBehaviour
 {
     [SerializeField] private Button button;
     [SerializeField] private TMP_Text nameText;
+    [SerializeField] private Image civIconImage;
     [SerializeField] private TMP_Text libertyText;
     [SerializeField] private TMP_Text opinionText;
     [SerializeField] private TMP_Text autonomyText;
@@ -18,6 +19,11 @@ public class VassalRowUI : MonoBehaviour
     public void Bind(VassalContract contract, bool selected, bool restless, Action<VassalContract> onClick)
     {
         float opinion = SubjectManager.Instance != null ? SubjectManager.Instance.GetEffectiveSubjectOpinion(contract) : contract.subjectOpinion;
+        Sprite icon = contract != null && contract.subject != null && contract.subject.civData != null
+            ? contract.subject.civData.icon
+            : null;
+
+        GovernmentUiUtil.SetImage(civIconImage, icon);
         GovernmentUiUtil.SetText(nameText, contract.subjectCivName);
         GovernmentUiUtil.SetText(libertyText, $"Liberty {contract.libertyDesire:0}/{contract.EffectiveBreakawayThreshold:0}");
         GovernmentUiUtil.SetText(opinionText, $"Opinion {GovernmentUiUtil.Signed(opinion)}");

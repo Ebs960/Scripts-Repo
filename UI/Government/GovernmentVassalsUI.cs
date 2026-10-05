@@ -20,6 +20,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [Header("Detail")]
     [SerializeField] private GameObject detailRoot;
     [SerializeField] private TMP_Text subjectNameText;
+    [SerializeField] private Image subjectIconImage;
     [SerializeField] private TMP_Text libertyText;
     [SerializeField] private TMP_Text opinionText;
     [SerializeField] private TMP_Text resentmentText;
@@ -186,7 +187,11 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         var manager = SubjectManager.Instance;
         int turn = manager.CurrentTurn;
         float opinion = manager.GetEffectiveSubjectOpinion(contract);
+        Sprite icon = contract != null && contract.subject != null && contract.subject.civData != null
+            ? contract.subject.civData.icon
+            : null;
 
+        GovernmentUiUtil.SetImage(subjectIconImage, icon);
         GovernmentUiUtil.SetText(subjectNameText, contract.subjectCivName);
         GovernmentUiUtil.SetText(libertyText, $"Liberty desire {contract.libertyDesire:0} / {contract.EffectiveBreakawayThreshold:0}");
         GovernmentUiUtil.SetText(opinionText, $"Opinion of you {GovernmentUiUtil.Signed(opinion)}");
