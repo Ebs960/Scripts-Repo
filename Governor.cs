@@ -477,6 +477,19 @@ public class Governor
         Grievances.Remove(source);
     }
 
+    /// <summary>
+    /// Removes all CURRENT grievance stacks.
+    /// Historical opinion modifiers caused by those grievances are NOT removed;
+    /// they continue decaying according to their existing durations.
+    /// Returns the number of grievance stacks cleared.
+    /// </summary>
+    public int ClearAllGrievances()
+    {
+        int removedStacks = TotalGrievances();
+        Grievances.Clear();
+        return removedStacks;
+    }
+
     /// <summary>Removes only the requested number of stacks without undoing historical opinion effects.</summary>
     public bool RemoveGrievanceStack(GrievanceSource source, int stacks = 1)
     {

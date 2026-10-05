@@ -1131,9 +1131,7 @@ MonoBehaviour:
   removeSeatLabel: {fileID: 0}
   councilReasonText: {fileID: 0}
   giftButton: {fileID: 0}
-  giftButtonLabel: {fileID: 0}
   convertButton: {fileID: 0}
-  convertButtonLabel: {fileID: 0}
   personalActionStatusText: {fileID: 0}
   suppressedNoticeRoot: {fileID: 0}
   suppressedNoticeText: {fileID: 0}
