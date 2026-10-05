@@ -128,14 +128,13 @@ public static class PoliticalActionRules
         return true;
     }
 
-    public static bool TryPardonGovernor(Civilization civ, Governor governor, GrievanceSource source, out string reason)
+    public static bool TryPardonGovernor(Civilization civ, Governor governor, out string reason)
     {
         if (!CanPardonGovernor(civ, governor, out reason)) return false;
-        if (!governor.Grievances.TryGetValue(source, out int stacks) || stacks <= 0)
-        { reason = "That grievance is no longer available."; return false; }
         civ.AddFaith(-GovernorPardonFaithCost);
-        governor.RemoveGrievanceStack(source);
+        governor.ClearAllGrievances();
         governor.SetOpinionModifier(GovernorPardonModifierReason, GovernorPardonOpinionBonus, GovernorPardonCooldown);
+        reason = null;
         return true;
     }
 
