@@ -1,0 +1,5009 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Crisis System Audit</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>80</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page { size: 11in 8.5in; margin: .35in; mso-page-orientation: landscape; }
+body { font-family: Calibri, Arial, sans-serif; color:#1f1f1f; font-size:9pt; }
+h1 { color:#1f4e78; font-size:22pt; border-bottom:3px solid #5b9bd5; }
+h2 { color:#1f4e78; font-size:16pt; margin-top:0; }
+.cover { page-break-after:always; }
+.sheet { page-break-before:always; }
+.sheet:first-of-type { page-break-before:auto; }
+table { border-collapse:collapse; width:100%; table-layout:auto; margin-bottom:12pt; }
+th { background:#1f4e78; color:white; font-weight:bold; text-align:left; border:1px solid #9eafbf; padding:4px; vertical-align:top; }
+td { border:1px solid #b8c2cc; padding:3px; vertical-align:top; overflow-wrap:anywhere; }
+tr:nth-child(even) td { background:#edf3f8; }
+.pass { background:#c6efce !important; color:#006100; font-weight:bold; }
+.warning { background:#ffeb9c !important; color:#9c6500; font-weight:bold; }
+.broken,.p0 { background:#ffc7ce !important; color:#9c0006; font-weight:bold; }
+.unverified { background:#d9e1f2 !important; font-weight:bold; }
+.p1 { background:#fce5cd !important; font-weight:bold; }
+.p2 { background:#fff2cc !important; font-weight:bold; }
+.p3 { background:#d9ead3 !important; font-weight:bold; }
+.small { color:#666; font-size:8pt; }
+.toc li { margin:4pt 0; }
+</style></head><body>
+<div class="cover"><h1>Crisis System Audit</h1><p><b>Complete repository-wide technical audit</b></p><p>This Word-compatible document contains the complete contents of the former spreadsheet in seven sections, with one table row per audited crisis, mission, objective type, legacy, critical issue, and AI mission.</p><p class="small">Generated from the audited workbook. This is HTML stored with a .doc extension so it remains reviewable as text in source control and opens in Microsoft Word.</p><h2>Contents</h2><ol class="toc">
+<li><a href="#sheet1">1. Executive Summary</a></li>
+<li><a href="#sheet2">2. Crisis Audit</a></li>
+<li><a href="#sheet3">3. Mission Audit</a></li>
+<li><a href="#sheet4">4. Objective Type Audit</a></li>
+<li><a href="#sheet5">5. Legacy Audit</a></li>
+<li><a href="#sheet6">6. Critical Issues</a></li>
+<li><a href="#sheet7">7. AI Audit</a></li>
+</ol></div>
+<section class="sheet" id="sheet1"><h2>1. Executive Summary</h2>
+<table>
+<tr>
+<th>CRISIS SYSTEM — COMPLETE AUDIT</th>
+<th></th>
+</tr>
+<tr>
+<td>Metric</td>
+<td>Count</td>
+</tr>
+<tr>
+<td>Total crises</td>
+<td>18</td>
+</tr>
+<tr>
+<td>Total missions</td>
+<td>53</td>
+</tr>
+<tr>
+<td>Total legacies</td>
+<td>53</td>
+</tr>
+<tr>
+<td>PASS count</td>
+<td>97</td>
+</tr>
+<tr>
+<td>WARNING count</td>
+<td>42</td>
+</tr>
+<tr>
+<td>BROKEN count</td>
+<td>35</td>
+</tr>
+<tr>
+<td>Unverified count</td>
+<td>0</td>
+</tr>
+<tr>
+<td>P0 count</td>
+<td>10</td>
+</tr>
+<tr>
+<td>P1 count</td>
+<td>11</td>
+</tr>
+<tr>
+<td>P2 count</td>
+<td>2</td>
+</tr>
+<tr>
+<td>P3 count</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Broken objective types</td>
+<td>11</td>
+</tr>
+<tr>
+<td>Used broken objective types</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Highest Priority Findings</td>
+<td></td>
+</tr>
+<tr>
+<td>10 objective types are used by missions but have no progress producer.</td>
+<td></td>
+</tr>
+<tr>
+<td>10 crisis mechanics have no signature activation/tick branch.</td>
+<td></td>
+</tr>
+<tr>
+<td>AI mission choice is broad, but intentional execution is limited to alien negotiation, mutant integration, and asteroid project queuing.</td>
+<td></td>
+</tr>
+<tr>
+<td>Repeatable crisis auto-trigger is blocked by the direct crisisHistory rejection.</td>
+<td></td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet2"><h2>2. Crisis Audit</h2>
+<table>
+<tr>
+<th>Crisis</th>
+<th>Mechanic</th>
+<th>Scope</th>
+<th>Earliest Turn</th>
+<th>Latest Turn</th>
+<th>Age Restrictions</th>
+<th>Ominous Warning Turns</th>
+<th>Obvious Warning Turns</th>
+<th>Duration</th>
+<th>Escalation Turn</th>
+<th>Climax Turn</th>
+<th>Repeat Mode</th>
+<th>Cooldown</th>
+<th>Maximum Occurrences</th>
+<th>Risk Requirement</th>
+<th>Initial Crisis Actors</th>
+<th>Number of Missions</th>
+<th>Number of Legacies</th>
+<th>AI Supported?</th>
+<th>Crisis Mechanic Implemented?</th>
+<th>Warnings Functional?</th>
+<th>Escalation Functional?</th>
+<th>Climax Functional?</th>
+<th>Resolution Functional?</th>
+<th>Overall Technical Status</th>
+<th>Balance Notes</th>
+<th>Major Problems</th>
+<th>Recommended Fixes</th>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>AlienLanding</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>15–19</td>
+<td>1</td>
+<td>1</td>
+<td>18</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>9</td>
+<td>3</td>
+<td>3</td>
+<td>Partial</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>AsteroidCountdown</td>
+<td>Continent</td>
+<td>0</td>
+<td>No limit</td>
+<td>15–19</td>
+<td>1</td>
+<td>1</td>
+<td>20</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>2</td>
+<td>2</td>
+<td>Selection only / incidental</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>HostileRaiders</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>4–8</td>
+<td>1</td>
+<td>1</td>
+<td>10</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>HostileRaiders is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 3 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>HostileRaiders</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>1–2</td>
+<td>1</td>
+<td>1</td>
+<td>15</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>HostileRaiders is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 1 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>ConstitutionalConflict</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>12–16</td>
+<td>1</td>
+<td>1</td>
+<td>12</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>20</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>ConstitutionalConflict is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>PoliticalCoup</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>12–16</td>
+<td>1</td>
+<td>1</td>
+<td>12</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>20</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>PoliticalCoup is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>TerroristCells</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>14–17</td>
+<td>1</td>
+<td>1</td>
+<td>20</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>35</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>TerroristCells is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Drought</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>1–9</td>
+<td>1</td>
+<td>1</td>
+<td>12</td>
+<td>None</td>
+<td>None</td>
+<td>Repeatable</td>
+<td>20</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="warning">WARNING</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>1 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>FinancialShock</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>10–19</td>
+<td>1</td>
+<td>1</td>
+<td>8</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>FinancialShock is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>GeneticMutation</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>16–17</td>
+<td>1</td>
+<td>1</td>
+<td>15</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>7</td>
+<td>3</td>
+<td>3</td>
+<td>Partial</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>DiseaseOutbreak</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>5–12</td>
+<td>1</td>
+<td>1</td>
+<td>10</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>The Long Cold</td>
+<td>None</td>
+<td>Global</td>
+<td>4</td>
+<td>6</td>
+<td>None</td>
+<td>2</td>
+<td>1</td>
+<td>13</td>
+<td>4</td>
+<td>9</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>4</td>
+<td>4</td>
+<td>Selection only / incidental</td>
+<td class="warning">WARNING</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="warning">WARNING</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>IndustrialDamage</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>12–16</td>
+<td>1</td>
+<td>1</td>
+<td>7</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>IndustrialDamage is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 1 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>LocustInfestation</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>4–14</td>
+<td>1</td>
+<td>1</td>
+<td>6</td>
+<td>None</td>
+<td>None</td>
+<td>Repeatable</td>
+<td>20</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>2 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>PopularRevolution</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>11–16</td>
+<td>1</td>
+<td>1</td>
+<td>15</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>25</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>PopularRevolution is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>PredatorSurge</td>
+<td>Global</td>
+<td>0</td>
+<td>No limit</td>
+<td>0–1</td>
+<td>1</td>
+<td>1</td>
+<td>6</td>
+<td>None</td>
+<td>None</td>
+<td>Repeatable</td>
+<td>20</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="warning">WARNING</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="warning">WARNING</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>No blocking wiring defect found in static trace.</td>
+<td>Add end-to-end play-mode validation.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>RobotDefection</td>
+<td>Civilization</td>
+<td>0</td>
+<td>No limit</td>
+<td>16–19</td>
+<td>1</td>
+<td>1</td>
+<td>13</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>0</td>
+<td>1</td>
+<td>3</td>
+<td>3</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>RobotDefection is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 2 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>IndependenceWar</td>
+<td>SubjectRelationship</td>
+<td>0</td>
+<td>No limit</td>
+<td>3–19</td>
+<td>1</td>
+<td>1</td>
+<td>15</td>
+<td>None</td>
+<td>None</td>
+<td>OneTime</td>
+<td>0</td>
+<td>Unlimited/one-time</td>
+<td>90</td>
+<td>1</td>
+<td>2</td>
+<td>2</td>
+<td>Selection only / incidental</td>
+<td class="broken">BROKEN</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="pass">PASS</td>
+<td class="broken">BROKEN</td>
+<td>Fixed windows and targets can vary sharply by empire size.</td>
+<td>IndependenceWar is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 2 mission(s) use objective types with no progress producer</td>
+<td>Implement missing mechanic/objective hooks; add play-mode coverage.</td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet3"><h2>3. Mission Audit</h2>
+<table>
+<tr>
+<th>Crisis</th>
+<th>Mission</th>
+<th>Description</th>
+<th>Participant Role</th>
+<th>Strategy Tags</th>
+<th>Deadline</th>
+<th>Objective Count</th>
+<th>Objective 1</th>
+<th>Objective 1 Type</th>
+<th>Objective 1 Target</th>
+<th>Objective 1 Scaling</th>
+<th>Objective 1 Timing</th>
+<th>Objective 2</th>
+<th>Objective 2 Type</th>
+<th>Objective 2 Target</th>
+<th>Objective 2 Scaling</th>
+<th>Objective 2 Timing</th>
+<th>Objective 3</th>
+<th>Objective 3 Type</th>
+<th>Objective 3 Target</th>
+<th>Objective 3 Scaling</th>
+<th>Objective 3 Timing</th>
+<th>Constraints</th>
+<th>Reward Legacy</th>
+<th>Objective Tracking Implemented?</th>
+<th>Can Player Complete It?</th>
+<th>Can AI Complete It?</th>
+<th>Difficulty Assessment</th>
+<th>Scaling Assessment</th>
+<th>Reward vs Difficulty</th>
+<th>Status</th>
+<th>Problem</th>
+<th>Recommended Fix</th>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Defenders of Earth</td>
+<td>The visitors have brought forces capable of threatening cities, armies, and the sovereignty of this world. Destroy {Objective0Target} Alien invasion units and demonstrate that technological superiority does not make Earth defenseless.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Defenders of Earth</td>
+<td>DefeatCrisisUnits</td>
+<td>0</td>
+<td>PerCrisisActorAtActivation; ×0.5; min 3; max 15</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Alien Warfare Doctrine</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Reverse Engineers</td>
+<td>The invasion has brought technologies to our world that were never intended for human hands. Complete the Alien Reverse Engineering crisis project and turn captured knowledge into an advantage of our own.</td>
+<td>Any</td>
+<td>Scientific</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Reverse Engineers</td>
+<td>CompleteCrisisProject</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Reverse Engineering</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Xenodiplomats</td>
+<td>The arrival of an unknown civilization does not guarantee that permanent war is inevitable. Negotiate 1 peaceful settlement with the Alien expedition and establish that communication can succeed where weapons have failed.</td>
+<td>Any</td>
+<td>Diplomatic</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Xenodiplomats</td>
+<td>NegotiateCrisisSettlement</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Xenodiplomacy</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI COMPLETABLE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>Asteroid Killer</td>
+<td>The impact countdown cannot be outrun, so it must be stopped at the source. Complete the Asteroid Interception project before the strike window closes and destroy the incoming body before it reaches the surface.</td>
+<td>Any</td>
+<td>Scientific</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Asteroid Killer</td>
+<td>CompleteCrisisProject</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>World Savior</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>Prepare for Impact</td>
+<td>If the asteroid cannot be stopped, then collapse must be limited before the blast arrives. Preserve at least 80% of the threatened region&#x27;s starting infrastructure through impact and keep the civilization functional after the strike.</td>
+<td>Any</td>
+<td>Stability, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Prepare for Impact</td>
+<td>PreserveInfrastructure</td>
+<td>80</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>CrisisEnd; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Planetary Resilience</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Counter-Invasion</td>
+<td>Do not wait behind the walls for the next attack. Destroy {Objective0Target} barbarian camps and break the network sustaining the invasion.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Counter-Invasion</td>
+<td>DestroyCrisisSpawners</td>
+<td>1</td>
+<td>PerCity; ×0.5; min 2; max 6</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Frontier Legions</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DestroyCrisisSpawners</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Reclaimers</td>
+<td>A captured city is not a lost city while its people still remember who they are. Retake 1 city seized by the invasion and restore it to our civilization.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Reclaimers</td>
+<td>ReclaimCity</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Reconquest</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReclaimCity</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Refuse to Lose</td>
+<td>The invaders will break themselves against prepared defenses. Win 3 defensive city battles and allow no city to fall before the crisis ends.</td>
+<td>Any</td>
+<td>Military, Stability</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Refuse to Lose</td>
+<td>DefendCityBattles</td>
+<td>3</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>CrisisEnd; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>3: target 0</td>
+<td>Unbroken Walls</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DefendCityBattles</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Burn the Camps</td>
+<td>The raids will continue as long as the attackers have safe places from which to gather and strike. Locate and destroy {Objective0Target} raider camps so that they can no longer serve as bases for new attacks.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Burn the Camps</td>
+<td>DestroyCrisisSpawners</td>
+<td>1</td>
+<td>PerCity; ×0.5; min 2; max 5</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Watchful Settlements</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DestroyCrisisSpawners</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Inedible</td>
+<td>The raiders expect isolated victims who cannot fight back. Survive all 15 turns of the raids without losing a single unit to a crisis raider and teach them that our people are far harder prey than they imagined.</td>
+<td>Any</td>
+<td>Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Inedible</td>
+<td>SurviveTurns</td>
+<td>15</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>8: target 0</td>
+<td>Hard to Kill</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Sweet Revenge</td>
+<td>Fear can travel in both directions. Kill {Objective0Target} crisis raiders and inflict enough losses to break their ability to terrorize our people.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Sweet Revenge</td>
+<td>DefeatCrisisUnits</td>
+<td>2</td>
+<td>PerStartingMilitaryUnit; ×0.5; min 3; max 8</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Retribution</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Emergency Mandate</td>
+<td>Ordinary government has become too divided to act. Resolve the principal constitutional dispute within 3 turns by concentrating enough temporary authority to force a decision before paralysis becomes collapse.</td>
+<td>Any</td>
+<td>Repression</td>
+<td>3</td>
+<td>1</td>
+<td>Emergency Mandate</td>
+<td>ResolveFactionDemand</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Executive Capacity</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Grand Coalition</td>
+<td>No single faction can govern effectively while the constitutional order remains deadlocked. Resolve 2 genuine faction demands and assemble enough political cooperation to make government possible again.</td>
+<td>Any</td>
+<td>Diplomatic, Stability, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Grand Coalition</td>
+<td>ResolveFactionDemand</td>
+<td>2</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Coalition Builder</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Rule of Law</td>
+<td>The political system is being tested precisely because powerful people dislike what it has produced. Resolve 1 faction demand through the lawful constitutional process and preserve the principle that disputes over authority are settled by institutions rather than force.</td>
+<td>Any</td>
+<td>Stability, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Rule of Law</td>
+<td>ResolveFactionDemand</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Constitutional Norms</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Buy Their Loyalty</td>
+<td>The conspiracy draws strength from grievance as much as ambition. Resolve 1 demand from {FactionName}—{Demand}—and separate the dissatisfied from those truly committed to overthrowing the government.</td>
+<td>Any</td>
+<td>Diplomatic, Stability</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Buy Their Loyalty</td>
+<td>ResolveFactionDemand</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Court Politics</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Counterplot</td>
+<td>The coup depends upon secrecy, coordination, and surprise. Complete the Counterintelligence crisis project before the conspirators can convert preparation into control of the state.</td>
+<td>Any</td>
+<td>Scientific, Stability</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Counterplot</td>
+<td>CompleteCrisisProject</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Counterintelligence State</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Crush the Coup</td>
+<td>The conspirators have abandoned secrecy and taken up arms against the government. Defeat {Objective0Target} units fighting for the coup and break their attempt to turn conspiracy into a new regime.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Crush the Coup</td>
+<td>DefeatCrisisUnits</td>
+<td>1</td>
+<td>PerStartingMilitaryUnit; ×0.4; min 3; max 10</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Established Authority</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Hearts and Minds</td>
+<td>Terror cells recruit where fear and grievance outrun trust in government. Restore average Order to at least 70 and deny extremists the social conditions they need to sustain operations.</td>
+<td>Any</td>
+<td>Stability, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Hearts and Minds</td>
+<td>RaiseAverageOrder</td>
+<td>70</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Social Cohesion</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Homeland Security</td>
+<td>One successful strike can trigger panic well beyond its physical damage. Survive all 20 turns of the crisis without losing a building or improvement to terrorist attacks by hardening vulnerable sites and preventing sabotage.</td>
+<td>Any</td>
+<td>Stability, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Homeland Security</td>
+<td>SurviveTurns</td>
+<td>20</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>4: target 0</td>
+<td>Homeland Security</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>No Negotiations</td>
+<td>Concessions to terror only fund the next demand. Eliminate {Objective0Target} terrorist cells or crisis units and demonstrate that political violence will be met with sustained enforcement rather than bargaining.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>No Negotiations</td>
+<td>DefeatCrisisUnits</td>
+<td>1</td>
+<td>PerStartingMilitaryUnit; ×0.4; min 3; max 10</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Counterterror Doctrine</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Adaptable Survivors</td>
+<td>Fields are not the only source of food. Complete {Objective0Target} hunting or foraging actions and turn back to the resources of the wild until ordinary agriculture can sustain us again.</td>
+<td>Any</td>
+<td>Economic, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Adaptable Survivors</td>
+<td>HuntOrForage</td>
+<td>2</td>
+<td>PerCity; ×0.5; min 3; max 8</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Adaptive Subsistence</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Desperate Times</td>
+<td>Our stores are failing faster than the land can recover. Successfully raid or pillage 2 hostile settlements or food targets and seize the supplies our people need to survive.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Desperate Times</td>
+<td>RaidSettlements</td>
+<td>2</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Raider Logistics</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RaidSettlements</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Wise Steward</td>
+<td>The land may fail us, but preparation does not have to. Maintain non-negative net Food for 6 consecutive turns and keep consumption within what the civilization can still sustain.</td>
+<td>Any</td>
+<td>Economic, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Wise Steward</td>
+<td>MaintainNetFood</td>
+<td>6</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Reserve Culture</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Context Dependent</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Financial Genius</td>
+<td>A collapsing market does not excuse an empty treasury. Maintain positive net Gold income for 8 consecutive turns and prove that the state can still meet its obligations while the wider economy contracts.</td>
+<td>Any</td>
+<td>Economic</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Financial Genius</td>
+<td>MaintainNetGold</td>
+<td>8</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Fiscal Discipline</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Moderate</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Rainy Day Fund</td>
+<td>A reserve exists for the moment when ordinary revenue can no longer be trusted. Finish the crisis with at least 100% of the Gold that was held in the treasury when the financial panic began.</td>
+<td>Any</td>
+<td>Economic, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Rainy Day Fund</td>
+<td>MaintainPercentOfBaseline</td>
+<td>100</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>CrisisEnd; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Lean Government</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Trade Lifeline</td>
+<td>Commerce is wounded, but it need not collapse. Maintain at least 70% of the civilization&#x27;s pre-crisis trade income for 5 consecutive turns.</td>
+<td>Any</td>
+<td>Economic</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Trade Lifeline</td>
+<td>MaintainTradeIncome</td>
+<td>70</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 5 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Diversified Commerce</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Acceptance</td>
+<td>The altered are not merely a problem to be destroyed or cured. Peacefully integrate {Objective0Target} Mutant crisis actors into our civilization and prove that biological difference does not have to become permanent war.</td>
+<td>Any</td>
+<td>Diplomatic, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Acceptance</td>
+<td>IntegrateCrisisUnits</td>
+<td>0</td>
+<td>PerCrisisActorAtActivation; ×0.5; min 1; max 8</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Adaptive Genome</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI COMPLETABLE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="pass">PASS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Cure the Genome</td>
+<td>The mutations are advancing faster than ordinary treatment can follow. Complete the Genome Stabilization crisis project and develop a systematic means of halting the uncontrolled genetic changes.</td>
+<td>Any</td>
+<td>Scientific</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Cure the Genome</td>
+<td>CompleteCrisisProject</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Genetic Medicine</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Mutant Exterminators</td>
+<td>The mutations have produced creatures and altered fighters that now threaten ordinary settlements. Eliminate {Objective0Target} hostile Mutant crisis actors and remove the immediate biological threat by force.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Mutant Exterminators</td>
+<td>DefeatCrisisUnits</td>
+<td>0</td>
+<td>PerCrisisActorAtActivation; ×0.6; min 2; max 12</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Mutant Hunters</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Endure the Plague</td>
+<td>The plague may spread, but demographic catastrophe is not inevitable. Finish the crisis with at least 90% of the population that was alive when the outbreak began.</td>
+<td>Any</td>
+<td>Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Endure the Plague</td>
+<td>PreservePopulation</td>
+<td>90</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>CrisisEnd; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Resilient Communities</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Healers</td>
+<td>The sick do not need merely to be isolated; they need to recover. Cause 3 cities infected by the crisis plague to overcome the disease.</td>
+<td>Any</td>
+<td>Stability, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Healers</td>
+<td>CureInfectedCities</td>
+<td>3</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Public Health Tradition</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Quarantine</td>
+<td>Containment may accomplish what medicine cannot. Keep the plague confined to no more than 1 infected city for 10 consecutive turns.</td>
+<td>Any</td>
+<td>Stability, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Quarantine</td>
+<td>CurrentInfectedCities</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 10 consecutive; AtMost</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Quarantine Protocols</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of Blood</td>
+<td>Predators have turned every night march into a gamble for survival. Slay the beasts stalking the tribe and kill at least 9 major predators before fear and attrition consume our people.</td>
+<td>Any</td>
+<td>None</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Get Vengeance</td>
+<td>DefeatAnimals</td>
+<td>9</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Blood Lust</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Moderate</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of Steadfastness</td>
+<td>Survive all 13 turns of the Long Cold while maintaining at least one qualifying shelter.</td>
+<td>Any</td>
+<td>None</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Protect the Tribe</td>
+<td>SurviveTurns</td>
+<td>13</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>1: target 1</td>
+<td>Hold the Fort</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Moderate</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of the Hearth</td>
+<td>Survive all 13 turns of the Long Cold without losing a combat or worker unit.</td>
+<td>Any</td>
+<td>None</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Keep Everyone Alive</td>
+<td>SurviveTurns</td>
+<td>13</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>0: target 0</td>
+<td>No Man Left Behind</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Moderate</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of the Spear</td>
+<td>The tribe must secure food by mastering the most dangerous hunts on the frozen plain. Bring down 8 mammoth herds and prove that discipline and courage can feed the people through the long cold.</td>
+<td>Any</td>
+<td>None</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Hunt 8 Mammoth Herds</td>
+<td>DefeatAnimals</td>
+<td>8</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Big Game Hunters</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Moderate</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Engineer Corps</td>
+<td>The machines failed; engineers will make them work again. Restore all {Objective0Target} industrial buildings disabled by the crisis and return the lost productive capacity to operation.</td>
+<td>Any</td>
+<td>Scientific, Stability</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Engineer Corps</td>
+<td>RestoreDisabledBuildings</td>
+<td>0</td>
+<td>PerAffectedBuilding; ×1; min 1; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Redundant Industry</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RestoreDisabledBuildings</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Mass Mobilization</td>
+<td>The disruption has exposed how quickly industrial weakness can become military weakness. Train {Objective0Target} new military units during the crisis and prove that mobilization can continue even while the economy is under strain.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Mass Mobilization</td>
+<td>TrainUnits</td>
+<td>1</td>
+<td>PerStartingMilitaryUnit; ×0.25; min 2; max 6</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Emergency Mobilization</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Unstoppable Industry</td>
+<td>Industrial failures will not be allowed to become industrial retreat. Construct {Objective0Target} Production-category buildings and replace disrupted capacity with a stronger productive base.</td>
+<td>Any</td>
+<td>Economic</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Unstoppable Industry</td>
+<td>BuildBuilding</td>
+<td>0</td>
+<td>PerCity; ×0.5; min 2; max 6</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Industrial Expansion</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Grain Reserves</td>
+<td>The swarm can strip a harvest in days, but famine can still be prevented through reserve discipline. Finish the infestation with at least {Objective0Target} Food in storage so the population can outlast the shock.</td>
+<td>Any</td>
+<td>Economic, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Grain Reserves</td>
+<td>AccumulateFood</td>
+<td>0</td>
+<td>PerStartingPopulation; ×2; min 20; max 200</td>
+<td>CrisisEnd; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Strategic Granaries</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>New Pastures</td>
+<td>Damaged fields cannot feed the population if production stays concentrated in infested zones. Build {Objective0Target} new agricultural improvements outside swarm areas and shift food output to safer ground.</td>
+<td>Any</td>
+<td>Economic, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>New Pastures</td>
+<td>BuildImprovementsInUnaffectedArea</td>
+<td>0</td>
+<td>PerCity; ×0.5; min 2; max 6</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Agricultural Expansion</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: BuildImprovementsInUnaffectedArea</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Pest Control</td>
+<td>Infestation damage compounds each turn that fields remain unusable. Repair all {Objective0Target} farms ruined by the swarm and restore local food production before shortages become structural.</td>
+<td>Any</td>
+<td>Stability, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Pest Control</td>
+<td>RepairImprovements</td>
+<td>0</td>
+<td>PerAffectedImprovement; ×1; min 1; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Pest Management</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RepairImprovements</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Appeasement</td>
+<td>The revolution feeds upon cities where faith in the government has collapsed. Raise average Order to at least 70 and make stability more attractive than continued uprising.</td>
+<td>Any</td>
+<td>Stability, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Appeasement</td>
+<td>RaiseAverageOrder</td>
+<td>70</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Social Compact</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Hard</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Iron Fist</td>
+<td>The movement has crossed from protest into armed rebellion. Defeat {Objective0Target} revolutionary units and restore the state&#x27;s ability to enforce its authority.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Iron Fist</td>
+<td>DefeatCrisisUnits</td>
+<td>1</td>
+<td>PerStartingMilitaryUnit; ×0.4; min 3; max 12</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Internal Security</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Reform the State</td>
+<td>The revolution has exposed a political demand that can no longer be ignored. Resolve the principal demand of {FactionName}—{Demand}—and use institutional reform rather than repression to end the crisis.</td>
+<td>Any</td>
+<td>Stability, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Reform the State</td>
+<td>ResolveFactionDemand</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Reform Tradition</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Does Not Scale</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Multitude</td>
+<td>No single hunter needs to face the crisis alone. Maintain at least {Objective0Target} military units for {Objective0HoldTurns} consecutive turns and make numbers themselves our defense.</td>
+<td>Any</td>
+<td>Military, Survival</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Multitude</td>
+<td>MaintainArmySize</td>
+<td>4</td>
+<td>PerStartingMilitaryUnit; ×0.5; min 5; max 12</td>
+<td>Immediate; 4 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Teamwork</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Context Dependent</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Tiger Slayers</td>
+<td>The greatest predators have grown bold enough to contest our people for the wilderness itself. Hunt down {Objective0Target} predators spawned by the crisis and prove that even the largest hunters can become prey.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Tiger Slayers</td>
+<td>DefeatCrisisUnits</td>
+<td>2</td>
+<td>PerStartingMilitaryUnit; ×0.35; min 2; max 5</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Tiger Slayers</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Wolf Killers</td>
+<td>The packs surrounding our settlements are dangerous because they hunt together. Kill {Objective0Target} crisis predators and break the pressure they are placing on our territory.</td>
+<td>Any</td>
+<td>Military</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Wolf Killers</td>
+<td>DefeatCrisisUnits</td>
+<td>2</td>
+<td>PerStartingMilitaryUnit; ×0.5; min 3; max 6</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Wolf Tooth</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Human Supremacy</td>
+<td>The uprising has armed defected machines against their creators. Destroy {Objective0Target} units that joined the revolt and reassert human control over the battlefield before machine momentum hardens.</td>
+<td>Any</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Human Supremacy</td>
+<td>DefeatCrisisUnits</td>
+<td>0</td>
+<td>PerStartingRobotUnit; ×0.75; min 2; max 15</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Human Command</td>
+<td>YES — polling/event/bespoke path</td>
+<td>Yes</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Easy</td>
+<td>Good</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add AI action planning for selected objective.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Machine Accord</td>
+<td>Not every defected machine must be destroyed to end the uprising. Peacefully reintegrate {Objective0Target} defected robots and prove that political settlement can isolate hardline rebels faster than total war.</td>
+<td>Any</td>
+<td>Diplomatic, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Machine Accord</td>
+<td>ReintegrateCrisisUnits</td>
+<td>0</td>
+<td>PerStartingRobotUnit; ×0.6; min 1; max 12</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Synthetic Citizenship</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReintegrateCrisisUnits</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Master Hackers</td>
+<td>Code can disable what armor cannot. Complete the Hacking crisis project and reintegrate at least {Objective1Target} defected robots to break rebel coordination through cyber dominance and targeted recovery.</td>
+<td>Any</td>
+<td>Scientific</td>
+<td>Crisis duration</td>
+<td>2</td>
+<td>Master Hackers</td>
+<td>CompleteCrisisProject</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td>Objective 2</td>
+<td>ReintegrateCrisisUnits</td>
+<td>0</td>
+<td>PerStartingRobotUnit; ×0.5; min 1; max 10</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Master Hackers</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReintegrateCrisisUnits</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Imperial Reform</td>
+<td>The subject&#x27;s revolt cannot be ended by force alone without risking the permanent fracture of the empire. Negotiate a settlement with {SubjectName} that addresses the demand to {SettlementDemand} and replaces rebellion with a sustainable political relationship.</td>
+<td>Overlord</td>
+<td>Diplomatic, Reform</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Imperial Reform</td>
+<td>NegotiateAutonomy</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Flexible Empire</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: NegotiateAutonomy</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Rebellion Crusher</td>
+<td>The breakaway provinces have rejected every order from the imperial government and placed their cities under rebel authority. Restore {OverlordName}&#x27;s control over {SubjectName} and demonstrate that secession cannot dismantle the empire by force.</td>
+<td>Overlord</td>
+<td>Military, Repression</td>
+<td>Crisis duration</td>
+<td>1</td>
+<td>Rebellion Crusher</td>
+<td>RestoreSubjectControl</td>
+<td>1</td>
+<td>Fixed; ×1; min 0; max 0</td>
+<td>Immediate; 0 consecutive; AtLeast</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>None</td>
+<td>Imperial Authority</td>
+<td>NO — no progress producer</td>
+<td>No</td>
+<td>AI BROKEN</td>
+<td>Easy</td>
+<td>Broken</td>
+<td>Comparable legacy tier; see Legacy Audit</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RestoreSubjectControl</td>
+<td>Wire successful gameplay operations to AddProgress/ReportCrisisOutcome with filters.</td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet4"><h2>4. Objective Type Audit</h2>
+<table>
+<tr>
+<th>Objective Type</th>
+<th>Used By Missions</th>
+<th>Progress Source</th>
+<th>Code Location</th>
+<th>Automatically Evaluated?</th>
+<th>Event Driven?</th>
+<th>ReportCrisisOutcome Hook?</th>
+<th>Qualifying Entity Filter Supported?</th>
+<th>Target Scaling Supported?</th>
+<th>AI Can Intentionally Pursue?</th>
+<th>Functional?</th>
+<th>Notes</th>
+</tr>
+<tr>
+<td>SurviveTurns</td>
+<td>Inedible; Homeland Security; Oath of Steadfastness; Oath of the Hearth</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>BuildImprovements</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>DefeatAnimals</td>
+<td>Oath of Blood; Oath of the Spear</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>DefeatUnits</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>ReachPopulation</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>ResearchTech</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>ResearchCulture</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>FoundCity</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>OwnTiles</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>AccumulateGold</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>AccumulateFood</td>
+<td>Grain Reserves</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>AccumulateFaith</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>TrainUnits</td>
+<td>Mass Mobilization</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>BuildBuilding</td>
+<td>Unstoppable Industry</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>AdoptPolicy</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>ChangeGovernment</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>FormAlliance</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>FoundPantheon</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>DeclareWar</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>MakePeace</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>EstablishTrade</td>
+<td>UNUSED</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>DefeatCrisisUnits</td>
+<td>Defenders of Earth; Sweet Revenge; Crush the Coup; No Negotiations; Mutant Exterminators; Iron Fist; Tiger Slayers; Wolf Killers; Human Supremacy</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>DestroyCrisisSpawners</td>
+<td>Counter-Invasion; Burn the Camps</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>RepairImprovements</td>
+<td>Pest Control</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>RestoreDisabledBuildings</td>
+<td>Engineer Corps</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>ReclaimCity</td>
+<td>Reclaimers</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>DefendCityBattles</td>
+<td>Refuse to Lose</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>MaintainNetGold</td>
+<td>Financial Genius</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>MaintainNetFood</td>
+<td>Wise Steward</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>MaintainPercentOfBaseline</td>
+<td>Rainy Day Fund</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>MaintainArmySize</td>
+<td>Multitude</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>PreservePopulation</td>
+<td>Endure the Plague</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>PreserveCities</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>PreserveInfrastructure</td>
+<td>Prepare for Impact</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>MaintainTradeIncome</td>
+<td>Trade Lifeline</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>RaiseAverageHappiness</td>
+<td>UNUSED</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>RaiseAverageOrder</td>
+<td>Hearts and Minds; Appeasement</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>ResolveFactionDemand</td>
+<td>Emergency Mandate; Grand Coalition; Rule of Law; Buy Their Loyalty; Reform the State</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>CureInfectedCities</td>
+<td>Healers</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>CompleteCrisisProject</td>
+<td>Reverse Engineers; Asteroid Killer; Counterplot; Cure the Genome; Master Hackers</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>ReintegrateCrisisUnits</td>
+<td>Machine Accord; Master Hackers</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>RaidSettlements</td>
+<td>Desperate Times</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>HuntOrForage</td>
+<td>Adaptable Survivors</td>
+<td>Subscribed gameplay event or explicit caller</td>
+<td>CrisisManager.cs:1242-1410; ResourceManager.cs:565; PoliticalEventManager.cs:376</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>BuildImprovementsInUnaffectedArea</td>
+<td>New Pastures</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>AchieveIndependence</td>
+<td>UNUSED</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>Defined but unused and not implemented</td>
+</tr>
+<tr>
+<td>RestoreSubjectControl</td>
+<td>Rebellion Crusher</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>NegotiateAutonomy</td>
+<td>Imperial Reform</td>
+<td>None found (enum/assets/tests only)</td>
+<td>MissionData.cs enum; mission asset only</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>No</td>
+<td class="broken">BROKEN</td>
+<td>USED BY A MISSION BUT NOT IMPLEMENTED</td>
+</tr>
+<tr>
+<td>CurrentInfectedCities</td>
+<td>Quarantine</td>
+<td>PollTurnObjectives reads live civilization/crisis state</td>
+<td>CrisisManager.cs:2224-2344</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>N/A/No producer</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Incidental</td>
+<td class="pass">PASS</td>
+<td>Generic polling</td>
+</tr>
+<tr>
+<td>IntegrateCrisisUnits</td>
+<td>Acceptance</td>
+<td>Explicit UI/AI crisis action</td>
+<td>CrisisManager.cs:640-680; CrisisMissionTrackerUI.cs; UnitInfoPanel.cs</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Yes</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+<tr>
+<td>NegotiateCrisisSettlement</td>
+<td>Xenodiplomats</td>
+<td>Explicit UI/AI crisis action</td>
+<td>CrisisManager.cs:640-680; CrisisMissionTrackerUI.cs; UnitInfoPanel.cs</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes — ResolveObjectiveTarget</td>
+<td>Yes</td>
+<td class="pass">PASS</td>
+<td>Event/bespoke integration</td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet5"><h2>5. Legacy Audit</h2>
+<table>
+<tr>
+<th>Crisis</th>
+<th>Legacy</th>
+<th>Description</th>
+<th>Awarded By Mission</th>
+<th>Actual Effects</th>
+<th>Effect Magnitude</th>
+<th>Permanent?</th>
+<th>Underlying Bonus System Implemented?</th>
+<th>Effect Actually Consumed By Gameplay?</th>
+<th>Power Assessment</th>
+<th>Exploit Risk</th>
+<th>Status</th>
+<th>Problem</th>
+<th>Recommended Change</th>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Alien Warfare Doctrine</td>
+<td>Units gain +5% Attack against Alien forces.</td>
+<td>Defenders of Earth</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Reverse Engineering</td>
+<td>+8% Science.</td>
+<td>Reverse Engineers</td>
+<td>policyPointCost=1; scienceModifier=0.08</td>
+<td>policyPointCost=1; scienceModifier=0.08</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Xenodiplomacy</td>
+<td>Other civilizations view us with +5 Diplomatic Reputation, and Foreign Trade is increased by 5%.</td>
+<td>Xenodiplomats</td>
+<td>policyPointCost=1; institutions.foreignTradeModifier=0.05; institutions.diplomaticOpinionModifier=5</td>
+<td>policyPointCost=1; institutions.foreignTradeModifier=0.05; institutions.diplomaticOpinionModifier=5</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>Planetary Resilience</td>
+<td>Every city gains +5 Defense and +1 Happiness.</td>
+<td>Prepare for Impact</td>
+<td>policyPointCost=1; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>World Savior</td>
+<td>+8% Science and +5% Culture.</td>
+<td>Asteroid Killer</td>
+<td>policyPointCost=1; scienceModifier=0.08; cultureModifier=0.05</td>
+<td>policyPointCost=1; scienceModifier=0.08; cultureModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Frontier Legions</td>
+<td>Units gain +5% Attack against Barbarian crisis units.</td>
+<td>Counter-Invasion</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Reconquest</td>
+<td>Units gain +5% City Attack and +5% Movement while in enemy territory.</td>
+<td>Reclaimers</td>
+<td>policyPointCost=1; cityAttackBonus=0.05; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; cityAttackBonus=0.05; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Unbroken Walls</td>
+<td>Cities gain +5 Defense, and units gain +5% Defense while fighting in owned territory.</td>
+<td>Refuse to Lose</td>
+<td>policyPointCost=1; unitBonuses[1 entries]; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Hard to Kill</td>
+<td>Units gain +5% Defense against Cannibal and Barbarian crisis units.</td>
+<td>Inedible</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Retribution</td>
+<td>Units gain +5% Attack against Cannibal and Barbarian crisis units.</td>
+<td>Sweet Revenge</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Watchful Settlements</td>
+<td>Every city gains +1 Order.</td>
+<td>Burn the Camps</td>
+<td>policyPointCost=1; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Coalition Builder</td>
+<td>Governors gain +5 Opinion of the government.</td>
+<td>Grand Coalition</td>
+<td>policyPointCost=1; institutions.governorOpinionModifier=5</td>
+<td>policyPointCost=1; institutions.governorOpinionModifier=5</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Constitutional Norms</td>
+<td>+8% Policy Point generation and -0.03 Unrest.</td>
+<td>Rule of Law</td>
+<td>policyPointCost=1; institutions.policyPointGenerationModifier=0.08; institutions.unrestModifier=-0.03</td>
+<td>policyPointCost=1; institutions.policyPointGenerationModifier=0.08; institutions.unrestModifier=-0.03</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Executive Capacity</td>
+<td>+8% Administrative Efficiency, but +0.03 Unrest.</td>
+<td>Emergency Mandate</td>
+<td>policyPointCost=1; institutions.administrativeEfficiencyModifier=0.08; institutions.unrestModifier=0.03</td>
+<td>policyPointCost=1; institutions.administrativeEfficiencyModifier=0.08; institutions.unrestModifier=0.03</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Counterintelligence State</td>
+<td>+8% Espionage Defense and +5% Cyber Defense.</td>
+<td>Counterplot</td>
+<td>policyPointCost=1; institutions.espionageDefenseModifier=0.08; institutions.cyberDefenseModifier=0.05</td>
+<td>policyPointCost=1; institutions.espionageDefenseModifier=0.08; institutions.cyberDefenseModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Court Politics</td>
+<td>Governors gain +5 Opinion of the government.</td>
+<td>Buy Their Loyalty</td>
+<td>policyPointCost=1; institutions.governorOpinionModifier=5</td>
+<td>policyPointCost=1; institutions.governorOpinionModifier=5</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Established Authority</td>
+<td>-0.05 Unrest, +5% Subject Tribute, and units gain +5% Defense against Rebel and Coup Rebel crisis units.</td>
+<td>Crush the Coup</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.05; institutions.subjectTributeModifier=0.05; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.05; institutions.subjectTributeModifier=0.05; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Counterterror Doctrine</td>
+<td>Units gain +5% Attack against Terrorist crisis units.</td>
+<td>No Negotiations</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Homeland Security</td>
+<td>Cities gain +5 Defense, and the civilization gains +5% Espionage Defense.</td>
+<td>Homeland Security</td>
+<td>policyPointCost=1; institutions.espionageDefenseModifier=0.05; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; institutions.espionageDefenseModifier=0.05; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Social Cohesion</td>
+<td>-0.05 Unrest and 10% less unhappiness from followers of non-state religions.</td>
+<td>Hearts and Minds</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.05; nonStateReligionUnhappinessModifiers[1 entries]</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.05; nonStateReligionUnhappinessModifiers[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Adaptive Subsistence</td>
+<td>Hunting and foraging produce +10% more yields.</td>
+<td>Adaptable Survivors</td>
+<td>policyPointCost=1; institutions.huntingForagingYieldModifier=0.1</td>
+<td>policyPointCost=1; institutions.huntingForagingYieldModifier=0.1</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Raider Logistics</td>
+<td>Raids and pillaging produce +10% more yields.</td>
+<td>Desperate Times</td>
+<td>policyPointCost=1; institutions.raidYieldModifier=0.1</td>
+<td>policyPointCost=1; institutions.raidYieldModifier=0.1</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Reserve Culture</td>
+<td>+5% Food across the civilization.</td>
+<td>Wise Steward</td>
+<td>policyPointCost=1; foodModifier=0.05</td>
+<td>policyPointCost=1; foodModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Diversified Commerce</td>
+<td>Domestic and foreign trade are increased by 5%.</td>
+<td>Trade Lifeline</td>
+<td>policyPointCost=1; institutions.domesticTradeModifier=0.05; institutions.foreignTradeModifier=0.05</td>
+<td>policyPointCost=1; institutions.domesticTradeModifier=0.05; institutions.foreignTradeModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Fiscal Discipline</td>
+<td>+5% Gold and -0.03 Corruption.</td>
+<td>Financial Genius</td>
+<td>policyPointCost=1; goldModifier=0.05; institutions.corruptionModifier=-0.03</td>
+<td>policyPointCost=1; goldModifier=0.05; institutions.corruptionModifier=-0.03</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Lean Government</td>
+<td>Military upkeep costs are reduced by 5%.</td>
+<td>Rainy Day Fund</td>
+<td>policyPointCost=1; institutions.militaryUpkeepModifier=-0.05</td>
+<td>policyPointCost=1; institutions.militaryUpkeepModifier=-0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Adaptive Genome</td>
+<td>+5% Science, and Mutant units gain +5% Defense and +5% Health.</td>
+<td>Acceptance</td>
+<td>policyPointCost=1; scienceModifier=0.05; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; scienceModifier=0.05; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Genetic Medicine</td>
+<td>Diseases cause 10% less population loss.</td>
+<td>Cure the Genome</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Mutant Hunters</td>
+<td>Units gain +5% Attack against Mutant units.</td>
+<td>Mutant Exterminators</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Public Health Tradition</td>
+<td>Cities have 10% lower chance of infection from all diseases.</td>
+<td>Healers</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Quarantine Protocols</td>
+<td>All diseases have 10% lower spread chance and cause 10% less population loss.</td>
+<td>Quarantine</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Resilient Communities</td>
+<td>Disease-related Morale and Loyalty penalties are reduced by 10%.</td>
+<td>Endure the Plague</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>policyPointCost=1; diseaseBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Big Game Hunters</td>
+<td>Expert hunters bring down dangerous quarry and return with richer stores.</td>
+<td>Oath of the Spear</td>
+<td>policyPointCost=50; goldCost=50; foodModifier=0.1; unitBonuses[1 entries]</td>
+<td>policyPointCost=50; goldCost=50; foodModifier=0.1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Blood Lust</td>
+<td>A tradition of relentless aggression drives armies and the war effort forward.</td>
+<td>Oath of Blood</td>
+<td>policyPointCost=50; goldCost=50; attackBonus=0.05; productionModifier=0.08</td>
+<td>policyPointCost=50; goldCost=50; attackBonus=0.05; productionModifier=0.08</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Hold the Fort</td>
+<td>Fortified communities turn prepared ground into an enduring defensive advantage.</td>
+<td>Oath of Steadfastness</td>
+<td>policyPointCost=50; goldCost=50; defenseBonus=0.05; productionModifier=0.05</td>
+<td>policyPointCost=50; goldCost=50; defenseBonus=0.05; productionModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>No Man Left Behind</td>
+<td>Shared stores and common purpose help every member of the community endure.</td>
+<td>Oath of the Hearth</td>
+<td>policyPointCost=50; goldCost=50; defenseBonus=0.03; foodModifier=0.08; cultureModifier=0.08</td>
+<td>policyPointCost=50; goldCost=50; defenseBonus=0.03; foodModifier=0.08; cultureModifier=0.08</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Emergency Mobilization</td>
+<td>Military units are trained 8% faster.</td>
+<td>Mass Mobilization</td>
+<td>policyPointCost=1; unitProductionModifiers[1 entries]</td>
+<td>policyPointCost=1; unitProductionModifiers[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Industrial Expansion</td>
+<td>Production-category buildings generate 8% more Production.</td>
+<td>Unstoppable Industry</td>
+<td>policyPointCost=1; buildingBonuses[1 entries]</td>
+<td>policyPointCost=1; buildingBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Redundant Industry</td>
+<td>+5% Production across the civilization.</td>
+<td>Engineer Corps</td>
+<td>policyPointCost=1; productionModifier=0.05</td>
+<td>policyPointCost=1; productionModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Agricultural Expansion</td>
+<td>Workers construct agricultural improvements 10% faster.</td>
+<td>New Pastures</td>
+<td>policyPointCost=1; improvementWorkBonuses[1 entries]</td>
+<td>policyPointCost=1; improvementWorkBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Pest Management</td>
+<td>Agricultural improvements generate 8% more Food.</td>
+<td>Pest Control</td>
+<td>policyPointCost=1; improvementBonuses[1 entries]</td>
+<td>policyPointCost=1; improvementBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Strategic Granaries</td>
+<td>+5% Food across the civilization.</td>
+<td>Grain Reserves</td>
+<td>policyPointCost=1; foodModifier=0.05</td>
+<td>policyPointCost=1; foodModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Internal Security</td>
+<td>Every city gains +1 Order, and units gain +5% Attack against Rebel and Revolutionary crisis units.</td>
+<td>Iron Fist</td>
+<td>policyPointCost=1; unitBonuses[1 entries]; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Reform Tradition</td>
+<td>+5% Culture and +5% Policy Point generation.</td>
+<td>Reform the State</td>
+<td>policyPointCost=1; cultureModifier=0.05; institutions.policyPointGenerationModifier=0.05</td>
+<td>policyPointCost=1; cultureModifier=0.05; institutions.policyPointGenerationModifier=0.05</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Social Compact</td>
+<td>Every city gains +1 Happiness, and civilization-wide Unrest is reduced by 0.04.</td>
+<td>Appeasement</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.04; cityBonuses[1 entries]</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.04; cityBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Teamwork</td>
+<td>Units in an Army formation gain +5% Attack and +5% Defense.</td>
+<td>Multitude</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Tiger Slayers</td>
+<td>Units gain +5% Attack against Animal units.</td>
+<td>Tiger Slayers</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Wolf Tooth</td>
+<td>Units gain +5% Defense against Animal units.</td>
+<td>Wolf Killers</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>policyPointCost=1; unitBonuses[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Human Command</td>
+<td>Units gain +5% Attack and +5% Defense against Robot and Cyborg units.</td>
+<td>Human Supremacy</td>
+<td>policyPointCost=1; unitBonuses[2 entries]</td>
+<td>policyPointCost=1; unitBonuses[2 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Master Hackers</td>
+<td>+10% Cyber Defense and +5% Science.</td>
+<td>Master Hackers</td>
+<td>policyPointCost=1; scienceModifier=0.05; institutions.cyberDefenseModifier=0.1</td>
+<td>policyPointCost=1; scienceModifier=0.05; institutions.cyberDefenseModifier=0.1</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Synthetic Citizenship</td>
+<td>-0.04 Unrest, and Robot units are produced 10% faster.</td>
+<td>Machine Accord</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.04; unitProductionModifiers[1 entries]</td>
+<td>policyPointCost=1; institutions.unrestModifier=-0.04; unitProductionModifiers[1 entries]</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Flexible Empire</td>
+<td>Subject Liberty Desire grows 10% more slowly, and subjects gain +5 Opinion.</td>
+<td>Imperial Reform</td>
+<td>policyPointCost=1; institutions.subjectLibertyGrowthModifier=-0.1; institutions.subjectOpinionModifier=5</td>
+<td>policyPointCost=1; institutions.subjectLibertyGrowthModifier=-0.1; institutions.subjectOpinionModifier=5</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Imperial Authority</td>
+<td>Subject tribute is increased by 5%, and Subject Liberty Desire grows 10% more slowly.</td>
+<td>Rebellion Crusher</td>
+<td>policyPointCost=1; institutions.subjectTributeModifier=0.05; institutions.subjectLibertyGrowthModifier=-0.1</td>
+<td>policyPointCost=1; institutions.subjectTributeModifier=0.05; institutions.subjectLibertyGrowthModifier=-0.1</td>
+<td>Earned permanently; effects only while promoted</td>
+<td>Yes — LegacyManager plus targeted bonus consumers</td>
+<td>Yes</td>
+<td>Context Dependent</td>
+<td>Low; promotion slots limit stacking</td>
+<td class="pass">PASS</td>
+<td></td>
+<td>No change from static audit.</td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet6"><h2>6. Critical Issues</h2>
+<table>
+<tr>
+<th>Priority</th>
+<th>Crisis</th>
+<th>Mission/System</th>
+<th>Problem</th>
+<th>Evidence</th>
+<th>Player Impact</th>
+<th>Recommended Fix</th>
+<th>Relevant File(s)</th>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Locust Infestation</td>
+<td>New Pastures</td>
+<td>BuildImprovementsInUnaffectedArea is used but has no progress producer.</td>
+<td>Only enum/assets reference BuildImprovementsInUnaffectedArea; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Locust Infestation/Missions/New Pastures Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Barbarian Invasion</td>
+<td>Refuse to Lose</td>
+<td>DefendCityBattles is used but has no progress producer.</td>
+<td>Only enum/assets reference DefendCityBattles; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Barbarian Invasion/Missions/Refuse to Lose Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Barbarian Invasion, Cannibal Raids</td>
+<td>Counter-Invasion, Burn the Camps</td>
+<td>DestroyCrisisSpawners is used but has no progress producer.</td>
+<td>Only enum/assets reference DestroyCrisisSpawners; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Barbarian Invasion/Missions/Counter-Invasion Mission.asset; Missions/Cannibal Raids/Missions/Burn the Camps Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>War of Independence</td>
+<td>Imperial Reform</td>
+<td>NegotiateAutonomy is used but has no progress producer.</td>
+<td>Only enum/assets reference NegotiateAutonomy; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/War of Independence/Missions/Imperial Reform Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Drought</td>
+<td>Desperate Times</td>
+<td>RaidSettlements is used but has no progress producer.</td>
+<td>Only enum/assets reference RaidSettlements; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Drought/Missions/Desperate Times Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Barbarian Invasion</td>
+<td>Reclaimers</td>
+<td>ReclaimCity is used but has no progress producer.</td>
+<td>Only enum/assets reference ReclaimCity; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Barbarian Invasion/Missions/Reclaimers Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Robot Uprising</td>
+<td>Machine Accord, Master Hackers</td>
+<td>ReintegrateCrisisUnits is used but has no progress producer.</td>
+<td>Only enum/assets reference ReintegrateCrisisUnits; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Robot Uprising/Missions/Machine Accord Mission.asset; Missions/Robot Uprising/Missions/Master Hackers Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Locust Infestation</td>
+<td>Pest Control</td>
+<td>RepairImprovements is used but has no progress producer.</td>
+<td>Only enum/assets reference RepairImprovements; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Locust Infestation/Missions/Pest Control Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>Industrial Disaster</td>
+<td>Engineer Corps</td>
+<td>RestoreDisabledBuildings is used but has no progress producer.</td>
+<td>Only enum/assets reference RestoreDisabledBuildings; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/Industrial Disaster/Missions/Engineer Corps Mission.asset</td>
+</tr>
+<tr>
+<td class="p0">P0</td>
+<td>War of Independence</td>
+<td>Rebellion Crusher</td>
+<td>RestoreSubjectControl is used but has no progress producer.</td>
+<td>Only enum/assets reference RestoreSubjectControl; no PollTurnObjectives case, AddProgress caller, or ReportCrisisOutcome caller.</td>
+<td>Mission cannot complete normally.</td>
+<td>Connect successful operation to filtered AddProgress and cover with play-mode test.</td>
+<td>MissionData.cs; CrisisManager.cs; Missions/War of Independence/Missions/Rebellion Crusher Mission.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Barbarian Invasion</td>
+<td>HostileRaiders</td>
+<td>HostileRaiders has no signature mechanic activation/tick implementation.</td>
+<td>HostileRaiders is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 3 mission(s) use objective types with no progress producer</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Barbarian Invasion/Barbarian Invasion.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Cannibal Raids</td>
+<td>HostileRaiders</td>
+<td>HostileRaiders has no signature mechanic activation/tick implementation.</td>
+<td>HostileRaiders is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 1 mission(s) use objective types with no progress producer</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Cannibal Raids/Cannibal Raids.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Constitutional Crisis</td>
+<td>ConstitutionalConflict</td>
+<td>ConstitutionalConflict has no signature mechanic activation/tick implementation.</td>
+<td>ConstitutionalConflict is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Constitutional Crisis/Constitutional Crisis.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Coup Attempt</td>
+<td>PoliticalCoup</td>
+<td>PoliticalCoup has no signature mechanic activation/tick implementation.</td>
+<td>PoliticalCoup is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Coup Attempt/Coup Attempt.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Domestic Terrorism</td>
+<td>TerroristCells</td>
+<td>TerroristCells has no signature mechanic activation/tick implementation.</td>
+<td>TerroristCells is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Domestic Terrorism/Domestic Terrorism.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Financial Crisis</td>
+<td>FinancialShock</td>
+<td>FinancialShock has no signature mechanic activation/tick implementation.</td>
+<td>FinancialShock is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Financial Crisis/Financial Crisis.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Industrial Disaster</td>
+<td>IndustrialDamage</td>
+<td>IndustrialDamage has no signature mechanic activation/tick implementation.</td>
+<td>IndustrialDamage is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 1 mission(s) use objective types with no progress producer</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Industrial Disaster/Industrial Disaster.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Popular Revolution</td>
+<td>PopularRevolution</td>
+<td>PopularRevolution has no signature mechanic activation/tick implementation.</td>
+<td>PopularRevolution is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Popular Revolution/Popular Revolution.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>Robot Uprising</td>
+<td>RobotDefection</td>
+<td>RobotDefection has no signature mechanic activation/tick implementation.</td>
+<td>RobotDefection is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 2 mission(s) use objective types with no progress producer</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/Robot Uprising/Robot Uprising.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>War of Independence</td>
+<td>IndependenceWar</td>
+<td>IndependenceWar has no signature mechanic activation/tick implementation.</td>
+<td>IndependenceWar is selected/targeted but ApplyCrisisMechanicOnActivation has no branch for it; 2 mission(s) use objective types with no progress producer</td>
+<td>Crisis can become a timer/narrative shell; actors/effects described may never occur.</td>
+<td>Implement activation, tick, cleanup, save/load and tests.</td>
+<td>CrisisManager.cs; Missions/War of Independence/War of Independence.asset</td>
+</tr>
+<tr>
+<td class="p1">P1</td>
+<td>All</td>
+<td>AI mission execution</td>
+<td>AI scores/selects missions but only intentionally executes alien negotiation and mutant integration; asteroid production is separate.</td>
+<td>ExecuteAiCrisisAction handles only NegotiateCrisisSettlement and IntegrateCrisisUnits.</td>
+<td>AI takes oaths it cannot deliberately pursue.</td>
+<td>Add per-objective AI plans or exclude infeasible missions.</td>
+<td>CrisisManager.cs:1095-1140</td>
+</tr>
+<tr>
+<td class="p2">P2</td>
+<td>All</td>
+<td>Auto-trigger/history</td>
+<td>CanAutoTrigger rejects any crisis in crisisHistory before repeat-mode logic can matter.</td>
+<td>CanAutoTrigger checks crisisHistory directly; TriggerCrisis separately has occurrence/cooldown logic.</td>
+<td>Repeatable crises appear unable to auto-trigger again.</td>
+<td>Use CanTriggerByHistory consistently in CanAutoTrigger.</td>
+<td>CrisisManager.cs:905-925</td>
+</tr>
+<tr>
+<td class="p2">P2</td>
+<td>All</td>
+<td>Mission sequencing</td>
+<td>Only the current objective receives event progress; actions done before a later sequential objective are discarded.</td>
+<td>AddProgress -&gt; TryAdvance compares only state.CurrentObjective.</td>
+<td>Players/AI can unknowingly perform required action too early and get no credit.</td>
+<td>Document sequencing or persist eligible counters per objective.</td>
+<td>CrisisManager.cs:597-616, 2203-2222</td>
+</tr>
+</table></section>
+<section class="sheet" id="sheet7"><h2>7. AI Audit</h2>
+<table>
+<tr>
+<th>Crisis</th>
+<th>Mission</th>
+<th>Strategy Tags</th>
+<th>Selectable?</th>
+<th>Completion Classification</th>
+<th>Intentional Pursuit Logic</th>
+<th>Status</th>
+<th>Problem</th>
+<th>Recommended Fix</th>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Defenders of Earth</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Reverse Engineers</td>
+<td>Scientific</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Alien Invasion</td>
+<td>Xenodiplomats</td>
+<td>Diplomatic</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>No explicit pursuit plan verified.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>Asteroid Killer</td>
+<td>Scientific</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Asteroid Strike</td>
+<td>Prepare for Impact</td>
+<td>Stability, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Counter-Invasion</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DestroyCrisisSpawners</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Reclaimers</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReclaimCity</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Barbarian Invasion</td>
+<td>Refuse to Lose</td>
+<td>Military, Stability</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DefendCityBattles</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Burn the Camps</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: DestroyCrisisSpawners</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Inedible</td>
+<td>Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Cannibal Raids</td>
+<td>Sweet Revenge</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Emergency Mandate</td>
+<td>Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Grand Coalition</td>
+<td>Diplomatic, Stability, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Constitutional Crisis</td>
+<td>Rule of Law</td>
+<td>Stability, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Buy Their Loyalty</td>
+<td>Diplomatic, Stability</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Counterplot</td>
+<td>Scientific, Stability</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Coup Attempt</td>
+<td>Crush the Coup</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Hearts and Minds</td>
+<td>Stability, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>Homeland Security</td>
+<td>Stability, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Domestic Terrorism</td>
+<td>No Negotiations</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Adaptable Survivors</td>
+<td>Economic, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Desperate Times</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RaidSettlements</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Drought</td>
+<td>Wise Steward</td>
+<td>Economic, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Financial Genius</td>
+<td>Economic</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Rainy Day Fund</td>
+<td>Economic, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Financial Crisis</td>
+<td>Trade Lifeline</td>
+<td>Economic</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Acceptance</td>
+<td>Diplomatic, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="pass">PASS</td>
+<td>No explicit pursuit plan verified.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Cure the Genome</td>
+<td>Scientific</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Genetic Disaster</td>
+<td>Mutant Exterminators</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Endure the Plague</td>
+<td>Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Healers</td>
+<td>Stability, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Great Plague</td>
+<td>Quarantine</td>
+<td>Stability, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of Blood</td>
+<td>None</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of Steadfastness</td>
+<td>None</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of the Hearth</td>
+<td>None</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Ice Age</td>
+<td>Oath of the Spear</td>
+<td>None</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Engineer Corps</td>
+<td>Scientific, Stability</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RestoreDisabledBuildings</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Mass Mobilization</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Industrial Disaster</td>
+<td>Unstoppable Industry</td>
+<td>Economic</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Grain Reserves</td>
+<td>Economic, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>New Pastures</td>
+<td>Economic, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: BuildImprovementsInUnaffectedArea</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Locust Infestation</td>
+<td>Pest Control</td>
+<td>Stability, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RepairImprovements</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Appeasement</td>
+<td>Stability, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Iron Fist</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Popular Revolution</td>
+<td>Reform the State</td>
+<td>Stability, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Multitude</td>
+<td>Military, Survival</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI INCIDENTALLY COMPLETABLE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Tiger Slayers</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Predator Hunting Season</td>
+<td>Wolf Killers</td>
+<td>Military</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Human Supremacy</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI CANNOT INTENTIONALLY COMPLETE</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="warning">WARNING</td>
+<td>AI selects by tags but has no objective-specific plan; completion is incidental.</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Machine Accord</td>
+<td>Diplomatic, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReintegrateCrisisUnits</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>Robot Uprising</td>
+<td>Master Hackers</td>
+<td>Scientific</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: ReintegrateCrisisUnits</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Imperial Reform</td>
+<td>Diplomatic, Reform</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: NegotiateAutonomy</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+<tr>
+<td>War of Independence</td>
+<td>Rebellion Crusher</td>
+<td>Military, Repression</td>
+<td>Yes — automatic highest ScoreAiMission among legal missions</td>
+<td>AI BROKEN</td>
+<td>Only negotiation/integration receive ExecuteAiCrisisAction; asteroid project has separate queue logic.</td>
+<td class="broken">BROKEN</td>
+<td>No repository gameplay hook advances: RestoreSubjectControl</td>
+<td>Add per-objective feasibility scoring and execution behavior.</td>
+</tr>
+</table></section>
+</body></html>
