@@ -36,5 +36,5 @@ public class VassalRowUI : MonoBehaviour
     }
 
     public static string FormatTribute(VassalContract c)
-        => $"Tribute: gold {c.goldTributePct:P0}, science {c.scienceTributePct:P0}, food {c.foodTributePct:P0}";
+        => $"Gold {c.goldTributePct:P0} • Science {c.scienceTributePct:P0} • Food {c.foodTributePct:P0}";
 }
