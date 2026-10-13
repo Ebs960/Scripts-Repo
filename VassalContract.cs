@@ -21,10 +21,12 @@ public class VassalContract
     // ── Tribute Terms ─────────────────────────────────────────────────────────
     /// <summary>Fraction of gold yield transferred to overlord each turn (0.0 – 1.0).</summary>
     [Range(0f, 1f)] public float goldTributePct = 0.10f;
-    /// <summary>Fraction of science yield transferred each turn.</summary>
-    [Range(0f, 1f)] public float scienceTributePct = 0f;
     /// <summary>Fraction of food yield transferred each turn.</summary>
     [Range(0f, 1f)] public float foodTributePct = 0f;
+    /// <summary>Resource the subject hands over every turn; null when no standing demand exists.</summary>
+    [System.NonSerialized] public ResourceData resourceTribute;
+    /// <summary>Units of resourceTribute taken from the subject's stockpile each turn.</summary>
+    public int resourceTributePerTurn = 0;
 
     // ── Military Obligation ───────────────────────────────────────────────────
     /// <summary>Number of combat units the subject is expected to provide during declared wars.</summary>

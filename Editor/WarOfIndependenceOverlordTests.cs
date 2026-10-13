@@ -69,7 +69,7 @@ public class WarOfIndependenceOverlordTests
         try
         {
             Assert.That(manager.ScoreIndependenceDemandRejection(contract),Is.LessThan(0));
-            contract.goldTributePct=.5f; contract.scienceTributePct=.5f; contract.foodTributePct=.5f;
+            contract.goldTributePct=.5f; contract.foodTributePct=.5f;
             contract.libertyDesire=0; contract.militaryConfidence=0; contract.subjectOpinion=100;
             Assert.That(manager.ScoreIndependenceDemandRejection(contract),Is.GreaterThan(0));
         }

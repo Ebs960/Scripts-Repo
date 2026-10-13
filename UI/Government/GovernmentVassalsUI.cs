@@ -25,19 +25,23 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text resentmentText;
     [SerializeField] private TMP_Text tributeExhaustionText;
     [SerializeField] private TMP_Text militaryConfidenceText;
-    [SerializeField] private TMP_Text contractAgeText;
     [SerializeField] private TMP_Text stateReligionText;
     [SerializeField] private TMP_Text cooldownText;
     [SerializeField] private TMP_Text statusText;
 
     [Header("Tribute terms")]
     [SerializeField] private Slider goldSlider;
-    [SerializeField] private Slider scienceSlider;
     [SerializeField] private Slider foodSlider;
     [SerializeField] private TMP_Text goldValueText;
-    [SerializeField] private TMP_Text scienceValueText;
     [SerializeField] private TMP_Text foodValueText;
     [SerializeField] private Button applyTributeButton;
+
+    [Header("Resource demand")]
+    [SerializeField] private TMP_Dropdown resourceDropdown;
+    [SerializeField] private TMP_Dropdown resourceModeDropdown;
+    [SerializeField] private Slider resourceAmountSlider;
+    [SerializeField] private TMP_Text resourceAmountText;
+    [SerializeField] private Button applyResourceButton;
 
     [Header("Autonomy")]
     [SerializeField] private Slider autonomySlider;
@@ -53,10 +57,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private TMP_Dropdown religionRuleDropdown;
     [SerializeField] private Button applyReligionButton;
 
-    [Header("Direct Interference")]
-    [SerializeField] private Button imposeStateReligionButton;
-    [SerializeField] private TMP_Text interferenceStatusText;
-
     [Header("Release / independence")]
     [SerializeField] private Button releaseButton;
     [SerializeField] private GameObject demandRoot;
@@ -65,6 +65,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private Button rejectDemandButton;
 
     private readonly List<VassalRowUI> rows = new List<VassalRowUI>();
+    private readonly List<ResourceData> resourceOptions = new List<ResourceData>();
     private Civilization selectedSubject;
     private bool hasRequestedFocus;
     private bool wired;
@@ -113,16 +114,22 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         wired = true;
 
         ConfigureSlider(goldSlider, 0f, SubjectManager.MaxTributePct, false);
-        ConfigureSlider(scienceSlider, 0f, SubjectManager.MaxTributePct, false);
         ConfigureSlider(foodSlider, 0f, SubjectManager.MaxTributePct, false);
         ConfigureSlider(autonomySlider, 0f, 100f, true);
         ConfigureSlider(obligationSlider, 0f, SubjectManager.MaxMilitaryObligation, true);
+        ConfigureSlider(resourceAmountSlider, 0f, SubjectManager.MaxResourceDemand, true);
 
         if (goldSlider != null) goldSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
-        if (scienceSlider != null) scienceSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (foodSlider != null) foodSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (autonomySlider != null) autonomySlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (obligationSlider != null) obligationSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
+        if (resourceAmountSlider != null) resourceAmountSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
+
+        if (resourceModeDropdown != null)
+        {
+            resourceModeDropdown.ClearOptions();
+            resourceModeDropdown.AddOptions(new List<string> { "One-time demand", "Per turn" });
+        }
 
         if (religionRuleDropdown != null)
         {
@@ -137,7 +144,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetClick(applyAutonomyButton, OnApplyAutonomy);
         GovernmentUiUtil.SetClick(applyObligationButton, OnApplyObligation);
         GovernmentUiUtil.SetClick(applyReligionButton, OnApplyReligion);
-        GovernmentUiUtil.SetClick(imposeStateReligionButton, OnImposeStateReligion);
+        GovernmentUiUtil.SetClick(applyResourceButton, OnApplyResource);
         GovernmentUiUtil.SetClick(releaseButton, OnReleaseClicked);
         GovernmentUiUtil.SetClick(acceptDemandButton, OnAcceptDemand);
         GovernmentUiUtil.SetClick(rejectDemandButton, OnRejectDemand);
@@ -165,6 +172,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
 
     private void RefreshDetail(VassalContract contract)
     {
+        EnsureResourceOptions();
         var manager = SubjectManager.Instance;
         int turn = manager.CurrentTurn;
         float opinion = manager.GetEffectiveSubjectOpinion(contract);
@@ -179,7 +187,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetText(resentmentText, $"Resentment {contract.resentment:0}");
         GovernmentUiUtil.SetText(tributeExhaustionText, $"Tribute exhaustion {contract.tributeExhaustion:0}");
         GovernmentUiUtil.SetText(militaryConfidenceText, $"Military confidence {contract.militaryConfidence:0}");
-        GovernmentUiUtil.SetText(contractAgeText, $"{(contract.isCapitulated ? "Capitulated" : "Voluntary")} vassal for {Mathf.Max(0, turn - contract.contractStartTurn)} turns");
         GovernmentUiUtil.SetText(stateReligionText, contract.subject?.StateReligion != null
             ? $"State Religion: {GovernmentPresentation.NameOf(contract.subject.StateReligion)}"
             : "State Religion: No Religion");
@@ -187,25 +194,30 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         var check = manager.CanInterfere(civ, contract.subject, turn);
         GovernmentUiUtil.SetText(cooldownText, check.success ? "Terms can be changed now." : check.reason);
         if (goldSlider != null) goldSlider.interactable = check.success;
-        if (scienceSlider != null) scienceSlider.interactable = check.success;
         if (foodSlider != null) foodSlider.interactable = check.success;
         if (autonomySlider != null) autonomySlider.interactable = check.success;
         if (obligationSlider != null) obligationSlider.interactable = check.success;
         if (religionRuleDropdown != null) religionRuleDropdown.interactable = check.success;
+        if (resourceDropdown != null) resourceDropdown.interactable = check.success;
+        if (resourceModeDropdown != null) resourceModeDropdown.interactable = check.success;
+        if (resourceAmountSlider != null) resourceAmountSlider.interactable = check.success;
         GovernmentUiUtil.SetInteractable(applyTributeButton, check.success);
         GovernmentUiUtil.SetInteractable(applyAutonomyButton, check.success);
         GovernmentUiUtil.SetInteractable(applyObligationButton, check.success);
         GovernmentUiUtil.SetInteractable(applyReligionButton, check.success);
-        GovernmentUiUtil.SetInteractable(imposeStateReligionButton, check.success && civ.StateReligion != null);
-        GovernmentUiUtil.SetText(interferenceStatusText, check.success ? string.Empty : check.reason);
+        GovernmentUiUtil.SetInteractable(applyResourceButton, check.success && resourceOptions.Count > 0);
 
         // Reset editors to the live contract values each refresh so they never show stale proposals.
         if (goldSlider != null) goldSlider.SetValueWithoutNotify(contract.goldTributePct);
-        if (scienceSlider != null) scienceSlider.SetValueWithoutNotify(contract.scienceTributePct);
         if (foodSlider != null) foodSlider.SetValueWithoutNotify(contract.foodTributePct);
         if (autonomySlider != null) autonomySlider.SetValueWithoutNotify(contract.autonomyLevel);
         if (obligationSlider != null) obligationSlider.SetValueWithoutNotify(contract.militaryObligationCount);
         if (religionRuleDropdown != null) religionRuleDropdown.SetValueWithoutNotify((int)contract.religionRule);
+        bool standingDemand = contract.resourceTribute != null && contract.resourceTributePerTurn > 0;
+        int standingIndex = standingDemand ? resourceOptions.IndexOf(contract.resourceTribute) : -1;
+        if (resourceDropdown != null && standingIndex >= 0) resourceDropdown.SetValueWithoutNotify(standingIndex);
+        if (resourceModeDropdown != null) resourceModeDropdown.SetValueWithoutNotify(standingDemand ? 1 : 0);
+        if (resourceAmountSlider != null) resourceAmountSlider.SetValueWithoutNotify(standingDemand ? contract.resourceTributePerTurn : 1);
         UpdateSliderLabels();
 
         var demand = manager.GetPendingIndependenceDemand(civ, contract.subject);
@@ -215,11 +227,20 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetInteractable(releaseButton, true);
     }
 
+    private void EnsureResourceOptions()
+    {
+        if (resourceOptions.Count > 0 || resourceDropdown == null) return;
+        resourceOptions.AddRange(ResourceCache.GetAllResourceData()
+            .Where(r => r != null && !string.IsNullOrEmpty(r.resourceName)).OrderBy(r => r.resourceName));
+        resourceDropdown.ClearOptions();
+        resourceDropdown.AddOptions(resourceOptions.Select(r => r.resourceName).ToList());
+    }
+
     private void UpdateSliderLabels()
     {
         GovernmentUiUtil.SetText(goldValueText, goldSlider != null ? $"{goldSlider.value:P0}" : string.Empty);
-        GovernmentUiUtil.SetText(scienceValueText, scienceSlider != null ? $"{scienceSlider.value:P0}" : string.Empty);
         GovernmentUiUtil.SetText(foodValueText, foodSlider != null ? $"{foodSlider.value:P0}" : string.Empty);
+        GovernmentUiUtil.SetText(resourceAmountText, resourceAmountSlider != null ? $"{Mathf.RoundToInt(resourceAmountSlider.value)}" : string.Empty);
         GovernmentUiUtil.SetText(autonomyValueText, autonomySlider != null ? $"{Mathf.RoundToInt(autonomySlider.value)}" : string.Empty);
         GovernmentUiUtil.SetText(obligationValueText, obligationSlider != null ? $"{Mathf.RoundToInt(obligationSlider.value)} units" : string.Empty);
     }
@@ -253,11 +274,10 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     private void OnApplyTribute()
     {
         var contract = SelectedContract();
-        if (contract == null || goldSlider == null || scienceSlider == null || foodSlider == null) return;
-        float gold = goldSlider.value, science = scienceSlider.value, food = foodSlider.value;
-        float change = (gold + science + food) - (contract.goldTributePct + contract.scienceTributePct + contract.foodTributePct);
+        if (contract == null || goldSlider == null || foodSlider == null) return;
+        float gold = goldSlider.value, food = foodSlider.value;
+        float change = (gold + food) - (contract.goldTributePct + contract.foodTributePct);
         if (Mathf.Approximately(gold, contract.goldTributePct)
-            && Mathf.Approximately(science, contract.scienceTributePct)
             && Mathf.Approximately(food, contract.foodTributePct))
         {
             GovernmentUiUtil.SetText(statusText, "Tribute terms are unchanged.");
@@ -268,7 +288,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         var lines = new List<PoliticalEffectLine>
         {
             Line("Gold tribute", $"{contract.goldTributePct:P0} -> {gold:P0}"),
-            Line("Science tribute", $"{contract.scienceTributePct:P0} -> {science:P0}"),
             Line("Food tribute", $"{contract.foodTributePct:P0} -> {food:P0}"),
             change > 0f
                 ? Line("Their governors", "Resent a heavier burden", harmful: true)
@@ -276,7 +295,7 @@ public class GovernmentVassalsUI : GovernmentScreenBase
             Line("Resentment", "Any change adds resentment", harmful: true),
         };
         Confirm($"Change tribute from {contract.subjectCivName}?", CooldownNote(contract), "Apply", lines, () =>
-            Report(SubjectManager.Instance.TrySetTributeTerms(civ, subject, gold, science, food, SubjectManager.Instance.CurrentTurn), "Tribute terms updated."));
+            Report(SubjectManager.Instance.TrySetTributeTerms(civ, subject, gold, food, SubjectManager.Instance.CurrentTurn), "Tribute terms updated."));
     }
 
     private void OnApplyAutonomy()
@@ -335,34 +354,84 @@ public class GovernmentVassalsUI : GovernmentScreenBase
                 : Line("Their opinion", "Rises", beneficial: true),
         };
         if (rule == ReligionToleranceRule.ForcedConversion)
+        {
+            if (civ.StateReligion == null)
+            {
+                GovernmentUiUtil.SetText(statusText, "Your civilization has no state religion to impose.");
+                return;
+            }
+            lines.Add(Line("State religion imposed", GovernmentPresentation.NameOf(civ.StateReligion), harmful: true));
             lines.Add(Line("Forced conversion", "Heavy liberty desire growth every turn", harmful: true));
+            lines.Add(Line("Their governors", "Become angry; zealous governors react strongly", harmful: true));
+        }
         Confirm($"Change religious policy for {contract.subjectCivName}?", CooldownNote(contract), "Apply", lines, () =>
             Report(SubjectManager.Instance.TrySetReligionRule(civ, subject, rule, SubjectManager.Instance.CurrentTurn), "Religious policy updated."));
     }
 
-    private void OnImposeStateReligion()
+    private void OnApplyResource()
     {
         var contract = SelectedContract();
-        if (contract == null) return;
-        var check = SubjectManager.Instance.CanInterfere(civ, contract.subject, SubjectManager.Instance.CurrentTurn);
-        if (!check.success || civ.StateReligion == null)
+        if (contract == null || resourceDropdown == null || resourceAmountSlider == null) return;
+        int index = resourceDropdown.value;
+        if (index < 0 || index >= resourceOptions.Count) { GovernmentUiUtil.SetText(statusText, "Choose a resource to demand."); return; }
+
+        var resource = resourceOptions[index];
+        int amount = Mathf.RoundToInt(resourceAmountSlider.value);
+        bool perTurn = resourceModeDropdown != null && resourceModeDropdown.value == 1;
+        var subject = contract.subject;
+
+        List<PoliticalEffectLine> lines;
+        string title, description, confirmLabel, success;
+        if (!perTurn)
         {
-            GovernmentUiUtil.SetText(interferenceStatusText,
-                civ.StateReligion == null ? "Your civilization has no state religion to impose." : check.reason);
-            return;
-        }
-        Confirm("Impose state religion?",
-            "Forces your state religion on the subject, increases resentment, angers subject governors (with a strong reaction from zealous governors), and begins the interference cooldown.",
-            "Impose",
-            new List<PoliticalEffectLine>
+            if (amount <= 0) { GovernmentUiUtil.SetText(statusText, "Choose an amount to demand."); return; }
+            if (subject.GetResourceCount(resource) < amount)
             {
-                Line("State religion", GovernmentPresentation.NameOf(civ.StateReligion), harmful: true),
-                Line("Subject resentment", "Increases", harmful: true),
-                Line("Subject governors", "Become angry; zealous governors react strongly", harmful: true),
-                Line("Interference cooldown", "Begins", harmful: true),
-            },
-            () => Report(SubjectManager.Instance.InterfereForceReligion(civ, contract.subject,
-                SubjectManager.Instance.CurrentTurn), "State religion imposed."));
+                GovernmentUiUtil.SetText(statusText, $"{contract.subjectCivName} does not have {amount} {resource.resourceName}.");
+                return;
+            }
+            title = $"Demand {amount} {resource.resourceName} from {contract.subjectCivName}?";
+            description = "They hand the goods over now. This is an open act of extortion: it infuriates the subject and its governors. " + CooldownNote(contract);
+            confirmLabel = "Demand";
+            success = $"Took {amount} {resource.resourceName}.";
+            lines = new List<PoliticalEffectLine>
+            {
+                Line("You receive", $"{amount} {resource.resourceName} (once)", beneficial: true),
+                Line("Subject resentment", "Rises sharply", harmful: true),
+                Line("Their opinion and governors", "Fall sharply", harmful: true),
+            };
+        }
+        else if (amount == 0)
+        {
+            if (contract.resourceTribute == null || contract.resourceTributePerTurn <= 0)
+            {
+                GovernmentUiUtil.SetText(statusText, "There is no standing resource demand to end.");
+                return;
+            }
+            title = $"End the {contract.resourceTribute.resourceName} demand on {contract.subjectCivName}?";
+            description = CooldownNote(contract);
+            confirmLabel = "End demand";
+            success = "Resource demand ended.";
+            lines = new List<PoliticalEffectLine> { Line("Their opinion", "Rises", beneficial: true) };
+        }
+        else
+        {
+            title = $"Demand {amount} {resource.resourceName} per turn from {contract.subjectCivName}?";
+            description = "They must pay every turn from their stockpile. A standing demand breeds lasting resentment and drains the subject's patience. " + CooldownNote(contract);
+            confirmLabel = "Demand";
+            success = "Standing resource demand set.";
+            lines = new List<PoliticalEffectLine>
+            {
+                Line("You receive", $"Up to {amount} {resource.resourceName} each turn", beneficial: true),
+                Line("Subject resentment", "Rises sharply", harmful: true),
+                Line("Tribute exhaustion and opinion", "Worsen every turn", harmful: true),
+                Line("Their governors", "Become angry", harmful: true),
+            };
+        }
+
+        Confirm(title, description, confirmLabel, lines, () =>
+            Report(SubjectManager.Instance.TryDemandResources(civ, subject, resource, amount, perTurn,
+                SubjectManager.Instance.CurrentTurn), success));
     }
 
     private void OnReleaseClicked()

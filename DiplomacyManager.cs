@@ -336,7 +336,6 @@ public class DiplomacyManager : MonoBehaviour
             bool capitulated = (bStr / aStr) < 0.5f;
             SubjectManager.Instance.CreateContract(a, b,
                 goldPct:     0.10f,
-                sciencePct:  0f,
                 autonomy:    50,
                 capitulated: capitulated,
                 currentTurn: currentTurn);

@@ -41,6 +41,18 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     private const float ReligionTighteningResentmentPerStep = 10f;
     private const float ReligionRelaxOpinionPerStep = 6f;
 
+    // Demanding raw goods is deliberately harsh: every unit costs resentment, subject opinion and governor goodwill.
+    public const int MaxResourceDemand = 10;
+    private const float ResourceDemandResentmentPerUnit = 8f;
+    private const float ResourceTributeResentmentPerUnit = 12f;
+    private const float ResourceDemandOpinionPerUnit = 4f;
+    private const float ResourceDemandGovernorBase = 6f;
+    private const float ResourceDemandGovernorPerUnit = 2f;
+    private const float ResourceDemandGovernorMax = 30f;
+    private const float ResourceTributeExhaustionPerUnit = 1.5f;
+    private const float ResourceTributeOpinionPerUnit = 0.5f;
+    private const float ResourceTributeEndedOpinion = 4f;
+
     private static void RaiseContractChanged(Civilization overlord, Civilization subject)
         => ContractChanged?.Invoke(overlord, subject);
 
@@ -107,7 +119,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     /// </summary>
     public VassalContract CreateContract(
         Civilization overlord, Civilization subject,
-        float goldPct = 0.10f, float sciencePct = 0f,
+        float goldPct = 0.10f,
         int autonomy = 50, bool capitulated = false, int currentTurn = 0)
     {
         if (overlord == null || subject == null || overlord == subject) return null;
@@ -121,7 +133,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             overlordCivName  = overlord.civData?.civName ?? overlord.name,
             subjectCivName   = subject.civData?.civName ?? subject.name,
             goldTributePct   = goldPct,
-            scienceTributePct = sciencePct,
             autonomyLevel    = autonomy,
             isCapitulated    = capitulated,
             contractStartTurn = currentTurn,
@@ -166,25 +177,32 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
 
             float tributeModifier = GetLegacyInstitutionTotal(c.overlord, m=>m.subjectTributeModifier);
             int goldTransfer    = Mathf.FloorToInt(c.subject.cachedGoldPerTurn * c.goldTributePct * (1f+tributeModifier));
-            int sciTransfer     = Mathf.FloorToInt(c.subject.cachedSciencePerTurn * c.scienceTributePct * (1f+tributeModifier));
             int foodTransfer    = Mathf.FloorToInt(c.subject.cachedFoodPerTurn * c.foodTributePct * (1f+tributeModifier));
 
             // Deduct from subject
             c.subject.gold    = Mathf.Max(0, c.subject.gold    - goldTransfer);
-            c.subject.science = Mathf.Max(0, c.subject.science - sciTransfer);
             c.subject.food    = Mathf.Max(0, c.subject.food    - foodTransfer);
 
             // Credit to overlord
             c.overlord.gold    += goldTransfer;
-            c.overlord.science += sciTransfer;
             c.overlord.food    += foodTransfer;
 
             // Tribute exhaustion accumulates when tribute takes a large share of income
-            float totalPctBurden = c.goldTributePct + c.scienceTributePct + c.foodTributePct;
+            float totalPctBurden = c.goldTributePct + c.foodTributePct;
             c.tributeExhaustion = Mathf.Clamp(c.tributeExhaustion + totalPctBurden * 5f, 0f, 100f);
 
             // Subject opinion worsens proportionally to burden
             c.subjectOpinion = Mathf.Clamp(c.subjectOpinion - totalPctBurden * 2f, -100f, 100f);
+
+            // Standing resource demand: the subject pays what it has, but the burden is felt even when it falls short.
+            if (c.resourceTribute != null && c.resourceTributePerTurn > 0)
+            {
+                int paid = Mathf.Min(c.resourceTributePerTurn, c.subject.GetResourceCount(c.resourceTribute));
+                if (paid > 0 && c.subject.ConsumeResource(c.resourceTribute, paid))
+                    c.overlord.AddResource(c.resourceTribute, paid);
+                c.tributeExhaustion = Mathf.Clamp(c.tributeExhaustion + c.resourceTributePerTurn * ResourceTributeExhaustionPerUnit, 0f, 100f);
+                c.subjectOpinion = Mathf.Clamp(c.subjectOpinion - c.resourceTributePerTurn * ResourceTributeOpinionPerUnit, -100f, 100f);
+            }
         }
     }
 
@@ -401,7 +419,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         if (!check.success) return check;
         var contract = GetContract(overlord, subject);
 
-        ApplyTributeChange(contract, newGoldPct, contract.scienceTributePct, contract.foodTributePct, currentTurn);
+        ApplyTributeChange(contract, newGoldPct, contract.foodTributePct, currentTurn);
 
         Debug.Log($"[SubjectManager] {overlord.civData?.civName} altered tribute from {subject.civData?.civName} to {newGoldPct:P0}.");
         RaiseContractChanged(overlord, subject);
@@ -409,20 +427,17 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     }
 
     // Shared consequence logic: any tribute change costs resentment and starts the cooldown; a heavier burden angers governors.
-    private static void ApplyTributeChange(VassalContract contract, float newGold, float newScience, float newFood, int currentTurn)
+    private static void ApplyTributeChange(VassalContract contract, float newGold, float newFood, int currentTurn)
     {
         newGold = Mathf.Clamp(newGold, 0f, MaxTributePct);
-        newScience = Mathf.Clamp(newScience, 0f, MaxTributePct);
         newFood = Mathf.Clamp(newFood, 0f, MaxTributePct);
 
         float dGold = newGold - contract.goldTributePct;
-        float dScience = newScience - contract.scienceTributePct;
         float dFood = newFood - contract.foodTributePct;
-        float absoluteChange = Mathf.Abs(dGold) + Mathf.Abs(dScience) + Mathf.Abs(dFood);
-        float burdenChange = dGold + dScience + dFood;
+        float absoluteChange = Mathf.Abs(dGold) + Mathf.Abs(dFood);
+        float burdenChange = dGold + dFood;
 
         contract.goldTributePct = newGold;
-        contract.scienceTributePct = newScience;
         contract.foodTributePct = newFood;
         contract.resentment = Mathf.Min(100f, contract.resentment + absoluteChange * 100f);
         contract.lastInterferenceTurn = currentTurn;
@@ -442,25 +457,23 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     // UI must go through these; each one shares the interference cooldown and consequences above.
 
     public SubjectActionResult TrySetTributeTerms(Civilization overlord, Civilization subject,
-        float goldPct, float sciencePct, float foodPct, int currentTurn)
+        float goldPct, float foodPct, int currentTurn)
     {
         var check = CanInterfere(overlord, subject, currentTurn);
         if (!check.success) return check;
         var contract = GetContract(overlord, subject);
 
         goldPct = Mathf.Clamp(goldPct, 0f, MaxTributePct);
-        sciencePct = Mathf.Clamp(sciencePct, 0f, MaxTributePct);
         foodPct = Mathf.Clamp(foodPct, 0f, MaxTributePct);
         if (Mathf.Approximately(goldPct, contract.goldTributePct)
-            && Mathf.Approximately(sciencePct, contract.scienceTributePct)
             && Mathf.Approximately(foodPct, contract.foodTributePct))
             return SubjectActionResult.Fail("Tribute terms are unchanged.");
 
-        float oldTotal = contract.goldTributePct + contract.scienceTributePct + contract.foodTributePct;
-        ApplyTributeChange(contract, goldPct, sciencePct, foodPct, currentTurn);
+        float oldTotal = contract.goldTributePct + contract.foodTributePct;
+        ApplyTributeChange(contract, goldPct, foodPct, currentTurn);
 
         // Relief scales with the cut (the Diplomacy screen grants the full amount for a 5-point step).
-        float reduction = oldTotal - (contract.goldTributePct + contract.scienceTributePct + contract.foodTributePct);
+        float reduction = oldTotal - (contract.goldTributePct + contract.foodTributePct);
         if (reduction > 0f)
         {
             float relief = Mathf.Clamp01(reduction / TributeReliefReferenceStep);
@@ -468,6 +481,72 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - TributeReliefLiberty * relief, 0f, 100f);
         }
 
+        RaiseContractChanged(overlord, subject);
+        return SubjectActionResult.Ok();
+    }
+
+    private static ResourceData FindResource(string resourceName)
+        => string.IsNullOrEmpty(resourceName) ? null
+            : ResourceCache.GetAllResourceData().FirstOrDefault(r => r != null && r.resourceName == resourceName);
+
+    // Severe by design: resentment, subject opinion and every local governor all suffer in proportion to the amount.
+    private static void ApplyResourceDemandAnger(VassalContract contract, int units, float resentmentPerUnit)
+    {
+        if (units <= 0) return;
+        contract.resentment = Mathf.Min(100f, contract.resentment + units * resentmentPerUnit);
+        contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion - units * ResourceDemandOpinionPerUnit, -100f, 100f);
+        if (contract.subject?.governors == null) return;
+        float anger = -Mathf.Min(ResourceDemandGovernorMax, ResourceDemandGovernorBase + units * ResourceDemandGovernorPerUnit);
+        foreach (var gov in contract.subject.governors)
+        {
+            if (gov == null) continue;
+            gov.AddGrievance(GrievanceSource.TaxIncreased);
+            gov.AddOpinionModifier("Resources Demanded by Overlord", anger, 20);
+        }
+    }
+
+    /// <summary>
+    /// One-time demand takes the goods now (and fails if the subject cannot pay). A per-turn demand sets or replaces the
+    /// contract's standing resource tribute; an amount of 0 ends it. Every demand shares the interference cooldown.
+    /// </summary>
+    public SubjectActionResult TryDemandResources(Civilization overlord, Civilization subject, ResourceData resource,
+        int amount, bool perTurn, int currentTurn)
+    {
+        var check = CanInterfere(overlord, subject, currentTurn);
+        if (!check.success) return check;
+        var contract = GetContract(overlord, subject);
+        if (resource == null) return SubjectActionResult.Fail("Choose a resource to demand.");
+        amount = Mathf.Clamp(amount, 0, MaxResourceDemand);
+
+        if (!perTurn)
+        {
+            if (amount <= 0) return SubjectActionResult.Fail("Choose an amount to demand.");
+            if (subject.GetResourceCount(resource) < amount)
+                return SubjectActionResult.Fail($"{contract.subjectCivName} does not have {amount} {resource.resourceName}.");
+            if (!subject.ConsumeResource(resource, amount)) return SubjectActionResult.Fail("The goods could not be taken.");
+            overlord.AddResource(resource, amount);
+            ApplyResourceDemandAnger(contract, amount, ResourceDemandResentmentPerUnit);
+        }
+        else if (amount == 0)
+        {
+            if (contract.resourceTribute == null || contract.resourceTributePerTurn <= 0)
+                return SubjectActionResult.Fail("There is no standing resource demand to end.");
+            contract.resourceTribute = null;
+            contract.resourceTributePerTurn = 0;
+            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + ResourceTributeEndedOpinion, -100f, 100f);
+        }
+        else
+        {
+            bool sameResource = contract.resourceTribute == resource;
+            if (sameResource && contract.resourceTributePerTurn == amount)
+                return SubjectActionResult.Fail("That resource demand is already in force.");
+            int added = sameResource ? Mathf.Max(0, amount - contract.resourceTributePerTurn) : amount;
+            contract.resourceTribute = resource;
+            contract.resourceTributePerTurn = amount;
+            ApplyResourceDemandAnger(contract, added, ResourceTributeResentmentPerUnit);
+        }
+
+        contract.lastInterferenceTurn = currentTurn;
         RaiseContractChanged(overlord, subject);
         return SubjectActionResult.Ok();
     }
@@ -691,7 +770,8 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         // Positive rejects: strength and valuable tribute. Negative accepts: overextension,
         // confident rebels, hostile opinion, and extreme liberty desire.
         return (overlordStrength-subjectStrength)*8f
-            +(contract.goldTributePct+contract.scienceTributePct+contract.foodTributePct)*100f
+            +(contract.goldTributePct+contract.foodTributePct)*100f
+            +contract.resourceTributePerTurn*5f
             -otherWars*18f-contract.militaryConfidence*.25f-contract.libertyDesire*.15f
             +contract.subjectOpinion*.10f;
     }
@@ -749,8 +829,9 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         public string overlordCivName;
         public string subjectCivName;
         public float goldTributePct;
-        public float scienceTributePct;
         public float foodTributePct;
+        public string resourceTributeName;
+        public int resourceTributePerTurn;
         public int militaryObligationCount;
         public int autonomyLevel;
         public string religionRule;
@@ -781,8 +862,9 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 overlordCivName       = c.overlordCivName,
                 subjectCivName        = c.subjectCivName,
                 goldTributePct        = c.goldTributePct,
-                scienceTributePct     = c.scienceTributePct,
                 foodTributePct        = c.foodTributePct,
+                resourceTributeName   = c.resourceTribute != null ? c.resourceTribute.resourceName : null,
+                resourceTributePerTurn = c.resourceTributePerTurn,
                 militaryObligationCount = c.militaryObligationCount,
                 autonomyLevel         = c.autonomyLevel,
                 religionRule          = c.religionRule.ToString(),
@@ -833,8 +915,9 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 overlordCivName       = cd.overlordCivName,
                 subjectCivName        = cd.subjectCivName,
                 goldTributePct        = cd.goldTributePct,
-                scienceTributePct     = cd.scienceTributePct,
                 foodTributePct        = cd.foodTributePct,
+                resourceTribute       = FindResource(cd.resourceTributeName),
+                resourceTributePerTurn = cd.resourceTributePerTurn,
                 militaryObligationCount = cd.militaryObligationCount,
                 autonomyLevel         = cd.autonomyLevel,
                 religionRule          = System.Enum.TryParse<ReligionToleranceRule>(cd.religionRule, out var rule) ? rule : ReligionToleranceRule.FullTolerance,

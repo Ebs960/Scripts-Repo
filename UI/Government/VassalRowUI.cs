@@ -36,5 +36,10 @@ public class VassalRowUI : MonoBehaviour
     }
 
     public static string FormatTribute(VassalContract c)
-        => $"Gold {c.goldTributePct:P0} • Science {c.scienceTributePct:P0} • Food {c.foodTributePct:P0}";
+    {
+        string text = $"Gold {c.goldTributePct:P0} \u2022 Food {c.foodTributePct:P0}";
+        if (c.resourceTribute != null && c.resourceTributePerTurn > 0)
+            text += $" \u2022 {c.resourceTributePerTurn} {c.resourceTribute.resourceName}/turn";
+        return text;
+    }
 }
