@@ -336,7 +336,6 @@ public class DiplomacyManager : MonoBehaviour
             bool capitulated = (bStr / aStr) < 0.5f;
             SubjectManager.Instance.CreateContract(a, b,
                 goldPct:     0.10f,
-                autonomy:    50,
                 capitulated: capitulated,
                 currentTurn: currentTurn);
         }
@@ -502,8 +501,8 @@ public class DiplomacyManager : MonoBehaviour
             RecordStateChangeEvents(a, b, oldState, state);
         }
 
-        // If an overlord declares war, drag in subjects whose autonomy is below threshold.
-        // If peace is made, subjects follow unless they have high autonomy.
+        // If an overlord declares war, drag in its subjects.
+        // If peace is made, subjects follow.
         if (state == DiplomaticState.War && SubjectManager.Instance != null)
         {
             DragSubjectsIntoWar(a, b);
@@ -529,7 +528,7 @@ public class DiplomacyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// When 'overlord' goes to war with 'target', drag subjects (autonomy &lt; 80) into the war.
+    /// When 'overlord' goes to war with 'target', drag its subjects into the war.
     /// </summary>
     private void DragSubjectsIntoWar(Civilization overlord, Civilization target)
     {
@@ -559,7 +558,7 @@ public class DiplomacyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// When 'a' and 'b' make peace, subjects of each follow if autonomy is below 75.
+    /// When 'a' and 'b' make peace, subjects of each follow.
     /// </summary>
     private void DragSubjectsIntoPeace(Civilization a, Civilization b)
     {
@@ -571,7 +570,6 @@ public class DiplomacyManager : MonoBehaviour
             {
                 var subject = contract.subject;
                 if (subject == null) continue;
-                if (contract.autonomyLevel >= 75) continue; // high-autonomy subjects make their own peace
                 var other = civ == a ? b : a;
                 if (!relations.ContainsKey(subject)) continue;
                 if (relations[subject].GetValueOrDefault(other, DiplomaticState.Peace) != DiplomaticState.War) continue;

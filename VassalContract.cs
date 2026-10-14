@@ -32,9 +32,7 @@ public class VassalContract
     /// <summary>Number of combat units the subject is expected to provide during declared wars.</summary>
     public int militaryObligationCount = 2;
 
-    // ── Autonomy & Interference ───────────────────────────────────────────────
-    /// <summary>Subject autonomy level 0–100. Higher = more self-governing; less tribute scrutiny.</summary>
-    [Range(0, 100)] public int autonomyLevel = 50;
+    // ── Interference ──────────────────────────────────────────────────────────
     /// <summary>How the overlord treats the subject's local religion.</summary>
     public ReligionToleranceRule religionRule = ReligionToleranceRule.FullTolerance;
     /// <summary>The last game turn on which the overlord interfered. Cooldown prevents stacking.</summary>
@@ -118,9 +116,6 @@ public class VassalContract
 
         // Distance from the overlord's capital weakens direct control.
         delta += PoliticalDistanceUtility.GetVassalDistanceLibertyPressure(this);
-
-        // Autonomy level slows growth
-        delta *= Mathf.Lerp(1.5f, 0.5f, autonomyLevel / 100f);
 
         libertyDesire = Mathf.Clamp(libertyDesire + delta, 0f, 100f);
 

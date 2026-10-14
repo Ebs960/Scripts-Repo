@@ -274,7 +274,6 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 options = new List<PoliticalEventOption>
                 {
                     new PoliticalEventOption { optionId = "reduce_tribute", label = "Reduce Tribute", summary = "Lower tribute and calm the subject." },
-                    new PoliticalEventOption { optionId = "grant_autonomy", label = "Grant Autonomy", summary = "Increase self-rule to reduce unrest." },
                     new PoliticalEventOption { optionId = "refuse", label = "Refuse", summary = "Keep pressure high and risk rebellion." },
                 }
             });
@@ -438,12 +437,6 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - 8f, 0f, 100f);
                 contract.resentment = Mathf.Max(0f, contract.resentment - 8f);
                 UIManager.Instance?.ShowNotification($"Tribute reduced for {subject.civData?.civName ?? subject.name}.");
-                break;
-            case "grant_autonomy":
-                contract.autonomyLevel = Mathf.Clamp(contract.autonomyLevel + 10, 0, 100);
-                contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + 18f, -100f, 100f);
-                contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - 12f, 0f, 100f);
-                UIManager.Instance?.ShowNotification($"Autonomy granted to {subject.civData?.civName ?? subject.name}.");
                 break;
             default:
                 contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion - 15f, -100f, 100f);

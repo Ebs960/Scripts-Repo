@@ -33,10 +33,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     private const float TributeReliefReferenceStep = 0.05f;
     private const float TributeReliefOpinion = 8f;
     private const float TributeReliefLiberty = 5f;
-    private const float AutonomyReductionResentmentPerPoint = 0.5f;
-    private const int AutonomyGrievanceThresholdPoints = 10;
-    private const float AutonomyGrantOpinionPerPoint = 1.8f;
-    private const float AutonomyGrantLibertyPerPoint = 1.2f;
     private const float MilitaryObligationResentmentPerUnit = 3f;
     private const float ReligionTighteningResentmentPerStep = 10f;
     private const float ReligionRelaxOpinionPerStep = 6f;
@@ -120,7 +116,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     public VassalContract CreateContract(
         Civilization overlord, Civilization subject,
         float goldPct = 0.10f,
-        int autonomy = 50, bool capitulated = false, int currentTurn = 0)
+        bool capitulated = false, int currentTurn = 0)
     {
         if (overlord == null || subject == null || overlord == subject) return null;
         // Remove any pre-existing contract
@@ -133,7 +129,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
             overlordCivName  = overlord.civData?.civName ?? overlord.name,
             subjectCivName   = subject.civData?.civName ?? subject.name,
             goldTributePct   = goldPct,
-            autonomyLevel    = autonomy,
             isCapitulated    = capitulated,
             contractStartTurn = currentTurn,
         };
@@ -144,7 +139,7 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         subject.SetRelation(overlord, DiplomaticState.Vassal);
 
         Debug.Log($"[SubjectManager] Vassal contract created: {contract.overlordCivName} → {contract.subjectCivName} " +
-                  $"(gold {goldPct:P0}, autonomy {autonomy})");
+                  $"(gold {goldPct:P0})");
         RaiseContractChanged(overlord, subject);
         return contract;
     }
@@ -259,29 +254,8 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     {
         var contract = GetOverlordContract(subject);
         if (contract == null) return true;
-        // Subject can only declare war if overlord is also at war with target, or autonomy is very high
-        if (contract.autonomyLevel >= 80) return true;
+        // Subject can only declare war if its overlord is also at war with the target
         return contract.overlord.relations.TryGetValue(target, out var state) && state == DiplomaticState.War;
-    }
-
-    /// <summary>Can this subject civ form an alliance with another civ?</summary>
-    public bool CanFormAlliance(Civilization subject, Civilization ally)
-    {
-        var contract = GetOverlordContract(subject);
-        if (contract == null) return true;
-        if (contract.autonomyLevel >= 75) return true;
-        // Cannot ally with overlord's enemies
-        if (contract.overlord.relations.TryGetValue(ally, out var state) && state == DiplomaticState.War)
-            return false;
-        return true;
-    }
-
-    /// <summary>Can this subject civ found a new city?</summary>
-    public bool CanFoundCity(Civilization subject)
-    {
-        var contract = GetOverlordContract(subject);
-        if (contract == null) return true;
-        return contract.autonomyLevel >= 60;
     }
 
     /// <summary>Can this subject civ independently change their state religion?</summary>
@@ -551,35 +525,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         return SubjectActionResult.Ok();
     }
 
-    public SubjectActionResult TrySetAutonomy(Civilization overlord, Civilization subject, int autonomy, int currentTurn)
-    {
-        var check = CanInterfere(overlord, subject, currentTurn);
-        if (!check.success) return check;
-        var contract = GetContract(overlord, subject);
-
-        autonomy = Mathf.Clamp(autonomy, 0, 100);
-        int delta = autonomy - contract.autonomyLevel;
-        if (delta == 0) return SubjectActionResult.Fail("Autonomy is unchanged.");
-
-        contract.autonomyLevel = autonomy;
-        contract.lastInterferenceTurn = currentTurn;
-        if (delta < 0)
-        {
-            contract.resentment = Mathf.Min(100f, contract.resentment - delta * AutonomyReductionResentmentPerPoint);
-            if (-delta >= AutonomyGrievanceThresholdPoints && subject.governors != null)
-                foreach (var gov in subject.governors)
-                    gov?.AddGrievance(GrievanceSource.PrivilegeRevoked);
-        }
-        else
-        {
-            contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + delta * AutonomyGrantOpinionPerPoint, -100f, 100f);
-            contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - delta * AutonomyGrantLibertyPerPoint, 0f, 100f);
-        }
-
-        RaiseContractChanged(overlord, subject);
-        return SubjectActionResult.Ok();
-    }
-
     public SubjectActionResult TrySetMilitaryObligation(Civilization overlord, Civilization subject, int count, int currentTurn)
     {
         var check = CanInterfere(overlord, subject, currentTurn);
@@ -833,7 +778,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
         public string resourceTributeName;
         public int resourceTributePerTurn;
         public int militaryObligationCount;
-        public int autonomyLevel;
         public string religionRule;
         public int lastInterferenceTurn;
         public float libertyDesire;
@@ -866,7 +810,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 resourceTributeName   = c.resourceTribute != null ? c.resourceTribute.resourceName : null,
                 resourceTributePerTurn = c.resourceTributePerTurn,
                 militaryObligationCount = c.militaryObligationCount,
-                autonomyLevel         = c.autonomyLevel,
                 religionRule          = c.religionRule.ToString(),
                 lastInterferenceTurn  = c.lastInterferenceTurn,
                 libertyDesire         = c.libertyDesire,
@@ -919,7 +862,6 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
                 resourceTribute       = FindResource(cd.resourceTributeName),
                 resourceTributePerTurn = cd.resourceTributePerTurn,
                 militaryObligationCount = cd.militaryObligationCount,
-                autonomyLevel         = cd.autonomyLevel,
                 religionRule          = System.Enum.TryParse<ReligionToleranceRule>(cd.religionRule, out var rule) ? rule : ReligionToleranceRule.FullTolerance,
                 lastInterferenceTurn  = cd.lastInterferenceTurn,
                 libertyDesire         = cd.libertyDesire,

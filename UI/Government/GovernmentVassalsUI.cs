@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Overlord management of vassal contracts: tribute, autonomy, military obligation, religious policy, release, and
+/// Overlord management of vassal contracts: tribute, military obligation, religious policy, release, and
 /// independence demands. Every change goes through SubjectManager and is confirmed with its consequences first.
 /// </summary>
 public class GovernmentVassalsUI : GovernmentScreenBase
@@ -42,11 +42,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
     [SerializeField] private Slider resourceAmountSlider;
     [SerializeField] private TMP_Text resourceAmountText;
     [SerializeField] private Button applyResourceButton;
-
-    [Header("Autonomy")]
-    [SerializeField] private Slider autonomySlider;
-    [SerializeField] private TMP_Text autonomyValueText;
-    [SerializeField] private Button applyAutonomyButton;
 
     [Header("Military obligation")]
     [SerializeField] private Slider obligationSlider;
@@ -115,13 +110,11 @@ public class GovernmentVassalsUI : GovernmentScreenBase
 
         ConfigureSlider(goldSlider, 0f, SubjectManager.MaxTributePct, false);
         ConfigureSlider(foodSlider, 0f, SubjectManager.MaxTributePct, false);
-        ConfigureSlider(autonomySlider, 0f, 100f, true);
         ConfigureSlider(obligationSlider, 0f, SubjectManager.MaxMilitaryObligation, true);
         ConfigureSlider(resourceAmountSlider, 0f, SubjectManager.MaxResourceDemand, true);
 
         if (goldSlider != null) goldSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (foodSlider != null) foodSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
-        if (autonomySlider != null) autonomySlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (obligationSlider != null) obligationSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
         if (resourceAmountSlider != null) resourceAmountSlider.onValueChanged.AddListener(_ => UpdateSliderLabels());
 
@@ -141,7 +134,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         }
 
         GovernmentUiUtil.SetClick(applyTributeButton, OnApplyTribute);
-        GovernmentUiUtil.SetClick(applyAutonomyButton, OnApplyAutonomy);
         GovernmentUiUtil.SetClick(applyObligationButton, OnApplyObligation);
         GovernmentUiUtil.SetClick(applyReligionButton, OnApplyReligion);
         GovernmentUiUtil.SetClick(applyResourceButton, OnApplyResource);
@@ -195,14 +187,12 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetText(cooldownText, check.success ? "Terms can be changed now." : check.reason);
         if (goldSlider != null) goldSlider.interactable = check.success;
         if (foodSlider != null) foodSlider.interactable = check.success;
-        if (autonomySlider != null) autonomySlider.interactable = check.success;
         if (obligationSlider != null) obligationSlider.interactable = check.success;
         if (religionRuleDropdown != null) religionRuleDropdown.interactable = check.success;
         if (resourceDropdown != null) resourceDropdown.interactable = check.success;
         if (resourceModeDropdown != null) resourceModeDropdown.interactable = check.success;
         if (resourceAmountSlider != null) resourceAmountSlider.interactable = check.success;
         GovernmentUiUtil.SetInteractable(applyTributeButton, check.success);
-        GovernmentUiUtil.SetInteractable(applyAutonomyButton, check.success);
         GovernmentUiUtil.SetInteractable(applyObligationButton, check.success);
         GovernmentUiUtil.SetInteractable(applyReligionButton, check.success);
         GovernmentUiUtil.SetInteractable(applyResourceButton, check.success && resourceOptions.Count > 0);
@@ -210,7 +200,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         // Reset editors to the live contract values each refresh so they never show stale proposals.
         if (goldSlider != null) goldSlider.SetValueWithoutNotify(contract.goldTributePct);
         if (foodSlider != null) foodSlider.SetValueWithoutNotify(contract.foodTributePct);
-        if (autonomySlider != null) autonomySlider.SetValueWithoutNotify(contract.autonomyLevel);
         if (obligationSlider != null) obligationSlider.SetValueWithoutNotify(contract.militaryObligationCount);
         if (religionRuleDropdown != null) religionRuleDropdown.SetValueWithoutNotify((int)contract.religionRule);
         bool standingDemand = contract.resourceTribute != null && contract.resourceTributePerTurn > 0;
@@ -241,7 +230,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         GovernmentUiUtil.SetText(goldValueText, goldSlider != null ? $"{goldSlider.value:P0}" : string.Empty);
         GovernmentUiUtil.SetText(foodValueText, foodSlider != null ? $"{foodSlider.value:P0}" : string.Empty);
         GovernmentUiUtil.SetText(resourceAmountText, resourceAmountSlider != null ? $"{Mathf.RoundToInt(resourceAmountSlider.value)}" : string.Empty);
-        GovernmentUiUtil.SetText(autonomyValueText, autonomySlider != null ? $"{Mathf.RoundToInt(autonomySlider.value)}" : string.Empty);
         GovernmentUiUtil.SetText(obligationValueText, obligationSlider != null ? $"{Mathf.RoundToInt(obligationSlider.value)} units" : string.Empty);
     }
 
@@ -296,27 +284,6 @@ public class GovernmentVassalsUI : GovernmentScreenBase
         };
         Confirm($"Change tribute from {contract.subjectCivName}?", CooldownNote(contract), "Apply", lines, () =>
             Report(SubjectManager.Instance.TrySetTributeTerms(civ, subject, gold, food, SubjectManager.Instance.CurrentTurn), "Tribute terms updated."));
-    }
-
-    private void OnApplyAutonomy()
-    {
-        var contract = SelectedContract();
-        if (contract == null || autonomySlider == null) return;
-        int autonomy = Mathf.RoundToInt(autonomySlider.value);
-        int delta = autonomy - contract.autonomyLevel;
-        if (delta == 0) { GovernmentUiUtil.SetText(statusText, "Autonomy is unchanged."); return; }
-
-        var subject = contract.subject;
-        var lines = new List<PoliticalEffectLine>
-        {
-            Line("Autonomy", $"{contract.autonomyLevel} -> {autonomy}"),
-            delta > 0
-                ? Line("Their opinion and liberty", "Opinion rises, liberty desire falls", beneficial: true)
-                : Line("Resentment", "Grows with every point removed", harmful: true),
-        };
-        if (delta <= -10) lines.Add(Line("Their governors", "Lose a privilege and gain a grievance", harmful: true));
-        Confirm($"Change autonomy of {contract.subjectCivName}?", CooldownNote(contract), "Apply", lines, () =>
-            Report(SubjectManager.Instance.TrySetAutonomy(civ, subject, autonomy, SubjectManager.Instance.CurrentTurn), "Autonomy updated."));
     }
 
     private void OnApplyObligation()

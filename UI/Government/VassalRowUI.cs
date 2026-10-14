@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Authored vassal card: realm name, liberty desire, effective opinion, autonomy and tribute summary.</summary>
+/// <summary>Authored vassal card: realm name, liberty desire, effective opinion and tribute summary.</summary>
 public class VassalRowUI : MonoBehaviour
 {
     [SerializeField] private Button button;
@@ -11,7 +11,6 @@ public class VassalRowUI : MonoBehaviour
     [SerializeField] private Image civIconImage;
     [SerializeField] private TMP_Text libertyText;
     [SerializeField] private TMP_Text opinionText;
-    [SerializeField] private TMP_Text autonomyText;
     [SerializeField] private TMP_Text tributeText;
     [SerializeField] private Graphic selectedHighlightGraphic;
     [SerializeField] private GameObject restlessMarker;
@@ -27,7 +26,6 @@ public class VassalRowUI : MonoBehaviour
         GovernmentUiUtil.SetText(nameText, contract.subjectCivName);
         GovernmentUiUtil.SetText(libertyText, $"Liberty {contract.libertyDesire:0}/{contract.EffectiveBreakawayThreshold:0}");
         GovernmentUiUtil.SetText(opinionText, $"Opinion {GovernmentUiUtil.Signed(opinion)}");
-        GovernmentUiUtil.SetText(autonomyText, $"Autonomy {contract.autonomyLevel}");
         GovernmentUiUtil.SetText(tributeText, FormatTribute(contract));
         GovernmentUiUtil.SetActive(restlessMarker, restless);
         if (selectedHighlightGraphic != null)
