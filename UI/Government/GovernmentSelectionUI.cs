@@ -18,6 +18,7 @@ public class GovernmentSelectionUI : GovernmentScreenBase
 
     [Header("Detail")]
     [SerializeField] private GameObject detailRoot;
+    [SerializeField] private Image selectedGovernmentIcon;
     [SerializeField] private Image selectedGovernmentArtwork;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text descriptionText;
@@ -110,6 +111,7 @@ public class GovernmentSelectionUI : GovernmentScreenBase
         if (selected == null) return;
 
         var evaluation = PolicyManager.Instance.EvaluateGovernment(civ, selected);
+        GovernmentUiUtil.SetImage(selectedGovernmentIcon, selected.icon);
         GovernmentUiUtil.SetImage(selectedGovernmentArtwork, selected.governmentArtwork != null ? selected.governmentArtwork : selected.icon);
         GovernmentUiUtil.SetText(nameText, GovernmentPresentation.NameOf(selected));
         GovernmentUiUtil.SetText(descriptionText, selected.description);
