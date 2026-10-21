@@ -15,18 +15,15 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private Transform listRoot;
     [SerializeField] private GovernorRowUI rowPrefab;
     [SerializeField] private ScrollRect listScroll;
-    [SerializeField] private TMP_Text rosterHeaderText;
     [SerializeField] private TMP_Text emptyText;
 
     [Header("Candidates")]
-    [SerializeField] private GameObject candidatesRoot;
     [SerializeField] private Transform candidatesListRoot;
     [SerializeField] private ScrollRect candidatesScroll;
     [SerializeField] private GovernorCandidateRowUI candidateRowPrefab;
     [SerializeField] private TMP_Text candidateStatusText;
 
     [Header("Detail")]
-    [SerializeField] private GameObject detailRoot;
     [SerializeField] private Image portraitImage;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text identityText;
@@ -37,8 +34,7 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text grievancesText;
 
     [Header("Political Status")]
-    [SerializeField] private PoliticalLineRowUI lineRowPrefab;
-    [SerializeField] private Transform opinionModifiersRoot;
+    [SerializeField] private TMP_Text opinionModifiersText;
 
     [Header("Holdings")]
     [SerializeField] private ScrollRect citiesScroll;
@@ -48,7 +44,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private GovernorHoldingRowUI holdingRowPrefab;
 
     [Header("Council actions")]
-    [SerializeField] private GameObject councilActionsRoot;
     [SerializeField] private Button grantSeatButton;
     [SerializeField] private TMP_Text grantSeatLabel;
     [SerializeField] private Button removeSeatButton;
@@ -64,14 +59,12 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
     [SerializeField] private TMP_Text personalActionStatusText;
 
     [Header("Suppressed politics")]
-    [SerializeField] private GameObject suppressedNoticeRoot;
     [SerializeField] private TMP_Text suppressedNoticeText;
 
     private readonly List<GovernorRowUI> rows = new List<GovernorRowUI>();
     private readonly List<GovernorCandidateRowUI> candidateRows = new List<GovernorCandidateRowUI>();
     private readonly List<GovernorHoldingRowUI> cityHoldingRows = new List<GovernorHoldingRowUI>();
     private readonly List<GovernorHoldingRowUI> herdHoldingRows = new List<GovernorHoldingRowUI>();
-    private PoliticalLineList opinionModifiers;
     private int selectedGovernorId = -1;
     private bool hasRequestedFocus;
     private bool resetHoldingScroll;
@@ -99,7 +92,6 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         EnsureWired();
 
         string plural = GovernmentPresentation.GetGovernorTitlePlural(civ);
-        GovernmentUiUtil.SetText(rosterHeaderText, $"{plural} ({GovernmentPresentation.FormatGovernorCap(civ)})");
 
         var governors = civ.governors.Where(g => g != null).ToList();
         var selected = governors.FirstOrDefault(g => g.Id == selectedGovernorId) ?? governors.FirstOrDefault();
@@ -115,9 +107,9 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
             : string.Empty);
 
         bool suppressed = civ.currentGovernment != null && civ.currentGovernment.suppressConventionalPolitics;
-        GovernmentUiUtil.SetActive(suppressedNoticeRoot, suppressed);
-        if (suppressed)
-            GovernmentUiUtil.SetText(suppressedNoticeText, $"{GovernmentPresentation.NameOf(civ.currentGovernment)} suppresses conventional politics; factions and councils are inactive.");
+        GovernmentUiUtil.SetText(suppressedNoticeText, suppressed
+            ? $"{GovernmentPresentation.NameOf(civ.currentGovernment)} suppresses conventional politics; factions and councils are inactive."
+            : string.Empty);
 
         RefreshCandidates();
         RefreshDetail(selected);
@@ -154,16 +146,17 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
 
     private void RefreshCandidates()
     {
-        bool visible = civ.governorsEnabled;
-        GovernmentUiUtil.SetActive(candidatesRoot, visible);
-        if (!visible) return;
-        var candidates = (civ.governorCandidates ?? new List<GovernorCandidate>()).Where(c => c != null).ToList();
-        bool canAppoint = civ.governors.Count < civ.governorCount;
+        bool enabled = civ.governorsEnabled;
+        var candidates = enabled
+            ? (civ.governorCandidates ?? new List<GovernorCandidate>()).Where(c => c != null).ToList()
+            : new List<GovernorCandidate>();
+        bool canAppoint = enabled && civ.governors.Count < civ.governorCount;
         float scroll = GovernmentUiUtil.CaptureScroll(candidatesScroll);
         GovernmentUiUtil.FillList(candidatesListRoot, candidateRowPrefab, candidateRows, candidates,
             (row, candidate) => row.Bind(civ, candidate, canAppoint, RequestAppointment));
         GovernmentUiUtil.RestoreScroll(candidatesScroll, scroll);
-        GovernmentUiUtil.SetText(candidateStatusText, canAppoint ? (candidates.Count == 0 ? "No candidates are currently available." : string.Empty)
+        GovernmentUiUtil.SetText(candidateStatusText, !enabled ? string.Empty
+            : canAppoint ? (candidates.Count == 0 ? "No candidates are currently available." : string.Empty)
             : $"Governor capacity reached ({civ.governors.Count}/{civ.governorCount})");
     }
 
@@ -200,10 +193,15 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
 
     private void RefreshDetail(Governor governor)
     {
-        GovernmentUiUtil.SetActive(detailRoot, governor != null);
-        if (governor == null) return;
-
         string institution = GovernmentPresentation.GetInstitutionName(civ);
+        GovernmentUiUtil.SetText(grantSeatLabel, $"Grant {institution} Seat");
+        GovernmentUiUtil.SetText(removeSeatLabel, $"Remove From {institution}");
+        if (governor == null)
+        {
+            ClearDetail();
+            return;
+        }
+
         GovernmentUiUtil.SetImage(portraitImage, GovernorPortraitService.GetSprite(governor.PortraitId));
         GovernmentUiUtil.SetText(nameText, GovernmentPresentation.FormatGovernorName(civ, governor));
         string personalities = governor.PersonalityTraits.Count > 0 ? string.Join(" • ", governor.PersonalityTraits) : "No notable personality";
@@ -218,19 +216,14 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
             ? "No grievances"
             : string.Join("\n", governor.Grievances.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} x{kv.Value}")));
 
-        opinionModifiers ??= new PoliticalLineList(opinionModifiersRoot, lineRowPrefab);
-        opinionModifiers.Show(governor.OpinionModifiers, (row, m) => row.BindText(m.reason, GovernmentUiUtil.Signed(m.value)));
+        GovernmentUiUtil.SetText(opinionModifiersText, string.Join("\n",
+            governor.OpinionModifiers.Select(m => $"{m.reason}: {GovernmentUiUtil.Signed(m.value)}")));
         RefreshHoldings(governor);
 
-        GovernmentUiUtil.SetActive(councilActionsRoot, civ.HasRoyalCouncil);
-        GovernmentUiUtil.SetText(grantSeatLabel, $"Grant {institution} Seat");
-        GovernmentUiUtil.SetText(removeSeatLabel, $"Remove From {institution}");
         bool canGrant = PoliticalActionRules.CanGrantCouncilSeat(civ, governor, out string grantReason);
         bool canRemove = PoliticalActionRules.CanRemoveFromCouncil(civ, governor, out string removeReason);
         GovernmentUiUtil.SetInteractable(grantSeatButton, canGrant);
         GovernmentUiUtil.SetInteractable(removeSeatButton, canRemove);
-        GovernmentUiUtil.SetActive(grantSeatButton != null ? grantSeatButton.gameObject : null, !governor.IsOnCouncil);
-        GovernmentUiUtil.SetActive(removeSeatButton != null ? removeSeatButton.gameObject : null, governor.IsOnCouncil);
         GovernmentUiUtil.SetText(councilReasonText, governor.IsOnCouncil ? (canRemove ? string.Empty : removeReason) : (canGrant ? string.Empty : grantReason));
 
         bool canGift = PoliticalActionRules.CanSendGovernorGift(civ, governor, out string giftReason);
@@ -243,6 +236,23 @@ public class GovernmentGovernorsUI : GovernmentScreenBase
         GovernmentUiUtil.SetInteractable(pressureButton, canPressure);
         GovernmentUiUtil.SetInteractable(pardonButton, canPardon);
         GovernmentUiUtil.SetInteractable(dismissButton, canDismiss);
+    }
+
+    private void ClearDetail()
+    {
+        GovernmentUiUtil.SetImage(portraitImage, null);
+        foreach (var text in new[]
+        {
+            nameText, identityText, statsText, characterText, politicalIdentityText, politicalStatusText,
+            grievancesText, opinionModifiersText, councilReasonText, personalActionStatusText,
+        })
+            GovernmentUiUtil.SetText(text, string.Empty);
+
+        GovernmentUiUtil.FillList(citiesRoot, holdingRowPrefab, cityHoldingRows, new List<City>(), (row, city) => { });
+        GovernmentUiUtil.FillList(herdsRoot, holdingRowPrefab, herdHoldingRows, new List<Herd>(), (row, herd) => { });
+
+        foreach (var button in new[] { grantSeatButton, removeSeatButton, giftButton, convertButton, pressureButton, pardonButton, dismissButton })
+            GovernmentUiUtil.SetInteractable(button, false);
     }
 
     private void OnGrantSeatClicked()

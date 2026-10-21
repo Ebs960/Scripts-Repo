@@ -12,12 +12,12 @@ public class GovernmentSelectionUI : GovernmentScreenBase
 {
     [Header("List")]
     [SerializeField] private Transform listRoot;
-    [SerializeField] private GovernmentTypeRowUI rowPrefab;
+    [SerializeField] private GovernmentSelectionOptionUI rowPrefab;
     [SerializeField] private ScrollRect listScroll;
     [SerializeField] private TMP_Text emptyText;
 
     [Header("Detail")]
-    [SerializeField] private GameObject detailRoot;
+    [SerializeField] private Image selectedGovernmentIcon;
     [SerializeField] private Image selectedGovernmentArtwork;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text descriptionText;
@@ -29,21 +29,20 @@ public class GovernmentSelectionUI : GovernmentScreenBase
     [SerializeField] private TMP_Text councilStructureText;
     [SerializeField] private TMP_Text electionStructureText;
     [SerializeField] private TMP_Text titlesText;
+    [SerializeField] private TMP_Text unlocksText;
     [SerializeField] private TMP_Text failureText;
     [SerializeField] private TMP_Text actionStatusText;
 
-    [Header("Detail lists (rows come from the line prefab)")]
-    [SerializeField] private PoliticalLineRowUI lineRowPrefab;
-    [SerializeField] private Transform effectsRoot;
-    [SerializeField] private Transform requirementsRoot;
-    [SerializeField] private Transform reactionsRoot;
+    [Header("Detail lists (plain text, one line per entry)")]
+    [SerializeField] private TMP_Text effectsText;
+    [SerializeField] private TMP_Text requirementsText;
+    [SerializeField] private TMP_Text reactionsText;
 
     [Header("Council outlook")]
     [SerializeField] private CouncilOutlookWidget councilOutlook = new CouncilOutlookWidget();
 
     [Header("Action")]
     [SerializeField] private Button adoptButton;
-    [SerializeField] private TMP_Text adoptButtonLabel;
 
     private struct Entry
     {
@@ -51,8 +50,7 @@ public class GovernmentSelectionUI : GovernmentScreenBase
         public GovernmentAdoptionEvaluation evaluation;
     }
 
-    private readonly List<GovernmentTypeRowUI> rows = new List<GovernmentTypeRowUI>();
-    private PoliticalLineList effects, requirements, reactions;
+    private readonly List<GovernmentSelectionOptionUI> rows = new List<GovernmentSelectionOptionUI>();
     private GovernmentData selected;
     private bool wired;
 
@@ -69,7 +67,7 @@ public class GovernmentSelectionUI : GovernmentScreenBase
 
         float scroll = GovernmentUiUtil.CaptureScroll(listScroll);
         GovernmentUiUtil.FillList(listRoot, rowPrefab, rows, entries,
-            (row, entry) => row.Bind(entry.government, entry.evaluation, entry.government == selected, Select));
+            (row, entry) => row.Bind(entry.government, Select));
         GovernmentUiUtil.RestoreScroll(listScroll, scroll);
         GovernmentUiUtil.SetText(emptyText, entries.Count == 0 ? "No governments are available yet." : string.Empty);
 
@@ -106,10 +104,14 @@ public class GovernmentSelectionUI : GovernmentScreenBase
 
     private void RefreshDetail()
     {
-        GovernmentUiUtil.SetActive(detailRoot, selected != null);
-        if (selected == null) return;
+        if (selected == null)
+        {
+            ClearDetail();
+            return;
+        }
 
         var evaluation = PolicyManager.Instance.EvaluateGovernment(civ, selected);
+        GovernmentUiUtil.SetImage(selectedGovernmentIcon, selected.icon);
         GovernmentUiUtil.SetImage(selectedGovernmentArtwork, selected.governmentArtwork != null ? selected.governmentArtwork : selected.icon);
         GovernmentUiUtil.SetText(nameText, GovernmentPresentation.NameOf(selected));
         GovernmentUiUtil.SetText(descriptionText, selected.description);
@@ -121,13 +123,11 @@ public class GovernmentSelectionUI : GovernmentScreenBase
         GovernmentUiUtil.SetText(councilStructureText, PoliticalEffectSummaryBuilder.DescribeCouncilStructure(selected));
         GovernmentUiUtil.SetText(electionStructureText, PoliticalEffectSummaryBuilder.DescribeElectionStructure(selected));
         GovernmentUiUtil.SetText(titlesText, DescribeTitles(selected));
+        GovernmentUiUtil.SetText(unlocksText, DescribeUnlocks(selected));
 
-        effects ??= new PoliticalLineList(effectsRoot, lineRowPrefab);
-        requirements ??= new PoliticalLineList(requirementsRoot, lineRowPrefab);
-        reactions ??= new PoliticalLineList(reactionsRoot, lineRowPrefab);
-        effects.ShowEffects(PoliticalEffectSummaryBuilder.BuildGovernmentEffects(selected));
-        requirements.ShowRequirements(PoliticalEffectSummaryBuilder.BuildGovernmentRequirements(civ, selected));
-        reactions.ShowEffects(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(selected.governorOpinionEffects));
+        GovernmentUiUtil.SetText(effectsText, FormatEffects(PoliticalEffectSummaryBuilder.BuildGovernmentEffects(selected)));
+        GovernmentUiUtil.SetText(requirementsText, FormatRequirements(PoliticalEffectSummaryBuilder.BuildGovernmentRequirements(civ, selected)));
+        GovernmentUiUtil.SetText(reactionsText, FormatEffects(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(selected.governorOpinionEffects)));
 
         GovernmentUiUtil.SetText(failureText, evaluation.canAdopt || evaluation.isCurrentGovernment ? string.Empty : string.Join("\n", evaluation.failureReasons));
 
@@ -137,7 +137,21 @@ public class GovernmentSelectionUI : GovernmentScreenBase
             councilOutlook.Hide();
 
         GovernmentUiUtil.SetInteractable(adoptButton, evaluation.canAdopt);
-        GovernmentUiUtil.SetText(adoptButtonLabel, evaluation.isCurrentGovernment ? "Current Government" : "Adopt Government");
+    }
+
+    private void ClearDetail()
+    {
+        GovernmentUiUtil.SetImage(selectedGovernmentIcon, null);
+        GovernmentUiUtil.SetImage(selectedGovernmentArtwork, null);
+        foreach (var text in new[]
+        {
+            nameText, descriptionText, leaderTitleText, signatureText, tradeoffText, costText, stateText,
+            councilStructureText, electionStructureText, titlesText, unlocksText, failureText,
+            effectsText, requirementsText, reactionsText,
+        })
+            GovernmentUiUtil.SetText(text, string.Empty);
+        councilOutlook.Hide();
+        GovernmentUiUtil.SetInteractable(adoptButton, false);
     }
 
     private static string DescribeTitles(GovernmentData g)
@@ -145,6 +159,55 @@ public class GovernmentSelectionUI : GovernmentScreenBase
         string governors = string.IsNullOrWhiteSpace(g.governorTitlePlural) ? GovernmentPresentation.DefaultGovernorPlural : g.governorTitlePlural;
         string council = string.IsNullOrWhiteSpace(g.councilMemberTitle) ? GovernmentPresentation.DefaultCouncilMember : g.councilMemberTitle;
         return g.usesRoyalCouncil ? $"Governors are styled {governors}; council members are {council}." : $"Governors are styled {governors}.";
+    }
+
+    private static string FormatEffects(IEnumerable<PoliticalEffectLine> lines)
+    {
+        return string.Join("\n", lines.Select(l =>
+        {
+            string text = string.IsNullOrEmpty(l.value) ? l.label : $"{l.label}: {l.value}";
+            return l.harmful ? $"<color=#E06666>{text}</color>" : l.beneficial ? $"<color=#6AA84F>{text}</color>" : text;
+        }));
+    }
+
+    private static string FormatRequirements(IEnumerable<PoliticalRequirementLine> lines)
+    {
+        return string.Join("\n", lines.Select(l => l.met
+            ? $"<color=#6AA84F>[Met]</color> {l.label}"
+            : $"<color=#E06666>[Not met]</color> {l.label}"));
+    }
+
+    private static string DescribeUnlocks(GovernmentData g)
+    {
+        var buildings = ResourceCache.GetAllBuildings()
+            .Where(b => b != null && UnlockedBy(g, b.requiredGovernments, b.alternativeUnlockRequirements))
+            .Select(b => b.buildingName);
+        var combatUnits = ResourceCache.GetAllCombatUnits()
+            .Where(u => u != null && UnlockedBy(g, u.requiredGovernments, u.alternativeUnlockRequirements))
+            .Select(u => u.unitName);
+        var workerUnits = ResourceCache.GetAllWorkerUnits()
+            .Where(u => u != null && UnlockedBy(g, u.requiredGovernments, u.alternativeUnlockRequirements))
+            .Select(u => u.unitName);
+
+        var sections = new List<string>();
+        AddUnlockSection(sections, "Unique buildings", buildings);
+        AddUnlockSection(sections, "Unique units", combatUnits.Concat(workerUnits));
+        return string.Join("\n", sections);
+    }
+
+    private static bool UnlockedBy(GovernmentData g, GovernmentData[] required, UnlockRequirementOption[] alternatives)
+    {
+        if (required != null && System.Array.IndexOf(required, g) >= 0) return true;
+        if (alternatives == null) return false;
+        foreach (var option in alternatives)
+            if (option.government == g) return true;
+        return false;
+    }
+
+    private static void AddUnlockSection(List<string> sections, string heading, IEnumerable<string> names)
+    {
+        var list = names.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().OrderBy(n => n).ToList();
+        if (list.Count > 0) sections.Add($"{heading}: {string.Join(", ", list)}");
     }
 
     private void OnAdoptClicked()

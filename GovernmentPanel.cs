@@ -26,6 +26,9 @@ public class GovernmentPanel : MonoBehaviour
     [SerializeField] private Image governmentArtworkImage;
     [SerializeField] private Image governmentIconImage;
     [SerializeField] private Button governmentButton;
+    [SerializeField] private Button governorsButton;
+    [SerializeField] private Button vassalsButton;
+    [SerializeField] private Button politicsButton;
     [SerializeField] private TMP_Text leaderTitleText;
     [SerializeField] private TMP_Text policyPointsText;
 
@@ -303,6 +306,9 @@ public class GovernmentPanel : MonoBehaviour
             ? governmentButton
             : governmentArtworkImage != null ? governmentArtworkImage.GetComponent<Button>() : null;
         GovernmentUiUtil.SetClick(selectionButton, ShowGovernmentSelection);
+        GovernmentUiUtil.SetClick(governorsButton, ShowGovernors);
+        GovernmentUiUtil.SetClick(vassalsButton, ShowVassals);
+        GovernmentUiUtil.SetClick(politicsButton, ShowPolitics);
     }
 
     private void RefreshGovernors()
