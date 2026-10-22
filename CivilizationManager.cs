@@ -2942,6 +2942,10 @@ break; // Only propose one alliance per turn
     /// </summary>
     public Civilization CreateRebelFaction(City revoltedCity, string rebelName)
     {
+        var existing = civs.FirstOrDefault(c => c != null && c.civData != null
+            && string.Equals(c.civData.civName, rebelName, StringComparison.Ordinal));
+        if (existing != null) return existing;
+
         var civ = CreateRebelFaction(revoltedCity);
         if (civ != null && !string.IsNullOrEmpty(rebelName))
         {

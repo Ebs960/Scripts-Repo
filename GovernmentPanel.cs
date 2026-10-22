@@ -291,7 +291,7 @@ public class GovernmentPanel : MonoBehaviour
         GovernmentUiUtil.SetText(governmentSubtitleText, government != null ? government.description : string.Empty);
         GovernmentUiUtil.SetImage(governmentArtworkImage, government != null ? government.governmentArtwork : null);
         GovernmentUiUtil.SetImage(governmentIconImage, government != null ? government.icon : null);
-        GovernmentUiUtil.SetText(leaderTitleText, GovernmentPresentation.GetLeaderTitle(civ));
+        GovernmentUiUtil.SetText(leaderTitleText, $"{GovernmentPresentation.GetLeaderTitle(civ)} {ElectionManager.GetCurrentRulerName(civ)}".Trim());
         GovernmentUiUtil.SetText(policyPointsText, $"Policy Points: {civ.policyPoints}");
         RefreshGovernors();
         RefreshVassals();

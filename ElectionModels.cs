@@ -8,7 +8,7 @@ public enum ElectionIssueType { Economy, FoodSecurity, PublicOrder, War, Peace, 
 public class ElectionRules
 {
     public bool enabled;
-    public int termLengthTurns = 20;
+    public int termLengthTurns = 25;
     public ElectorateModel electorateModel = ElectorateModel.Broad;
     public bool incumbentEligible = true;
     public int candidateCount = 3;
@@ -18,6 +18,22 @@ public class ElectionRules
     [Range01] public float publicOpinionWeight = 0.5f;
     [Range01] public float governorEliteWeight = 0.5f;
     public int campaignLeadTurns = 2;
+}
+
+[Serializable]
+public class PublicOpinionModifier
+{
+    public string source;
+    public float value;
+    public int duration;
+    public int remainingTurns;
+}
+
+[Serializable]
+public class PublicOpinionBreakdownEntry
+{
+    public string source;
+    public float value;
 }
 
 // Marker attribute used only to document normalized serialized values without depending on Unity's RangeAttribute.
@@ -45,6 +61,8 @@ public class ElectedOfficeRecord
 {
     public string candidateId;
     public string officeholderName;
+    public int governorId = -1;
+    public string portraitId;
     public string factionName;
     public string title;
     public int electionWonTurn;
@@ -66,6 +84,11 @@ public class ElectionRecord
     public List<ElectionCandidateRecord> candidates = new List<ElectionCandidateRecord>();
     public string winnerCandidateId;
     public float winningMargin;
+    public float publicOpinionAtElection;
+    public bool playerElection;
+    public bool playerVictory;
+    public bool playerSeizedPower;
+    public string outcomeSummary;
 }
 
 [Serializable]
@@ -74,7 +97,15 @@ public class ElectionState
     public float publicApproval = 50f;
     public float governmentLegitimacy = 50f;
     public int nextElectionTurn = -1;
+    public int lastPublicOpinionUpdateTurn = -1;
     public int electionsHeld;
     public ElectedOfficeRecord currentOffice;
     public ElectionRecord activeElection;
+    public List<PublicOpinionModifier> temporaryOpinionModifiers = new List<PublicOpinionModifier>();
+    public List<PublicOpinionBreakdownEntry> opinionBreakdown = new List<PublicOpinionBreakdownEntry>();
+    public List<ElectionRecord> history = new List<ElectionRecord>();
+    public bool pendingPlayerDefeat;
+    public bool authoritarianTakeover;
+    public bool takeoverRebellionTriggered;
+    public int pendingDefeatElectionId = -1;
 }

@@ -88,7 +88,7 @@ MonoBehaviour:
   majorTradeoff: Central policy, taxation, and mobilization are deliberately weak.
   electionRules:
     enabled: 1
-    termLengthTurns: 16
+    termLengthTurns: 25
     electorateModel: 2
     incumbentEligible: 1
     candidateCount: 3

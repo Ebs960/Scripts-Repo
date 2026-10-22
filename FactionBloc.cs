@@ -483,6 +483,9 @@ public class FactionBloc
     /// Cities call their own TriggerRevolt logic; this is the coordinated version.
     /// </summary>
     public void TriggerRebellion(Civilization civ)
+        => TriggerRebellion(civ, int.MaxValue);
+
+    public void TriggerRebellion(Civilization civ, int maximumCityRevolts)
     {
         if (IsInRebellion) return;
         IsInRebellion = true;
@@ -494,13 +497,15 @@ public class FactionBloc
             ? $"{largestCity.cityName} Rebels"
             : $"{FactionName} Rebels";
 
+        int revoltsRemaining = Mathf.Max(0, maximumCityRevolts);
         foreach (var member in Members)
         {
             member.IsInRebellion = true;
-            foreach (var city in member.Cities)
+            foreach (var city in member.Cities.OrderBy(c => c != null ? c.loyalty : float.MaxValue))
             {
-                if (city == null || city.owner != civ) continue;
+                if (city == null || city.owner != civ || revoltsRemaining <= 0) continue;
                 city.TriggerRevolt(rebelName);
+                revoltsRemaining--;
             }
         }
 

@@ -1036,6 +1036,7 @@ if (UIManager.Instance != null)
         owner = rebelCiv;
         rebelCiv.AddCity(this);
         governor = null;
+        DiplomacyManager.Instance?.SetState(oldOwner, rebelCiv, DiplomaticState.War);
         RefreshCityVisual();
 
         // 4) Reassign any garrisoned units (those on the city tile)

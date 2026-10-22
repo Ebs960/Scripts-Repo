@@ -126,6 +126,10 @@ public class GovernmentData : ScriptableObject
     [Header("Systemic Government Modifiers")]
     [Tooltip("The same reusable institutional modifiers exposed by policies. Values are applied and removed on government changes.")]
     public GovernmentInstitutionModifiers institutions = new GovernmentInstitutionModifiers();
+    [Tooltip("Public Opinion points contributed while this government is active.")]
+    public float publicOpinionModifier;
+    [Tooltip("Preferred non-electoral government for emergency transfers of power.")]
+    public bool emergencyAuthoritarianGovernment;
     [Tooltip("When true, ordinary governor/faction politics remain allocated safely but do not tick or generate demands.")]
     public bool suppressConventionalPolitics;
     [TextArea] public string signatureMechanic;

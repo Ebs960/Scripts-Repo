@@ -112,7 +112,7 @@ MonoBehaviour:
   majorTradeoff: Dependence on commerce raises inequality and military costs.
   electionRules:
     enabled: 1
-    termLengthTurns: 16
+    termLengthTurns: 25
     electorateModel: 4
     incumbentEligible: 1
     candidateCount: 3

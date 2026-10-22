@@ -76,6 +76,8 @@ MonoBehaviour:
     migrationAttractionModifier: 0
     planetaryLoyaltyModifier: 0
     cyberDefenseModifier: 0
+  publicOpinionModifier: -10
+  emergencyAuthoritarianGovernment: 1
   suppressConventionalPolitics: 0
   signatureMechanic: Militarized command enables rapid reinforcement and lower upkeep.
   majorTradeoff: Repression increases unrest and damages civil institutions.

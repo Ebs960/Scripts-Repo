@@ -524,6 +524,7 @@ TogglePause();
 
     public void TogglePause()
     {
+        if (ElectionManager.HasPendingPlayerDefeat) return;
 if (isPaused)
         {
             ResumeGame();

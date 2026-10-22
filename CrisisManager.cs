@@ -2407,6 +2407,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
             }
         }
 
+        ElectionManager.AddTemporaryOpinionModifier(civ, $"Crisis victory: {state.mission.missionName}", 5f, 10);
         OnMissionCompleted?.Invoke(civ, state.mission, state);
         activeMissions.Remove(civIdx);
         LogCrisisDebug("CompleteMission", $"Mission removed from active mission map for civIdx={civIdx}");
@@ -2504,6 +2505,7 @@ public class CrisisManager : MonoBehaviour, ISaveGameParticipant
         Debug.Log($"[CrisisManager] {civ.civData?.civName} failed mission '{state.mission.missionName}': {reason}");
         if (!string.IsNullOrEmpty(state.mission.failureFlavorText))
             Debug.Log($"[CrisisManager] Failure flavor: {state.mission.failureFlavorText}");
+        ElectionManager.AddTemporaryOpinionModifier(civ, $"Crisis failure: {state.mission.missionName}", -8f, 10);
         activeMissions.Remove(civIdx);
         OnMissionFailed?.Invoke(civ, state.mission, reason);
         LogCrisisDebug("FailMission", $"Mission removed from active mission map for civIdx={civIdx}");

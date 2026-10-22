@@ -210,7 +210,7 @@ public class DiplomacyUI : MonoBehaviour
         RefreshDealTable();
         RefreshActionButtons();
         SetLeaderMood(LeaderMood.Speaking);
-        SetDialogue($"{selectedCiv.leader.leaderName} has a proposal for you.");
+        SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} has a proposal for you.");
         CloseItemPicker();
     }
 
@@ -292,10 +292,14 @@ public class DiplomacyUI : MonoBehaviour
             }
         }
 
-        UpdateLeaderVisual(leader, currentMood);
+        var office = selectedCiv.electionState?.currentOffice;
+        if (office != null && office.governorId >= 0)
+            UpdateElectedRulerVisual(ElectionManager.GetCurrentRulerPortrait(selectedCiv));
+        else
+            UpdateLeaderVisual(leader, currentMood);
 
         // Name plates
-        if (leaderNameText != null)   leaderNameText.text = leader.leaderName;
+        if (leaderNameText != null) leaderNameText.text = ElectionManager.GetCurrentRulerName(selectedCiv);
         if (leaderCivNameText != null) leaderCivNameText.text = selectedCiv.civData != null ? selectedCiv.civData.civName : "";
 
         // Relationship info
@@ -350,7 +354,24 @@ public class DiplomacyUI : MonoBehaviour
     {
         currentMood = mood;
         if (selectedCiv == null || selectedCiv.leader == null) return;
+        if (selectedCiv.electionState?.currentOffice?.governorId >= 0)
+        {
+            UpdateElectedRulerVisual(ElectionManager.GetCurrentRulerPortrait(selectedCiv));
+            return;
+        }
         UpdateLeaderVisual(selectedCiv.leader, mood);
+    }
+
+    private void UpdateElectedRulerVisual(Sprite portrait)
+    {
+        leaderGifPlayer?.StopPlayback(true);
+        if (leaderGifImage != null) leaderGifImage.gameObject.SetActive(false);
+        if (leaderAnimator != null) leaderAnimator.gameObject.SetActive(false);
+        if (leaderPortraitImage != null)
+        {
+            leaderPortraitImage.sprite = portrait;
+            leaderPortraitImage.gameObject.SetActive(portrait != null);
+        }
     }
 
     private void UpdateLeaderVisual(LeaderData leader, LeaderMood mood)
@@ -404,7 +425,7 @@ public class DiplomacyUI : MonoBehaviour
 
     private string GetGreeting(Civilization civ, DiplomaticState relation)
     {
-        string name = civ.leader != null ? civ.leader.leaderName : "Leader";
+        string name = ElectionManager.GetCurrentRulerName(civ);
         return relation switch
         {
             DiplomaticState.War     => $"\"{name}\" glares at you with contempt.",
@@ -721,13 +742,13 @@ public class DiplomacyUI : MonoBehaviour
         {
             DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer);
             SetLeaderMood(LeaderMood.Agreement);
-            SetDialogue($"{selectedCiv.leader.leaderName} accepts your deal!");
+            SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} accepts your deal!");
             UIManager.Instance.ShowNotification($"Deal accepted by {selectedCiv.civData.civName}!");
         }
         else
         {
             SetLeaderMood(LeaderMood.Angry);
-            SetDialogue($"{selectedCiv.leader.leaderName} rejects your proposal.");
+            SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} rejects your proposal.");
             UIManager.Instance.ShowNotification($"Deal rejected by {selectedCiv.civData.civName}.");
         }
 
@@ -771,7 +792,7 @@ public class DiplomacyUI : MonoBehaviour
     {
         if (selectedCiv == null) return;
         SetLeaderMood(LeaderMood.DeclareWar);
-        SetDialogue($"So be it! {selectedCiv.leader.leaderName} prepares for war!");
+        SetDialogue($"So be it! {ElectionManager.GetCurrentRulerName(selectedCiv)} prepares for war!");
 
         DiplomacyManager.Instance.SetState(playerCiv, selectedCiv, DiplomaticState.War);
         UIManager.Instance.ShowNotification($"War declared against {selectedCiv.civData.civName}!");
@@ -790,13 +811,13 @@ public class DiplomacyUI : MonoBehaviour
         if (relation == DiplomaticState.Vassal)
         {
             SetLeaderMood(LeaderMood.Agreement);
-            SetDialogue($"{selectedCiv.leader.leaderName} submits to your rule.");
+            SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} submits to your rule.");
             UIManager.Instance.ShowNotification($"{selectedCiv.civData?.civName ?? selectedCiv.name} accepted vassalage.");
         }
         else
         {
             SetLeaderMood(LeaderMood.Angry);
-            SetDialogue($"{selectedCiv.leader.leaderName} rejects your demand for submission.");
+            SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} rejects your demand for submission.");
             UIManager.Instance.ShowNotification($"{selectedCiv.civData?.civName ?? selectedCiv.name} refused vassalage.");
         }
 
@@ -810,7 +831,7 @@ public class DiplomacyUI : MonoBehaviour
         if (!SubjectManager.Instance.DissolveContract(playerCiv, selectedCiv)) return;
 
         SetLeaderMood(LeaderMood.Angry);
-        SetDialogue($"{selectedCiv.leader.leaderName} is released from vassalage.");
+        SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} is released from vassalage.");
         UIManager.Instance.ShowNotification($"Vassalage ended with {selectedCiv.civData?.civName ?? selectedCiv.name}.");
         RefreshLeaderPresentation();
         RefreshActionButtons();
@@ -824,7 +845,7 @@ public class DiplomacyUI : MonoBehaviour
 
         float newRate = Mathf.Clamp(contract.goldTributePct + 0.05f, 0f, 0.50f);
         SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"Your envoys impose a heavier tribute on {selectedCiv.leader.leaderName}.");
+        SetDialogue($"Your envoys impose a heavier tribute on {ElectionManager.GetCurrentRulerName(selectedCiv)}.");
         UIManager.Instance.ShowNotification($"Tribute raised to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
@@ -838,7 +859,7 @@ public class DiplomacyUI : MonoBehaviour
         SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
         contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + 8f, -100f, 100f);
         contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - 5f, 0f, 100f);
-        SetDialogue($"You ease the burden on {selectedCiv.leader.leaderName}.");
+        SetDialogue($"You ease the burden on {ElectionManager.GetCurrentRulerName(selectedCiv)}.");
         UIManager.Instance.ShowNotification($"Tribute lowered to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
@@ -846,7 +867,7 @@ public class DiplomacyUI : MonoBehaviour
     {
         if (selectedCiv == null || SubjectManager.Instance == null) return;
         SubjectManager.Instance.InterfereForceReligion(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"{selectedCiv.leader.leaderName} is commanded to conform in matters of faith.");
+        SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} is commanded to conform in matters of faith.");
         UIManager.Instance.ShowNotification($"Religion pressure applied to {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
@@ -854,7 +875,7 @@ public class DiplomacyUI : MonoBehaviour
     {
         if (selectedCiv == null || SubjectManager.Instance == null) return;
         SubjectManager.Instance.InterfereReplaceGovernor(playerCiv, selectedCiv, null, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"A new appointee is installed to watch over {selectedCiv.leader.leaderName}'s lands.");
+        SetDialogue($"A new appointee is installed to watch over {ElectionManager.GetCurrentRulerName(selectedCiv)}'s lands.");
         UIManager.Instance.ShowNotification($"Governor replaced in {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 

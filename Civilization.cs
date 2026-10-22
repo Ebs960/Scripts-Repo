@@ -1544,6 +1544,7 @@ public class Civilization : MonoBehaviour
                 case FactionDemandType.DeclareIndependence:
                     // Granting independence releases the faction's cities as a new realm.
                     bloc.TriggerRebellion(this);
+                    ElectionManager.AddTemporaryOpinionModifier(this, "Granted faction independence", -10f, 15);
                     result.success = true;
                     result.rebellionTriggered = true;
                     bloc.ResolveDemand(demand, true, this, currentTurn);
@@ -1554,6 +1555,8 @@ public class Civilization : MonoBehaviour
 
         result.success = true;
         result.rebellionTriggered = bloc.ResolveDemand(demand, accepted, this, currentTurn);
+        ElectionManager.AddTemporaryOpinionModifier(this,
+            accepted ? "Political concession" : "Faction demand refused", accepted ? 3f : -5f, 10);
         FactionsChanged?.Invoke(this);
         return result;
     }
@@ -3972,6 +3975,19 @@ public class Civilization : MonoBehaviour
         // PolicyManager.Instance.ChangeGovernment(this, g); // This would handle setting currentGovernment
         if (g == null || !CanChangeGovernment(g) || currentGovernment == g) return;
 
+        ApplyGovernmentTransition(g);
+    }
+
+    /// <summary>Emergency transition used by election defeat; ordinary changes still use PolicyManager validation.</summary>
+    public void ForceGovernmentTransition(GovernmentData g)
+    {
+        if (g == null || currentGovernment == g) return;
+        ApplyGovernmentTransition(g);
+    }
+
+    private void ApplyGovernmentTransition(GovernmentData g)
+    {
+
         // Remove bonuses from old government if one was active
         GovernmentData oldGovernment = currentGovernment;
         if (currentGovernment != null)
@@ -3996,6 +4012,59 @@ public class Civilization : MonoBehaviour
         OnGovernmentChanged?.Invoke(this, g);
         TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
         // TODO: UI update, notifications
+    }
+
+    public void TriggerElectionTakeoverRebellion()
+    {
+        electionState ??= new ElectionState();
+        if (!electionState.authoritarianTakeover || !electionState.takeoverRebellionTriggered) return;
+
+        unrestModifier += 0.5f;
+        var rebels = (governors ?? new List<Governor>())
+            .Where(governor => governor != null && !governor.IsInRebellion)
+            .OrderBy(governor => governor.Opinion)
+            .ThenByDescending(governor => governor.PowerRank)
+            .Take(Mathf.Max(1, Mathf.CeilToInt((governors?.Count ?? 0) * 0.6f)))
+            .ToList();
+
+        int cityCount = cities?.Count(city => city != null) ?? 0;
+        int citiesToRevolt = cityCount > 1 ? Mathf.Clamp(Mathf.CeilToInt(cityCount * 0.4f), 1, cityCount - 1) : 0;
+        if (rebels.Count > 0)
+        {
+            foreach (var governor in rebels)
+            {
+                governor.SetOpinionModifier("Election result overturned", -80f, 50);
+                governor.AddGrievance(GrievanceSource.OverruledDecision);
+            }
+            var bloc = new FactionBloc("Constitutional Restoration Front", FactionAlignment.Separatist, rebels[0]);
+            foreach (var governor in rebels.Skip(1)) bloc.AddMember(governor);
+            nobleFactions ??= new List<FactionBloc>();
+            nobleFactions.Add(bloc);
+            bloc.TriggerRebellion(this, citiesToRevolt);
+        }
+
+        if (citiesToRevolt == 0 && cities != null && cities.Count > 0)
+        {
+            if (combatUnits != null && combatUnits.Any(unit => unit != null))
+            {
+                var rebelCiv = CivilizationManager.Instance?.CreateRebelFaction(cities[0], "Constitutional Rebels");
+                int rebelUnits = Mathf.Max(1, Mathf.CeilToInt(combatUnits.Count(unit => unit != null) * 0.35f));
+                foreach (var unit in combatUnits.Where(unit => unit != null).Take(rebelUnits).ToList())
+                {
+                    combatUnits.Remove(unit);
+                    rebelCiv?.combatUnits.Add(unit);
+                    if (rebelCiv != null) unit.Initialize(unit.data, rebelCiv);
+                }
+                if (rebelCiv != null) DiplomacyManager.Instance?.SetState(this, rebelCiv, DiplomaticState.War);
+            }
+            else
+            {
+                cities[0].TriggerRevolt("Constitutional Rebels");
+            }
+        }
+
+        FactionsChanged?.Invoke(this);
+        UIManager.Instance?.ShowNotification("The seizure of power has triggered a nationwide rebellion.");
     }
 
     // New method to apply bonuses from a government

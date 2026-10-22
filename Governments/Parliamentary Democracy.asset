@@ -87,7 +87,7 @@ MonoBehaviour:
   majorTradeoff: Coalition vetoes constrain unilateral government.
   electionRules:
     enabled: 1
-    termLengthTurns: 16
+    termLengthTurns: 25
     electorateModel: 3
     incumbentEligible: 1
     candidateCount: 3

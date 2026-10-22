@@ -79,7 +79,7 @@ MonoBehaviour:
   majorTradeoff: War weariness and poor conditions sharply damage approval.
   electionRules:
     enabled: 1
-    termLengthTurns: 16
+    termLengthTurns: 25
     electorateModel: 1
     incumbentEligible: 1
     candidateCount: 3

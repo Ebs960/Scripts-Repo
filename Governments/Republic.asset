@@ -89,7 +89,7 @@ MonoBehaviour:
   majorTradeoff: Senatorial vetoes obstruct unilateral policy.
   electionRules:
     enabled: 1
-    termLengthTurns: 24
+    termLengthTurns: 25
     electorateModel: 0
     incumbentEligible: 1
     candidateCount: 3

@@ -76,6 +76,8 @@ public class PolicyData : ScriptableObject
     public float warWearinessModifier;
     public float corruptionModifier;
     public float unrestModifier;
+    [Tooltip("Public Opinion points contributed while this policy is active.")]
+    public float publicOpinionModifier;
 
     [Header("Administration")]
     public float administrativeEfficiencyModifier;

@@ -25,6 +25,9 @@ public struct PoliticalWarning
 public static class PoliticalWarningBuilder
 {
     public const float LowLegitimacyThreshold = 30f;
+    public const float SevereLegitimacyThreshold = 15f;
+    public const float ExtremelyLowPublicOpinion = 25f;
+    public const int ApproachingElectionTurns = 5;
     public const float VassalLibertyWarningFraction = 0.6f;
     public const float GovernorDiscontentOpinion = -20f;
     public const int RecentVoteWindowTurns = 8;
@@ -87,11 +90,30 @@ public static class PoliticalWarningBuilder
             }
 
         var rules = civ.currentGovernment?.electionRules;
-        if (rules != null && rules.enabled && civ.electionState != null)
+        if (civ.electionState != null)
         {
-            if (civ.electionState.governmentLegitimacy < LowLegitimacyThreshold)
+            var state = civ.electionState;
+            if (state.governmentLegitimacy < SevereLegitimacyThreshold)
+                Add(warnings, PoliticalWarningSeverity.Critical, $"Government legitimacy is collapsing ({state.governmentLegitimacy:0}%).", PoliticalWarningDestination.Politics);
+            else if (state.governmentLegitimacy < LowLegitimacyThreshold)
                 Add(warnings, PoliticalWarningSeverity.Critical, $"Legitimacy is very low ({civ.electionState.governmentLegitimacy:0}%).", PoliticalWarningDestination.Politics);
-            if (civ.electionState.activeElection != null && !civ.electionState.activeElection.resolved)
+
+            if (state.pendingPlayerDefeat)
+                Add(warnings, PoliticalWarningSeverity.Critical, "Election defeat requires an immediate decision.", PoliticalWarningDestination.Politics);
+            if (state.takeoverRebellionTriggered)
+                Add(warnings, PoliticalWarningSeverity.Critical, "A nationwide rebellion is resisting the seizure of power.", PoliticalWarningDestination.Politics);
+
+            if (rules != null && rules.enabled)
+            {
+                int turns = state.nextElectionTurn - PoliticalActionRules.CurrentTurn;
+                if (turns >= 0 && turns <= ApproachingElectionTurns)
+                    Add(warnings, PoliticalWarningSeverity.Caution, $"National election in {turns} turn(s).", PoliticalWarningDestination.Politics);
+                if (civ.isPlayerControlled && state.publicApproval < ExtremelyLowPublicOpinion)
+                    Add(warnings, PoliticalWarningSeverity.Critical, $"Public Opinion is extremely low ({state.publicApproval:0}%).", PoliticalWarningDestination.Politics);
+                else if (civ.isPlayerControlled && state.publicApproval < ElectionManager.PlayerVictoryThreshold)
+                    Add(warnings, PoliticalWarningSeverity.Caution, $"Public Opinion is below the reelection threshold ({state.publicApproval:0}%).", PoliticalWarningDestination.Politics);
+            }
+            if (state.activeElection != null && !state.activeElection.resolved)
                 Add(warnings, PoliticalWarningSeverity.Info, "An election is underway.", PoliticalWarningDestination.Politics);
         }
 

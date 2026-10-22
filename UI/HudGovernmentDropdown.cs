@@ -112,7 +112,7 @@ public class HudGovernmentDropdown : MonoBehaviour
         var g = currentCiv?.currentGovernment;
         if (g == null) return string.Empty;
         var lines = new List<string>();
-        if (!string.IsNullOrWhiteSpace(g.leaderTitleSuffix)) lines.Add($"Leader: {g.leaderTitleSuffix}");
+        if (!string.IsNullOrWhiteSpace(g.leaderTitleSuffix)) lines.Add($"Leader: {g.leaderTitleSuffix} {ElectionManager.GetCurrentRulerName(currentCiv)}");
         if (!string.IsNullOrWhiteSpace(g.signatureMechanic)) lines.Add($"Signature: {g.signatureMechanic}");
         if (!string.IsNullOrWhiteSpace(g.majorTradeoff)) lines.Add($"Tradeoff: {g.majorTradeoff}");
         if (g.usesRoyalCouncil) lines.Add($"{GovernmentPresentation.GetInstitutionName(currentCiv)}: {g.councilSeatCount} seats • Vetoes: {g.councilVetoDomains}");
@@ -121,7 +121,7 @@ public class HudGovernmentDropdown : MonoBehaviour
         var state = currentCiv.electionState;
         if (rules != null && rules.enabled)
         {
-            lines.Add($"Election: {rules.electorateModel} electorate • {rules.termLengthTurns}-turn term • next turn {state?.nextElectionTurn ?? -1}");
+            lines.Add($"Election: {rules.electorateModel} electorate • {ElectionManager.NationalTermTurns}-turn term • next turn {state?.nextElectionTurn ?? -1}");
             lines.Add($"Approval {state?.publicApproval ?? 50f:0}% • Legitimacy {state?.governmentLegitimacy ?? 50f:0}%");
             if (state?.currentOffice != null) lines.Add($"{state.currentOffice.title}: {state.currentOffice.officeholderName} • term ends turn {state.currentOffice.termEndTurn}");
             if (state?.activeElection?.issues != null && state.activeElection.issues.Count > 0)

@@ -126,6 +126,11 @@ public class TurnManager : MonoBehaviour
     /// </summary>
     public void AdvanceTurn()
     {
+        if (ElectionManager.HasPendingPlayerDefeat)
+        {
+            Debug.Log("[TurnManager] AdvanceTurn blocked by a pending election defeat decision.");
+            return;
+        }
         if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
         {
             Debug.Log("[TurnManager] AdvanceTurn blocked because campaign interaction is locked by battle mode.");
@@ -342,6 +347,11 @@ public class TurnManager : MonoBehaviour
     /// </summary>
     public void EndPlayerTurn()
     {
+        if (ElectionManager.HasPendingPlayerDefeat)
+        {
+            Debug.Log("[TurnManager] EndPlayerTurn blocked by a pending election defeat decision.");
+            return;
+        }
         if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
         {
             Debug.Log("[TurnManager] EndPlayerTurn ignored while battle interaction mode is active.");
