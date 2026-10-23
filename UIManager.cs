@@ -117,7 +117,6 @@ public class UIManager : MonoBehaviour
     private TMP_FontAsset defaultFont;
     private CrisisMissionTrackerUI crisisMissionTrackerUI;
     private LegacyTrackerUI legacyTrackerUI;
-    private PoliticalAffairsPanelUI politicalAffairsPanelUI;
     private bool startupMissionCrisisViewsHidden;
 
     private static readonly HashSet<string> fullscreenHudHidingPanels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -350,9 +349,6 @@ public class UIManager : MonoBehaviour
                 return true;
         }
 
-        if (politicalAffairsPanelUI != null && politicalAffairsPanelUI.gameObject.activeInHierarchy)
-            return true;
-
         return false;
     }
 
@@ -479,22 +475,6 @@ public class UIManager : MonoBehaviour
         }
 
         ShowGovernmentPolitics(civ);
-    }
-
-    private void EnsurePoliticalAffairsPanelUi()
-    {
-        if (politicalAffairsPanelUI != null) return;
-
-        politicalAffairsPanelUI = FindAnyObjectByType<PoliticalAffairsPanelUI>(FindObjectsInactive.Include);
-        if (politicalAffairsPanelUI == null)
-        {
-            Debug.LogWarning("[UIManager] Political Affairs panel is not present in scene/prefabs. Please add a dedicated PoliticalAffairsPanelUI object like other panel UIs.");
-            return;
-        }
-
-        var panelGo = politicalAffairsPanelUI.gameObject;
-        panelDict["PoliticalAffairsPanel"] = panelGo;
-        panelDict["politicalAffairsPanel"] = panelGo;
     }
 
     private void DisplayNotification(string message)
