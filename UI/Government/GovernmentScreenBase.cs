@@ -9,9 +9,9 @@ using UnityEngine.UI;
 public abstract class GovernmentScreenBase : MonoBehaviour
 {
     [Header("Navigation")]
-    [Tooltip("Closes this screen and returns to the Government overview.")]
-    [FormerlySerializedAs("backButton")]
-    [SerializeField] private Button closeButton;
+    [Tooltip("Returns to the Government overview.")]
+    [FormerlySerializedAs("closeButton")]
+    [SerializeField] private Button backButton;
     protected Civilization civ;
     protected GovernmentPanel panel;
 
@@ -22,7 +22,7 @@ public abstract class GovernmentScreenBase : MonoBehaviour
     public void Bind(Civilization civilization, GovernmentPanel owner)
     {
         if (owner != null) panel = owner;
-        GovernmentUiUtil.SetClick(closeButton, () => panel?.ShowOverview());
+        GovernmentUiUtil.SetClick(backButton, () => panel?.ShowOverview());
         if (civ == civilization) return;
         civ = civilization;
         OnCivilizationChanged();

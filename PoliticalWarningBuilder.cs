@@ -27,7 +27,7 @@ public static class PoliticalWarningBuilder
     public const float LowLegitimacyThreshold = 30f;
     public const float SevereLegitimacyThreshold = 15f;
     public const float ExtremelyLowPublicOpinion = 25f;
-    public const int ApproachingElectionTurns = 5;
+    public const int ApproachingElectionTurns = 8;
     public const float VassalLibertyWarningFraction = 0.6f;
     public const float GovernorDiscontentOpinion = -20f;
     public const int RecentVoteWindowTurns = 8;

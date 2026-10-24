@@ -1,219 +1,149 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Political Affairs: pending events, noble factions and their demands, recent council votes, and elections.
-/// Absorbs what the standalone Political Affairs panel used to show.
-/// </summary>
-public class GovernmentPoliticsUI : GovernmentScreenBase
+/// <summary>Political Affairs presented directly in four permanently visible dashboard sections.</summary>
+public sealed class GovernmentPoliticsUI : GovernmentScreenBase
 {
-    private const int MaxVoteHistory = 8;
+    [Header("Political Events")]
+    [SerializeField] private TMP_Text eventTitleText;
+    [SerializeField] private TMP_Text eventDescriptionText;
+    [SerializeField] private TMP_Text eventExpirationText;
+    [SerializeField] private Transform eventOptionsRoot;
+    [SerializeField] private Button eventOptionButtonPrefab;
+    [SerializeField] private Button previousEventButton;
+    [SerializeField] private Button nextEventButton;
 
-    [Header("Suppressed politics")]
-    [SerializeField] private GameObject suppressedNoticeRoot;
-    [SerializeField] private TMP_Text suppressedNoticeText;
-
-    [Header("Events")]
-    [SerializeField] private Transform eventsRoot;
-    [SerializeField] private PoliticalEventRowUI eventRowPrefab;
-    [SerializeField] private TMP_Text noEventsText;
-
-    [Header("Factions")]
-    [SerializeField] private GameObject factionsSectionRoot;
-    [SerializeField] private Transform factionListRoot;
-    [SerializeField] private FactionRowUI factionRowPrefab;
-    [SerializeField] private TMP_Text noFactionsText;
-    [SerializeField] private GameObject factionDetailRoot;
-    [SerializeField] private TMP_Text factionNameText;
-    [SerializeField] private TMP_Text factionAlignmentText;
-    [SerializeField] private TMP_Text factionLeaderText;
-    [SerializeField] private TMP_Text factionPowerText;
-    [SerializeField] private TMP_Text factionReligionText;
-    [SerializeField] private TMP_Text factionRebellionText;
-    [SerializeField] private PoliticalLineRowUI lineRowPrefab;
-    [SerializeField] private Transform factionMembersRoot;
-    [SerializeField] private Transform demandsRoot;
-    [SerializeField] private FactionDemandRowUI demandRowPrefab;
-    [SerializeField] private TMP_Text noDemandsText;
-
-    [Header("Council votes")]
-    [SerializeField] private GameObject votesSectionRoot;
-    [SerializeField] private Transform votesRoot;
-    [SerializeField] private CouncilVoteRowUI voteRowPrefab;
-    [SerializeField] private TMP_Text noVotesText;
-
-    [Header("Election")]
-    [SerializeField] private GameObject electionSectionRoot;
-    [SerializeField] private TMP_Text electionSummaryText;
-    [SerializeField] private Image currentRulerPortrait;
+    [Header("Elections")]
     [SerializeField] private Slider publicOpinionSlider;
     [SerializeField] private TMP_Text publicOpinionText;
-    [SerializeField] private TMP_Text victoryThresholdText;
+    [SerializeField] private TMP_Text electionThresholdText;
     [SerializeField] private TMP_Text legitimacyText;
-    [SerializeField] private TMP_Text opinionModifiersText;
-    [SerializeField] private TMP_Text electionHistoryText;
-    [SerializeField] private Transform electionIssuesRoot;
-    [SerializeField] private Transform candidatesRoot;
-    [SerializeField] private ElectionCandidateRowUI candidateRowPrefab;
     [SerializeField] private TMP_Text electionStatusText;
+    [SerializeField] private TMP_Text opinionModifiersText;
 
-    private readonly List<PoliticalEventRowUI> eventRows = new List<PoliticalEventRowUI>();
-    private readonly List<FactionRowUI> factionRows = new List<FactionRowUI>();
-    private readonly List<FactionDemandRowUI> demandRows = new List<FactionDemandRowUI>();
-    private readonly List<CouncilVoteRowUI> voteRows = new List<CouncilVoteRowUI>();
-    private readonly List<ElectionCandidateRowUI> candidateRows = new List<ElectionCandidateRowUI>();
+    [Header("Council Votes")]
+    [SerializeField] private TMP_Text councilProposalText;
+    [SerializeField] private TMP_Text councilVoteDetailsText;
+    [SerializeField] private TMP_Text councilResultText;
+
+    [Header("Factions")]
+    [SerializeField] private TMP_Dropdown factionDropdown;
+    [SerializeField] private TMP_Text factionInformationText;
+    [SerializeField] private TMP_Text factionDemandText;
+    [SerializeField] private TMP_Dropdown demandDropdown;
+    [SerializeField] private Button demandAcceptButton;
+    [SerializeField] private Button demandRefuseButton;
+    [SerializeField] private TMP_Text factionStatusText;
+
+    private readonly List<Button> eventOptionButtons = new List<Button>();
     private readonly Dictionary<FactionDemand, string> demandFailures = new Dictionary<FactionDemand, string>();
-    private PoliticalLineList factionMembers, electionIssues;
+    private List<PoliticalEventRecord> activeEvents = new List<PoliticalEventRecord>();
+    private List<FactionBloc> availableFactions = new List<FactionBloc>();
+    private List<FactionDemand> availableDemands = new List<FactionDemand>();
+    private int selectedEventId = -1;
     private FactionBloc selectedFaction;
+    private FactionDemand selectedDemand;
+    private bool wired;
 
     protected override void OnCivilizationChanged()
     {
+        selectedEventId = -1;
         selectedFaction = null;
+        selectedDemand = null;
         demandFailures.Clear();
     }
 
     public override void Refresh()
     {
         if (civ == null) return;
-
-        bool suppressed = civ.currentGovernment != null && civ.currentGovernment.suppressConventionalPolitics;
-        GovernmentUiUtil.SetActive(suppressedNoticeRoot, suppressed);
-        if (suppressed)
-            GovernmentUiUtil.SetText(suppressedNoticeText, $"{GovernmentPresentation.NameOf(civ.currentGovernment)} suppresses conventional politics; factions and council votes are inactive.");
-
-        RefreshEvents();
-        GovernmentUiUtil.SetActive(factionsSectionRoot, true);
+        EnsureWired();
+        RefreshPoliticalEvents();
+        RefreshElections();
+        RefreshCouncilVote();
         RefreshFactions();
-        RefreshVotes();
-        RefreshElection();
     }
 
-    // ── Events ──
-
-    private void RefreshEvents()
+    private void EnsureWired()
     {
-        var events = PoliticalEventManager.Instance != null
-            ? PoliticalEventManager.Instance.GetActiveEventsForCiv(civ)
-            : (IReadOnlyList<PoliticalEventRecord>)new List<PoliticalEventRecord>();
-        GovernmentUiUtil.FillList(eventsRoot, eventRowPrefab, eventRows, events, (row, record) => row.Bind(record, OnEventOption));
-        GovernmentUiUtil.SetText(noEventsText, events.Count == 0 ? "No political events need your attention." : string.Empty);
+        if (wired) return;
+        wired = true;
+        GovernmentUiUtil.SetClick(previousEventButton, () => CycleEvent(-1));
+        GovernmentUiUtil.SetClick(nextEventButton, () => CycleEvent(1));
+        GovernmentUiUtil.SetClick(demandAcceptButton, () => ResolveSelectedDemand(true));
+        GovernmentUiUtil.SetClick(demandRefuseButton, RequestRefuseSelectedDemand);
+
+        if (factionDropdown != null)
+        {
+            factionDropdown.onValueChanged.RemoveAllListeners();
+            factionDropdown.onValueChanged.AddListener(SelectFactionAt);
+        }
+        if (demandDropdown != null)
+        {
+            demandDropdown.onValueChanged.RemoveAllListeners();
+            demandDropdown.onValueChanged.AddListener(SelectDemandAt);
+        }
     }
 
-    private void OnEventOption(int eventId, int optionIndex)
+    private void RefreshPoliticalEvents()
+    {
+        activeEvents = PoliticalEventManager.Instance != null
+            ? PoliticalEventManager.Instance.GetActiveEventsForCiv(civ).Where(record => record != null).ToList()
+            : new List<PoliticalEventRecord>();
+
+        var selected = activeEvents.FirstOrDefault(record => record.id == selectedEventId) ?? activeEvents.FirstOrDefault();
+        selectedEventId = selected?.id ?? -1;
+        if (selected == null)
+        {
+            GovernmentUiUtil.SetText(eventTitleText, string.Empty);
+            GovernmentUiUtil.SetText(eventDescriptionText, "No political events require your attention.");
+            GovernmentUiUtil.SetText(eventExpirationText, string.Empty);
+            GovernmentUiUtil.FillList(eventOptionsRoot, eventOptionButtonPrefab, eventOptionButtons,
+                Array.Empty<PoliticalEventOption>(), (button, option) => { });
+        }
+        else
+        {
+            GovernmentUiUtil.SetText(eventTitleText, selected.title);
+            GovernmentUiUtil.SetText(eventDescriptionText, selected.body);
+            GovernmentUiUtil.SetText(eventExpirationText,
+                $"Expires in {Mathf.Max(0, selected.expiryTurn - PoliticalActionRules.CurrentTurn)} turn(s) (turn {selected.expiryTurn})");
+            GovernmentUiUtil.FillList(eventOptionsRoot, eventOptionButtonPrefab, eventOptionButtons,
+                selected.options ?? new List<PoliticalEventOption>(), (button, option) =>
+                {
+                    GovernmentUiUtil.SetText(button.GetComponentInChildren<TMP_Text>(true), option.label);
+                    int eventId = selected.id;
+                    int optionIndex = selected.options.IndexOf(option);
+                    GovernmentUiUtil.SetClick(button, () => ResolveEventOption(eventId, optionIndex));
+                });
+        }
+
+        bool multiple = activeEvents.Count > 1;
+        GovernmentUiUtil.SetActive(previousEventButton != null ? previousEventButton.gameObject : null, multiple);
+        GovernmentUiUtil.SetActive(nextEventButton != null ? nextEventButton.gameObject : null, multiple);
+    }
+
+    private void CycleEvent(int direction)
+    {
+        if (activeEvents.Count <= 1) return;
+        int index = activeEvents.FindIndex(record => record.id == selectedEventId);
+        index = (index + direction + activeEvents.Count) % activeEvents.Count;
+        selectedEventId = activeEvents[index].id;
+        RefreshPoliticalEvents();
+    }
+
+    private void ResolveEventOption(int eventId, int optionIndex)
     {
         PoliticalEventManager.Instance?.ResolveEvent(eventId, optionIndex);
         panel?.RefreshAllVisible();
     }
 
-    // ── Factions ──
-
-    private void RefreshFactions()
+    private void RefreshElections()
     {
-        var factions = civ.nobleFactions.Where(f => f != null).ToList();
-        if (selectedFaction == null || !factions.Contains(selectedFaction)) selectedFaction = factions.FirstOrDefault();
-
-        GovernmentUiUtil.FillList(factionListRoot, factionRowPrefab, factionRows, factions,
-            (row, faction) => row.Bind(civ, faction, faction == selectedFaction, SelectFaction));
-        bool suppressed = civ.currentGovernment != null && civ.currentGovernment.suppressConventionalPolitics;
-        GovernmentUiUtil.SetText(noFactionsText, factions.Count == 0
-            ? suppressed ? "Conventional political factions are inactive under this government." : "No political factions currently exist."
-            : string.Empty);
-        GovernmentUiUtil.SetActive(factionDetailRoot, selectedFaction != null);
-        if (selectedFaction != null) RefreshFactionDetail(selectedFaction);
-    }
-
-    private void SelectFaction(FactionBloc faction)
-    {
-        selectedFaction = faction;
-        Refresh();
-    }
-
-    private void RefreshFactionDetail(FactionBloc faction)
-    {
-        GovernmentUiUtil.SetText(factionNameText, faction.FactionName);
-        GovernmentUiUtil.SetText(factionAlignmentText, $"Alignment: {faction.Alignment}");
-        GovernmentUiUtil.SetText(factionLeaderText, faction.Leader != null ? $"Leader: {GovernmentPresentation.FormatGovernorName(civ, faction.Leader)}" : "No leader");
-        GovernmentUiUtil.SetText(factionPowerText, $"Power {faction.ComputePower():0.#} ({faction.Members.Count} members)");
-        GovernmentUiUtil.SetText(factionReligionText, faction.ReligiousIdentity != null
-            ? $"Faith: {GovernmentPresentation.NameOf(faction.ReligiousIdentity)} ({faction.ReligiousGoal})" : string.Empty);
-        GovernmentUiUtil.SetText(factionRebellionText, faction.IsInRebellion ? "IN OPEN REBELLION" : string.Empty);
-
-        factionMembers ??= new PoliticalLineList(factionMembersRoot, lineRowPrefab);
-        factionMembers.Show(faction.Members.Where(m => m != null).ToList(),
-            (row, member) => row.BindText(GovernmentPresentation.FormatGovernorName(civ, member), $"Opinion {GovernmentUiUtil.Signed(member.Opinion)}"));
-
-        var demands = faction.ActiveDemands.Where(d => d != null).ToList();
-        GovernmentUiUtil.FillList(demandsRoot, demandRowPrefab, demandRows, demands, (row, demand) =>
-        {
-            demandFailures.TryGetValue(demand, out string failure);
-            row.Bind(faction, demand, failure, OnResolveDemand);
-        });
-        GovernmentUiUtil.SetText(noDemandsText, demands.Count == 0 ? "This faction has no outstanding demands." : string.Empty);
-    }
-
-    private void OnResolveDemand(FactionBloc faction, FactionDemand demand, bool accepted)
-    {
-        if (civ == null || faction == null || demand == null) return;
-        if (accepted)
-        {
-            Resolve(faction, demand, true);
-            return;
-        }
-
-        if (panel == null) { Resolve(faction, demand, false); return; }
-        panel.RequestConfirmation(new PoliticalConfirmRequest
-        {
-            title = "Refuse this demand?",
-            description = $"{faction.FactionName} will be angered. Persistent refusal can lead to rebellion.",
-            confirmLabel = "Refuse",
-            lines = new List<PoliticalEffectLine>
-            {
-                new PoliticalEffectLine { label = "Members", value = "Opinion falls and grievances grow", harmful = true },
-            },
-            onConfirm = () => Resolve(faction, demand, false),
-        });
-    }
-
-    private void Resolve(FactionBloc faction, FactionDemand demand, bool accepted)
-    {
-        var result = civ.ResolveFactionDemandDetailed(faction, demand, accepted, PoliticalActionRules.CurrentTurn);
-        if (result.success) demandFailures.Remove(demand);
-        else demandFailures[demand] = result.failureReason;
-        panel?.RefreshAllVisible();
-    }
-
-    // ── Council votes ──
-
-    private void RefreshVotes()
-    {
-        bool show = civ.HasRoyalCouncil;
-        GovernmentUiUtil.SetActive(votesSectionRoot, true);
-
-        var recent = CouncilVoteService.GetRecentResults(civ);
-        var results = !show || recent == null
-            ? new List<CouncilVoteResult>()
-            : recent.Where(r => r != null && r.applicable).Reverse().Take(MaxVoteHistory).ToList();
-        GovernmentUiUtil.FillList(votesRoot, voteRowPrefab, voteRows, results, (row, result) => row.BindResult(result));
-        GovernmentUiUtil.SetText(noVotesText, !show ? "This government does not maintain a council."
-            : results.Count == 0 ? $"The {GovernmentPresentation.GetInstitutionName(civ).ToLowerInvariant()} has not voted on anything recently."
-            : string.Empty);
-    }
-
-    // ── Election ──
-
-    private void RefreshElection()
-    {
-        var rules = civ.currentGovernment != null ? civ.currentGovernment.electionRules : null;
-        bool elections = rules != null && rules.enabled;
-        GovernmentUiUtil.SetActive(electionSectionRoot, true);
-
         var state = civ.electionState ?? new ElectionState();
-        var election = state.activeElection;
-        bool open = elections && election != null && !election.resolved;
-
+        bool electionsEnabled = civ.currentGovernment?.electionRules?.enabled == true;
         if (publicOpinionSlider != null)
         {
             publicOpinionSlider.minValue = 0f;
@@ -221,68 +151,197 @@ public class GovernmentPoliticsUI : GovernmentScreenBase
             publicOpinionSlider.value = state.publicApproval;
             publicOpinionSlider.interactable = false;
         }
+
         GovernmentUiUtil.SetText(publicOpinionText, $"Public Opinion: {state.publicApproval:0.#}%");
-        GovernmentUiUtil.SetText(victoryThresholdText, civ.isPlayerControlled ? "Reelection threshold: 50%" : string.Empty);
+        GovernmentUiUtil.SetText(electionThresholdText, civ.isPlayerControlled ? "Reelection Threshold: 50%" : string.Empty);
         GovernmentUiUtil.SetText(legitimacyText, $"Government Legitimacy: {state.governmentLegitimacy:0.#}%");
-        GovernmentUiUtil.SetText(opinionModifiersText, FormatOpinionBreakdown(state));
-        GovernmentUiUtil.SetText(electionHistoryText, FormatElectionHistory(state));
-        GovernmentUiUtil.SetImage(currentRulerPortrait, civ.isPlayerControlled ? null : ElectionManager.GetCurrentRulerPortrait(civ));
-
-        GovernmentUiUtil.SetText(electionSummaryText, !elections ? "This government does not hold regular elections."
-            : civ.isPlayerControlled ? "The administration remains in power with at least 50% Public Opinion."
-            : state.currentOffice != null ? $"{state.currentOffice.title} {state.currentOffice.officeholderName} (term ends turn {state.currentOffice.termEndTurn})"
-            : $"Current ruler: {ElectionManager.GetCurrentRulerName(civ)}");
-        GovernmentUiUtil.SetText(electionStatusText, state.pendingPlayerDefeat ? "Election defeat requires an immediate decision."
-            : open
-            ? $"Election underway; results on turn {election.resolutionTurn}."
-            : elections && state.nextElectionTurn >= 0
-                ? $"Next election: turn {state.nextElectionTurn} ({Mathf.Max(0, state.nextElectionTurn - PoliticalActionRules.CurrentTurn)} turns remaining)."
-                : "No election scheduled.");
-
-        electionIssues ??= new PoliticalLineList(electionIssuesRoot, lineRowPrefab);
-        electionIssues.ShowTexts(open && !civ.isPlayerControlled ? election.issues.Select(i => $"{i.issue}: {i.summary}").ToList() : new List<string>());
-
-        var candidates = open && !civ.isPlayerControlled ? election.candidates : new List<ElectionCandidateRecord>();
-        GovernmentUiUtil.FillList(candidatesRoot, candidateRowPrefab, candidateRows, candidates,
-            (row, candidate) => row.Bind(candidate, open && election.endorsedCandidateId == candidate.candidateId, open, false, OnEndorse));
+        GovernmentUiUtil.SetText(electionStatusText, FormatElectionStatus(state, electionsEnabled));
+        GovernmentUiUtil.SetText(opinionModifiersText, FormatElectionInformation(state, electionsEnabled));
     }
 
-    private static string FormatOpinionBreakdown(ElectionState state)
+    private string FormatElectionStatus(ElectionState state, bool electionsEnabled)
     {
-        if (state.opinionBreakdown == null || state.opinionBreakdown.Count == 0) return "No Public Opinion modifiers.";
-        return string.Join("\n", state.opinionBreakdown
-            .Where(entry => entry != null && entry.source != "Baseline")
-            .OrderByDescending(entry => entry.value)
-            .Select(entry => $"{entry.source}: {entry.value:+0.#;-0.#;0}"));
+        if (!electionsEnabled) return "This government does not hold regular elections.";
+        if (state.pendingPlayerDefeat) return "Election defeat requires an immediate decision.";
+        if (state.activeElection != null && !state.activeElection.resolved)
+            return $"Election underway - resolves turn {state.activeElection.resolutionTurn}.";
+        return state.nextElectionTurn >= 0
+            ? $"Next Election: {Mathf.Max(0, state.nextElectionTurn - PoliticalActionRules.CurrentTurn)} turn(s)"
+            : "No election scheduled.";
     }
 
-    private static string FormatElectionHistory(ElectionState state)
+    private string FormatElectionInformation(ElectionState state, bool electionsEnabled)
     {
-        if (state.history == null || state.history.Count == 0) return "No national elections have been recorded.";
-        return string.Join("\n", state.history.Where(record => record != null).Reverse().Take(5).Select(record =>
-            record.playerElection
-                ? $"Turn {record.resolutionTurn}: {(record.playerVictory ? "Reelected" : record.playerSeizedPower ? "Defeated; power seized" : "Defeated")} ({record.publicOpinionAtElection:0.#}%)"
-                : $"Turn {record.resolutionTurn}: {record.outcomeSummary}"));
+        var sections = new List<string>();
+        if (state.opinionBreakdown != null && state.opinionBreakdown.Count > 0)
+        {
+            sections.Add(string.Join("\n", state.opinionBreakdown
+                .Where(entry => entry != null && entry.source != "Baseline")
+                .OrderByDescending(entry => entry.value)
+                .Select(entry => $"{entry.source}: {entry.value:+0.#;-0.#;0}")));
+        }
+        else sections.Add("No Public Opinion modifiers.");
+
+        if (!civ.isPlayerControlled && electionsEnabled)
+        {
+            sections.Add($"Current ruler: {ElectionManager.GetCurrentRulerName(civ)}");
+            if (state.activeElection?.candidates != null && !state.activeElection.resolved)
+                sections.Add("Candidates:\n" + string.Join("\n", state.activeElection.candidates
+                    .Where(candidate => candidate != null)
+                    .Select(candidate => $"{candidate.displayName} - {candidate.factionName ?? "Independent"}")));
+            if (state.history != null && state.history.Count > 0)
+                sections.Add("Recent elections:\n" + string.Join("\n", state.history
+                    .Where(record => record != null).Reverse().Take(3)
+                    .Select(record => $"Turn {record.resolutionTurn}: {record.outcomeSummary}")));
+        }
+        return string.Join("\n\n", sections.Where(section => !string.IsNullOrWhiteSpace(section)));
     }
 
-    private void OnEndorse(ElectionCandidateRecord candidate)
+    private void RefreshCouncilVote()
     {
-        if (civ == null || candidate == null || panel == null) return;
+        if (!civ.HasRoyalCouncil)
+        {
+            GovernmentUiUtil.SetText(councilProposalText, "This government does not maintain a council.");
+            GovernmentUiUtil.SetText(councilVoteDetailsText, string.Empty);
+            GovernmentUiUtil.SetText(councilResultText, string.Empty);
+            return;
+        }
+
+        var latest = CouncilVoteService.GetRecentResults(civ)?.LastOrDefault(result => result != null && result.applicable);
+        if (latest == null)
+        {
+            GovernmentUiUtil.SetText(councilProposalText, "No recent council votes.");
+            GovernmentUiUtil.SetText(councilVoteDetailsText, string.Empty);
+            GovernmentUiUtil.SetText(councilResultText, string.Empty);
+            return;
+        }
+
+        GovernmentUiUtil.SetText(councilProposalText, $"Proposal: {latest.proposalDescription}");
+        GovernmentUiUtil.SetText(councilVoteDetailsText,
+            $"Votes: {latest.yesVotes} Yes / {latest.noVotes} No\nRequired: {latest.requiredYesVotes} Yes");
+        GovernmentUiUtil.SetText(councilResultText, latest.passed
+            ? "<color=#6AA84F>Result: Passed</color>"
+            : "<color=#E06666>Result: Rejected</color>");
+    }
+
+    private void RefreshFactions()
+    {
+        bool suppressed = civ.currentGovernment != null && civ.currentGovernment.suppressConventionalPolitics;
+        availableFactions = suppressed || civ.nobleFactions == null
+            ? new List<FactionBloc>()
+            : civ.nobleFactions.Where(faction => faction != null).ToList();
+
+        if (selectedFaction == null || !availableFactions.Contains(selectedFaction))
+            selectedFaction = availableFactions.FirstOrDefault();
+        PopulateFactionDropdown();
+
+        if (selectedFaction == null)
+        {
+            GovernmentUiUtil.SetText(factionInformationText, string.Empty);
+            GovernmentUiUtil.SetText(factionDemandText, string.Empty);
+            GovernmentUiUtil.SetText(factionStatusText, suppressed
+                ? "Conventional political factions are inactive under this government."
+                : "No political factions currently exist.");
+            SetDemandControls(false);
+            return;
+        }
+
+        string religion = selectedFaction.ReligiousIdentity != null
+            ? $"\nReligion: {GovernmentPresentation.NameOf(selectedFaction.ReligiousIdentity)} ({selectedFaction.ReligiousGoal})"
+            : string.Empty;
+        GovernmentUiUtil.SetText(factionInformationText,
+            $"{selectedFaction.FactionName}\n" +
+            $"Alignment: {selectedFaction.Alignment}\n" +
+            $"Leader: {(selectedFaction.Leader != null ? GovernmentPresentation.FormatGovernorName(civ, selectedFaction.Leader) : "None")}\n" +
+            $"Political Power: {selectedFaction.ComputePower():0.#}\n" +
+            $"Members: {selectedFaction.Members.Count(member => member != null)}" + religion + "\n" +
+            $"Rebellion: {(selectedFaction.IsInRebellion ? "IN OPEN REBELLION" : "No")}");
+
+        availableDemands = selectedFaction.ActiveDemands?.Where(demand => demand != null).ToList()
+            ?? new List<FactionDemand>();
+        if (selectedDemand == null || !availableDemands.Contains(selectedDemand))
+            selectedDemand = availableDemands.FirstOrDefault();
+        PopulateDemandDropdown();
+        RefreshSelectedDemand();
+    }
+
+    private void PopulateFactionDropdown()
+    {
+        if (factionDropdown == null) return;
+        factionDropdown.ClearOptions();
+        factionDropdown.AddOptions(availableFactions.Count > 0
+            ? availableFactions.Select(faction => faction.FactionName).ToList()
+            : new List<string> { "No factions" });
+        factionDropdown.SetValueWithoutNotify(Mathf.Max(0, availableFactions.IndexOf(selectedFaction)));
+        factionDropdown.interactable = availableFactions.Count > 1;
+    }
+
+    private void PopulateDemandDropdown()
+    {
+        if (demandDropdown == null) return;
+        demandDropdown.ClearOptions();
+        demandDropdown.AddOptions(availableDemands.Select((demand, index) =>
+            string.IsNullOrWhiteSpace(demand.description) ? $"Demand {index + 1}" : demand.description).ToList());
+        demandDropdown.SetValueWithoutNotify(Mathf.Max(0, availableDemands.IndexOf(selectedDemand)));
+        GovernmentUiUtil.SetActive(demandDropdown.gameObject, availableDemands.Count > 1);
+    }
+
+    private void RefreshSelectedDemand()
+    {
+        bool hasDemand = selectedDemand != null;
+        GovernmentUiUtil.SetText(factionDemandText, hasDemand
+            ? $"Current Demand: {selectedDemand.description}\nExpires: turn {selectedDemand.issuedTurn + selectedDemand.expiryTurns}"
+            : "No outstanding demands.");
+        string failure = null;
+        if (hasDemand) demandFailures.TryGetValue(selectedDemand, out failure);
+        GovernmentUiUtil.SetText(factionStatusText, failure);
+        SetDemandControls(hasDemand);
+    }
+
+    private void SetDemandControls(bool available)
+    {
+        GovernmentUiUtil.SetInteractable(demandAcceptButton, available);
+        GovernmentUiUtil.SetInteractable(demandRefuseButton, available);
+        if (!available && demandDropdown != null) GovernmentUiUtil.SetActive(demandDropdown.gameObject, false);
+    }
+
+    private void SelectFactionAt(int index)
+    {
+        if (index < 0 || index >= availableFactions.Count) return;
+        selectedFaction = availableFactions[index];
+        selectedDemand = null;
+        RefreshFactions();
+    }
+
+    private void SelectDemandAt(int index)
+    {
+        if (index < 0 || index >= availableDemands.Count) return;
+        selectedDemand = availableDemands[index];
+        RefreshSelectedDemand();
+    }
+
+    private void ResolveSelectedDemand(bool accepted)
+    {
+        if (selectedFaction == null || selectedDemand == null) return;
+        var demand = selectedDemand;
+        var result = civ.ResolveFactionDemandDetailed(selectedFaction, demand, accepted, PoliticalActionRules.CurrentTurn);
+        if (result.success) demandFailures.Remove(demand);
+        else demandFailures[demand] = result.failureReason;
+        panel?.RefreshAllVisible();
+    }
+
+    private void RequestRefuseSelectedDemand()
+    {
+        if (selectedFaction == null || selectedDemand == null) return;
+        if (panel == null)
+        {
+            ResolveSelectedDemand(false);
+            return;
+        }
         panel.RequestConfirmation(new PoliticalConfirmRequest
         {
-            title = $"Endorse {candidate.displayName}?",
-            description = "An endorsement raises their support but can never decide the result outright.",
-            confirmLabel = "Endorse",
-            lines = new List<PoliticalEffectLine>
-            {
-                new PoliticalEffectLine { label = "Government legitimacy", value = "Falls slightly", harmful = true },
-                new PoliticalEffectLine { label = "Candidate support", value = "Rises", beneficial = true },
-            },
-            onConfirm = () =>
-            {
-                ElectionManager.EndorseCandidate(civ, candidate.candidateId);
-                panel.RefreshAllVisible();
-            },
+            title = "Refuse this demand?",
+            onConfirm = () => ResolveSelectedDemand(false),
         });
     }
 }
