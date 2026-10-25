@@ -134,7 +134,7 @@ public class FactionBloc
     /// </summary>
     public FactionDemand GenerateDemand(Civilization civ, int currentTurn)
     {
-        if (civ == null) return null;
+        if (civ == null || ActiveDemands.Count > 0) return null;
 
         var demand = BuildDemandForAlignment(civ, currentTurn);
         if (demand == null) return null;

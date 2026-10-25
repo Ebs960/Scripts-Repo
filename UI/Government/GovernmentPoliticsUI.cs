@@ -34,7 +34,6 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
     [SerializeField] private TMP_Dropdown factionDropdown;
     [SerializeField] private TMP_Text factionInformationText;
     [SerializeField] private TMP_Text factionDemandText;
-    [SerializeField] private TMP_Dropdown demandDropdown;
     [SerializeField] private Button demandAcceptButton;
     [SerializeField] private Button demandRefuseButton;
     [SerializeField] private TMP_Text factionStatusText;
@@ -43,7 +42,6 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
     private readonly Dictionary<FactionDemand, string> demandFailures = new Dictionary<FactionDemand, string>();
     private List<PoliticalEventRecord> activeEvents = new List<PoliticalEventRecord>();
     private List<FactionBloc> availableFactions = new List<FactionBloc>();
-    private List<FactionDemand> availableDemands = new List<FactionDemand>();
     private int selectedEventId = -1;
     private FactionBloc selectedFaction;
     private FactionDemand selectedDemand;
@@ -80,11 +78,6 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
         {
             factionDropdown.onValueChanged.RemoveAllListeners();
             factionDropdown.onValueChanged.AddListener(SelectFactionAt);
-        }
-        if (demandDropdown != null)
-        {
-            demandDropdown.onValueChanged.RemoveAllListeners();
-            demandDropdown.onValueChanged.AddListener(SelectDemandAt);
         }
     }
 
@@ -257,11 +250,7 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
             $"Members: {selectedFaction.Members.Count(member => member != null)}" + religion + "\n" +
             $"Rebellion: {(selectedFaction.IsInRebellion ? "IN OPEN REBELLION" : "No")}");
 
-        availableDemands = selectedFaction.ActiveDemands?.Where(demand => demand != null).ToList()
-            ?? new List<FactionDemand>();
-        if (selectedDemand == null || !availableDemands.Contains(selectedDemand))
-            selectedDemand = availableDemands.FirstOrDefault();
-        PopulateDemandDropdown();
+        selectedDemand = selectedFaction.ActiveDemands?.FirstOrDefault(demand => demand != null);
         RefreshSelectedDemand();
     }
 
@@ -274,16 +263,6 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
             : new List<string> { "No factions" });
         factionDropdown.SetValueWithoutNotify(Mathf.Max(0, availableFactions.IndexOf(selectedFaction)));
         factionDropdown.interactable = availableFactions.Count > 1;
-    }
-
-    private void PopulateDemandDropdown()
-    {
-        if (demandDropdown == null) return;
-        demandDropdown.ClearOptions();
-        demandDropdown.AddOptions(availableDemands.Select((demand, index) =>
-            string.IsNullOrWhiteSpace(demand.description) ? $"Demand {index + 1}" : demand.description).ToList());
-        demandDropdown.SetValueWithoutNotify(Mathf.Max(0, availableDemands.IndexOf(selectedDemand)));
-        GovernmentUiUtil.SetActive(demandDropdown.gameObject, availableDemands.Count > 1);
     }
 
     private void RefreshSelectedDemand()
@@ -302,7 +281,6 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
     {
         GovernmentUiUtil.SetInteractable(demandAcceptButton, available);
         GovernmentUiUtil.SetInteractable(demandRefuseButton, available);
-        if (!available && demandDropdown != null) GovernmentUiUtil.SetActive(demandDropdown.gameObject, false);
     }
 
     private void SelectFactionAt(int index)
@@ -313,19 +291,16 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
         RefreshFactions();
     }
 
-    private void SelectDemandAt(int index)
-    {
-        if (index < 0 || index >= availableDemands.Count) return;
-        selectedDemand = availableDemands[index];
-        RefreshSelectedDemand();
-    }
-
     private void ResolveSelectedDemand(bool accepted)
     {
         if (selectedFaction == null || selectedDemand == null) return;
         var demand = selectedDemand;
         var result = civ.ResolveFactionDemandDetailed(selectedFaction, demand, accepted, PoliticalActionRules.CurrentTurn);
-        if (result.success) demandFailures.Remove(demand);
+        if (result.success)
+        {
+            demandFailures.Remove(demand);
+            PoliticalEventManager.Instance?.ReconcileFactionDemandEvents(civ, selectedFaction);
+        }
         else demandFailures[demand] = result.failureReason;
         panel?.RefreshAllVisible();
     }

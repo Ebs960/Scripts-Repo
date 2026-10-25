@@ -80,6 +80,27 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             .ToList();
     }
 
+    public void ReconcileFactionDemandEvents(Civilization civ, FactionBloc faction)
+    {
+        if (civ == null || faction == null) return;
+        string civName = civ.civData?.civName ?? civ.name;
+        bool changed = false;
+        foreach (var record in activeEvents)
+        {
+            if (record == null || record.status != PoliticalEventStatus.Pending
+                || record.eventType != PoliticalEventType.FactionDemand
+                || record.targetCivName != civName || record.factionName != faction.FactionName) continue;
+            bool stillActive = faction.ActiveDemands.Any(demand => DemandMatchesEvent(demand, record));
+            if (stillActive) continue;
+            record.status = PoliticalEventStatus.Resolved;
+            changed = true;
+        }
+
+        if (!changed) return;
+        EventsChanged?.Invoke();
+        TryPresentPendingPlayerEvent(civ);
+    }
+
     private void ProcessGovernorPetitions(Civilization civ, int currentTurn)
     {
         if (!civ.isPlayerControlled || civ.governors == null) return;
@@ -547,6 +568,34 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         return Resources.LoadAll<GovernmentData>("").FirstOrDefault(g => g != null && g.name == assetName);
     }
 
+    private static bool DemandMatchesEvent(FactionDemand demand, PoliticalEventRecord record)
+    {
+        if (demand == null || record == null || demand.issuedTurn != record.issuedTurn) return false;
+        return Enum.TryParse(record.factionDemandType, out FactionDemandType eventType) && demand.type == eventType;
+    }
+
+    private int ReconcileLegacyFactionDemandEvents(string civName, FactionBloc faction, FactionDemand activeDemand)
+    {
+        bool keptMatchingEvent = false;
+        int retired = 0;
+        foreach (var record in activeEvents
+            .Where(record => record != null && record.status == PoliticalEventStatus.Pending
+                && record.eventType == PoliticalEventType.FactionDemand
+                && record.targetCivName == civName && record.factionName == faction.FactionName)
+            .OrderBy(record => record.createdTurn).ThenBy(record => record.id))
+        {
+            bool matches = activeDemand != null && DemandMatchesEvent(activeDemand, record);
+            if (matches && !keptMatchingEvent)
+            {
+                keptMatchingEvent = true;
+                continue;
+            }
+            record.status = PoliticalEventStatus.Resolved;
+            retired++;
+        }
+        return retired;
+    }
+
     [Serializable]
     private class PoliticalFactionDemandState
     {
@@ -715,11 +764,25 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                         bloc.AddMember(member);
                 }
 
-                foreach (var demandState in factionState.activeDemands)
+                FactionDemand restoredDemand = null;
+                int legacyDemandCount = 0;
+                foreach (var demandState in (factionState.activeDemands ?? new List<PoliticalFactionDemandState>())
+                    .Where(state => state != null)
+                    .OrderBy(state => state.issuedTurn)
+                    .ThenBy(state => state.type, StringComparer.Ordinal))
                 {
-                    if (demandState == null || !Enum.TryParse(demandState.type, out FactionDemandType demandType)) continue;
+                    if (!Enum.TryParse(demandState.type, out FactionDemandType demandType))
+                    {
+                        legacyDemandCount++;
+                        continue;
+                    }
+                    if (restoredDemand != null)
+                    {
+                        legacyDemandCount++;
+                        continue;
+                    }
                     var targetGov = civ.governors.FirstOrDefault(g => g != null && g.Id == demandState.targetGovernorId);
-                    bloc.ActiveDemands.Add(new FactionDemand
+                    restoredDemand = new FactionDemand
                     {
                         type = demandType,
                         description = demandState.description,
@@ -728,8 +791,14 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                         targetGovernor = targetGov,
                         targetPolicy = ResolvePolicyByName(demandState.targetPolicyName),
                         targetGovernment = ResolveGovernmentByName(demandState.targetGovernmentName),
-                    });
+                    };
+                    bloc.ActiveDemands.Add(restoredDemand);
                 }
+
+                int retiredEvents = ReconcileLegacyFactionDemandEvents(civState.civName, bloc, restoredDemand);
+                if (legacyDemandCount > 0 || retiredEvents > 0)
+                    Debug.LogWarning($"[PoliticalEventManager] Migrated faction '{bloc.FactionName}' to one active demand. " +
+                        $"Kept the earliest valid demand; retired {legacyDemandCount} legacy demand(s) and {retiredEvents} duplicate/orphan event(s).");
 
                 bloc.RestoreRebellionState(factionState.isInRebellion);
                 civ.nobleFactions.Add(bloc);
